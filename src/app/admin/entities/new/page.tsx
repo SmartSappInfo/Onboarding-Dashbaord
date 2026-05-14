@@ -83,7 +83,7 @@ const formSchema = z.object({
   }).optional(),
   locationString: z.string().optional(),
   workspaceTags: z.array(z.string()).optional().default([]),
-  nominalRoll: z.coerce.number().optional(),
+
   // ── Narrative Fields (non-required, all industries) ──────────────────────
   currentNeeds: z.string().optional(),
   currentChallenges: z.string().optional(),
@@ -110,8 +110,7 @@ const formSchema = z.object({
   subscriptionPackageId: z.string().optional().nullable(),
   subscriptionRate: z.coerce.number().default(0),
   discountPercentage: z.coerce.number().min(0).max(100).default(0),
-  arrearsBalance: z.coerce.number().default(0),
-  creditBalance: z.coerce.number().default(0),
+
   // Person fields
   firstName: z.string().optional(),
   lastName: z.string().optional(),
@@ -189,15 +188,14 @@ export default function NewEntityPage() {
       location: {},
       locationString: '',
       workspaceTags: [],
-      nominalRoll: 0,
+
       entityContacts: [{ name: '', email: '', phone: '', typeKey: 'administrator', typeLabel: 'Administrator', isSignatory: true, isPrimary: true }],
       modules: [],
       assignedToId: 'unassigned',
       currency: 'GHS',
       subscriptionRate: 0,
       discountPercentage: 0,
-      arrearsBalance: 0,
-      creditBalance: 0,
+
       subscriptionPackageId: null,
       customData: {},
       currentNeeds: '',
@@ -301,8 +299,7 @@ export default function NewEntityPage() {
         subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
         subscriptionRate: data.subscriptionRate,
         discountPercentage: data.discountPercentage,
-        arrearsBalance: data.arrearsBalance,
-        creditBalance: data.creditBalance,
+
       };
     } else if (contactScope === 'person') {
       entityPayload.personData = {
@@ -585,26 +582,7 @@ export default function NewEntityPage() {
                             </FormItem>
                         )} />
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50 text-left">
-                            <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-rose-600 ml-1 flex items-center gap-1.5 text-left"><CreditCard className="h-3 w-3" /> System Arrears</FormLabel>
-                                    <FormControl>
- <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-50/50 border-none shadow-inner font-semibold text-rose-700" />
-                                    </FormControl>
- <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Legacy system outstanding balance</FormDescription>
-                                </FormItem>
-                            )} />
-                            <FormField control={methods.control} name="creditBalance" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-emerald-600 ml-1 flex items-center gap-1.5 text-left"><Wallet className="h-3 w-3" /> Pre-paid Credit</FormLabel>
-                                    <FormControl>
- <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-50/50 border-none shadow-inner font-semibold text-emerald-700" />
-                                    </FormControl>
- <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Overpayments from legacy records</FormDescription>
-                                </FormItem>
-                            )} />
-                        </div>
+
                     </CardContent>
                 </Card>
 
@@ -780,15 +758,7 @@ export default function NewEntityPage() {
                                 <FormMessage />
                             </FormItem>
                         )} /> 
-                        <FormField control={methods.control} name="nominalRoll" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Nominal Strength</FormLabel>
-                                <FormControl>
- <Input type="number" {...field} className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
+
                     </CardContent>
                 </Card>
   <div className="pt-4 sticky top-24 text-left">

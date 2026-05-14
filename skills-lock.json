@@ -6,6 +6,12 @@
       "sourceType": "github",
       "computedHash": "7fa6310cfccad240075a73482c4b4c02aa3bb599a61d4614c5c51aa5cc509496"
     },
+    "backend-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "skillPath": "skills/backend-patterns/SKILL.md",
+      "computedHash": "0f4cb3da46b8ce80176f9dbd241242e3033a999b32e952f2467faba4d38d69c9"
+    },
     "brainstorming": {
       "source": "obra/superpowers",
       "sourceType": "github",

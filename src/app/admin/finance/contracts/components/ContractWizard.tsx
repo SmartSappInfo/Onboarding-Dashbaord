@@ -46,7 +46,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfFormRenderer from '@/app/forms/[pdfId]/components/PdfFormRenderer';
 import TestDispatchDialog from '../../../messaging/components/TestDispatchDialog';
 import { Switch } from '@/components/ui/switch';
-import { SmartTemplateDropdown } from '../../../components/SmartTemplateDropdown';
+import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 
 const wizardSchema = z.object({
     pdfId: z.string().min(1, "Please select a contract template."),
@@ -371,7 +371,7 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                                                         name="emailTemplateId"
                                                                         control={methods.control}
                                                                         render={({ field }) => (
-                                                                            <SmartTemplateDropdown 
+                                                                            <MessagingTemplateSelector 
                                                                                 category="agreements"
                                                                                 recipientType="entity"
                                                                                 channel="email"
@@ -390,7 +390,7 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                                                         name="smsTemplateId"
                                                                         control={methods.control}
                                                                         render={({ field }) => (
-                                                                            <SmartTemplateDropdown 
+                                                                            <MessagingTemplateSelector 
                                                                                 category="agreements"
                                                                                 recipientType="entity"
                                                                                 channel="sms"

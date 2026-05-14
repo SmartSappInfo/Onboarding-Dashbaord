@@ -13,8 +13,8 @@ import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
-import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
+import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
+import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 
 interface NotificationConfig {
   enabled: boolean;
@@ -132,7 +132,7 @@ export function FormNotificationSettings({
                       </Button>
                     </div>
                   </div>
-                  <SmartTemplateDropdown 
+                  <MessagingTemplateSelector 
                     category="forms"
                     recipientType={recipientTypeMatch}
                     channel="email"
@@ -159,7 +159,7 @@ export function FormNotificationSettings({
                       </Button>
                     </div>
                   </div>
-                  <SmartTemplateDropdown 
+                  <MessagingTemplateSelector 
                     category="forms"
                     recipientType={recipientTypeMatch}
                     channel="sms"
@@ -183,20 +183,22 @@ export function FormNotificationSettings({
       {renderConfigBlock('internal', internalAlerts, onChangeInternal, 'Internal Alerts', 'Notify team members upon submission', <Users className="h-6 w-6" />, 'internal_alert')}
 
       {quickCreateState && (
-        <QuickTemplateDialog 
+        <TemplateWorkshopSheet 
           open={quickCreateState.open}
           onOpenChange={(o) => !o && setQuickCreateState(null)}
-          channel={quickCreateState.channel}
-          category="forms"
-          recipientType={quickCreateState.type === 'internal' ? 'internal_alert' : 'respondent'}
           templateId={quickCreateState.templateId}
-          onCreated={(id) => {
+          initialContext={{
+            channel: quickCreateState.channel,
+            category: "forms",
+            recipientType: quickCreateState.type === 'internal' ? 'internal_alert' : 'respondent'
+          }}
+          onCreated={(template) => {
             if (quickCreateState.type === 'internal') {
-              if (quickCreateState.channel === 'email') onChangeInternal({ ...internalAlerts, emailTemplateId: id });
-              else onChangeInternal({ ...internalAlerts, smsTemplateId: id });
+              if (quickCreateState.channel === 'email') onChangeInternal({ ...internalAlerts, emailTemplateId: template.id });
+              else onChangeInternal({ ...internalAlerts, smsTemplateId: template.id });
             } else {
-              if (quickCreateState.channel === 'email') onChangeRespondent({ ...respondentAlerts, emailTemplateId: id });
-              else onChangeRespondent({ ...respondentAlerts, smsTemplateId: id });
+              if (quickCreateState.channel === 'email') onChangeRespondent({ ...respondentAlerts, emailTemplateId: template.id });
+              else onChangeRespondent({ ...respondentAlerts, smsTemplateId: template.id });
             }
           }}
         />

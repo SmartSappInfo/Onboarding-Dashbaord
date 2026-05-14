@@ -1025,6 +1025,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
         });
     }, [pages, elementStates]);
 
+    const isLastVisiblePage = React.useMemo(() => {
+        for (let i = currentPageIndex + 1; i < pages.length; i++) {
+            if (isPageVisible(i)) return false;
+        }
+        return true;
+    }, [currentPageIndex, pages.length, isPageVisible]);
+
     const calculateScore = (data: any) => {
         if (!survey.scoringEnabled) return undefined;
         let total = 0;
@@ -1587,12 +1594,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                         <ArrowLeft className="h-5 w-5" /> Back
                                     </Button>
                                 )}
-                                {isMultiPage && currentPageIndex < pages.length - 1 && (
+                                {isMultiPage && !isLastVisiblePage && (
                                     <Button type="button" size="lg" className="h-14 px-10 rounded-2xl font-bold shadow-xl w-full sm:w-auto sm:ml-auto transition-transform hover:scale-105 text-base uppercase tracking-tight" onClick={handleNext} disabled={isSubmitting}>
                                         Next <ArrowRight className="ml-2 h-5 w-5" />
                                     </Button>
                                 )}
-                                {currentPageIndex === pages.length - 1 && (
+                                {(currentPageIndex === pages.length - 1 || isLastVisiblePage) && (
                                     <Button type="submit" size="lg" className={cn("h-14 px-12 rounded-2xl font-bold shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-base uppercase tracking-tight", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
                                         {isSubmitting ? (
                                             <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>

@@ -1,0 +1,21 @@
+>>> [BOOTSTRAP] No valid service account credentials found. Using ambient credentials (may fail in development).
+
+🔄 FER: Migrating Template Identifiers (DRY RUN)...
+
+Fatal error: Error: Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.
+    at GoogleAuth.getApplicationDefaultAsync (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/google-auth-library@9.15.1/node_modules/google-auth-library/build/src/auth/googleauth.js:287:15)
+    at async GoogleAuth._GoogleAuth_determineClient (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/google-auth-library@9.15.1/node_modules/google-auth-library/build/src/auth/googleauth.js:834:32)
+    at async GoogleAuth.getClient (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/google-auth-library@9.15.1/node_modules/google-auth-library/build/src/auth/googleauth.js:698:20)
+    at async GrpcClient._getCredentials (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/google-gax@4.6.1/node_modules/google-gax/src/grpc.ts:209:20)
+    at async GrpcClient.createStub (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/google-gax@4.6.1/node_modules/google-gax/src/grpc.ts:426:19)
+Caused by: Error
+    at QueryUtil._getResponse (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@google-cloud+firestore@7.11.6/node_modules/@google-cloud/firestore/build/src/reference/query-util.js:44:23)
+    at Query._getResponse (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@google-cloud+firestore@7.11.6/node_modules/@google-cloud/firestore/build/src/reference/query.js:784:32)
+    at Query._get (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@google-cloud+firestore@7.11.6/node_modules/@google-cloud/firestore/build/src/reference/query.js:777:35)
+    at /Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@google-cloud+firestore@7.11.6/node_modules/@google-cloud/firestore/build/src/reference/query.js:745:43
+    at /Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@google-cloud+firestore@7.11.6/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@opentelemetry+api@1.9.0/node_modules/@opentelemetry/api/src/context/NoopContextManager.ts:31:15)
+    at ContextAPI.with (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@opentelemetry+api@1.9.0/node_modules/@opentelemetry/api/src/api/context.ts:77:42)
+    at NoopTracer.startActiveSpan (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@opentelemetry+api@1.9.0/node_modules/@opentelemetry/api/src/trace/NoopTracer.ts:98:27)
+    at ProxyTracer.startActiveSpan (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@opentelemetry+api@1.9.0/node_modules/@opentelemetry/api/src/trace/ProxyTracer.ts:51:20)
+    at EnabledTraceUtil.startActiveSpan (/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/@google-cloud+firestore@7.11.6/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)

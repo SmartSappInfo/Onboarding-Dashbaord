@@ -8,12 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Mail, Smartphone, Pencil, PlusCircle, ShieldCheck, HeartHandshake, FileText } from 'lucide-react';
 import { PageEditor } from './result-page-builder';
-import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { SenderProfile } from '@/lib/types';
 import { useParams } from 'next/navigation';
-import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
+import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 
 export function MinimalRespondentMessage() {
     const { control, watch, setValue } = useFormContext();
@@ -101,7 +101,7 @@ export function MinimalRespondentMessage() {
                                 name={`resultRules.0.emailTemplateId`}
                                 control={control}
                                 render={({ field }) => (
-                                    <SmartTemplateDropdown 
+                                    <MessagingTemplateSelector 
                                         category="surveys"
                                         recipientType="respondent"
                                         channel="email"
@@ -170,7 +170,7 @@ export function MinimalRespondentMessage() {
                                 name={`resultRules.0.smsTemplateId`}
                                 control={control}
                                 render={({ field }) => (
-                                    <SmartTemplateDropdown 
+                                    <MessagingTemplateSelector 
                                         category="surveys"
                                         recipientType="respondent"
                                         channel="sms"
@@ -206,19 +206,20 @@ export function MinimalRespondentMessage() {
                 </div>
 
                 {activeTemplateConfig && (
-                    <QuickTemplateDialog 
+                    <TemplateWorkshopSheet 
                         open={!!activeTemplateConfig}
                         onOpenChange={(o) => !o && setActiveTemplateConfig(null)}
-                        channel={activeTemplateConfig.channel}
-                        category="surveys"
-                        recipientType="respondent"
-                        fixedSourceId={surveyId}
                         templateId={activeTemplateConfig.templateId}
-                        onCreated={(id) => {
+                        initialContext={{
+                            channel: activeTemplateConfig.channel,
+                            category: "surveys",
+                            recipientType: "respondent"
+                        }}
+                        onCreated={(template) => {
                             if (activeTemplateConfig.channel === 'email') {
-                                setValue(`resultRules.0.emailTemplateId`, id, { shouldDirty: true });
+                                setValue(`resultRules.0.emailTemplateId`, template.id, { shouldDirty: true });
                             } else {
-                                setValue(`resultRules.0.smsTemplateId`, id, { shouldDirty: true });
+                                setValue(`resultRules.0.smsTemplateId`, template.id, { shouldDirty: true });
                             }
                         }}
                     />

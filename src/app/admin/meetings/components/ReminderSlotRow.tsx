@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Trash2, Clock, Mail, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SmartTemplateDropdown } from '@/app/admin/components/SmartTemplateDropdown';
+import { MessagingTemplateSelector } from '@/app/admin/components/MessagingTemplateSelector';
 import type { MeetingReminderSlot } from '@/lib/types';
 
 // ─── Offset Presets ──────────────────────────────────────────────
@@ -129,7 +129,7 @@ export default function ReminderSlotRow({ slot, index, onChange, onRemove }: Rem
               <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
                 <Mail className="h-2.5 w-2.5" /> Email Template
               </span>
-              <SmartTemplateDropdown
+              <MessagingTemplateSelector
                 category="meetings"
                 recipientType="external_alert"
                 channel="email"
@@ -146,7 +146,7 @@ export default function ReminderSlotRow({ slot, index, onChange, onRemove }: Rem
               <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
                 <Smartphone className="h-2.5 w-2.5" /> SMS Template
               </span>
-              <SmartTemplateDropdown
+              <MessagingTemplateSelector
                 category="meetings"
                 recipientType="external_alert"
                 channel="sms"

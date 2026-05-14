@@ -26,6 +26,10 @@ const ICON_KEYWORD_MAP: Record<string, string> = {
   transaction: 'ArrowLeftRight',
   company: 'Building2',
   signatory: 'PenTool',
+  metrics: 'LineChart',
+  status: 'Activity',
+  details: 'FileText',
+  scope: 'Target'
 };
 
 /**
@@ -44,14 +48,14 @@ export function resolveGroupIcon(groupName: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface IndustryFieldDef {
-  name: string; // Internal name / label
+  name: string;
   variableName: string;
   type: AppField['type'];
   compatibilityScope: AppField['compatibilityScope'];
   helpText?: string;
   placeholder?: string;
   defaultValue?: any;
-  options?: { value: string; label: string }[];
+  options?: { label: string; value: string }[];
   validationRules?: AppField['validationRules'];
 }
 
@@ -70,10 +74,6 @@ export interface IndustryMetadata {
   icon: string;
   description: string;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Registry
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const INDUSTRY_METADATA: Record<IndustryVertical, IndustryMetadata> = {
   SchoolEnrollment: {
@@ -117,149 +117,58 @@ export const INDUSTRY_METADATA: Record<IndustryVertical, IndustryMetadata> = {
 export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[]> = {
   SchoolEnrollment: [
     {
-      slug: 'school_identity',
-      name: 'School Identity',
-      description: 'Core identifying properties for the institution',
+      slug: 'enrollment_metrics',
+      name: 'Enrollment Metrics',
+      description: 'Key metrics and operational capacity',
       entityTypes: ['institution'],
       order: 10,
       fields: [
-        { name: 'School Name', variableName: 'school_name', type: 'short_text', compatibilityScope: ['institution', 'common'], validationRules: { required: true } },
-        { name: 'School Initials', variableName: 'school_initials', type: 'short_text', compatibilityScope: ['institution', 'common'] },
-        { name: 'Location/Address', variableName: 'school_location', type: 'address', compatibilityScope: ['institution', 'common'] },
-        { name: 'Main Phone', variableName: 'school_phone', type: 'phone', compatibilityScope: ['institution', 'common'] },
-        { name: 'General Email', variableName: 'school_email', type: 'email', compatibilityScope: ['institution', 'common'] },
-      ]
-    },
-    {
-      slug: 'contact_signatory',
-      name: 'Contact & Signatory',
-      description: 'Primary contact person details',
-      entityTypes: ['person'],
-      order: 20,
-      fields: [
-        { name: 'Signatory Name', variableName: 'contact_name', type: 'short_text', compatibilityScope: ['person', 'common'], validationRules: { required: true } },
-        { name: 'Signatory Position', variableName: 'contact_position', type: 'short_text', compatibilityScope: ['person', 'common'] },
-        { name: 'Contact Email', variableName: 'contact_email', type: 'email', compatibilityScope: ['person', 'common'] },
-        { name: 'Contact Phone', variableName: 'contact_phone', type: 'phone', compatibilityScope: ['person', 'common'] },
-      ]
-    },
-    {
-      slug: 'financial_profile',
-      name: 'Financial Profile',
-      description: 'Billing and subscription details',
-      entityTypes: ['institution'],
-      order: 30,
-      fields: [
-        { name: 'Subscription Tier', variableName: 'school_package', type: 'select', compatibilityScope: ['institution'], options: [{ label: 'Starter', value: 'starter' }, { label: 'Professional', value: 'pro' }, { label: 'Enterprise', value: 'enterprise' }] },
-        { name: 'Effective Rate', variableName: 'subscription_rate', type: 'currency', compatibilityScope: ['institution'] },
-        { name: 'Total Amount', variableName: 'subscription_total', type: 'currency', compatibilityScope: ['institution'] },
-        { name: 'Outstanding Arrears', variableName: 'arrears_balance', type: 'currency', compatibilityScope: ['institution'] },
-      ]
-    },
-    {
-      slug: 'enrollment_metrics',
-      name: 'Enrollment Metrics',
-      description: 'Student capacity and counts',
-      entityTypes: ['institution'],
-      order: 40,
-      fields: [
         { name: 'Nominal Roll', variableName: 'nominal_roll', type: 'number', compatibilityScope: ['institution'] },
+        { name: 'Current Capacity', variableName: 'current_capacity', type: 'number', compatibilityScope: ['institution'] },
+        { name: 'Curriculum Type', variableName: 'curriculum_type', type: 'select', compatibilityScope: ['institution'], options: [{label: 'National', value: 'national'}, {label: 'International', value: 'international'}, {label: 'Blended', value: 'blended'}] },
       ]
     }
   ],
   SaaS: [
     {
-      slug: 'company_identity',
-      name: 'Company Identity',
-      description: 'Account and company details',
+      slug: 'company_metrics',
+      name: 'Company Metrics',
+      description: 'Scale and sector parameters',
       entityTypes: ['institution'],
       order: 10,
       fields: [
-        { name: 'Company Name', variableName: 'company_name', type: 'short_text', compatibilityScope: ['institution', 'common'], validationRules: { required: true } },
-        { name: 'Website', variableName: 'website', type: 'url', compatibilityScope: ['institution', 'common'] },
         { name: 'Industry Sector', variableName: 'industry_sector', type: 'short_text', compatibilityScope: ['institution'] },
-        { name: 'Employee Count', variableName: 'employee_count', type: 'select', compatibilityScope: ['institution'], options: [{label: '1-10', value: '1-10'}, {label: '11-50', value: '11-50'}, {label: '51-200', value: '51-200'}, {label: '201+', value: '201+'}] },
-        { name: 'Billing Address', variableName: 'billing_address', type: 'address', compatibilityScope: ['institution'] },
-        { name: 'Referee', variableName: 'referee', type: 'short_text', compatibilityScope: ['institution', 'common'] },
-      ]
-    },
-    {
-      slug: 'saas_financials',
-      name: 'SaaS Financials',
-      description: 'Subscription and billing metrics',
-      entityTypes: ['institution'],
-      order: 20,
-      fields: [
-        { name: 'Plan Type', variableName: 'plan_type', type: 'select', compatibilityScope: ['institution'], options: [{label: 'Free', value: 'Free'}, {label: 'Standard', value: 'Standard'}, {label: 'Professional', value: 'Professional'}, {label: 'Enterprise', value: 'Enterprise'}] },
-        { name: 'Customer Tier', variableName: 'customer_tier', type: 'select', compatibilityScope: ['institution'], options: [{label: 'Basic', value: 'basic'}, {label: 'Silver', value: 'silver'}, {label: 'Gold', value: 'gold'}] },
-        { name: 'Subscription Rate', variableName: 'subscription_rate', type: 'currency', compatibilityScope: ['institution'] },
-        { name: 'Signup Date', variableName: 'signup_date', type: 'date', compatibilityScope: ['institution'] },
-        { name: 'Currency', variableName: 'currency', type: 'short_text', compatibilityScope: ['institution'], defaultValue: 'USD' },
-      ]
-    },
-    {
-      slug: 'saas_operations',
-      name: 'SaaS Operations',
-      description: 'Account health and capacity metrics',
-      entityTypes: ['institution'],
-      order: 30,
-      fields: [
-        { name: 'Account Status', variableName: 'account_status', type: 'select', compatibilityScope: ['institution'], options: [{label: 'Lead', value: 'lead'}, {label: 'Active', value: 'active'}, {label: 'At Risk', value: 'at_risk'}, {label: 'Churned', value: 'churned'}] },
-        { name: 'Capacity', variableName: 'capacity', type: 'number', compatibilityScope: ['institution'], helpText: 'User or seat capacity' },
-      ]
-    },
-    {
-      slug: 'contact_lead',
-      name: 'Contact & Lead',
-      description: 'User and prospect details',
-      entityTypes: ['person'],
-      order: 40,
-      fields: [
-        { name: 'First Name', variableName: 'first_name', type: 'short_text', compatibilityScope: ['person', 'common'], validationRules: { required: true } },
-        { name: 'Last Name', variableName: 'last_name', type: 'short_text', compatibilityScope: ['person', 'common'] },
-        { name: 'Job Title', variableName: 'job_title', type: 'short_text', compatibilityScope: ['person', 'common'] },
-        { name: 'Lead Source', variableName: 'lead_source', type: 'select', compatibilityScope: ['person'], options: [{label: 'Organic', value: 'organic'}, {label: 'Paid', value: 'paid'}, {label: 'Referral', value: 'referral'}, {label: 'Outbound', value: 'outbound'}] },
+        { name: 'Employee Count', variableName: 'employee_count', type: 'number', compatibilityScope: ['institution'] },
+        { name: 'System Capacity', variableName: 'capacity', type: 'number', compatibilityScope: ['institution'] },
       ]
     },
     {
       slug: 'marketing_attribution',
       name: 'Marketing Attribution',
-      description: 'Hidden UTM and attribution tracking parameters',
-      entityTypes: ['person', 'institution'],
-      order: 50,
+      description: 'Source tracking and channel attribution',
+      entityTypes: ['institution', 'person'],
+      order: 20,
       fields: [
-        { name: 'Channel', variableName: 'channel', type: 'hidden', compatibilityScope: ['person', 'institution'] },
-        { name: 'Channel Drilldown 1', variableName: 'channel_drilldown_1', type: 'hidden', compatibilityScope: ['person', 'institution'] },
-        { name: 'Channel Drilldown 2', variableName: 'channel_drilldown_2', type: 'hidden', compatibilityScope: ['person', 'institution'] },
-        { name: 'Landing Page', variableName: 'landing_page', type: 'hidden', compatibilityScope: ['person', 'institution'] },
-        { name: 'Landing Page Group', variableName: 'landing_page_group', type: 'hidden', compatibilityScope: ['person', 'institution'] },
+        { name: 'Acquisition Channel', variableName: 'channel', type: 'select', compatibilityScope: ['institution', 'person'], options: [{label: 'Organic', value: 'organic'}, {label: 'Paid Social', value: 'paid_social'}, {label: 'Paid Search', value: 'paid_search'}, {label: 'Referral', value: 'referral'}, {label: 'Direct', value: 'direct'}] },
+        { name: 'UTM Source', variableName: 'utm_source', type: 'hidden', compatibilityScope: ['institution', 'person'] },
+        { name: 'UTM Medium', variableName: 'utm_medium', type: 'hidden', compatibilityScope: ['institution', 'person'] },
+        { name: 'UTM Campaign', variableName: 'utm_campaign', type: 'hidden', compatibilityScope: ['institution', 'person'] },
       ]
     }
   ],
   Law: [
     {
-      slug: 'case_identity',
-      name: 'Case Identity',
-      description: 'Primary case and matter details',
-      entityTypes: ['institution'], // Using institution for matter/case
+      slug: 'case_details',
+      name: 'Case Details',
+      description: 'Matter and procedural tracking',
+      entityTypes: ['institution'],
       order: 10,
       fields: [
-        { name: 'Case Number', variableName: 'case_number', type: 'short_text', compatibilityScope: ['institution', 'common'], validationRules: { required: true } },
-        { name: 'Matter Type', variableName: 'matter_type', type: 'select', compatibilityScope: ['institution'], options: [{label: 'Corporate', value: 'corporate'}, {label: 'Litigation', value: 'litigation'}, {label: 'Real Estate', value: 'real_estate'}, {label: 'Family', value: 'family'}] },
+        { name: 'Matter Type', variableName: 'matter_type', type: 'select', compatibilityScope: ['institution'], options: [{label: 'Corporate', value: 'corporate'}, {label: 'Litigation', value: 'litigation'}, {label: 'Intellectual Property', value: 'ip'}, {label: 'Real Estate', value: 'real_estate'}] },
         { name: 'Date Opened', variableName: 'date_opened', type: 'date', compatibilityScope: ['institution'] },
-      ]
-    },
-    {
-      slug: 'client_contact',
-      name: 'Client Contact',
-      description: 'Details of the client',
-      entityTypes: ['person'],
-      order: 20,
-      fields: [
-        { name: 'Client First Name', variableName: 'client_first_name', type: 'short_text', compatibilityScope: ['person', 'common'], validationRules: { required: true } },
-        { name: 'Client Last Name', variableName: 'client_last_name', type: 'short_text', compatibilityScope: ['person', 'common'] },
-        { name: 'Primary Email', variableName: 'client_email', type: 'email', compatibilityScope: ['person', 'common'] },
-        { name: 'Mobile Phone', variableName: 'client_phone', type: 'phone', compatibilityScope: ['person', 'common'] },
+        { name: 'Court Name', variableName: 'court_name', type: 'short_text', compatibilityScope: ['institution'] },
+        { name: 'Judge/Magistrate', variableName: 'judge_name', type: 'short_text', compatibilityScope: ['institution'] },
+        { name: 'Next Filing Deadline', variableName: 'filing_deadline', type: 'date', compatibilityScope: ['institution'] },
       ]
     },
     {
@@ -267,50 +176,24 @@ export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[
       name: 'Billing & Retainer',
       description: 'Financial agreements',
       entityTypes: ['institution', 'person'],
-      order: 30,
+      order: 20,
       fields: [
         { name: 'Retainer Amount', variableName: 'retainer_amount', type: 'currency', compatibilityScope: ['institution', 'person'] },
         { name: 'Hourly Rate', variableName: 'hourly_rate', type: 'currency', compatibilityScope: ['institution', 'person'] },
         { name: 'Billing Frequency', variableName: 'billing_frequency', type: 'select', compatibilityScope: ['institution', 'person'], options: [{label: 'Monthly', value: 'monthly'}, {label: 'Milestone', value: 'milestone'}, {label: 'Upon Completion', value: 'upon_completion'}] },
       ]
-    },
-    {
-      slug: 'court_filings',
-      name: 'Court & Filings',
-      description: 'Legal procedure tracking',
-      entityTypes: ['institution'],
-      order: 40,
-      fields: [
-        { name: 'Court Name', variableName: 'court_name', type: 'short_text', compatibilityScope: ['institution'] },
-        { name: 'Next Filing Deadline', variableName: 'filing_deadline', type: 'date', compatibilityScope: ['institution'] },
-        { name: 'Judge/Magistrate', variableName: 'judge_name', type: 'short_text', compatibilityScope: ['institution'] },
-      ]
     }
   ],
   Marketing: [
     {
-      slug: 'campaign_identity',
-      name: 'Campaign Identity',
+      slug: 'campaign_details',
+      name: 'Campaign Details',
       description: 'Core details of the marketing initiative',
       entityTypes: ['institution'],
       order: 10,
       fields: [
-        { name: 'Campaign Name', variableName: 'campaign_name', type: 'short_text', compatibilityScope: ['institution', 'common'], validationRules: { required: true } },
-        { name: 'Client Name', variableName: 'client_name', type: 'short_text', compatibilityScope: ['institution', 'common'] },
-        { name: 'Launch Date', variableName: 'launch_date', type: 'date', compatibilityScope: ['institution'] },
         { name: 'Target Audience', variableName: 'target_audience', type: 'short_text', compatibilityScope: ['institution'] },
-      ]
-    },
-    {
-      slug: 'client_contact',
-      name: 'Client Contact',
-      description: 'Point of contact at the client organization',
-      entityTypes: ['person'],
-      order: 20,
-      fields: [
-        { name: 'Contact Name', variableName: 'poc_name', type: 'short_text', compatibilityScope: ['person', 'common'], validationRules: { required: true } },
-        { name: 'Role/Title', variableName: 'poc_role', type: 'short_text', compatibilityScope: ['person'] },
-        { name: 'Email Address', variableName: 'poc_email', type: 'email', compatibilityScope: ['person', 'common'] },
+        { name: 'Launch Date', variableName: 'launch_date', type: 'date', compatibilityScope: ['institution'] },
       ]
     },
     {
@@ -318,7 +201,7 @@ export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[
       name: 'Performance Metrics',
       description: 'Campaign KPIs and budgeting',
       entityTypes: ['institution'],
-      order: 30,
+      order: 20,
       fields: [
         { name: 'Total Budget', variableName: 'total_budget', type: 'currency', compatibilityScope: ['institution'] },
         { name: 'Current Spend', variableName: 'current_spend', type: 'currency', compatibilityScope: ['institution'] },
@@ -331,7 +214,7 @@ export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[
       name: 'Marketing Attribution',
       description: 'UTM and source tracking',
       entityTypes: ['person', 'institution'],
-      order: 40,
+      order: 30,
       fields: [
         { name: 'UTM Source', variableName: 'utm_source', type: 'hidden', compatibilityScope: ['person', 'institution'] },
         { name: 'UTM Medium', variableName: 'utm_medium', type: 'hidden', compatibilityScope: ['person', 'institution'] },
@@ -342,37 +225,23 @@ export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[
   ],
   RealEstate: [
     {
-      slug: 'property_details',
-      name: 'Property Details',
-      description: 'Core details of the real estate asset',
+      slug: 'property_specs',
+      name: 'Property Specifications',
+      description: 'Asset characteristics',
       entityTypes: ['institution'], // Institution acts as Property
       order: 10,
       fields: [
-        { name: 'Property Address', variableName: 'property_address', type: 'address', compatibilityScope: ['institution', 'common'], validationRules: { required: true } },
         { name: 'Property Type', variableName: 'property_type', type: 'select', compatibilityScope: ['institution'], options: [{label: 'Residential', value: 'residential'}, {label: 'Commercial', value: 'commercial'}, {label: 'Industrial', value: 'industrial'}, {label: 'Land', value: 'land'}] },
         { name: 'Square Footage', variableName: 'square_footage', type: 'number', compatibilityScope: ['institution'] },
         { name: 'Year Built', variableName: 'year_built', type: 'number', compatibilityScope: ['institution'] },
       ]
     },
     {
-      slug: 'buyer_seller_contact',
-      name: 'Buyer/Seller Contact',
-      description: 'Client details',
-      entityTypes: ['person'],
-      order: 20,
-      fields: [
-        { name: 'Client Name', variableName: 'client_name', type: 'short_text', compatibilityScope: ['person', 'common'], validationRules: { required: true } },
-        { name: 'Client Role', variableName: 'client_role', type: 'select', compatibilityScope: ['person'], options: [{label: 'Buyer', value: 'buyer'}, {label: 'Seller', value: 'seller'}, {label: 'Landlord', value: 'landlord'}, {label: 'Tenant', value: 'tenant'}] },
-        { name: 'Email Address', variableName: 'client_email', type: 'email', compatibilityScope: ['person', 'common'] },
-        { name: 'Phone Number', variableName: 'client_phone', type: 'phone', compatibilityScope: ['person', 'common'] },
-      ]
-    },
-    {
-      slug: 'listing_details',
+      slug: 'listing_status',
       name: 'Listing Details',
       description: 'Market positioning and pricing',
       entityTypes: ['institution'],
-      order: 30,
+      order: 20,
       fields: [
         { name: 'Listing Price', variableName: 'listing_price', type: 'currency', compatibilityScope: ['institution', 'common'] },
         { name: 'MLS Number', variableName: 'mls_number', type: 'short_text', compatibilityScope: ['institution'] },
@@ -385,7 +254,7 @@ export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[
       name: 'Transaction & Closing',
       description: 'Escrow and closing details',
       entityTypes: ['institution', 'person'],
-      order: 40,
+      order: 30,
       fields: [
         { name: 'Accepted Offer', variableName: 'accepted_offer', type: 'currency', compatibilityScope: ['institution'] },
         { name: 'Expected Closing Date', variableName: 'closing_date', type: 'date', compatibilityScope: ['institution', 'person'] },
@@ -395,28 +264,14 @@ export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[
   ],
   Consultancy: [
     {
-      slug: 'engagement_identity',
-      name: 'Engagement Identity',
+      slug: 'project_details',
+      name: 'Project Details',
       description: 'Project or engagement details',
       entityTypes: ['institution'], // Institution acts as Project/Engagement
       order: 10,
       fields: [
-        { name: 'Engagement Name', variableName: 'engagement_name', type: 'short_text', compatibilityScope: ['institution', 'common'], validationRules: { required: true } },
-        { name: 'Client Company', variableName: 'client_company', type: 'short_text', compatibilityScope: ['institution', 'common'] },
         { name: 'Start Date', variableName: 'start_date', type: 'date', compatibilityScope: ['institution'] },
         { name: 'Status', variableName: 'project_status', type: 'select', compatibilityScope: ['institution'], options: [{label: 'Scoping', value: 'scoping'}, {label: 'Active', value: 'active'}, {label: 'On Hold', value: 'on_hold'}, {label: 'Completed', value: 'completed'}] },
-      ]
-    },
-    {
-      slug: 'client_contact',
-      name: 'Client Contact',
-      description: 'Key stakeholders',
-      entityTypes: ['person'],
-      order: 20,
-      fields: [
-        { name: 'Stakeholder Name', variableName: 'stakeholder_name', type: 'short_text', compatibilityScope: ['person', 'common'], validationRules: { required: true } },
-        { name: 'Title/Role', variableName: 'stakeholder_title', type: 'short_text', compatibilityScope: ['person'] },
-        { name: 'Email', variableName: 'stakeholder_email', type: 'email', compatibilityScope: ['person', 'common'] },
       ]
     },
     {
@@ -424,19 +279,19 @@ export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[
       name: 'Deliverables & Scope',
       description: 'What is being delivered',
       entityTypes: ['institution'],
-      order: 30,
+      order: 20,
       fields: [
         { name: 'Project Scope', variableName: 'project_scope', type: 'long_text', compatibilityScope: ['institution'] },
-        { name: 'Key Deliverable 1', variableName: 'deliverable_1', type: 'short_text', compatibilityScope: ['institution'] },
+        { name: 'Key Deliverable', variableName: 'deliverable_1', type: 'short_text', compatibilityScope: ['institution'] },
         { name: 'Estimated Hours', variableName: 'estimated_hours', type: 'number', compatibilityScope: ['institution'] },
       ]
     },
     {
-      slug: 'billing_invoicing',
+      slug: 'consulting_billing',
       name: 'Billing & Invoicing',
       description: 'Financial terms',
       entityTypes: ['institution', 'person'],
-      order: 40,
+      order: 30,
       fields: [
         { name: 'Billing Type', variableName: 'billing_type', type: 'select', compatibilityScope: ['institution'], options: [{label: 'Fixed Fee', value: 'fixed_fee'}, {label: 'Time & Materials', value: 'time_materials'}, {label: 'Retainer', value: 'retainer'}] },
         { name: 'Total Fee / Budget', variableName: 'total_fee', type: 'currency', compatibilityScope: ['institution'] },

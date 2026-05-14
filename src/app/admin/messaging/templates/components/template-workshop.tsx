@@ -61,6 +61,7 @@ import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { groupContactVariableDefinitions } from '@/lib/contact-variable-definitions';
+import { getAllSystemVariables } from '@/lib/system-variable-definitions';
 import { Users, UserCheck, ShieldCheck as ShieldCheckIcon } from 'lucide-react';
 
 // Dynamic import for HtmlCodeEditor (bundle-dynamic-imports)
@@ -68,6 +69,16 @@ const HtmlCodeEditor = dynamic(
     () => import('./HtmlCodeEditor'),
     { ssr: false, loading: () => <Skeleton className="h-[600px] rounded-2xl" /> }
 );
+
+const CORE_SYSTEM_KEYS = [
+    'meeting_invitation', 'meeting_confirmation', 'survey_completion',
+    'internal_alert', 'respondent_alert', 'campaign_outreach',
+    'invoice_ready', 'contract_signature_request'
+];
+
+const slugify = (str: string) => {
+    return str.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+};
 
 interface TemplateWorkshopProps {
     initialTemplate?: MessageTemplate | null;
@@ -80,6 +91,12 @@ interface TemplateWorkshopProps {
     onSave: (data: any) => Promise<void>;
     onCancel: () => void;
     isSaving: boolean;
+    initialContext?: {
+        category?: MessageTemplate['category'];
+        channel?: MessageTemplate['channel'];
+        recipientType?: MessageTemplate['recipientType'];
+        templateType?: string;
+    };
 }
 
 export function TemplateWorkshop({
@@ -92,7 +109,8 @@ export function TemplateWorkshop({
     pdfs,
     onSave,
     onCancel,
-    isSaving
+    isSaving,
+    initialContext
 }: TemplateWorkshopProps) {
     const { toast } = useToast();
     const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
@@ -108,14 +126,14 @@ export function TemplateWorkshop({
 
     // Form State
     const [name, setName] = React.useState(initialTemplate?.name || '');
-    const [category, setCategory] = React.useState(initialTemplate?.category || 'general');
-    const [channel, setChannel] = React.useState(initialTemplate?.channel || 'email');
+    const [category, setCategory] = React.useState(initialTemplate?.category || initialContext?.category || 'general');
+    const [channel, setChannel] = React.useState(initialTemplate?.channel || initialContext?.channel || 'email');
     const [contentMode, setContentMode] = React.useState<ContentMode>(
-        initialTemplate?.contentMode || (initialTemplate?.channel === 'sms' ? 'plain_text' : 'rich_builder')
+        initialTemplate?.contentMode || ((initialTemplate?.channel || initialContext?.channel) === 'sms' ? 'plain_text' : 'rich_builder')
     );
     const [target, setTarget] = React.useState<TemplateTarget>(initialTemplate?.target || 'external_client');
-    const [templateType, setTemplateType] = React.useState<string>(initialTemplate?.templateType || '');
-    const [recipientType, setRecipientType] = React.useState<string>(initialTemplate?.recipientType || 'participant');
+    const [templateType, setTemplateType] = React.useState<string>(initialTemplate?.templateType || initialContext?.templateType || '');
+    const [recipientType, setRecipientType] = React.useState<string>(initialTemplate?.recipientType || initialContext?.recipientType || 'participant');
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>(initialTemplate?.workspaceIds || [activeWorkspaceId]);
     const [subject, setSubject] = React.useState(initialTemplate?.subject || '');
     const [previewText, setPreviewText] = React.useState(initialTemplate?.previewText || '');
@@ -123,6 +141,14 @@ export function TemplateWorkshop({
     const [blocks, setBlocks] = React.useState<MessageBlock[]>(initialTemplate?.blocks || []);
     const [styleId, setStyleId] = React.useState(initialTemplate?.styleId || 'none');
     const [pendingContentMode, setPendingContentMode] = React.useState<ContentMode | null>(null);
+    const [isTemplateTypeDirty, setIsTemplateTypeDirty] = React.useState(!!initialTemplate?.templateType || !!initialContext?.templateType);
+
+    // Auto-generate templateType from name if not manually modified
+    React.useEffect(() => {
+        if (!isTemplateTypeDirty && !initialContext?.templateType && name) {
+            setTemplateType(slugify(`${category}_${recipientType}_${name}`));
+        }
+    }, [name, category, recipientType, isTemplateTypeDirty, initialContext?.templateType]);
 
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
@@ -182,6 +208,13 @@ export function TemplateWorkshop({
         }
     }, [contentMode, blocks.length, body.length]);
 
+    // Safety sync: If we switch away from rich_builder, force the sidebar to 'tags' so it doesn't break
+    React.useEffect(() => {
+        if (contentMode !== 'rich_builder' && sidebarTab !== 'tags') {
+            setSidebarTab('tags');
+        }
+    }, [contentMode, sidebarTab]);
+
     const confirmContentModeSwitch = React.useCallback(() => {
         if (!pendingContentMode) return;
         // Clear stale data for the old mode (Risk Analysis: Improvement 2)
@@ -238,13 +271,20 @@ export function TemplateWorkshop({
     }, [channel, contentMode, blocks, simVariables, styleId, styles, body]);
 
     const filteredVars = React.useMemo(() => {
-        return variables.filter(v => (
-            v.category === 'general' || 
-            v.category === category || 
-            v.category === 'finance' ||
+        const combined = [...variables, ...getAllSystemVariables()];
+        const allowedGlobalCategories = ['general', 'organization', 'workspace', 'entity', 'user', 'contact', 'core'];
+        return combined.filter(v => (
+            !v.category ||
+            allowedGlobalCategories.includes(v.category) ||
+            v.category === category ||
             (category === 'agreements' && v.category === 'finance')
         ) && !v.hidden);
     }, [variables, category]);
+
+    const copyVariableToClipboard = React.useCallback((key: string) => {
+        navigator.clipboard.writeText(`{{${key}}}`);
+        toast({ title: 'Tag Copied' });
+    }, [toast]);
 
     // FER-02: Group contact variables for dedicated sidebar sections
     const contactVarGroups = React.useMemo(() => {
@@ -316,38 +356,53 @@ export function TemplateWorkshop({
                                             </div>
                                         </div>
                                     </CardHeader>
- <CardContent className="p-10 space-y-10">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Template Name</Label>
- <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Admission Confirmation" className="h-14 rounded-2xl border-none bg-muted/20 px-6 py-2 text-xl font-semibold shadow-inner ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" />
+                                    <CardContent className="p-10 space-y-12">
+                                        {/* Template Name */}
+                                        <div className="space-y-4">
+                                            <Label className="text-sm font-semibold text-muted-foreground ml-1">Template Name</Label>
+                                            <div className="p-4 md:p-6 rounded-3xl border border-primary/10 bg-background shadow-sm hover:border-primary/20 transition-all">
+                                                <Input 
+                                                    value={name} 
+                                                    onChange={e => setName(e.target.value)} 
+                                                    placeholder="e.g. Confirmation For School B" 
+                                                    className="h-10 text-lg md:text-xl font-bold border-none shadow-none px-2 bg-transparent placeholder:text-muted-foreground/40 focus-visible:ring-0" 
+                                                />
+                                            </div>
                                         </div>
 
- <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
- <Share2 className="h-3 w-3" /> Shared Visibility
+                                        {/* Shared Visibility */}
+                                        <div className="space-y-4">
+                                            <Label className="text-sm font-semibold text-primary ml-1 flex items-center gap-2">
+                                                <Share2 className="h-4 w-4" /> Shared Visibility
                                             </Label>
-                                            <MultiSelect 
-                                                options={workspaceOptions}
-                                                value={workspaceIds}
-                                                onChange={setWorkspaceIds}
-                                                placeholder="Map to hubs..."
-                                            />
- <p className="text-[9px] font-bold text-muted-foreground px-1 leading-relaxed">Shared templates are available for logic and manual dispatch across selected hubs.</p>
+                                            <div className="p-4 md:p-6 rounded-3xl border border-primary/10 bg-background shadow-sm hover:border-primary/20 transition-all">
+                                                <MultiSelect 
+                                                    options={workspaceOptions}
+                                                    value={workspaceIds}
+                                                    onChange={setWorkspaceIds}
+                                                    placeholder="Select hubs..."
+                                                />
+                                            </div>
+                                            <p className="text-[11px] font-semibold text-muted-foreground px-1 leading-relaxed">Shared templates are available for logic and manual dispatch across selected hubs.</p>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-dashed">
+                                        <div className="border-t border-dashed border-border/60" />
+
+                                        {/* Channel & Category */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
                                             <div className="space-y-4">
-                                                <Label className="text-[10px] font-semibold text-primary ml-1">Channel Logic</Label>
-                                                <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
-                                                    <button type="button" onClick={() => { setChannel('email'); }} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'email' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Email</button>
-                                                    <button type="button" onClick={() => { setChannel('sms'); setContentMode('plain_text'); }} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'sms' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>SMS</button>
+                                                <Label className="text-sm font-semibold text-primary ml-1">Channel Logic</Label>
+                                                <div className={cn("p-2 rounded-3xl border border-primary/10 bg-background shadow-sm grid grid-cols-2 gap-2", initialContext?.channel ? "opacity-70 pointer-events-none" : "")}>
+                                                    <button type="button" onClick={() => { setChannel('email'); }} className={cn("h-14 rounded-2xl font-bold text-sm transition-all", channel === 'email' ? "bg-primary/5 text-primary" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/50")}>Email</button>
+                                                    <button type="button" onClick={() => { setChannel('sms'); setContentMode('plain_text'); }} className={cn("h-14 rounded-2xl font-bold text-sm transition-all", channel === 'sms' ? "bg-primary/5 text-primary" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/50")}>SMS</button>
                                                 </div>
                                             </div>
-                                                <div className="space-y-4">
-                                                    <Label className="text-[10px] font-semibold text-primary ml-1">Message Scope (Category)</Label>
-                                                    <Select value={category} onValueChange={(v: any) => setCategory(v)}>
-                                                        <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
-                                                        <SelectContent className="rounded-xl">
+                                            <div className="space-y-4">
+                                                <Label className="text-sm font-semibold text-primary ml-1">Message Scope (Category)</Label>
+                                                <div className={cn("p-3 rounded-3xl border border-primary/10 bg-background shadow-sm", initialContext?.category ? "opacity-70 pointer-events-none" : "")}>
+                                                    <Select value={category} onValueChange={(v: any) => setCategory(v)} disabled={!!initialContext?.category}>
+                                                        <SelectTrigger className="h-12 rounded-2xl bg-transparent border-none shadow-none font-bold text-base md:text-lg px-4 focus:ring-0"><SelectValue /></SelectTrigger>
+                                                        <SelectContent className="rounded-2xl">
                                                             <SelectItem value="general">General</SelectItem>
                                                             <SelectItem value="surveys">Surveys</SelectItem>
                                                             <SelectItem value="meetings">Meetings</SelectItem>
@@ -362,52 +417,95 @@ export function TemplateWorkshop({
                                                     </Select>
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-dashed">
-                                                <div className="space-y-4">
-                                                    <Label className="text-[10px] font-semibold text-primary ml-1">Template Identifier (Key)</Label>
+                                        <div className="border-t border-dashed border-border/60" />
+
+                                        {/* Key & Recipient */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-sm font-semibold text-primary ml-1">Template Identifier (Key)</Label>
+                                                    {isTemplateTypeDirty && !initialContext?.templateType && (
+                                                        <Button type="button" variant="ghost" size="sm" onClick={() => setIsTemplateTypeDirty(false)} className="h-6 text-[10px] font-bold text-primary/60 hover:text-primary px-2 rounded-lg">Reset to Auto</Button>
+                                                    )}
+                                                </div>
+                                                <div className={cn("p-4 rounded-3xl border bg-background shadow-sm", CORE_SYSTEM_KEYS.includes(templateType) ? "border-amber-500/50" : "border-primary/10 hover:border-primary/20", initialContext?.templateType ? "opacity-70 pointer-events-none" : "")}>
                                                     <Input 
                                                         value={templateType} 
-                                                        onChange={e => setTemplateType(e.target.value)} 
+                                                        onChange={e => {
+                                                            setTemplateType(e.target.value);
+                                                            setIsTemplateTypeDirty(true);
+                                                        }} 
                                                         placeholder="e.g. invitation, reminder_1"
-                                                        className="h-12 rounded-xl bg-muted/20 border-none font-bold"
+                                                        className="h-10 text-base md:text-lg font-bold font-mono border-none shadow-none bg-transparent focus-visible:ring-0"
+                                                        disabled={!!initialContext?.templateType}
                                                     />
-                                                    <p className="text-[9px] font-bold text-muted-foreground px-1 leading-relaxed">Required for system resolution. Overrides must use the same key as blueprints.</p>
                                                 </div>
-                                                <div className="space-y-4">
-                                                    <Label className="text-[10px] font-semibold text-primary ml-1">Recipient Role</Label>
-                                                    <Select value={recipientType} onValueChange={setRecipientType}>
-                                                        <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
-                                                        <SelectContent className="rounded-xl">
+                                                {CORE_SYSTEM_KEYS.includes(templateType) ? (
+                                                    <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+                                                        <div className="mt-0.5"><Save className="h-5 w-5" /></div>
+                                                        <p className="text-[11px] font-bold leading-relaxed">
+                                                            <span className="uppercase tracking-wider opacity-80 block mb-1">System Override</span>
+                                                            This key matches a core blueprint. Saving will override the default behavior.
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-[11px] font-semibold text-muted-foreground px-1 leading-relaxed">Required for system resolution. Overrides must use the same key as blueprints.</p>
+                                                )}
+                                            </div>
+                                            <div className="space-y-4">
+                                                <Label className="text-sm font-semibold text-primary ml-1">Recipient Role</Label>
+                                                <div className={cn("p-3 rounded-3xl border border-primary/10 bg-background shadow-sm", initialContext?.recipientType ? "opacity-70 pointer-events-none" : "")}>
+                                                    <Select value={recipientType} onValueChange={setRecipientType} disabled={!!initialContext?.recipientType}>
+                                                        <SelectTrigger className="h-12 rounded-2xl bg-transparent border-none shadow-none font-bold text-base md:text-lg px-4 focus:ring-0">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="rounded-2xl">
                                                             <SelectItem value="participant">Participant / Client</SelectItem>
+                                                            <SelectItem value="external_alert">External Alert</SelectItem>
+                                                            <SelectItem value="internal_alert">Internal Alert</SelectItem>
                                                             <SelectItem value="referee">Referee / Second Party</SelectItem>
                                                             <SelectItem value="signatory">Signatory</SelectItem>
                                                             <SelectItem value="team_member">Team Member</SelectItem>
                                                             <SelectItem value="admin">Administrator</SelectItem>
+                                                            {![
+                                                                'participant', 'external_alert', 'internal_alert', 'referee', 'signatory', 'team_member', 'admin'
+                                                            ].includes(recipientType) && recipientType && (
+                                                                <SelectItem value={recipientType}>{recipientType}</SelectItem>
+                                                            )}
                                                         </SelectContent>
                                                     </Select>
-                                                    <p className="text-[9px] font-bold text-muted-foreground px-1 leading-relaxed">Specifies who the intended recipient type is.</p>
                                                 </div>
-                                            </div>
-                                        {/* Target Audience (Story 4) */}
-                                        <div className="space-y-4 pt-4 border-t border-dashed">
-                                            <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><UserCog className="h-3 w-3" /> Target Audience</Label>
-                                            <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
-                                                <button type="button" onClick={() => setTarget('external_client')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", target === 'external_client' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>External Client</button>
-                                                <button type="button" onClick={() => setTarget('internal_team')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", target === 'internal_team' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Team / Staff</button>
+                                                <p className="text-[11px] font-semibold text-muted-foreground px-1 leading-relaxed">Specifies who the intended recipient type is.</p>
                                             </div>
                                         </div>
-                                        {/* Content Mode (Story 3) */}
-                                        {channel === 'email' && (
-                                            <div className="space-y-4 pt-4 border-t border-dashed">
-                                                <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><FileText className="h-3 w-3" /> Content Mode</Label>
-                                                <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
-                                                    <button type="button" onClick={() => handleContentModeSwitch('plain_text')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", contentMode === 'plain_text' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Plain Text</button>
-                                                    <button type="button" onClick={() => handleContentModeSwitch('html_code')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", contentMode === 'html_code' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>HTML Code</button>
-                                                    <button type="button" onClick={() => handleContentModeSwitch('rich_builder')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", contentMode === 'rich_builder' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Rich Builder</button>
-                                                </div>
-                                                <p className="text-[9px] font-bold text-muted-foreground px-1 leading-relaxed">{contentMode === 'plain_text' ? 'Simple text with {{variable}} placeholders. Best for transactional alerts.' : contentMode === 'html_code' ? 'Raw HTML/CSS editor with live preview. Full control over markup.' : 'Visual drag-and-drop block editor. No coding required.'}</p>
+
+                                        <div className="border-t border-dashed border-border/60" />
+
+                                        {/* Target Audience */}
+                                        <div className="space-y-4">
+                                            <Label className="text-sm font-semibold text-primary ml-1 flex items-center gap-2"><UserCog className="h-4 w-4" /> Target Audience</Label>
+                                            <div className="p-2 rounded-3xl border border-primary/10 bg-background shadow-sm grid grid-cols-2 gap-2">
+                                                <button type="button" onClick={() => setTarget('external_client')} className={cn("h-14 rounded-2xl font-bold text-sm transition-all", target === 'external_client' ? "bg-primary/5 text-primary" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/50")}>External Client</button>
+                                                <button type="button" onClick={() => setTarget('internal_team')} className={cn("h-14 rounded-2xl font-bold text-sm transition-all", target === 'internal_team' ? "bg-primary/5 text-primary" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/50")}>Team / Staff</button>
                                             </div>
+                                        </div>
+
+                                        {/* Content Mode */}
+                                        {channel === 'email' && (
+                                            <>
+                                                <div className="border-t border-dashed border-border/60" />
+                                                <div className="space-y-4">
+                                                    <Label className="text-sm font-semibold text-primary ml-1 flex items-center gap-2"><FileText className="h-4 w-4" /> Content Mode</Label>
+                                                    <div className="p-2 rounded-3xl border border-primary/10 bg-background shadow-sm grid grid-cols-3 gap-2">
+                                                        <button type="button" onClick={() => handleContentModeSwitch('plain_text')} className={cn("h-14 rounded-2xl font-bold text-sm transition-all", contentMode === 'plain_text' ? "bg-primary/5 text-primary" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/50")}>Plain Text</button>
+                                                        <button type="button" onClick={() => handleContentModeSwitch('html_code')} className={cn("h-14 rounded-2xl font-bold text-sm transition-all", contentMode === 'html_code' ? "bg-primary/5 text-primary" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/50")}>HTML Code</button>
+                                                        <button type="button" onClick={() => handleContentModeSwitch('rich_builder')} className={cn("h-14 rounded-2xl font-bold text-sm transition-all", contentMode === 'rich_builder' ? "bg-primary/5 text-primary" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted/50")}>Rich Builder</button>
+                                                    </div>
+                                                    <p className="text-[11px] font-semibold text-muted-foreground px-1 leading-relaxed">{contentMode === 'plain_text' ? 'Simple text with {{variable}} placeholders. Best for transactional alerts.' : contentMode === 'html_code' ? 'Raw HTML/CSS editor with live preview. Full control over markup.' : 'Visual drag-and-drop block editor. No coding required.'}</p>
+                                                </div>
+                                            </>
                                         )}
                                         {channel === 'email' && (
                                             <div className="space-y-8 pt-8 border-t border-dashed">
@@ -440,11 +538,11 @@ export function TemplateWorkshop({
  <div className="border-r bg-background flex flex-col shrink-0 relative transition-all duration-300 shadow-xl" style={{ width: variablesWidth }}>
  <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
  <div className="px-2 py-2 border-b bg-background shrink-0 text-left">
-                                        {channel === 'email' ? (
- <TabsList className="grid w-full grid-cols-3 h-10 bg-background0 p-1 rounded-xl">
- <TabsTrigger value="blocks" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
- <TabsTrigger value="tags" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
- <TabsTrigger value="properties" className="text-[9px] font-semibold gap-1.5"><Settings2 className="h-3 w-3" /> Props</TabsTrigger>
+                                        {contentMode === 'rich_builder' ? (
+                                            <TabsList className="grid w-full grid-cols-3 h-10 bg-background0 p-1 rounded-xl">
+                                                <TabsTrigger value="blocks" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
+                                                <TabsTrigger value="tags" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
+                                                <TabsTrigger value="properties" className="text-[9px] font-semibold gap-1.5"><Settings2 className="h-3 w-3" /> Props</TabsTrigger>
                                             </TabsList>
                                         ) : (
  <div className="flex items-center gap-2 px-2 h-10"><Database className="h-4 w-4 text-primary" /><span className="text-[10px] font-semibold text-primary">Contextual Registry</span></div>
@@ -477,7 +575,7 @@ export function TemplateWorkshop({
                                                             <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Primary Contact</span>
                                                         </div>
                                                         {contactVarGroups.primary.map(v => (
- <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all group bg-card shadow-sm">
+ <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all group bg-card shadow-sm">
  <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
  <code className="text-[9px] font-mono text-emerald-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                                             </button>
@@ -491,7 +589,7 @@ export function TemplateWorkshop({
                                                             <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">Signatory Contact</span>
                                                         </div>
                                                         {contactVarGroups.signatory.map(v => (
- <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-blue-100 hover:border-blue-300 hover:bg-blue-50 transition-all group bg-card shadow-sm">
+ <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-blue-100 hover:border-blue-300 hover:bg-blue-50 transition-all group bg-card shadow-sm">
  <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
  <code className="text-[9px] font-mono text-blue-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                                             </button>
@@ -505,7 +603,7 @@ export function TemplateWorkshop({
                                                             <span className="text-[9px] font-bold text-violet-600 uppercase tracking-wider">Role-Based Contacts</span>
                                                         </div>
                                                         {contactVarGroups.roles.map(v => (
- <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-violet-100 hover:border-violet-300 hover:bg-violet-50 transition-all group bg-card shadow-sm">
+ <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-violet-100 hover:border-violet-300 hover:bg-violet-50 transition-all group bg-card shadow-sm">
  <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
  <code className="text-[9px] font-mono text-violet-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                                             </button>
@@ -521,7 +619,7 @@ export function TemplateWorkshop({
                                                             <span className="text-[9px] font-bold text-primary/60 uppercase tracking-wider">System Variables</span>
                                                         </div>
                                                         {contactVarGroups.other.map(v => (
- <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group bg-card shadow-sm">
+ <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group bg-card shadow-sm">
  <span className="text-[8px] font-semibold text-primary opacity-60">{v.sourceName || 'Core'}</span>
  <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
  <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>

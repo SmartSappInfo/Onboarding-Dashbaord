@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { SmartTemplateDropdown } from '@/app/admin/components/SmartTemplateDropdown';
-import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { MessagingTemplateSelector } from '@/app/admin/components/MessagingTemplateSelector';
+import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import {
   Mail,
   Smartphone,
@@ -651,98 +651,4 @@ function CollapsibleSection({
   );
 }
 
-// ─── Messaging Template Selector Wrapper ───
 
-interface MessagingTemplateSelectorProps {
-  category: 'meetings';
-  recipientType: 'external_alert' | 'internal_alert';
-  channel: 'email' | 'sms';
-  templateTypePrefix?: string;
-  value: string;
-  onValueChange: (value: string) => void;
-  placeholder?: string;
-  className?: string;
-}
-
-function MessagingTemplateSelector({
-  category,
-  recipientType,
-  channel,
-  templateTypePrefix,
-  value,
-  onValueChange,
-  placeholder,
-  className
-}: MessagingTemplateSelectorProps) {
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editingTemplateId, setEditingTemplateId] = React.useState<string | undefined>();
-
-  const handleCreateNew = () => {
-    setEditingTemplateId(undefined);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = () => {
-    if (value) {
-      setEditingTemplateId(value);
-      setDialogOpen(true);
-    }
-  };
-
-  const handleTemplateCreated = (template: any) => {
-    onValueChange(template.id);
-  };
-
-  return (
-    <div className="flex items-center gap-2 w-full animate-in fade-in zoom-in-95 duration-300">
-      <div className="flex-1 min-w-0">
-        <SmartTemplateDropdown
-          category={category}
-          recipientType={recipientType}
-          channel={channel}
-          templateTypePrefix={templateTypePrefix}
-          value={value}
-          onValueChange={onValueChange}
-          placeholder={placeholder}
-          className={className}
-        />
-      </div>
-      
-      {value && (
-        <Button 
-          type="button" 
-          variant="outline" 
-          size="icon" 
-          className="h-9 w-9 shrink-0 rounded-xl border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
-          onClick={handleEdit}
-          title="Preview & Edit Template"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-      )}
-      
-      <Button 
-        type="button" 
-        variant="outline" 
-        size="icon" 
-        className="h-9 w-9 shrink-0 rounded-xl border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
-        onClick={handleCreateNew}
-        title="Create New Template"
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </Button>
-
-      {dialogOpen && (
-        <QuickTemplateDialog
-           open={dialogOpen}
-           onOpenChange={setDialogOpen}
-           onCreated={handleTemplateCreated}
-           category={category}
-           channel={channel}
-           recipientType={recipientType}
-           templateId={editingTemplateId}
-        />
-      )}
-    </div>
-  );
-}

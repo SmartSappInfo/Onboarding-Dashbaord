@@ -15,9 +15,9 @@ import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useParams } from 'next/navigation';
-import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
+import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 
 function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id: string, index: number, pages: SurveyResultPage[], remove: (i: number) => void, profiles?: SenderProfile[], surveyId?: string }) {
     const { register, watch, setValue, control } = useFormContext();
@@ -121,7 +121,7 @@ function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id
                                 name={`resultRules.${index}.emailTemplateId`}
                                 control={control}
                                 render={({ field }) => (
-                                    <SmartTemplateDropdown 
+                                    <MessagingTemplateSelector 
                                         category="surveys"
                                         recipientType="respondent"
                                         channel="email"
@@ -190,7 +190,7 @@ function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id
                                 name={`resultRules.${index}.smsTemplateId`}
                                 control={control}
                                 render={({ field }) => (
-                                    <SmartTemplateDropdown 
+                                    <MessagingTemplateSelector 
                                         category="surveys"
                                         recipientType="respondent"
                                         channel="sms"
@@ -227,19 +227,20 @@ function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id
             </div>
 
             {activeTemplateConfig && (
-                <QuickTemplateDialog 
+                <TemplateWorkshopSheet 
                     open={!!activeTemplateConfig}
                     onOpenChange={(o) => !o && setActiveTemplateConfig(null)}
-                    channel={activeTemplateConfig.channel}
-                    category="surveys"
-                    recipientType="respondent"
-                    fixedSourceId={surveyId}
                     templateId={activeTemplateConfig.templateId}
-                    onCreated={(id) => {
+                    initialContext={{
+                        channel: activeTemplateConfig.channel,
+                        category: "surveys",
+                        recipientType: "respondent"
+                    }}
+                    onCreated={(template) => {
                         if (activeTemplateConfig.channel === 'email') {
-                            setValue(`resultRules.${index}.emailTemplateId`, id, { shouldDirty: true });
+                            setValue(`resultRules.${index}.emailTemplateId`, template.id, { shouldDirty: true });
                         } else {
-                            setValue(`resultRules.${index}.smsTemplateId`, id, { shouldDirty: true });
+                            setValue(`resultRules.${index}.smsTemplateId`, template.id, { shouldDirty: true });
                         }
                     }}
                 />

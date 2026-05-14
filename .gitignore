@@ -11,10 +11,10 @@
 !.yarn/versions
 
 # skills adn agents
-#/.agents
-#/rules
+/.agents
+/rules
 #/.kilo
-#/.kiro
+/.kiro
 
 
 # testing

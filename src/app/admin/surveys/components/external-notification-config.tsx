@@ -14,8 +14,8 @@ import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
-import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
+import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
+import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 
 const CONTACT_ROLE_TYPES = [
     'Champion',
@@ -178,7 +178,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                         name={`${prefix}EmailTemplateId`}
                                         control={control}
                                         render={({ field }) => (
-                                            <SmartTemplateDropdown 
+                                            <MessagingTemplateSelector 
                                                 category={category}
                                                 recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
                                                 channel="email"
@@ -231,7 +231,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                         name={`${prefix}SmsTemplateId`}
                                         control={control}
                                         render={({ field }) => (
-                                            <SmartTemplateDropdown 
+                                            <MessagingTemplateSelector 
                                                 category={category}
                                                 recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
                                                 channel="sms"
@@ -250,18 +250,20 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
             </div>
 
             {quickCreateState && (
-                <QuickTemplateDialog 
+                <TemplateWorkshopSheet 
                     open={quickCreateState.open}
                     onOpenChange={(o) => !o && setQuickCreateState(null)}
-                    channel={quickCreateState.channel}
-                    category={category}
-                    recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
                     templateId={quickCreateState.templateId}
-                    onCreated={(id) => {
+                    initialContext={{
+                        channel: quickCreateState.channel,
+                        category: category,
+                        recipientType: prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'
+                    }}
+                    onCreated={(template) => {
                         if (quickCreateState.channel === 'email') {
-                            setValue(`${prefix}EmailTemplateId`, id, { shouldDirty: true });
+                            setValue(`${prefix}EmailTemplateId`, template.id, { shouldDirty: true });
                         } else {
-                            setValue(`${prefix}SmsTemplateId`, id, { shouldDirty: true });
+                            setValue(`${prefix}SmsTemplateId`, template.id, { shouldDirty: true });
                         }
                     }}
                 />

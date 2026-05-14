@@ -13,9 +13,9 @@ import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useTenant } from '@/context/TenantContext';
-import { SmartTemplateDropdown } from './SmartTemplateDropdown';
+import { MessagingTemplateSelector } from './MessagingTemplateSelector';
 
 /**
  * Reusable configuration component for Internal Team Notifications.
@@ -194,7 +194,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                         name={`${prefix}EmailTemplateId`}
                                         control={control}
                                         render={({ field }) => (
-                                            <SmartTemplateDropdown 
+                                            <MessagingTemplateSelector 
                                                 category={category}
                                                 recipientType="internal_alert"
                                                 channel="email"
@@ -247,7 +247,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                         name={`${prefix}SmsTemplateId`}
                                         control={control}
                                         render={({ field }) => (
-                                            <SmartTemplateDropdown 
+                                            <MessagingTemplateSelector 
                                                 category={category}
                                                 recipientType="internal_alert"
                                                 channel="sms"
@@ -266,18 +266,20 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
             </div>
 
             {quickCreateState && (
-                <QuickTemplateDialog 
+                <TemplateWorkshopSheet 
                     open={quickCreateState.open}
                     onOpenChange={(o) => !o && setQuickCreateState(null)}
-                    channel={quickCreateState.channel}
-                    category={category}
-                    recipientType="internal_alert"
                     templateId={quickCreateState.templateId}
-                    onCreated={(id) => {
+                    initialContext={{
+                        channel: quickCreateState.channel,
+                        category: category,
+                        recipientType: "internal_alert"
+                    }}
+                    onCreated={(template) => {
                         if (quickCreateState.channel === 'email') {
-                            setValue(`${prefix}EmailTemplateId`, id, { shouldDirty: true });
+                            setValue(`${prefix}EmailTemplateId`, template.id, { shouldDirty: true });
                         } else {
-                            setValue(`${prefix}SmsTemplateId`, id, { shouldDirty: true });
+                            setValue(`${prefix}SmsTemplateId`, template.id, { shouldDirty: true });
                         }
                     }}
                 />

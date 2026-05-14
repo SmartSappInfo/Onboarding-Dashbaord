@@ -44,7 +44,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
-import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';

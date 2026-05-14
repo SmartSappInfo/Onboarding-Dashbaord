@@ -124,6 +124,9 @@ const formSchema = z.object({
   // Options
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  resourceUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  feedbackFormUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  durationMinutes: z.number().int().min(0).optional(),
   adminAlertsEnabled: z.boolean().default(false),
   adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
   adminAlertNotifyManager: z.boolean().default(false),
@@ -249,6 +252,9 @@ export default function EditMeetingPage() {
       heroCtaLabel: '',
       recordingUrl: '',
       brochureUrl: '',
+      resourceUrl: '',
+      feedbackFormUrl: '',
+      durationMinutes: 60,
       adminAlertsEnabled: false,
       adminAlertChannel: 'both',
       adminAlertNotifyManager: true,
@@ -321,6 +327,9 @@ export default function EditMeetingPage() {
         heroCtaLabel: meeting.heroCtaLabel || '',
         recordingUrl: meeting.recordingUrl || '',
         brochureUrl: meeting.brochureUrl || '',
+        resourceUrl: meeting.resourceUrl || '',
+        feedbackFormUrl: meeting.feedbackFormUrl || '',
+        durationMinutes: meeting.durationMinutes || 60,
       });
       setHasInitialized(true);
     }
@@ -389,6 +398,9 @@ export default function EditMeetingPage() {
             // Options
             recordingUrl: data.recordingUrl || '',
             brochureUrl: data.brochureUrl || '',
+            resourceUrl: data.resourceUrl || '',
+            feedbackFormUrl: data.feedbackFormUrl || '',
+            durationMinutes: data.durationMinutes || 60,
             
             // Phase 4: Lead Capture
             createEntity: data.createEntity || false,
@@ -671,15 +683,37 @@ export default function EditMeetingPage() {
 
  <Separator className="bg-border/50" />
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <FormField
                                     control={form.control}
                                     name="meetingTime"
                                     render={({ field }) => (
- <FormItem className="flex flex-col text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Scheduled Time</FormLabel>
+                                    <FormItem className="flex flex-col text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Scheduled Time</FormLabel>
                                         <FormControl>
                                             <DateTimePicker value={field.value} onChange={field.onChange} disabled={form.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="durationMinutes"
+                                    render={({ field }) => (
+                                    <FormItem className="flex flex-col text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Duration (minutes)</FormLabel>
+                                        <FormControl>
+                                            <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
+                                                <div className="bg-muted px-3 flex items-center text-[10px] font-semibold tracking-tighter text-muted-foreground/60 border-r"><Clock className="h-3 w-3" /></div>
+                                                <Input 
+                                                    type="number" 
+                                                    placeholder="60" 
+                                                    {...field} 
+                                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                                    className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-sm" 
+                                                />
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -690,11 +724,11 @@ export default function EditMeetingPage() {
                                     name="meetingLink"
                                     render={({ field }) => (
                                     <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Meeting URL (e.g. Google Meet)</FormLabel>
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Meeting URL (e.g. Google Meet)</FormLabel>
                                         <FormControl>
- <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
- <div className="bg-muted px-3 flex items-center text-[10px] font-semibold tracking-tighter text-muted-foreground/60 border-r"><Video className="h-3 w-3" /></div>
- <Input placeholder="https://meet.google.com/..." {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-sm" />
+                                            <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
+                                                <div className="bg-muted px-3 flex items-center text-[10px] font-semibold tracking-tighter text-muted-foreground/60 border-r"><Video className="h-3 w-3" /></div>
+                                                <Input placeholder="https://meet.google.com/..." {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-sm" />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -1283,7 +1317,7 @@ export default function EditMeetingPage() {
                                         name="recordingUrl"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Video Recording (YouTube)</FormLabel>
+                                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1"><Video className="h-3 w-3" /> Video Recording URL</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="https://youtu.be/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
                                                 </FormControl>
@@ -1296,9 +1330,35 @@ export default function EditMeetingPage() {
                                         name="brochureUrl"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Public Brochure</FormLabel>
+                                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1"><LayoutTemplate className="h-3 w-3" /> Public Brochure</FormLabel>
                                                 <FormControl>
                                                     <BrochureSelect value={field.value} onValueChange={field.onChange} className="rounded-xl border-none shadow-none bg-muted/20" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="resourceUrl"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1"><Link2 className="h-3 w-3" /> Additional Resource URL</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="https://..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="feedbackFormUrl"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1"><ClipboardCheck className="h-3 w-3" /> Feedback Form URL</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="https://forms.google.com/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

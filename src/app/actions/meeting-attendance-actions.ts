@@ -115,3 +115,31 @@ export async function validateRegistrantToken(
     return { valid: false };
   }
 }
+
+/**
+ * Manually toggles a registrant's attendance status from the admin UI.
+ */
+export async function toggleRegistrantAttendance(
+  meetingId: string,
+  registrantId: string,
+  attended: boolean
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const registrantRef = adminDb
+      .collection('meetings')
+      .doc(meetingId)
+      .collection('registrants')
+      .doc(registrantId);
+
+    await registrantRef.update({
+      status: attended ? 'attended' : 'registered',
+      attendedAt: attended ? new Date().toISOString() : null,
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[toggleRegistrantAttendance] Failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+

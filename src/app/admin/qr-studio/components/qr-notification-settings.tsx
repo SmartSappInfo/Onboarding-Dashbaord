@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
-import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
+import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
+import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 
 interface NotificationConfig {
   enabled: boolean;
@@ -87,7 +87,7 @@ export function QRNotificationSettings({
                       </Button>
                     </div>
                   </div>
-                  <SmartTemplateDropdown 
+                  <MessagingTemplateSelector 
                     category="qr_codes"
                     recipientType="internal_alert"
                     channel="email"
@@ -114,7 +114,7 @@ export function QRNotificationSettings({
                       </Button>
                     </div>
                   </div>
-                  <SmartTemplateDropdown 
+                  <MessagingTemplateSelector 
                     category="qr_codes"
                     recipientType="internal_alert"
                     channel="sms"
@@ -131,16 +131,18 @@ export function QRNotificationSettings({
       </div>
 
       {quickCreateState && (
-        <QuickTemplateDialog 
+        <TemplateWorkshopSheet 
           open={quickCreateState.open}
           onOpenChange={(o) => !o && setQuickCreateState(null)}
-          channel={quickCreateState.channel}
-          category="qr_codes"
-          recipientType="internal_alert"
           templateId={quickCreateState.templateId}
-          onCreated={(id) => {
-            if (quickCreateState.channel === 'email') onChangeInternal({ ...internalAlerts, emailTemplateId: id });
-            else onChangeInternal({ ...internalAlerts, smsTemplateId: id });
+          initialContext={{
+            channel: quickCreateState.channel,
+            category: "qr_codes",
+            recipientType: "internal_alert"
+          }}
+          onCreated={(template) => {
+            if (quickCreateState.channel === 'email') onChangeInternal({ ...internalAlerts, emailTemplateId: template.id });
+            else onChangeInternal({ ...internalAlerts, smsTemplateId: template.id });
           }}
         />
       )}

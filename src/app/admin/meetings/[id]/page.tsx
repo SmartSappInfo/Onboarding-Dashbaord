@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useToast } from '@/hooks/use-toast';
+import { endMeetingAction } from '@/app/actions/meeting-post-event-action';
 import type { Meeting, ScheduledMessage } from '@/lib/types';
 import { REMINDER_OFFSETS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -24,7 +26,8 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Send
+  Send,
+  Flag
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -34,7 +37,9 @@ export default function MeetingDetailPage() {
   const router = useRouter();
   const meetingId = params.id as string;
   const firestore = useFirestore();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+  const { toast } = useToast();
+  const [isEnding, startTransition] = React.useTransition();
 
   const meetingDocRef = useMemoFirebase(() => {
     if (!firestore || !meetingId) return null;
@@ -81,6 +86,32 @@ export default function MeetingDetailPage() {
         {config.label}
       </Badge>
     );
+  };
+
+  const handleEndMeeting = () => {
+    if (!meeting || meeting.status === 'ended') return;
+    
+    if (window.confirm('Are you sure you want to end this meeting? This will schedule all post-event follow-up messages.')) {
+      startTransition(async () => {
+        try {
+          const result = await endMeetingAction(meeting.id, activeOrganizationId);
+          if (result.success) {
+            toast({
+              title: 'Meeting Ended',
+              description: 'The meeting has been marked as ended and follow-up messages are scheduled.',
+            });
+          } else {
+            throw new Error(result.error);
+          }
+        } catch (error: any) {
+          toast({
+            variant: 'destructive',
+            title: 'Failed to end meeting',
+            description: error.message || 'An unknown error occurred.',
+          });
+        }
+      });
+    }
   };
 
   if (isLoadingMeeting) {
@@ -289,6 +320,19 @@ export default function MeetingDetailPage() {
                     <Users className="h-4 w-4 mr-2" />
                     View Results
                   </Link>
+                </Button>
+                
+                <Separator className="my-2" />
+                
+                <Button 
+                  variant={meeting.status === 'ended' ? "secondary" : "destructive"} 
+                  size="sm" 
+                  className="w-full justify-start font-semibold transition-all"
+                  onClick={handleEndMeeting}
+                  disabled={isEnding || meeting.status === 'ended'}
+                >
+                  <Flag className="h-4 w-4 mr-2" />
+                  {isEnding ? 'Ending...' : meeting.status === 'ended' ? 'Meeting Ended' : 'End Meeting & Follow-ups'}
                 </Button>
               </CardContent>
             </Card>

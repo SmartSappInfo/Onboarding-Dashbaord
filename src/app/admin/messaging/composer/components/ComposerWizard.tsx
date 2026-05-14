@@ -43,13 +43,13 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription,
     AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import QuickTemplateDialog from '../../components/quick-template-dialog';
+import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { TagAudienceSelector, type TagSegment } from './TagAudienceSelector';
 import { EntitySelector } from './EntitySelector';
 import { VariablePicker } from '@/components/messaging/VariablePicker';
 import { cn } from '@/lib/utils';
-import { SmartTemplateDropdown } from '../../../components/SmartTemplateDropdown';
+import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const formSchema = z.object({
@@ -723,7 +723,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                             </Button>
                                         </div>
                                         <Controller name="templateId" control={control} render={({ field }) => (
-                                            <SmartTemplateDropdown 
+                                            <MessagingTemplateSelector 
                                                 category={composerContext?.category || 'general'}
                                                 recipientType="entity" // Default for composer
                                                 channel={watchedChannel}
@@ -1246,12 +1246,14 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             </form>
 
             {/* ── Dialogs ──────────────────────────────────────────────────── */}
-            <QuickTemplateDialog
+            <TemplateWorkshopSheet
                 open={isQuickCreateOpen}
                 onOpenChange={setIsQuickCreateOpen}
-                channel={watchedChannel}
-                category="general"
-                onCreated={(id) => { setValue('templateId', id, { shouldDirty: true }); setValue('messageSourceType', 'template'); }}
+                initialContext={{
+                    channel: watchedChannel,
+                    category: "general"
+                }}
+                onCreated={(template) => { setValue('templateId', template.id, { shouldDirty: true }); setValue('messageSourceType', 'template'); }}
             />
 
             <TestDispatchDialog

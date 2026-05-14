@@ -35,9 +35,8 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { SmartTemplateDropdown } from '../../../components/SmartTemplateDropdown';
-import dynamic from 'next/dynamic';
-const QuickTemplateDialog = dynamic(() => import('../../components/quick-template-dialog'), { ssr: false });
+import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
+import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 
 // ─── Contact Scope Selector ───────────────────────────────────────────────────
 
@@ -632,7 +631,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     </div>
                                 </div>
                                 
-                                <SmartTemplateDropdown 
+                                <MessagingTemplateSelector 
                                     category="campaigns"
                                     recipientType={state.target === 'external_client' ? 'entity' : 'internal_alert'}
                                     channel={state.channel}
@@ -1232,13 +1231,15 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
             </AlertDialog>
 
             {quickCreateOpen ? (
-                <QuickTemplateDialog 
+                <TemplateWorkshopSheet 
                     open={quickCreateOpen}
                     onOpenChange={setQuickCreateOpen}
-                    channel={state.channel}
-                    category="campaigns"
-                    recipientType={state.target === 'external_client' ? 'entity' : 'internal_alert'}
                     templateId={state.templateId || undefined}
+                    initialContext={{
+                        channel: state.channel,
+                        category: 'campaigns',
+                        recipientType: state.target === 'external_client' ? 'entity' : 'internal_alert'
+                    }}
                     onCreated={(template: any) => {
                         setField('templateId', template.id);
                         if (template.name) setField('templateName', template.name);

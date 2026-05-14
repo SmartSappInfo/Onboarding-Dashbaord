@@ -1,210 +1,24 @@
 'use client';
 
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { useFirestore } from '@/firebase';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { migrateContractsToEntities, rollbackContractsMigration } from '@/lib/entity-migrations';
-import { restoreAllEntitiesToActiveAction } from '@/lib/entity-status-migration';
-import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert, MailCheck, Database, CheckCircle2, AlertCircle, Globe, MapPin, Workflow, ShieldAlert, ShieldCheck, Heart } from 'lucide-react';
+import { Loader2, Zap, ShieldAlert, Database, CheckCircle2, AlertCircle, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
-import { migrateAllPermissions } from '@/lib/permissions-migration';
-import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
-import { seedMaintenanceAction } from '@/app/actions/seed-maintenance-action';
-import { executeDealMigration } from '@/app/actions/deal-migration-actions';
-import { executeMeetingFerAction } from '@/app/actions/meeting-fer-action';
 
-type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
+import { getMigrationStatusAction } from '@/app/actions/get-migration-status-action';
+import { executePurgeFocalPersonsFerAction } from '@/app/actions/purge-focal-persons-fer-action';
+import { executePurgeLegacyFieldsFerAction } from '@/app/actions/purge-legacy-fields-fer-action';
+import { SystemMigrationLog } from '@/lib/types';
 
 export default function SeedsClient() {
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const { activeWorkspaceId, activeOrganizationId } = useTenant();
-
-  const [migrationStatus, setMigrationStatus] = useState<SeedingState>('idle');
-  const [rollbackStatus, setRollbackStatus] = useState<SeedingState>('idle');
-  const [permissionsStatus, setPermissionsStatus] = useState<SeedingState>('idle');
-  const [globalTemplatesStatus, setGlobalTemplatesStatus] = useState<SeedingState>('idle');
-  const [maintenanceStatus, setMaintenanceStatus] = useState<SeedingState>('idle');
-
-  // FER-03 Restoration States
-  const [entityRestorationStatus, setEntityRestorationStatus] = useState<SeedingState>('idle');
-
-  // Deal Migration States
-  const [dealMigrationStatus, setDealMigrationStatus] = useState<SeedingState>('idle');
-  const [dealMigrationMessage, setDealMigrationMessage] = useState<string>('');
-
-  // Meeting FER States
-  const [meetingFerStatus, setMeetingFerStatus] = useState<SeedingState>('idle');
-  const [meetingFerMessage, setMeetingFerMessage] = useState<string>('');
-
-  const handleMigration = async () => {
-    if (!firestore) return;
-    setMigrationStatus('seeding');
-    try {
-      await migrateContractsToEntities(firestore);
-      toast({ title: 'Agreements Name-Mapped Successfully!' });
-      setMigrationStatus('success');
-    } catch (error: any) {
-      setMigrationStatus('error');
-      toast({ variant: 'destructive', title: 'Migration Failed', description: error.message });
-    } finally {
-      setTimeout(() => setMigrationStatus('idle'), 2500);
-    }
-  };
-
-  const handleRollback = async () => {
-    if (!firestore) return;
-    setRollbackStatus('seeding');
-    try {
-      await rollbackContractsMigration(firestore);
-      toast({ title: 'Rollback Completed', description: 'Restored contracts to legacy format.' });
-      setRollbackStatus('success');
-    } catch (error: any) {
-      setRollbackStatus('error');
-      toast({ variant: 'destructive', title: 'Rollback Failed', description: error.message });
-    } finally {
-      setTimeout(() => setRollbackStatus('idle'), 2500);
-    }
-  };
-
-  const handleDealMigration = async () => {
-    setDealMigrationStatus('seeding');
-    try {
-      const orgId = activeOrganizationId || 'smartsapp-hq';
-      const result = await executeDealMigration(activeWorkspaceId!, orgId);
-      
-      if (result.success) {
-        setDealMigrationStatus('success');
-        setDealMigrationMessage(`Migrated ${result.migratedCount} deals`);
-        toast({ title: 'Deals Migrated', description: `Successfully decoupled ${result.migratedCount} deals from entities.` });
-      } else {
-        throw new Error(result.error || 'Unknown error');
-      }
-    } catch (e: any) {
-      setDealMigrationStatus('error');
-      setDealMigrationMessage(e.message);
-      toast({ variant: 'destructive', title: 'Migration Failed', description: e.message });
-    }
-  };
-
-  const handlePermissionsMigration = async () => {
-    if (!firestore || !activeWorkspaceId) return;
-    setPermissionsStatus('seeding');
-    try {
-      // For seeding purposes, we use smarsapp-hq as default if active org is not available
-      const orgId = 'smartsapp-hq'; 
-      const result = await migrateAllPermissions(firestore, orgId);
-      toast({ 
-        title: 'Permissions Migrated!', 
-        description: `Updated ${result.rolesUpdated} roles and ${result.usersUpdated} users.` 
-      });
-      setPermissionsStatus('success');
-    } catch (error: any) {
-      setPermissionsStatus('error');
-      toast({ variant: 'destructive', title: 'Migration Failed', description: error.message });
-    } finally {
-      setTimeout(() => setPermissionsStatus('idle'), 2500);
-    }
-  };
-
-  const handleSeedGlobalTemplates = async () => {
-    setGlobalTemplatesStatus('seeding');
-    try {
-      const result = await seedGlobalTemplatesAction();
-      if (result.failed > 0) {
-        toast({
-          variant: 'destructive',
-          title: 'Seed partially failed',
-          description: `Created ${result.created}, skipped ${result.skipped}, failed ${result.failed}.`,
-        });
-        setGlobalTemplatesStatus('error');
-      } else {
-        toast({
-          title: 'Global templates seeded!',
-          description: result.created === 0
-            ? `All ${result.skipped} templates already exist — nothing to do.`
-            : `Created ${result.created} template(s). Skipped ${result.skipped} existing.`,
-        });
-        setGlobalTemplatesStatus('success');
-      }
-    } catch (error: any) {
-      setGlobalTemplatesStatus('error');
-      toast({ variant: 'destructive', title: 'Seed Failed', description: error.message });
-    } finally {
-      setTimeout(() => setGlobalTemplatesStatus('idle'), 2500);
-    }
-  };
-
-  const handleSeedMaintenance = async () => {
-    setMaintenanceStatus('seeding');
-    try {
-      const result = await seedMaintenanceAction();
-      if (result.success) {
-        toast({ title: 'Maintenance Template Seeded!', description: 'The SMS alert for maintenance windows is now active.' });
-        setMaintenanceStatus('success');
-      } else {
-        throw new Error(result.error || 'Failed to seed');
-      }
-    } catch (error: any) {
-      setMaintenanceStatus('error');
-      toast({ variant: 'destructive', title: 'Seed Failed', description: error.message });
-    } finally {
-      setTimeout(() => setMaintenanceStatus('idle'), 2500);
-    }
-  };
-
-  const handleMeetingFer = async () => {
-    setMeetingFerStatus('seeding');
-    try {
-      const result = await executeMeetingFerAction();
-      if (result.success) {
-        setMeetingFerStatus('success');
-        setMeetingFerMessage(`Enriched ${result.enriched} of ${result.totalMeetings} meetings`);
-        toast({ title: 'Meeting FER Complete!', description: `Enriched ${result.enriched} meetings. ${result.skipped} already up to date.` });
-      } else {
-        throw new Error(result.error || 'Unknown error');
-      }
-    } catch (e: any) {
-      setMeetingFerStatus('error');
-      setMeetingFerMessage(e.message);
-      toast({ variant: 'destructive', title: 'Meeting FER Failed', description: e.message });
-    }
-  };
-
-  const handleEntityRestoration = async () => {
-    setEntityRestorationStatus('seeding');
-    try {
-      const result = await restoreAllEntitiesToActiveAction(
-        'system-admin',
-        'System Administrator',
-        'admin@smartsapp.com'
-      );
-      if (result.success) {
-        toast({ 
-            title: 'FER-03: Entities Restored!', 
-            description: result.message 
-        });
-        setEntityRestorationStatus('success');
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error: any) {
-      setEntityRestorationStatus('error');
-      toast({ variant: 'destructive', title: 'Restoration Failed', description: error.message });
-    } finally {
-      setTimeout(() => setEntityRestorationStatus('idle'), 2500);
-    }
-  };
-
     return (
-
         <div className="h-full overflow-y-auto w-full">
-            <div className="space-y-12 pb-32 w-full">
+            <div className="space-y-12 pb-32 w-full max-w-4xl">
             
             {/* Header */}
             <div className="flex flex-col items-start text-left">
@@ -221,39 +35,10 @@ export default function SeedsClient() {
                 <div>
                     <h4 className="text-sm font-bold text-blue-900">FER Protocol Active (Fetch, Enrich, Restore)</h4>
                     <p className="text-xs text-blue-800/80 mt-1 leading-relaxed">
-                        All major migrations on this page utilize the transactional FER protocol to guarantee data integrity. Data is **Fetched**, safely **Enriched** in-memory, and **Restored** (committed) via atomic write-batches. Full **Rollback** capability is maintained for all structural migrations.
+                        All major migrations on this page utilize the transactional FER protocol to guarantee data integrity. Data is **Fetched**, safely **Enriched** in-memory, and **Restored** (committed) via atomic write-batches.
                     </p>
                 </div>
             </div>
-
-            {/* Reference Data — Decouple Entity Deals */}
-            <section className="space-y-8">
-                <div className="flex flex-col gap-1 items-start">
-                    <h3 className="text-2xl font-bold tracking-tight text-foreground">Reference Data</h3>
-                    <p className="text-muted-foreground font-medium">Seed shared reference data used across the platform.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <SimpleMigrationCard
-                        title="💼 Decouple Entity Deals"
-                        description="Execute the transactional migration of legacy 1:1 entity-pipeline relationships into the new 1:Many Deals collection. This removes stage and pipeline IDs from entities and auto-generates linked deals."
-                        onSync={handleDealMigration}
-                        status={dealMigrationStatus}
-                        icon={Workflow}
-                        syncLabel={dealMigrationStatus === 'success' ? (dealMigrationMessage || 'Done') : 'Execute Deal Migration'}
-                    />
-
-                    <SimpleMigrationCard
-                        title="🛠️ Seed Maintenance Alert"
-                        description="Seeds the specialized SMS maintenance template: 'Please note: SmartSapp maintenance runs Sat 9AM–Mon 5AM...'. Essential for system reliability communication."
-                        onSync={handleSeedMaintenance}
-                        status={maintenanceStatus}
-                        icon={TriangleAlert}
-                        syncLabel="Seed Maintenance Template"
-                        buttonClassName="bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/20 ring-2 ring-amber-500 ring-offset-2 ring-offset-background"
-                    />
-                </div>
-            </section>
 
             {/* Core Migrations */}
             <section className="space-y-8">
@@ -263,70 +48,20 @@ export default function SeedsClient() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
-                    <SimpleMigrationCard 
-                        title="Agreements Name Mapping (FER)"
-                        description="Fetches all global contracts, maps them to their respective Unified Entities by comparing 'schoolName', and restores the corrected 'entityId' and 'entityName' properties. Resolves missing Agreements views."
-                        icon={FileCheck}
-                        status={migrationStatus}
-                        onSync={handleMigration}
-                        onRollback={handleRollback}
+                    <MigrationTrackerCard 
+                        migrationId="fer_purge_focal_persons"
+                        title="FER Protocol: Purge Legacy Contacts"
+                        description="Safely removes deprecated `focalPerson` fields from all Entity records. Execution will automatically skip records missing the new `entityContacts` model, preventing data loss."
+                        icon={Database}
+                        executeAction={executePurgeFocalPersonsFerAction}
                     />
-                    <SimpleMigrationCard 
-                        title="Hierarchical RBAC Migration (Permissions Expansion)"
-                        description="Core Protocol: Converts legacy flat permission arrays into the new nested PermissionsSchema (Section -> Feature -> Action). Updates both Roles and User profiles to ensure enterprise-grade authorization."
-                        icon={ShieldAlert}
-                        status={permissionsStatus}
-                        onSync={handlePermissionsMigration}
-                        syncLabel="Migrate Permissions"
-                    />
-                    <SimpleMigrationCard
-                        title="Seed Global Message Templates"
-                        description="Creates the full set of global default message templates across all categories: Meetings, Meeting Reminders, Forms, Surveys, Agreements, and General. All templates are seeded as approved and active. Safe to re-run — existing templates are skipped."
-                        icon={MailCheck}
-                        status={globalTemplatesStatus}
-                        onSync={handleSeedGlobalTemplates}
-                        syncLabel="Seed Templates"
-                        buttonClassName="bg-red-600 hover:bg-red-700 text-white shadow-red-500/20 ring-2 ring-red-500 ring-offset-2 ring-offset-background"
-                    />
-                </div>
-            </section>
-
-            {/* Data Restoration (FER-03) */}
-            <section className="space-y-8">
-                <div className="flex flex-col gap-1 items-start">
-                    <h3 className="text-2xl font-bold tracking-tight text-foreground text-left">Entity Status Restoration (FER-03)</h3>
-                    <p className="text-muted-foreground font-medium text-left">Modernize the platform by restoring all entities to "active" status by default.</p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6">
-                    <SimpleMigrationCard
-                        title="❤️ Restore Entities Hub"
-                        description="Fetches all universal identity records (entities) and operational links (workspace_entities) and restores them to status: 'active'. This ensures full visibility in the modernized hub."
-                        onSync={handleEntityRestoration}
-                        status={entityRestorationStatus}
-                        icon={Heart}
-                        syncLabel="Restore Active Hub"
-                        buttonClassName="bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/20 ring-2 ring-rose-500 ring-offset-2 ring-offset-background"
-                    />
-                </div>
-            </section>
-
-            {/* Meeting Infrastructure (FER) */}
-            <section className="space-y-8">
-                <div className="flex flex-col gap-1 items-start">
-                    <h3 className="text-2xl font-bold tracking-tight text-foreground text-left">Meeting Infrastructure (FER)</h3>
-                    <p className="text-muted-foreground font-medium text-left">Modernize meeting protocols: enrich slugs, registration defaults, and migrate registrant URLs to the new Waiting Room architecture.</p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6">
-                    <SimpleMigrationCard
-                        title="🚀 Modernize Meeting Protocols"
-                        description="Fetches all meetings and enriches them with V3 defaults (meetingSlug, heroLayout, bannerType, brandingEnabled). Also migrates all registrant personalizedMeetingUrl values to the new /join waiting room route. Safe to re-run."
-                        onSync={handleMeetingFer}
-                        status={meetingFerStatus}
-                        icon={Globe}
-                        syncLabel={meetingFerStatus === 'success' ? (meetingFerMessage || 'Done') : 'Execute Meeting FER'}
-                        buttonClassName="bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20 ring-2 ring-indigo-500 ring-offset-2 ring-offset-background"
+                    
+                    <MigrationTrackerCard 
+                        migrationId="fer_purge_legacy_fields"
+                        title="FER Protocol: Purge Legacy Fields"
+                        description="Deletes outdated ghost fields (like nominalRoll, arrearsBalance) from the global field registry and immediately re-seeds the new modern field architecture. Preserves user-created custom fields."
+                        icon={Database}
+                        executeAction={executePurgeLegacyFieldsFerAction}
                     />
                 </div>
             </section>
@@ -336,40 +71,123 @@ export default function SeedsClient() {
   );
 }
 
-// Simple migration card for basic seed operations
-function SimpleMigrationCard({ title, description, onSync, onRollback, status, icon: Icon, syncLabel = "Map Agreements", buttonClassName }: {
-  title: string;
-  description: string;
-  onSync: () => void;
-  onRollback?: () => void;
-  status: SeedingState;
-  icon: any;
-  syncLabel?: string;
-  buttonClassName?: string;
-}) {
+interface MigrationTrackerCardProps {
+    migrationId: string;
+    title: string;
+    description: string;
+    icon: any;
+    executeAction: (userId: string) => Promise<{ success: boolean; message: string; details?: any }>;
+}
+
+function MigrationTrackerCard({ migrationId, title, description, icon: Icon, executeAction }: MigrationTrackerCardProps) {
+    const { toast } = useToast();
+    const { activeWorkspaceId } = useTenant();
+    
+    const [status, setStatus] = useState<SystemMigrationLog | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isExecuting, setIsExecuting] = useState(false);
+    const [consoleOutput, setConsoleOutput] = useState<string>('Initializing tracker...');
+
+    // Fetch initial status on load
+    useEffect(() => {
+        let isMounted = true;
+        const fetchStatus = async () => {
+            try {
+                const res = await getMigrationStatusAction(migrationId);
+                if (isMounted && res.success && res.log) {
+                    setStatus(res.log);
+                    setConsoleOutput(
+                        `> Last execution: ${new Date(res.log.lastRunAt).toLocaleString()}\n> Status: ${res.log.status.toUpperCase()}\n> ${res.log.summary || ''}\n\n${res.log.details ? JSON.stringify(res.log.details, null, 2) : ''}`
+                    );
+                } else if (isMounted) {
+                    setConsoleOutput('> No execution history found. Ready to run.');
+                }
+            } catch (err) {
+                if (isMounted) setConsoleOutput('> Error fetching migration history.');
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
+        };
+        fetchStatus();
+        return () => { isMounted = false; };
+    }, [migrationId]);
+
+    const handleExecute = async () => {
+        setIsExecuting(true);
+        setConsoleOutput('> Fetching records...\n> Enriching data...\n> Awaiting response...');
+        try {
+            // Using a dummy userId or an actual one if available in TenantContext. Using activeWorkspaceId as fallback for now.
+            const executorId = 'system_admin'; 
+            const res = await executeAction(executorId);
+            
+            if (res.success) {
+                toast({ title: 'Migration Completed!', description: res.message });
+                setConsoleOutput(`> SUCCESS\n> ${res.message}\n\n${res.details ? JSON.stringify(res.details, null, 2) : ''}`);
+                // Refresh status
+                const newStatus = await getMigrationStatusAction(migrationId);
+                if (newStatus.success && newStatus.log) {
+                    setStatus(newStatus.log);
+                }
+            } else {
+                toast({ variant: 'destructive', title: 'Migration Failed', description: res.message });
+                setConsoleOutput(`> FAILED\n> ${res.message}\n\n${res.details ? JSON.stringify(res.details, null, 2) : ''}`);
+            }
+        } catch (error: any) {
+            setConsoleOutput(`> CRITICAL ERROR\n> ${error.message}`);
+            toast({ variant: 'destructive', title: 'Execution Error', description: error.message });
+        } finally {
+            setIsExecuting(false);
+        }
+    };
+
     return (
-        <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border overflow-hidden text-left group">
-            <CardContent className="p-8 space-y-6">
-                <div className="flex items-start justify-between gap-6">
-                    <div className="space-y-4">
-                        <div className="p-4 bg-primary/10 rounded-2xl w-fit text-primary ring-1 ring-primary/20 group-hover:scale-110 transition-transform"><Icon className="h-6 w-6" /></div>
-                        <div>
-                            <h4 className="text-xl font-bold tracking-tight text-foreground">{title}</h4>
-                            <p className="text-sm font-medium text-muted-foreground leading-relaxed max-w-2xl mt-2">{description}</p>
-                        </div>
+        <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border overflow-hidden text-left flex flex-col md:flex-row gap-0">
+            {/* Info Panel */}
+            <div className="p-8 md:w-1/2 border-b md:border-b-0 md:border-r border-border/50 flex flex-col justify-between">
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div className="p-3 bg-primary/10 rounded-2xl w-fit text-primary ring-1 ring-primary/20"><Icon className="h-6 w-6" /></div>
+                        {status?.status === 'completed' && <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> Completed</Badge>}
+                        {status?.status === 'failed' && <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/20"><AlertCircle className="w-3 h-3 mr-1" /> Failed</Badge>}
+                    </div>
+                    <div>
+                        <h4 className="text-xl font-bold tracking-tight text-foreground">{title}</h4>
+                        <p className="text-sm font-medium text-muted-foreground leading-relaxed mt-2">{description}</p>
                     </div>
                 </div>
-                <div className="flex gap-4 pt-6 mt-4 border-t border-border/50">
-                    <Button onClick={onSync} disabled={status === 'seeding'} className={cn("rounded-xl font-bold h-12 px-8 shadow-lg transform active:scale-95 transition-all", buttonClassName || "bg-primary hover:bg-primary/90 text-primary-foreground")}>
-                        {status === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Zap className="h-5 w-5 mr-2" />} {syncLabel}
+                
+                <div className="mt-8 pt-6 border-t border-border/50">
+                    <Button 
+                        onClick={handleExecute} 
+                        disabled={isLoading || isExecuting} 
+                        className="rounded-xl font-bold h-12 w-full shadow-lg transform active:scale-95 transition-all bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
+                        {isExecuting ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Play className="h-5 w-5 mr-2" />} 
+                        {isExecuting ? 'Executing FER...' : (status?.status === 'completed' ? 'Re-run Protocol' : 'Execute Protocol')}
                     </Button>
-                    {onRollback && (
-                        <Button variant="ghost" onClick={onRollback} className="rounded-xl font-bold border-rose-200 text-rose-600 hover:bg-rose-50 h-12 px-6 shadow-sm active:scale-95 transition-all ring-1 ring-rose-200/50">
-                            <TriangleAlert className="h-5 w-5 mr-2" /> Rollback
-                        </Button>
-                    )}
                 </div>
-            </CardContent>
+            </div>
+
+            {/* Console Panel */}
+            <div className="p-6 md:w-1/2 bg-slate-950 flex flex-col rounded-b-2xl md:rounded-b-none md:rounded-r-2xl">
+                <div className="flex items-center gap-2 mb-4 px-2">
+                    <div className="h-2.5 w-2.5 rounded-full bg-rose-500"></div>
+                    <div className="h-2.5 w-2.5 rounded-full bg-amber-500"></div>
+                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500"></div>
+                    <span className="ml-2 text-[10px] font-mono text-slate-500 uppercase tracking-wider">Seeding Output Tracker</span>
+                </div>
+                
+                <div className="flex-1 bg-black/40 rounded-xl p-4 ring-1 ring-white/10 font-mono text-xs text-slate-300 overflow-y-auto whitespace-pre-wrap max-h-[300px]">
+                    {isLoading ? '> Fetching tracker state...' : consoleOutput}
+                </div>
+                
+                {status?.lastRunAt && !isExecuting && (
+                    <div className="mt-4 px-2 text-[10px] text-slate-500 font-mono flex justify-between">
+                        <span>Last Execution: {new Date(status.lastRunAt).toLocaleString()}</span>
+                        {status.executedBy && <span>By: {status.executedBy}</span>}
+                    </div>
+                )}
+            </div>
         </Card>
     );
 }

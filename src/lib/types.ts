@@ -160,6 +160,19 @@ export interface EntityAuditLog {
 }
 
 /**
+ * System Migration Log
+ * Tracks the execution of seeding and data migration scripts.
+ */
+export interface SystemMigrationLog {
+  id: string; // The migration key (e.g., 'fer_template_identifiers')
+  status: 'completed' | 'failed' | 'in_progress';
+  lastRunAt: string; // ISO timestamp
+  executedBy?: string; // User ID or system identity
+  summary?: string; // Short human-readable summary
+  details?: any; // Structured log output (e.g., counts, errors)
+}
+
+/**
  * Tag Filter Query
  */
 export interface TagFilterQuery {
@@ -1126,6 +1139,9 @@ export interface Meeting {
   waitlistEnabled?: boolean;
   recordingUrl?: string;
   brochureUrl?: string;
+  resourceUrl?: string;
+  feedbackFormUrl?: string;
+  durationMinutes?: number;
   // ── Facilitators ───────────────────────────────────────────────────────
   facilitators?: MeetingFacilitator[];
 
@@ -1138,8 +1154,10 @@ export interface Meeting {
   // ── Messaging ──────────────────────────────────────────────────────────
   messagingConfig?: MeetingMessagingConfig;
 
-  // ── Publishing ─────────────────────────────────────────────────────────
-  publishStatus?: 'draft' | 'published';
+  // ── Publishing ─────────────────────────────────────────────────────────  // Phase 7: Publish Status
+  publishStatus?: 'draft' | 'published' | 'archived';
+  status?: 'scheduled' | 'active' | 'ended' | 'cancelled';
+  endedAt?: string;
 }
 
 // ── Meeting Facilitator ────────────────────────────────────────────────────

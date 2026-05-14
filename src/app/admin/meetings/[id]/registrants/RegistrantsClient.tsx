@@ -16,9 +16,11 @@ import {
     UserCheck,
     ClipboardCheck,
     Calendar,
-    AlertCircle
+    AlertCircle,
+    Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { toggleRegistrantAttendance } from '@/app/actions/meeting-attendance-actions';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +36,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   const { toast } = useToast();
   const firestore = useFirestore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [optimisticStatuses, setOptimisticStatuses] = useState<Record<string, string>>({});
+  const [isToggling, setIsToggling] = useState<Record<string, boolean>>({});
 
   // Fetch Meeting
   const meetingDocRef = useMemoFirebase(() => {
@@ -58,7 +62,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
     if (!registrants) return { total: 0, attended: 0, pending: 0, attendanceRate: 0 };
     
     const total = registrants.length;
-    const attended = registrants.filter(r => r.status === 'attended').length;
+    const attended = registrants.filter(r => (optimisticStatuses[r.id] || r.status) === 'attended').length;
     const pending = total - attended;
     const attendanceRate = total > 0 ? Math.round((attended / total) * 100) : 0;
 
@@ -79,17 +83,30 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   }, [registrants, searchQuery]);
 
   const toggleAttendance = async (registrant: MeetingRegistrant) => {
-    if (!firestore) return;
+    const currentStatus = optimisticStatuses[registrant.id] || registrant.status;
+    const newStatus = currentStatus === 'attended' ? 'registered' : 'attended';
+    
+    // Optimistic UI Update
+    setOptimisticStatuses(prev => ({ ...prev, [registrant.id]: newStatus }));
+    setIsToggling(prev => ({ ...prev, [registrant.id]: true }));
+    
     try {
-        const ref = doc(firestore, `meetings/${meetingId}/registrants`, registrant.id);
-        const newStatus = registrant.status === 'attended' ? 'registered' : 'attended';
-        await updateDoc(ref, {
-            status: newStatus,
-            attendedAt: newStatus === 'attended' ? new Date().toISOString() : null
-        });
+        const result = await toggleRegistrantAttendance(meetingId, registrant.id, newStatus === 'attended');
+        
+        if (!result.success) {
+            throw new Error(result.error);
+        }
         toast({ title: 'Status Updated', description: `${registrant.name}'s attendance status updated.` });
     } catch (e: any) {
+        // Revert optimistic update
+        setOptimisticStatuses(prev => {
+            const next = { ...prev };
+            delete next[registrant.id];
+            return next;
+        });
         toast({ variant: 'destructive', title: 'Update failed', description: e.message });
+    } finally {
+        setIsToggling(prev => ({ ...prev, [registrant.id]: false }));
     }
   };
 
@@ -280,13 +297,13 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                                             {registrant.registeredAt ? format(new Date(registrant.registeredAt), 'MMM d, h:mm a') : 'Unknown'}
                                         </TableCell>
                                         <TableCell>
-                                            {registrant.status === 'attended' ? (
+                                            {(optimisticStatuses[registrant.id] || registrant.status) === 'attended' ? (
                                                 <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20 font-bold uppercase tracking-wider text-[9px]">
  <CheckCircle2 className="h-3 w-3 mr-1" /> Attended
                                                 </Badge>
                                             ) : (
-                                                <Badge variant="secondary" className="bg-muted text-muted-foreground font-bold uppercase tracking-wider text-[9px]">
- <Clock className="h-3 w-3 mr-1" /> {registrant.status}
+                                                <Badge variant="secondary" className="bg-muted text-muted-foreground font-bold uppercase tracking-wider text-[9px] transition-all">
+                                                    <Clock className="h-3 w-3 mr-1" /> {(optimisticStatuses[registrant.id] || registrant.status)}
                                                 </Badge>
                                             )}
                                         </TableCell>
@@ -295,13 +312,14 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                                                 variant="outline" 
                                                 size="sm" 
                                                 onClick={() => toggleAttendance(registrant)}
- className={`h-8 text-xs font-bold w-full max-w-[120px] ${
-                                                    registrant.status === 'attended'
+                                                disabled={isToggling[registrant.id]}
+                                                className={`h-8 text-xs font-bold w-full max-w-[120px] transition-all ${
+                                                    (optimisticStatuses[registrant.id] || registrant.status) === 'attended'
                                                         ? "hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20" 
                                                         : "bg-primary/5 hover:bg-primary hover:text-white border-primary/20"
                                                 }`}
                                             >
-                                                {registrant.status === 'attended' ? 'Revoke' : 'Mark Attended'}
+                                                {isToggling[registrant.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : (optimisticStatuses[registrant.id] || registrant.status) === 'attended' ? 'Revoke' : 'Mark Attended'}
                                             </Button>
                                         </TableCell>
                                     </TableRow>

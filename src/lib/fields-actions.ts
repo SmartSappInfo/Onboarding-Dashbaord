@@ -379,7 +379,7 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
           color: isPlatform ? '#6366f1' : '#3b82f6', // Indigo for platform, Blue for industry
           entityTypes: groupDef.entityTypes,
           industry: isPlatform ? 'platform' : industry,
-          isSystem: true,
+          isSystem: isPlatform,
           order: groupDef.order,
           createdAt: now,
           updatedAt: now,
@@ -408,7 +408,7 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
             groupId: groupId,
             section: groupDef.slug,
             industryOrigin: isPlatform ? 'platform' : industry,
-            isNative: true,
+            isNative: isPlatform,
             compatibilityScope: fieldDef.compatibilityScope,
             status: 'active',
             createdAt: now,

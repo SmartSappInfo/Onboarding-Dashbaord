@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
+import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 
 interface NodeInspectorProps {
     node: any;
@@ -289,7 +289,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                     <div className="space-y-6">
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Master Template</Label>
-                                            <SmartTemplateDropdown 
+                                            <MessagingTemplateSelector 
                                                 category={inferredCategory as any}
                                                 channel="email"
                                                 recipientType={config.recipientType || 'manager'}
