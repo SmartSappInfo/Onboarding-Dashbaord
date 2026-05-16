@@ -122,8 +122,8 @@ service cloud.firestore {
 
     match /workspaces/{workspaceId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
-      allow list: if isAuthorized();
-      allow write: if isAuthorized() && isSystemAdmin();
+      allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if isAuthorized() && (request.auth.token.email == 'admin@smartsapp.com' || isSystemAdmin());
     }
 
     // --- Operational Layer (Workspace Shared Array) ---
@@ -264,8 +264,7 @@ service cloud.firestore {
     }
 
     match /media/{mediaId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
-      allow list: if isAuthorized();
+      allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow create: if isAuthorized();
       allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
     }

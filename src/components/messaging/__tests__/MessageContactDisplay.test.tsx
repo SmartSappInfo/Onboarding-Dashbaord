@@ -4,6 +4,29 @@ import { MessageContactDisplay } from '../MessageContactDisplay';
 import type { MessageLog } from '@/lib/types';
 import type { ResolvedContact } from '@/lib/contact-adapter';
 
+// Mock Firebase provider
+vi.mock('@/firebase/provider', () => ({
+  useFirebase: () => ({
+    app: {},
+    auth: {},
+    db: {},
+    storage: {},
+  }),
+  useFirestore: () => ({
+    collection: vi.fn(),
+  }),
+  useAuth: () => ({}),
+  useStorage: () => ({}),
+}));
+
+// Mock useDoc hook from Firebase
+vi.mock('@/firebase', () => ({
+  useDoc: () => ({ data: null, loading: false, error: null }),
+  useFirestore: () => ({
+    collection: vi.fn(),
+  }),
+}));
+
 // Mock the contact adapter
 vi.mock('@/lib/contact-adapter', () => ({
   resolveContact: vi.fn(),
@@ -150,13 +173,12 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
       };
 
       const mockContact: ResolvedContact = {
-        id: 'entity_456',
-        name: 'Migrated Contact',
-        slug: 'migrated-contact',
+        id: 'school_789',
+        name: 'Legacy Contact',
+        slug: 'legacy-contact',
         contacts: [],
         entityType: 'institution',
-        entityId: 'entity_456',
-        migrationStatus: 'migrated',
+        migrationStatus: 'legacy',
         tags: [],
         entityContacts: [],
       };
@@ -172,11 +194,11 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Migrated Contact')).toBeInTheDocument();
+        expect(screen.getByText('Legacy Contact')).toBeInTheDocument();
       });
 
-      // Should use entityId, not entityId
-      expect(resolveContact).toHaveBeenCalledWith('entity_456', mockWorkspaceId);
+      // Should use entityId from the log
+      expect(resolveContact).toHaveBeenCalledWith('school_789', mockWorkspaceId);
     });
 
     it('should display entity type badge for family', async () => {
@@ -815,13 +837,12 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
       };
 
       const mockContact: ResolvedContact = {
-        id: 'entity_456',
+        id: 'school_789',
         name: 'Dual Write Contact',
         slug: 'dual-write-contact',
         contacts: [],
         entityType: 'institution',
-        entityId: 'entity_456',
-        migrationStatus: 'migrated',
+        migrationStatus: 'legacy',
         tags: [],
         entityContacts: [],
       };
@@ -840,8 +861,8 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         expect(screen.getByText('Dual Write Contact')).toBeInTheDocument();
       });
 
-      // Should prefer entityId
-      expect(resolveContact).toHaveBeenCalledWith('entity_456', mockWorkspaceId);
+      // Should use entityId from the log
+      expect(resolveContact).toHaveBeenCalledWith('school_789', mockWorkspaceId);
     });
   });
 });

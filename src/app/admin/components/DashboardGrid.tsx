@@ -216,13 +216,19 @@ export default function DashboardGrid({
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
                 <SortableContext items={visibleComponents} strategy={rectSortingStrategy}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
-                        {visibleComponents.map((id) => {
+                        {visibleComponents.map((id, index) => {
                             const widget = widgets[id];
                             if (!widget) return null;
                             const gridClass = gridClassMap[id] || 'lg:col-span-2';
 
                             return (
-                                <DraggableCard key={id} id={id} className={gridClass} disabled={!canManageDashboard}>
+                                <DraggableCard 
+                                    key={id} 
+                                    id={id} 
+                                    index={index}
+                                    className={gridClass} 
+                                    disabled={!canManageDashboard}
+                                >
                                     {widget}
                                 </DraggableCard>
                             );

@@ -106,14 +106,14 @@ export default function OrganizationInvitationSettings() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 pb-32">
+        <div className="space-y-8 pb-32 w-full">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 md:px-0">
                 <div>
-                    <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4">
-                        <Mail className="h-10 w-10 text-primary" />
-                        Messaging Settings
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                        <Mail className="h-7 w-7 text-primary" />
+                        Messaging Hub
                     </h1>
-                    <p className="text-muted-foreground font-medium text-lg mt-1">
+                    <p className="text-muted-foreground font-medium text-sm mt-1">
                         Customize how new members are welcomed to your organization
                     </p>
                 </div>

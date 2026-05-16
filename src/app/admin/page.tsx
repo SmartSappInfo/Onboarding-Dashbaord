@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { getActiveWorkspace, getDashboardLayout, getWorkspacePipelines } from "@/lib/dashboard-server";
 import DashboardGrid from "./components/DashboardGrid";
 import { DashboardClientWrapper } from "./components/DashboardClientWrapper";
+import { DashboardCardSkeleton } from "@/components/dashboard/DashboardCardSkeleton";
 import { 
     LayoutGrid,
     Database
@@ -76,8 +77,8 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     const terminology = activeWorkspace.terminology || { singular: 'Entity', plural: 'Entities' };
 
     // Placeholder skeleton for widget streaming
-    const WidgetSkeleton = () => <div className="h-64 bg-muted/20 animate-pulse rounded-2xl" />;
-    const ChartSkeleton = () => <div className="h-96 bg-muted/20 animate-pulse rounded-2xl" />;
+    const WidgetSkeleton = () => <DashboardCardSkeleton className="h-64" />;
+    const ChartSkeleton = () => <DashboardCardSkeleton className="h-96" />;
 
     // Construct the widget map
     const widgets: Record<string, React.ReactNode> = {
@@ -112,7 +113,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
             </Suspense>
         ),
         recentActivity: (
-            <Suspense fallback={<div className="h-[500px] bg-muted/20 animate-pulse rounded-2xl" />}>
+            <Suspense fallback={<DashboardCardSkeleton className="h-[500px]" />}>
                 <ActivityWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
@@ -149,14 +150,12 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     });
 
     return (
-        <div className="h-full overflow-y-auto text-left w-full">
-            <DashboardClientWrapper 
-                activeWorkspaceId={activeWorkspaceId}
-                activeWorkspace={activeWorkspace}
-                terminology={terminology}
-                pipelines={pipelines}
-                widgets={widgets}
-            />
-        </div>
+        <DashboardClientWrapper 
+            activeWorkspaceId={activeWorkspaceId}
+            activeWorkspace={activeWorkspace}
+            terminology={terminology}
+            pipelines={pipelines}
+            widgets={widgets}
+        />
     );
 }

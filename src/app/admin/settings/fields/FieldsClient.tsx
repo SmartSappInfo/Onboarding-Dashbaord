@@ -466,12 +466,12 @@ export default function FieldsClient() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="space-y-8 pb-32 w-full">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Fields & Variables Hub</h1>
-          <p className="text-muted-foreground mt-1">Manage entity attributes, custom data collection, and system variables.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Fields & Variables Hub</h1>
+          <p className="text-muted-foreground font-medium text-sm mt-1">Manage entity attributes, custom data collection, and system variables.</p>
         </div>
       </div>
 

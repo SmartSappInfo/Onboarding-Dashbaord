@@ -306,8 +306,7 @@ export default function EntitiesClient() {
 
     return (
         <TooltipProvider>
-            <div className="h-full overflow-y-auto w-full">
-                <div className="space-y-8 pb-32 w-full">
+            <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                         <div className="flex flex-col items-start">
                             <h1 className="text-4xl font-black tracking-tight text-foreground">
@@ -657,7 +656,6 @@ export default function EntitiesClient() {
                         </Table>
                     </div>
                 </div>
-            </div>
             <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
                 <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-semibold">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span>. You can restore it later from the Archived status filter.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
             </AlertDialog>

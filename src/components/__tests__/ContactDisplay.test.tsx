@@ -3,6 +3,29 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ContactDisplay, ContactDisplayInline } from '../ContactDisplay';
 import type { ResolvedContact } from '@/lib/contact-adapter';
 
+// Mock Firebase provider
+vi.mock('@/firebase/provider', () => ({
+  useFirebase: () => ({
+    app: {},
+    auth: {},
+    db: {},
+    storage: {},
+  }),
+  useFirestore: () => ({
+    collection: vi.fn(),
+  }),
+  useAuth: () => ({}),
+  useStorage: () => ({}),
+}));
+
+// Mock useDoc hook from Firebase
+vi.mock('@/firebase', () => ({
+  useDoc: () => ({ data: null, loading: false, error: null }),
+  useFirestore: () => ({
+    collection: vi.fn(),
+  }),
+}));
+
 // Mock the contact adapter
 vi.mock('@/lib/contact-adapter', () => ({
   resolveContact: vi.fn(),

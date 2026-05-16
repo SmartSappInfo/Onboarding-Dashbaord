@@ -162,14 +162,13 @@ export default function WebhooksClient() {
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto w-full">
         <div className="space-y-8 pb-32 w-full">
 
           {/* Page Header */}
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">Webhook Hub</h1>
-              <p className="text-sm text-muted-foreground mt-1 font-medium">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Webhook Hub</h1>
+              <p className="text-muted-foreground font-medium text-sm mt-1">
                 Manage real-time data flows and external system integrations.
               </p>
             </div>
@@ -437,7 +436,6 @@ export default function WebhooksClient() {
             webhook={editingWebhook}
           />
         </div>
-      </div>
     </TooltipProvider>
   );
 }

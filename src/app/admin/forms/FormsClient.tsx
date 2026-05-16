@@ -306,15 +306,14 @@ export default function FormsClient() {
 
     return (
         <TooltipProvider>
-            <div className="h-full overflow-y-auto w-full">
                 <div className="space-y-8 pb-32 w-full">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div className="flex flex-col">
-                            <h1 className="text-3xl font-bold text-foreground">
-                                Form Studio
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                                Forms Hub
                             </h1>
-                            <p className="text-muted-foreground text-sm mt-1">Design and deploy data capture forms</p>
+                            <p className="text-muted-foreground font-medium text-sm mt-1">Design and deploy data capture forms</p>
                         </div>
             <div className="flex justify-end items-center gap-3 shrink-0">
               {canCreate && (
@@ -476,7 +475,6 @@ export default function FormsClient() {
             </Table>
           </div>
         </div>
-      </div>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!formToDelete} onOpenChange={open => !open && setFormToDelete(null)}>

@@ -64,6 +64,7 @@ export default function RolesClient() {
   const { activeOrganizationId } = useTenant();
   
   const [selectedRoleId, setSelectedRoleId] = React.useState<string | null>(null);
+  const [editedSchema, setEditedSchema] = React.useState<PermissionsSchema | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null);
 
@@ -104,16 +105,25 @@ export default function RolesClient() {
   const selectedRole = React.useMemo(() => 
     roles?.find(r => r.id === selectedRoleId), 
   [roles, selectedRoleId]);
+  
+  // Set edited schema when selected role changes
+  React.useEffect(() => {
+    if (selectedRole) {
+      setEditedSchema(selectedRole.permissionsSchema || getBlankPermissions());
+    } else {
+      setEditedSchema(null);
+    }
+  }, [selectedRole]);
 
   // 2. ACTIONS
-  const handleSavePermissions = async (schema: PermissionsSchema) => {
-    if (!firestore || !selectedRoleId) return;
+  const handleSavePermissions = async () => {
+    if (!firestore || !selectedRoleId || !editedSchema) return;
     setIsSaving(true);
 
     const roleRef = doc(firestore, 'roles', selectedRoleId);
     try {
       await updateDoc(roleRef, { 
-        permissionsSchema: schema,
+        permissionsSchema: editedSchema,
         updatedAt: new Date().toISOString()
       });
       toast({ title: 'Role Architecture Updated', description: 'Hierarchical permissions have been synchronized.' });
@@ -176,14 +186,13 @@ export default function RolesClient() {
   };
 
     return (
-        <div className="h-full overflow-y-auto w-full">
-            <div className="space-y-8 pb-32 w-full">
+        <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold text-foreground">
-                            Role Architecture
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                            Roles & Permissions Hub
                         </h1>
-                        <p className="text-muted-foreground text-sm mt-1">
+                        <p className="text-muted-foreground font-medium text-sm mt-1">
                             Define structural authorization silos across the organization
                         </p>
                     </div>
@@ -200,14 +209,14 @@ export default function RolesClient() {
                                 <Plus className="mr-2 h-5 w-5" /> New Role Blueprint
                             </Button>
                         </DialogTrigger>
-            <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-8">
+            <DialogContent className="rounded-2xl border-none shadow-2xl p-8">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-black tracking-tight">Create Role Blueprint</DialogTitle>
+                <DialogTitle className="text-xl font-bold tracking-tight">Create Role Blueprint</DialogTitle>
                 <CardDescription>Define the core attributes for this administrative silo.</CardDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Blueprint Name</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Blueprint Name</Label>
                   <Input 
                     value={newRoleData.name}
                     onChange={e => setNewRoleData(prev => ({ ...prev, name: e.target.value }))}
@@ -216,7 +225,7 @@ export default function RolesClient() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Architectural Description</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Architectural Description</Label>
                   <Textarea 
                     value={newRoleData.description}
                     onChange={e => setNewRoleData(prev => ({ ...prev, description: e.target.value }))}
@@ -226,7 +235,7 @@ export default function RolesClient() {
                 </div>
                 {!newRoleData.clonedSchema && (
                    <div className="space-y-2 pb-2">
-                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Base Template</Label>
+                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Base Template</Label>
                      <select 
                         value={selectedTemplateId}
                         onChange={(e) => setSelectedTemplateId(e.target.value)}
@@ -254,9 +263,9 @@ export default function RolesClient() {
                     
                     {/* List Sidebar */}
                     <div className="lg:col-span-4 space-y-4">
-                        <Card className="rounded-[2rem] border-none ring-1 ring-border bg-transparent shadow-sm overflow-hidden">
+                        <Card className="rounded-2xl border-none ring-1 ring-border bg-card shadow-sm overflow-hidden">
               <CardHeader className="bg-muted/30 border-b pb-4">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Available Silos</CardTitle>
+                <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Available Silos</CardTitle>
               </CardHeader>
               <CardContent className="p-2 space-y-1">
                 {isLoading ? (
@@ -308,13 +317,13 @@ export default function RolesClient() {
               </CardContent>
             </Card>
             
-            <Card className="rounded-[2.5rem] border-none ring-1 ring-border bg-amber-50 shadow-inner">
+            <Card className="rounded-2xl border-none ring-1 ring-border bg-amber-500/5 shadow-inner">
                <CardContent className="p-6">
                   <div className="flex gap-4">
-                    <Zap className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
+                    <Zap className="h-6 w-6 text-amber-500 shrink-0 mt-1" />
                     <div className="space-y-2">
-                       <h4 className="text-sm font-black text-amber-900 uppercase">Hierarchical Notice</h4>
-                       <p className="text-[11px] font-medium text-amber-800 leading-relaxed tracking-tighter">
+                       <h4 className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Hierarchical Notice</h4>
+                       <p className="text-[11px] font-medium text-amber-700/80 leading-relaxed">
                           Editing these permissions updates the underlying schema used by the new authorization engine. Legacy permissions will be maintained for backward compatibility.
                        </p>
                     </div>
@@ -327,12 +336,12 @@ export default function RolesClient() {
           <div className="lg:col-span-8">
             {selectedRole ? (
               <div className="space-y-6">
-                <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
+                <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
                   <CardHeader className="p-8 border-b bg-muted/20 flex flex-row items-center justify-between">
                     <div className="space-y-1">
                       <div className="flex items-center gap-3">
                         <div className="w-4 h-4 rounded-full" style={{ backgroundColor: selectedRole.color }} />
-                        <CardTitle className="text-2xl font-black tracking-tight">{selectedRole.name}</CardTitle>
+                        <CardTitle className="text-xl font-bold tracking-tight">{selectedRole.name}</CardTitle>
                       </div>
                       <CardDescription className="text-sm font-medium">{selectedRole.description}</CardDescription>
                     </div>
@@ -354,8 +363,8 @@ export default function RolesClient() {
                         <Copy className="mr-2 h-4 w-4" /> Clone
                       </Button>
                       <Button 
-                        onClick={() => handleSavePermissions(selectedRole.permissionsSchema || getBlankPermissions())}
-                        disabled={isSaving}
+                        onClick={handleSavePermissions}
+                        disabled={isSaving || !editedSchema}
                         className="rounded-xl font-black px-6 bg-primary"
                       >
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Sync Architecture
@@ -363,31 +372,28 @@ export default function RolesClient() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-8">
-                    <PermissionEditor 
-                      schema={selectedRole.permissionsSchema || getBlankPermissions()}
-                      onChange={(schema) => {
-                        // Optimistic update for UI feel, but we save on button click
-                        // In a real app we might want a 'draft' state or just auto-save
-                        // For now we'll just handle it via handleSavePermissions
-                      }}
-                    />
+                    {editedSchema && (
+                      <PermissionEditor 
+                        schema={editedSchema}
+                        onChange={(schema) => setEditedSchema(schema)}
+                      />
+                    )}
                   </CardContent>
                 </Card>
               </div>
             ) : (
-              <div className="h-[60vh] flex flex-col items-center justify-center rounded-[3rem] border-2 border-dashed border-border p-12 text-center bg-muted/10">
+              <div className="h-[60vh] flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border p-12 text-center bg-muted/10">
                 <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
                   <ShieldCheck className="h-10 w-10 text-muted-foreground opacity-30" />
                 </div>
-                <h3 className="text-xl font-black text-foreground mb-2">Select a Blueprint</h3>
-                <p className="text-muted-foreground max-w-xs font-medium leading-relaxed">
+                <h3 className="text-lg font-bold text-foreground mb-2">Select a Blueprint</h3>
+                <p className="text-sm text-muted-foreground max-w-xs font-medium leading-relaxed">
                   Choose a role from the registry to inspect and modify its structural permissions.
                 </p>
               </div>
             )}
           </div>
         </div>
-            </div>
         </div>
     );
 }

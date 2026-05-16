@@ -60,8 +60,7 @@ export default function SettingsClient() {
   };
 
   return (
-    <div className="h-full overflow-y-auto w-full">
-      <div className="space-y-8 pb-32 w-full">
+    <div className="space-y-8 pb-32 w-full">
         <Card className="border-none shadow-2xl ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-background/40 backdrop-blur-sm relative group/card">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-50" />
           <CardContent className="p-8 md:p-14 relative z-10">
@@ -83,7 +82,7 @@ export default function SettingsClient() {
                 <div className="space-y-4">
                   <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="space-y-1">
-                      <h1 className="text-4xl md:text-5xl font-black text-foreground tracking-tight">
+                      <h1 className="text-2xl font-bold text-foreground tracking-tight">
                         {activeOrganization?.name || 'System Parameters'}
                       </h1>
                       <div className="flex items-center justify-center md:justify-start gap-2">
@@ -195,13 +194,11 @@ export default function SettingsClient() {
 
           <LocationHierarchyEditor />
         </div>
-      </div>
-
       <OrganizationManagementDialog 
         open={isOrgDialogOpen} 
         onOpenChange={setIsOrgDialogOpen} 
         organization={activeOrganization} 
       />
     </div>
-    );
+  );
 }

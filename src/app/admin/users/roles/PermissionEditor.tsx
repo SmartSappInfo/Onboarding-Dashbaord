@@ -146,13 +146,13 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
         
         return (
           <Card key={section.id} className={cn(
-            "rounded-[2rem] border-none ring-1 transition-all overflow-hidden",
+            "rounded-2xl border-none ring-1 transition-all overflow-hidden",
             isSectionEnabled ? "ring-primary/20 bg-primary/5" : "ring-border bg-muted/20"
           )}>
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div className="space-y-1">
-                <CardTitle className="text-xl font-bold tracking-tight">{section.label}</CardTitle>
-                <CardDescription className="text-xs font-medium uppercase tracking-tighter opacity-70">
+                <CardTitle className="text-lg font-bold tracking-tight">{section.label}</CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest opacity-60">
                   {section.description}
                 </CardDescription>
               </div>
@@ -176,9 +176,9 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
                    const isGloballyActive = isGlobalFeatureEnabled(section.id, feature.id);
 
                    return (
-                     <div key={feature.id} className={cn(
-                        "p-5 rounded-3xl bg-white border border-border/50 shadow-sm space-y-4 relative overflow-hidden",
-                        !isGloballyActive && "bg-muted/30 border-dashed"
+                    <div key={feature.id} className={cn(
+                        "p-5 rounded-2xl bg-muted/30 border border-border/50 shadow-sm space-y-4 relative overflow-hidden transition-all hover:bg-muted/40",
+                        !isGloballyActive && "opacity-50 grayscale border-dashed"
                      )}>
                        {!isGloballyActive && (
                           <div className="absolute top-2 right-2">
@@ -190,8 +190,8 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
 
                        <div className="flex items-center justify-between">
                          <Label className={cn(
-                           "text-sm font-black uppercase tracking-tight cursor-pointer",
-                           !isGloballyActive && "opacity-50"
+                           "text-xs font-bold uppercase tracking-widest cursor-pointer opacity-80",
+                           !isGloballyActive && "opacity-40"
                          )} htmlFor={`feat-${feature.id}`}>
                            {feature.label}
                          </Label>
@@ -218,7 +218,7 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
                               />
                               <label
                                 htmlFor={`${feature.id}-${action.id}`}
-                                className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground cursor-pointer select-none"
+                                className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground cursor-pointer select-none transition-colors hover:text-foreground"
                               >
                                 {action.label}
                               </label>

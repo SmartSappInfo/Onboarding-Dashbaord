@@ -2,17 +2,8 @@
 
 import {
   SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarTrigger,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
   SidebarInset,
-  SidebarGroup,
-  SidebarGroupLabel,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
@@ -22,42 +13,11 @@ import dynamic from 'next/dynamic';
 const QuickComposeButton = dynamic(() => import('@/components/messaging/QuickComposeButton'), { ssr: false });
 
 import { 
-    LayoutDashboard, 
-    Layout,
-    School, 
-    Settings, 
-    Calendar, 
-    ExternalLink, 
-    Film, 
-    ClipboardList, 
-    Users, 
     LogOut, 
-    User as UserIcon, 
-    Workflow, 
-    History, 
-    FileText, 
-    MessageSquareText,
-    Globe,
-    CheckSquare,
-    Zap,
-    BarChart3,
-    Receipt,
-    Package,
-    Timer,
-    Settings2,
-    FileCheck,
-    Target,
-    Tags,
-    ClipboardSignature,
-    Database,
-    ShieldEllipsis,
-    Mail,
-    Cog,
-    QrCode,
-    Code,
-    Unplug
+    User as UserIcon,
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore } from '@/firebase';
+import { AdminSidebar } from './components/AdminSidebar';
 import * as React from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { doc, getDoc } from 'firebase/firestore';
@@ -186,169 +146,21 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     return <AuthorizationLoader status={loaderStatus} />;
   }
 
-  // Feature-aware visibility: visible = permission check AND feature toggle
-  const isVisible = (hasPermission: boolean, featureId?: AppFeatureId) => {
-    if (!hasPermission) return false;
-    if (!featureId) return true;
-    return isFeatureEnabled(featureId);
-  };
-
-  const wrapHref = (href: string) => {
-    if (!activeWorkspaceId) return href;
-    const separator = href.includes('?') ? '&' : '?';
-    return `${href}${separator}track=${activeWorkspaceId}`;
-  };
-
-  type NavItem = {
-    href: string;
-    icon: any;
-    label: string;
-    visible: boolean;
-    external?: boolean;
-  };
-
-  const coreNavItems = [
-    { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: isVisible(can('operations', 'dashboard', 'view')) },
-    { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isVisible(can('operations', 'campuses', 'view'), 'entities') },
-    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: dealPlural || 'Deals', visible: isVisible(can('operations', 'pipeline', 'view'), 'pipeline') },
-    { href: wrapHref('/admin/tasks'), icon: CheckSquare, label: 'Tasks', visible: isVisible(can('operations', 'tasks', 'view'), 'tasks') },
-    { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isVisible(can('operations', 'meetings', 'view'), 'meetings') },
-    { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isVisible(can('operations', 'automations', 'view'), 'automations') },
-    { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Intelligence', visible: isVisible(can('operations', 'intelligence', 'view'), 'reports') },
+  const operationsPaths = [
+    '/admin', '/admin/entities', '/admin/pipeline', '/admin/tasks', 
+    '/admin/meetings', '/admin/automations', '/admin/reports'
   ];
-
-  const studioNavItems = [
-    { href: wrapHref('/admin/portals'), icon: Globe, label: 'Public Portals', visible: isVisible(can('studios', 'publicPortals', 'view'), 'portals') },
-    { href: wrapHref('/admin/pages'), icon: Layout, label: 'Landing Pages', visible: isVisible(can('studios', 'landingPages', 'view'), 'portals') },
-    { href: wrapHref('/admin/media'), icon: Film, label: 'Media', visible: isVisible(can('studios', 'media', 'view'), 'media') },
-    { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isVisible(can('studios', 'surveys', 'view'), 'surveys') },
-    { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isVisible(can('studios', 'docSigning', 'view'), 'pdfs') },
-    { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isVisible(can('studios', 'messaging', 'view'), 'messaging') },
-    { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isVisible(can('studios', 'forms', 'view'), 'forms') },
-    { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isVisible(can('studios', 'tags', 'view'), 'tags') },
-    { href: wrapHref('/admin/qr-studio'), icon: QrCode, label: 'QR Studio', visible: isVisible(can('studios', 'qrStudio', 'view'), 'qr_studio') },
-  ];
-
-  const financeNavItems = [
-    { href: wrapHref('/admin/finance/contracts'), icon: FileCheck, label: 'Agreements', visible: isVisible(can('finance', 'agreements', 'view'), 'agreements') },
-    { href: wrapHref('/admin/finance/invoices'), icon: Receipt, label: 'Invoices', visible: isVisible(can('finance', 'invoices', 'view'), 'invoices') },
-    { href: wrapHref('/admin/finance/packages'), icon: Package, label: 'Packages', visible: isVisible(can('finance', 'packages', 'view'), 'packages') },
-    { href: wrapHref('/admin/finance/periods'), icon: Timer, label: 'Cycles', visible: isVisible(can('finance', 'cycles', 'view'), 'billing_periods') },
-    { href: wrapHref('/admin/finance/settings'), icon: Settings2, label: 'Billing Setup', visible: isVisible(can('finance', 'billingSetup', 'view'), 'billing_setup') },
-  ];
-
-  const systemNavItems: NavItem[] = [
-    { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: can('management', 'activities', 'view') },
-    { href: wrapHref('/admin/users'), icon: Users, label: 'Users', visible: can('management', 'users', 'view') },
-    { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: isSystemAdmin },
-    { href: wrapHref('/admin/settings/invitation'), icon: Mail, label: 'Messaging', visible: can('management', 'systemSettings', 'view') },
-    { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: can('management', 'fields', 'view') },
-    { href: wrapHref('/admin/settings'), icon: Settings, label: 'System', visible: can('management', 'systemSettings', 'view') },
-    { href: wrapHref('/admin/settings/developer'), icon: Code, label: 'Developer API', visible: can('management', 'systemSettings', 'view') },
-    { href: wrapHref('/admin/webhooks'), icon: Unplug, label: 'Webhooks', visible: can('management', 'systemSettings', 'view') },
-    { href: '/backoffice', icon: Cog, label: 'Backoffice', visible: hasBackofficeAccess, external: true },
-  ];
-
-  const isOperationsPage = coreNavItems.some(item => {
-    const basePath = item.href.split('?')[0];
-    return pathname === basePath || pathname.startsWith(basePath + '/');
+  const isOperationsPage = operationsPaths.some(path => {
+    return pathname === path || pathname.startsWith(path + '/');
   });
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <Sidebar collapsible="icon" className="bg-card text-foreground border-r border-border shadow-2xl print:hidden">
-        <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
-           <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
-        </SidebarHeader>
-        
-        <SidebarContent className="mt-4 overflow-x-hidden">
-          <SidebarGroup className="px-0">
-            <SidebarGroupLabel className="text-left text-primary/60 dark:text-primary/40 font-semibold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden">Operations</SidebarGroupLabel>
-            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
-              {coreNavItems.filter(i => i.visible).map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/5 rounded-xl h-11 transition-all duration-200">
-                      <Link href={item.href}>
-                        <item.icon className="h-5 w-5 shrink-0" /> 
-                        <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
-                      </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-
-          <SidebarGroup className="mt-4 px-0">
-            <SidebarGroupLabel className="text-left text-primary/60 dark:text-primary/40 font-semibold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden">Finance Hub</SidebarGroupLabel>
-            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
-              {financeNavItems.filter(i => i.visible).map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/5 rounded-xl h-11 transition-all duration-200">
-                      <Link href={item.href}>
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
-                      </Link>
-                  </SidebarMenuButton>
-                  </SidebarMenuItem>
-              ))}
-              </SidebarMenu>
-          </SidebarGroup>
-
-          <SidebarGroup className="mt-4 px-0">
-            <SidebarGroupLabel className="text-left text-primary/60 dark:text-primary/40 font-semibold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden">Studios</SidebarGroupLabel>
-            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
-              {studioNavItems.filter(i => i.visible).map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/5 rounded-xl h-11 transition-all duration-200">
-                      <Link href={item.href}>
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
-                      </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-
-          <SidebarGroup className="mt-auto pt-8 mb-4 px-0">
-            <SidebarGroupLabel className="text-left text-primary/60 dark:text-primary/40 font-semibold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden">Management</SidebarGroupLabel>
-            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
-              {systemNavItems.filter(i => i.visible).map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/5 rounded-xl h-11 transition-all duration-200">
-                      {item.external ? (
-                        <a href={item.href} target="_blank" rel="noopener noreferrer">
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
-                        </a>
-                      ) : (
-                        <Link href={item.href}>
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
-                        </Link>
-                      )}
-                  </SidebarMenuButton>
-                  </SidebarMenuItem>
-              ))}
-              </SidebarMenu>
-          </SidebarGroup>
-        </SidebarContent>
-        
-        <SidebarFooter className="p-4 border-t border-border bg-black/5 dark:bg-black/20">
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Go to public site" className="text-muted-foreground hover:text-foreground transition-all h-10 group-data-[collapsible=icon]:justify-center">
-                        <Link href="/" target="_blank"><ExternalLink className="h-4 w-4 shrink-0" /><span className="font-semibold text-[10px] group-data-[collapsible=icon]:hidden">Live Site</span></Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarFooter>
-      </Sidebar>
-      
+      <AdminSidebar />
       <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden relative">
         {/* Subtle radial gradient accent */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.04),transparent_50%)] pointer-events-none" />
-        <header className="h-16 flex shrink-0 items-center gap-4 px-6 border-b border-border bg-background/80 backdrop-blur-xl print:hidden">
+        <header className="sticky top-0 z-50 h-16 flex shrink-0 items-center gap-4 px-6 border-b border-border bg-background/80 backdrop-blur-xl print:hidden">
           <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
           <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
           <div className="flex items-center gap-3 shrink-0">
@@ -397,8 +209,10 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 flex flex-col overflow-auto relative w-full">
-          {children}
+        <main className="flex-1 flex flex-col overflow-auto relative w-full p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-screen-2xl">
+            {children}
+          </div>
         </main>
         {isOperationsPage && <QuickComposeButton />}
       </SidebarInset>

@@ -94,7 +94,19 @@ export default function DeveloperClient() {
   }
 
   return (
-    <Tabs defaultValue="endpoints" className="w-full">
+    <div className="space-y-8 pb-32 w-full">
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Developer API Hub
+          </h1>
+          <p className="text-muted-foreground font-medium text-sm mt-1">
+            Manage programmatic access and integration endpoints
+          </p>
+        </div>
+      </div>
+
+      <Tabs defaultValue="endpoints" className="w-full">
       <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
         <TabsTrigger value="endpoints"><Code className="w-4 h-4 mr-2" /> API Endpoints</TabsTrigger>
         <TabsTrigger value="keys"><Key className="w-4 h-4 mr-2" /> API Keys</TabsTrigger>
@@ -313,5 +325,6 @@ export default function DeveloperClient() {
 
       </TabsContent>
     </Tabs>
+    </div>
   );
 }
