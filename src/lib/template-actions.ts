@@ -193,6 +193,19 @@ export async function listGlobalTemplates(
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as MessageTemplate));
 }
 
+/**
+ * Gets adoption statistics for a blueprint across all organizations.
+ */
+export async function getBlueprintAdoptionStats(templateType: string): Promise<{ activeOverrides: number }> {
+  const overridesQuery = adminDb
+    .collection('message_templates')
+    .where('scope', '==', 'organization')
+    .where('templateType', '==', templateType);
+  
+  const snap = await overridesQuery.count().get();
+  return { activeOverrides: snap.data().count };
+}
+
 // ---------------------------------------------------------------------------
 // Org template management
 // ---------------------------------------------------------------------------

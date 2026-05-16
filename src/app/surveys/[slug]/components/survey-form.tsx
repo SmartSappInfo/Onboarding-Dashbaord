@@ -97,7 +97,15 @@ const generateSchema = (elements: SurveyElement[]) => {
         if (q.type === 'multiple-choice' && q.allowOther) {
             schema = z.union([
                 z.string(),
-                z.object({ option: z.string(), other: z.string() }),
+                z.object({ option: z.string(), other: z.string() }).superRefine((val, ctx) => {
+                    if (val.option === '__other__' && (!val.other || val.other.trim().length < 2)) {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            message: "Please specify at least 2 characters for your 'Other' answer.",
+                            path: []
+                        });
+                    }
+                }),
             ]);
         }
 
@@ -118,7 +126,15 @@ const generateSchema = (elements: SurveyElement[]) => {
             schema = z.union([
                 arrSchema,
                 z.object({ options: z.array(z.string()), other: z.string() }).superRefine((val, ctx) => {
-                    const totalSelected = val.options.length + (val.other ? 1 : 0);
+                    if (!!val.other && val.other.trim().length < 2) {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            message: "Please specify at least 2 characters for your 'Other' answer.",
+                            path: []
+                        });
+                    }
+
+                    const totalSelected = val.options.length + (val.other.trim() ? 1 : 0);
                     if (q.minSelections !== undefined && q.minSelections > 0 && totalSelected < q.minSelections) {
                         ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Please select at least ${q.minSelections} option(s).` });
                     }
@@ -489,11 +505,11 @@ const ElementRenderer = ({
                                             </Label>
                                             {isOtherSelected && (
                                                 <div className="pl-[52px] pr-4">
-                                                    <Input
+                                                    <Textarea
                                                         id={`${question.id}-other-input`}
                                                         autoFocus
                                                         placeholder="Please specify..."
-                                                        className="h-11 border border-input bg-background px-3 py-2 text-base shadow-sm focus-visible:ring-1 focus-visible:ring-primary transition-all rounded-lg w-full"
+                                                        className="min-h-[80px] border border-input bg-background px-3 py-2 text-base shadow-sm focus-visible:ring-1 focus-visible:ring-primary transition-all rounded-lg w-full"
                                                         value={otherText}
                                                         onChange={(e) => handleValueChange({ option: '__other__', other: e.target.value }, field.onChange)}
                                                     />
@@ -587,10 +603,10 @@ const ElementRenderer = ({
                                             </Label>
                                             {isOtherChecked && (
                                                 <div className="pl-[52px] pr-4">
-                                                    <Input
+                                                    <Textarea
                                                         id={`${question.id}-other-input`}
                                                         placeholder="Please specify..."
-                                                        className="h-11 border border-input bg-background px-3 py-2 text-base shadow-sm focus-visible:ring-1 focus-visible:ring-primary transition-all rounded-lg w-full"
+                                                        className="min-h-[80px] border border-input bg-background px-3 py-2 text-base shadow-sm focus-visible:ring-1 focus-visible:ring-primary transition-all rounded-lg w-full"
                                                         value={field.value?.other || ''}
                                                         onChange={(e) => handleValueChange({ ...(field.value || {}), other: e.target.value }, field.onChange)}
                                                     />
@@ -1099,12 +1115,22 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
 
                 if (state?.isRequired && isValueEmpty(val, q.type, q.allowOther)) {
                     errorMsg = getRequiredMessage(q.type);
-                } else if (q.type === 'checkboxes' && !isValueEmpty(val, q.type, q.allowOther)) {
-                    const selectedCount = q.allowOther ? (val?.options?.length || 0) + (val?.other ? 1 : 0) : (Array.isArray(val) ? val.length : 0);
-                    if (q.minSelections !== undefined && q.minSelections > 0 && selectedCount < q.minSelections) {
-                        errorMsg = `Please select at least ${q.minSelections} option(s).`;
-                    } else if (q.maxSelections !== undefined && q.maxSelections > 0 && selectedCount > q.maxSelections) {
-                        errorMsg = `Please select no more than ${q.maxSelections} option(s).`;
+                } else {
+                    if (q.allowOther) {
+                        if (q.type === 'multiple-choice' && val?.option === '__other__' && (!val.other || val.other.trim().length < 2)) {
+                            errorMsg = "Please specify at least 2 characters for your 'Other' answer.";
+                        } else if (q.type === 'checkboxes' && !!val?.other && val.other.trim().length < 2) {
+                            errorMsg = "Please specify at least 2 characters for your 'Other' answer.";
+                        }
+                    }
+
+                    if (!errorMsg && q.type === 'checkboxes' && !isValueEmpty(val, q.type, q.allowOther)) {
+                        const selectedCount = q.allowOther ? (val?.options?.length || 0) + (val?.other?.trim() ? 1 : 0) : (Array.isArray(val) ? val.length : 0);
+                        if (q.minSelections !== undefined && q.minSelections > 0 && selectedCount < q.minSelections) {
+                            errorMsg = `Please select at least ${q.minSelections} option(s).`;
+                        } else if (q.maxSelections !== undefined && q.maxSelections > 0 && selectedCount > q.maxSelections) {
+                            errorMsg = `Please select no more than ${q.maxSelections} option(s).`;
+                        }
                     }
                 }
 
@@ -1433,12 +1459,22 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
 
                 if (state?.isRequired && isValueEmpty(val, q.type, q.allowOther)) {
                     errorMsg = getRequiredMessage(q.type);
-                } else if (q.type === 'checkboxes' && !isValueEmpty(val, q.type, q.allowOther)) {
-                    const selectedCount = q.allowOther ? (val?.options?.length || 0) + (val?.other ? 1 : 0) : (Array.isArray(val) ? val.length : 0);
-                    if (q.minSelections !== undefined && q.minSelections > 0 && selectedCount < q.minSelections) {
-                        errorMsg = `Please select at least ${q.minSelections} option(s).`;
-                    } else if (q.maxSelections !== undefined && q.maxSelections > 0 && selectedCount > q.maxSelections) {
-                        errorMsg = `Please select no more than ${q.maxSelections} option(s).`;
+                } else {
+                    if (q.allowOther) {
+                        if (q.type === 'multiple-choice' && val?.option === '__other__' && (!val.other || val.other.trim().length < 2)) {
+                            errorMsg = "Please specify at least 2 characters for your 'Other' answer.";
+                        } else if (q.type === 'checkboxes' && !!val?.other && val.other.trim().length < 2) {
+                            errorMsg = "Please specify at least 2 characters for your 'Other' answer.";
+                        }
+                    }
+
+                    if (!errorMsg && q.type === 'checkboxes' && !isValueEmpty(val, q.type, q.allowOther)) {
+                        const selectedCount = q.allowOther ? (val?.options?.length || 0) + (val?.other?.trim() ? 1 : 0) : (Array.isArray(val) ? val.length : 0);
+                        if (q.minSelections !== undefined && q.minSelections > 0 && selectedCount < q.minSelections) {
+                            errorMsg = `Please select at least ${q.minSelections} option(s).`;
+                        } else if (q.maxSelections !== undefined && q.maxSelections > 0 && selectedCount > q.maxSelections) {
+                            errorMsg = `Please select no more than ${q.maxSelections} option(s).`;
+                        }
                     }
                 }
 
@@ -1502,12 +1538,22 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
 
                     if (state?.isRequired && isValueEmpty(val, q.type, q.allowOther)) {
                         errorMsg = getRequiredMessage(q.type);
-                    } else if (q.type === 'checkboxes' && !isValueEmpty(val, q.type, q.allowOther)) {
-                        const selectedCount = q.allowOther ? (val?.options?.length || 0) + (val?.other ? 1 : 0) : (Array.isArray(val) ? val.length : 0);
-                        if (q.minSelections !== undefined && q.minSelections > 0 && selectedCount < q.minSelections) {
-                            errorMsg = `Please select at least ${q.minSelections} option(s).`;
-                        } else if (q.maxSelections !== undefined && q.maxSelections > 0 && selectedCount > q.maxSelections) {
-                            errorMsg = `Please select no more than ${q.maxSelections} option(s).`;
+                    } else {
+                        if (q.allowOther) {
+                            if (q.type === 'multiple-choice' && val?.option === '__other__' && (!val.other || val.other.trim().length < 2)) {
+                                errorMsg = "Please specify at least 2 characters for your 'Other' answer.";
+                            } else if (q.type === 'checkboxes' && !!val?.other && val.other.trim().length < 2) {
+                                errorMsg = "Please specify at least 2 characters for your 'Other' answer.";
+                            }
+                        }
+
+                        if (!errorMsg && q.type === 'checkboxes' && !isValueEmpty(val, q.type, q.allowOther)) {
+                            const selectedCount = q.allowOther ? (val?.options?.length || 0) + (val?.other?.trim() ? 1 : 0) : (Array.isArray(val) ? val.length : 0);
+                            if (q.minSelections !== undefined && q.minSelections > 0 && selectedCount < q.minSelections) {
+                                errorMsg = `Please select at least ${q.minSelections} option(s).`;
+                            } else if (q.maxSelections !== undefined && q.maxSelections > 0 && selectedCount > q.maxSelections) {
+                                errorMsg = `Please select no more than ${q.maxSelections} option(s).`;
+                            }
                         }
                     }
 

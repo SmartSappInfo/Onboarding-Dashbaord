@@ -2127,6 +2127,17 @@ export const REMINDER_OFFSETS = {
   TIME_UP:         { offsetMinutes: 0,    offsetLabel: 'At event time' },
 } as const;
 
+export interface MessagingTrigger {
+  id: string; // The trigger key (maps to MessageTemplate.templateType)
+  name: string;
+  description: string;
+  category: TemplateCategory;
+  target: TemplateTarget;
+  recipientType: RecipientType;
+  supportedChannels: MessageChannel[];
+}
+
+
 export interface MessageTemplate {
   id: string;
 

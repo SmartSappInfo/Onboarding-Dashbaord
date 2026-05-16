@@ -55,7 +55,7 @@ const platformNavItems: NavItem[] = [
 const controlNavItems: NavItem[] = [
   { href: '/backoffice/features', icon: ToggleRight, label: 'Features & Rollouts', module: 'features' },
   { href: '/backoffice/templates', icon: FileStack, label: 'Templates', module: 'templates' },
-  { href: '/backoffice/messaging/templates', icon: MessageSquare, label: 'Message Templates', module: 'templates' },
+  { href: '/backoffice/messaging/blueprints', icon: MessageSquare, label: 'System Blueprints', module: 'templates' },
   { href: '/backoffice/fields', icon: Database, label: 'Fields & Variables', module: 'fields' },
   { href: '/backoffice/assets', icon: Image, label: 'Assets', module: 'assets' },
   { href: '/backoffice/developer', icon: Code, label: 'Developer & API', module: 'settings' },

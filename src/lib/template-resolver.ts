@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, TemplateCategory, VariableContext } from './types';
 import { renderTemplate } from './template-utils';
+import { MESSAGING_TRIGGERS } from './messaging-triggers';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,6 +69,25 @@ export async function resolveTemplateForOrg(
   }
 
   throw new Error(`No template found for ${category}/${type}`);
+}
+
+// ---------------------------------------------------------------------------
+// resolveActiveTemplate
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves the correct template for a trigger key (templateType) and organization.
+ * Looks up the category from the global registry.
+ */
+export async function resolveActiveTemplate(
+  triggerKey: string,
+  orgId: string,
+): Promise<MessageTemplate> {
+  const trigger = MESSAGING_TRIGGERS.find(t => t.id === triggerKey);
+  if (!trigger) {
+    throw new Error(`Unknown trigger: ${triggerKey}`);
+  }
+  return resolveTemplateForOrg(trigger.category, triggerKey, orgId);
 }
 
 // ---------------------------------------------------------------------------

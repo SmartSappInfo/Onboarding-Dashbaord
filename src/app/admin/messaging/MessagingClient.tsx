@@ -179,6 +179,15 @@ export default function MessagingClient() {
             border: 'hover:border-purple-500/50'
         },
         {
+            title: 'Messaging Triggers',
+            description: 'Map system events to default messages and manage overrides.',
+            icon: Zap,
+            href: '/admin/messaging/triggers',
+            color: 'text-amber-500',
+            bg: 'bg-amber-500/10',
+            border: 'hover:border-amber-500/50'
+        },
+        {
             title: 'Sender Profiles',
             description: 'Manage authorized SMS Sender IDs and verified Email identities.',
             icon: Fingerprint,

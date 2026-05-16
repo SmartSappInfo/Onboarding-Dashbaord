@@ -97,6 +97,7 @@ interface TemplateWorkshopProps {
         recipientType?: MessageTemplate['recipientType'];
         templateType?: string;
     };
+    mode?: 'org_override' | 'superadmin_blueprint';
 }
 
 export function TemplateWorkshop({
@@ -110,7 +111,8 @@ export function TemplateWorkshop({
     onSave,
     onCancel,
     isSaving,
-    initialContext
+    initialContext,
+    mode = 'org_override'
 }: TemplateWorkshopProps) {
     const { toast } = useToast();
     const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
@@ -340,6 +342,16 @@ export function TemplateWorkshop({
                     </Button>
                 </div>
             </div>
+
+            {mode === 'superadmin_blueprint' && (
+                <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-8 py-3 flex items-center justify-center gap-3 shadow-sm z-10 relative">
+                    <Sparkles className="h-4 w-4 text-emerald-500" />
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="uppercase tracking-widest opacity-80 mr-2">Superadmin Mode:</span>
+                        You are editing a Global System Blueprint. Changes will instantly deploy to all organizations unless overridden.
+                    </p>
+                </div>
+            )}
 
             <div className="flex-1 relative overflow-hidden">
                 <AnimatePresence mode="wait">

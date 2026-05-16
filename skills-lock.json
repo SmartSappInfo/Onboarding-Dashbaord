@@ -82,6 +82,12 @@
       "skillPath": "skills/executing-plans/SKILL.md",
       "computedHash": "2f709d1a2c7564f8ce6a9bb707e7f5451117ba80f8e8e2302662c29bc61246a6"
     },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "9e1c8b3103f92fa8092568a44fe64858de7c5c9dc65ce4bea8f168080e889cfd"
+    },
     "finishing-a-development-branch": {
       "source": "obra/superpowers",
       "sourceType": "github",
@@ -145,6 +151,18 @@
       "sourceType": "github",
       "skillPath": "skills/requesting-code-review/SKILL.md",
       "computedHash": "246e65cd72a7e360987d94e6c61564ce6d71c6361d1784d529d70e4cbbe8522d"
+    },
+    "resend": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "skillPath": "skills/resend/SKILL.md",
+      "computedHash": "936851c3e22e6de1d416134a9cd170d7540ddebe5a1c0113eef66537c843c6ed"
+    },
+    "resend-webhooks": {
+      "source": "hookdeck/webhook-skills",
+      "sourceType": "github",
+      "skillPath": "skills/resend-webhooks/SKILL.md",
+      "computedHash": "193b849f4e1b4e6b5ac7b827d3d2db78ca0a546390eed7c4e78332afda79fa48"
     },
     "subagent-driven-development": {
       "source": "obra/superpowers",
