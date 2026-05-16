@@ -18,6 +18,7 @@
     "test:emulator": "firebase emulators:exec --only firestore 'vitest run'",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:pre-deploy": "playwright test src/e2e/survey-routing.spec.ts",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:run",
     "migrate:tags": "ts-node --project tsconfig.json src/app/seeds/migrate-tags.ts",
     "migrate:entity-tags": "tsx scripts/migrate-entity-tags.ts",

@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { MultiSelect } from '@/components/ui/multi-select';
-import AttributionQRSheet from './attribution-qr-sheet';
+import UnifiedQRSheet from '@/components/qr-studio/unified-qr-sheet';
 import { useUser } from '@/firebase';
 
 export default function Step4Publish() {
@@ -366,12 +366,13 @@ export default function Step4Publish() {
 
             {/* Attribution QR Sheet */}
             {qrSheetUser && (
-                <AttributionQRSheet
+                <UnifiedQRSheet
                     open={!!qrSheetUser}
                     onOpenChange={(open) => !open && setQrSheetUser(null)}
                     url={getFullUrl(qrSheetUser.id)}
-                    userName={qrSheetUser.name}
-                    surveyTitle={surveyTitle}
+                    resourceName={qrSheetUser.name}
+                    resourceContext={surveyTitle}
+                    resourceType="survey"
                     workspaceId={workspaceIds[0] || activeWorkspaceId || ''}
                     organizationId={organizationId || activeOrganizationId || ''}
                     currentUser={{

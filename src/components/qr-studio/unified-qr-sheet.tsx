@@ -11,33 +11,36 @@ import { cn } from '@/lib/utils';
 import { downloadQR } from '@/app/admin/qr-studio/components/qr-preview';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { createQRCode, getQRCodeByUrl, updateQRCode, updateQRShortPath } from '@/lib/qr-actions';
-import type { QRDesign } from '@/lib/types';
+import type { QRDesign, QRCodeType } from '@/lib/types';
 import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
 import QRDesigner from '@/app/admin/qr-studio/components/designer/qr-designer';
 
-interface AttributionQRSheetProps {
+interface UnifiedQRSheetProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     url: string;
-    userName: string;
-    surveyTitle: string;
+    resourceName: string; // The specific entity name (e.g. Meeting Title, User Name)
+    resourceContext?: string; // Optional context (e.g. "on Survey X")
+    resourceType: QRCodeType;
     workspaceId: string;
     organizationId: string;
     currentUser: { userId: string; name: string; email: string };
 }
 
-export default function AttributionQRSheet({
+export default function UnifiedQRSheet({
     open,
     onOpenChange,
     url,
-    userName,
-    surveyTitle,
+    resourceName,
+    resourceContext = '',
+    resourceType,
     workspaceId,
     organizationId,
     currentUser,
-}: AttributionQRSheetProps) {
+}: UnifiedQRSheetProps) {
     const { toast } = useToast();
-    const [name, setName] = React.useState(`${userName} — ${surveyTitle}`);
+    const defaultName = resourceContext ? `${resourceName} — ${resourceContext}` : resourceName;
+    const [name, setName] = React.useState(defaultName);
     const [mode, setMode] = React.useState<'dynamic' | 'static'>('dynamic');
     const [design, setDesign] = React.useState<QRDesign>(DEFAULT_QR_DESIGN);
     const [shortPath, setShortPath] = React.useState('');
@@ -75,7 +78,7 @@ export default function AttributionQRSheet({
                             setOriginalShortPath('');
                         }
                     } else {
-                        setName(`${userName} — ${surveyTitle}`);
+                        setName(defaultName);
                         setMode('dynamic');
                         setDesign(DEFAULT_QR_DESIGN);
                         setExistingQrId(null);
@@ -93,7 +96,7 @@ export default function AttributionQRSheet({
         fetchExisting();
 
         return () => { isMounted = false; };
-    }, [open, url, workspaceId, organizationId, userName, surveyTitle]);
+    }, [open, url, workspaceId, organizationId, defaultName]);
 
     const handleDownload = async (format: 'png' | 'jpg' | 'svg') => {
         try {
@@ -133,9 +136,9 @@ export default function AttributionQRSheet({
                     organizationId,
                     workspaceId,
                     name,
-                    description: `Attribution QR for ${userName} on "${surveyTitle}"`,
+                    description: `QR Code for ${resourceName} ${resourceContext ? `(${resourceContext})` : ''}`.trim(),
                     mode,
-                    type: 'survey',
+                    type: resourceType,
                     destination: { url },
                     design,
                     tracking: { enabled: mode === 'dynamic' },
@@ -171,7 +174,7 @@ export default function AttributionQRSheet({
                             <div className="text-left">
                                 <SheetTitle className="text-sm font-semibold tracking-tight">QR Studio Designer</SheetTitle>
                                 <SheetDescription className="text-xs font-medium text-muted-foreground tracking-tight">
-                                    Customizing for: <span className="font-bold text-foreground">{userName}</span>
+                                    Customizing for: <span className="font-bold text-foreground">{resourceName}</span>
                                 </SheetDescription>
                             </div>
                         </div>

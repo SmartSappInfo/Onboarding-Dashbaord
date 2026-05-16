@@ -612,6 +612,44 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
  <Label htmlFor={`allowOther-${questionIndex}`} className="text-sm font-semibold">Allow "Other" option</Label>
         </div>
       )}
+      {questionType === 'checkboxes' && (
+        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50 mt-4">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Min Selections</Label>
+            <Controller
+              name={`elements.${questionIndex}.minSelections`}
+              control={control}
+              render={({ field }) => (
+                <Input 
+                  type="number" 
+                  placeholder="No minimum" 
+                  min={0}
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                  className="rounded-xl h-10 bg-background/50 border-border/50"
+                />
+              )}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Max Selections</Label>
+            <Controller
+              name={`elements.${questionIndex}.maxSelections`}
+              control={control}
+              render={({ field }) => (
+                <Input 
+                  type="number" 
+                  placeholder="No maximum" 
+                  min={0}
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                  className="rounded-xl h-10 bg-background/50 border-border/50"
+                />
+              )}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -54,7 +54,8 @@ import {
     Mail,
     Cog,
     QrCode,
-    Code
+    Code,
+    Unplug
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
@@ -244,6 +245,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: can('management', 'fields', 'view') },
     { href: wrapHref('/admin/settings'), icon: Settings, label: 'System', visible: can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/settings/developer'), icon: Code, label: 'Developer API', visible: can('management', 'systemSettings', 'view') },
+    { href: wrapHref('/admin/webhooks'), icon: Unplug, label: 'Webhooks', visible: can('management', 'systemSettings', 'view') },
     { href: '/backoffice', icon: Cog, label: 'Backoffice', visible: hasBackofficeAccess, external: true },
   ];
 

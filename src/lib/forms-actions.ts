@@ -311,7 +311,9 @@ export async function processFormSubmissionAction(input: {
             workspaceId: form.workspaceId,
             organizationId: form.organizationId,
             entityId: input.entityId,
-            formTitle: form.title
+            trigger: 'FORM_SUBMITTED' as any,
+            source: 'form_engine',
+            description: `Webhook dispatched for form "${form.title}"`
           });
         }
       }

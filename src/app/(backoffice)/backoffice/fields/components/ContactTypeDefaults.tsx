@@ -9,14 +9,19 @@ import { getSystemContactTypes } from '@/lib/contact-type-defaults';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import type { ContactTypeEntry, EntityType } from '@/lib/types';
 
-export default function ContactTypeDefaults() {
+export default function ContactTypeDefaults({ initialData }: { initialData?: ContactTypeEntry[] }) {
   const { profile, can } = useBackoffice();
   const [activeEntity, setActiveEntity] = React.useState<EntityType>('institution');
-  const [types, setTypes] = React.useState<ContactTypeEntry[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [types, setTypes] = React.useState<ContactTypeEntry[]>(initialData || []);
+  const [isLoading, setIsLoading] = React.useState(!initialData);
+  const [isInitialLoad, setIsInitialLoad] = React.useState(!!initialData);
   const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
+    if (isInitialLoad && activeEntity === 'institution') {
+      setIsInitialLoad(false);
+      return;
+    }
     async function load() {
       setIsLoading(true);
       const res = await getContactTypeDefaults(activeEntity);

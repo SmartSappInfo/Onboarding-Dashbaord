@@ -192,6 +192,48 @@ export function getContactVariables(
   return vars;
 }
 
+/**
+ * Resolves variables for a specific recipient based on target email or phone.
+ * If a matching contact is found, returns their details as recipient_*.
+ * Falls back to the primary contact if no match is found.
+ */
+export function getRecipientContactVariables(
+  entity: Partial<Entity> & { entityContacts?: EntityContact[] },
+  targetEmailOrPhone?: string
+): Record<string, string> {
+  const vars: Record<string, string> = {};
+  const contacts = resolveEntityContacts(entity);
+  const sortedContacts = [...contacts].sort((a, b) => a.order - b.order);
+  const primary = contacts.find((c) => c.isPrimary) || sortedContacts[0];
+
+  let targetContact = primary;
+
+  if (targetEmailOrPhone) {
+    const target = targetEmailOrPhone.toLowerCase().trim();
+    const targetDigits = target.replace(/\D/g, '');
+    
+    const match = contacts.find(c => {
+      const emailMatch = c.email && c.email.toLowerCase().trim() === target;
+      const phoneMatch = targetDigits && c.phone && c.phone.replace(/\D/g, '') === targetDigits;
+      return emailMatch || phoneMatch;
+    });
+    
+    if (match) {
+      targetContact = match;
+    }
+  }
+
+  if (targetContact) {
+    vars['recipient_name'] = targetContact.name || '';
+    vars['recipient_email'] = targetContact.email || '';
+    vars['recipient_phone'] = targetContact.phone || '';
+    vars['recipient_role'] = targetContact.typeLabel || targetContact.typeKey || '';
+    vars['recipient_first_name'] = (targetContact.name || '').split(' ')[0] || '';
+  }
+
+  return vars;
+}
+
 // ─── Enforcement ──────────────────────────────────────────────────────
 
 /**

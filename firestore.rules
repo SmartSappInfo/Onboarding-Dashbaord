@@ -569,8 +569,25 @@ service cloud.firestore {
     match /campaign_sessions/{sId} {
       allow read, list, create, update: if true;
     }
-    match /webhooks/{wId} {
-      allow read, write: if isAuthorized();
+    match /webhooks/{webhookId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() || 
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
     }
     match /messaging_variables/{vId} {
       allow read, write: if isAuthorized();

@@ -1167,6 +1167,7 @@ export interface MeetingFacilitator {
   userId?: string; // If workspace_user
   name: string;
   role?: string;
+  bio?: string; // Per-meeting bio — auto-filled from workspace user profile, manually editable
   email?: string;
   phone?: string;
   image?: string; // photoURL or custom uploaded image
@@ -1226,6 +1227,14 @@ export interface MeetingMessagingConfig {
   postEventAbsenteeEnabled: boolean;
   postEventAbsenteeEmailTemplateId?: string;
   postEventAbsenteeSmsTemplateId?: string;
+
+  // Outbound Registration Webhook
+  /** When enabled, a signed JSON POST is sent to registrationWebhookUrl on every new registration */
+  registrationWebhookEnabled?: boolean;
+  /** HTTPS endpoint that will receive the registration webhook payload */
+  registrationWebhookUrl?: string;
+  /** Optional HMAC-SHA256 secret used to sign payloads via X-SmartSapp-Signature header */
+  registrationWebhookSecret?: string;
 }
 
 export interface MeetingRegistrationField {
@@ -1534,6 +1543,8 @@ export interface SurveyQuestion extends SurveyElement {
   allowOther?: boolean;
   minLength?: number;
   maxLength?: number;
+  minSelections?: number;
+  maxSelections?: number;
   enableScoring?: boolean;
   optionScores?: number[];
   yesScore?: number;
@@ -1958,10 +1969,19 @@ export interface AutomationJob {
   status: 'pending' | 'processing' | 'completed' | 'failed';
 }
 
+export type WebhookType = 'inbound' | 'outbound';
+
 export interface Webhook {
   id: string;
+  organizationId: string;
+  workspaceId?: string;
   name: string;
-  url: string;
+  type: WebhookType;
+  url: string; // Destination for outbound, source info for inbound
+  trigger?: AutomationTrigger; // For outbound webhooks
+  status: 'active' | 'paused' | 'failed';
+  secret?: string; // For signature verification
+  lastTriggeredAt?: string;
   createdAt: string;
   updatedAt: string;
   createdBy: string;

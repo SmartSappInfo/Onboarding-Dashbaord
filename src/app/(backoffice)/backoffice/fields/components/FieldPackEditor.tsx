@@ -7,10 +7,10 @@ import type { PlatformFieldPack } from '@/lib/backoffice/backoffice-types';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import FieldPackDialog from './FieldPackDialog';
 
-export default function FieldPackEditor() {
+export default function FieldPackEditor({ initialData }: { initialData?: PlatformFieldPack[] }) {
   const { can } = useBackoffice();
-  const [packs, setPacks] = React.useState<PlatformFieldPack[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [packs, setPacks] = React.useState<PlatformFieldPack[]>(initialData || []);
+  const [isLoading, setIsLoading] = React.useState(!initialData);
   const [selectedPack, setSelectedPack] = React.useState<PlatformFieldPack | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
@@ -24,8 +24,9 @@ export default function FieldPackEditor() {
   }, []);
 
   React.useEffect(() => {
+    if (initialData) return;
     load();
-  }, [load]);
+  }, [load, initialData]);
 
   const handleCreate = () => {
     setSelectedPack(null);

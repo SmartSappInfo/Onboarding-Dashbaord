@@ -328,8 +328,14 @@ export default function MeetingsHubClient() {
           <DropdownMenuContent align="end">
  <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3">Management</DropdownMenuLabel>
             <DropdownMenuItem asChild>
+                <Link href={`/admin/meetings/${meeting.id}`}>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    <span>View Details</span>
+                </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
                 <Link href={`/admin/meetings/${meeting.id}/edit`}>
- <Edit className="mr-2 h-4 w-4" />
+                    <Edit className="mr-2 h-4 w-4" />
                     <span>Edit Architecture</span>
                 </Link>
             </DropdownMenuItem>
@@ -469,7 +475,7 @@ export default function MeetingsHubClient() {
                                         />
                                     </TableCell>
                                     <TableCell className="font-semibold text-sm text-foreground tracking-tight">
-                                        <Link href={`/admin/meetings/${meeting.id}/edit`} className="hover:text-primary hover:underline transition-colors">
+                                        <Link href={`/admin/meetings/${meeting.id}`} className="hover:text-primary hover:underline transition-colors">
                                             {safeEntityName}
                                         </Link>
                                     </TableCell>

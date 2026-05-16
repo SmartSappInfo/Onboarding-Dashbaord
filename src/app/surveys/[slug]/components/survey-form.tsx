@@ -103,14 +103,29 @@ const generateSchema = (elements: SurveyElement[]) => {
 
         // Checkboxes without allowOther stores string[]
         if (q.type === 'checkboxes' && !q.allowOther) {
-            schema = z.array(z.string());
+            let arrSchema = z.array(z.string());
+            if (q.minSelections !== undefined && q.minSelections > 0) arrSchema = arrSchema.min(q.minSelections, `Please select at least ${q.minSelections} option(s).`);
+            if (q.maxSelections !== undefined && q.maxSelections > 0) arrSchema = arrSchema.max(q.maxSelections, `Please select no more than ${q.maxSelections} option(s).`);
+            schema = arrSchema;
         }
 
         // Checkboxes with allowOther stores {options: string[], other: string}
         if (q.type === 'checkboxes' && q.allowOther) {
+            let arrSchema = z.array(z.string());
+            if (q.minSelections !== undefined && q.minSelections > 0) arrSchema = arrSchema.min(q.minSelections, `Please select at least ${q.minSelections} option(s).`);
+            if (q.maxSelections !== undefined && q.maxSelections > 0) arrSchema = arrSchema.max(q.maxSelections, `Please select no more than ${q.maxSelections} option(s).`);
+            
             schema = z.union([
-                z.array(z.string()),
-                z.object({ options: z.array(z.string()), other: z.string() }),
+                arrSchema,
+                z.object({ options: z.array(z.string()), other: z.string() }).superRefine((val, ctx) => {
+                    const totalSelected = val.options.length + (val.other ? 1 : 0);
+                    if (q.minSelections !== undefined && q.minSelections > 0 && totalSelected < q.minSelections) {
+                        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Please select at least ${q.minSelections} option(s).` });
+                    }
+                    if (q.maxSelections !== undefined && q.maxSelections > 0 && totalSelected > q.maxSelections) {
+                        ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Please select no more than ${q.maxSelections} option(s).` });
+                    }
+                })
             ]);
         }
 
@@ -503,19 +518,25 @@ const ElementRenderer = ({
                                     optionsColumns === 4 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                                 );
 
+                                const currentSelectedCount = question.allowOther ? ((field.value?.options?.length || 0) + ((field.value?.other || '').trim() ? 1 : 0)) : (Array.isArray(field.value) ? field.value.length : 0);
+                                const isMaxReached = question.maxSelections !== undefined && question.maxSelections > 0 && currentSelectedCount >= question.maxSelections;
+
                                 return (
                                 <div className={cn(gridColsClass, textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => {
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
+                                        const isDisabled = !isChecked && isMaxReached;
                                         return (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
                                                 "flex cursor-pointer items-center gap-4 rounded-xl py-2 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
                                                 isChecked ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                                isDisabled && "opacity-50 cursor-not-allowed hover:bg-muted/30",
                                                 errors[question.id] && "bg-destructive/5"
                                             )}>
                                                 <Checkbox
                                                     id={`${question.id}-${opt}`}
                                                     checked={isChecked}
+                                                    disabled={isDisabled}
                                                     onCheckedChange={(checked) => {
                                                         if (question.allowOther) {
                                                             const currentOptions = field.value?.options || [];
@@ -534,16 +555,21 @@ const ElementRenderer = ({
                                             </Label>
                                         )
                                     })}
-                                    {question.allowOther && (
+                                    {question.allowOther && (() => {
+                                        const isOtherChecked = !!(field.value?.other || '');
+                                        const isOtherDisabled = !isOtherChecked && isMaxReached;
+                                        return (
                                         <div className={cn(
                                             "flex flex-col rounded-xl transition-all",
-                                            (field.value?.other || '') ? "bg-primary/5 ring-1 ring-primary/20 pb-4" : "bg-muted/30 hover:bg-muted/50",
+                                            isOtherChecked ? "bg-primary/5 ring-1 ring-primary/20 pb-4" : "bg-muted/30 hover:bg-muted/50",
+                                            isOtherDisabled && "opacity-50 cursor-not-allowed hover:bg-muted/30",
                                             errors[question.id] && "bg-destructive/5"
                                         )}>
                                             <Label htmlFor={`${question.id}-other-checkbox`} className="flex items-center gap-4 cursor-pointer py-3 px-4 w-full">
                                                 <Checkbox
                                                     id={`${question.id}-other-checkbox`}
-                                                    checked={!!(field.value?.other || '')}
+                                                    checked={isOtherChecked}
+                                                    disabled={isOtherDisabled}
                                                     onCheckedChange={(checked) => {
                                                         const currentVal = field.value || { options: [], other: '' };
                                                         const currentOptions = currentVal.options || [];
@@ -559,7 +585,7 @@ const ElementRenderer = ({
                                                 />
                                                 <span className="text-base font-medium">Other (please specify)</span>
                                             </Label>
-                                            {!!(field.value?.other || '') && (
+                                            {isOtherChecked && (
                                                 <div className="pl-[52px] pr-4">
                                                     <Input
                                                         id={`${question.id}-other-input`}
@@ -571,7 +597,8 @@ const ElementRenderer = ({
                                                 </div>
                                             )}
                                         </div>
-                                    )}
+                                        )
+                                    })()}
                                 </div>
                             )}}
                         />
@@ -1066,9 +1093,23 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
         const missing: { id: string, label: string, pageIndex: number }[] = [];
         survey.elements.filter(isQuestion).forEach(q => {
             const state = elementStates[q.id];
-            if (state?.isVisible && state?.isRequired) {
-                if (isValueEmpty(data[q.id], q.type, q.allowOther)) {
-                    form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) });
+            if (state?.isVisible) {
+                let errorMsg: string | null = null;
+                const val = data[q.id];
+
+                if (state?.isRequired && isValueEmpty(val, q.type, q.allowOther)) {
+                    errorMsg = getRequiredMessage(q.type);
+                } else if (q.type === 'checkboxes' && !isValueEmpty(val, q.type, q.allowOther)) {
+                    const selectedCount = q.allowOther ? (val?.options?.length || 0) + (val?.other ? 1 : 0) : (Array.isArray(val) ? val.length : 0);
+                    if (q.minSelections !== undefined && q.minSelections > 0 && selectedCount < q.minSelections) {
+                        errorMsg = `Please select at least ${q.minSelections} option(s).`;
+                    } else if (q.maxSelections !== undefined && q.maxSelections > 0 && selectedCount > q.maxSelections) {
+                        errorMsg = `Please select no more than ${q.maxSelections} option(s).`;
+                    }
+                }
+
+                if (errorMsg) {
+                    form.setError(q.id, { type: 'manual', message: errorMsg });
                     const pageIdx = pages.findIndex(p => p.some(el => el.id === q.id));
                     const cleanTitle = q.title.replace(/<[^>]*>?/gm, '').trim();
                     missing.push({ id: q.id, label: cleanTitle || 'Question', pageIndex: pageIdx });
@@ -1382,13 +1423,32 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
         if (pageSection?.validateBeforeNext) {
             const questionsOnPage = currentElements.filter(isQuestion);
             questionsOnPage.forEach(q => form.clearErrors(q.id));
-            const invalidQuestionsOnPage = questionsOnPage.filter(q => {
+            const invalidQuestionsOnPage: { q: SurveyQuestion, errorMsg: string }[] = [];
+            questionsOnPage.forEach(q => {
                 const state = elementStates[q.id];
-                if (!state?.isVisible || !state?.isRequired) return false;
-                return isValueEmpty(formData[q.id], q.type, q.allowOther);
+                if (!state?.isVisible) return;
+                
+                let errorMsg: string | null = null;
+                const val = formData[q.id];
+
+                if (state?.isRequired && isValueEmpty(val, q.type, q.allowOther)) {
+                    errorMsg = getRequiredMessage(q.type);
+                } else if (q.type === 'checkboxes' && !isValueEmpty(val, q.type, q.allowOther)) {
+                    const selectedCount = q.allowOther ? (val?.options?.length || 0) + (val?.other ? 1 : 0) : (Array.isArray(val) ? val.length : 0);
+                    if (q.minSelections !== undefined && q.minSelections > 0 && selectedCount < q.minSelections) {
+                        errorMsg = `Please select at least ${q.minSelections} option(s).`;
+                    } else if (q.maxSelections !== undefined && q.maxSelections > 0 && selectedCount > q.maxSelections) {
+                        errorMsg = `Please select no more than ${q.maxSelections} option(s).`;
+                    }
+                }
+
+                if (errorMsg) {
+                    invalidQuestionsOnPage.push({ q, errorMsg });
+                }
             });
+
             if (invalidQuestionsOnPage.length > 0) {
-                invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) }));
+                invalidQuestionsOnPage.forEach(({ q, errorMsg }) => form.setError(q.id, { type: 'manual', message: errorMsg }));
                 return; 
             }
         }
@@ -1432,13 +1492,32 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             const pageSection = currentElements[0]?.type === 'section' ? (currentElements[0] as SurveyLayoutBlock) : null;
             if (pageSection?.validateBeforeNext) {
                 const formData = form.getValues();
-                const invalidQuestionsOnPage = currentElements.filter(isQuestion).filter(q => {
+                const invalidQuestionsOnPage: { q: SurveyQuestion, errorMsg: string }[] = [];
+                currentElements.filter(isQuestion).forEach(q => {
                     const state = elementStates[q.id];
-                    if (!state?.isVisible || !state?.isRequired) return false;
-                    return isValueEmpty(formData[q.id], q.type, q.allowOther);
+                    if (!state?.isVisible) return;
+                    
+                    let errorMsg: string | null = null;
+                    const val = formData[q.id];
+
+                    if (state?.isRequired && isValueEmpty(val, q.type, q.allowOther)) {
+                        errorMsg = getRequiredMessage(q.type);
+                    } else if (q.type === 'checkboxes' && !isValueEmpty(val, q.type, q.allowOther)) {
+                        const selectedCount = q.allowOther ? (val?.options?.length || 0) + (val?.other ? 1 : 0) : (Array.isArray(val) ? val.length : 0);
+                        if (q.minSelections !== undefined && q.minSelections > 0 && selectedCount < q.minSelections) {
+                            errorMsg = `Please select at least ${q.minSelections} option(s).`;
+                        } else if (q.maxSelections !== undefined && q.maxSelections > 0 && selectedCount > q.maxSelections) {
+                            errorMsg = `Please select no more than ${q.maxSelections} option(s).`;
+                        }
+                    }
+
+                    if (errorMsg) {
+                        invalidQuestionsOnPage.push({ q, errorMsg });
+                    }
                 });
+
                 if (invalidQuestionsOnPage.length > 0) {
-                    invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) }));
+                    invalidQuestionsOnPage.forEach(({ q, errorMsg }) => form.setError(q.id, { type: 'manual', message: errorMsg }));
                     toast({ variant: 'destructive', title: 'Action Required', description: 'Please complete the required fields in this section.' });
                     return;
                 }

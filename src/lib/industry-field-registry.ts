@@ -131,9 +131,9 @@ export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[
   ],
   SaaS: [
     {
-      slug: 'company_metrics',
-      name: 'Company Metrics',
-      description: 'Scale and sector parameters',
+      slug: 'saas_operations',
+      name: 'SaaS Operations',
+      description: 'Scale, financial, and operational parameters',
       entityTypes: ['institution'],
       order: 10,
       fields: [
@@ -333,6 +333,12 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
       { name: 'Organization Name', variableName: 'organization_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the organization' },
       { name: 'Workspace Name', variableName: 'workspace_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the current workspace' },
       { name: 'User Name', variableName: 'user_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the logged-in user sending the message' },
+      // Recipient-aware variables
+      { name: 'Recipient Name', variableName: 'recipient_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the specific contact receiving the message' },
+      { name: 'Recipient Email', variableName: 'recipient_email', type: 'email', compatibilityScope: ['common'], helpText: 'Email of the specific contact receiving the message' },
+      { name: 'Recipient Phone', variableName: 'recipient_phone', type: 'phone', compatibilityScope: ['common'], helpText: 'Phone of the specific contact receiving the message' },
+      { name: 'Recipient Role', variableName: 'recipient_role', type: 'short_text', compatibilityScope: ['common'], helpText: 'Role of the specific contact receiving the message' },
+      { name: 'Recipient First Name', variableName: 'recipient_first_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'First name of the specific contact receiving the message' },
     ]
   },
 
@@ -454,4 +460,34 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
       { name: 'ID', variableName: 'id', type: 'short_text', compatibilityScope: ['common'], helpText: 'Entity identifier' },
     ]
   },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Marketplace Field Packs
+//
+// These are not seeded by default but are available for users to install
+// from the Field Group Marketplace.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const MARKETPLACE_FIELD_PACKS: IndustryGroupDef[] = [
+  {
+    slug: 'online_presence',
+    name: 'Online Presence',
+    description: 'Digital footprint and social media profiles',
+    entityTypes: ['institution', 'person', 'family'],
+    order: 100,
+    fields: [
+      { name: 'Website', variableName: 'website', type: 'url', compatibilityScope: ['common'] },
+      { name: 'Digital Address', variableName: 'digital_address', type: 'short_text', compatibilityScope: ['common'] },
+      { name: 'Google Map Location', variableName: 'google_map_location', type: 'url', compatibilityScope: ['common'] },
+      { name: 'Google Business Profile', variableName: 'google_business_profile', type: 'url', compatibilityScope: ['common'] },
+      { name: 'LinkedIn', variableName: 'linkedin', type: 'url', compatibilityScope: ['common'] },
+      { name: 'Facebook', variableName: 'facebook', type: 'url', compatibilityScope: ['common'] },
+      { name: 'X (Twitter)', variableName: 'x_twitter', type: 'url', compatibilityScope: ['common'] },
+      { name: 'Instagram', variableName: 'instagram', type: 'url', compatibilityScope: ['common'] },
+      { name: 'TikTok', variableName: 'tiktok', type: 'url', compatibilityScope: ['common'] },
+      { name: 'YouTube', variableName: 'youtube', type: 'url', compatibilityScope: ['common'] },
+      { name: 'WhatsApp', variableName: 'whatsapp', type: 'phone', compatibilityScope: ['common'] },
+    ]
+  }
 ];

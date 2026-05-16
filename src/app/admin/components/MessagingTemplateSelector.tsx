@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import dynamic from 'next/dynamic';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SmartTemplateDropdown } from './SmartTemplateDropdown';
 import type { TemplateCategory, RecipientType, MessageChannel } from '@/lib/types';
@@ -72,16 +72,31 @@ export function MessagingTemplateSelector({
             </div>
             
             {value && (
-                <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-9 w-9 shrink-0 rounded-xl border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
-                    onClick={handleEdit}
-                    title="Preview & Edit Template"
-                >
-                    <Pencil className="h-3.5 w-3.5" />
-                </Button>
+                <>
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-9 w-9 shrink-0 rounded-xl border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
+                        onClick={handleEdit}
+                        title="Preview & Edit Template"
+                    >
+                        <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-9 w-9 shrink-0 rounded-xl border-destructive/20 hover:bg-destructive/5 hover:text-destructive transition-colors"
+                        onClick={() => {
+                            onValueChange('');
+                            if (onSelect) onSelect(null);
+                        }}
+                        title="Clear Selection"
+                    >
+                        <X className="h-3.5 w-3.5" />
+                    </Button>
+                </>
             )}
             
             <Button 

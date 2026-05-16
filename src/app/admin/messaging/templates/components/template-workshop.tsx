@@ -2,20 +2,20 @@
 
 import * as React from 'react';
 import dynamic from 'next/dynamic';
-import { 
-    Layout, 
-    Settings2, 
-    MonitorPlay, 
-    Check, 
-    ArrowRight, 
-    Loader2, 
-    Save, 
-    Database, 
-    PlusCircle, 
-    Eye, 
-    Maximize2, 
-    Minimize2, 
-    Monitor, 
+import {
+    Layout,
+    Settings2,
+    MonitorPlay,
+    Check,
+    ArrowRight,
+    Loader2,
+    Save,
+    Database,
+    PlusCircle,
+    Eye,
+    Maximize2,
+    Minimize2,
+    Monitor,
     Smartphone as PhoneIcon,
     Code,
     Sparkles,
@@ -114,7 +114,7 @@ export function TemplateWorkshop({
 }: TemplateWorkshopProps) {
     const { toast } = useToast();
     const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
-    
+
     const [step, setStep] = React.useState(1);
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
@@ -168,7 +168,7 @@ export function TemplateWorkshop({
         }
     }, [blocks, channel, contentMode, editorMode, body]);
 
-    const handleAddBlock = (type: MessageBlock['type'], variant?: 'h1'|'h2'|'h3') => {
+    const handleAddBlock = (type: MessageBlock['type'], variant?: 'h1' | 'h2' | 'h3') => {
         const id = `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
         const newBlock: MessageBlock = { id, type, title: '', content: '', variant, style: { textAlign: 'left', variant: 'default' } };
         if (type === 'list') { newBlock.listStyle = 'unordered'; newBlock.items = ['Item 1']; }
@@ -304,55 +304,55 @@ export function TemplateWorkshop({
     };
 
     return (
- <div className="flex-1 flex flex-col overflow-hidden text-left">
- <div className="bg-background border-b pt-6 shrink-0 flex items-center justify-between px-8">
- <div className="flex justify-center items-center mb-8 max-w-2xl mx-auto px-4">
+        <div className="flex-1 flex flex-col overflow-hidden text-left">
+            <div className="bg-background border-b pt-6 shrink-0 flex items-center justify-between px-8">
+                <div className="flex justify-center items-center mb-8 max-w-2xl mx-auto px-4">
                     {[
                         { n: 1, label: 'Configuration', icon: Settings2 },
                         { n: 2, label: 'Workshop', icon: Layout },
                         { n: 3, label: 'Simulation', icon: MonitorPlay }
                     ].map((s, i) => (
                         <React.Fragment key={s.n}>
- <button type="button" onClick={() => (s.n < step || name) && setStep(s.n)} className="flex flex-col items-center group outline-none">
- <div className={cn('flex items-center justify-center w-10 h-10 rounded-2xl border-2 transition-all duration-300 shadow-sm', step > s.n ? 'bg-primary border-primary text-white' : step === s.n ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground')}>
- {step > s.n ? <Check className="w-5 h-5" /> : <s.icon className="w-5 h-5" />}
+                            <button type="button" onClick={() => (s.n < step || name) && setStep(s.n)} className="flex flex-col items-center group outline-none">
+                                <div className={cn('flex items-center justify-center w-10 h-10 rounded-2xl border-2 transition-all duration-300 shadow-sm', step > s.n ? 'bg-primary border-primary text-white' : step === s.n ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground')}>
+                                    {step > s.n ? <Check className="w-5 h-5" /> : <s.icon className="w-5 h-5" />}
                                 </div>
- <p className={cn('mt-3 text-[10px] font-semibold transition-colors', step >= s.n ? 'text-primary' : 'text-muted-foreground opacity-60')}>{s.label}</p>
+                                <p className={cn('mt-3 text-[10px] font-semibold transition-colors', step >= s.n ? 'text-primary' : 'text-muted-foreground opacity-60')}>{s.label}</p>
                             </button>
- {i < 2 && <div className="flex-1 mx-4 h-[2px] bg-muted rounded-full overflow-hidden relative"><motion.div initial={false} animate={{ width: step > s.n ? '100%' : '0%' }} className="h-full bg-primary" /></div>}
+                            {i < 2 && <div className="flex-1 mx-4 h-[2px] bg-muted rounded-full overflow-hidden relative"><motion.div initial={false} animate={{ width: step > s.n ? '100%' : '0%' }} className="h-full bg-primary" /></div>}
                         </React.Fragment>
                     ))}
                 </div>
- <div className="flex items-center gap-3 pb-6">
+                <div className="flex items-center gap-3 pb-6">
                     {step > 1 && (
-                        <Button 
-                            variant="outline" 
-                            onClick={() => setIsTestModalOpen(true)} 
- className="rounded-xl font-bold border-primary/20 text-primary h-11 px-6 gap-2"
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsTestModalOpen(true)}
+                            className="rounded-xl font-bold border-primary/20 text-primary h-11 px-6 gap-2"
                         >
- <FlaskConical className="h-4 w-4" /> Send Test
+                            <FlaskConical className="h-4 w-4" /> Send Test
                         </Button>
                     )}
- <Button variant="ghost" onClick={onCancel} className="font-bold h-11">Discard</Button>
- <Button onClick={handleCommit} disabled={isSaving || !name} className="rounded-xl font-semibold px-10 shadow-xl bg-primary text-white h-11 transition-all active:scale-95 ">
- {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    <Button variant="ghost" onClick={onCancel} className="font-bold h-11">Discard</Button>
+                    <Button onClick={handleCommit} disabled={isSaving || !name} className="rounded-xl font-semibold px-10 shadow-xl bg-primary text-white h-11 transition-all active:scale-95 ">
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Template
                     </Button>
                 </div>
             </div>
 
- <div className="flex-1 relative overflow-hidden">
+            <div className="flex-1 relative overflow-hidden">
                 <AnimatePresence mode="wait">
                     {step === 1 && (
- <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-8 overflow-y-auto">
- <div className="max-w-3xl mx-auto space-y-8 pb-20 text-left">
- <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-card">
- <CardHeader className="bg-muted/30 border-b p-8">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Settings2 className="h-6 w-6" /></div>
+                        <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-8 overflow-y-auto">
+                            <div className="max-w-3xl mx-auto space-y-8 pb-20 text-left">
+                                <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-card">
+                                    <CardHeader className="bg-muted/30 border-b p-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Settings2 className="h-6 w-6" /></div>
                                             <div>
- <CardTitle className="text-2xl font-semibold tracking-tight">Identity & Authorization</CardTitle>
- <CardDescription className="text-xs font-bold text-muted-foreground/60">Configure the master parameters and shared context.</CardDescription>
+                                                <CardTitle className="text-2xl font-semibold tracking-tight">Identity & Authorization</CardTitle>
+                                                <CardDescription className="text-xs font-bold text-muted-foreground/60">Configure the master parameters and shared context.</CardDescription>
                                             </div>
                                         </div>
                                     </CardHeader>
@@ -361,11 +361,11 @@ export function TemplateWorkshop({
                                         <div className="space-y-4">
                                             <Label className="text-sm font-semibold text-muted-foreground ml-1">Template Name</Label>
                                             <div className="p-4 md:p-6 rounded-3xl border border-primary/10 bg-background shadow-sm hover:border-primary/20 transition-all">
-                                                <Input 
-                                                    value={name} 
-                                                    onChange={e => setName(e.target.value)} 
-                                                    placeholder="e.g. Confirmation For School B" 
-                                                    className="h-10 text-lg md:text-xl font-bold border-none shadow-none px-2 bg-transparent placeholder:text-muted-foreground/40 focus-visible:ring-0" 
+                                                <Input
+                                                    value={name}
+                                                    onChange={e => setName(e.target.value)}
+                                                    placeholder="e.g. Confirmation For School B"
+                                                    className="h-10 text-lg md:text-xl font-bold border-none shadow-none px-2 bg-transparent placeholder:text-muted-foreground/40 focus-visible:ring-0"
                                                 />
                                             </div>
                                         </div>
@@ -376,7 +376,7 @@ export function TemplateWorkshop({
                                                 <Share2 className="h-4 w-4" /> Shared Visibility
                                             </Label>
                                             <div className="p-4 md:p-6 rounded-3xl border border-primary/10 bg-background shadow-sm hover:border-primary/20 transition-all">
-                                                <MultiSelect 
+                                                <MultiSelect
                                                     options={workspaceOptions}
                                                     value={workspaceIds}
                                                     onChange={setWorkspaceIds}
@@ -431,12 +431,12 @@ export function TemplateWorkshop({
                                                     )}
                                                 </div>
                                                 <div className={cn("p-4 rounded-3xl border bg-background shadow-sm", CORE_SYSTEM_KEYS.includes(templateType) ? "border-amber-500/50" : "border-primary/10 hover:border-primary/20", initialContext?.templateType ? "opacity-70 pointer-events-none" : "")}>
-                                                    <Input 
-                                                        value={templateType} 
+                                                    <Input
+                                                        value={templateType}
                                                         onChange={e => {
                                                             setTemplateType(e.target.value);
                                                             setIsTemplateTypeDirty(true);
-                                                        }} 
+                                                        }}
                                                         placeholder="e.g. invitation, reminder_1"
                                                         className="h-10 text-base md:text-lg font-bold font-mono border-none shadow-none bg-transparent focus-visible:ring-0"
                                                         disabled={!!initialContext?.templateType}
@@ -472,8 +472,8 @@ export function TemplateWorkshop({
                                                             {![
                                                                 'participant', 'external_alert', 'internal_alert', 'referee', 'signatory', 'team_member', 'admin'
                                                             ].includes(recipientType) && recipientType && (
-                                                                <SelectItem value={recipientType}>{recipientType}</SelectItem>
-                                                            )}
+                                                                    <SelectItem value={recipientType}>{recipientType}</SelectItem>
+                                                                )}
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
@@ -516,16 +516,16 @@ export function TemplateWorkshop({
                                             </div>
                                         )}
                                     </CardContent>
- <CardFooter className="justify-between bg-muted/30 p-8 border-t">
- <Button variant="ghost" onClick={onCancel} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
-                                        <Button 
-                                            type="button" 
-                                            onClick={() => setStep(2)} 
+                                    <CardFooter className="justify-between bg-muted/30 p-8 border-t">
+                                        <Button variant="ghost" onClick={onCancel} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
+                                        <Button
+                                            type="button"
+                                            onClick={() => setStep(2)}
                                             disabled={!name || workspaceIds.length === 0}
- className="px-12 rounded-xl font-semibold shadow-2xl h-12 text-sm transition-all active:scale-95 gap-2 group"
+                                            className="px-12 rounded-xl font-semibold shadow-2xl h-12 text-sm transition-all active:scale-95 gap-2 group"
                                         >
-                                            Next Phase 
- <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                                            Next Phase
+                                            <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                                         </Button>
                                     </CardFooter>
                                 </Card>
@@ -534,10 +534,10 @@ export function TemplateWorkshop({
                     )}
 
                     {step === 2 && (
- <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
- <div className="border-r bg-background flex flex-col shrink-0 relative transition-all duration-300 shadow-xl" style={{ width: variablesWidth }}>
- <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
- <div className="px-2 py-2 border-b bg-background shrink-0 text-left">
+                        <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
+                            <div className="border-r bg-background flex flex-col shrink-0 relative transition-all duration-300 shadow-xl" style={{ width: variablesWidth }}>
+                                <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
+                                    <div className="px-2 py-2 border-b bg-background shrink-0 text-left">
                                         {contentMode === 'rich_builder' ? (
                                             <TabsList className="grid w-full grid-cols-3 h-10 bg-background0 p-1 rounded-xl">
                                                 <TabsTrigger value="blocks" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
@@ -545,28 +545,28 @@ export function TemplateWorkshop({
                                                 <TabsTrigger value="properties" className="text-[9px] font-semibold gap-1.5"><Settings2 className="h-3 w-3" /> Props</TabsTrigger>
                                             </TabsList>
                                         ) : (
- <div className="flex items-center gap-2 px-2 h-10"><Database className="h-4 w-4 text-primary" /><span className="text-[10px] font-semibold text-primary">Contextual Registry</span></div>
+                                            <div className="flex items-center gap-2 px-2 h-10"><Database className="h-4 w-4 text-primary" /><span className="text-[10px] font-semibold text-primary">Contextual Registry</span></div>
                                         )}
                                     </div>
-                                    
- <TabsContent value="blocks" className="m-0 flex-1 min-h-0 bg-background border-t outline-none data-[state=active]:flex data-[state=active]:flex-col">
- <ScrollArea className="flex-1">
- <div className="p-4 space-y-8 text-left">
- <div className="grid grid-cols-2 gap-3">
+
+                                    <TabsContent value="blocks" className="m-0 flex-1 min-h-0 bg-background border-t outline-none data-[state=active]:flex data-[state=active]:flex-col">
+                                        <ScrollArea className="flex-1">
+                                            <div className="p-4 space-y-8 text-left">
+                                                <div className="grid grid-cols-2 gap-3">
                                                     {Object.entries(blockIcons).slice(0, 8).map(([type, Icon]) => (
- <button key={type} onClick={() => handleAddBlock(type as any)} className="flex flex-col items-center justify-center p-4 rounded-xl border border-border/50 bg-background hover:border-primary/40 hover:bg-primary/5 group aspect-square">
- <Icon className="h-5 w-5 mb-2 group-hover:text-primary transition-colors" />
- <span className="text-[10px] font-semibold tracking-tight text-foreground/70 group-hover:text-primary">{type}</span>
+                                                        <button key={type} onClick={() => handleAddBlock(type as any)} className="flex flex-col items-center justify-center p-4 rounded-xl border border-border/50 bg-background hover:border-primary/40 hover:bg-primary/5 group aspect-square">
+                                                            <Icon className="h-5 w-5 mb-2 group-hover:text-primary transition-colors" />
+                                                            <span className="text-[10px] font-semibold tracking-tight text-foreground/70 group-hover:text-primary">{type}</span>
                                                         </button>
                                                     ))}
                                                 </div>
                                             </div>
                                         </ScrollArea>
                                     </TabsContent>
-                                    
- <TabsContent value="tags" className="m-0 flex-1 min-h-0 bg-background border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
- <ScrollArea className="flex-1">
- <div className="p-4 space-y-6">
+
+                                    <TabsContent value="tags" className="m-0 flex-1 min-h-0 bg-background border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
+                                        <ScrollArea className="flex-1">
+                                            <div className="p-4 space-y-6">
                                                 {/* FER-02: Contact Variable Groups */}
                                                 {contactVarGroups.primary.length > 0 && (
                                                     <div className="space-y-2">
@@ -575,9 +575,9 @@ export function TemplateWorkshop({
                                                             <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Primary Contact</span>
                                                         </div>
                                                         {contactVarGroups.primary.map(v => (
- <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all group bg-card shadow-sm">
- <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
- <code className="text-[9px] font-mono text-emerald-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                            <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all group bg-card shadow-sm">
+                                                                <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+                                                                <code className="text-[9px] font-mono text-emerald-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                                             </button>
                                                         ))}
                                                     </div>
@@ -589,9 +589,9 @@ export function TemplateWorkshop({
                                                             <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">Signatory Contact</span>
                                                         </div>
                                                         {contactVarGroups.signatory.map(v => (
- <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-blue-100 hover:border-blue-300 hover:bg-blue-50 transition-all group bg-card shadow-sm">
- <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
- <code className="text-[9px] font-mono text-blue-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                            <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-blue-100 hover:border-blue-300 hover:bg-blue-50 transition-all group bg-card shadow-sm">
+                                                                <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+                                                                <code className="text-[9px] font-mono text-blue-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                                             </button>
                                                         ))}
                                                     </div>
@@ -603,9 +603,9 @@ export function TemplateWorkshop({
                                                             <span className="text-[9px] font-bold text-violet-600 uppercase tracking-wider">Role-Based Contacts</span>
                                                         </div>
                                                         {contactVarGroups.roles.map(v => (
- <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-violet-100 hover:border-violet-300 hover:bg-violet-50 transition-all group bg-card shadow-sm">
- <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
- <code className="text-[9px] font-mono text-violet-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                            <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-violet-100 hover:border-violet-300 hover:bg-violet-50 transition-all group bg-card shadow-sm">
+                                                                <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+                                                                <code className="text-[9px] font-mono text-violet-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                                             </button>
                                                         ))}
                                                     </div>
@@ -619,10 +619,10 @@ export function TemplateWorkshop({
                                                             <span className="text-[9px] font-bold text-primary/60 uppercase tracking-wider">System Variables</span>
                                                         </div>
                                                         {contactVarGroups.other.map(v => (
- <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group bg-card shadow-sm">
- <span className="text-[8px] font-semibold text-primary opacity-60">{v.sourceName || 'Core'}</span>
- <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
- <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                            <button key={v.id} onClick={() => copyVariableToClipboard(v.key)} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group bg-card shadow-sm">
+                                                                <span className="text-[8px] font-semibold text-primary opacity-60">{v.sourceName || 'Core'}</span>
+                                                                <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+                                                                <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                                             </button>
                                                         ))}
                                                     </div>
@@ -630,25 +630,25 @@ export function TemplateWorkshop({
                                             </div>
                                         </ScrollArea>
                                     </TabsContent>
-                                    
- <TabsContent value="properties" className="m-0 flex-1 min-h-0 bg-background border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
- <ScrollArea className="flex-1">
- <div className="p-4">
+
+                                    <TabsContent value="properties" className="m-0 flex-1 min-h-0 bg-background border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
+                                        <ScrollArea className="flex-1">
+                                            <div className="p-4">
                                                 {selectedBlockId ? (
-                                                    <BlockInspector 
-                                                        block={blocks.find(b => b.id === selectedBlockId)!} 
-                                                        variables={variables} 
+                                                    <BlockInspector
+                                                        block={blocks.find(b => b.id === selectedBlockId)!}
+                                                        variables={variables}
                                                         templateCategory={category}
-                                                        onUpdate={u => setBlocks(p => p.map(b => b.id === selectedBlockId ? { ...b, ...u } : b))} 
+                                                        onUpdate={u => setBlocks(p => p.map(b => b.id === selectedBlockId ? { ...b, ...u } : b))}
                                                     />
                                                 ) : (
- <div className="py-20 text-center opacity-30 px-4 text-left"><Layout className="h-8 w-8 mx-auto mb-2" /><p className="text-[10px] font-semibold leading-relaxed">Select a block on the canvas<br/>to edit properties</p></div>
+                                                    <div className="py-20 text-center opacity-30"><Layout className="h-8 w-8 mx-auto mb-2" /><p className="text-[10px] font-semibold leading-relaxed">Select a block on the canvas<br />to edit properties</p></div>
                                                 )}
                                             </div>
                                         </ScrollArea>
                                     </TabsContent>
                                 </Tabs>
- <div className={cn("absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize z-50 transition-colors", isResizing ? "bg-primary/40" : "hover:bg-primary/20")} onMouseDown={handleMouseDown} />
+                                <div className={cn("absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize z-50 transition-colors", isResizing ? "bg-primary/40" : "hover:bg-primary/20")} onMouseDown={handleMouseDown} />
                             </div>
 
                             <div className="flex-1 flex flex-col bg-background min-w-0">
@@ -702,12 +702,12 @@ export function TemplateWorkshop({
                                                         <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
                                                             <div className="space-y-4">
                                                                 {blocks.map((block, idx) => (
-                                                                    <SortableBlockItem 
-                                                                        key={block.id} 
-                                                                        id={block.id} 
-                                                                        index={idx} 
-                                                                        block={block} 
-                                                                        isSelected={selectedBlockId === block.id} 
+                                                                    <SortableBlockItem
+                                                                        key={block.id}
+                                                                        id={block.id}
+                                                                        index={idx}
+                                                                        block={block}
+                                                                        isSelected={selectedBlockId === block.id}
                                                                         simulationVars={simVariables}
                                                                         onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('properties'); }}
                                                                         onRemove={() => { setBlocks(prev => prev.filter(b => b.id !== block.id)); if (selectedBlockId === block.id) setSelectedBlockId(null); }}
@@ -737,12 +737,12 @@ export function TemplateWorkshop({
                     )}
 
                     {step === 3 && (
-                        <SimulationStudio 
-                            template={initialTemplate || ({} as any)} 
-                            simVariables={simVariables} 
-                            isSimLoading={isSimLoading} 
-                            simEntity={simEntity} setSimEntity={setSimEntity} 
-                            simRecordId={simRecordId} setSimRecordId={setSimRecordId} 
+                        <SimulationStudio
+                            template={initialTemplate || ({} as any)}
+                            simVariables={simVariables}
+                            isSimLoading={isSimLoading}
+                            simEntity={simEntity} setSimEntity={setSimEntity}
+                            simRecordId={simRecordId} setSimRecordId={setSimRecordId}
                             entities={entities} meetings={meetings} surveys={surveys} pdfs={pdfs}
                             resolvedPreview={(tmpl, vars) => {
                                 const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
@@ -761,7 +761,7 @@ export function TemplateWorkshop({
                 </AnimatePresence>
             </div>
 
-            <TestDispatchDialog 
+            <TestDispatchDialog
                 open={isTestModalOpen}
                 onOpenChange={setIsTestModalOpen}
                 channel={channel as 'email' | 'sms'}

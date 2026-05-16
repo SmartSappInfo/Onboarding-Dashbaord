@@ -241,6 +241,7 @@ export type PlatformJobType =
   | 'restore_archived'
   | 'migrate_data'
   | 'migrate_hierarchical_rbac'
+  | 'migrate_legacy_saas_fields'
   | 'custom';
 
 /**

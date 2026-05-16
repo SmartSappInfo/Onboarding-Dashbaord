@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { resolveAndRender } from './template-resolver';
 import { sendMessage } from './messaging-engine';
 import { computeScheduledAt } from './template-variable-utils';
+import { buildMeetingBaseVariables, buildRegistrantVariables, buildFacilitatorVariables } from './meeting-variable-helpers';
 import type { Meeting, ScheduledMessage, TemplateCategory, MeetingMessagingConfig, MeetingReminderSlot } from './types';
 import { REMINDER_OFFSETS } from './types';
 
@@ -329,7 +330,7 @@ export async function scheduleMessagingConfigReminders(
   const enabledSlots = config.reminders.filter(s => s.enabled && s.channels.length > 0);
   if (enabledSlots.length === 0) return;
 
-  // Gather registrant contacts
+  // Gather registrant docs (need full data for variable injection)
   const regSnap = await adminDb
     .collection('meetings').doc(meeting.id).collection('registrants')
     .where('status', 'in', ['registered', 'approved'])
@@ -337,16 +338,26 @@ export async function scheduleMessagingConfigReminders(
 
   if (regSnap.empty) return;
 
-  const recipients: Array<{ contact: string; channel: 'email' | 'sms' }> = [];
-  for (const doc of regSnap.docs) {
+  // Build per-registrant variable maps keyed by contact
+  const registrants = regSnap.docs.map(doc => {
     const reg = doc.data();
-    if (reg.email) recipients.push({ contact: reg.email, channel: 'email' });
-    if (reg.phone) recipients.push({ contact: reg.phone, channel: 'sms' });
-  }
+    const regVars = buildRegistrantVariables({
+      name: reg.name || '',
+      email: reg.email || '',
+      phone: reg.phone || '',
+      personalizedMeetingUrl: reg.personalizedMeetingUrl || '',
+      status: reg.status || '',
+      registrationData: reg.registrationData || {},
+    });
+    return { email: reg.email, phone: reg.phone, vars: regVars };
+  });
 
-  if (recipients.length === 0) return;
+  // Build meeting base variables once
+  const meetingVars = buildMeetingBaseVariables(meeting);
 
-  const batch = adminDb.batch();
+  const MAX_BATCH_SIZE = 450;
+  let currentBatch = adminDb.batch();
+  let opCount = 0;
   const now = new Date().toISOString();
 
   for (const slot of enabledSlots) {
@@ -357,15 +368,17 @@ export async function scheduleMessagingConfigReminders(
       const templateId = ch === 'email' ? slot.emailTemplateId : slot.smsTemplateId;
       if (!templateId) continue;
 
-      const matchingRecipients = recipients.filter(r => r.channel === ch);
-      for (const { contact } of matchingRecipients) {
+      for (const reg of registrants) {
+        const contact = ch === 'email' ? reg.email : reg.phone;
+        if (!contact) continue;
+
         const docRef = adminDb.collection('scheduled_messages').doc();
         const msg: Omit<ScheduledMessage, 'id'> = {
           organizationId: orgId,
           templateId,
           channel: ch,
           recipientContact: contact,
-          variables: { meetingId: meeting.id },
+          variables: { ...meetingVars, ...reg.vars },
           scheduledAt,
           status: 'pending',
           reminderType: `messaging_slot_${slot.id}`,
@@ -374,12 +387,19 @@ export async function scheduleMessagingConfigReminders(
           retryCount: 0,
           createdAt: now,
         };
-        batch.set(docRef, msg);
+        currentBatch.set(docRef, msg);
+        opCount++;
+
+        if (opCount >= MAX_BATCH_SIZE) {
+          await currentBatch.commit();
+          currentBatch = adminDb.batch();
+          opCount = 0;
+        }
       }
     }
   }
 
-  await batch.commit();
+  if (opCount > 0) await currentBatch.commit();
 }
 
 // ---------------------------------------------------------------------------
@@ -455,16 +475,8 @@ export async function scheduleFacilitatorAlerts(
   if (alertType === 'pre_event' && !config.facilitatorRemindersEnabled) return;
   if (alertType === 'post_event' && !config.facilitatorPostEventEnabled) return;
 
-  // Resolve facilitator contacts from meeting.facilitators
-  const contacts = facilitators.map(f => ({
-    email: f.email,
-    phone: f.phone,
-    joinLink: f.joinLink
-  }));
+  if (facilitators.length === 0) return;
 
-  if (contacts.length === 0) return;
-
-  const batch = adminDb.batch();
   const now = new Date().toISOString();
   const channels = config.facilitatorChannels || ['email'];
 
@@ -476,8 +488,12 @@ export async function scheduleFacilitatorAlerts(
   // Skip past pre-event alerts
   if (alertType === 'pre_event' && new Date(scheduledAt) <= new Date()) return;
 
+  // Build meeting base variables once
+  const meetingVars = buildMeetingBaseVariables(meeting);
+
+  const batch = adminDb.batch();
+
     for (const ch of channels) {
-    // Resolve the correct facilitator template from the seed library
     const templateType = alertType === 'pre_event'
       ? 'meeting_facilitator_pre_event'
       : 'meeting_facilitator_post_event';
@@ -494,9 +510,12 @@ export async function scheduleFacilitatorAlerts(
       continue;
     }
 
-    for (const c of contacts) {
-      const contact = ch === 'email' ? c.email : c.phone;
+    for (const f of facilitators) {
+      const contact = ch === 'email' ? f.email : f.phone;
       if (!contact) continue;
+
+      // Build per-facilitator variables
+      const facilitatorVars = buildFacilitatorVariables(f);
 
       const docRef = adminDb.collection('scheduled_messages').doc();
       const msg: Omit<ScheduledMessage, 'id'> = {
@@ -504,7 +523,7 @@ export async function scheduleFacilitatorAlerts(
         templateId: templateId!,
         channel: ch as 'email' | 'sms',
         recipientContact: contact,
-        variables: { meetingId: meeting.id, alertType },
+        variables: { ...meetingVars, ...facilitatorVars, alertType },
         scheduledAt,
         status: 'pending',
         reminderType: `facilitator_${alertType}`,
@@ -546,6 +565,9 @@ export async function sendFacilitatorNewRegistrationAlert(
     .where('status', 'in', ['registered', 'approved'])
     .get();
 
+  // Build meeting base variables once
+  const meetingVars = buildMeetingBaseVariables(meeting);
+
   const batch = adminDb.batch();
 
   for (const ch of channels) {
@@ -566,6 +588,9 @@ export async function sendFacilitatorNewRegistrationAlert(
       const contact = ch === 'email' ? f.email : f.phone;
       if (!contact) continue;
 
+      // Per-facilitator + per-registrant context
+      const facilitatorVars = buildFacilitatorVariables(f);
+
       const docRef = adminDb.collection('scheduled_messages').doc();
       const msg: Omit<ScheduledMessage, 'id'> = {
         organizationId: orgId,
@@ -573,7 +598,9 @@ export async function sendFacilitatorNewRegistrationAlert(
         channel: ch as 'email' | 'sms',
         recipientContact: contact,
         variables: {
-          meetingId: meeting.id,
+          ...meetingVars,
+          ...facilitatorVars,
+          // New registrant details (kept as contact_* for backward compat)
           contact_name: registrantData.name,
           contact_email: registrantData.email,
           contact_phone: registrantData.phone || '',
@@ -618,16 +645,30 @@ export async function schedulePostEventMessages(
   const scheduledAt = new Date(Date.now() + delayMs).toISOString();
   const now = new Date().toISOString();
 
-  // Fetch all registrants
+  // Fetch all registrants (full docs for variable injection)
   const regSnap = await adminDb.collection('meetings').doc(meeting.id).collection('registrants')
     .where('status', 'in', ['registered', 'approved', 'attended'])
     .get();
 
   if (regSnap.empty) return { thankYouCount: 0, absenteeCount: 0 };
 
-  const allRegs = regSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Array<{
-    id: string; email?: string; phone?: string; status?: string;
-  }>;
+  const allRegs = regSnap.docs.map(d => {
+    const data = d.data();
+    return {
+      id: d.id,
+      email: data.email as string | undefined,
+      phone: data.phone as string | undefined,
+      status: data.status as string | undefined,
+      vars: buildRegistrantVariables({
+        name: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        personalizedMeetingUrl: data.personalizedMeetingUrl || '',
+        status: data.status || '',
+        registrationData: data.registrationData || {},
+      }),
+    };
+  });
 
   // Split by attendance
   const attended = config.postEventAudience === 'all_registrants'
@@ -637,11 +678,16 @@ export async function schedulePostEventMessages(
     ? allRegs.filter(r => r.status !== 'attended')
     : [];
 
-  const batch = adminDb.batch();
+  // Build meeting base variables once (includes recording_url, brochure_url, etc.)
+  const meetingVars = buildMeetingBaseVariables(meeting);
+
+  const MAX_BATCH_SIZE = 450;
+  let currentBatch = adminDb.batch();
+  let opCount = 0;
   let thankYouCount = 0;
   let absenteeCount = 0;
 
-  // Helper to schedule a batch of messages
+  // Helper to schedule a group of messages
   const scheduleGroup = async (
     recipients: typeof allRegs,
     templateType: string,
@@ -668,7 +714,7 @@ export async function schedulePostEventMessages(
           templateId: templateId!,
           channel: ch as 'email' | 'sms',
           recipientContact: contact,
-          variables: { meetingId: meeting.id },
+          variables: { ...meetingVars, ...reg.vars },
           scheduledAt,
           status: 'pending',
           reminderType: `post_event_${counter}`,
@@ -677,9 +723,16 @@ export async function schedulePostEventMessages(
           retryCount: 0,
           createdAt: now,
         };
-        batch.set(docRef, msg);
+        currentBatch.set(docRef, msg);
+        opCount++;
         if (counter === 'thankyou') thankYouCount++;
         else absenteeCount++;
+
+        if (opCount >= MAX_BATCH_SIZE) {
+          await currentBatch.commit();
+          currentBatch = adminDb.batch();
+          opCount = 0;
+        }
       }
     }
   };
@@ -690,7 +743,7 @@ export async function schedulePostEventMessages(
     await scheduleGroup(absentees, 'meeting_post_event_absentee', 'absentee');
   }
 
-  await batch.commit();
+  if (opCount > 0) await currentBatch.commit();
 
   // Trigger facilitator post-event debrief (non-blocking)
   void scheduleFacilitatorAlerts(meeting, orgId, 'post_event');

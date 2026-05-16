@@ -38,7 +38,8 @@ import {
     Copy,
     QrCode,
     Link2,
-    Users
+    Users,
+    Webhook
 } from 'lucide-react';
 
 import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField } from '@/lib/types';
@@ -165,6 +166,11 @@ const formSchema = z.object({
 
   // Messaging Config (Phase 5)
   messagingConfig: z.any().optional(),
+
+  // Webhook Config (Phase 8)
+  registrationWebhookEnabled: z.boolean().default(false),
+  registrationWebhookUrl: z.string().optional().default(''),
+  registrationWebhookSecret: z.string().optional().default(''),
 
   // Publish Status (Phase 7)
   publishStatus: z.enum(['draft', 'published', 'archived']).default('draft'),
@@ -330,6 +336,23 @@ export default function EditMeetingPage() {
         resourceUrl: meeting.resourceUrl || '',
         feedbackFormUrl: meeting.feedbackFormUrl || '',
         durationMinutes: meeting.durationMinutes || 60,
+
+        // Phase 5: Messaging Config — load saved config so templates are pre-populated
+        messagingConfig: meeting.messagingConfig || undefined,
+
+        // Phase 4: Lead Capture
+        createEntity: meeting.createEntity || false,
+        entityMapping: (meeting.entityMapping || {}) as any,
+        autoTags: meeting.autoTags || [],
+        facilitators: (meeting.facilitators || []) as any,
+
+        // Webhook Config
+        registrationWebhookEnabled: meeting.messagingConfig?.registrationWebhookEnabled || false,
+        registrationWebhookUrl: meeting.messagingConfig?.registrationWebhookUrl || '',
+        registrationWebhookSecret: meeting.messagingConfig?.registrationWebhookSecret || '',
+
+        // Phase 7: Publish Status
+        publishStatus: meeting.publishStatus || 'draft',
       });
       setHasInitialized(true);
     }
@@ -409,7 +432,12 @@ export default function EditMeetingPage() {
             facilitators: data.facilitators || [],
 
             // Phase 5: Messaging Config
-            messagingConfig: data.messagingConfig || null,
+            messagingConfig: {
+              ...(data.messagingConfig || {}),
+              registrationWebhookEnabled: data.registrationWebhookEnabled || false,
+              registrationWebhookUrl: data.registrationWebhookUrl || '',
+              registrationWebhookSecret: data.registrationWebhookSecret || '',
+            },
 
             // Phase 7: Publish Status
             publishStatus: data.publishStatus || 'draft',
@@ -1366,6 +1394,64 @@ export default function EditMeetingPage() {
                                     />
                                 </div>
                             </CardContent>
+                        </Card>
+
+                        {/* ── Registration Webhook Card ── */}
+                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                            <CardHeader className="bg-muted/30 border-b pb-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-violet-500/10 rounded-xl"><Webhook className="h-4 w-4 text-violet-600" /></div>
+                                        <div>
+                                            <CardTitle className="text-sm font-semibold tracking-tight">Registration Webhook</CardTitle>
+                                            <CardDescription className="text-[10px] font-medium text-left">POST registrant data to an external endpoint on every signup.</CardDescription>
+                                        </div>
+                                    </div>
+                                    <FormField control={form.control} name="registrationWebhookEnabled" render={({ field }) => (
+                                        <FormItem className="flex items-center gap-2 space-y-0">
+                                            <FormControl>
+                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )} />
+                                </div>
+                            </CardHeader>
+                            {form.watch('registrationWebhookEnabled') && (
+                                <CardContent className="p-6 space-y-4 bg-background animate-in fade-in slide-in-from-top-2">
+                                    <FormField control={form.control} name="registrationWebhookUrl" render={({ field }) => (
+                                        <FormItem className="text-left">
+                                            <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">POST Endpoint URL</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    placeholder="https://your-crm.com/webhooks/registrations"
+                                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-mono text-xs"
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="registrationWebhookSecret" render={({ field }) => (
+                                        <FormItem className="text-left">
+                                            <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Webhook Secret <span className="text-muted-foreground/40">(optional — HMAC-SHA256 signature)</span></FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    type="password"
+                                                    placeholder="Enter a secret to sign payloads..."
+                                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-mono text-xs"
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <div className="p-3 bg-violet-500/5 rounded-xl border border-violet-500/10">
+                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
+                                            📡 On every new registration, a signed JSON payload will be POSTed to this URL containing the registrant details, meeting context, and the full CRM entity (if lead capture is enabled). Test your endpoint at <a href="https://webhook.site" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline font-bold">webhook.site</a> before going live.
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            )}
                         </Card>
 
                         {/* ── Publish Card ── */}

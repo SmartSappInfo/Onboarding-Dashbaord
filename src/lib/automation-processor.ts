@@ -7,9 +7,11 @@ import type { Automation, AutomationRun, AutomationTrigger, School, MessageTempl
 import { sendMessage } from './messaging-engine';
 import { createTaskNonBlocking } from './task-actions';
 import { addDays } from 'date-fns';
+import { after } from 'next/server';
 import { logActivity } from './activity-logger';
 import { resolveContact } from './contact-adapter';
 import { evaluateTagCondition } from './tag-condition';
+import { dispatchWebhooksByTrigger } from './webhook-engine';
 
 /**
  * @fileOverview The SmartSapp Logic Processor (Execution Engine).
@@ -76,6 +78,26 @@ export async function triggerAutomationProtocols(trigger: AutomationTrigger, pay
             
             await executeAutomation(automation, payload);
         }
+
+        // --- DISPATCH WEBHOOKS (Outbound) — Non-blocking via after() ---
+        // server-after-nonblocking: Fire webhooks after the response is sent
+        after(async () => {
+            try {
+                const wsSnap = await adminDb.collection('workspaces').doc(payload.workspaceId).get();
+                const organizationId = wsSnap.data()?.organizationId || 'default';
+
+                await dispatchWebhooksByTrigger({
+                    trigger,
+                    payload,
+                    workspaceId: payload.workspaceId,
+                    organizationId,
+                    entityId: payload.entityId || null
+                });
+            } catch (webhookError: any) {
+                console.error(`>>> [LOGIC:PROCESSOR] Non-blocking webhook dispatch failed:`, webhookError.message);
+            }
+        });
+
     } catch (error: any) {
         console.error(`>>> [LOGIC:PROCESSOR] Failed to poll automations:`, error.message);
     }

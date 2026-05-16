@@ -91,3 +91,17 @@ export function stripHtml(html: string): string {
   if (!html) return '';
   return html.replace(/<[a-zA-Z\/][^>]*>/g, '').trim();
 }
+
+/**
+ * Safely decodes a URI component. Useful for Next.js App Router dynamic segments
+ * which are sometimes passed as encoded strings. Prevents fatal URIErrors if malformed.
+ */
+export function safeDecodeURI(str: string): string {
+  if (!str) return '';
+  try {
+    return decodeURIComponent(str);
+  } catch (e) {
+    console.error(`[safeDecodeURI] Failed to decode string: "${str}"`);
+    return str;
+  }
+}

@@ -17,9 +17,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { STATIC_VARIABLES } from '@/lib/template-variable-registry-data';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -48,6 +50,14 @@ const FIELD_TYPES: { value: AppField['type']; label: string; icon: React.Element
   { value: 'address', label: 'Address', icon: LucideIcons.MapPin },
   { value: 'url', label: 'URL', icon: LucideIcons.LinkIcon },
   { value: 'hidden', label: 'Hidden', icon: LucideIcons.EyeOff },
+];
+
+const COMMON_GROUP_ICONS = [
+  'Database', 'User', 'Users', 'Briefcase', 'Heart', 'Stethoscope',
+  'FileText', 'File', 'MapPin', 'CreditCard', 'Shield', 'Settings',
+  'GraduationCap', 'Book', 'Wallet', 'Activity', 'Badge', 'Landmark',
+  'Building', 'Folder', 'List', 'CheckSquare', 'Tag', 'Hash', 'Globe',
+  'Monitor', 'Smartphone', 'Mail', 'Calendar', 'BriefcaseMedical', 'ShieldAlert'
 ];
 
 const SCOPE_OPTIONS = [
@@ -267,7 +277,6 @@ export default function FieldsClient() {
 
   // State
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [isSeeding, setIsSeeding] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   // Modals
@@ -319,18 +328,6 @@ export default function FieldsClient() {
   const handleCopyVariable = (val: string) => {
     navigator.clipboard.writeText(val);
     toast({ title: 'Copied to Clipboard', description: val });
-  };
-
-  const handleSeed = async () => {
-    if (!activeWorkspaceId || !activeOrganizationId || !user?.uid) return;
-    setIsSeeding(true);
-    const result = await seedNativeFieldsAction(activeWorkspaceId, activeOrganizationId, user.uid);
-    if (result.success) {
-      toast({ title: 'Registry Seeded', description: `Added ${result.seededGroups} groups and ${result.seededFields} fields.` });
-    } else {
-      toast({ variant: 'destructive', title: 'Seeding Failed', description: result.error });
-    }
-    setIsSeeding(false);
   };
 
   // Group Form
@@ -471,59 +468,31 @@ export default function FieldsClient() {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Fields & Variables Hub</h1>
           <p className="text-muted-foreground mt-1">Manage entity attributes, custom data collection, and system variables.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={openNewGroup}>
-            <LucideIcons.Plus className="h-4 w-4 mr-2" /> New Group
-          </Button>
-        </div>
       </div>
 
-      {/* System Maintenance & Seeding (SuperAdmin Only) */}
-      {isSuperAdmin && (
-        <Card className="border-indigo-100 bg-indigo-50/30 overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <LucideIcons.ShieldCheck className="h-24 w-24 text-indigo-600" />
+      <Tabs defaultValue="custom" className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <TabsList className="bg-muted/50 border border-border rounded-xl p-1 h-auto flex flex-wrap gap-1">
+            <TabsTrigger value="custom" className="rounded-lg text-sm font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none">
+              <LucideIcons.Database className="h-4 w-4 mr-2" /> Custom Fields
+            </TabsTrigger>
+            <TabsTrigger value="system" className="rounded-lg text-sm font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none">
+              <LucideIcons.Terminal className="h-4 w-4 mr-2" /> System Variables
+            </TabsTrigger>
+          </TabsList>
+          <div className="flex items-center gap-2">
+            <Button onClick={openNewGroup}>
+              <LucideIcons.Plus className="h-4 w-4 mr-2" /> New Group
+            </Button>
           </div>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">System Registry</span>
-            </div>
-            <CardTitle className="text-xl text-indigo-950">Native Registry Sync</CardTitle>
-            <CardDescription className="max-w-2xl text-indigo-900/70">
-              Keep your workspace synchronized with the global SmartSapp variable registry. 
-              Seeding adds all platform-standard fields (meetings, surveys, forms) and industry-specific 
-              attributes without affecting your existing custom fields.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Platform Identity</Badge>
-                <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Meetings & Forms</Badge>
-                <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Industry Pack</Badge>
-              </div>
-              <Button 
-                onClick={handleSeed} 
-                disabled={isSeeding}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 border-none min-w-[160px]"
-              >
-                {isSeeding ? (
-                  <LucideIcons.Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <LucideIcons.Zap className="h-4 w-4 mr-2 fill-white" />
-                )}
-                {isSeeding ? 'Syncing...' : 'Seed Registry'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        </div>
+
+        <TabsContent value="custom" className="space-y-8 mt-4">
 
       {/* Search Bar */}
       <div className="relative max-w-md">
@@ -561,14 +530,60 @@ export default function FieldsClient() {
         <div className="text-center p-12 border rounded-xl bg-muted/10 border-dashed">
           <LucideIcons.Database className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium">No Field Groups Found</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">Start by creating a new group or seeding native groups.</p>
-          {isSuperAdmin && (
-            <Button onClick={handleSeed} disabled={isSeeding}>
-              {isSeeding ? 'Seeding...' : 'Seed Native Groups'}
-            </Button>
-          )}
+          <p className="text-sm text-muted-foreground mt-1 mb-4">Start by creating a new group or seeding native groups from the System Seeding Hub.</p>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="system" className="mt-4">
+          <Card className="border-border">
+            <CardHeader className="bg-muted/30 border-b border-border pb-4">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <LucideIcons.Terminal className="h-5 w-5 text-emerald-500" />
+                System & Organization Variables
+              </CardTitle>
+              <CardDescription>
+                These variables are automatically available in the messaging engine and templates.
+                Use the <code className="bg-muted px-1.5 py-0.5 rounded text-emerald-500">{"{{"}variable_name{"}}"}</code> syntax to inject them into content.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-muted/10">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-1/4">Variable</TableHead>
+                    <TableHead className="w-1/4">Context</TableHead>
+                    <TableHead className="w-1/2">Description & Example</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {STATIC_VARIABLES.map(variable => (
+                    <TableRow key={variable.id} className="hover:bg-muted/30">
+                      <TableCell className="font-mono text-sm text-emerald-600 dark:text-emerald-400">
+                        {"{{"}{variable.name}{"}}"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize bg-muted">
+                          {variable.context}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm font-medium">{variable.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{variable.description}</p>
+                        {variable.exampleValue && (
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            <span className="font-semibold">Example:</span> {variable.exampleValue}
+                          </p>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Group Modal */}
       <Dialog open={groupModalOpen} onOpenChange={setGroupModalOpen}>
@@ -588,8 +603,37 @@ export default function FieldsClient() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Icon Name</Label>
-                <Input value={groupForm.icon} onChange={e => setGroupForm({...groupForm, icon: e.target.value})} placeholder="Lucide Icon (e.g. Heart)" />
+                <Label>Icon</Label>
+                <Select value={groupForm.icon} onValueChange={v => setGroupForm({...groupForm, icon: v})}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an icon">
+                      {groupForm.icon && (
+                        <div className="flex items-center gap-2">
+                          {React.createElement((LucideIcons as any)[groupForm.icon] || LucideIcons.Database, { className: "h-4 w-4" })}
+                          <span className="truncate">{groupForm.icon}</span>
+                        </div>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <ScrollArea className="h-64">
+                      <div className="grid grid-cols-2 gap-1 p-1">
+                        {COMMON_GROUP_ICONS.map(iconName => {
+                          const IconComponent = (LucideIcons as any)[iconName];
+                          if (!IconComponent) return null;
+                          return (
+                            <SelectItem key={iconName} value={iconName} className="cursor-pointer">
+                              <div className="flex items-center gap-2">
+                                <IconComponent className="h-4 w-4" />
+                                <span className="text-xs truncate max-w-[80px]">{iconName}</span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Accent Color</Label>

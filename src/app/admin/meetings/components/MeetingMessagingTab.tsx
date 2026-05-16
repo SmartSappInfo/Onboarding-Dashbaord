@@ -74,7 +74,15 @@ export default function MeetingMessagingTab() {
   }, [workspaceUsers]);
 
   // Get messaging config from form, defaulting if absent
-  const config: MeetingMessagingConfig = watch('messagingConfig') || DEFAULT_CONFIG;
+  const rawConfig = watch('messagingConfig') || {};
+  const config: MeetingMessagingConfig = {
+    ...DEFAULT_CONFIG,
+    ...rawConfig,
+    reminders: rawConfig.reminders || DEFAULT_CONFIG.reminders,
+    registrationAckChannels: rawConfig.registrationAckChannels || DEFAULT_CONFIG.registrationAckChannels,
+    facilitatorChannels: rawConfig.facilitatorChannels || DEFAULT_CONFIG.facilitatorChannels,
+    postEventChannels: rawConfig.postEventChannels || DEFAULT_CONFIG.postEventChannels,
+  };
 
   const updateConfig = React.useCallback(<K extends keyof MeetingMessagingConfig>(
     key: K,

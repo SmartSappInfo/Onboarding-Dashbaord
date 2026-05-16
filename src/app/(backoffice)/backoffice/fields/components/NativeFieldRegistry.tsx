@@ -14,12 +14,13 @@ import {
 import { listNativeFields } from '@/lib/backoffice/backoffice-field-actions';
 import type { PlatformFieldDefinition } from '@/lib/backoffice/backoffice-types';
 
-export default function NativeFieldRegistry() {
-  const [fields, setFields] = React.useState<PlatformFieldDefinition[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+export default function NativeFieldRegistry({ initialData }: { initialData?: PlatformFieldDefinition[] }) {
+  const [fields, setFields] = React.useState<PlatformFieldDefinition[]>(initialData || []);
+  const [isLoading, setIsLoading] = React.useState(!initialData);
   const [search, setSearch] = React.useState('');
 
   React.useEffect(() => {
+    if (initialData) return; // Skip if provided via SSR
     async function load() {
       setIsLoading(true);
       const res = await listNativeFields();
@@ -29,7 +30,7 @@ export default function NativeFieldRegistry() {
       setIsLoading(false);
     }
     load();
-  }, []);
+  }, [initialData]);
 
   const filtered = React.useMemo(() => {
     return fields.filter(f => 

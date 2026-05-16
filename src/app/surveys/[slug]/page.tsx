@@ -6,13 +6,13 @@ import { notFound } from 'next/navigation';
 
 import { adminDb } from '@/lib/firebase-admin';
 
-import { cn, stripHtml } from '@/lib/utils';
+import { cn, stripHtml, safeDecodeURI } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function getSurveyBySlug(slug: string): Promise<Survey | null> {
-    const trimmedSlug = slug?.trim();
+    const trimmedSlug = safeDecodeURI(slug).trim();
     console.log(`[PublicSurveyPage] Fetching survey for slug: "${trimmedSlug}"`);
     
     try {

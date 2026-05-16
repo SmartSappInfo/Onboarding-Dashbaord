@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract } from './types';
+import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting } from './types';
 import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
@@ -10,8 +10,9 @@ import { sendEmail, type EmailAttachment } from './resend-service';
 import { sendPushNotification } from './onesignal-service';
 import { resolveTagVariables } from './messaging-actions';
 import { resolveContact } from './contact-adapter';
+import { buildMeetingBaseVariables, buildFacilitatorVariables, buildRegistrantVariables } from './meeting-variable-helpers';
 import { getRecipientContact } from './migration-status-utils';
-import { getContactVariables } from './entity-contact-helpers';
+import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
 
 interface SendMessageInput {
   templateId: string;
@@ -84,6 +85,15 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     let workspaceIds: string[] = template.workspaceIds || ['onboarding'];
     const finalVariables = { ...variables };
 
+    // Inject Sender Variables
+    if (sender.name && finalVariables.sender_name === undefined) finalVariables.sender_name = sender.name;
+    if (sender.identifier && finalVariables.sender_email === undefined) {
+        // Simple heuristic: if it has an @, it's an email, else it's a phone/identifier
+        if (sender.identifier.includes('@')) finalVariables.sender_email = sender.identifier;
+        else finalVariables.sender_phone = sender.identifier;
+    }
+    if ((sender as any).phone && finalVariables.sender_phone === undefined) finalVariables.sender_phone = (sender as any).phone;
+
     // 4. Resolve Contact Context using Adapter Layer (Requirement 18)
     // Support dual-write: accept either entityId or entityId (Requirement 15.1, 15.2)
     let resolvedEntityId = entityId;
@@ -133,6 +143,10 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             const dynamicVars = getContactVariables({ entityContacts: contact.entityContacts || [] });
             Object.assign(contactVars, dynamicVars);
             
+            // Generate recipient-specific variables based on the actual target (email/phone)
+            const recipientVars = getRecipientContactVariables({ entityContacts: contact.entityContacts || [] }, recipient);
+            Object.assign(contactVars, recipientVars);
+            
             const contractSnap = await adminDb.collection('contracts').where('entityId', '==', resolvedEntityId).limit(1).get();
             if (!contractSnap.empty) {
                 const contractData = contractSnap.docs[0].data() as Contract;
@@ -170,9 +184,41 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
+    // 4.4 Meeting Context Auto-Enrichment
+    // When _meetingId is present but meeting_title wasn't supplied by the caller,
+    // fetch the meeting doc and inject base variables + facilitator/registrant context.
+    const meetingId = finalVariables._meetingId;
+    if (meetingId && finalVariables.meeting_title === undefined) {
+        try {
+            const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
+            if (meetingSnap.exists) {
+                const meeting = { id: meetingSnap.id, ...meetingSnap.data() } as Meeting;
+                const meetingVars = buildMeetingBaseVariables(meeting);
+                // Only set if not already provided by the caller
+                Object.entries(meetingVars).forEach(([k, v]) => {
+                    if (finalVariables[k] === undefined) finalVariables[k] = v;
+                });
+
+                // Auto-detect if recipient is a facilitator and inject their context
+                if (meeting.facilitators?.length && !finalVariables.facilitator_name) {
+                    const matchedFac = meeting.facilitators.find(
+                        f => f.email === recipient || f.phone === recipient
+                    );
+                    if (matchedFac) {
+                        const facVars = buildFacilitatorVariables(matchedFac);
+                        Object.entries(facVars).forEach(([k, v]) => {
+                            if (finalVariables[k] === undefined) finalVariables[k] = v;
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('>>> [MSG-ENGINE] Meeting context enrichment skipped:', (e as Error).message);
+        }
+    }
+
     // 4.5 Resolve Personalized Meeting Link (Webinar Lifecycle Phase 2)
     // If a _meetingId is passed, check if the recipient is a registrant and append their token
-    const meetingId = finalVariables._meetingId;
     if (meetingId && (finalVariables.meeting_link || finalVariables.link)) {
         let registrantDoc = null;
         
@@ -210,6 +256,18 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // If still no workspaceId resolved, use template default or fallback
     if (!resolvedWorkspaceId) {
         resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
+    }
+
+    // Inject Workspace Name
+    if (resolvedWorkspaceId && finalVariables.workspace_name === undefined) {
+        try {
+            const wsSnap = await adminDb.collection('workspaces').doc(resolvedWorkspaceId).get();
+            if (wsSnap.exists) {
+                finalVariables.workspace_name = wsSnap.data()?.name || '';
+            }
+        } catch (e) {
+            console.error('[MESSAGING_ENGINE] Failed to resolve workspace details:', e);
+        }
     }
 
     // 5. Resolve Global Fields & Constants from the new Registry
