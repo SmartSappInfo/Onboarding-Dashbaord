@@ -189,15 +189,15 @@ export default function WebhooksClient() {
               { label: 'Outbound', value: stats.outbound, icon: ArrowUpRight, color: 'text-blue-500' },
               { label: 'Inbound', value: stats.inbound, icon: ArrowDownLeft, color: 'text-purple-500' },
             ].map(stat => (
-              <Card key={stat.label} className="p-4 rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm flex items-center gap-3">
-                <div className={cn("p-2 rounded-xl bg-muted", stat.color)}>
-                  <stat.icon className="h-4 w-4" />
+              <Card key={stat.label} className="p-4 rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm flex flex-row items-center gap-4">
+                <div className={cn("p-3 rounded-xl bg-muted shrink-0", stat.color)}>
+                  <stat.icon className="h-5 w-5" />
                 </div>
-                <div>
-                  <div className="text-2xl font-bold tracking-tight leading-none">
+                <div className="flex flex-col min-w-0">
+                  <div className="text-2xl font-bold tracking-tight leading-none truncate">
                     {isLoading ? <Skeleton className="h-7 w-8" /> : stat.value}
                   </div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-0.5">{stat.label}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-1 truncate">{stat.label}</p>
                 </div>
               </Card>
             ))}

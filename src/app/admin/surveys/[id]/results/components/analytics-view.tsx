@@ -4,60 +4,145 @@
 import * as React from 'react';
 import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement, SurveyResultRule, SurveySession } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import type { Survey, SurveyResponse, SurveySession } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList, PieChart, Pie, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList, PieChart, Pie, Legend, LineChart, Line, CartesianGrid } from 'recharts';
 import { cn } from '@/lib/utils';
-import { Target, MousePointer2, AlertCircle, TrendingDown, UserMinus, ShieldCheck, User as UserIcon, Award, Activity, Users, Trophy } from 'lucide-react';
-import { BarChart3 } from 'lucide-react';
-import { ChartConfig, ChartContainer, ChartTooltip } from '@/components/ui/chart';
+import { Target, MousePointer2, AlertCircle, TrendingDown, UserMinus, ShieldCheck, User as UserIcon, Award, Activity, Users, Trophy, BarChart3, TrendingUp } from 'lucide-react';
+import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from "@/components/ui/progress";
+import { motion, type Variants } from 'framer-motion';
 
-const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-];
+import {
+    CHART_COLORS,
+    type AnalyzedResult,
+    type FunnelStep,
+    type DropoffInsight,
+    type AttributionRow,
+    computeFunnelData,
+    computeDropoffInsights,
+    computeScoringMetrics,
+    analyzeQuestions,
+    computeAttribution,
+} from '@/lib/survey-analytics-utils';
 
-type AnalyzedResult = {
-    question: SurveyQuestion;
-    insight: string;
-    totalScore?: number;
-    averageScore?: number;
-} & (
-    | { type: 'chart'; data: { name: string; value: number; percentage: number }[]; total: number }
-    | { type: 'rating'; data: { name: string; value: number; percentage: number }[]; total: number, average: number }
-    | { type: 'checkbox'; data: { name: string; value: number; percentage: number }[]; otherText: string[]; total: number }
-    | { type: 'text'; data: string[]; total: number }
-    | { type: 'unknown'; data: any[] }
-);
+// ─── Animation Variants ────────────────────────────────────────────────────────
 
-const generateInsight = (result: AnalyzedResult): string => {
-    if (result.type === 'chart' && result.data.length > 0) {
-        const sorted = [...result.data].sort((a, b) => b.value - a.value);
-        const mostPopular = sorted[0];
-        if (mostPopular.value === result.total && result.total > 0) return `All respondents selected "${mostPopular.name}".`;
-        if (result.total > 0) return `The most common answer was "${mostPopular.name}".`;
-    }
-    if (result.type === 'rating' && result.total > 0) {
-        if (result.average > 4) return `The average rating of ${result.average.toFixed(1)} stars indicates a highly positive response.`;
-        if (result.average > 2.5) return `The average rating was ${result.average.toFixed(1)} stars.`;
-        return `The average rating of ${result.average.toFixed(1)} stars indicates room for improvement.`;
-    }
-    if (result.type === 'checkbox' && result.data.length > 0) {
-        const sorted = [...result.data].sort((a, b) => b.value - a.value);
-        const mostPopular = sorted[0];
-        if (mostPopular.percentage > 50) return `"${mostPopular.name}" was the most frequently selected option.`;
-    }
-    if (result.type === 'text' && result.total > 0) {
-        return `Received ${result.total} text ${result.total === 1 ? 'response' : 'responses'}.`;
-    }
-    return '';
+const fadeInUp: Variants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: (i: number) => ({
+        opacity: 1,
+        y: 0,
+        transition: { delay: i * 0.06, duration: 0.4, ease: 'easeOut' as const },
+    }),
+};
+
+// ─── Time Granularity Types ────────────────────────────────────────────────────
+
+type TimeGranularity = 'hour' | 'day' | 'month';
+
+function computeResponseTrend(responses: SurveyResponse[], granularity: TimeGranularity): { label: string; count: number }[] {
+    if (!responses || responses.length === 0) return [];
+
+    const bucketMap = new Map<string, number>();
+
+    responses.forEach(res => {
+        const date = new Date(res.submittedAt);
+        let key: string;
+        switch (granularity) {
+            case 'hour':
+                key = format(date, 'MMM d, ha');
+                break;
+            case 'day':
+                key = format(date, 'MMM d');
+                break;
+            case 'month':
+                key = format(date, 'MMM yyyy');
+                break;
+        }
+        bucketMap.set(key, (bucketMap.get(key) || 0) + 1);
+    });
+
+    return Array.from(bucketMap.entries()).map(([label, count]) => ({ label, count }));
+}
+
+// ─── Response Trend Chart ──────────────────────────────────────────────────────
+
+function ResponseTrendChart({ responses }: { responses: SurveyResponse[] }) {
+    const [granularity, setGranularity] = React.useState<TimeGranularity>('day');
+    const trendData = React.useMemo(() => computeResponseTrend(responses, granularity), [responses, granularity]);
+
+    const granularityOptions: { value: TimeGranularity; label: string }[] = [
+        { value: 'hour', label: 'Per Hour' },
+        { value: 'day', label: 'Per Day' },
+        { value: 'month', label: 'Per Month' },
+    ];
+
+    return (
+        <Card className="bg-card/60 backdrop-blur-md border-border/40">
+            <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-primary" /> Response Trend
+                    </CardTitle>
+                    <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5">
+                        {granularityOptions.map(opt => (
+                            <button
+                                key={opt.value}
+                                onClick={() => setGranularity(opt.value)}
+                                className={cn(
+                                    "px-2.5 py-1 text-[10px] font-bold rounded-md transition-all",
+                                    granularity === opt.value
+                                        ? "bg-primary text-primary-foreground shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="h-[250px] pt-2">
+                {trendData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground text-xs italic">No data yet.</div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={trendData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                            <XAxis dataKey="label" axisLine={false} tickLine={false} fontSize={9} tick={{ fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
+                            <YAxis axisLine={false} tickLine={false} fontSize={9} tick={{ fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                            <Tooltip
+                                cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                        return (
+                                            <div className="bg-background border rounded-lg p-2.5 shadow-xl text-xs">
+                                                <p className="font-semibold">{label}</p>
+                                                <p className="text-primary font-bold">{payload[0].value} Responses</p>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="count"
+                                stroke="hsl(var(--primary))"
+                                strokeWidth={2.5}
+                                dot={{ r: 3, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                                activeDot={{ r: 5, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--background))', strokeWidth: 2 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                )}
+            </CardContent>
+        </Card>
+    );
 }
 
 const CustomizedBarLabel = (props: any) => {
@@ -88,7 +173,7 @@ function QuestionResult({ result, index }: { result: AnalyzedResult, index: numb
                         {index + 1}. {result.question.title}
                     </CardTitle>
                 </div>
- <CardDescription className="text-xs">{total} {total === 1 ? 'response' : 'responses'}</CardDescription>
+                <p className="text-xs text-muted-foreground">{total} {total === 1 ? 'response' : 'responses'}</p>
                 {result.insight && (
  <p className="text-sm text-muted-foreground pt-2 italic">
                         &ldquo;{result.insight}&rdquo;
@@ -193,7 +278,6 @@ function RepresentativeLeaderboard({ data }: { data: any[] }) {
                     </div>
                     <div>
                         <CardTitle className="text-sm font-semibold tracking-tight">Representative Performance</CardTitle>
-                        <CardDescription className="text-[10px] font-bold text-muted-foreground/60 uppercase">Attribution & Outreach Metrics</CardDescription>
                     </div>
                 </div>
             </CardHeader>
@@ -257,7 +341,33 @@ function RepresentativeLeaderboard({ data }: { data: any[] }) {
     );
 }
 
-const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
+// ─── Reusable Stat Card (React.memo for re-render optimization) ────────────
+
+type StatCardProps = {
+    label: string;
+    value: string | number;
+    icon: React.ElementType;
+    iconClassName: string;
+    index?: number;
+};
+
+const StatCard = React.memo(function StatCard({ label, value, icon: Icon, iconClassName, index = 0 }: StatCardProps) {
+    return (
+        <motion.div custom={index} variants={fadeInUp} initial="hidden" animate="visible">
+            <Card className="bg-card/60 backdrop-blur-md border-border/40 shadow-sm hover:shadow-lg transition-shadow">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className={cn("p-2.5 rounded-xl", iconClassName)}>
+                        <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">{label}</p>
+                        <p className="text-2xl font-semibold">{value}</p>
+                    </div>
+                </CardContent>
+            </Card>
+        </motion.div>
+    );
+});
 
 export default function AnalyticsView({ survey, responses }: { survey: Survey; responses: SurveyResponse[] }) {
     const firestore = useFirestore();
@@ -269,252 +379,54 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
     }, [firestore]);
     const { data: users } = useCollection<any>(usersQuery);
 
-    // 1. Fetch Sessions for Drop-off Analytics
+    // Fetch Sessions for Drop-off Analytics
     const sessionsQuery = useMemoFirebase(() => {
         if (!firestore || !survey?.id || typeof survey.id !== 'string') return null;
         return query(collection(firestore, 'survey_sessions'), where('surveyId', '==', survey.id));
     }, [firestore, survey?.id]);
-
     const { data: sessions } = useCollection<SurveySession>(sessionsQuery);
 
-    // 2. Funnel Aggregation
-    const funnelData = React.useMemo(() => {
-        if (!sessions || sessions.length === 0) return [];
-
-        const pagesCount = [];
-        let pageElements: SurveyElement[][] = [];
-        let currentPage: SurveyElement[] = [];
-        
-        if (survey.showCoverPage && survey.showSurveyTitles !== false) pageElements.push([]); 
-        survey.elements.forEach(element => {
-            if (element.type === 'section' && (element as any).renderAsPage && currentPage.length > 0) {
-                pageElements.push(currentPage);
-                currentPage = [element];
-            } else currentPage.push(element);
-        });
-        if (currentPage.length > 0) pageElements.push(currentPage);
-
-        return pageElements.map((page, index) => {
-            const section = page[0] as any;
-            const label = index === 0 && survey.showCoverPage ? 'Cover Page' : (section?.stepperTitle || section?.title || `Step ${index + 1}`);
-            
-            // Total sessions that reached AT LEAST this step
-            const count = sessions.filter(s => s.maxStepReached >= index).length;
-            
-            return {
-                index,
-                label,
-                count,
-                percentage: (count / sessions.length) * 100,
-                color: CHART_COLORS[index % CHART_COLORS.length]
-            };
-        });
-    }, [sessions, survey]);
-
-    const dropoffInsights = React.useMemo(() => {
-        if (funnelData.length < 2) return [];
-        const insights = [];
-        for (let i = 0; i < funnelData.length - 1; i++) {
-            const current = funnelData[i];
-            const next = funnelData[i+1];
-            const lost = current.count - next.count;
-            const lossPercentage = current.count > 0 ? (lost / current.count) * 100 : 0;
-            if (lossPercentage > 0) {
-                insights.push({
-                    from: current.label,
-                    to: next.label,
-                    lost,
-                    lossPercentage
-                });
-            }
-        }
-        return insights.sort((a, b) => b.lossPercentage - a.lossPercentage);
-    }, [funnelData]);
-
-    // 3. Scoring Analytics
-    const scoringMetrics = React.useMemo(() => {
-        if (!survey.scoringEnabled || responses.length === 0) return null;
-        
-        const scores = responses.map(r => r.score || 0);
-        const total = scores.reduce((a, b) => a + b, 0);
-        const avg = total / responses.length;
-        
-        const ruleCounts: Record<string, number> = {};
-        survey.resultRules?.forEach(rule => { ruleCounts[rule.id] = 0; });
-        
-        responses.forEach(res => {
-            const score = res.score || 0;
-            const matchedRule = survey.resultRules
-                ?.sort((a, b) => a.priority - b.priority)
-                .find(rule => score >= rule.minScore && score <= rule.maxScore);
-            if (matchedRule) {
-                ruleCounts[matchedRule.id]++;
-            }
-        });
-
-        const outcomeData = survey.resultRules?.map((rule, idx) => ({
-            name: rule.label,
-            value: ruleCounts[rule.id],
-            color: CHART_COLORS[idx % CHART_COLORS.length]
-        })).filter(d => d.value > 0);
-
-        return { avg, total, outcomeData };
-    }, [survey, responses]);
-
-    // 4. Question-by-Question Analytics
-    const analyzedResults: AnalyzedResult[] = React.useMemo(() => {
-        if (!survey || !responses) return [];
-        const questions = survey.elements.filter(isQuestion);
-        return questions.map(question => {
-            const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined && v !== null && v !== '');
-            let scoreData: { totalScore?: number, averageScore?: number } = {};
-            
-            let result: AnalyzedResult;
-
-            if (question.type === 'yes-no' || question.type === 'multiple-choice' || question.type === 'dropdown') {
-                const options = question.type === 'yes-no' ? ['Yes', 'No'] : question.options || [];
-                const counts = Object.fromEntries(options.map(opt => [opt, 0]));
-                questionResponses.forEach(value => { if (typeof value === 'string' && value in counts) counts[value]++; });
-                const total = questionResponses.length;
-                const data = Object.entries(counts).map(([name, value]) => ({ name, value, percentage: total > 0 ? (value / total) * 100 : 0 }));
-                result = { question, type: 'chart' as const, data, total, insight: '', ...scoreData };
-            } else if (question.type === 'checkboxes') {
-                const counts = Object.fromEntries((question.options || []).map(opt => [opt, 0]));
-                if (question.allowOther) counts['Other'] = 0;
-                let otherText: string[] = [];
-                questionResponses.forEach((value: any) => {
-                    const selectedOptions = (value as any)?.options || (Array.isArray(value) ? value : []);
-                    if (Array.isArray(selectedOptions)) { selectedOptions.forEach(v => { if (v in counts) counts[v]++; }); }
-                    if (value.other && value.other.trim()) {
-                        if ('Other' in counts) counts['Other']++;
-                        otherText.push(value.other.trim());
-                    }
-                });
-                const totalRespondents = questionResponses.length;
-                const data = Object.entries(counts).map(([name, value]) => ({ name, value, percentage: totalRespondents > 0 ? (value / totalRespondents) * 100 : 0 }));
-                result = { question, type: 'checkbox' as const, data, otherText, total: totalRespondents, insight: '', ...scoreData };
-            } else if (question.type === 'text' || question.type === 'long-text' || question.type === 'date' || question.type === 'time') {
-                const textResponses = questionResponses.filter(v => typeof v === 'string' && v.trim().length > 0) as string[];
-                result = { question, type: 'text' as const, data: textResponses, total: textResponses.length, insight: '', ...scoreData };
-            } else if (question.type === 'rating') {
-                const ratingResponses = questionResponses.filter(v => typeof v === 'number' && v >= 1 && v <= 5) as number[];
-                const counts: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
-                let totalScore = 0;
-                ratingResponses.forEach(rating => {
-                    if (rating >= 1 && rating <= 5) {
-                        const key = String(rating);
-                        counts[key]++;
-                        totalScore += rating;
-                    }
-                });
-                const total = ratingResponses.length;
-                const average = total > 0 ? totalScore / total : 0;
-                const data = Object.entries(counts).map(([name, value]) => ({ name: `${name} ★`, value, percentage: total > 0 ? (value / total) * 100 : 0 }));
-                result = { question, type: 'rating' as const, data, total, average, insight: '', ...scoreData };
-            } else {
-                 result = { question, type: 'unknown' as const, data: [], insight: '', ...scoreData };
-            }
-
-            const insight = generateInsight(result);
-            return { ...result, insight };
-        });
-    }, [survey, responses]);
-
-    // 5. Attribution & Outreach Analytics (Phase 4)
-    const attributionData = React.useMemo(() => {
-        if (!responses || !users) return [];
-        
-        const statsMap: Record<string, { responses: number; leads: number }> = {};
-        
-        responses.forEach(res => {
-            if (res.assignedUserId) {
-                if (!statsMap[res.assignedUserId]) {
-                    statsMap[res.assignedUserId] = { responses: 0, leads: 0 };
-                }
-                statsMap[res.assignedUserId].responses++;
-                if (res.entityId) {
-                    statsMap[res.assignedUserId].leads++;
-                }
-            }
-        });
-
-        return Object.entries(statsMap).map(([uid, stats]) => {
-            const user = users.find(u => u.id === uid);
-            return {
-                id: uid,
-                name: user?.name || user?.email || 'Team Member',
-                responses: stats.responses,
-                leads: stats.leads,
-                yield: stats.responses > 0 ? Math.round((stats.leads / stats.responses) * 100) : 0
-            };
-        }).sort((a, b) => b.responses - a.responses);
-    }, [responses, users]);
-
+    // Delegated computations (extracted for testability & performance)
+    const funnelData = React.useMemo(() => sessions ? computeFunnelData(survey, sessions) : [], [sessions, survey]);
+    const dropoffInsights = React.useMemo(() => computeDropoffInsights(funnelData), [funnelData]);
+    const scoringMetrics = React.useMemo(() => computeScoringMetrics(survey, responses), [survey, responses]);
+    const analyzedResults = React.useMemo(() => analyzeQuestions(survey, responses), [survey, responses]);
+    const attributionData = React.useMemo(() => computeAttribution(responses, users), [responses, users]);
     const totalLeads = React.useMemo(() => responses.filter(r => r.entityId).length, [responses]);
 
     return (
  <div className="space-y-8">
             
             {/* Top Stats Overview */}
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
- <Card className="bg-card shadow-sm">
- <CardContent className="p-4 flex items-center gap-4">
- <div className="bg-primary/10 p-2.5 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
-                        <div>
- <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Submissions</p>
- <p className="text-2xl font-semibold">{responses.length}</p>
-                        </div>
-                    </CardContent>
-                </Card>
- <Card className="bg-card shadow-sm">
-  <CardContent className="p-4 flex items-center gap-4">
-  <div className="bg-emerald-500/10 p-2.5 rounded-xl"><ShieldCheck className="h-5 w-5 text-emerald-600" /></div>
-                        <div>
-  <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">CRM Leads Gen.</p>
-  <p className="text-2xl font-semibold">{totalLeads}</p>
-                        </div>
-                    </CardContent>
-                </Card>
-  <Card className="bg-card shadow-sm">
-  <CardContent className="p-4 flex items-center gap-4">
-  <div className="bg-orange-100 p-2.5 rounded-xl text-orange-600"><MousePointer2 className="h-5 w-5" /></div>
-                        <div>
-  <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Total Visits</p>
-  <p className="text-2xl font-semibold">{sessions?.length || 0}</p>
-                        </div>
-                    </CardContent>
-                </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard index={0} label="Submissions" value={responses.length} icon={Users} iconClassName="bg-primary/10 text-primary" />
+                <StatCard index={1} label="CRM Leads Gen." value={totalLeads} icon={ShieldCheck} iconClassName="bg-emerald-500/10 text-emerald-600" />
+                <StatCard index={2} label="Total Visits" value={sessions?.length || 0} icon={MousePointer2} iconClassName="bg-orange-500/10 text-orange-600" />
                 {survey.scoringEnabled && scoringMetrics && (
                     <>
-  <Card className="bg-card shadow-sm">
-  <CardContent className="p-4 flex items-center gap-4">
-  <div className="bg-green-500/10 p-2.5 rounded-xl"><Trophy className="h-5 w-5 text-green-600" /></div>
-                                <div>
-  <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Avg. Score</p>
-  <p className="text-2xl font-semibold">{scoringMetrics.avg.toFixed(1)}</p>
-                                </div>
-                            </CardContent>
-                        </Card>
-  <Card className="bg-card shadow-sm">
-  <CardContent className="p-4 flex items-center gap-4">
-  <div className="bg-blue-500/10 p-2.5 rounded-xl text-blue-600"><Target className="h-5 w-5" /></div>
-                        <div className="flex-grow">
-  <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Lead Yield Rate</p>
-  <div className="flex items-center gap-3">
-  <div className="h-2 flex-grow bg-secondary rounded-full overflow-hidden">
-                                            <div 
-  className="h-full bg-blue-600 transition-all duration-1000" 
-                                                style={{ width: `${responses.length > 0 ? (totalLeads / responses.length) * 100 : 0}%` }} 
-                                            />
+                        <StatCard index={3} label="Avg. Score" value={scoringMetrics.avg.toFixed(1)} icon={Trophy} iconClassName="bg-green-500/10 text-green-600" />
+                        <motion.div custom={4} variants={fadeInUp} initial="hidden" animate="visible">
+                            <Card className="bg-card/60 backdrop-blur-md border-border/40 shadow-sm hover:shadow-lg transition-shadow">
+                                <CardContent className="p-4 flex items-center gap-4">
+                                    <div className="bg-blue-500/10 p-2.5 rounded-xl text-blue-600"><Target className="h-5 w-5" /></div>
+                                    <div className="flex-grow">
+                                        <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Lead Yield Rate</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-2 flex-grow bg-secondary rounded-full overflow-hidden">
+                                                <div className="h-full bg-blue-600 transition-all duration-1000" style={{ width: `${responses.length > 0 ? (totalLeads / responses.length) * 100 : 0}%` }} />
+                                            </div>
+                                            <span className="text-sm font-bold">{responses.length > 0 ? ((totalLeads / responses.length) * 100).toFixed(0) : 0}%</span>
                                         </div>
-  <span className="text-sm font-bold">{responses.length > 0 ? ((totalLeads / responses.length) * 100).toFixed(0) : 0}%</span>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
                     </>
                 )}
             </div>
+
+            {/* Response Trend Over Time */}
+            <ResponseTrendChart responses={responses} />
 
             {/* DROP-OFF ANALYTICS FUNNEL */}
             {funnelData.length > 1 && (
@@ -524,7 +436,7 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
  <CardTitle className="text-sm font-semibold flex items-center gap-2">
  <TrendingDown className="h-4 w-4 text-orange-500" /> Progression Funnel
                             </CardTitle>
-                            <CardDescription>Visualizing step-by-step participant retention.</CardDescription>
+
                         </CardHeader>
  <CardContent className="h-[300px] p-8">
                             <ResponsiveContainer width="100%" height="100%">
@@ -575,7 +487,7 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
  <CardTitle className="text-sm font-semibold flex items-center gap-2">
  <AlertCircle className="h-4 w-4 text-rose-500" /> High Drop-off Audit
                             </CardTitle>
-                            <CardDescription>Identifying critical friction points.</CardDescription>
+
                         </CardHeader>
  <CardContent className="flex-1 overflow-hidden">
                             {dropoffInsights.length > 0 ? (
@@ -624,7 +536,7 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
  <CardTitle className="text-sm font-semibold flex items-center gap-2">
  <BarChart3 className="h-4 w-4" /> Outcome Distribution
                             </CardTitle>
-                            <CardDescription>Breakdown of respondents by logic result buckets.</CardDescription>
+
                         </CardHeader>
  <CardContent className="h-64">
                             <ResponsiveContainer width="100%" height="100%">

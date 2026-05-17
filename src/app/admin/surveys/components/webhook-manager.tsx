@@ -2,8 +2,9 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { collection, query, orderBy, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Webhook } from '@/lib/types';
 import { 
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
@@ -26,6 +27,7 @@ export default function WebhookManager() {
     const { control, setValue, watch } = useFormContext();
     const firestore = useFirestore();
     const { user } = useUser();
+    const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
 
     const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
@@ -34,9 +36,13 @@ export default function WebhookManager() {
     const [newWebhookUrl, setNewWebhookUrl] = React.useState('');
 
     const webhooksQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'webhooks'), orderBy('name', 'asc'));
-    }, [firestore]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'webhooks'),
+            where('workspaceId', '==', activeWorkspaceId),
+            orderBy('name', 'asc')
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const { data: webhooks, isLoading } = useCollection<Webhook>(webhooksQuery);
 
@@ -44,12 +50,16 @@ export default function WebhookManager() {
     const webhookEnabled = watch('webhookEnabled');
 
     const handleCreateWebhook = async () => {
-        if (!firestore || !user || !newWebhookName || !newWebhookUrl) return;
+        if (!firestore || !user || !activeWorkspaceId || !newWebhookName || !newWebhookUrl) return;
         setIsSaving(true);
         try {
             const data = {
                 name: newWebhookName.trim(),
                 url: newWebhookUrl.trim(),
+                workspaceId: activeWorkspaceId,
+                type: 'outbound',
+                status: 'active',
+                trigger: 'SURVEY_SUBMITTED',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 createdBy: user.uid
