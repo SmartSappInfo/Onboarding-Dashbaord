@@ -36,7 +36,12 @@ export function EmailHygieneBadge({ status, size = 'sm' }: Props) {
     <TooltipProvider delayDuration={100}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className={`inline-flex items-center justify-center ${dim} rounded-full ${bg} ${color} cursor-help transition-all hover:scale-110 shadow-sm border border-transparent hover:border-current/20`}>
+          <div 
+            role="button"
+            tabIndex={0}
+            aria-label={`Email hygiene status: ${currentStatus}. Click to view details.`}
+            className={`inline-flex items-center justify-center ${dim} rounded-full ${bg} ${color} cursor-pointer transition-all duration-300 ease-out hover:scale-110 shadow-sm border border-transparent hover:border-current/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary`}
+          >
              <Icon size={iconSize} strokeWidth={3} />
           </div>
         </TooltipTrigger>

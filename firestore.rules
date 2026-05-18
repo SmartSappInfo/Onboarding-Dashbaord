@@ -120,6 +120,10 @@ service cloud.firestore {
       allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && isOrgMatch(request.resource.data.organizationId)));
     }
 
+    match /verification_cache/{docId} {
+      allow read: if isAuthorized();
+    }
+
     match /workspaces/{workspaceId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());

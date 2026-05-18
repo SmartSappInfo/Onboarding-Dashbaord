@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { EmailHygieneHoverCard } from '../../components/EmailHygieneHoverCard';
 import { logActivity } from '@/lib/activity-logger';
 import { 
     Plus, User, Mail, Phone, ShieldCheck, BadgeCheck, X, AlertCircle, Loader2, Save, Trash2, Pencil, MoreHorizontal, UserCheck
@@ -239,8 +240,24 @@ export default function EntityContactDirectory({
                             )
                         ))
                     ) : !isAdding && (
-                        <div className="p-12 text-center text-muted-foreground font-medium italic">
-                            No entity contacts initialized.
+                        <div className="p-8 sm:p-12 flex flex-col items-center justify-center text-center border-2 border-dashed border-border/60 rounded-3xl bg-card/10 backdrop-blur-[2px] transition-all duration-300 hover:border-primary/20 group/empty m-6">
+                            <div className="relative mb-5 flex items-center justify-center h-16 w-16 rounded-2xl bg-primary/5 text-primary border border-primary/10 shadow-sm group-hover/empty:scale-105 transition-transform duration-500 ease-out">
+                                <User className="h-8 w-8 text-primary/80" strokeWidth={1.5} />
+                                <div className="absolute -bottom-1.5 -right-1.5 h-6 w-6 rounded-full bg-slate-900 border-2 border-slate-950 flex items-center justify-center shadow-lg">
+                                    <Plus className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
+                                </div>
+                            </div>
+                            <h3 className="font-bold text-base text-foreground tracking-tight mb-1.5">No Contacts Registered</h3>
+                            <p className="text-xs text-muted-foreground font-medium max-w-sm leading-relaxed mb-6">
+                                Add your institution's administrators or stakeholders to initiate operations, trigger automated workflows, and launch communication templates.
+                            </p>
+                            <Button 
+                                onClick={() => setIsAdding(true)} 
+                                className="rounded-xl font-bold bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/10 gap-2 shrink-0 transition-transform duration-300 hover:scale-[1.02]"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Contact
+                            </Button>
                         </div>
                     )}
                 </div>
@@ -278,15 +295,48 @@ function ContactRow({ contact, onEdit, onDelete, disabled }: {
 }) {
     const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
+    const firestore = useFirestore();
+    const hashed = React.useMemo(() => contact.email ? btoa(contact.email.toLowerCase()) : '', [contact.email]);
+    const docRef = useMemoFirebase(() => (firestore && hashed) ? doc(firestore, 'verification_cache', hashed) : null, [firestore, hashed]);
+    const { data: cache } = useDoc<any>(docRef);
+
+    const hygieneData = React.useMemo(() => cache ? {
+        verificationStatus: cache.status,
+        verificationScore: cache.score,
+        lastVerifiedAt: cache.lastVerifiedAt,
+        verificationDetails: cache.checks
+    } : undefined, [cache]);
+
+    const [isRechecking, setIsRechecking] = React.useState(false);
+    const { toast } = useToast();
+
+    const handleManualRecheck = async (email: string) => {
+        if (isRechecking) return;
+        setIsRechecking(true);
+        try {
+            const res = await fetch('/api/verify-email/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ emails: [email], forceRefresh: true })
+            });
+            if (!res.ok) throw new Error('Verification failed');
+            toast({ title: 'Recheck Complete', description: `Successfully re-verified ${email}.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Recheck Failed', description: e.message });
+        } finally {
+            setIsRechecking(false);
+        }
+    };
+
     return (
         <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-background transition-colors text-left">
             <div className="flex items-center gap-4 text-left">
-                <div className="h-12 w-12 rounded-2xl bg-card/50 flex items-center justify-center font-semibold text-primary border border-border/50 shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">
+                <div className="h-12 w-12 rounded-2xl bg-card/50 flex items-center justify-center font-semibold text-primary border border-border/50 shadow-sm group-hover:bg-gradient-to-tr group-hover:from-primary group-hover:to-blue-600 group-hover:text-white transition-all duration-300 ease-out">
                     {getInitials(contact.name)}
                 </div>
                 <div className="text-left">
                     <p className="font-semibold text-base">{contact.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                         <Badge variant="outline" className="text-[8px] font-semibold uppercase tracking-tighter h-5">
                             {contact.typeLabel || contact.typeKey}
                         </Badge>
@@ -302,26 +352,75 @@ function ContactRow({ contact, onEdit, onDelete, disabled }: {
                         )}
                         <ShieldCheck className={cn("h-3.5 w-3.5", contact.isSignatory ? "text-amber-500" : "text-muted-foreground/20")} />
                     </div>
+                    {(contact.email || contact.phone) && (
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground font-medium">
+                            {contact.email && (
+                                <span className="flex items-center gap-1.5">
+                                    <Mail className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                    <EmailHygieneHoverCard
+                                        email={contact.email}
+                                        hygiene={hygieneData}
+                                        onManualRecheck={handleManualRecheck}
+                                        isRechecking={isRechecking}
+                                    >
+                                        <span className="cursor-pointer hover:text-primary transition-colors font-bold">
+                                            {contact.email}
+                                        </span>
+                                    </EmailHygieneHoverCard>
+                                </span>
+                            )}
+                            {contact.phone && (
+                                <span className="flex items-center gap-1.5">
+                                    <Phone className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                    {contact.phone}
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="flex gap-2 flex-1 sm:flex-none">
                     {contact.email && (
-                        <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50">
-                            <a href={`mailto:${contact.email}`}><Mail className="h-3.5 w-3.5 mr-2" /> Email</a>
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            asChild 
+                            className="h-9 w-9 rounded-xl border-border/50 shrink-0 shadow-sm focus-visible:ring-2 focus-visible:ring-primary" 
+                            title={`Email ${contact.name}`}
+                            aria-label={`Email ${contact.name}`}
+                        >
+                            <a href={`mailto:${contact.email}`}>
+                                <Mail className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
+                            </a>
                         </Button>
                     )}
                     {contact.phone && (
-                        <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50">
-                            <a href={`tel:${contact.phone}`}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a>
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            asChild 
+                            className="h-9 w-9 rounded-xl border-border/50 shrink-0 shadow-sm focus-visible:ring-2 focus-visible:ring-primary" 
+                            title={`Call ${contact.name}`}
+                            aria-label={`Call ${contact.name}`}
+                        >
+                            <a href={`tel:${contact.phone}`}>
+                                <Phone className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
+                            </a>
                         </Button>
                     )}
                 </div>
                 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground" disabled={disabled}>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary" 
+                            disabled={disabled}
+                            aria-label="More contact actions"
+                        >
                             <MoreHorizontal className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>

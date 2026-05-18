@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { collection, doc, deleteDoc, query, where, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, query, where, orderBy, updateDoc, getDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser, useDoc } from '@/firebase';
 import type { WorkspaceEntity, Entity, Zone, Tag, TagCategory } from '@/lib/types';
 import { TagSelector } from '@/components/tags/TagSelector';
@@ -61,8 +61,9 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useTerminology } from '@/hooks/use-terminology';
 import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
-import { EmailHygieneHoverCard } from '../components/EmailHygieneHoverCard';
+import { EmailHygieneHoverCard, EmailHygieneHoverCardContent } from '../components/EmailHygieneHoverCard';
 import { BulkScanProgress } from '../components/BulkScanProgress';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -109,6 +110,7 @@ export default function EntitiesClient() {
   const [isPermanentDeleting, setIsPermanentDeleting] = useState(false);
   const [assigningEntity, setAssigningEntity] = useState<WorkspaceEntity | null>(null);
   const [changingStatusEntity, setChangingStatusEntity] = useState<WorkspaceEntity | null>(null);
+  const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
   const [managingWorkspacesEntity, setManagingWorkspacesEntity] = useState<WorkspaceEntity | null>(null);
 
   const [isScanning, setIsScanning] = useState(false);
@@ -119,18 +121,40 @@ export default function EntitiesClient() {
   const handleBulkScan = async () => {
     if (selectedEntityIds.length === 0) return;
     
-    const emailsToVerify = sortedEntities
-      .filter(e => selectedEntityIds.includes(e.id))
-      .map(e => e.primaryEmail)
-      .filter(Boolean) as string[];
+    // 1. Gather all entity IDs from the selected workspace entities
+    const selectedEntities = sortedEntities.filter(e => selectedEntityIds.includes(e.id));
+    
+    // 2. Fetch all contacts from entities documents in parallel
+    let allEmails: string[] = [];
+    
+    try {
+      if (!firestore) return;
+      
+      const fetchPromises = selectedEntities.map(async (e) => {
+        if (!e.entityId) return [];
+        const entityDocRef = doc(firestore, 'entities', e.entityId);
+        const entityDoc = await getDoc(entityDocRef);
+        if (!entityDoc.exists()) return [];
+        const data = entityDoc.data();
+        const contacts = data?.entityContacts || [];
+        return contacts.map((c: any) => c.email).filter(Boolean) as string[];
+      });
+      
+      const emailLists = await Promise.all(fetchPromises);
+      allEmails = Array.from(new Set(emailLists.flat().map(email => email.toLowerCase())));
+    } catch (err) {
+      console.error('[BulkScan] Failed to fetch contact emails:', err);
+      toast({ variant: 'destructive', title: 'Fetch Error', description: 'Failed to retrieve entity contact emails.' });
+      return;
+    }
 
-    if (emailsToVerify.length === 0) {
-      toast({ title: 'No Emails Found', description: 'Selected entities do not have primary emails.' });
+    if (allEmails.length === 0) {
+      toast({ title: 'No Emails Found', description: 'Selected entities do not have any contact emails.' });
       return;
     }
 
     setIsScanning(true);
-    setScanTotal(emailsToVerify.length);
+    setScanTotal(allEmails.length);
     setScanProcessed(0);
     
     const abort = new AbortController();
@@ -139,10 +163,10 @@ export default function EntitiesClient() {
     try {
       // Chunking requests to 50 to prevent Vercel edge timeout limits
       const chunkSize = 50;
-      for (let i = 0; i < emailsToVerify.length; i += chunkSize) {
+      for (let i = 0; i < allEmails.length; i += chunkSize) {
         if (abort.signal.aborted) break;
         
-        const chunk = emailsToVerify.slice(i, i + chunkSize);
+        const chunk = allEmails.slice(i, i + chunkSize);
         const res = await fetch('/api/verify-email/bulk', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -155,7 +179,7 @@ export default function EntitiesClient() {
         setScanProcessed(prev => prev + data.processedCount);
       }
       if (!abort.signal.aborted) {
-        toast({ title: 'Verification Complete', description: `Successfully verified ${emailsToVerify.length} emails.` });
+        toast({ title: 'Verification Complete', description: `Successfully verified ${allEmails.length} emails across all contacts.` });
       }
     } catch (e: any) {
       if (e.name !== 'AbortError') {
@@ -619,17 +643,6 @@ export default function EntitiesClient() {
                                                     <span className="text-[9px] font-bold text-muted-foreground opacity-60 flex items-center gap-1">
                                                         <User className="h-2 w-2" /> <PrimaryContactName entityId={entity.entityId} fallback={entity.primaryEmail} />
                                                     </span>
-                                                    {entity.primaryEmail && (
-                                                        <div className="mt-1">
-                                                            <EmailHygieneHoverCard 
-                                                                email={entity.primaryEmail} 
-                                                                hygiene={entity as any}
-                                                                onManualRecheck={handleManualRecheck}
-                                                            >
-                                                                <span className="text-xs text-slate-500">{entity.primaryEmail}</span>
-                                                            </EmailHygieneHoverCard>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center">
@@ -639,7 +652,7 @@ export default function EntitiesClient() {
                                                 <Badge className="text-[10px] font-bold uppercase border-none h-6 bg-primary/10 text-primary">{entity.lifecycleStatus || 'Welcome'}</Badge>
                                             </TableCell>
                                             <TableCell>
-                                                <CompactContactList entityId={entity.entityId} />
+                                                <CompactContactList entityId={entity.entityId} onManualRecheck={handleManualRecheck} />
                                             </TableCell>
                                             <TableCell className="text-xs font-medium text-muted-foreground">
                                                 {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
@@ -835,7 +848,7 @@ function PrimaryContactName({ entityId, fallback }: { entityId: string, fallback
     return <span className="tracking-tight">{name}</span>;
 }
 
-function CompactContactList({ entityId }: { entityId: string }) {
+function CompactContactList({ entityId, onManualRecheck }: { entityId: string, onManualRecheck: (email: string) => void }) {
     const firestore = useFirestore();
     const docRef = useMemoFirebase(() => firestore ? doc(firestore, 'entities', entityId) : null, [firestore, entityId]);
     const { data: baseEntity } = useDoc<Entity>(docRef);
@@ -849,21 +862,7 @@ function CompactContactList({ entityId }: { entityId: string }) {
     return (
         <div className="flex -space-x-2 overflow-visible py-1">
             {contacts.slice(0, 4).map((c, i) => (
-                <Tooltip key={i} delayDuration={100}>
-                    <TooltipTrigger asChild>
-                        <Avatar className="inline-block h-8 w-8 rounded-full ring-2 ring-background cursor-pointer hover:-translate-y-1 transition-transform relative z-0 hover:z-10 bg-background border-none">
-                            <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">{getInitials(c.name)}</AvatarFallback>
-                        </Avatar>
-                    </TooltipTrigger>
-                    <TooltipContent className="p-3 text-left z-50">
-                        <p className="font-bold text-sm tracking-tight">{c.name}</p>
-                        <Badge variant="outline" className="text-[8px] uppercase tracking-tighter mt-1 mb-2">{c.typeLabel || c.typeKey || (c as any).type}</Badge>
-                        <div className="space-y-1">
-                            {c.email && <p className="text-[10px] flex items-center gap-1.5"><Mail className="h-3 w-3 text-muted-foreground" /> {c.email}</p>}
-                            {c.phone && <p className="text-[10px] flex items-center gap-1.5"><Phone className="h-3 w-3 text-muted-foreground" /> {c.phone}</p>}
-                        </div>
-                    </TooltipContent>
-                </Tooltip>
+                <InteractiveContactAvatar key={i} contact={c} onManualRecheck={onManualRecheck} />
             ))}
             {contacts.length > 4 && (
                 <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-[10px] font-bold ring-2 ring-background z-0 relative border border-border/50">
@@ -871,5 +870,89 @@ function CompactContactList({ entityId }: { entityId: string }) {
                 </div>
             )}
         </div>
+    );
+}
+
+function EmailVerificationStatusDot({ email }: { email: string }) {
+    const firestore = useFirestore();
+    const hashed = useMemo(() => btoa(email.toLowerCase()), [email]);
+    const docRef = useMemoFirebase(() => firestore ? doc(firestore, 'verification_cache', hashed) : null, [firestore, hashed]);
+    const { data: cache } = useDoc<any>(docRef);
+
+    const status = cache?.status || 'unchecked';
+    
+    if (status === 'verified' || status === 'likely_valid') {
+        return null;
+    }
+    
+    const colors = {
+        risky: 'bg-amber-500',
+        invalid: 'bg-rose-500',
+        unchecked: 'bg-slate-400'
+    };
+
+    return <span className={cn("absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-background", colors[status as keyof typeof colors] || colors.unchecked)} />;
+}
+
+function InteractiveContactAvatar({ contact, onManualRecheck }: { contact: any, onManualRecheck: (email: string) => void }) {
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const [isTooltipOpen, setIsTooltipOpen] = useState(false);
+    
+    const firestore = useFirestore();
+    const hashed = useMemo(() => contact.email ? btoa(contact.email.toLowerCase()) : '', [contact.email]);
+    const docRef = useMemoFirebase(() => (firestore && hashed) ? doc(firestore, 'verification_cache', hashed) : null, [firestore, hashed]);
+    const { data: cache } = useDoc<any>(docRef);
+
+    const hygieneData = useMemo(() => cache ? {
+        verificationStatus: cache.status,
+        verificationScore: cache.score,
+        lastVerifiedAt: cache.lastVerifiedAt,
+        verificationDetails: cache.checks
+    } : undefined, [cache]);
+
+    return (
+        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+            <PopoverTrigger asChild>
+                <div onClick={(e) => e.stopPropagation()}>
+                    <Tooltip 
+                        open={isTooltipOpen && !isPopoverOpen} 
+                        onOpenChange={setIsTooltipOpen}
+                        delayDuration={100}
+                    >
+                        <TooltipTrigger asChild>
+                            <div className="relative cursor-pointer hover:-translate-y-1 transition-transform relative z-0 hover:z-10">
+                                <Avatar className="inline-block h-8 w-8 rounded-full ring-2 ring-background bg-background border-none">
+                                    <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
+                                        {getInitials(contact.name)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                {contact.email && <EmailVerificationStatusDot email={contact.email} />}
+                            </div>
+                        </TooltipTrigger>
+                        
+                        <TooltipContent className="p-3 text-left z-50">
+                            <p className="font-bold text-sm tracking-tight">{contact.name}</p>
+                            <Badge variant="outline" className="text-[8px] uppercase tracking-tighter mt-1 mb-2">
+                                {contact.typeLabel || contact.typeKey || contact.type}
+                            </Badge>
+                            <div className="space-y-1">
+                                {contact.email && <p className="text-[10px] flex items-center gap-1.5"><Mail className="h-3 w-3 text-muted-foreground" /> {contact.email}</p>}
+                                {contact.phone && <p className="text-[10px] flex items-center gap-1.5"><Phone className="h-3 w-3 text-muted-foreground" /> {contact.phone}</p>}
+                            </div>
+                        </TooltipContent>
+                    </Tooltip>
+                </div>
+            </PopoverTrigger>
+            
+            <PopoverContent side="top" className="w-80 p-0 bg-slate-900 border-slate-800 shadow-2xl overflow-hidden z-50 rounded-2xl">
+                {contact.email && (
+                    <EmailHygieneHoverCardContent 
+                        email={contact.email} 
+                        hygiene={hygieneData} 
+                        onManualRecheck={onManualRecheck} 
+                    />
+                )}
+            </PopoverContent>
+        </Popover>
     );
 }
