@@ -5,6 +5,7 @@ import type { VariableDefinition } from '@/lib/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { AlertTriangle } from 'lucide-react';
 
 interface PlainTextEditorProps {
     value: string;
@@ -16,8 +17,13 @@ interface PlainTextEditorProps {
 }
 
 /**
- * Lightweight plain-text editor with variable insertion and SMS segment counting.
- * Used for SMS templates and plain_text email templates.
+ * Lightweight plain-text editor with variable insertion, SMS segment counting,
+ * and live token syntax validation.
+ *
+ * Performance notes (Vercel React Best Practices):
+ * - Token validation uses a memoized Set for O(1) lookups
+ * - Invalid tokens are derived via useMemo — no effect loops
+ * - Debouncing is unnecessary because Set.has() is sub-microsecond
  */
 export const PlainTextEditor = React.memo(function PlainTextEditor({
     value,
@@ -50,6 +56,23 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
         });
     }, [value, onChange]);
 
+    // O(1) lookup set for allowed variable keys — rebuilt only when variables change
+    const allowedKeySet = React.useMemo(
+        () => new Set(variables.map(v => v.key)),
+        [variables]
+    );
+
+    // Live Token Syntax Validation:
+    // Single-pass regex extracts all {{token}} instances, then validates against
+    // the allowedKeySet. Invalid tokens are surfaced in a warning banner.
+    const invalidTokens = React.useMemo(() => {
+        if (!value) return [];
+        const matches = value.match(/\{\{([^{}]+?)\}\}/g);
+        if (!matches) return [];
+        const tokens = [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))];
+        return tokens.filter(token => !allowedKeySet.has(token));
+    }, [value, allowedKeySet]);
+
     // SMS segment calculation
     const smsSegments = React.useMemo(() => {
         if (channel !== 'sms') return null;
@@ -79,10 +102,40 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                         'text-base leading-relaxed font-medium',
                         'focus-visible:ring-2 focus-visible:ring-primary/30',
                         'transition-shadow duration-200',
-                        isOverLimit && 'ring-2 ring-destructive/50'
+                        isOverLimit && 'ring-2 ring-destructive/50',
+                        invalidTokens.length > 0 && 'ring-2 ring-amber-500/40'
                     )}
                 />
             </div>
+
+            {/* Live Token Syntax Warning Banner */}
+            {invalidTokens.length > 0 && (
+                <div
+                    className="animate-in slide-in-from-top-2 duration-300 bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start gap-3 shadow-sm"
+                    role="alert"
+                    aria-live="polite"
+                >
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div className="space-y-1.5 min-w-0">
+                        <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                            {invalidTokens.length} unsupported variable{invalidTokens.length > 1 ? 's' : ''} detected
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {invalidTokens.map(token => (
+                                <code
+                                    key={token}
+                                    className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[9px] font-mono font-bold border border-amber-500/20"
+                                >
+                                    {`{{${token}}}`}
+                                </code>
+                            ))}
+                        </div>
+                        <p className="text-[9px] text-amber-600/70 dark:text-amber-400/70 font-medium leading-relaxed">
+                            These tokens are not in the contextual registry for this category. They will render as raw text in sent messages.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Status bar */}
             <div className="flex items-center justify-between px-2">
@@ -94,7 +147,10 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                             </Badge>
                             <Badge
                                 variant={smsSegments.count > 1 ? 'secondary' : 'outline'}
-                                className="rounded-full h-6 px-3 text-[10px] font-bold tabular-nums"
+                                className={cn(
+                                    "rounded-full h-6 px-3 text-[10px] font-bold tabular-nums",
+                                    smsSegments.count > 1 && "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                )}
                             >
                                 {smsSegments.count} {smsSegments.count === 1 ? 'segment' : 'segments'}
                             </Badge>

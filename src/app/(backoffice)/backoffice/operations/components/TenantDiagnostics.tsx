@@ -1,59 +1,72 @@
+'use client';
+
 import * as React from 'react';
-import { Activity, Play, AlertCircle, Building2, CheckCircle2, XCircle, Search } from 'lucide-react';
+import {
+  Activity, Play, AlertCircle, Building2,
+  CheckCircle2, XCircle, Search, ShieldAlert,
+  Terminal,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { runTenantDiagnostics } from '@/lib/backoffice/backoffice-job-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { useAuth } from '@/firebase';
 
 export default function TenantDiagnostics() {
   const { profile, can } = useBackoffice();
+  const auth = useAuth();
   
   const [scopeType, setScopeType] = React.useState<'organization' | 'workspace'>('organization');
   const [scopeId, setScopeId] = React.useState('');
   
-  const [isRunning, setIsRunning] = React.useState(false);
+  const [isRunning, startRunTransition] = React.useTransition();
   const [result, setResult] = React.useState<any>(null);
 
-  const handleRunDiagnostics = async () => {
-     if (!profile) return;
+  const canExecute = can('operations', 'execute');
+
+  const handleRunDiagnostics = () => {
+     if (!canExecute) return;
      if (!scopeId.trim()) {
         alert('Please provide a target ID.');
         return;
      }
      
-     setIsRunning(true);
      setResult(null);
 
-     // Artificial minor delay to simulate intense hooking
-     await new Promise(r => setTimeout(r, 600));
+     startRunTransition(async () => {
+       try {
+         const user = auth.currentUser;
+         if (!user) throw new Error('Not authenticated');
+         const token = await user.getIdToken();
 
-     const res = await runTenantDiagnostics(scopeType, scopeId.trim(), {
-        userId: profile.id,
-        name: profile.name,
-        email: profile.email,
-        role: 'super_admin'
+         // Artificial minor delay to simulate intense hooking
+         await new Promise(r => setTimeout(r, 600));
+
+         const res = await runTenantDiagnostics(scopeType, scopeId.trim(), token);
+
+         if (res.success) {
+           setResult(res.data);
+         } else {
+           alert(`Failed to execute engine: ${res.error}`);
+         }
+       } catch (err: any) {
+         alert(`Auth error: ${err.message}`);
+       }
      });
-
-     if (res.success) {
-        setResult(res.data);
-     } else {
-        alert(`Failed to execute engine: ${res.error}`);
-     }
-
-     setIsRunning(false);
   };
 
   return (
     <div className="flex flex-col md:flex-row gap-6 h-full p-4 md:p-6 bg-background rounded-xl border border-border overflow-hidden">
-       {/* Diagnostic Driver */}
+       {/* ═══════════════════════════════════════════
+           Diagnostic Driver
+           ═══════════════════════════════════════════ */}
        <div className="w-full md:w-[400px] flex flex-col gap-6 shrink-0">
           <div>
             <h2 className="text-xl font-bold text-foreground mb-2">Diagnostic Engine</h2>
@@ -86,7 +99,7 @@ export default function TenantDiagnostics() {
              <div>
                 <label className="text-[10px] text-muted-foreground uppercase font-semibold block mb-2">Target ID</label>
                 <div className="relative">
-                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                    <Input 
                       placeholder={`Enter ${scopeType} ID...`}
                       value={scopeId}
@@ -96,17 +109,38 @@ export default function TenantDiagnostics() {
                 </div>
              </div>
 
-             <Button 
-                onClick={handleRunDiagnostics}
-                disabled={isRunning || !can('operations', 'execute')}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-foreground shadow-[0_0_15px_rgba(79,70,229,0.3)] h-10"
-             >
-                {isRunning ? (
-                   <span className="flex items-center"><Activity className="animate-spin h-4 w-4 mr-2" /> Penetrating Configuration Layer...</span>
-                ) : (
-                   <span className="flex items-center"><Play className="h-4 w-4 mr-2" /> Initialize System Scan</span>
-                )}
-             </Button>
+             <TooltipProvider>
+               <Tooltip>
+                 <TooltipTrigger asChild>
+                   <div>
+                     <Button 
+                        onClick={handleRunDiagnostics}
+                        disabled={isRunning || !canExecute}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)] h-10 disabled:opacity-60"
+                     >
+                        {isRunning ? (
+                           <span className="flex items-center"><Activity className="animate-spin h-4 w-4 mr-2" /> Penetrating Configuration Layer...</span>
+                        ) : (
+                           <span className="flex items-center"><Play className="h-4 w-4 mr-2" /> Initialize System Scan</span>
+                        )}
+                     </Button>
+                   </div>
+                 </TooltipTrigger>
+                 {!canExecute && (
+                   <TooltipContent side="bottom" className="bg-red-950 border-red-500/30 text-red-300 max-w-[240px]">
+                     <div className="flex items-start gap-2">
+                       <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                       <div>
+                         <p className="text-xs font-semibold">Insufficient Permissions</p>
+                         <p className="text-[10px] mt-1 opacity-80">
+                           Your role lacks the <code className="bg-red-500/20 px-1 rounded">operations:execute</code> permission.
+                         </p>
+                       </div>
+                     </div>
+                   </TooltipContent>
+                 )}
+               </Tooltip>
+             </TooltipProvider>
 
              <div className="p-3 bg-background rounded-lg border border-border text-xs text-muted-foreground leading-relaxed">
                 <span className="font-semibold text-muted-foreground mb-1 block">Audit Tracking Note</span>
@@ -115,14 +149,16 @@ export default function TenantDiagnostics() {
           </div>
        </div>
 
-       {/* Interactive Reporting Pane */}
+       {/* ═══════════════════════════════════════════
+           Interactive Reporting Pane
+           ═══════════════════════════════════════════ */}
        <div className="flex-1 bg-muted border border-border rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
           
-          <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'linear-gradient(#f8fafc 1px, transparent 1px), linear-gradient(90deg, #f8fafc 1px, transparent 1px)', backgroundSize: '40px 40px', maskImage: 'radial-gradient(ellipse at center, black 20%, transparent 80%)' }} />
+          <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)', backgroundSize: '40px 40px', maskImage: 'radial-gradient(ellipse at center, black 20%, transparent 80%)' }} />
 
           {!result && !isRunning && (
              <div className="z-10 text-center px-6">
-                <div className="h-16 w-16 bg-accent/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-border shadow-xl shadow-slate-900">
+                <div className="h-16 w-16 bg-accent/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-border shadow-xl">
                    <Activity className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <h3 className="text-foreground font-semibold text-lg">System Telemetry Awaiting Scan</h3>

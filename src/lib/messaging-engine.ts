@@ -3,7 +3,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting } from './types';
-import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
+import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
 import { sendEmail, type EmailAttachment } from './resend-service';
@@ -345,8 +345,13 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         });
     } else {
         resolvedBody = resolveVariables(template.body, finalVariables);
-        if (template.channel === 'email' && styleWrapper && styleWrapper.includes('{{content}}')) {
-            resolvedBody = resolveVariables(styleWrapper, finalVariables).replace('{{content}}', resolvedBody);
+        if (template.channel === 'email') {
+            if (styleWrapper && styleWrapper.includes('{{content}}')) {
+                resolvedBody = resolveVariables(styleWrapper, finalVariables).replace('{{content}}', resolvedBody);
+            } else if (template.contentMode === 'plain_text' || !template.contentMode) {
+                // Plain text emails: convert \n to <br> and wrap in styled HTML container
+                resolvedBody = plainTextToHtml(resolvedBody);
+            }
         }
     }
 
@@ -380,6 +385,21 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (suppressed) {
         console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} is suppressed for ${template.channel} in workspace ${resolvedWorkspaceId}`);
         return { success: false, error: 'Recipient unsubscribed' };
+    }
+
+    // Phase 8: Email Hygiene Guard (Resend Protection)
+    if (template.channel === 'email') {
+        const { ContactHygieneRepository } = await import('./hygiene-repository');
+        const hygiene = await ContactHygieneRepository.getCache(recipient);
+        
+        // Block if strictly invalid, or highly risky (score below 40)
+        if (hygiene && (hygiene.status === 'invalid' || (hygiene.status === 'risky' && (hygiene.score || 0) < 40))) {
+            console.warn(`>>> [MSG-ENGINE] Delivery Guard aborted dispatch to ${recipient}: Status=${hygiene.status}, Score=${hygiene.score}`);
+            return { 
+                success: false, 
+                error: `Recipient mailbox is marked as ${hygiene.status} (Hygiene Score: ${hygiene.score}). Delivery blocked to protect sender reputation.` 
+            };
+        }
     }
 
     // 8. Gateway Delivery
@@ -512,6 +532,20 @@ export async function sendRawMessage(input: {
         const sender = senderProfileSnap.data() as SenderProfile;
         const resolvedBody = resolveVariables(body, variables);
         const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Institutional Alert — SmartSapp';
+
+        // Phase 8: Email Hygiene Guard (Resend Protection)
+        if (channel === 'email') {
+            const { ContactHygieneRepository } = await import('./hygiene-repository');
+            const hygiene = await ContactHygieneRepository.getCache(recipient);
+            
+            if (hygiene && (hygiene.status === 'invalid' || (hygiene.status === 'risky' && (hygiene.score || 0) < 40))) {
+                console.warn(`>>> [MSG-ENGINE] Delivery Guard aborted RAW dispatch to ${recipient}: Status=${hygiene.status}, Score=${hygiene.score}`);
+                return { 
+                    success: false, 
+                    error: `Recipient mailbox is marked as ${hygiene.status} (Hygiene Score: ${hygiene.score}). Delivery blocked to protect sender reputation.` 
+                };
+            }
+        }
 
         if (channel === 'sms') {
             await sendSms({ recipient, message: resolvedBody, sender: sender.identifier });

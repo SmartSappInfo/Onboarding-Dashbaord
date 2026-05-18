@@ -57,6 +57,8 @@ const SECTION_FEATURES: Record<keyof PermissionsSchema, { id: string; label: str
     { id: 'messaging', label: 'Messaging' },
     { id: 'forms', label: 'Forms' },
     { id: 'tags', label: 'Tags' },
+    { id: 'qrStudio', label: 'QR Studio' },
+    { id: 'verifyStudio', label: 'Verify Studio' },
   ],
   management: [
     { id: 'activities', label: 'Activities' },

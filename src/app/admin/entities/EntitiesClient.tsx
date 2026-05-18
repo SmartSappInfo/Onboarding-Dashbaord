@@ -61,6 +61,8 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useTerminology } from '@/hooks/use-terminology';
 import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
+import { EmailHygieneHoverCard } from '../components/EmailHygieneHoverCard';
+import { BulkScanProgress } from '../components/BulkScanProgress';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -107,8 +109,77 @@ export default function EntitiesClient() {
   const [isPermanentDeleting, setIsPermanentDeleting] = useState(false);
   const [assigningEntity, setAssigningEntity] = useState<WorkspaceEntity | null>(null);
   const [changingStatusEntity, setChangingStatusEntity] = useState<WorkspaceEntity | null>(null);
-  const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
   const [managingWorkspacesEntity, setManagingWorkspacesEntity] = useState<WorkspaceEntity | null>(null);
+
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProcessed, setScanProcessed] = useState(0);
+  const [scanTotal, setScanTotal] = useState(0);
+  const [scanAbortController, setScanAbortController] = useState<AbortController | null>(null);
+
+  const handleBulkScan = async () => {
+    if (selectedEntityIds.length === 0) return;
+    
+    const emailsToVerify = sortedEntities
+      .filter(e => selectedEntityIds.includes(e.id))
+      .map(e => e.primaryEmail)
+      .filter(Boolean) as string[];
+
+    if (emailsToVerify.length === 0) {
+      toast({ title: 'No Emails Found', description: 'Selected entities do not have primary emails.' });
+      return;
+    }
+
+    setIsScanning(true);
+    setScanTotal(emailsToVerify.length);
+    setScanProcessed(0);
+    
+    const abort = new AbortController();
+    setScanAbortController(abort);
+
+    try {
+      // Chunking requests to 50 to prevent Vercel edge timeout limits
+      const chunkSize = 50;
+      for (let i = 0; i < emailsToVerify.length; i += chunkSize) {
+        if (abort.signal.aborted) break;
+        
+        const chunk = emailsToVerify.slice(i, i + chunkSize);
+        const res = await fetch('/api/verify-email/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emails: chunk }),
+          signal: abort.signal
+        });
+        
+        if (!res.ok) throw new Error('Verification failed');
+        const data = await res.json();
+        setScanProcessed(prev => prev + data.processedCount);
+      }
+      if (!abort.signal.aborted) {
+        toast({ title: 'Verification Complete', description: `Successfully verified ${emailsToVerify.length} emails.` });
+      }
+    } catch (e: any) {
+      if (e.name !== 'AbortError') {
+         toast({ variant: 'destructive', title: 'Scan Interrupted', description: e.message });
+      }
+    } finally {
+      setTimeout(() => setIsScanning(false), 2000);
+      setScanAbortController(null);
+    }
+  };
+
+  const handleManualRecheck = async (email: string) => {
+    try {
+      const res = await fetch('/api/verify-email/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emails: [email], forceRefresh: true })
+      });
+      if (!res.ok) throw new Error('Verification failed');
+      toast({ title: 'Recheck Complete', description: `Successfully re-verified ${email}.` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Recheck Failed', description: e.message });
+    }
+  };
 
   const { can } = usePermissions();
   const canCreate = can('operations', 'campuses', 'create');
@@ -322,6 +393,15 @@ export default function EntitiesClient() {
                                     <span className="text-xs font-bold text-muted-foreground tabular-nums">
                                         {selectedEntityIds.length} of {sortedEntities.length} selected
                                     </span>
+                                    <Button
+                                        variant="outline"
+                                        className="rounded-xl font-bold h-10 px-5 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/5 gap-2"
+                                        onClick={handleBulkScan}
+                                        disabled={isScanning}
+                                    >
+                                        <ShieldCheck className="h-4 w-4" />
+                                        Verify Emails
+                                    </Button>
                                     <Button
                                         variant="outline"
                                         className="rounded-xl font-bold h-10 px-5 border-primary/20 text-primary hover:bg-primary/5 gap-2"
@@ -539,6 +619,17 @@ export default function EntitiesClient() {
                                                     <span className="text-[9px] font-bold text-muted-foreground opacity-60 flex items-center gap-1">
                                                         <User className="h-2 w-2" /> <PrimaryContactName entityId={entity.entityId} fallback={entity.primaryEmail} />
                                                     </span>
+                                                    {entity.primaryEmail && (
+                                                        <div className="mt-1">
+                                                            <EmailHygieneHoverCard 
+                                                                email={entity.primaryEmail} 
+                                                                hygiene={entity as any}
+                                                                onManualRecheck={handleManualRecheck}
+                                                            >
+                                                                <span className="text-xs text-slate-500">{entity.primaryEmail}</span>
+                                                            </EmailHygieneHoverCard>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center">
@@ -677,6 +768,16 @@ export default function EntitiesClient() {
                 </AlertDialogContent>
             </AlertDialog>
             
+            <BulkScanProgress 
+                isScanning={isScanning} 
+                total={scanTotal} 
+                processed={scanProcessed} 
+                onCancel={() => {
+                  scanAbortController?.abort();
+                  setIsScanning(false);
+                }} 
+            />
+
             <AssignUserModal entity={assigningEntity} open={!!assigningEntity} onOpenChange={(open) => !open && setAssigningEntity(null)} />
             <ChangeStatusModal entity={changingStatusEntity} open={!!changingStatusEntity} onOpenChange={(open) => !open && setChangingStatusEntity(null)} />
             

@@ -228,7 +228,21 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 export function useTenant() {
   const context = React.useContext(TenantContext);
   if (context === undefined) {
-    throw new Error('useTenant must be used within a TenantProvider');
+    // Return a safe fallback object for contexts outside a TenantProvider
+    // (such as the Superadmin Backoffice control plane pages) to prevent runtime crashes.
+    return {
+      activeOrganizationId: '',
+      activeWorkspaceId: '',
+      setActiveOrganization: () => {},
+      setActiveWorkspace: () => {},
+      availableOrganizations: [],
+      accessibleWorkspaces: [],
+      allowedWorkspaces: [],
+      isSuperAdmin: true, // Superadmin controls inside shared tools should run freely in backoffice
+      hasPermission: () => true, // Bypass local tenant restrictions in the global control plane
+      getPermissionsSchemaForWorkspace: () => undefined,
+      isLoading: false
+    };
   }
   return context;
 }

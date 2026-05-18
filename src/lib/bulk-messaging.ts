@@ -1,9 +1,11 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import { after } from 'next/server';
 import { sendMessage } from './messaging-engine';
 import { sendBatchEmails } from './resend-service';
-import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
+import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
 import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageStyle } from './types';
 
 const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
@@ -187,8 +189,11 @@ export async function processBulkJobChunk(jobId: string) {
                     wrapper: styleWrapper || undefined
                 });
             } else {
+                html = resolveVariables(template.body, mergedVars);
                 if (styleWrapper && styleWrapper.includes('{{content}}')) {
                     html = resolveVariables(styleWrapper, mergedVars).replace('{{content}}', html);
+                } else if (template.contentMode === 'plain_text' || !template.contentMode) {
+                    html = plainTextToHtml(html);
                 }
             }
 
@@ -334,5 +339,311 @@ export async function processBulkJobChunk(jobId: string) {
   } catch (error: any) {
     console.error(">>> [BULK] CHUNK PROCESSING FAILED:", error.message);
     throw error;
+  }
+}
+
+/**
+ * Background Worker: Processes a chunk of tasks server-side without requiring
+ * a client connection. Uses Next.js `after()` to recursively schedule the
+ * next chunk, enabling true fire-and-forget processing.
+ *
+ * Key improvements over `processBulkJobChunk`:
+ * - **Idempotency**: Skips tasks already marked as 'sent' to prevent duplicates.
+ * - **Atomic counters**: Uses FieldValue.increment() instead of read-modify-write.
+ * - **Self-scheduling**: Uses after() to chain chunks without client polling.
+ * - **SDK error handling**: Checks Resend { data, error } explicitly (no try/catch).
+ */
+export async function processJobChunkBackground(jobId: string): Promise<void> {
+  const jobRef = adminDb.collection('message_jobs').doc(jobId);
+  const jobSnap = await jobRef.get();
+
+  if (!jobSnap.exists) {
+    console.error(`>>> [BULK-BG] Job ${jobId} not found`);
+    return;
+  }
+
+  const job = jobSnap.data() as MessageJob;
+
+  // Already finished — no-op
+  if (job.status === 'completed' || job.status === 'failed') return;
+
+  // Mark as processing if still queued
+  if (job.status === 'queued') {
+    await jobRef.update({ status: 'processing' });
+  }
+
+  // Fetch the next chunk of PENDING tasks only
+  const tasksSnap = await jobRef.collection('tasks')
+    .where('status', '==', 'pending')
+    .limit(CHUNK_SIZE)
+    .get();
+
+  // No pending tasks remaining → mark job as completed
+  if (tasksSnap.empty) {
+    await jobRef.update({ status: 'completed' });
+
+    // Fire campaign completion hooks
+    if (job.campaignId) {
+      after(async () => {
+        try {
+          const { applyCampaignPostSendTags } = await import('./campaign-post-send');
+          const { syncCampaignStats } = await import('./campaign-analytics');
+
+          await adminDb.collection('message_campaigns').doc(job.campaignId!).update({
+            status: 'sent',
+            updatedAt: new Date().toISOString(),
+          });
+
+          await syncCampaignStats(job.campaignId!);
+          await applyCampaignPostSendTags(job.campaignId!);
+
+          const { emitCampaignEvents } = await import('./campaign-events');
+          await emitCampaignEvents(job.campaignId!);
+
+          console.log(`>>> [BULK-BG] Campaign ${job.campaignId} completion hooks fired`);
+        } catch (hookErr) {
+          console.error('>>> [BULK-BG] Completion hook error:', (hookErr as Error).message);
+        }
+      });
+    }
+
+    return;
+  }
+
+  // ── Resolve shared resources once per chunk (async-parallel) ──────────
+  const [templateSnap, senderSnap] = await Promise.all([
+    adminDb.collection('message_templates').doc(job.templateId).get(),
+    adminDb.collection('sender_profiles').doc(job.senderProfileId).get(),
+  ]);
+
+  const template = templateSnap.data() as MessageTemplate;
+  const sender = senderSnap.data() as SenderProfile;
+
+  // Org branding (resolved once per chunk, not per recipient)
+  const orgBrandingVars: Record<string, string> = {
+    current_year: new Date().getFullYear().toString(),
+  };
+  const orgId = template.organizationId || '';
+  if (orgId) {
+    try {
+      const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+      if (orgSnap.exists) {
+        const org = orgSnap.data() as Record<string, any>;
+        orgBrandingVars.org_name = org.name || '';
+        orgBrandingVars.org_logo_url = org.logoUrl || '';
+        orgBrandingVars.org_email = org.email || '';
+        orgBrandingVars.org_phone = org.phone || '';
+        orgBrandingVars.org_address = org.address || '';
+        orgBrandingVars.org_website = org.website || '';
+      }
+    } catch (e) {
+      console.warn('>>> [BULK-BG] Org branding lookup skipped:', (e as Error).message);
+    }
+  }
+
+  let styleWrapper = '';
+  if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {
+    const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
+    if (styleSnap.exists) {
+      styleWrapper = (styleSnap.data() as MessageStyle).htmlWrapper;
+    }
+  }
+
+  // ── Process tasks with idempotency ───────────────────────────────────
+  let successIncrement = 0;
+  let failedIncrement = 0;
+  let processedCount = 0;
+
+  if (job.channel === 'email') {
+    const { isSuppressed } = await import('./suppression-service');
+    const batchPayload: any[] = [];
+
+    for (const taskDoc of tasksSnap.docs) {
+      const task = taskDoc.data() as MessageTask;
+
+      // ── Idempotency: Skip already-sent tasks ──
+      if (task.status === 'sent') continue;
+
+      processedCount++;
+
+      // Suppression Check
+      const suppressed = await isSuppressed({
+        recipient: task.recipient,
+        workspaceId: job.workspaceId || 'onboarding',
+        channel: 'email',
+      });
+
+      if (suppressed) {
+        failedIncrement++;
+        await taskDoc.ref.update({ status: 'failed', error: 'Recipient unsubscribed' });
+        continue;
+      }
+
+      // Merge org branding as base layer; task-specific vars override
+      const mergedVars = { ...orgBrandingVars, ...task.variables };
+
+      // Inject unsubscribe link
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+      const unsubId = task.entityId || task.recipient;
+      mergedVars.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
+
+      let html = '';
+      const subject = resolveVariables(template.subject || '', mergedVars);
+
+      const useBlocks =
+        template.contentMode === 'rich_builder' ||
+        (!template.contentMode && template.blocks?.length);
+
+      if (useBlocks && template.blocks?.length) {
+        html = renderBlocksToHtml(template.blocks, mergedVars, {
+          wrapper: styleWrapper || undefined,
+        });
+      } else {
+        html = resolveVariables(template.body, mergedVars);
+        if (styleWrapper && styleWrapper.includes('{{content}}')) {
+          html = resolveVariables(styleWrapper, mergedVars).replace('{{content}}', html);
+        } else if (template.contentMode === 'plain_text' || !template.contentMode) {
+          html = plainTextToHtml(html);
+        }
+      }
+
+      batchPayload.push({
+        from: sender.identifier,
+        to: task.recipient,
+        subject,
+        html,
+        taskDocRef: taskDoc.ref,
+        taskDocId: taskDoc.id,
+        tags: [
+          { name: 'jobId', value: jobId },
+          { name: 'taskId', value: taskDoc.id },
+        ],
+      });
+    }
+
+    // Phase 7: Apply link tracking
+    if (job.trackLinks && batchPayload.length > 0) {
+      const { transformBodyWithTracking } = await import('./link-tracking');
+      for (const payload of batchPayload) {
+        payload.html = await transformBodyWithTracking({
+          body: payload.html,
+          campaignId: job.campaignId || 'manual',
+          jobId,
+          taskId: payload.taskDocId,
+        });
+      }
+    }
+
+    // Send batch — use Resend { data, error } pattern (no try/catch for API errors)
+    if (batchPayload.length > 0) {
+      const result = await sendBatchEmails(batchPayload);
+      if (result.data) {
+        for (let i = 0; i < result.data.length; i++) {
+          const res = result.data[i];
+          const taskRef = batchPayload[i].taskDocRef;
+          if (res.id) {
+            successIncrement++;
+            await taskRef.update({
+              status: 'sent',
+              providerId: res.id,
+              providerMessageId: res.id,
+              sentAt: new Date().toISOString(),
+            });
+          } else {
+            failedIncrement++;
+            await taskRef.update({ status: 'failed', error: 'Provider rejection in batch' });
+          }
+        }
+      }
+      if (result.error) {
+        console.error('>>> [BULK-BG] Batch send error:', result.error);
+        // Mark remaining un-processed tasks as failed
+        for (const payload of batchPayload) {
+          failedIncrement++;
+          await payload.taskDocRef.update({ status: 'failed', error: String(result.error) });
+        }
+      }
+    }
+  } else {
+    // SMS / Push / In-app — individual sends
+    for (const taskDoc of tasksSnap.docs) {
+      const task = taskDoc.data() as MessageTask;
+
+      // ── Idempotency: Skip already-sent tasks ──
+      if (task.status === 'sent') continue;
+
+      processedCount++;
+
+      const result = await sendMessage({
+        templateId: job.templateId,
+        senderProfileId: job.senderProfileId,
+        recipient: task.recipient,
+        variables: task.variables,
+        trackLinks: job.trackLinks,
+        tags: [
+          { name: 'jobId', value: jobId },
+          { name: 'taskId', value: taskDoc.id },
+        ],
+      });
+
+      if (result.success) {
+        successIncrement++;
+        await taskDoc.ref.update({ status: 'sent', sentAt: new Date().toISOString() });
+      } else {
+        failedIncrement++;
+        await taskDoc.ref.update({ status: 'failed', error: result.error });
+      }
+    }
+  }
+
+  // ── Atomic counter update ────────────────────────────────────────────
+  const updatePayload: Record<string, any> = {
+    processed: FieldValue.increment(processedCount || tasksSnap.size),
+    success: FieldValue.increment(successIncrement),
+    failed: FieldValue.increment(failedIncrement),
+  };
+
+  // Check if job is now complete (after this chunk)
+  const currentProcessed = (job.processed || 0) + (processedCount || tasksSnap.size);
+  const isFinished = currentProcessed >= job.totalRecipients;
+
+  if (isFinished) {
+    updatePayload.status = 'completed';
+  }
+
+  await jobRef.update(updatePayload);
+
+  // ── Self-schedule next chunk via after() if not finished ─────────────
+  if (!isFinished) {
+    after(async () => {
+      try {
+        await processJobChunkBackground(jobId);
+      } catch (e) {
+        console.error('>>> [BULK-BG] Next chunk scheduling failed:', (e as Error).message);
+      }
+    });
+  } else if (job.campaignId) {
+    // Fire campaign completion hooks on finish
+    after(async () => {
+      try {
+        const { applyCampaignPostSendTags } = await import('./campaign-post-send');
+        const { syncCampaignStats } = await import('./campaign-analytics');
+
+        await adminDb.collection('message_campaigns').doc(job.campaignId!).update({
+          status: 'sent',
+          updatedAt: new Date().toISOString(),
+        });
+
+        await syncCampaignStats(job.campaignId!);
+        await applyCampaignPostSendTags(job.campaignId!);
+
+        const { emitCampaignEvents } = await import('./campaign-events');
+        await emitCampaignEvents(job.campaignId!);
+
+        console.log(`>>> [BULK-BG] Campaign ${job.campaignId} completion hooks fired`);
+      } catch (hookErr) {
+        console.error('>>> [BULK-BG] Completion hook error:', (hookErr as Error).message);
+      }
+    });
   }
 }

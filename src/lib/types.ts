@@ -2498,6 +2498,10 @@ export interface MessageTask {
   variables: Record<string, any>;
   status: 'pending' | 'sent' | 'failed';
   providerId?: string;
+  /** Provider message ID for webhook correlation (e.g., Resend email_id) */
+  providerMessageId?: string;
+  /** External delivery status from provider webhooks (delivered, bounced, complained, opened, clicked) */
+  externalStatus?: string;
   sentAt?: string;
   deliveredAt?: string;
   openedAt?: string;
@@ -2612,6 +2616,7 @@ export const APP_FEATURES = [
   { id: 'tags', label: 'Tags', category: 'Studios', icon: 'Tags', defaultEnabled: true },
   { id: 'forms', label: 'Forms', category: 'Studios', icon: 'ClipboardSignature', defaultEnabled: true },
   { id: 'qr_studio', label: 'QR Studio', category: 'Studios', icon: 'QrCode', defaultEnabled: true },
+  { id: 'verify_studio', label: 'Verify Studio', category: 'Studios', icon: 'ShieldCheck', defaultEnabled: true },
   // Finance
   { id: 'agreements', label: 'Agreements', category: 'Finance', icon: 'FileCheck', defaultEnabled: true },
   { id: 'invoices', label: 'Invoices', category: 'Finance', icon: 'Receipt', defaultEnabled: true },

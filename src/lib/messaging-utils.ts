@@ -64,6 +64,59 @@ export function resolveVariables(text: string, variables: Record<string, any>): 
 }
 
 /**
+ * Converts a plain-text body (with \n line breaks) into well-formatted HTML
+ * suitable for email clients and iframe previews.
+ * 
+ * This is the canonical conversion function used by:
+ * - Simulation Studio preview (iframe srcDoc)
+ * - Single message dispatch (sendMessage → sendEmail html:)
+ * - Bulk message dispatch (processBulkJobChunk / processJobChunkBackground)
+ * 
+ * Handles:
+ * - \n → <br> conversion for line breaks
+ * - Double newlines → paragraph separation
+ * - Proper font styling for email client compatibility
+ * - Emoji/Unicode safe rendering
+ */
+export function plainTextToHtml(text: string): string {
+  if (!text) return '';
+
+  // Escape HTML entities to prevent XSS in user-authored content
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+  // Convert newlines to <br> tags
+  const withBreaks = escaped.replace(/\n/g, '<br>\n');
+
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body style="margin: 0; padding: 40px 20px; background-color: #F1F5F9; font-family: 'Figtree', Helvetica, Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto;">
+    <div style="height: 4px; background: linear-gradient(to right, #3B5FFF, #8B5CF6, #3B5FFF); border-radius: 24px 24px 0 0;"></div>
+    <div style="background-color: #FFFFFF; padding: 48px 40px; border-radius: 0 0 24px 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+      <div style="font-family: 'Figtree', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #1e293b; font-weight: 500;">
+        ${withBreaks}
+      </div>
+    </div>
+    <div style="margin-top: 32px; text-align: center;">
+      <p style="font-family: 'Figtree', sans-serif; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;">
+        Powered by SmartSapp Intelligence Hub &copy; ${new Date().getFullYear()}
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/**
  * Evaluates block-level visibility logic against provided variables.
  */
 export function shouldShowBlock(block: MessageBlock, variables: Record<string, any>): boolean {

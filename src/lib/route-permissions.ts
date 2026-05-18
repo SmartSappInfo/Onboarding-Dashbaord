@@ -49,6 +49,7 @@ export const ROUTE_PERMISSION_MAP: { path: string; check: RoutePermissionCheck }
     { path: '/admin/forms', check: { label: 'Forms', section: 'studios', feature: 'forms' } },
     { path: '/admin/contacts/tags', check: { label: 'Tags', section: 'studios', feature: 'tags' } },
     { path: '/admin/qr-studio', check: { label: 'QR Studio', section: 'studios', feature: 'qrStudio' } },
+    { path: '/admin/verify-studio', check: { label: 'Verify Studio', section: 'studios', feature: 'verifyStudio' } },
 
     // Management
     { path: '/admin/activities', check: { label: 'Activities', section: 'management', feature: 'activities' } },

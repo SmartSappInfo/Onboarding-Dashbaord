@@ -18,10 +18,12 @@ import {
     SelectValue 
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Mail, MessageSquare, ShieldCheck, Globe } from 'lucide-react';
+import { Loader2, Mail, MessageSquare, ShieldCheck, Globe, AlertCircle } from 'lucide-react';
 import type { TemplateCategory, RecipientType, MessageChannel, MessageTemplate } from '@/lib/types';
 import { getFilteredTemplatesAction } from '@/app/actions/get-filtered-templates-action';
 import { useTenant } from '@/context/TenantContext';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SmartTemplateDropdownProps {
     category: TemplateCategory;
@@ -87,9 +89,28 @@ export function SmartTemplateDropdown({
         }
     }, [category, recipientType, channel, templateTypePrefix, activeWorkspaceId, activeOrganizationId]);
 
+    const selectedTemplate = React.useMemo(() => 
+        templates.find(t => t.id === value),
+    [templates, value]);
+
+    const hasAutoSelectedRef = React.useRef(false);
+
+    // If an initial value is provided on load, mark as auto-selected to skip triggering again
     React.useEffect(() => {
-        fetchTemplates();
-    }, [fetchTemplates]);
+        if (value) {
+            hasAutoSelectedRef.current = true;
+        }
+    }, [value]);
+
+    React.useEffect(() => {
+        fetchTemplates().then(filtered => {
+            if (filtered && filtered.length > 0 && !value && !hasAutoSelectedRef.current) {
+                hasAutoSelectedRef.current = true;
+                const defaultTemplate = filtered[0];
+                handleValueChange(defaultTemplate.id);
+            }
+        });
+    }, [fetchTemplates, value]);
 
     // Phase 4: Auto-refetch if a value is provided but not found in the current list
     const refetchAttemptedForValue = React.useRef<string | null>(null);
@@ -110,10 +131,63 @@ export function SmartTemplateDropdown({
 
     return (
         <Select value={value} onValueChange={handleValueChange} disabled={isLoading}>
-            <SelectTrigger className={className}>
-                <div className="flex items-center">
-                    {isLoading ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : getChannelIcon()}
-                    <SelectValue placeholder={isLoading ? "Loading templates..." : placeholder} />
+            <SelectTrigger className={cn(
+                className,
+                "transition-all duration-300",
+                (!value && !isLoading) && "border-amber-500/50 bg-amber-500/5 focus:ring-amber-500/20 text-amber-600/90 dark:border-amber-500/30"
+            )}>
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center min-w-0 flex-1">
+                        {isLoading ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                        ) : (!value ? (
+                            <AlertCircle className="h-3.5 w-3.5 mr-2 text-amber-500 shrink-0" />
+                        ) : (
+                            getChannelIcon()
+                        ))}
+                        <span className="truncate">
+                            <SelectValue placeholder={isLoading ? "Loading templates..." : placeholder} />
+                        </span>
+                    </div>
+                    {selectedTemplate && !isLoading && (
+                        <TooltipProvider>
+                            <Tooltip delayDuration={200}>
+                                <TooltipTrigger asChild>
+                                    <div className="ml-2 shrink-0 flex items-center cursor-help">
+                                        {selectedTemplate.scope === 'organization' ? (
+                                            <Badge className="bg-emerald-500/10 text-emerald-600 border-none text-[8px] font-bold h-4 px-1.5 flex items-center gap-0.5 animate-pulse">
+                                                <ShieldCheck className="h-2 w-2" /> Auto Custom
+                                            </Badge>
+                                        ) : (
+                                            <Badge className="bg-blue-500/10 text-blue-600 border-none text-[8px] font-bold h-4 px-1.5 flex items-center gap-0.5 animate-pulse">
+                                                <Globe className="h-2 w-2" /> Auto Default
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" align="end" className="w-80 p-4 rounded-2xl border bg-popover text-popover-foreground shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 border-b border-border pb-2">
+                                            {channel === 'email' ? <Mail className="h-3.5 w-3.5 text-primary" /> : <MessageSquare className="h-3.5 w-3.5 text-green-500" />}
+                                            <span className="font-bold text-xs truncate max-w-[220px]">{selectedTemplate.name}</span>
+                                        </div>
+                                        {selectedTemplate.subject && (
+                                            <div className="space-y-0.5">
+                                                <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground">Subject</span>
+                                                <p className="text-[10px] font-bold leading-normal text-foreground/90">{selectedTemplate.subject}</p>
+                                            </div>
+                                        )}
+                                        <div className="space-y-1">
+                                            <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground">Body Preview</span>
+                                            <p className="text-[10px] text-muted-foreground whitespace-pre-wrap line-clamp-4 font-mono leading-relaxed bg-muted/40 p-2.5 rounded-xl border border-border/40 max-h-28 overflow-y-auto">
+                                                {selectedTemplate.body}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
                 </div>
             </SelectTrigger>
             <SelectContent className="rounded-2xl border-border shadow-2xl">

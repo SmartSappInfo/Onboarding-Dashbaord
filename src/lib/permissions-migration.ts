@@ -95,12 +95,12 @@ export function migrateToPermissionsSchema(
 
       // Studios
       case 'studios_view':
-        ['publicPortals', 'landingPages', 'media', 'surveys', 'docSigning', 'messaging', 'forms'].forEach(f => {
+        ['publicPortals', 'landingPages', 'media', 'surveys', 'docSigning', 'messaging', 'forms', 'qrStudio', 'verifyStudio'].forEach(f => {
           setFeaturePermission(schema, 'studios', f, { view: true });
         });
         break;
       case 'studios_edit':
-        ['publicPortals', 'landingPages', 'media', 'surveys', 'docSigning', 'messaging', 'forms'].forEach(f => {
+        ['publicPortals', 'landingPages', 'media', 'surveys', 'docSigning', 'messaging', 'forms', 'qrStudio', 'verifyStudio'].forEach(f => {
           setFeaturePermission(schema, 'studios', f, { view: true, create: true, edit: true });
         });
         break;
@@ -177,6 +177,7 @@ const featureMapping: Record<AppFeatureId, { section: keyof PermissionsSchema; f
   tags: { section: 'studios', feature: 'tags' },
   forms: { section: 'studios', feature: 'forms' },
   qr_studio: { section: 'studios', feature: 'qrStudio' },
+  verify_studio: { section: 'studios', feature: 'verifyStudio' },
   agreements: { section: 'finance', feature: 'agreements' },
   invoices: { section: 'finance', feature: 'invoices' },
   packages: { section: 'finance', feature: 'packages' },

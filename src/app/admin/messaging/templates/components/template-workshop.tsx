@@ -51,7 +51,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEn
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget } from '@/lib/types';
-import { renderBlocksToHtml, resolveVariables } from '@/lib/messaging-utils';
+import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { SortableBlockItem, blockIcons } from './visual-block';
 import { BlockInspector } from './block-inspector';
 import { PlainTextEditor } from './PlainTextEditor';
@@ -268,6 +268,9 @@ export function TemplateWorkshop({
         let resolved = resolveVariables(body, simVariables);
         if (effectiveMode === 'html_code' && activeStyle?.htmlWrapper?.includes('{{content}}')) {
             resolved = resolveVariables(activeStyle.htmlWrapper, simVariables).replace('{{content}}', resolved);
+        } else if (effectiveMode === 'plain_text' && channel === 'email') {
+            // Email plain_text: convert \n to <br> and wrap in styled HTML container
+            resolved = plainTextToHtml(resolved);
         }
         return resolved;
     }, [channel, contentMode, blocks, simVariables, styleId, styles, body]);

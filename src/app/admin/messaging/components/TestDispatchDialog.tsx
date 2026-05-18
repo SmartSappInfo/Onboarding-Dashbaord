@@ -63,6 +63,53 @@ export default function TestDispatchDialog({
     const [localVariables, setLocalVariables] = React.useState<Record<string, string>>({});
     const [detectedTags, setDetectedTags] = React.useState<string[]>([]);
 
+    // ── Rate Limiter: 5 dispatches per 60 seconds sliding window ──────────
+    const MAX_DISPATCHES = 5;
+    const WINDOW_MS = 60_000;
+    const dispatchTimestampsRef = React.useRef<number[]>([]);
+    const [cooldownSeconds, setCooldownSeconds] = React.useState(0);
+    const cooldownIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const isRateLimited = cooldownSeconds > 0;
+
+    const checkRateLimit = React.useCallback((): boolean => {
+        const now = Date.now();
+        // Purge timestamps outside the sliding window
+        dispatchTimestampsRef.current = dispatchTimestampsRef.current.filter(
+            ts => now - ts < WINDOW_MS
+        );
+        if (dispatchTimestampsRef.current.length >= MAX_DISPATCHES) {
+            // Calculate cooldown from oldest timestamp in window
+            const oldestInWindow = dispatchTimestampsRef.current[0];
+            const remainingMs = WINDOW_MS - (now - oldestInWindow);
+            const remainingSec = Math.ceil(remainingMs / 1000);
+            setCooldownSeconds(remainingSec);
+
+            // Start countdown timer
+            if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+            cooldownIntervalRef.current = setInterval(() => {
+                setCooldownSeconds(prev => {
+                    if (prev <= 1) {
+                        if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+                        cooldownIntervalRef.current = null;
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            return true; // rate limited
+        }
+        return false;
+    }, []);
+
+    // Cleanup interval on unmount
+    React.useEffect(() => {
+        return () => {
+            if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+        };
+    }, []);
+
     // 1. Tag Discovery Logic
     React.useEffect(() => {
         if (!open) return;
@@ -84,6 +131,16 @@ export default function TestDispatchDialog({
     const handleSend = async () => {
         if (!recipient.trim()) {
             toast({ variant: 'destructive', title: 'Recipient Required', description: 'Please enter a test target.' });
+            return;
+        }
+
+        // Enforce rate limit before dispatching
+        if (checkRateLimit()) {
+            toast({
+                variant: 'destructive',
+                title: 'Rate Limit Reached',
+                description: `Maximum ${MAX_DISPATCHES} test dispatches per minute. Please wait ${cooldownSeconds}s.`
+            });
             return;
         }
 
@@ -112,6 +169,9 @@ export default function TestDispatchDialog({
                 });
                 if (!result.success) throw new Error(result.error);
             }
+
+            // Record successful dispatch timestamp
+            dispatchTimestampsRef.current.push(Date.now());
 
             toast({ 
                 title: 'Test Sent Successfully', 
@@ -210,11 +270,30 @@ export default function TestDispatchDialog({
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSending} className="font-bold rounded-xl h-12 px-10 flex-1 cursor-pointer hover:bg-muted/50 transition-colors duration-200">Discard</Button>
             <Button 
               onClick={handleSend} 
-              disabled={isSending || !recipient.trim()}
-              className="rounded-2xl font-semibold h-12 px-12 shadow-lg bg-primary text-white flex-[2] tracking-[0.1em] text-sm gap-3 cursor-pointer active:scale-95 transition-all duration-200"
+              disabled={isSending || !recipient.trim() || isRateLimited}
+              className={cn(
+                "rounded-2xl font-semibold h-12 px-12 shadow-lg flex-[2] tracking-[0.1em] text-sm gap-3 cursor-pointer active:scale-95 transition-all duration-200",
+                isRateLimited
+                  ? "bg-amber-500/80 text-white hover:bg-amber-500/90"
+                  : "bg-primary text-white"
+              )}
             >
-              {isSending ? <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" /> : <Send className="h-6 w-6" aria-hidden="true" />}
-              {isSending ? 'Sending…' : 'Send Test'}
+              {isRateLimited ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                  Wait ({cooldownSeconds}s)
+                </>
+              ) : isSending ? (
+                <>
+                  <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+                  Sending…
+                </>
+              ) : (
+                <>
+                  <Send className="h-6 w-6" aria-hidden="true" />
+                  Send Test
+                </>
+              )}
             </Button>
           </DialogFooter>
             </DialogContent>

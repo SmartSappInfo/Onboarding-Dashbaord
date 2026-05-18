@@ -51,6 +51,7 @@ import {
     QrCode,
     Code,
     Unplug,
+    ShieldCheck,
     ChevronRight
 } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
@@ -117,6 +118,7 @@ export function AdminSidebar() {
     { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isVisible(can('studios', 'forms', 'view'), 'forms') },
     { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isVisible(can('studios', 'tags', 'view'), 'tags') },
     { href: wrapHref('/admin/qr-studio'), icon: QrCode, label: 'QR Studio', visible: isVisible(can('studios', 'qrStudio', 'view'), 'qr_studio') },
+    { href: wrapHref('/admin/verify-studio'), icon: ShieldCheck, label: 'Verify Studio', visible: isVisible(can('studios', 'verifyStudio', 'view'), 'verify_studio') },
   ], [wrapHref, isVisible, can]);
 
   const systemNavItems = React.useMemo(() => [

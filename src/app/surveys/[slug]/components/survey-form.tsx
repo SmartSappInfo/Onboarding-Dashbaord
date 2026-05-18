@@ -1752,12 +1752,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                             Please answer the following questions before submitting:
                         </DialogDescription>
                     </DialogHeader>
-                    <ScrollArea className="max-h-[30vh] border rounded-md my-4">
+                    <ScrollArea className="max-h-[30vh] bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 rounded-2xl my-4">
                         <ul className="p-4 space-y-3">
                             {missingFields.map((field, idx) => (
-                                <li key={idx} className="flex items-center gap-3 text-sm font-medium">
-                                    <div className="h-2 w-2 rounded-full bg-destructive" />
-                                    <span className="font-bold">{field.label}</span>
+                                <li key={idx} className="flex items-center gap-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                    <div className="h-2 w-2 rounded-full bg-destructive shrink-0" />
+                                    <span>{field.label}</span>
                                 </li>
                             ))}
                         </ul>

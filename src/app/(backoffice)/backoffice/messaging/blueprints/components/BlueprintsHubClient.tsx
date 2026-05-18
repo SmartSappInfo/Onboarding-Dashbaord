@@ -4,17 +4,26 @@ import * as React from 'react';
 import { MESSAGING_TRIGGERS } from '@/lib/messaging-triggers';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import type { MessageTemplate, VariableDefinition, WorkspaceEntity, Meeting, Survey, PDFForm, MessageChannel } from '@/lib/types';
+import type { MessageTemplate, VariableDefinition, WorkspaceEntity, Meeting, Survey, PDFForm, MessageChannel, MessagingTrigger } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Zap, Loader2, ArrowLeft, Building2, BarChart2 } from 'lucide-react';
+
+import { 
+  Zap, Loader2, ArrowLeft, Building2, BarChart2, Search, 
+  SlidersHorizontal, X, Info, Inbox
+} from 'lucide-react';
 import Link from 'next/link';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 import dynamic from 'next/dynamic';
 import { getBlueprintAdoptionStats, updateGlobalTemplate, createGlobalTemplate } from '@/lib/template-actions';
 import { useBackoffice } from '../../../context/BackofficeProvider';
+import { BlueprintListItem } from './BlueprintListItem';
+import { BlueprintDetailPane } from './BlueprintDetailPane';
+import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input as CustomInput } from '@/components/ui/input';
 
 // Dynamically import the heavy workshop to keep the initial hub lightweight
 const TemplateWorkshop = dynamic(
@@ -49,18 +58,6 @@ export default function BlueprintsHubClient() {
 
   const { data: globalTemplates, isLoading } = useCollection<MessageTemplate>(globalQuery);
 
-  // Group triggers by Category
-  const groupedTriggers = React.useMemo(() => {
-    const map = new Map<string, typeof MESSAGING_TRIGGERS>();
-    for (const trigger of MESSAGING_TRIGGERS) {
-      if (!map.has(trigger.category)) {
-        map.set(trigger.category, []);
-      }
-      map.get(trigger.category)!.push(trigger);
-    }
-    return map;
-  }, []);
-
   // Fetch Adoption Stats
   React.useEffect(() => {
     async function loadStats() {
@@ -81,11 +78,69 @@ export default function BlueprintsHubClient() {
     loadStats();
   }, []);
 
+  // ── Filters & Search State (Responsive React Transitions) ────────────
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
+  const [selectedRecipient, setSelectedRecipient] = React.useState<string>('all');
+  const [selectedChannel, setSelectedChannel] = React.useState<string>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = React.useState(false);
+
+  const deferredSearchQuery = React.useDeferredValue(searchQuery);
+
+  const filteredTriggers = React.useMemo(() => {
+    return MESSAGING_TRIGGERS.filter(trigger => {
+      // 1. Search Query
+      if (deferredSearchQuery.trim()) {
+        const query = deferredSearchQuery.toLowerCase();
+        const matchesName = trigger.name.toLowerCase().includes(query);
+        const matchesDesc = trigger.description?.toLowerCase().includes(query);
+        const matchesId = trigger.id.toLowerCase().includes(query);
+        if (!matchesName && !matchesDesc && !matchesId) return false;
+      }
+
+      // 2. Category
+      if (selectedCategory !== 'all' && trigger.category !== selectedCategory) return false;
+
+      // 3. Recipient
+      if (selectedRecipient !== 'all' && trigger.recipientType !== selectedRecipient) return false;
+
+      // 4. Channel
+      if (selectedChannel !== 'all' && !trigger.supportedChannels.includes(selectedChannel as any)) return false;
+
+      return true;
+    });
+  }, [deferredSearchQuery, selectedCategory, selectedRecipient, selectedChannel]);
+
+  // ── Active Selection State ───────────────────────────────────────────
+  const [selectedTriggerId, setSelectedTriggerId] = React.useState<string | null>(null);
+
+  const selectedTrigger = React.useMemo(() => {
+    const found = MESSAGING_TRIGGERS.find(t => t.id === selectedTriggerId);
+    if (found && filteredTriggers.some(t => t.id === selectedTriggerId)) {
+      return found;
+    }
+    return filteredTriggers[0] || null;
+  }, [selectedTriggerId, filteredTriggers]);
+
+  // Sync active selection on filter changes
+  React.useEffect(() => {
+    if (selectedTrigger && selectedTrigger.id !== selectedTriggerId) {
+      setSelectedTriggerId(selectedTrigger.id);
+    }
+  }, [selectedTrigger, selectedTriggerId]);
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setSelectedRecipient('all');
+    setSelectedChannel('all');
+  };
+
   const getGlobalTemplate = (triggerId: string, channel: MessageChannel) => {
     return globalTemplates?.find((t) => t.templateType === triggerId && t.channel === channel);
   };
 
-  const handleCustomize = (trigger: typeof MESSAGING_TRIGGERS[0], channel: MessageChannel) => {
+  const handleCustomize = (trigger: MessagingTrigger, channel: MessageChannel) => {
     const globalTemplate = getGlobalTemplate(trigger.id, channel);
 
     if (globalTemplate) {
@@ -125,6 +180,18 @@ export default function BlueprintsHubClient() {
     return [...contactVarDefs, ...deduped];
   }, [firestoreVariables]);
 
+  const categories = [
+    { value: 'all', label: 'All Categories' },
+    { value: 'meetings', label: 'Meetings' },
+    { value: 'forms', label: 'Forms' },
+    { value: 'surveys', label: 'Surveys' },
+    { value: 'agreements', label: 'Agreements' },
+    { value: 'general', label: 'General' },
+    { value: 'tasks', label: 'Tasks' },
+    { value: 'automations', label: 'Automations' },
+    { value: 'qr_codes', label: 'QR Codes' }
+  ];
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -135,111 +202,9 @@ export default function BlueprintsHubClient() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-card border border-border p-8 rounded-[2rem] shadow-sm">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-            <Zap className="h-8 w-8 text-emerald-500 fill-emerald-500/20" />
-            System Blueprints
-          </h1>
-          <p className="text-sm font-medium text-muted-foreground mt-2 max-w-xl leading-relaxed">
-            Manage the global default messaging templates. These blueprints are active for all organizations unless they explicitly configure an override.
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-12">
-        {Array.from(groupedTriggers.entries()).map(([category, triggers]) => (
-          <div key={category} className="space-y-6">
-            <div className="flex items-center gap-3 px-2">
-              <div className="h-8 w-1.5 bg-emerald-500 rounded-full" />
-              <h2 className="text-xl font-bold uppercase tracking-widest text-foreground">{category}</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {triggers.map((trigger) => (
-                <div key={trigger.id} className="bg-card border border-border rounded-[1.5rem] p-6 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground group-hover:text-emerald-500 transition-colors">
-                          {trigger.name}
-                        </h3>
-                        <p className="text-xs font-semibold text-muted-foreground font-mono mt-1 px-2 py-0.5 bg-muted rounded-md inline-block">
-                          {trigger.id}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="bg-muted text-foreground border-border/50 font-bold uppercase text-[10px]">
-                        {trigger.recipientType}
-                      </Badge>
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground font-medium mb-6 line-clamp-2 leading-relaxed">
-                      {trigger.description}
-                    </p>
-
-                    <div className="flex items-center gap-2 mb-6 p-3 bg-muted/30 rounded-xl border border-border/50">
-                      <BarChart2 className="h-4 w-4 text-emerald-500" />
-                      <div className="flex flex-col">
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Adoption Metrics</span>
-                        <span className="text-xs font-semibold text-foreground">
-                          {adoptionStats[trigger.id] !== undefined ? (
-                            <span><strong className="text-amber-500">{adoptionStats[trigger.id]} orgs</strong> have overridden this blueprint</span>
-                          ) : (
-                            <span className="animate-pulse">Loading stats...</span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {trigger.supportedChannels.map((channelStr) => {
-                      const channel = channelStr as unknown as MessageChannel;
-                      const globalTemp = getGlobalTemplate(trigger.id, channel);
-                      const isConfigured = !!globalTemp;
-
-                      return (
-                        <div key={`${channel}`} className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-background/50">
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="w-14 justify-center bg-muted uppercase text-[10px] font-bold border-border/50">
-                              {`${channel}`}
-                            </Badge>
-                            {isConfigured ? (
-                              <div className="flex items-center gap-1.5">
-                                <span className="flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Blueprint Active</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <span className="flex h-2 w-2 rounded-full bg-slate-400" />
-                                <span className="text-xs font-bold text-slate-500">Not Configured</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <Button 
-                            variant={isConfigured ? "outline" : "default"}
-                            size="sm"
-                            className="rounded-lg h-8 text-xs font-bold px-4"
-                            onClick={() => handleCustomize(trigger, channel)}
-                          >
-                            {isConfigured ? 'Edit Blueprint' : 'Create Blueprint'}
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {isCustomizing && (
+    <div className="h-[calc(100vh-10rem)] min-h-[600px] flex flex-col overflow-hidden bg-background rounded-3xl border border-border shadow-md">
+      <AnimatePresence mode="wait">
+        {isCustomizing ? (
           <div className="fixed inset-0 z-50 flex flex-col bg-background">
             <TemplateWorkshop 
               key="workshop"
@@ -300,6 +265,194 @@ export default function BlueprintsHubClient() {
                 }
               }}
             />
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col overflow-hidden text-left h-full">
+            {/* Header */}
+            <div className="shrink-0 p-6 border-b flex items-center justify-between gap-4 bg-card">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10 border shadow-sm shrink-0">
+                  <Link href="/backoffice"><ArrowLeft className="h-4 w-4" /></Link>
+                </Button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-emerald-500/5 text-emerald-600 dark:text-emerald-500 border-emerald-500/20 font-bold uppercase tracking-widest text-[9px] px-2 py-0.5">
+                      Superadmin Backoffice
+                    </Badge>
+                  </div>
+                  <h1 className="text-xl font-bold tracking-tight text-foreground mt-0.5 flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-emerald-500 fill-emerald-500/20" /> System Blueprints
+                  </h1>
+                </div>
+              </div>
+            </div>
+
+            {/* Split Master-Detail layout */}
+            <div className="flex-1 flex overflow-hidden">
+              
+              {/* Left Column: Master list of triggers */}
+              <div className="w-full lg:w-[420px] shrink-0 border-r flex flex-col bg-card overflow-hidden">
+                {/* Search & Filters */}
+                <div className="p-4 border-b space-y-3 bg-muted/10 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <CustomInput
+                        placeholder="Search blueprints..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 h-9 rounded-xl text-xs bg-background"
+                      />
+                      {searchQuery && (
+                        <button 
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-3 top-2.5 hover:text-foreground text-muted-foreground transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                      className={cn(
+                        "h-9 w-9 rounded-xl border shrink-0",
+                        showAdvancedFilters && "bg-emerald-500/5 text-emerald-600 border-emerald-500/20"
+                      )}
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Horizontal Scroll category badges */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar shrink-0">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.value}
+                        onClick={() => setSelectedCategory(cat.value)}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-[10px] font-bold uppercase border transition-all shrink-0",
+                          selectedCategory === cat.value
+                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm"
+                            : "bg-background text-muted-foreground border-border hover:text-foreground"
+                        )}
+                      >
+                        {cat.label.replace('All Categories', 'All')}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Advanced dropdown selectors */}
+                  <AnimatePresence>
+                    {showAdvancedFilters && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden pt-2 space-y-2 border-t border-dashed"
+                      >
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-bold text-muted-foreground">Recipient Type</label>
+                            <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                              <SelectTrigger className="h-8 rounded-lg text-[11px] bg-background">
+                                <SelectValue placeholder="Recipient" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                <SelectItem value="all">All Recipients</SelectItem>
+                                <SelectItem value="external_alert">External Alert</SelectItem>
+                                <SelectItem value="internal_alert">Internal Alert</SelectItem>
+                                <SelectItem value="respondent">Respondent</SelectItem>
+                                <SelectItem value="entity">Entity</SelectItem>
+                                <SelectItem value="assignee">Assignee</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-bold text-muted-foreground">Channel Support</label>
+                            <Select value={selectedChannel} onValueChange={setSelectedChannel}>
+                              <SelectTrigger className="h-8 rounded-lg text-[11px] bg-background">
+                                <SelectValue placeholder="Channel" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                <SelectItem value="all">All Channels</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                                <SelectItem value="sms">SMS</SelectItem>
+                                <SelectItem value="push">Push</SelectItem>
+                                <SelectItem value="in_app">In-App</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-1">
+                          <Button 
+                            variant="ghost" 
+                            onClick={handleClearFilters}
+                            className="h-8 text-[10px] font-bold uppercase rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground px-4"
+                          >
+                            Reset Filters
+                          </Button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Left panel items list */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {filteredTriggers.length > 0 ? (
+                    filteredTriggers.map(trigger => (
+                      <BlueprintListItem
+                        key={trigger.id}
+                        trigger={trigger}
+                        isActive={selectedTrigger?.id === trigger.id}
+                        globalTemplates={globalTemplates || undefined}
+                        adoptionCount={adoptionStats[trigger.id] || 0}
+                        onClick={() => setSelectedTriggerId(trigger.id)}
+                      />
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center p-8 space-y-4 border border-dashed rounded-2xl bg-muted/10 mt-4">
+                      <Inbox className="h-10 w-10 text-muted-foreground/30 stroke-[1.5]" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-foreground">No blueprints match search</p>
+                        <p className="text-[10px] text-muted-foreground leading-relaxed max-w-[200px]">Adjust your filter options to find the active system default layouts.</p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleClearFilters}
+                        className="h-8 text-[10px] font-bold uppercase px-3 rounded-lg"
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Stationed preview details */}
+              <div className="hidden lg:flex flex-1 flex-col overflow-hidden p-6 bg-muted/10">
+                {selectedTrigger ? (
+                  <BlueprintDetailPane
+                    trigger={selectedTrigger}
+                    globalTemplates={globalTemplates || undefined}
+                    adoptionCount={adoptionStats[selectedTrigger.id] || 0}
+                    onCustomize={handleCustomize}
+                  />
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                    <Info className="h-10 w-10 text-muted-foreground/30 mb-2 stroke-[1.5]" />
+                    <p className="text-sm font-semibold text-muted-foreground">Select a blueprint trigger from the left list to review dynamic defaults and global usage rates.</p>
+                  </div>
+                )}
+              </div>
+
+            </div>
           </div>
         )}
       </AnimatePresence>

@@ -4,12 +4,12 @@ import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, doc, onSnapshot } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, SenderProfile, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables, renderBlocksToHtml } from '@/lib/messaging-utils';
-import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
+import { createBulkMessageJob, processBulkJobChunk, processJobChunkBackground } from '@/lib/bulk-messaging';
 import { type ScheduleMessageResult } from '@/lib/sequential-scheduler';
 import { resolveContact } from '@/lib/contact-adapter';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
@@ -206,6 +206,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [sampleVariables, setSampleVariables] = React.useState<Record<string, any>>({});
     const [jobProgress, setJobProgress] = React.useState(0);
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
+    const [jobProcessed, setJobProcessed] = React.useState(0);
+    const [jobFailed, setJobFailed] = React.useState(0);
+    const [jobTotal, setJobTotal] = React.useState(0);
     const [availableVariables, setAvailableVariables] = React.useState<TemplateVariable[]>([]);
     const [selectedTemplate, setSelectedTemplate] = React.useState<MessageTemplate | null>(null);
 
@@ -486,15 +489,42 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
     const startJobProcessing = async (id: string) => {
         setJobStatus('processing');
-        let done = false;
-        while (!done) {
-            try {
-                const r = await processBulkJobChunk(id);
-                setJobProgress(r.progress); setJobStatus(r.status);
-                if (r.status === 'completed' || r.status === 'failed') done = true;
-                await new Promise(r => setTimeout(r, 1000));
-            } catch { setJobStatus('failed'); done = true; }
-        }
+        setJobProgress(0);
+        setJobProcessed(0);
+        setJobFailed(0);
+
+        // Fire-and-forget: kick off the background worker.
+        // The server processes chunks via after() without requiring
+        // this browser tab to remain open.
+        processJobChunkBackground(id).catch((e) => {
+            console.error('>>> [COMPOSER] Background worker init failed:', e);
+        });
+
+        // Passive listener: subscribe to job document for real-time updates.
+        // This replaces the while-loop polling model entirely.
+        const jobDocRef = doc(firestore, 'message_jobs', id);
+        const unsubscribe = onSnapshot(jobDocRef, (snap) => {
+            if (!snap.exists()) return;
+            const data = snap.data();
+            const total = data.totalRecipients || 1;
+            const processed = data.processed || 0;
+            const progress = Math.round((processed / total) * 100);
+
+            setJobTotal(total);
+            setJobProcessed(processed);
+            setJobFailed(data.failed || 0);
+            setJobProgress(progress);
+            setJobStatus(data.status);
+
+            // Clean up listener when job finishes
+            if (data.status === 'completed' || data.status === 'failed') {
+                unsubscribe();
+            }
+        }, (error) => {
+            console.error('>>> [COMPOSER] Job snapshot error:', error);
+            setJobStatus('failed');
+            unsubscribe();
+        });
     };
 
     const onSubmit = async (data: FormData) => {
@@ -1211,30 +1241,96 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                     <Card className="rounded-2xl border shadow-xl overflow-hidden">
                         <CardHeader className="text-center p-10 border-b bg-muted/30">
                             <div className="mx-auto bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-primary/10">
-                                {jobStatus === 'processing' ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Trophy className="h-8 w-8 text-emerald-600" />}
+                                {jobStatus === 'processing' ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : jobStatus === 'failed' ? <AlertCircle className="h-8 w-8 text-destructive" /> : <Trophy className="h-8 w-8 text-emerald-600" />}
                             </div>
-                            <CardTitle className="text-2xl font-bold">Broadcast in Progress</CardTitle>
-                            <CardDescription className="font-semibold text-muted-foreground mt-1">Sending to {csvData.length} recipients.</CardDescription>
+                            <CardTitle className="text-2xl font-bold">
+                                {jobStatus === 'completed' ? 'Broadcast Complete' : jobStatus === 'failed' ? 'Broadcast Failed' : 'Broadcast in Progress'}
+                            </CardTitle>
+                            <CardDescription className="font-semibold text-muted-foreground mt-1">
+                                {jobStatus === 'completed'
+                                    ? `All ${jobTotal} messages dispatched successfully.`
+                                    : jobStatus === 'failed'
+                                    ? 'An error occurred during dispatch.'
+                                    : `Sending to ${jobTotal || csvData.length} recipients. You can close this tab.`}
+                            </CardDescription>
                         </CardHeader>
                         <CardContent className="p-8 space-y-6">
+                            {/* ── Progress Bar ────────────────────────── */}
                             <div className="space-y-3 max-w-lg mx-auto">
                                 <div className="flex justify-between items-end">
                                     <p className="text-xs font-semibold text-muted-foreground">Progress</p>
                                     <p className="text-4xl font-bold tabular-nums text-primary">{jobProgress}%</p>
                                 </div>
                                 <div className="h-4 w-full bg-muted/30 rounded-full overflow-hidden border p-1">
-                                    <motion.div initial={{ width: 0 }} animate={{ width: `${jobProgress}%` }} className="h-full bg-primary rounded-full" />
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${jobProgress}%` }}
+                                        transition={{ type: 'spring', stiffness: 60, damping: 15 }}
+                                        className="h-full bg-primary rounded-full"
+                                    />
                                 </div>
                             </div>
+
+                            {/* ── Real-time Stats Grid ────────────────── */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="grid grid-cols-3 gap-4 max-w-lg mx-auto"
+                            >
+                                <div className="text-center p-4 rounded-xl bg-muted/20 border">
+                                    <p className="text-2xl font-bold tabular-nums text-foreground">{jobProcessed}</p>
+                                    <p className="text-[11px] font-medium text-muted-foreground mt-1">Processed</p>
+                                </div>
+                                <div className="text-center p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+                                    <p className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{jobProcessed - jobFailed}</p>
+                                    <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-500 mt-1">Delivered</p>
+                                </div>
+                                <div className="text-center p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                                    <p className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{jobFailed}</p>
+                                    <p className="text-[11px] font-medium text-red-700 dark:text-red-500 mt-1">Failed</p>
+                                </div>
+                            </motion.div>
+
+                            {/* ── Safe to close notice ────────────────── */}
+                            {jobStatus === 'processing' && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: 0.5 }}
+                                    className="flex items-center gap-2 justify-center text-xs text-muted-foreground max-w-sm mx-auto"
+                                >
+                                    <Info className="h-3.5 w-3.5 shrink-0" />
+                                    <span>Messages are sending in the background. You can safely close this tab.</span>
+                                </motion.div>
+                            )}
+
+                            {/* ── Completion CTA ─────────────────────── */}
                             {jobStatus === 'completed' && (
-                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-sm mx-auto">
-                                    <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center gap-4">
+                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="max-w-sm mx-auto">
+                                    <div className="p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex items-center gap-4">
                                         <div className="bg-emerald-600 text-white p-3 rounded-xl"><Check className="h-5 w-5" /></div>
                                         <div className="flex-1">
-                                            <p className="font-bold text-emerald-900">Broadcast Complete</p>
-                                            <p className="text-xs text-emerald-700 mt-0.5">All messages dispatched successfully.</p>
+                                            <p className="font-bold text-emerald-900 dark:text-emerald-100">Broadcast Complete</p>
+                                            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">All messages dispatched successfully.</p>
                                         </div>
                                         <Button asChild className="rounded-xl font-semibold h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-xs">
+                                            <Link href="/admin/messaging">View Logs</Link>
+                                        </Button>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* ── Failure CTA ────────────────────────── */}
+                            {jobStatus === 'failed' && (
+                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="max-w-sm mx-auto">
+                                    <div className="p-6 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 flex items-center gap-4">
+                                        <div className="bg-red-600 text-white p-3 rounded-xl"><AlertCircle className="h-5 w-5" /></div>
+                                        <div className="flex-1">
+                                            <p className="font-bold text-red-900 dark:text-red-100">Broadcast Failed</p>
+                                            <p className="text-xs text-red-700 dark:text-red-400 mt-0.5">{jobFailed} message(s) failed to send.</p>
+                                        </div>
+                                        <Button asChild variant="destructive" className="rounded-xl font-semibold h-10 px-6 text-xs">
                                             <Link href="/admin/messaging">View Logs</Link>
                                         </Button>
                                     </div>
