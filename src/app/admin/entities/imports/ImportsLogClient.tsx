@@ -15,7 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { FileUp, Search, RefreshCw, AlertCircle, CheckCircle2, ChevronRight, HardDrive } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { purgeExpiredFailedImportsAction, getFailedRowsAction, updateFailedRowAction, ingestBatchAction, getDuplicateRowsAction } from '@/lib/bulk-upload-actions';
+import { purgeExpiredFailedImportsAction, getFailedRowsAction, updateFailedRowAction, ingestBatchAction, getDuplicateRowsAction, cancelBulkUploadAction, resumeBulkUploadAction } from '@/lib/bulk-upload-actions';
 import { DuplicateResolutionPortal } from './components/DuplicateResolutionPortal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -76,6 +76,32 @@ export default function ImportsLogClient() {
         } finally {
             setIsLoadingFailed(false);
             setIsLoadingDuplicates(false);
+        }
+    };
+
+    const handleCancel = async (logId: string) => {
+        try {
+            const res = await cancelBulkUploadAction(logId);
+            if (res.success) {
+                toast({ title: 'Import cancelled', description: 'The background job has been aborted.' });
+            } else {
+                toast({ title: 'Cannot cancel', description: res.message, variant: 'destructive' });
+            }
+        } catch (err: any) {
+            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        }
+    };
+
+    const handleResume = async (logId: string) => {
+        try {
+            const res = await resumeBulkUploadAction(logId);
+            if (res.success) {
+                toast({ title: 'Import resumed', description: 'The background job has been queued.' });
+            } else {
+                toast({ title: 'Cannot resume', description: res.message, variant: 'destructive' });
+            }
+        } catch (err: any) {
+            toast({ title: 'Error', description: err.message, variant: 'destructive' });
         }
     };
 
@@ -180,6 +206,8 @@ export default function ImportsLogClient() {
                                                     <Badge variant="secondary" className="bg-blue-50 text-blue-700 animate-pulse">Processing</Badge>
                                                 ) : log.status === 'completed' ? (
                                                     <Badge className="bg-emerald-50 text-emerald-700 border-none">Completed</Badge>
+                                                ) : log.status === 'cancelled' ? (
+                                                    <Badge variant="secondary" className="bg-slate-100 text-slate-600">Cancelled</Badge>
                                                 ) : (
                                                     <Badge variant="destructive" className="bg-red-50 text-red-700 border-none">Has Errors</Badge>
                                                 )}
@@ -204,11 +232,23 @@ export default function ImportsLogClient() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {(log.failedCount > 0 || log.duplicateCount > 0) && !log.rawFieldsCleared && (
-                                                    <Button variant="outline" size="sm" onClick={() => handleViewPortal(log.id, log.failedCount > 0 ? 'failed' : 'duplicates')}>
-                                                        Resolve
-                                                    </Button>
-                                                )}
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {['queued', 'processing'].includes(log.status) && (
+                                                        <Button variant="ghost" size="sm" onClick={() => handleCancel(log.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                                            Cancel
+                                                        </Button>
+                                                    )}
+                                                    {['failed', 'cancelled'].includes(log.status) && (
+                                                        <Button variant="outline" size="sm" onClick={() => handleResume(log.id)}>
+                                                            Resume
+                                                        </Button>
+                                                    )}
+                                                    {(log.failedCount > 0 || log.duplicateCount > 0) && !log.rawFieldsCleared && (
+                                                        <Button variant="outline" size="sm" onClick={() => handleViewPortal(log.id, log.failedCount > 0 ? 'failed' : 'duplicates')}>
+                                                            Resolve
+                                                        </Button>
+                                                    )}
+                                                </div>
                                                 {log.rawFieldsCleared && (
                                                     <span className="text-xs text-muted-foreground italic">Payloads expired</span>
                                                 )}

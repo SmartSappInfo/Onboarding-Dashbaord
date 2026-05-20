@@ -215,17 +215,18 @@ export async function ingestBatchAction(
  */
 export async function processImportChunkBackground(importLogId: string): Promise<void> {
     const importLogRef = adminDb.collection('import_logs').doc(importLogId);
-    const importLogSnap = await importLogRef.get();
+    try {
+        const importLogSnap = await importLogRef.get();
 
-    if (!importLogSnap.exists) {
-        console.error(`[BULK-BG] Import log ${importLogId} not found`);
-        return;
-    }
+        if (!importLogSnap.exists) {
+            console.error(`[BULK-BG] Import log ${importLogId} not found`);
+            return;
+        }
 
-    const importLog = importLogSnap.data() as any;
+        const importLog = importLogSnap.data() as any;
 
-    // Guard: already finalised
-    if (['completed', 'partially_completed', 'failed'].includes(importLog.status)) return;
+        // Guard: already finalised or cancelled
+        if (['completed', 'partially_completed', 'failed', 'cancelled'].includes(importLog.status)) return;
 
     // Transition to processing on first invocation
     if (importLog.status === 'queued') {
@@ -409,9 +410,17 @@ export async function processImportChunkBackground(importLogId: string): Promise
             await processImportChunkBackground(importLogId);
         } catch (e) {
             console.error('[BULK-BG] Next chunk scheduling failed:', (e as Error).message);
-            await importLogRef.update({ status: 'failed' });
+            await importLogRef.update({ status: 'failed', errorMessage: (e as Error).message });
         }
     });
+
+    } catch (error: any) {
+        console.error(`[BULK-BG] Fatal error processing chunk for ${importLogId}:`, error);
+        await importLogRef.update({ 
+            status: 'failed', 
+            errorMessage: error.message || 'Unknown fatal error during chunk processing' 
+        });
+    }
 }
 
 // ─── Per-Row Processing (Internal) ───────────────────────────────────────────
@@ -1058,5 +1067,59 @@ export async function resolveDuplicatesAction(
         updatedAt: FieldValue.serverTimestamp()
     });
     
+    return { success: true };
+}
+
+/**
+ * Cancels an ongoing bulk upload job.
+ * Updates the status to 'cancelled' so the background worker stops processing chunks.
+ */
+export async function cancelBulkUploadAction(importLogId: string): Promise<{ success: boolean; message?: string }> {
+    const importLogRef = adminDb.collection('import_logs').doc(importLogId);
+    const snap = await importLogRef.get();
+    if (!snap.exists) return { success: false, message: 'Import log not found' };
+
+    const data = snap.data() as any;
+    if (['completed', 'partially_completed', 'cancelled'].includes(data.status)) {
+        return { success: false, message: 'Cannot cancel an import that is already finished or cancelled.' };
+    }
+
+    await importLogRef.update({
+        status: 'cancelled',
+        updatedAt: FieldValue.serverTimestamp()
+    });
+
+    return { success: true };
+}
+
+/**
+ * Resumes a failed or cancelled bulk upload job.
+ * Sets the status to 'queued' and triggers the background worker to pick up the remaining pending rows.
+ */
+export async function resumeBulkUploadAction(importLogId: string): Promise<{ success: boolean; message?: string }> {
+    const importLogRef = adminDb.collection('import_logs').doc(importLogId);
+    const snap = await importLogRef.get();
+    if (!snap.exists) return { success: false, message: 'Import log not found' };
+
+    const data = snap.data() as any;
+    if (!['failed', 'cancelled'].includes(data.status)) {
+        return { success: false, message: 'Only failed or cancelled imports can be resumed.' };
+    }
+
+    await importLogRef.update({
+        status: 'queued',
+        errorMessage: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp()
+    });
+
+    after(async () => {
+        try {
+            await processImportChunkBackground(importLogId);
+        } catch (e) {
+            console.error('[BULK-BG] Resume scheduling failed:', (e as Error).message);
+            await importLogRef.update({ status: 'failed', errorMessage: (e as Error).message });
+        }
+    });
+
     return { success: true };
 }
