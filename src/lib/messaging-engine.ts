@@ -184,6 +184,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
+    // Ensure resolvedWorkspaceId is not undefined/empty (Requirement 11)
+    if (!resolvedWorkspaceId) {
+        resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
+    }
+
     // 4.4 Meeting Context Auto-Enrichment
     // When _meetingId is present but meeting_title wasn't supplied by the caller,
     // fetch the meeting doc and inject base variables + facilitator/registrant context.
@@ -466,9 +471,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       sentAt: scheduledAt || new Date().toISOString(),
       variables: JSON.parse(JSON.stringify(finalVariables)),
       workspaceIds: workspaceIds, // Bind to institutional track(s)
-      workspaceId: resolvedWorkspaceId, // Primary workspace context (Requirement 11)
+      workspaceId: resolvedWorkspaceId || null, // Primary workspace context (Requirement 11)
       entityId: resolvedEntityId || null, // New unified entity reference
-      entityType: resolvedEntityType, // Entity type
+      entityType: resolvedEntityType || null, // Entity type
       providerId: providerId || null,
       providerStatus: providerStatus || null,
       hasAttachments: !!(attachments && attachments.length > 0),
@@ -479,10 +484,10 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     await logActivity({
         entityId: resolvedEntityId || null,
-        entityType: resolvedEntityType,
+        entityType: resolvedEntityType || null,
         organizationId: 'default',
         userId: null, 
-        workspaceId: resolvedWorkspaceId,
+        workspaceId: resolvedWorkspaceId || null,
         type: 'notification_sent',
         source: 'system',
         description: `${scheduledAt ? 'Scheduled' : 'Sent'} ${template.channel} "${resolvedLogTitle}" to ${recipient}`,

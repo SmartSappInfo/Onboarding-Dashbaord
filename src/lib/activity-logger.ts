@@ -45,11 +45,11 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         // Update finalData with resolved fields
         finalData = {
             ...finalData,
-            entityId,
-            entityName,
-            entitySlug,
-            entityType,
-            displayName,
+            entityId: entityId || null,
+            entityName: entityName || null,
+            entitySlug: entitySlug || null,
+            entityType: entityType || null,
+            displayName: displayName || null,
         };
 
         // 3. Persist the Audit Log with all workspace-aware fields (Requirement 12)
