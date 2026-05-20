@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 
 import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -153,6 +154,12 @@ export default function ImportsLogClient() {
                     <h1 className="text-3xl font-bold tracking-tight">Imports Log</h1>
                     <p className="text-muted-foreground">Monitor bulk ingestion progress and resolve conflicts.</p>
                 </div>
+                <Button asChild className="gap-2 shrink-0">
+                    <Link href="/admin/entities/upload">
+                        <FileUp className="h-4 w-4" />
+                        New Bulk Import
+                    </Link>
+                </Button>
             </div>
 
             <Card className="rounded-2xl border-none shadow-sm bg-card ring-1 ring-border">
