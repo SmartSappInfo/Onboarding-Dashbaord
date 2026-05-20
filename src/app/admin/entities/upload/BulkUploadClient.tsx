@@ -39,7 +39,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { ingestBatchAction } from '@/lib/bulk-upload-actions';
 import type { DuplicateStrategy } from '@/lib/import-types';
 import { cn } from '@/lib/utils';
@@ -255,6 +255,7 @@ interface DefaultValueRowProps {
     modulesList: any[] | null | undefined;
     workspaceStatuses: any[];
     parentRegionValue?: string;
+    customLeadSources?: string[];
 }
 
 const DefaultValueRow = React.memo(({
@@ -268,13 +269,15 @@ const DefaultValueRow = React.memo(({
     packagesList,
     modulesList,
     workspaceStatuses = [],
-    parentRegionValue
+    parentRegionValue,
+    customLeadSources
 }: DefaultValueRowProps) => {
 
     const regions = regionsList || [];
     const districts = districtsList || [];
     const packages = packagesList || [];
     const modules = modulesList || [];
+    const [isCustomLeadSource, setIsCustomLeadSource] = React.useState(false);
 
     // Cascading district list calculation derived synchronously in render
     const filteredDistricts = React.useMemo(() => {
@@ -458,9 +461,49 @@ const DefaultValueRow = React.memo(({
                 );
             }
             case 'leadSource': {
-                const sources = ['Referral', 'Website', 'Social Media', 'Event', 'Partner', 'Cold Outreach', 'Other'];
+                const baseSources = ['Referral', 'Website', 'Social Media', 'Event', 'Partner', 'Cold Outreach', 'Other'];
+                const sources = Array.from(new Set([...baseSources, ...(customLeadSources || [])]));
+                
+                // Show custom input if explicit flag is set, or if an existing custom value is passed in
+                const showCustom = isCustomLeadSource || (value && !sources.includes(value));
+
+                if (showCustom) {
+                    return (
+                        <div className="flex items-center gap-2">
+                            <Input 
+                                autoFocus
+                                value={value} 
+                                onChange={e => onValueChange(fieldKey, e.target.value)}
+                                placeholder="Enter custom lead source..."
+                                className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                            />
+                            <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                                onClick={() => {
+                                    setIsCustomLeadSource(false);
+                                    if (value && !sources.includes(value)) {
+                                        onValueChange(fieldKey, '');
+                                    }
+                                }}
+                                title="Back to default list"
+                            >
+                                <X size={14} />
+                            </Button>
+                        </div>
+                    );
+                }
+
                 return (
-                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                    <Select value={value || undefined} onValueChange={val => {
+                        if (val === '__custom') {
+                            setIsCustomLeadSource(true);
+                            onValueChange(fieldKey, '');
+                        } else {
+                            onValueChange(fieldKey, val);
+                        }
+                    }}>
                         <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
                             <SelectValue placeholder="Select lead source..." />
                         </SelectTrigger>
@@ -468,6 +511,13 @@ const DefaultValueRow = React.memo(({
                             {sources.map(s => (
                                 <SelectItem key={s} value={s} className="font-semibold text-xs py-2">{s}</SelectItem>
                             ))}
+                            <div className="h-px bg-border/50 my-1 mx-2" />
+                            <SelectItem value="__custom" className="font-semibold text-xs py-2 text-primary focus:bg-primary/5 focus:text-primary">
+                                <div className="flex items-center gap-2">
+                                    <Plus size={12} />
+                                    Add custom source...
+                                </div>
+                            </SelectItem>
                         </SelectContent>
                     </Select>
                 );
@@ -517,7 +567,8 @@ const DefaultValueRow = React.memo(({
         prevProps.districtsList?.length === nextProps.districtsList?.length &&
         prevProps.packagesList?.length === nextProps.packagesList?.length &&
         prevProps.modulesList?.length === nextProps.modulesList?.length &&
-        prevProps.workspaceStatuses?.length === nextProps.workspaceStatuses?.length
+        prevProps.workspaceStatuses?.length === nextProps.workspaceStatuses?.length &&
+        prevProps.customLeadSources?.length === nextProps.customLeadSources?.length
     );
 });
 DefaultValueRow.displayName = 'DefaultValueRow';
@@ -752,24 +803,41 @@ export default function BulkUploadClient() {
         
         setTimeout(() => {
             const initialMapping: Record<string, string> = {};
+            const mappedHeaders = new Set<string>();
             
+            // Pass 1: Exact matches
+            allMappableFields.forEach(f => {
+                const targetLabel = f.label.toLowerCase();
+                const targetKey = f.key.toLowerCase();
+                
+                const exactMatch = fileHeaders.find(header => {
+                    const h = header.toLowerCase().trim();
+                    return h === targetLabel || h === targetKey;
+                });
+                
+                if (exactMatch) {
+                    initialMapping[f.key] = exactMatch;
+                    mappedHeaders.add(exactMatch);
+                }
+            });
+            
+            // Pass 2: Heuristic / Partial matches for remaining unmapped fields
             fileHeaders.forEach(header => {
+                if (mappedHeaders.has(header)) return;
                 const h = header.toLowerCase().trim();
                 
-                // Find a matching field in our system fields
-                let match = allMappableFields.find(f => 
-                    f.label.toLowerCase() === h || 
-                    f.key.toLowerCase() === h ||
-                    (f.key === 'name' && h.includes('name') && !h.includes('contact'))
-                );
+                // Find an unmapped field that fits a heuristic
+                let matchedKey: string | null = null;
                 
-                // By Default, link the organization name to the entity for contact type institutions
-                if (h.includes('organization') && contactScope === 'institution') {
-                    match = allMappableFields.find(f => f.key === 'name');
+                if (h.includes('name') && !h.includes('contact') && !initialMapping['name']) {
+                    matchedKey = 'name';
+                } else if (h.includes('organization') && contactScope === 'institution' && !initialMapping['name']) {
+                    matchedKey = 'name';
                 }
                 
-                if (match) {
-                    initialMapping[match.key] = header;
+                if (matchedKey) {
+                    initialMapping[matchedKey] = header;
+                    mappedHeaders.add(header);
                 }
             });
 
@@ -786,6 +854,25 @@ export default function BulkUploadClient() {
         
         setCurrentStep('EXECUTING');
         setExecutionResults([]);
+
+        // Save custom lead source if one was created
+        if (defaultValues['leadSource'] && activeWorkspace?.id) {
+            const val = defaultValues['leadSource'];
+            const baseSources = ['Referral', 'Website', 'Social Media', 'Event', 'Partner', 'Cold Outreach', 'Other'];
+            if (!baseSources.includes(val)) {
+                const customSources = activeWorkspace.customLeadSources || [];
+                if (!customSources.includes(val)) {
+                    try {
+                        const wsRef = doc(firestore, 'workspaces', activeWorkspace.id);
+                        await updateDoc(wsRef, {
+                            customLeadSources: arrayUnion(val)
+                        });
+                    } catch (err) {
+                        console.error("Failed to save custom lead source to workspace", err);
+                    }
+                }
+            }
+        }
 
         try {
             const sanitizedRows = JSON.parse(JSON.stringify(rowsToProcess));
@@ -1064,7 +1151,7 @@ export default function BulkUploadClient() {
                                                                             const mappedTo = Object.entries(mapping).find(([k, v]) => v === h && k.startsWith('contact_'))?.[0];
                                                                             const isUsed = mappedTo && mappedTo !== fieldKey;
                                                                             return (
-                                                                                <SelectItem key={h} value={h} disabled={!!isUsed} className={cn(isUsed && "opacity-40 font-medium", !isUsed && "font-semibold")}>
+                                                                                <SelectItem key={h} value={h} className={cn("font-semibold", isUsed && "opacity-60 text-muted-foreground")}>
                                                                                     {h} {isUsed ? `(Used)` : ''}
                                                                                 </SelectItem>
                                                                             );
@@ -1131,7 +1218,7 @@ export default function BulkUploadClient() {
                                                                     const alreadyMappedTo = mapping[f.key];
                                                                     const isUsed = alreadyMappedTo && alreadyMappedTo !== csvHeader;
                                                                     return (
-                                                                        <SelectItem key={f.key} value={f.key} disabled={!!isUsed} className={cn("font-semibold", isUsed && "opacity-40")}>
+                                                                        <SelectItem key={f.key} value={f.key} className={cn("font-semibold", isUsed && "opacity-60 text-muted-foreground")}>
                                                                             {f.label} {f.required ? '(Required)' : ''} {isUsed ? `← ${alreadyMappedTo}` : ''}
                                                                         </SelectItem>
                                                                     );

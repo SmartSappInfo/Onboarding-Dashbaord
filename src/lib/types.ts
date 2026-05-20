@@ -352,6 +352,8 @@ export interface Workspace {
   contactPolicy?: ContactIdentifierPolicy;
   /** Workspace-level default values applied across all entity creation flows */
   entityDefaults?: EntityDefaults;
+  /** Custom lead sources created by the user during bulk import or elsewhere */
+  customLeadSources?: string[];
   createdAt: string;
   updatedAt: string;
 }
