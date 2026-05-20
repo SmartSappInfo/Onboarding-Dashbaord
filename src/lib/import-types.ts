@@ -6,7 +6,8 @@ export type DuplicateStrategy =
   | 'UPDATE_MISSING_FIELDS_AND_TAG'
   | 'SKIP' 
   | 'TRIGGER_AUTOMATION' 
-  | 'MANUAL_CORRECTION';
+  | 'MANUAL_CORRECTION'
+  | 'CREATE_NEW';
 
 export type ImportStatus = 'processing' | 'completed' | 'failed' | 'partially_completed';
 

@@ -964,8 +964,8 @@ export async function resolveDuplicatesAction(
                 const existingEntityRef = adminDb.collection('workspace_entities').doc(dupData?.matchedEntityId);
                 const existingSnap = await transaction.get(existingEntityRef);
                 
-                if (strategy === 'MANUAL_CORRECTION') {
-                    const payload = customPayload || dupData?.rawPayload;
+                if (strategy === 'MANUAL_CORRECTION' || strategy === 'CREATE_NEW') {
+                    const payload = strategy === 'MANUAL_CORRECTION' ? (customPayload || dupData?.rawPayload) : dupData?.rawPayload;
                     
                     const nameHeader = mapping['name'];
                     const isMapped = nameHeader && nameHeader !== 'none';

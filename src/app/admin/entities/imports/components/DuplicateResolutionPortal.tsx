@@ -252,6 +252,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                             <SelectItem value="UPDATE_FIELDS_AND_TAG">Overwrite Existing Data</SelectItem>
                             <SelectItem value="TRIGGER_AUTOMATION">Trigger Automation</SelectItem>
                             <SelectItem value="MANUAL_CORRECTION">Manual Edit</SelectItem>
+                            <SelectItem value="CREATE_NEW">Create New Entity</SelectItem>
                         </SelectContent>
                     </Select>
                     {requiresTags(bulkStrategy) && (
@@ -385,6 +386,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                         <SelectItem value="UPDATE_FIELDS_AND_TAG">Overwrite</SelectItem>
                                                         <SelectItem value="TRIGGER_AUTOMATION">Automation</SelectItem>
                                                         <SelectItem value="MANUAL_CORRECTION">Manual Edit</SelectItem>
+                                                        <SelectItem value="CREATE_NEW">Create New</SelectItem>
                                                     </SelectContent>
                                                 </Select>
 
