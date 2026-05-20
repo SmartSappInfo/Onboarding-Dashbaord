@@ -829,7 +829,8 @@ export async function getDuplicateRowsAction(importLogId: string) {
         .orderBy('createdAt', 'desc')
         .limit(100)
         .get();
-    return snap.docs.map(d => {
+
+    const rows = snap.docs.map(d => {
         const data = d.data();
         return { 
             id: d.id, 
@@ -838,7 +839,43 @@ export async function getDuplicateRowsAction(importLogId: string) {
             updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt
         };
     });
+
+    // Enrich with existing entity data for side-by-side comparison
+    const uniqueEntityIds = [...new Set(rows.map((r: any) => r.matchedEntityId).filter(Boolean))];
+    const entityDataMap: Record<string, { name: string; entityContacts: any[] }> = {};
+
+    await Promise.all(uniqueEntityIds.map(async (entityId) => {
+        try {
+            // Try workspace_entities first (has denormalized contacts)
+            const weSnap = await adminDb.collection('workspace_entities').doc(entityId as string).get();
+            if (weSnap.exists) {
+                const we = weSnap.data()!;
+                entityDataMap[entityId as string] = {
+                    name: we.name || we.entityName || '',
+                    entityContacts: we.entityContacts || [],
+                };
+                return;
+            }
+            // Fallback to entities collection
+            const entSnap = await adminDb.collection('entities').doc(entityId as string).get();
+            if (entSnap.exists) {
+                const ent = entSnap.data()!;
+                entityDataMap[entityId as string] = {
+                    name: ent.name || '',
+                    entityContacts: ent.entityContacts || [],
+                };
+            }
+        } catch {
+            // Non-blocking: if entity fetch fails, comparison will show partial data
+        }
+    }));
+
+    return rows.map((row: any) => ({
+        ...row,
+        existingEntityData: row.matchedEntityId ? (entityDataMap[row.matchedEntityId] || null) : null,
+    }));
 }
+
 
 export async function resolveDuplicatesAction(
     importLogId: string, 

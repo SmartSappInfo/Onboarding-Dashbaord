@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle2, ChevronRight, AlertTriangle, Edit2 } from 'lucide-react';
+import { CheckCircle2, ChevronRight, AlertTriangle, Edit2, Mail, Phone, User, Building2 } from 'lucide-react';
 import { resolveDuplicatesAction } from '@/lib/bulk-upload-actions';
 import { createTagAction } from '@/lib/tag-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +27,10 @@ interface DuplicateRow {
     matchedEntityId: string;
     matchedOn: string[];
     resolved: boolean;
+    existingEntityData?: {
+        name: string;
+        entityContacts: Array<{ id: string; name: string; email?: string; phone?: string; typeLabel?: string; typeKey?: string; isPrimary?: boolean; }>;
+    } | null;
 }
 
 interface DuplicateResolutionPortalProps {
@@ -53,6 +57,33 @@ const getFieldLabel = (key: string) => {
         default:
             return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
     }
+};
+
+/** Extract the key fields from the raw incoming payload using import mapping */
+const extractIncomingFields = (payload: any, mapping: Record<string, string>) => {
+    const get = (key: string) => {
+        const col = mapping[key];
+        return (col && payload[col]) ? String(payload[col]).trim() : '';
+    };
+    return {
+        entityName: get('name') || payload.Name || payload['Institution Name'] || payload['Entity Name'] || '',
+        contactName: get('contact_0_name') || payload['Contact Name'] || '',
+        contactEmail: get('contact_0_email') || get('primaryEmail') || payload.Email || payload.email || '',
+        contactPhone: get('contact_0_phone') || get('primaryPhone') || payload.Phone || payload.phone || '',
+        contactRole: get('contact_0_role') || payload.Role || payload.role || '',
+    };
+};
+
+/** Get the primary contact from existing entity contacts */
+const getPrimaryContact = (contacts: any[]) => {
+    if (!contacts || contacts.length === 0) return null;
+    return contacts.find(c => c.isPrimary) || contacts[0];
+};
+
+/** Compare two values - returns true if they conflict (both non-empty and different) */
+const isConflict = (incoming: string, existing: string) => {
+    if (!incoming || !existing) return false;
+    return incoming.toLowerCase().trim() !== existing.toLowerCase().trim();
 };
 
 export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRows, onResolved }: DuplicateResolutionPortalProps) {
@@ -431,48 +462,104 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                         </div>
                                     </div>
  
-                                    {/* Diff Visualizer */}
-                                    <div className="grid grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-border/50">
-                                        <div className="space-y-1 relative">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Incoming Data</p>
-                                                {resolutions[row.id]?.customPayload && (
-                                                    <Badge className="bg-amber-100 text-amber-700 text-[9px] hover:bg-amber-100 px-1 py-0 h-4 border-none">Edited</Badge>
-                                                )}
-                                            </div>
-                                            <div className="text-sm font-medium">
-                                                {(() => {
-                                                    const payload = resolutions[row.id]?.customPayload || row.rawPayload;
-                                                    const mappingKeys = importLog?._importConfig?.mapping || {};
-                                                    const nameCol = mappingKeys['name'];
-                                                    const emailCol = mappingKeys['contact_0_email'] || mappingKeys['primaryEmail'];
-                                                    
-                                                    const displayVal = (nameCol && payload[nameCol]) || payload.Name || payload['Contact Name'] || payload.email || 'Unknown Record';
-                                                    const emailVal = (emailCol && payload[emailCol]) || payload.Email || payload.email || '';
+                                    {/* Rich Diff Visualizer */}
+                                    {(() => {
+                                        const payload = resolutions[row.id]?.customPayload || row.rawPayload;
+                                        const mapping = importLog?._importConfig?.mapping || {};
+                                        const inc = extractIncomingFields(payload, mapping);
+                                        const existingContact = getPrimaryContact(row.existingEntityData?.entityContacts || []);
+                                        const ext = {
+                                            entityName: row.existingEntityData?.name || '',
+                                            contactName: existingContact?.name || '',
+                                            contactEmail: existingContact?.email || '',
+                                            contactPhone: existingContact?.phone || '',
+                                            contactRole: existingContact?.typeLabel || existingContact?.typeKey || '',
+                                        };
+                                        const fields: Array<{ key: keyof typeof inc; label: string; icon: React.ReactNode }> = [
+                                            { key: 'entityName', label: 'Entity Name', icon: <Building2 size={11} /> },
+                                            { key: 'contactName', label: 'Contact Name', icon: <User size={11} /> },
+                                            { key: 'contactEmail', label: 'Email', icon: <Mail size={11} /> },
+                                            { key: 'contactPhone', label: 'Phone', icon: <Phone size={11} /> },
+                                            { key: 'contactRole', label: 'Role', icon: <User size={11} /> },
+                                        ];
+                                        return (
+                                            <div className="rounded-xl border border-border/60 overflow-hidden">
+                                                {/* Column headers */}
+                                                <div className="grid grid-cols-[1fr_28px_1fr] bg-slate-50 dark:bg-slate-900/60 border-b border-border/50">
+                                                    <div className="px-4 py-2 flex items-center gap-1.5">
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Incoming</span>
+                                                        {resolutions[row.id]?.customPayload && (
+                                                            <Badge className="bg-amber-100 text-amber-700 text-[8px] hover:bg-amber-100 px-1 py-0 h-3.5 border-none">Edited</Badge>
+                                                        )}
+                                                    </div>
+                                                    <div />
+                                                    <div className="px-4 py-2">
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-blue-500">Existing Record</span>
+                                                    </div>
+                                                </div>
+                                                {/* Field rows */}
+                                                {fields.map(({ key, label, icon }, fi) => {
+                                                    const inVal = inc[key];
+                                                    const exVal = ext[key];
+                                                    const conflict = isConflict(inVal, exVal);
+                                                    const missing = !exVal && inVal;
                                                     return (
-                                                        <>
-                                                            <p className="font-semibold">{displayVal}</p>
-                                                            {emailVal && <p className="text-muted-foreground text-xs">{emailVal}</p>}
-                                                        </>
+                                                        <div
+                                                            key={key}
+                                                            className={`grid grid-cols-[1fr_28px_1fr] items-stretch ${
+                                                                fi < fields.length - 1 ? 'border-b border-border/40' : ''
+                                                            } ${conflict ? 'bg-red-50/40 dark:bg-red-950/10' : ''}`}
+                                                        >
+                                                            {/* Incoming value */}
+                                                            <div className={`px-4 py-2.5 ${
+                                                                conflict ? 'border-l-2 border-red-400' : missing ? 'border-l-2 border-amber-300' : 'border-l-2 border-transparent'
+                                                            }`}>
+                                                                <div className="flex items-center gap-1 mb-0.5">
+                                                                    <span className="text-muted-foreground/50">{icon}</span>
+                                                                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">{label}</span>
+                                                                </div>
+                                                                <p className={`text-xs font-medium leading-snug ${
+                                                                    conflict ? 'text-red-600 dark:text-red-400' :
+                                                                    inVal ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 italic'
+                                                                }`}>
+                                                                    {inVal || '—'}
+                                                                </p>
+                                                            </div>
+                                                            {/* Arrow / conflict badge */}
+                                                            <div className="flex items-center justify-center">
+                                                                {conflict ? (
+                                                                    <span className="w-4 h-4 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                                                                        <AlertTriangle size={8} className="text-red-500" />
+                                                                    </span>
+                                                                ) : (
+                                                                    <ChevronRight size={12} className="text-border" />
+                                                                )}
+                                                            </div>
+                                                            {/* Existing value */}
+                                                            <div className="px-4 py-2.5">
+                                                                <div className="flex items-center gap-1 mb-0.5">
+                                                                    <span className="text-muted-foreground/50">{icon}</span>
+                                                                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">{label}</span>
+                                                                </div>
+                                                                <p className={`text-xs font-medium leading-snug ${
+                                                                    conflict ? 'text-slate-800 dark:text-slate-200 font-semibold' :
+                                                                    exVal ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 italic'
+                                                                }`}>
+                                                                    {exVal || (row.existingEntityData ? '—' : <span className="text-slate-400 italic text-[10px]">Loading…</span>)}
+                                                                </p>
+                                                            </div>
+                                                        </div>
                                                     );
-                                                })()}
-                                            </div>
-                                            <div className="absolute top-1/2 -right-4 text-slate-300 dark:text-slate-700">
-                                                <ChevronRight size={16} />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-wider text-primary">Existing Record</p>
-                                            <div className="text-sm font-medium">
-                                                <p>ID: {row.matchedEntityId.substring(0, 8)}...</p>
-                                                {resolutions[row.id]?.strategy === 'MANUAL_CORRECTION' ? (
-                                                    <p className="text-emerald-600 text-xs italic font-medium">Will create as a brand new entity</p>
-                                                ) : (
-                                                    <p className="text-muted-foreground text-xs italic">Will be updated based on strategy</p>
+                                                })}
+                                                {/* Footer hint */}
+                                                {resolutions[row.id]?.strategy === 'MANUAL_CORRECTION' && (
+                                                    <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900/30">
+                                                        <p className="text-[10px] text-emerald-600 font-semibold">✓ Will create as a new distinct entity</p>
+                                                    </div>
                                                 )}
                                             </div>
-                                        </div>
-                                    </div>
+                                        );
+                                    })()}
                                 </CardContent>
                             </div>
                         </Card>
