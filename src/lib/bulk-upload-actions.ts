@@ -316,10 +316,16 @@ export async function processImportChunkBackground(importLogId: string): Promise
             const nameHeader = mapping['name'];
             const isMapped = nameHeader && nameHeader !== 'none';
             let rawName = isMapped ? rawPayload[nameHeader] : undefined;
+            if (rawName === undefined || rawName === null || rawName === '') {
+                rawName = defaultValues?.['name'];
+            }
 
             if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
                 const contactHeader = mapping['contact_0_name'];
-                const contactName = (contactHeader && contactHeader !== 'none') ? rawPayload[contactHeader] : undefined;
+                let contactName = (contactHeader && contactHeader !== 'none') ? rawPayload[contactHeader] : undefined;
+                if (contactName === undefined || contactName === null || contactName === '') {
+                    contactName = defaultValues?.['contact_0_name'];
+                }
                 if (contactName && typeof contactName === 'string' && contactName.trim()) {
                     rawName = contactName.trim();
                 } else {
@@ -970,10 +976,16 @@ export async function resolveDuplicatesAction(
                     const nameHeader = mapping['name'];
                     const isMapped = nameHeader && nameHeader !== 'none';
                     let rawName = isMapped ? payload[nameHeader] : undefined;
+                    if (rawName === undefined || rawName === null || rawName === '') {
+                        rawName = defaultValues?.['name'];
+                    }
 
                     if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
                         const contactHeader = mapping['contact_0_name'];
-                        const contactName = (contactHeader && contactHeader !== 'none') ? payload[contactHeader] : undefined;
+                        let contactName = (contactHeader && contactHeader !== 'none') ? payload[contactHeader] : undefined;
+                        if (contactName === undefined || contactName === null || contactName === '') {
+                            contactName = defaultValues?.['contact_0_name'];
+                        }
                         if (contactName && typeof contactName === 'string' && contactName.trim()) {
                             rawName = contactName.trim();
                         } else {
