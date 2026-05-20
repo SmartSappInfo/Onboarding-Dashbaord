@@ -830,14 +830,23 @@ export async function getDuplicateRowsAction(importLogId: string) {
         .limit(100)
         .get();
 
+    // Helper: recursively convert any Firestore Timestamp into an ISO string
+    // so that Next.js Server Actions can safely serialize the response.
+    function sanitizeTimestamps(obj: any): any {
+        if (obj === null || obj === undefined) return obj;
+        if (typeof obj?.toDate === 'function') return obj.toDate().toISOString();
+        if (Array.isArray(obj)) return obj.map(sanitizeTimestamps);
+        if (typeof obj === 'object') {
+            const out: any = {};
+            for (const key of Object.keys(obj)) out[key] = sanitizeTimestamps(obj[key]);
+            return out;
+        }
+        return obj;
+    }
+
     const rows = snap.docs.map(d => {
         const data = d.data();
-        return { 
-            id: d.id, 
-            ...data,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt
-        };
+        return sanitizeTimestamps({ id: d.id, ...data });
     });
 
     // Enrich with existing entity data for side-by-side comparison
@@ -851,7 +860,7 @@ export async function getDuplicateRowsAction(importLogId: string) {
             if (weSnap.exists) {
                 const we = weSnap.data()!;
                 entityDataMap[entityId as string] = {
-                    name: we.name || we.entityName || '',
+                    name: we.displayName || we.name || we.entityName || '',
                     entityContacts: we.entityContacts || [],
                 };
                 return;
@@ -906,6 +915,35 @@ export async function resolveDuplicatesAction(
     // Fetch resolution context once
     const context = await getResolutionContext(importLog.workspaceId);
 
+    // Resolve manualTagNames into actual tag IDs for duplicates
+    let resolvedManualTagIds: string[] = [];
+    if (manualTagNames && manualTagNames.length > 0) {
+        for (const tagName of manualTagNames) {
+            let matchedTag = fuzzyMatch(context.tags, tagName);
+            if (matchedTag) {
+                if (!resolvedManualTagIds.includes(matchedTag.id)) resolvedManualTagIds.push(matchedTag.id);
+            } else {
+                // If somehow it wasn't created during the background processing, create it now
+                const newTagRef = adminDb.collection('tags').doc();
+                const newTagData = {
+                    name: tagName,
+                    slug: normaliseName(tagName).replace(/\s+/g, '-'),
+                    workspaceId: importLog.workspaceId,
+                    organizationId: importLog.organizationId || 'smartsapp-hq',
+                    color: '#94a3b8',
+                    createdBy: importLog.userId,
+                    createdAt: new Date().toISOString()
+                };
+                await newTagRef.set(newTagData);
+                resolvedManualTagIds.push(newTagRef.id);
+                context.tags.push({ id: newTagRef.id, name: tagName });
+            }
+        }
+    }
+
+    // Combine global tag IDs with any newly resolved manual tag IDs
+    const effectiveResolutionTags = [...new Set([...resolutionTags, ...resolvedManualTagIds])];
+
     let manualCorrectionsCount = 0;
 
     // Process in batches
@@ -949,7 +987,7 @@ export async function resolveDuplicatesAction(
                         payload, mapping, name, importLog.entityType, context,
                         workspaceIndustry, importLog.workspaceId, importLog.organizationId,
                         importLog.userId, importLog.filename, autoCreateTags,
-                        defaultValues, tagIds || resolutionTags, automationId ?? undefined, manualTagNames
+                        defaultValues, tagIds || effectiveResolutionTags, automationId ?? undefined, manualTagNames
                     );
                     
                     transaction.set(adminDb.collection('entities').doc(extracted.entityId), extracted.entityDoc);
@@ -964,7 +1002,8 @@ export async function resolveDuplicatesAction(
                 } else if (existingSnap.exists) {
                     if (strategy !== 'SKIP') {
                         const existingEntity = { id: existingSnap.id, ...existingSnap.data() };
-                        const reconciled = IngestionDeduplicator.reconcile(existingEntity, dupData?.rawPayload, strategy, tagIds || resolutionTags);
+                        const finalTagsForReconciliation = tagIds || effectiveResolutionTags;
+                        const reconciled = IngestionDeduplicator.reconcile(existingEntity, dupData?.rawPayload, strategy, finalTagsForReconciliation);
                         
                         if (reconciled) {
                             transaction.update(existingEntityRef, {
