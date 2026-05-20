@@ -965,23 +965,45 @@ export async function resolveDuplicatesAction(
     for (let i = 0; i < resolutions.length; i += 100) {
         const chunk = resolutions.slice(i, i + 100);
         const automationsToRun: { automationPayload: any; automationId?: string | null }[] = [];
-        
+
+        // ── Phase 1: Read all documents inside a transaction ─────────────
+        // Firestore requires ALL reads to complete before ANY writes.
+        interface ReadResult {
+            duplicateRowId: string;
+            strategy: DuplicateStrategy;
+            tagIds?: string[];
+            customPayload?: any;
+            dupRef: FirebaseFirestore.DocumentReference;
+            dupData: any;
+            existingEntityRef: FirebaseFirestore.DocumentReference;
+            existingSnap: FirebaseFirestore.DocumentSnapshot;
+        }
+        const readResults: ReadResult[] = [];
+
         await adminDb.runTransaction(async (transaction) => {
+            // Collect all reads first
             for (const { duplicateRowId, strategy, tagIds, customPayload } of chunk) {
                 const dupRef = adminDb.collection('import_logs').doc(importLogId).collection('duplicate_rows').doc(duplicateRowId);
                 const dupSnap = await transaction.get(dupRef);
-                
+
                 if (!dupSnap.exists) continue;
-                
+
                 const dupData = dupSnap.data();
                 if (dupData?.resolved) continue;
-                
+
                 const existingEntityRef = adminDb.collection('workspace_entities').doc(dupData?.matchedEntityId);
                 const existingSnap = await transaction.get(existingEntityRef);
-                
+
+                readResults.push({ duplicateRowId, strategy, tagIds, customPayload, dupRef, dupData, existingEntityRef, existingSnap });
+            }
+
+            // ── Phase 2: Process data & perform all writes ───────────────
+            for (const item of readResults) {
+                const { strategy, tagIds, customPayload, dupRef, dupData, existingEntityRef, existingSnap } = item;
+
                 if (strategy === 'MANUAL_CORRECTION' || strategy === 'CREATE_NEW') {
                     const payload = strategy === 'MANUAL_CORRECTION' ? (customPayload || dupData?.rawPayload) : dupData?.rawPayload;
-                    
+
                     const nameHeader = mapping['name'];
                     const isMapped = nameHeader && nameHeader !== 'none';
                     let rawName = isMapped ? payload[nameHeader] : undefined;
@@ -1003,29 +1025,29 @@ export async function resolveDuplicatesAction(
                     }
 
                     const name = rawName.trim();
-                    
+
                     const extracted = await processRow(
                         payload, mapping, name, importLog.entityType, context,
                         workspaceIndustry, importLog.workspaceId, importLog.organizationId,
                         importLog.userId, importLog.filename, autoCreateTags,
                         defaultValues, tagIds || effectiveResolutionTags, automationId ?? undefined, manualTagNames
                     );
-                    
+
                     transaction.set(adminDb.collection('entities').doc(extracted.entityId), extracted.entityDoc);
                     transaction.set(adminDb.collection('workspace_entities').doc(extracted.workspaceEntityId), extracted.workspaceEntityDoc);
-                    
+
                     automationsToRun.push({
                         automationPayload: extracted.automationPayload,
                         automationId
                     });
-                    
+
                     manualCorrectionsCount++;
                 } else if (existingSnap.exists) {
                     if (strategy !== 'SKIP') {
                         const existingEntity = { id: existingSnap.id, ...existingSnap.data() };
                         const finalTagsForReconciliation = tagIds || effectiveResolutionTags;
                         const reconciled = IngestionDeduplicator.reconcile(existingEntity, dupData?.rawPayload, strategy, finalTagsForReconciliation);
-                        
+
                         if (reconciled) {
                             transaction.update(existingEntityRef, {
                                 ...reconciled,
@@ -1034,7 +1056,7 @@ export async function resolveDuplicatesAction(
                         }
                     }
                 }
-                
+
                 // Mark duplicate row as resolved
                 transaction.update(dupRef, {
                     resolved: true,
