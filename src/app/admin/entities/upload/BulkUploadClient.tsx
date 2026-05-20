@@ -338,6 +338,7 @@ const DefaultValueRow = React.memo(({
                     );
                 }
                 const currentDistricts = filteredDistricts.length > 0 ? filteredDistricts : districts;
+
                 return (
                     <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
                         <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
