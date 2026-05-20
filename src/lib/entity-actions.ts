@@ -15,6 +15,8 @@ import { canUser } from './workspace-permissions';
 import { getWorkspaceIndustry, invalidateWorkspaceCache } from './industry-cache';
 import { validateIndustryData } from './industry-schemas';
 import { normalizePhoneNumber } from './phone-utils';
+import { after } from 'next/server';
+import { BulkVerificationService } from './bulk-verifier';
 
 /**
  * @fileOverview Server actions for entity lifecycle management.
@@ -404,6 +406,23 @@ export async function createEntityAction(
     revalidatePath('/admin/entities');
     revalidatePath('/admin/pipeline');
 
+    // Auto-verify email asynchronously in the background (zero impact on performance)
+    if (primaryEmail) {
+      try {
+        after(async () => {
+          try {
+            console.log(`[autoVerify] Initiating background email verification for newly created contact: ${primaryEmail}`);
+            const verifierService = new BulkVerificationService();
+            await verifierService.processBulk([primaryEmail]);
+          } catch (err: any) {
+            console.error('[autoVerify] Background verification failed:', err.message);
+          }
+        });
+      } catch (err) {
+        console.warn('[autoVerify] next/server after() was called outside Next.js request context (likely in test). Skipping.');
+      }
+    }
+
     return { success: true, id: entityId };
   } catch (e: any) {
     console.error(">>> [ENTITY:CREATE] Failed:", e.message);
@@ -432,6 +451,7 @@ export async function updateEntityAction(
     }
 
     const timestamp = new Date().toISOString();
+    let updatedPrimaryEmail: string | undefined;
     
     // 1. Resolve Entity reference
     const entityRef = adminDb.collection('entities').doc(entityId);
@@ -598,12 +618,16 @@ export async function updateEntityAction(
         // FER-01: Sync entityContacts and denormalized fields
         if (entityContacts) {
             const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts });
+            updatedPrimaryEmail = primaryEmail;
             weUpdate.primaryContactName = primaryContactName;
             weUpdate.primaryEmail = primaryEmail;
             weUpdate.primaryPhone = primaryPhone;
             weUpdate.entityContacts = entityContacts;
         } else {
-            if (data.primaryEmail !== undefined) weUpdate.primaryEmail = data.primaryEmail;
+            if (data.primaryEmail !== undefined) {
+                weUpdate.primaryEmail = data.primaryEmail;
+                updatedPrimaryEmail = data.primaryEmail;
+            }
             if (data.primaryPhone !== undefined) weUpdate.primaryPhone = data.primaryPhone;
         }
 
@@ -639,6 +663,23 @@ export async function updateEntityAction(
 
     revalidatePath('/admin/entities');
     revalidatePath(`/admin/entities/${entityId}`);
+
+    // Auto-verify updated email asynchronously in the background (zero impact on performance)
+    if (updatedPrimaryEmail) {
+      try {
+        after(async () => {
+          try {
+            console.log(`[autoVerify] Initiating background email verification for updated contact: ${updatedPrimaryEmail}`);
+            const verifierService = new BulkVerificationService();
+            await verifierService.processBulk([updatedPrimaryEmail]);
+          } catch (err: any) {
+            console.error('[autoVerify] Background verification failed:', err.message);
+          }
+        });
+      } catch (err) {
+        console.warn('[autoVerify] next/server after() was called outside Next.js request context (likely in test). Skipping.');
+      }
+    }
 
     return { success: true };
   } catch (e: any) {

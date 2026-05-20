@@ -24,6 +24,7 @@ import {
   Pencil,
   X,
   Check,
+  Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -569,13 +570,32 @@ export default function QRStudioClient() {
                       <TableCell className="text-right font-bold text-sm tabular-nums">
                         {qr.stats.totalScans.toLocaleString()}
                       </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                              <MoreHorizontal className="h-4 w-4" />
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          {qr.mode === 'dynamic' && qr.shortPath && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                              onClick={() => {
+                                const link = `${window.location.origin}/q/${qr.shortPath}`;
+                                navigator.clipboard.writeText(link);
+                                toast({
+                                  title: 'Copied Short Link!',
+                                  description: link,
+                                });
+                              }}
+                              title="Copy Short Link"
+                            >
+                              <Link2 className="h-4 w-4" />
                             </Button>
-                          </DropdownMenuTrigger>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl w-48">
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/admin/qr-studio/${qr.id}`); }} className="rounded-lg cursor-pointer">
                               <Eye className="h-4 w-4 mr-2" /> View Details
@@ -605,6 +625,7 @@ export default function QRStudioClient() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        </div>
                       </TableCell>
                     </motion.tr>
                   );

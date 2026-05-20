@@ -28,7 +28,9 @@ import {
     Map,
     Settings2,
     Eye,
-    PartyPopper
+    PartyPopper,
+    ExternalLink,
+    ClipboardList
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,9 +38,10 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useUser, useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 import { ingestBatchAction } from '@/lib/bulk-upload-actions';
+import type { DuplicateStrategy } from '@/lib/import-types';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -59,6 +62,7 @@ import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
 type Step = 'UPLOAD' | 'MAPPING' | 'SETTINGS' | 'PREVIEW' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
+
 
 
 /**
@@ -239,6 +243,285 @@ const ADVANCED_SAMPLE_ROWS: Record<string, Record<string, string>> = {
     },
 };
 
+interface DefaultValueRowProps {
+    fieldKey: string;
+    value: string;
+    fieldLabel: string;
+    onValueChange: (key: string, val: string) => void;
+    onDelete: (key: string) => void;
+    regionsList: any[] | null | undefined;
+    districtsList: any[] | null | undefined;
+    packagesList: any[] | null | undefined;
+    modulesList: any[] | null | undefined;
+    workspaceStatuses: any[];
+    parentRegionValue?: string;
+}
+
+const DefaultValueRow = React.memo(({
+    fieldKey,
+    value,
+    fieldLabel,
+    onValueChange,
+    onDelete,
+    regionsList,
+    districtsList,
+    packagesList,
+    modulesList,
+    workspaceStatuses = [],
+    parentRegionValue
+}: DefaultValueRowProps) => {
+
+    const regions = regionsList || [];
+    const districts = districtsList || [];
+    const packages = packagesList || [];
+    const modules = modulesList || [];
+
+    // Cascading district list calculation derived synchronously in render
+    const filteredDistricts = React.useMemo(() => {
+        if (fieldKey !== 'locationDistrict') return [];
+        if (!parentRegionValue) return districts;
+        const regionDoc = regions.find((r: any) => r.name?.toLowerCase().trim() === parentRegionValue.toLowerCase().trim());
+        return regionDoc ? districts.filter((d: any) => d.regionId === regionDoc.id) : districts;
+    }, [fieldKey, parentRegionValue, regions, districts]);
+
+    // Handle cascading reset: if region changes and district is no longer in filtered list, we clear it!
+    React.useEffect(() => {
+        if (fieldKey === 'locationDistrict' && value && parentRegionValue) {
+            const hasMatch = filteredDistricts.some((d: any) => d.name?.toLowerCase().trim() === value.toLowerCase().trim());
+            if (!hasMatch && filteredDistricts.length > 0) {
+                // Wipe orphaned district default
+                onValueChange('locationDistrict', '');
+            }
+        }
+    }, [filteredDistricts, fieldKey, value, parentRegionValue, onValueChange]);
+
+    const renderInput = () => {
+        switch (fieldKey) {
+            case 'locationRegion': {
+                if (regions.length === 0) {
+                    return (
+                        <Input 
+                            value={value} 
+                            onChange={e => onValueChange(fieldKey, e.target.value)}
+                            placeholder="Enter region..."
+                            className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                        />
+                    );
+                }
+                return (
+                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                        <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
+                            <SelectValue placeholder="Select region..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl max-h-[250px] bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
+                            {regions.map((r: any) => (
+                                <SelectItem key={r.id} value={r.name} className="font-semibold text-xs py-2">
+                                    {r.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                );
+            }
+            case 'locationDistrict': {
+                if (districts.length === 0) {
+                    return (
+                        <Input 
+                            value={value} 
+                            onChange={e => onValueChange(fieldKey, e.target.value)}
+                            placeholder="Enter district..."
+                            className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                        />
+                    );
+                }
+                const currentDistricts = filteredDistricts.length > 0 ? filteredDistricts : districts;
+                return (
+                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                        <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
+                            <SelectValue placeholder={parentRegionValue ? "Select district..." : "Select region first..."} />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl max-h-[250px] bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
+                            {currentDistricts.map((d: any) => (
+                                <SelectItem key={d.id} value={d.name} className="font-semibold text-xs py-2">
+                                    {d.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                );
+            }
+            case 'subscriptionPackageName':
+            case 'package': {
+                if (packages.length === 0) {
+                    return (
+                        <Input 
+                            value={value} 
+                            onChange={e => onValueChange(fieldKey, e.target.value)}
+                            placeholder="Enter package name..."
+                            className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                        />
+                    );
+                }
+                return (
+                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                        <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
+                            <SelectValue placeholder="Select subscription package..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
+                            {packages.map((p: any) => (
+                                <SelectItem key={p.id} value={p.name} className="font-semibold text-xs py-2">
+                                    {p.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                );
+            }
+            case 'interests': {
+                if (modules.length === 0) {
+                    return (
+                        <Input 
+                            value={value} 
+                            onChange={e => onValueChange(fieldKey, e.target.value)}
+                            placeholder="Enter interests (comma separated)..."
+                            className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                        />
+                    );
+                }
+                const selectedList = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
+                const options = modules.map((m: any) => ({
+                    label: m.name,
+                    value: m.name,
+                    color: m.color || '#3B5FFF'
+                }));
+
+                return (
+                    <div className="min-w-0">
+                        <MultiSelect
+                            options={options}
+                            value={selectedList}
+                            onChange={(selectedValues) => {
+                                onValueChange('interests', selectedValues.join(', '));
+                            }}
+                            placeholder="Select interests..."
+                        />
+                    </div>
+                );
+            }
+            case 'lifecycleStatus': {
+                const statuses = workspaceStatuses.length > 0 ? workspaceStatuses : [
+                    { value: 'Onboarding', label: 'Onboarding' },
+                    { value: 'Active', label: 'Active' },
+                    { value: 'Churned', label: 'Churned' }
+                ];
+                return (
+                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                        <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
+                            <SelectValue placeholder="Select operational state..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
+                            {statuses.map((s: any) => (
+                                <SelectItem key={s.value} value={s.value} className="font-semibold text-xs py-2">
+                                    {s.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                );
+            }
+            case 'status': {
+                return (
+                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                        <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
+                            <SelectValue placeholder="Select status..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
+                            <SelectItem value="active" className="font-semibold text-xs py-2">Active</SelectItem>
+                            <SelectItem value="inactive" className="font-semibold text-xs py-2">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
+                );
+            }
+            case 'currency': {
+                const currencies = ['GHS', 'USD', 'EUR', 'GBP', 'NGN'];
+                return (
+                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                        <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
+                            <SelectValue placeholder="Select currency..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
+                            {currencies.map(c => (
+                                <SelectItem key={c} value={c} className="font-semibold text-xs py-2">{c}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                );
+            }
+            case 'leadSource': {
+                const sources = ['Referral', 'Website', 'Social Media', 'Event', 'Partner', 'Cold Outreach', 'Other'];
+                return (
+                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                        <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
+                            <SelectValue placeholder="Select lead source..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
+                            {sources.map(s => (
+                                <SelectItem key={s} value={s} className="font-semibold text-xs py-2">{s}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                );
+            }
+            default:
+                return (
+                    <Input 
+                        value={value} 
+                        onChange={e => onValueChange(fieldKey, e.target.value)}
+                        placeholder="Enter default value..."
+                        className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                    />
+                );
+        }
+    };
+
+    return (
+        <motion.div 
+            layout
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="flex flex-col gap-2 p-4 rounded-2xl border border-border/40 bg-muted/20 backdrop-blur-sm shadow-sm relative group hover:border-border hover:shadow transition-all"
+        >
+            <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    {fieldLabel}
+                </Label>
+                <button 
+                    onClick={() => onDelete(fieldKey)} 
+                    className="text-muted-foreground/60 hover:text-rose-500 transition-colors p-1 hover:bg-rose-50 rounded-lg"
+                    title="Remove default value"
+                >
+                    <X size={14} />
+                </button>
+            </div>
+            {renderInput()}
+        </motion.div>
+    );
+}, (prevProps, nextProps) => {
+    return (
+        prevProps.value === nextProps.value &&
+        prevProps.fieldLabel === nextProps.fieldLabel &&
+        prevProps.parentRegionValue === nextProps.parentRegionValue &&
+        prevProps.regionsList?.length === nextProps.regionsList?.length &&
+        prevProps.districtsList?.length === nextProps.districtsList?.length &&
+        prevProps.packagesList?.length === nextProps.packagesList?.length &&
+        prevProps.modulesList?.length === nextProps.modulesList?.length &&
+        prevProps.workspaceStatuses?.length === nextProps.workspaceStatuses?.length
+    );
+});
+DefaultValueRow.displayName = 'DefaultValueRow';
+
 /**
  * @fileOverview Entity Import Engine — scope-aware bulk upload.
  * Uses AI for field mapping and logical functions for data importing.
@@ -279,6 +562,36 @@ export default function BulkUploadClient() {
     [firestore, activeWorkspace?.id]);
     const { data: automationsList } = useCollection<any>(automationsQuery);
 
+    // Fetch Regions for lookup default matching
+    const regionsQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'regions'), orderBy('name')) : null,
+    [firestore]);
+    const { data: regionsList } = useCollection<any>(regionsQuery);
+
+    // Fetch Districts for lookup default matching
+    const districtsQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'districts'), orderBy('name')) : null,
+    [firestore]);
+    const { data: districtsList } = useCollection<any>(districtsQuery);
+
+    // Fetch Active Subscription Packages for default matching
+    const packagesQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'subscription_packages'), where('isActive', '==', true)) : null,
+    [firestore]);
+    const { data: packagesList } = useCollection<any>(packagesQuery);
+
+    // Fetch Modules (Interests) for default matching, scoped strictly to the current workspace's organization
+    const modulesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        const orgId = activeWorkspace?.organizationId || 'smartsapp-hq';
+        return query(
+            collection(firestore, 'modules'), 
+            where('organizationId', '==', orgId),
+            orderBy('order')
+        );
+    }, [firestore, activeWorkspace?.organizationId]);
+    const { data: modulesList } = useCollection<any>(modulesQuery);
+
     // Build TARGET_FIELDS from the advanced template fields + base fallback for the mapping step
     // Override the 'name' field label with the workspace's custom entity terminology
     const TARGET_FIELDS = React.useMemo(() => {
@@ -301,13 +614,45 @@ export default function BulkUploadClient() {
     const [mapping, setMapping] = React.useState<Record<string, string>>({});
     const [isAiMapping, setIsAiMapping] = React.useState(false);
     const [autoCreateTags, setAutoCreateTags] = React.useState(false);
+    const [enableTitleCase, setEnableTitleCase] = React.useState(false);
+    const [lastImportLogId, setLastImportLogId] = React.useState<string | null>(null);
+    
+    // Subscribe to the real-time import log document
+    const importLogRef = useMemoFirebase(() => {
+        if (!firestore || !lastImportLogId) return null;
+        return doc(firestore, 'import_logs', lastImportLogId);
+    }, [firestore, lastImportLogId]);
+    const { data: activeImportLog } = useDoc<any>(importLogRef);
     
     // ── Additional Import Settings ───────────────────────────────────────────
     const [defaultValues, setDefaultValues] = React.useState<Record<string, string>>({});
+
+    const workspaceStatuses = React.useMemo(() => {
+        if (activeWorkspace?.statuses && activeWorkspace.statuses.length > 0) {
+            return activeWorkspace.statuses;
+        }
+        return [
+            { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF' },
+            { value: 'Active', label: 'Active', color: '#10b981' },
+            { value: 'Churned', label: 'Churned', color: '#ef4444' }
+        ];
+    }, [activeWorkspace]);
+
+    const handleDefaultValueChange = React.useCallback((key: string, val: string) => {
+        setDefaultValues(prev => ({ ...prev, [key]: val }));
+    }, []);
+
+    const handleDeleteDefaultValue = React.useCallback((key: string) => {
+        setDefaultValues(prev => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+        });
+    }, []);
     const [selectedGlobalTags, setSelectedGlobalTags] = React.useState<string[]>([]);
     const [manualTags, setManualTags] = React.useState<string[]>([]);
     const [selectedAutomationId, setSelectedAutomationId] = React.useState<string | null>(null);
-    
+
     const [editingRowIdx, setEditingRowIdx] = React.useState<number | null>(null);
     const [executionResults, setExecutionResults] = React.useState<{ row: number; status: 'success' | 'error'; entityName?: string; error?: string }[]>([]);
     const [_currentRowIdx, _setCurrentRowIdx] = React.useState(0);
@@ -447,7 +792,7 @@ export default function BulkUploadClient() {
             const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
             const sanitizedDefaultValues = JSON.parse(JSON.stringify(defaultValues));
 
-            const batch = await ingestBatchAction(
+            const result = await ingestBatchAction(
                 sanitizedRows,
                 sanitizedMapping,
                 user.uid,
@@ -459,17 +804,20 @@ export default function BulkUploadClient() {
                 sanitizedDefaultValues,
                 selectedGlobalTags,
                 selectedAutomationId || undefined,
-                manualTags
+                manualTags,
+                enableTitleCase
             );
 
-            setExecutionResults(batch.results);
-            setFailedRowIndices(batch.results.filter(r => r.status === 'error').map(r => r.row));
+            setLastImportLogId(result.importLogId);
+            toast({ 
+                title: 'Import Queued', 
+                description: `${sanitizedRows.length} records are being processed in the background.` 
+            });
+            setCurrentStep('COMPLETE');
         } catch (e: any) {
-            setExecutionResults([{ row: 0, status: 'error', error: e.message }]);
-            setFailedRowIndices([0]);
+            toast({ variant: 'destructive', title: 'Import Failed', description: e.message });
+            setCurrentStep('PREVIEW');
         }
-
-        setCurrentStep('COMPLETE');
     };
 
     const handleUpdateRow = (idx: number, updated: any) => {
@@ -830,33 +1178,27 @@ export default function BulkUploadClient() {
                                         </div>
                                         {Object.keys(defaultValues).length > 0 && (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                {Object.entries(defaultValues).map(([key, val]) => {
-                                                    const field = allMappableFields.find(f => f.key === key);
-                                                    return (
-                                                        <div key={key} className="flex flex-col gap-1.5 p-3 rounded-xl border bg-muted/30">
-                                                            <div className="flex items-center justify-between">
-                                                                <Label className="text-[10px] font-bold text-muted-foreground flex items-center gap-2">
-                                                                    {field?.label || key}
-                                                                </Label>
-                                                                <button onClick={() => {
-                                                                    setDefaultValues(prev => {
-                                                                        const next = { ...prev };
-                                                                        delete next[key];
-                                                                        return next;
-                                                                    });
-                                                                }} className="text-muted-foreground hover:text-rose-500 transition-colors">
-                                                                    <X size={12} />
-                                                                </button>
-                                                            </div>
-                                                            <Input 
-                                                                value={val} 
-                                                                onChange={e => setDefaultValues(prev => ({ ...prev, [key]: e.target.value }))}
-                                                                placeholder="Enter value..."
-                                                                className="h-8 text-xs bg-background"
+                                                <AnimatePresence mode="popLayout">
+                                                    {Object.entries(defaultValues).map(([key, val]) => {
+                                                        const field = allMappableFields.find(f => f.key === key);
+                                                        return (
+                                                            <DefaultValueRow
+                                                                key={key}
+                                                                fieldKey={key}
+                                                                value={val}
+                                                                fieldLabel={field?.label || key}
+                                                                onValueChange={handleDefaultValueChange}
+                                                                onDelete={handleDeleteDefaultValue}
+                                                                regionsList={regionsList}
+                                                                districtsList={districtsList}
+                                                                packagesList={packagesList}
+                                                                modulesList={modulesList}
+                                                                workspaceStatuses={workspaceStatuses}
+                                                                parentRegionValue={defaultValues['locationRegion']}
                                                             />
-                                                        </div>
-                                                    );
-                                                })}
+                                                        );
+                                                    })}
+                                                </AnimatePresence>
                                             </div>
                                         )}
                                     </div>
@@ -954,8 +1296,17 @@ export default function BulkUploadClient() {
                                                 </div>
                                                 <Switch checked={autoCreateTags} onCheckedChange={setAutoCreateTags} />
                                             </div>
+                                            <div className="border-t my-2 border-border/50" />
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-semibold text-sm">Convert Text Fields to Title Case</p>
+                                                    <p className="text-xs text-muted-foreground">Clean formatting by converting ALL CAPS or all lowercase text values to Title Case.</p>
+                                                </div>
+                                                <Switch checked={enableTitleCase} onCheckedChange={setEnableTitleCase} />
+                                            </div>
                                         </div>
                                     </div>
+
 
                                     {/* Automations Section */}
                                     <div className="space-y-4 pt-8 border-t">
@@ -1112,20 +1463,58 @@ export default function BulkUploadClient() {
 
                                 <CardContent className="px-10 pb-10 space-y-10">
                                     {/* High-Impact Stats Bar */}
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 shadow-sm transition-all hover:border-emerald-500/30">
-                                            <p className="text-3xl font-black text-emerald-600 mb-0.5">{executionResults.filter(r => r.status === 'success').length}</p>
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Created</p>
+                                    <div className="grid grid-cols-4 gap-4">
+                                        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 shadow-sm">
+                                            <p className="text-3xl font-black text-slate-800 dark:text-white mb-0.5">{rawData.length}</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Submitted</p>
+                                        </div>
+                                        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 shadow-sm relative overflow-hidden">
+                                            {activeImportLog?.status === 'processing' || activeImportLog?.status === 'queued' ? (
+                                                <div className="absolute inset-x-0 bottom-0 h-1 bg-blue-100">
+                                                    <div 
+                                                        className="h-full bg-blue-500 transition-all duration-500" 
+                                                        style={{ width: `${Math.max(5, ((activeImportLog?.successCount || 0) + (activeImportLog?.failedCount || 0) + (activeImportLog?.duplicateCount || 0)) / rawData.length * 100)}%` }}
+                                                    />
+                                                </div>
+                                            ) : null}
+                                            <div className="flex items-center gap-1.5 mb-0.5 relative z-10">
+                                                {activeImportLog?.status === 'processing' || activeImportLog?.status === 'queued' ? (
+                                                    <span className="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                                                ) : activeImportLog?.status === 'completed' || activeImportLog?.status === 'completed_with_errors' ? (
+                                                    <CheckCircle2 size={14} className="text-emerald-500" />
+                                                ) : null}
+                                                <p className="text-3xl font-black text-emerald-600">
+                                                    {activeImportLog?.successCount || 0}
+                                                </p>
+                                            </div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] relative z-10">Created</p>
+                                        </div>
+                                        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 shadow-sm transition-all hover:border-amber-500/30">
+                                            <p className="text-3xl font-black text-amber-500 mb-0.5">{activeImportLog?.duplicateCount || 0}</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Duplicates</p>
                                         </div>
                                         <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 shadow-sm transition-all hover:border-rose-500/30">
-                                            <p className="text-3xl font-black text-rose-600 mb-0.5">{failedRowIndices.length}</p>
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Discrepancies</p>
-                                        </div>
-                                        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 shadow-sm transition-all hover:border-indigo-500/30">
-                                            <p className="text-3xl font-black text-indigo-600 mb-0.5">{rawData.length > 0 ? Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100) : 0}%</p>
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Efficiency</p>
+                                            <p className="text-3xl font-black text-rose-500 mb-0.5">{activeImportLog?.failedCount || 0}</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Failed</p>
                                         </div>
                                     </div>
+
+                                    {/* Track Import Banner */}
+                                    {lastImportLogId && (
+                                        <button
+                                            onClick={() => router.push(`/admin/entities/imports?logId=${lastImportLogId}`)}
+                                            className="w-full flex items-center gap-4 p-4 rounded-xl border border-primary/20 bg-primary/[0.03] hover:bg-primary/[0.06] transition-colors text-left group"
+                                        >
+                                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                                <ClipboardList size={18} className="text-primary" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-slate-800 dark:text-white">Track Import Progress</p>
+                                                <p className="text-xs text-slate-500">Live status, duplicates &amp; failure resolution</p>
+                                            </div>
+                                            <ExternalLink size={16} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                        </button>
+                                    )}
 
                                     {/* Integrated Validation Log (Only if errors exist) */}
                                     {failedRowIndices.length > 0 && (
@@ -1148,25 +1537,30 @@ export default function BulkUploadClient() {
 
                                     {/* Action Footers - Horizontal Layout */}
                                     <div className="flex items-center gap-4 pt-2">
-                                        {failedRowIndices.length > 0 && (
-                                            <Button 
-                                                onClick={() => setCurrentStep('CORRECTION')} 
-                                                className="flex-1 h-14 rounded-xl font-black text-sm shadow-lg bg-rose-500 hover:bg-rose-600 text-white gap-2 transition-all active:scale-[0.98] uppercase tracking-wider shadow-rose-500/20"
-                                            >
-                                                <RefreshCw size={18} /> Resolve Failures
-                                            </Button>
-                                        )}
+                                        <Button 
+                                            onClick={() => {
+                                                setRawData([]);
+                                                setExecutionResults([]);
+                                                setFailedRowIndices([]);
+                                                setCurrentStep('UPLOAD');
+                                            }} 
+                                            variant="outline"
+                                            className="flex-1 h-14 rounded-xl font-black text-sm transition-all active:scale-[0.98] uppercase tracking-wider border-border hover:bg-slate-50 dark:hover:bg-slate-900"
+                                        >
+                                            <RefreshCw size={18} className="mr-2" /> Import Another
+                                        </Button>
+                                        <Button 
+                                            onClick={() => router.push('/admin/entities/imports')} 
+                                            variant="outline"
+                                            className="flex-1 h-14 rounded-xl font-black text-sm transition-all active:scale-[0.98] uppercase tracking-wider border-primary/20 text-primary hover:bg-primary/5"
+                                        >
+                                            <Eye size={18} className="mr-2" /> View Imports
+                                        </Button>
                                         <Button 
                                             onClick={() => router.push('/admin/entities')} 
-                                            variant={failedRowIndices.length > 0 ? 'outline' : 'default'}
-                                            className={cn(
-                                                "flex-1 h-14 rounded-xl font-black text-sm transition-all active:scale-[0.98] uppercase tracking-wider gap-2",
-                                                failedRowIndices.length === 0 
-                                                    ? "bg-[#4d69ff] hover:bg-[#3d59ef] text-white shadow-lg shadow-primary/20" 
-                                                    : "border-border hover:bg-slate-50 dark:hover:bg-slate-900"
-                                            )}
+                                            className="flex-1 h-14 rounded-xl font-black text-sm transition-all active:scale-[0.98] uppercase tracking-wider gap-2 bg-[#4d69ff] hover:bg-[#3d59ef] text-white shadow-lg shadow-primary/20"
                                         >
-                                            Open Directory <ArrowRight size={18} />
+                                            Go to {terms.plural} <ArrowRight size={18} />
                                         </Button>
                                     </div>
                                 </CardContent>

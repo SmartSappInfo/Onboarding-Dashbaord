@@ -152,7 +152,7 @@ export default function WebinarMeetingHero({ entity, meeting }: WebinarMeetingHe
           </div>
 
           {/* Right Column — V3: Supports 'image' or 'form' layout mode */}
-          <div className="relative flex items-center justify-center min-h-[280px] md:min-h-[400px] w-full order-first md:order-last">
+          <div className="relative flex items-center justify-center min-h-[280px] md:min-h-[400px] w-full order-last">
               {showFormLayout && meetingState === 'UPCOMING' ? (
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}

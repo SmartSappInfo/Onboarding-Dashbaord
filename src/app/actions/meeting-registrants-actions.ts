@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { generateRegistrantToken } from '@/lib/meeting-tokens';
 import { sendRawMessage } from '@/lib/messaging-engine';
+import { ensureAbsoluteUrl } from '@/lib/utils/url-helpers';
 
 export async function deleteRegistrantAction(meetingId: string, registrantId: string) {
   try {
@@ -51,7 +52,7 @@ Hello ${reg.name},
 You are registered for the upcoming meeting: **${meetingTitle}**.
 
 Please use your unique join link below to access the session:
-${reg.personalizedMeetingUrl}
+[Click Here to Join now](${ensureAbsoluteUrl(reg.personalizedMeetingUrl)})
 
 We look forward to seeing you there!
 `;

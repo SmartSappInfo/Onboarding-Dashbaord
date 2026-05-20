@@ -1105,9 +1105,7 @@ describe('Security: Audit Logging', () => {
     });
 
     // Test: Update entity
-    const updates = { name: 'Updated Name', entityType: 'institution',
-    entityContacts: [],
-    globalTags: ['new_tag'] };
+    const updates = { name: 'Updated Name', globalTags: ['new_tag'] };
     await updateEntityWithAuthorizationAndAudit(
       userId,
       entityId,
@@ -1255,9 +1253,7 @@ describe('Security: Audit Logging', () => {
       userId,
       entityId,
       workspaceId,
-      { entityType: 'institution',
-    entityContacts: [],
-    globalTags: ['tag1', 'tag2'] },
+      { globalTags: ['tag1', 'tag2'] },
       { name: 'Test User', email: 'test@example.com' }
     );
 

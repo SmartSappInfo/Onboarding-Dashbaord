@@ -4,19 +4,21 @@ import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { collection, doc, deleteDoc, query, where, orderBy, updateDoc, getDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser, useDoc } from '@/firebase';
-import type { WorkspaceEntity, Entity, Zone, Tag, TagCategory } from '@/lib/types';
+import type { WorkspaceEntity, Entity, Zone, Tag, TagCategory, Module } from '@/lib/types';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { BulkTagOperations } from '@/components/tags/BulkTagOperations';
 import { TagFilter } from '@/components/tags/TagFilter';
 import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';
+import { useEntityFilters, DEFAULT_FILTERS, type DirectoryFilterState } from './hooks/useEntityFilters';
+import { InterestFilterSelect } from './components/InterestFilterSelect';
 import { getContactsByTagsAction } from '@/lib/tag-actions';
 import { deleteEntityPermanentlyAction } from '@/lib/workspace-entity-actions';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
 import {
   AlertDialog,
@@ -56,6 +58,9 @@ import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, toTitleCase } from '@/lib/utils';
 import { LocationCascade, type LocationValue } from '@/components/location/LocationCascade';
+import { CountrySelect } from '@/components/location/CountrySelect';
+import { RegionSelect } from '@/components/location/RegionSelect';
+import { DistrictSelect } from '@/components/location/DistrictSelect';
 import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -64,6 +69,14 @@ import { useIndustry } from '@/context/IndustryContext';
 import { EmailHygieneHoverCard, EmailHygieneHoverCardContent } from '../components/EmailHygieneHoverCard';
 import { BulkScanProgress } from '../components/BulkScanProgress';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+// Pagination & Selection Matrix Imports
+import { useEntitySelection } from './hooks/useEntitySelection';
+import { BentoPagination } from './components/BentoPagination';
+import { BulkActionDock } from './components/BulkActionDock';
+import BulkCreateDealModal from './components/BulkCreateDealModal';
+import BulkCreateTaskModal from './components/BulkCreateTaskModal';
+import BulkMeetingInviteModal from './components/BulkMeetingInviteModal';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -161,25 +174,25 @@ export default function EntitiesClient() {
     setScanAbortController(abort);
 
     try {
-      // Chunking requests to 50 to prevent Vercel edge timeout limits
+      // Fire-and-forget: send emails to background trigger in chunks of 50
       const chunkSize = 50;
       for (let i = 0; i < allEmails.length; i += chunkSize) {
         if (abort.signal.aborted) break;
         
         const chunk = allEmails.slice(i, i + chunkSize);
-        const res = await fetch('/api/verify-email/bulk', {
+        const res = await fetch('/api/verify-email/trigger', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ emails: chunk }),
           signal: abort.signal
         });
         
-        if (!res.ok) throw new Error('Verification failed');
+        if (!res.ok) throw new Error('Verification trigger failed');
         const data = await res.json();
-        setScanProcessed(prev => prev + data.processedCount);
+        setScanProcessed(prev => prev + (data.processedCount || chunk.length));
       }
       if (!abort.signal.aborted) {
-        toast({ title: 'Verification Complete', description: `Successfully verified ${allEmails.length} emails across all contacts.` });
+        toast({ title: 'Verification Queued', description: `${allEmails.length} emails are being verified in the background. Results will appear automatically.` });
       }
     } catch (e: any) {
       if (e.name !== 'AbortError') {
@@ -193,13 +206,13 @@ export default function EntitiesClient() {
 
   const handleManualRecheck = async (email: string) => {
     try {
-      const res = await fetch('/api/verify-email/bulk', {
+      const res = await fetch('/api/verify-email/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails: [email], forceRefresh: true })
+        body: JSON.stringify({ emails: [email] })
       });
-      if (!res.ok) throw new Error('Verification failed');
-      toast({ title: 'Recheck Complete', description: `Successfully re-verified ${email}.` });
+      if (!res.ok) throw new Error('Verification trigger failed');
+      toast({ title: 'Verification Queued', description: `${email} is being verified in the background.` });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Recheck Failed', description: e.message });
     }
@@ -211,28 +224,49 @@ export default function EntitiesClient() {
   const canEdit = can('operations', 'campuses', 'edit');
 
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('active');
   const [sortConfig, setSortConfig] = useState<{ key: keyof WorkspaceEntity | string; direction: 'asc' | 'desc' } | null>({ key: 'addedAt', direction: 'desc' });
 
+  // Unified atomic filter state (prevents state drift on Clear All)
+  const [filterState, setFilterState] = useState<DirectoryFilterState>(() => ({
+    ...DEFAULT_FILTERS,
+    tags: {
+      tagIds: searchParams.get('tags')?.split(',').filter(Boolean) || [],
+      logic: (['AND', 'OR', 'NOT'].includes(searchParams.get('logic') || '') ? searchParams.get('logic') as TagFilterState['logic'] : 'OR'),
+      categoryFilter: (searchParams.get('category') as TagCategory) ?? undefined,
+    },
+  }));
+
+  // Convenience accessors for backward-compatible bindings
+  const searchTerm = filterState.search;
+  const statusFilter = filterState.status;
+  const locationFilter = filterState.location;
+  const tagFilterState = filterState.tags;
+  const lifecycleFilter = filterState.lifecycle;
+  const dateAddedFilter = filterState.dateRange;
+  const interestFilter = filterState.interests || [];
+
+  const setSearchTerm = useCallback((v: string) => setFilterState(prev => ({ ...prev, search: v })), []);
+  const setStatusFilter = useCallback((v: string) => setFilterState(prev => ({ ...prev, status: v })), []);
+  const setLocationFilter = useCallback((v: LocationValue) => setFilterState(prev => ({ ...prev, location: v })), []);
+  const setLifecycleFilter = useCallback((v: string[]) => setFilterState(prev => ({ ...prev, lifecycle: v })), []);
+  const setDateAddedFilter = useCallback((v: string) => setFilterState(prev => ({ ...prev, dateRange: v })), []);
+  const setInterestFilter = useCallback((v: string[]) => setFilterState(prev => ({ ...prev, interests: v })), []);
+  const clearAllFilters = useCallback(() => setFilterState(DEFAULT_FILTERS), []);
+
   // Tag-related state
-  const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
   const [isBulkTagOpen, setIsBulkTagOpen] = useState(false);
 
-  // Tag filter state — initialised from URL params
-  const [tagFilterState, setTagFilterState] = useState<TagFilterState>(() => {
-    const tagsParam = searchParams.get('tags');
-    const logicParam = searchParams.get('logic') as TagFilterState['logic'] | null;
-    const categoryParam = searchParams.get('category') as TagCategory | null;
-    return {
-      tagIds: tagsParam ? tagsParam.split(',').filter(Boolean) : [],
-      logic: logicParam && ['AND', 'OR', 'NOT'].includes(logicParam) ? logicParam : 'OR',
-      categoryFilter: categoryParam ?? undefined,
-    };
-  });
+  // Custom Pagination state limits
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
-  // Location filter state
-  const [locationFilter, setLocationFilter] = useState<LocationValue>({});
+  // Bulk Modals state triggers
+  const [isBulkDealOpen, setIsBulkDealOpen] = useState(false);
+  const [isBulkTaskOpen, setIsBulkTaskOpen] = useState(false);
+  const [isBulkMeetingOpen, setIsBulkMeetingOpen] = useState(false);
+  const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
+
+
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
   // IDs returned by server-side tag filter query
@@ -286,7 +320,7 @@ export default function EntitiesClient() {
   }, [activeWorkspaceId, tagFilterState]);
 
   const handleTagFilterChange = useCallback((filter: TagFilterState) => {
-    setTagFilterState(filter);
+    setFilterState(prev => ({ ...prev, tags: filter }));
     updateUrlParams(filter);
   }, [updateUrlParams]);
 
@@ -297,29 +331,61 @@ export default function EntitiesClient() {
 
   const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
 
+  // Frequently used tags calculation for filtering
+  const frequentlyUsedTags = useMemo(() => {
+    if (!allTags) return [];
+    
+    // Count occurrences of each tag in entities
+    const counts: Record<string, number> = {};
+    if (entities) {
+      entities.forEach((entity: any) => {
+        if (entity.tagIds && Array.isArray(entity.tagIds)) {
+          entity.tagIds.forEach((id: string) => {
+            counts[id] = (counts[id] || 0) + 1;
+          });
+        }
+      });
+    }
+
+    // Map tags with counts, sort by count descending, then take top 8
+    const sorted = [...allTags]
+      .map(tag => ({ ...tag, count: counts[tag.id] || 0 }))
+      .sort((a, b) => b.count - a.count);
+      
+    return sorted.slice(0, 8);
+  }, [allTags, entities]);
+
+  const toggleTagFilter = useCallback((tagId: string) => {
+    const isSelected = tagFilterState.tagIds.includes(tagId);
+    const newTagIds = isSelected 
+      ? tagFilterState.tagIds.filter(id => id !== tagId)
+      : [...tagFilterState.tagIds, tagId];
+      
+    handleTagFilterChange({
+      ...tagFilterState,
+      tagIds: newTagIds
+    });
+  }, [tagFilterState, handleTagFilterChange]);
+
   const isLoading = isLoadingEntities || isLoadingFilter || isTagFiltering;
 
-  const filteredEntities = useMemo(() => {
+  // Decoupled single-pass filtering engine (useEntityFilters hook)
+  const { filteredEntities, activeFiltersCount, activeFilterCapsules } = useEntityFilters({
+    entities,
+    filterState,
+    assignedUserId,
+    tagFilteredIds,
+  });
+
+  // Extract unique lifecycle stages from RAW unfiltered entities (prevents options disappearing)
+  const availableLifecycleStages = useMemo(() => {
     if (!entities) return [];
-    let temp = entities;
-
-    // 1. Global Assignment Filter
-    if (assignedUserId) temp = assignedUserId === 'unassigned' ? temp.filter(s => !s.assignedTo?.userId) : temp.filter(s => s.assignedTo?.userId === assignedUserId);
-    
-    // 2. Search & UI Filters
-    if (searchTerm) temp = temp.filter(s => s.displayName?.toLowerCase().includes(searchTerm.toLowerCase()));
-    if (statusFilter !== 'all') temp = temp.filter(s => s.status === statusFilter);
-    
-    // 3. Location Filters
-    if (locationFilter.country) temp = temp.filter(s => s.locationCountryId === locationFilter.country?.id);
-    if (locationFilter.region) temp = temp.filter(s => s.locationRegionId === locationFilter.region?.id);
-    if (locationFilter.district) temp = temp.filter(s => s.locationDistrictId === locationFilter.district?.id);
-
-    // 4. Tag Filter — restrict to IDs returned by getContactsByTagsAction
-    if (tagFilteredIds !== null) temp = temp.filter(s => tagFilteredIds.has(s.entityId));
-    
-    return temp;
-  }, [entities, assignedUserId, searchTerm, statusFilter, tagFilteredIds, locationFilter]);
+    const stages = new Set<string>();
+    for (const e of entities) {
+      if (e.lifecycleStatus) stages.add(e.lifecycleStatus);
+    }
+    return Array.from(stages).sort();
+  }, [entities]);
   
   const sortedEntities = useMemo(() => {
     let sortable = [...filteredEntities];
@@ -343,11 +409,32 @@ export default function EntitiesClient() {
       setSortConfig({ key, direction });
   };
 
-  const toggleEntitySelection = (id: string) => {
-    setSelectedEntityIds(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
-  };
+  // Reset pagination index back to page 1 on active filter adjustments
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterState, assignedUserId]);
+
+  // Hook up our robust Selection Hook Core
+  const {
+    selectedEntityIds,
+    setSelectedEntityIds,
+    paginatedEntities,
+    totalPages,
+    selectedCount,
+    isAllSelectedOnPage,
+    isAllSelectedInView,
+    isIndeterminateOnPage,
+    toggleSelect,
+    selectCurrentPage,
+    selectOtherPages,
+    selectAllInView,
+    clearSelection,
+  } = useEntitySelection({
+    entities: sortedEntities,
+    currentPage,
+    pageSize,
+    onPageReset: () => setCurrentPage(1),
+  });
 
   const handleDeleteEntity = () => {
     if (!firestore || !entityToDelete) return;
@@ -412,37 +499,10 @@ export default function EntitiesClient() {
                             </p>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                            {selectedEntityIds.length > 0 && (
-                                <div className="flex items-center gap-3 animate-in fade-in zoom-in-95 duration-200">
-                                    <span className="text-xs font-bold text-muted-foreground tabular-nums">
-                                        {selectedEntityIds.length} of {sortedEntities.length} selected
-                                    </span>
-                                    <Button
-                                        variant="outline"
-                                        className="rounded-xl font-bold h-10 px-5 border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/5 gap-2"
-                                        onClick={handleBulkScan}
-                                        disabled={isScanning}
-                                    >
-                                        <ShieldCheck className="h-4 w-4" />
-                                        Verify Emails
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="rounded-xl font-bold h-10 px-5 border-primary/20 text-primary hover:bg-primary/5 gap-2"
-                                        onClick={() => setIsBulkTagOpen(true)}
-                                    >
-                                        <TagIcon className="h-4 w-4" />
-                                        Tag Selected
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 px-2 text-muted-foreground hover:text-foreground gap-1 rounded-lg"
-                                        onClick={() => setSelectedEntityIds([])}
-                                    >
-                                        <X className="h-3 w-3" /> Clear
-                                    </Button>
-                                </div>
+                            {selectedCount > 0 && (
+                              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-black uppercase tracking-widest animate-pulse select-none">
+                                {selectedCount} Active
+                              </div>
                             )}
                         </div>
                     </div>
@@ -471,8 +531,15 @@ export default function EntitiesClient() {
                                 )}
                             >
                                 <ListFilter size={18} className={cn(isFilterPanelOpen && "text-primary")} />
-                                Filter
-                                {!isFilterPanelOpen && <Badge className="ml-0.5 h-5 min-w-[20px] px-1 bg-primary/10 text-primary border-none text-[10px]">{Object.values(locationFilter).filter(Boolean).length + tagFilterState.tagIds.length + (statusFilter !== 'all' ? 1 : 0)}</Badge>}
+                                Filters
+                                {activeFiltersCount > 0 ? (
+                                    <Badge className={cn(
+                                        "ml-0.5 h-5 min-w-[20px] px-1.5 bg-primary text-white border-none text-[10px] font-black tabular-nums rounded-full",
+                                        !isFilterPanelOpen && "animate-pulse"
+                                    )}>
+                                        {activeFiltersCount}
+                                    </Badge>
+                                ) : null}
                             </Button>
 
                             {canCreate && (
@@ -511,24 +578,100 @@ export default function EntitiesClient() {
                                                 </div>
                                             </Link>
                                         </DropdownMenuItem>
+                                        <DropdownMenuSeparator className="bg-border/50" />
+                                        <DropdownMenuItem asChild className="rounded-lg py-3 cursor-pointer">
+                                            <Link href="/admin/entities/imports" className="flex items-center gap-3">
+                                                <div className="p-2 rounded-md bg-emerald-500/10 text-emerald-600"><ClipboardList size={16} /></div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-sm">View Imports Log</span>
+                                                    <span className="text-[10px] text-muted-foreground">Track \u0026 resolve duplicates</span>
+                                                </div>
+                                            </Link>
+                                        </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             )}
                         </div>
                     </div>
 
-                    {/* Advanced Filter Panel */}
+                    {/* Compact Unified Filter Panel */}
                     {isFilterPanelOpen && (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card/50 backdrop-blur-md overflow-hidden">
-                                    <div className="p-4 border-b bg-muted/20 flex items-center justify-between">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</p>
-                                        <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold" onClick={() => setStatusFilter('active')}>Reset</Button>
+                        <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card/50 backdrop-blur-md overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="p-3 border-b bg-muted/20 flex items-center justify-between">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Advanced Filters</p>
+                                <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-destructive/70 hover:text-destructive" onClick={clearAllFilters}>Reset All</Button>
+                            </div>
+                            <div className="p-4 space-y-4">
+                                {/* Row 1: Filter by Tags (Full Width Row) */}
+                                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <div className="flex items-center justify-between h-5">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                            <TagIcon className="h-2.5 w-2.5 text-primary" /> Filter by Tags
+                                        </label>
+                                        {tagFilterState.tagIds.length > 0 && (
+                                            <button 
+                                                type="button" 
+                                                onClick={() => handleTagFilterChange({ tagIds: [], logic: 'OR' })} 
+                                                className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in"
+                                            >
+                                                Clear Tags
+                                            </button>
+                                        )}
                                     </div>
-                                    <div className="p-4 flex gap-3">
+                                    <div className="flex flex-wrap items-center gap-2 bg-muted/10 p-2 rounded-xl border border-border/50">
+                                        {/* Dropdown tag search filter */}
+                                        <TagFilter onFilterChange={handleTagFilterChange} value={tagFilterState} />
+                                        
+                                        {/* Divider (shown if popular tags exist) */}
+                                        {frequentlyUsedTags.length > 0 && (
+                                            <div className="h-4 w-px bg-border/60 mx-1 hidden sm:block" />
+                                        )}
+
+                                        {/* Frequently Used Badges list */}
+                                        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-[200px]">
+                                            {frequentlyUsedTags.length > 0 && (
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mr-1.5 select-none hidden md:inline">Popular:</span>
+                                            )}
+                                            {frequentlyUsedTags.map(tag => {
+                                                const isSelected = tagFilterState.tagIds.includes(tag.id);
+                                                return (
+                                                    <button
+                                                        key={tag.id}
+                                                        type="button"
+                                                        onClick={() => toggleTagFilter(tag.id)}
+                                                        className={cn(
+                                                            "h-7 px-2.5 rounded-xl text-[10px] font-bold uppercase transition-all duration-200 flex items-center gap-1.5 border touch-manipulation cursor-pointer",
+                                                            isSelected
+                                                                ? "text-white shadow-sm border-transparent"
+                                                                : "bg-background/40 border-border/60 text-muted-foreground hover:bg-background hover:text-foreground"
+                                                        )}
+                                                        style={{
+                                                            backgroundColor: isSelected ? tag.color || '#3b82f6' : undefined,
+                                                        }}
+                                                    >
+                                                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: isSelected ? '#ffffff' : tag.color || '#3b82f6' }} />
+                                                        {tag.name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Row 2: Status + Country + Region + District + Date Added + Interests — inline dropdowns */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                    {/* Status */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <Building2 className="h-2.5 w-2.5" /> Status
+                                            </label>
+                                            {statusFilter !== 'all' && (
+                                                <button type="button" onClick={() => setStatusFilter('all')} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
                                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                            <SelectTrigger className="h-10 flex-1 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs">
+                                            <SelectTrigger className="h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs">
                                                 <SelectValue placeholder="Status" />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl p-1">
@@ -538,56 +681,240 @@ export default function EntitiesClient() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                </Card>
 
-                                <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card/50 backdrop-blur-md overflow-hidden">
-                                    <div className="p-4 border-b bg-muted/20 flex items-center justify-between">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Regional Filters</p>
-                                        <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold" onClick={() => setLocationFilter({})}>Clear</Button>
-                                    </div>
-                                    <div className="p-4">
-                                        <LocationCascade 
-                                            value={locationFilter} 
-                                            onChange={setLocationFilter} 
+                                    {/* Country */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <MapPin className="h-2.5 w-2.5" /> Country
+                                            </label>
+                                            {locationFilter.country && (
+                                                <button type="button" onClick={() => setLocationFilter({ country: null, region: null, district: null })} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
+                                        <CountrySelect
+                                            value={locationFilter.country}
+                                            onValueChange={(country) => setLocationFilter({ country, region: null, district: null })}
+                                            className="h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs"
                                         />
                                     </div>
-                                </Card>
+
+                                    {/* Region */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <MapPin className="h-2.5 w-2.5" /> Region
+                                            </label>
+                                            {locationFilter.region && (
+                                                <button type="button" onClick={() => setLocationFilter({ ...locationFilter, region: null, district: null })} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
+                                        <RegionSelect
+                                            value={locationFilter.region}
+                                            onValueChange={(region) => setLocationFilter({ ...locationFilter, region, district: null })}
+                                            countryId={locationFilter.country?.id}
+                                            className="h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs"
+                                        />
+                                    </div>
+
+                                    {/* District */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <MapPin className="h-2.5 w-2.5" /> District
+                                            </label>
+                                            {locationFilter.district && (
+                                                <button type="button" onClick={() => setLocationFilter({ ...locationFilter, district: null })} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
+                                        <DistrictSelect
+                                            value={locationFilter.district}
+                                            onValueChange={(district) => setLocationFilter({ ...locationFilter, district })}
+                                            regionId={locationFilter.region?.id}
+                                            className="h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs"
+                                        />
+                                    </div>
+
+                                    {/* Date Added — compact select */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <CalendarDays className="h-2.5 w-2.5" /> Date Added
+                                            </label>
+                                            {dateAddedFilter !== 'all' && (
+                                                <button type="button" onClick={() => setDateAddedFilter('all')} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
+                                        <Select value={dateAddedFilter} onValueChange={setDateAddedFilter}>
+                                            <SelectTrigger className="h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs">
+                                                <SelectValue placeholder="Date range" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl p-1">
+                                                <SelectItem value="all">All Time</SelectItem>
+                                                <SelectItem value="today">Today</SelectItem>
+                                                <SelectItem value="last_7_days">Last 7 Days</SelectItem>
+                                                <SelectItem value="last_30_days">Last 30 Days</SelectItem>
+                                                <SelectItem value="last_90_days">Last 90 Days</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Interests — multi select */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <Flame className="h-2.5 w-2.5" /> Interests
+                                            </label>
+                                            {interestFilter.length > 0 && (
+                                                <button type="button" onClick={() => setInterestFilter([])} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
+                                        <InterestFilterSelect
+                                            value={interestFilter}
+                                            onChange={setInterestFilter}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Row 3: Lifecycle Stage capsules — inline */}
+                                {availableLifecycleStages.length > 0 && (
+                                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <Clock className="h-2.5 w-2.5" /> Lifecycle Stage
+                                            </label>
+                                            {lifecycleFilter.length > 0 && (
+                                                <button type="button" onClick={() => setLifecycleFilter([])} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {availableLifecycleStages.map(stage => {
+                                                const isActive = lifecycleFilter.includes(stage);
+                                                return (
+                                                    <button
+                                                        key={stage}
+                                                        type="button"
+                                                        onClick={() => setLifecycleFilter(isActive ? lifecycleFilter.filter(s => s !== stage) : [...lifecycleFilter, stage])}
+                                                        className={cn(
+                                                            "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border cursor-pointer",
+                                                            isActive
+                                                                ? "bg-violet-600 text-white border-violet-600 shadow-sm"
+                                                                : "bg-background/50 text-muted-foreground border-border hover:border-violet-400/40 hover:text-foreground"
+                                                        )}
+                                                    >
+                                                        {stage}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            
-                            <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card/50 backdrop-blur-md overflow-hidden">
-                                <div className="p-4 border-b bg-muted/20 flex items-center justify-between">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tag Classifications</p>
-                                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold" onClick={() => handleTagFilterChange({ tagIds: [], logic: 'OR' })}>Clear Tags</Button>
-                                </div>
-                                <div className="p-4">
-                                    <TagFilter onFilterChange={handleTagFilterChange} className="pt-0" />
-                                </div>
-                            </Card>
+                        </Card>
+                    )}
+
+                    {/* Active Filters Strip — closable capsule badges */}
+                    {activeFilterCapsules.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2 animate-in fade-in duration-200">
+                            {activeFilterCapsules.map(capsule => (
+                                <Badge
+                                    key={capsule.id}
+                                    variant="outline"
+                                    className="h-7 pl-2.5 pr-1.5 rounded-xl text-[10px] font-bold gap-1.5 border-primary/20 bg-primary/5 text-foreground"
+                                >
+                                    <span className="text-muted-foreground">{capsule.label}:</span>
+                                    <span className="font-black">{capsule.value}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilterState(capsule.onClear())}
+                                        className="ml-0.5 hover:bg-destructive/10 rounded-full p-0.5 transition-colors text-muted-foreground hover:text-destructive"
+                                        aria-label={`Remove ${capsule.label} filter`}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </Badge>
+                            ))}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={clearAllFilters}
+                                className="h-7 rounded-xl text-[10px] font-black uppercase tracking-widest text-destructive/70 hover:text-destructive hover:bg-destructive/5 px-2.5"
+                            >
+                                Clear All
+                            </Button>
                         </div>
                     )}
             
+                    {/* Gmail-style Selection Matrix Banner */}
+                    {selectedCount > 0 && (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 bg-primary/5 dark:bg-primary/10 border-x border-t border-border rounded-t-2xl text-left animate-in slide-in-from-top-2 duration-300">
+                        <div className="text-xs font-bold text-foreground flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3">
+                          <span>
+                            {isAllSelectedInView ? (
+                              <>All <span className="font-mono text-primary font-black">{selectedCount}</span> {plural.toLowerCase()} in active view are selected.</>
+                            ) : selectedCount === sortedEntities.length - paginatedEntities.length ? (
+                              <>All <span className="font-mono text-primary font-black">{selectedCount}</span> {plural.toLowerCase()} on other pages are selected (excluding current page).</>
+                            ) : (
+                              <>All <span className="font-mono text-primary font-black">{paginatedEntities.filter(e => selectedEntityIds.includes(e.id)).length}</span> {plural.toLowerCase()} on this page are selected.</>
+                            )}
+                          </span>
+                          
+                          {/* Dynamic selections options */}
+                          <div className="flex items-center gap-3">
+                            {!isAllSelectedInView && (
+                              <button
+                                type="button"
+                                onClick={selectAllInView}
+                                className="text-primary hover:underline font-extrabold"
+                              >
+                                Select all {sortedEntities.length} {plural.toLowerCase()} in view
+                              </button>
+                            )}
+                            {selectedCount === paginatedEntities.length && sortedEntities.length > paginatedEntities.length && (
+                              <button
+                                type="button"
+                                onClick={selectOtherPages}
+                                className="text-violet-600 dark:text-violet-400 hover:underline font-extrabold"
+                              >
+                                Select all {sortedEntities.length - paginatedEntities.length} on other pages
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearSelection}
+                          className="h-7 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground gap-1.5 px-3 rounded-lg"
+                        >
+                          <X className="h-3 w-3" /> Clear Selection
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Data Table */}
-                    <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
+                    <div className={cn("border border-border bg-muted/30 overflow-hidden", selectedCount > 0 ? "rounded-b-2xl border-t-0" : "rounded-2xl")}>
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-transparent">
                                     <TableHead className="w-[80px] pl-6">
                                         <Checkbox
                                             checked={
-                                                sortedEntities.length > 0 && selectedEntityIds.length > 0
-                                                    ? sortedEntities.every(e => selectedEntityIds.includes(e.id))
+                                                paginatedEntities.length > 0 && selectedEntityIds.length > 0
+                                                    ? isAllSelectedOnPage
                                                         ? true
                                                         : 'indeterminate'
                                                     : false
                                             }
                                             onCheckedChange={(checked) => {
                                                 if (checked) {
-                                                    setSelectedEntityIds(sortedEntities.map(e => e.id));
+                                                    selectCurrentPage();
                                                 } else {
-                                                    setSelectedEntityIds([]);
+                                                    clearSelection();
                                                 }
                                             }}
-                                            aria-label={`Select all ${sortedEntities.length} visible entities`}
+                                            aria-label={`Select page visible items`}
                                             className="rounded"
                                         />
                                     </TableHead>
@@ -616,15 +943,15 @@ export default function EntitiesClient() {
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
                                 ))
-                            ) : sortedEntities.length > 0 ? (
-                                sortedEntities.map((entity) => {
+                            ) : paginatedEntities.length > 0 ? (
+                                paginatedEntities.map((entity) => {
                                 return (
                                         <TableRow key={entity.id} className={cn("border-border hover:bg-accent/20 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
                                             <TableCell className="pl-6">
                                                 <div className="flex items-center gap-2">
                                                     <Checkbox
                                                         checked={selectedEntityIds.includes(entity.id)}
-                                                        onCheckedChange={() => toggleEntitySelection(entity.id)}
+                                                        onCheckedChange={() => toggleSelect(entity.id)}
                                                         aria-label={`Select ${entity.displayName}`}
                                                         className="rounded"
                                                     />
@@ -758,6 +1085,19 @@ export default function EntitiesClient() {
                             )}
                             </TableBody>
                         </Table>
+
+                        {/* Custom BentoPagination injection */}
+                        <BentoPagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          totalRecords={sortedEntities.length}
+                          pageSize={pageSize}
+                          onPageChange={setCurrentPage}
+                          onPageSizeChange={(size) => {
+                            setPageSize(size);
+                            setCurrentPage(1);
+                          }}
+                        />
                     </div>
                 </div>
             <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
@@ -791,7 +1131,7 @@ export default function EntitiesClient() {
                 }} 
             />
 
-            <AssignUserModal entity={assigningEntity} open={!!assigningEntity} onOpenChange={(open) => !open && setAssigningEntity(null)} />
+            {/* Handled by AssignUserModal under Bulk Action Modal Section */}
             <ChangeStatusModal entity={changingStatusEntity} open={!!changingStatusEntity} onOpenChange={(open) => !open && setChangingStatusEntity(null)} />
             
             {taggingEntity && (
@@ -819,7 +1159,55 @@ export default function EntitiesClient() {
                 onOpenChange={setIsBulkTagOpen}
                 selectedContactIds={selectedEntityIds}
                 contactType="workspace_entity"
-                onComplete={() => setSelectedEntityIds([])}
+                onComplete={() => clearSelection()}
+            />
+
+            {/* Custom bulk action modals injection */}
+            <BulkCreateDealModal
+              entityIds={selectedEntityIds}
+              open={isBulkDealOpen}
+              onOpenChange={setIsBulkDealOpen}
+              onComplete={() => clearSelection()}
+            />
+
+            <BulkCreateTaskModal
+              entityIds={selectedEntityIds}
+              open={isBulkTaskOpen}
+              onOpenChange={setIsBulkTaskOpen}
+              onComplete={() => clearSelection()}
+            />
+
+            <BulkMeetingInviteModal
+              entityIds={selectedEntityIds}
+              open={isBulkMeetingOpen}
+              onOpenChange={setIsBulkMeetingOpen}
+              onComplete={() => clearSelection()}
+            />
+
+            {/* Reassignment modal with bulk support */}
+            <AssignUserModal 
+              entity={assigningEntity} 
+              selectedEntityIds={selectedEntityIds}
+              open={!!assigningEntity || isBulkAssignOpen} 
+              onOpenChange={(open) => {
+                if (!open) {
+                  setAssigningEntity(null);
+                  setIsBulkAssignOpen(false);
+                }
+              }} 
+              onComplete={() => clearSelection()}
+            />
+
+            {/* Floating glassmorphic dock controller */}
+            <BulkActionDock
+              selectedCount={selectedCount}
+              onClearSelection={clearSelection}
+              onVerify={handleBulkScan}
+              onTags={() => setIsBulkTagOpen(true)}
+              onAssign={() => setIsBulkAssignOpen(true)}
+              onInitiateDeals={() => setIsBulkDealOpen(true)}
+              onCreateTasks={() => setIsBulkTaskOpen(true)}
+              onInviteMeetings={() => setIsBulkMeetingOpen(true)}
             />
 
             {managingWorkspacesEntity && (

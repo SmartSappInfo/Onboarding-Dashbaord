@@ -243,6 +243,7 @@ export type PlatformJobType =
   | 'migrate_hierarchical_rbac'
   | 'migrate_legacy_saas_fields'
   | 'migrate_messaging_templates_fer'
+  | 'migrate_meetings_fer'
   | 'custom';
 
 /**

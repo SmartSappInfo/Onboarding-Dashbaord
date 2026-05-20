@@ -133,7 +133,7 @@ export default function ReminderSlotRow({ slot, index, onChange, onRemove }: Rem
                 category="meetings"
                 recipientType="external_alert"
                 channel="email"
-                templateTypePrefix="meeting_reminder"
+                templateTypePrefix={slot.offsetMinutes === 0 ? 'meeting_time_up' : 'meeting_reminder'}
                 value={slot.emailTemplateId || ''}
                 onValueChange={(v) => updateField('emailTemplateId', v)}
                 placeholder="Select email template..."
@@ -150,7 +150,7 @@ export default function ReminderSlotRow({ slot, index, onChange, onRemove }: Rem
                 category="meetings"
                 recipientType="external_alert"
                 channel="sms"
-                templateTypePrefix="meeting_reminder"
+                templateTypePrefix={slot.offsetMinutes === 0 ? 'meeting_time_up' : 'meeting_reminder'}
                 value={slot.smsTemplateId || ''}
                 onValueChange={(v) => updateField('smsTemplateId', v)}
                 placeholder="Select SMS template..."

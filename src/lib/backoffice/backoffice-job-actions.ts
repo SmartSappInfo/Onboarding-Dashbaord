@@ -6,6 +6,7 @@ import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
 import { processRbacMigration } from './rbac-migration-logic';
 import { processMessagingTemplatesFer } from './messaging-templates-fer-logic';
+import { processMeetingsFer } from './meetings-fer-logic';
 import type { AuditActor, PlatformJob, PlatformJobType, BackofficeRole } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
@@ -339,6 +340,9 @@ export async function executeJob(
       case 'migrate_messaging_templates_fer':
         return await processMessagingTemplatesFer(jobId, actor);
       
+      case 'migrate_meetings_fer':
+        return await processMeetingsFer(jobId, actor);
+
       case 'reseed_templates':
         return await processGenericJob(jobId, actor, 'Reseed Templates', 
           'Scanned platform_templates collection and re-propagated system defaults to all active workspaces.');

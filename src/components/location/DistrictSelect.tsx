@@ -27,6 +27,7 @@ interface DistrictSelectProps {
   disabled?: boolean;
   error?: boolean;
   placeholder?: string;
+  className?: string;
 }
 
 export function DistrictSelect({
@@ -36,6 +37,7 @@ export function DistrictSelect({
   disabled,
   error,
   placeholder = 'Select a district…',
+  className,
 }: DistrictSelectProps) {
   const firestore = useFirestore();
   const { activeOrganizationId } = useTenant();
@@ -116,7 +118,7 @@ export function DistrictSelect({
     >
       <SelectTrigger
         className={cn(
-          'h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all',
+          className || 'h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all',
           error && 'ring-1 ring-destructive',
           isDisabled && 'opacity-50',
         )}

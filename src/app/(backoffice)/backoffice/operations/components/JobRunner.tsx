@@ -64,6 +64,7 @@ const JOB_TYPES: { id: PlatformJobType; name: string }[] = [
    { id: 'backfill_analytics', name: 'Backfill Missing Analytics' },
    { id: 'migrate_data', name: 'Migrate Deprecated Data' },
    { id: 'migrate_messaging_templates_fer', name: 'Messaging Templates — FER' },
+   { id: 'migrate_meetings_fer', name: 'Meetings Infrastructure — FER' },
    { id: 'migrate_hierarchical_rbac', name: 'Hierarchical RBAC Migration' },
    { id: 'migrate_legacy_saas_fields', name: 'SaaS Field Re-parenting' },
    { id: 'rebuild_variables', name: 'Rebuild Variable Registry' },

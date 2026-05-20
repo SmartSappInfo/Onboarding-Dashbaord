@@ -1,4 +1,5 @@
 import type { MessageBlock, MessageBlockRule } from './types';
+import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
 
 /**
  * UTF-8 safe Base64 encoding.
@@ -88,8 +89,11 @@ export function plainTextToHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
+  // Convert markdown links [Link Text](URL) to styled <a> tags after escaping
+  const withLinks = parseMarkdownLinksToHtml(escaped);
+
   // Convert newlines to <br> tags
-  const withBreaks = escaped.replace(/\n/g, '<br>\n');
+  const withBreaks = withLinks.replace(/\n/g, '<br>\n');
 
   return `<!doctype html>
 <html>

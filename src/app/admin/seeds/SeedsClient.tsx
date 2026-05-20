@@ -4,12 +4,13 @@ import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Zap, Loader2, ShieldCheck, Mail } from 'lucide-react';
+import { Zap, Loader2, ShieldCheck, Mail, CalendarDays } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { seedNativeFieldsAction } from '@/lib/fields-actions';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
 import { useTenant } from '@/context/TenantContext';
+import { runMeetingsFerAction } from '@/app/actions/run-meetings-fer-action';
 
 export default function SeedsClient() {
     const { user } = useUser();
@@ -17,6 +18,34 @@ export default function SeedsClient() {
     const { activeWorkspaceId, activeOrganizationId } = useTenant();
     const [isSeeding, setIsSeeding] = React.useState(false);
     const [isSeedingTemplates, setIsSeedingTemplates] = React.useState(false);
+    const [isSeedingMeetings, setIsSeedingMeetings] = React.useState(false);
+
+    const handleSeedMeetings = async () => {
+        if (!activeWorkspaceId || !activeOrganizationId) return;
+        setIsSeedingMeetings(true);
+        try {
+            const result = await runMeetingsFerAction(activeWorkspaceId, activeOrganizationId);
+            if (result.success) {
+                toast({
+                    title: 'Meetings Migration Completed',
+                    description: `Processed ${result.processedMeetings} meetings. Enriched ${result.enrichedMeetings} metadata configs, and synchronized ${result.updatedRegistrants} registrants.`,
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Migration Failed',
+                    description: result.error || 'Failed to execute Meetings FER.',
+                });
+            }
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Execution Error',
+                description: error.message || 'An error occurred during Meetings FER.',
+            });
+        }
+        setIsSeedingMeetings(false);
+    };
 
     const handleSeed = async () => {
         if (!activeWorkspaceId || !activeOrganizationId || !user?.uid) return;
@@ -149,6 +178,45 @@ export default function SeedsClient() {
                                         <Mail className="h-4 w-4 mr-2" />
                                     )}
                                     {isSeedingTemplates ? 'Seeding...' : 'Seed Blueprints'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Meetings Infrastructure - FER Card */}
+                    <Card className="border-indigo-100 bg-indigo-50/10 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <CalendarDays className="h-24 w-24 text-indigo-600" />
+                        </div>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Meeting Operations</span>
+                            </div>
+                            <CardTitle className="text-xl text-indigo-950">Meetings Infrastructure — FER</CardTitle>
+                            <CardDescription className="max-w-2xl text-indigo-900/70">
+                                Run Fire-and-Forget background migration protocols for meeting sessions and registrants.
+                                This ensures all upcoming sessions have absolute link structures, modernized slug formats, and standard timeup alerts.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                                <div className="flex flex-wrap gap-2">
+                                    <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Link Normalization</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">V3 Router Alignment</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Time-Up Scheduler</Badge>
+                                </div>
+                                <Button 
+                                    onClick={handleSeedMeetings} 
+                                    disabled={isSeedingMeetings}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 border-none min-w-[160px]"
+                                >
+                                    {isSeedingMeetings ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <CalendarDays className="h-4 w-4 mr-2" />
+                                    )}
+                                    {isSeedingMeetings ? 'Migrating...' : 'Run FER Migration'}
                                 </Button>
                             </div>
                         </CardContent>

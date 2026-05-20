@@ -95,6 +95,11 @@ service cloud.firestore {
       allow write: if isAuthorized() && (isSystemAdmin() || isOrgMatch(request.resource.data.organizationId));
     }
 
+    match /modules/{moduleId} {
+      allow read: if isAuthorized();
+      allow write: if isAuthorized() && isSystemAdmin();
+    }
+
     // --- Governance Layer (Org Bound) ---
     match /organizations/{orgId} {
       allow read: if isSignedIn() && (isSystemAdmin() || isOrgMatch(orgId));
@@ -556,6 +561,30 @@ service cloud.firestore {
       allow list: if isAuthorized() && (isSystemAdmin() || hasPermission('activities_view'));
       allow create: if isSignedIn();
       allow update, delete: if false; // Immutable audit logs
+    }
+    // --- Import Logs & Data Ingestion ---
+    match /import_logs/{logId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /import_logs/{logId}/failed_rows/{rowId} {
+      allow read, write: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(get(/databases/$(database)/documents/import_logs/$(logId)).data.workspaceId)
+      );
     }
 
     // --- System / Analytics ---
@@ -1267,6 +1296,32 @@ service cloud.firestore {
          request.resource.data.workspaceId == resource.data.workspaceId)
       );
       allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // --- QR Studio Layer ---
+    match /organizations/{orgId}/workspaces/{wsId}/qr_codes/{qrId} {
+      allow read, write: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isSystemAdmin() ||
+        hasWorkspaceAccess(wsId)
+      );
+    }
+
+    match /organizations/{orgId}/workspaces/{wsId}/qr_code_templates/{templateId} {
+      allow read, write: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isSystemAdmin() ||
+        hasWorkspaceAccess(wsId)
+      );
+    }
+
+    match /organizations/{orgId}/workspaces/{wsId}/qr_scan_events/{eventId} {
+      allow read: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isSystemAdmin() ||
+        hasWorkspaceAccess(wsId)
+      );
+      allow write: if false; // Only written via Server Actions / Admin SDK
     }
   }
 }

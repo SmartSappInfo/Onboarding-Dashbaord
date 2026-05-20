@@ -2,6 +2,10 @@
 
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
+import { FieldValue } from 'firebase-admin/firestore';
+import type { DuplicateStrategy } from './import-types';
+import { IngestionDeduplicator } from './services/IngestionDeduplicator';
+import { after } from 'next/server';
 import type { EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
 import { normalizeContactType } from './entity-contact-helpers';
@@ -87,7 +91,10 @@ function fuzzyMatch<T extends { name: string }>(items: T[], query: string): T | 
     return items.find(item => item.name.toLowerCase().includes(q)) || null;
 }
 
-// ─── Batch Ingestion (Optimized) ─────────────────────────────────────────────
+// ─── Batch Ingestion Constants ────────────────────────────────────────────────
+
+/** Number of pending rows processed per background invocation. */
+const IMPORT_CHUNK_SIZE = 30;
 
 export interface BatchResult {
     successCount: number;
@@ -97,8 +104,12 @@ export interface BatchResult {
 }
 
 /**
- * Processes an entire batch of rows with a SINGLE context fetch.
- * This replaces the per-row `ingestSchoolRowAction` for better performance.
+ * Fire-and-forget bulk ingestion entry point.
+ *
+ * Cleans CSV data, persists all rows to `import_logs/{id}/pending_rows`, then
+ * returns `{ importLogId }` immediately so the UI can navigate away safely.
+ * Processing is handled entirely by `processImportChunkBackground` which
+ * self-schedules via `after()` until the subcollection is drained.
  */
 export async function ingestBatchAction(
     rows: any[],
@@ -112,12 +123,10 @@ export async function ingestBatchAction(
     defaultValues: Record<string, string> = {},
     globalTagIds: string[] = [],
     automationId?: string,
-    manualTagNames: string[] = []
-): Promise<BatchResult> {
-    // 1. Fetch resolution context ONCE for the entire batch
-    const context = await getResolutionContext(workspaceId);
-
-    // 2. Fetch workspace industry and default country code ONCE
+    manualTagNames: string[] = [],
+    enableTitleCase: boolean = false
+): Promise<{ importLogId: string }> {
+    // 1. Workspace metadata (needed for data cleaning)
     let workspaceIndustry = 'SaaS';
     let defaultCountryCode = 'GH';
     try {
@@ -125,114 +134,278 @@ export async function ingestBatchAction(
             adminDb.collection('workspaces').doc(workspaceId).get(),
             adminDb.collection('organizations').doc(organizationId).get()
         ]);
-        if (wsSnap.exists) {
-            workspaceIndustry = (wsSnap.data() as any)?.industry || 'SaaS';
-        }
-        if (orgSnap.exists) {
-            defaultCountryCode = (orgSnap.data() as any)?.defaultCountryCode || 'GH';
-        }
+        if (wsSnap.exists) workspaceIndustry = (wsSnap.data() as any)?.industry || 'SaaS';
+        if (orgSnap.exists) defaultCountryCode = (orgSnap.data() as any)?.defaultCountryCode || 'GH';
     } catch { /* Non-critical */ }
 
-    // 3. DATA CLEANING — Run the cleaning pipeline over ALL rows before processing.
-    //    This normalises names (Title Case), phones (E.164), emails (lowercase),
-    //    dates (ISO), numbers (strip currency), whitespace, and encoding artifacts.
-    const { stats: cleaningStats } = cleanBatch(rows, mapping, defaultCountryCode);
+    // 2. Data cleaning — run synchronously so rows are clean before storage
+    const { stats: cleaningStats } = cleanBatch(rows, mapping, defaultCountryCode, enableTitleCase);
     console.log('[BULK] Data cleaning stats:', cleaningStats);
 
-    // 4. (Pipeline logic removed as per deal-centric migration)
+    // 3. Create import log with 'queued' status and persisted import config
+    const importLogId = `implog_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const importLogRef = adminDb.collection('import_logs').doc(importLogId);
 
-    // 5. Build a set of existing entity names for duplicate detection
-    const existingNames = new Set<string>();
-    try {
-        const existingSnap = await adminDb.collection('workspace_entities')
-            .where('workspaceId', '==', workspaceId)
-            .select('displayName')
-            .get();
-        for (const doc of existingSnap.docs) {
-            const n = doc.data()?.displayName;
-            if (n) existingNames.add(normaliseName(n));
+    await importLogRef.set({
+        id: importLogId,
+        workspaceId,
+        organizationId,
+        userId,
+        filename,
+        entityType,
+        status: 'queued',
+        totalCount: rows.length,
+        successCount: 0,
+        failedCount: 0,
+        duplicateCount: 0,
+        selectedTags: globalTagIds,
+        automationId: automationId || null,
+        startedAt: FieldValue.serverTimestamp(),
+        rawFieldsCleared: false,
+        // Config stored here so the background worker needs no closure state
+        _importConfig: {
+            mapping,
+            autoCreateTags,
+            defaultValues,
+            globalTagIds,
+            automationId: automationId || null,
+            manualTagNames,
+            workspaceIndustry,
+            defaultCountryCode,
+            enableTitleCase,
         }
-    } catch {
-        console.warn('[BULK] Could not fetch existing entities for duplicate check');
+    });
+
+    // 4. Fan-out rows to pending_rows (batches of 450 to stay under Firestore limit)
+    const pendingRowsRef = importLogRef.collection('pending_rows');
+    for (let i = 0; i < rows.length; i += 450) {
+        const wb = adminDb.batch();
+        const chunk = rows.slice(i, i + 450);
+        for (let j = 0; j < chunk.length; j++) {
+            const globalIdx = i + j;
+            // Zero-padded key ensures lexicographic order === row order
+            const docRef = pendingRowsRef.doc(`row_${String(globalIdx).padStart(6, '0')}`);
+            wb.set(docRef, { rowIdx: globalIdx, rawPayload: chunk[j], createdAt: FieldValue.serverTimestamp() });
+        }
+        await wb.commit();
     }
 
-    // Track names added in THIS batch to catch intra-batch duplicates
-    const batchNames = new Set<string>();
-
-    // 6. Process each row
-    const results: BatchResult['results'] = [];
-    let successCount = 0;
-    let errorCount = 0;
-
-    const _getValueOuter = (row: any, key: string) => {
-        const header = mapping[key];
-        if (!header || header === 'none') return undefined;
-        return row[header];
-    };
-
-    for (let i = 0; i < rows.length; i++) {
+    // 5. Kick off first background chunk — subsequent chunks self-schedule
+    after(async () => {
         try {
-            const row = rows[i];
-            const header = mapping['name'];
-            const isMapped = header && header !== 'none';
-            let rawName = isMapped ? row[header] : undefined;
+            await processImportChunkBackground(importLogId);
+        } catch (e) {
+            console.error('[BULK] Initial chunk scheduling failed:', (e as Error).message);
+            await importLogRef.update({ status: 'failed' });
+        }
+    });
+
+    return { importLogId };
+}
+
+/**
+ * Background worker — processes IMPORT_CHUNK_SIZE pending rows, writes results,
+ * deletes those rows, updates counters atomically, then self-schedules via after().
+ *
+ * Key properties:
+ * - Browser-independent: all state lives in Firestore.
+ * - Atomic counters: FieldValue.increment() prevents race conditions.
+ * - Targeted queries: only queries identifiers present in the current chunk.
+ * - Intra-batch dedup: local maps catch duplicates within the same chunk.
+ */
+export async function processImportChunkBackground(importLogId: string): Promise<void> {
+    const importLogRef = adminDb.collection('import_logs').doc(importLogId);
+    const importLogSnap = await importLogRef.get();
+
+    if (!importLogSnap.exists) {
+        console.error(`[BULK-BG] Import log ${importLogId} not found`);
+        return;
+    }
+
+    const importLog = importLogSnap.data() as any;
+
+    // Guard: already finalised
+    if (['completed', 'partially_completed', 'failed'].includes(importLog.status)) return;
+
+    // Transition to processing on first invocation
+    if (importLog.status === 'queued') {
+        await importLogRef.update({ status: 'processing' });
+    }
+
+    // Fetch next chunk of pending rows in insertion order
+    const pendingSnap = await importLogRef.collection('pending_rows')
+        .orderBy('rowIdx', 'asc')
+        .limit(IMPORT_CHUNK_SIZE)
+        .get();
+
+    // No pending rows → finalize
+    if (pendingSnap.empty) {
+        const hasIssues = (importLog.failedCount ?? 0) > 0 || (importLog.duplicateCount ?? 0) > 0;
+        await importLogRef.update({
+            status: hasIssues ? 'partially_completed' : 'completed',
+            completedAt: FieldValue.serverTimestamp(),
+        });
+        await logActivity({
+            organizationId: importLog.organizationId,
+            workspaceId: importLog.workspaceId,
+            userId: importLog.userId,
+            type: 'contacts_imported',
+            source: 'system',
+            description: `Bulk import finished: ${importLog.successCount ?? 0} created, ${importLog.failedCount ?? 0} failed, ${importLog.duplicateCount ?? 0} duplicates.`,
+            metadata: { importLogId, entityType: importLog.entityType },
+        });
+        return;
+    }
+
+    // Resolve stored import config
+    const cfg = importLog._importConfig ?? {};
+    const {
+        mapping = {} as Record<string, string>,
+        autoCreateTags = false,
+        defaultValues = {} as Record<string, string>,
+        globalTagIds = [] as string[],
+        automationId = null as string | null,
+        manualTagNames = [] as string[],
+        workspaceIndustry = 'SaaS',
+    } = cfg;
+
+    // Fetch resolution context once per chunk (zones, tags, users, etc.)
+    const context = await getResolutionContext(importLog.workspaceId);
+
+    // Targeted duplicate-detection: extract emails from this chunk only
+    const emailKey = mapping['contact_0_email'] || mapping['primaryEmail'];
+    const chunkEmails = pendingSnap.docs
+        .map(d => d.data().rawPayload?.[emailKey])
+        .filter(Boolean)
+        .map((e: any) => String(e).toLowerCase().trim());
+
+    const existingByEmail = new Map<string, any>();
+    const existingByName = new Map<string, any>();
+    const existingByPhone = new Map<string, any>();
+
+    // Query existing entities matching this chunk's emails (batched in groups of 10)
+    for (let i = 0; i < chunkEmails.length; i += 10) {
+        const emailBatch = chunkEmails.slice(i, i + 10);
+        try {
+            const snap = await adminDb.collection('workspace_entities')
+                .where('workspaceId', '==', importLog.workspaceId)
+                .where('primaryEmail', 'in', emailBatch)
+                .select('displayName', 'primaryEmail', 'primaryPhone', 'entityContacts')
+                .get();
+            for (const doc of snap.docs) {
+                const data: any = { id: doc.id, ...doc.data() };
+                if (data.primaryEmail) existingByEmail.set(data.primaryEmail.toLowerCase().trim(), data);
+                if (data.displayName) existingByName.set(normaliseName(data.displayName), data);
+                if (data.primaryPhone) existingByPhone.set(data.primaryPhone.replace(/[^0-9]/g, ''), data);
+            }
+        } catch (e) {
+            console.warn('[BULK-BG] Targeted email query failed:', (e as Error).message);
+        }
+    }
+
+    // Process rows
+    let successIncrement = 0;
+    let failedIncrement = 0;
+    let duplicateIncrement = 0;
+    const failedRowDocs: any[] = [];
+    const duplicateRowDocs: any[] = [];
+
+    for (const pendingDoc of pendingSnap.docs) {
+        const { rowIdx, rawPayload } = pendingDoc.data();
+        try {
+            const nameHeader = mapping['name'];
+            const isMapped = nameHeader && nameHeader !== 'none';
+            let rawName = isMapped ? rawPayload[nameHeader] : undefined;
 
             if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
-                if (isMapped) {
-                    throw new Error("Entity Name is mapped but empty. Please provide a name in the corrections page.");
+                const contactHeader = mapping['contact_0_name'];
+                const contactName = (contactHeader && contactHeader !== 'none') ? rawPayload[contactHeader] : undefined;
+                if (contactName && typeof contactName === 'string' && contactName.trim()) {
+                    rawName = contactName.trim();
                 } else {
-                    const contactHeader = mapping['contact_0_name'];
-                    const contactName = (contactHeader && contactHeader !== 'none') ? row[contactHeader] : undefined;
-                    
-                    if (contactName && typeof contactName === 'string' && contactName.trim()) {
-                        rawName = contactName.trim();
-                    } else {
-                        throw new Error("Missing Entity Name, and no Contact Name was found to use as fallback.");
-                    }
+                    throw new Error('Missing Entity Name, and no Contact Name was found to use as fallback.');
                 }
             }
 
             const name = rawName.trim();
             const normalised = normaliseName(name);
 
-            // Duplicate check
-            if (existingNames.has(normalised) || batchNames.has(normalised)) {
-                throw new Error(`Duplicate: "${name}" already exists in this workspace`);
-            }
-
-            // Process the row
-            const result = await processRow(
-                row, mapping, name, entityType, context,
-                workspaceIndustry, workspaceId, organizationId, userId,
-                filename, autoCreateTags,
-                defaultValues, globalTagIds, automationId, manualTagNames
+            const extracted = await processRow(
+                rawPayload, mapping, name, importLog.entityType, context,
+                workspaceIndustry, importLog.workspaceId, importLog.organizationId,
+                importLog.userId, importLog.filename, autoCreateTags,
+                defaultValues, globalTagIds, automationId ?? undefined, manualTagNames
             );
 
-            batchNames.add(normalised);
-            existingNames.add(normalised);
-            successCount++;
-            results.push({ row: i, status: 'success', entityName: result.entityName });
+            const normalisedEmail = extracted.workspaceEntityDoc.primaryEmail?.toLowerCase().trim();
+            const normalisedPhone = extracted.workspaceEntityDoc.primaryPhone?.replace(/[^0-9]/g, '');
+
+            let existingEntity: any = null;
+            if (existingByName.has(normalised)) existingEntity = existingByName.get(normalised);
+            else if (normalisedEmail && existingByEmail.has(normalisedEmail)) existingEntity = existingByEmail.get(normalisedEmail);
+            else if (normalisedPhone && existingByPhone.has(normalisedPhone)) existingEntity = existingByPhone.get(normalisedPhone);
+
+            console.log(`[BULK-BG] Row ${rowIdx} (${normalisedEmail}): matched =`, existingEntity ? existingEntity.id : 'None');
+
+            if (existingEntity) {
+                duplicateIncrement++;
+                const matchedOn: string[] = [];
+                if (existingByName.has(normalised)) matchedOn.push('Name');
+                if (normalisedEmail && existingByEmail.has(normalisedEmail)) matchedOn.push('Email');
+                if (normalisedPhone && existingByPhone.has(normalisedPhone)) matchedOn.push('Phone');
+                duplicateRowDocs.push({
+                    id: `dup_${Date.now()}_${rowIdx}`,
+                    importLogId, rowIdx, rawPayload, matchedEntityId: existingEntity.id,
+                    matchedOn, resolved: false, createdAt: FieldValue.serverTimestamp()
+                });
+            } else {
+                await adminDb.collection('entities').doc(extracted.entityId).set(extracted.entityDoc);
+                await adminDb.collection('workspace_entities').doc(extracted.workspaceEntityId).set(extracted.workspaceEntityDoc);
+
+                const { triggerAutomationProtocols, runAutomationById } = await import('./automation-processor');
+                await triggerAutomationProtocols('ENTITY_CREATED', extracted.automationPayload);
+                if (automationId) await runAutomationById(automationId, extracted.automationPayload);
+
+                // Update local maps for intra-batch dedup
+                existingByName.set(normalised, extracted.workspaceEntityDoc);
+                if (normalisedEmail) existingByEmail.set(normalisedEmail, extracted.workspaceEntityDoc);
+                if (normalisedPhone) existingByPhone.set(normalisedPhone, extracted.workspaceEntityDoc);
+                successIncrement++;
+            }
         } catch (err: any) {
-            errorCount++;
-            results.push({ row: i, status: 'error', error: err.message });
+            failedIncrement++;
+            failedRowDocs.push({
+                id: `fail_${Date.now()}_${rowIdx}`,
+                importLogId, rowIdx, rawPayload,
+                error: err.message || 'Unknown error',
+                resolved: false, retryCount: 0, createdAt: FieldValue.serverTimestamp()
+            });
         }
     }
 
-    // 7. Log aggregate activity
-    await logActivity({
-        organizationId,
-        workspaceId,
-        userId,
-        type: 'contacts_imported',
-        source: 'system',
-        description: `Bulk import: ${successCount} created, ${errorCount} errors from "${filename}"`,
-        metadata: { entityType, successCount, errorCount, batchSize: rows.length, cleaningStats },
+    // Atomic batch: persist results + delete processed rows
+    const wb = adminDb.batch();
+    for (const fr of failedRowDocs) wb.set(importLogRef.collection('failed_rows').doc(fr.id), fr);
+    for (const dr of duplicateRowDocs) wb.set(importLogRef.collection('duplicate_rows').doc(dr.id), dr);
+    for (const doc of pendingSnap.docs) wb.delete(doc.ref);
+    await wb.commit();
+
+    // Atomic counter update — no read-modify-write race
+    await importLogRef.update({
+        successCount: FieldValue.increment(successIncrement),
+        failedCount: FieldValue.increment(failedIncrement),
+        duplicateCount: FieldValue.increment(duplicateIncrement),
     });
 
-    revalidatePath('/admin/entities');
-    revalidatePath('/admin/pipeline');
-
-    return { successCount, errorCount, results, cleaningStats };
+    // Self-schedule next chunk
+    after(async () => {
+        try {
+            await processImportChunkBackground(importLogId);
+        } catch (e) {
+            console.error('[BULK-BG] Next chunk scheduling failed:', (e as Error).message);
+            await importLogRef.update({ status: 'failed' });
+        }
+    });
 }
 
 // ─── Per-Row Processing (Internal) ───────────────────────────────────────────
@@ -253,7 +426,7 @@ async function processRow(
     globalTagIds: string[] = [],
     automationId?: string,
     manualTagNames: string[] = []
-): Promise<{ entityName: string }> {
+): Promise<any> {
     const getValue = (key: string) => {
         const header = mapping[key];
         const rawVal = (!header || header === 'none') ? undefined : row[header];
@@ -282,7 +455,7 @@ async function processRow(
     };
 
     const selectedUser = fuzzyMatch(context.users, String(getValue('assignedTo') || ''));
-    const selectedPackage = fuzzyMatch(context.packages as any, String(getValue('package') || '')) as any;
+    const selectedPackage = fuzzyMatch(context.packages as any, String(getValue('package') || getValue('subscriptionPackageName') || '')) as any;
 
     const rawModulesStr = getValue('modules');
     const selectedModules = rawModulesStr ? String(rawModulesStr).split(',').map(m => {
@@ -509,13 +682,9 @@ async function processRow(
     const interestsText = getValue('interests');
     if (interestsText) entityDoc.interestsText = String(interestsText);
 
-    // Save entity
-    await adminDb.collection('entities').doc(entityId).set(entityDoc);
-
-    // Save workspace entity
     const primaryContact = entityContacts.find(c => c.isPrimary);
     const workspaceEntityId = `${workspaceId}_${entityId}`;
-    await adminDb.collection('workspace_entities').doc(workspaceEntityId).set({
+    const workspaceEntityDoc = {
         id: workspaceEntityId,
         organizationId,
         workspaceId,
@@ -536,9 +705,8 @@ async function processRow(
         ...(entityDoc.currentNeeds && { currentNeeds: entityDoc.currentNeeds }),
         ...(entityDoc.currentChallenges && { currentChallenges: entityDoc.currentChallenges }),
         ...(entityDoc.interestsText && { interestsText: entityDoc.interestsText }),
-    });
+    };
 
-    const { triggerAutomationProtocols, runAutomationById } = await import('./automation-processor');
     const automationPayload = {
         entityId,
         workspaceId,
@@ -548,13 +716,14 @@ async function processRow(
         assignedTo: selectedUser ? { userId: selectedUser.id, name: selectedUser.name } : null
     };
 
-    await triggerAutomationProtocols('ENTITY_CREATED', automationPayload);
-
-    if (automationId) {
-        await runAutomationById(automationId, automationPayload);
-    }
-
-    return { entityName: name };
+    return { 
+        entityName: name, 
+        entityId, 
+        entityDoc, 
+        workspaceEntityId, 
+        workspaceEntityDoc, 
+        automationPayload 
+    };
 }
 
 // ─── Legacy Compat: Single-Row Action ────────────────────────────────────────
@@ -576,9 +745,230 @@ export async function ingestSchoolRowAction(
         [rawData], mapping, userId, filename,
         workspaceId, organizationId, entityType
     );
-    const row = result.results[0];
-    if (row?.status === 'success') {
-        return { success: true, entityName: row.entityName };
+    // Return early success since it's background processed now.
+    return { success: true, entityName: 'Importing in background', importLogId: result.importLogId };
+}
+
+// ─── Imports Auditing Logs & TTL Cleanup ─────────────────────────────────────
+
+export async function getImportsLogsListAction(workspaceId: string, limitCount = 50) {
+    const snap = await adminDb.collection('import_logs')
+        .where('workspaceId', '==', workspaceId)
+        .orderBy('startedAt', 'desc')
+        .limit(limitCount)
+        .get();
+        
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Sweeps and deletes detailed failed rows for any import logs older than 72 hours.
+ * Only deletes the heavy payloads, keeping the core analytics document.
+ */
+export async function purgeExpiredFailedImportsAction(workspaceId: string) {
+    const ttlThreshold = new Date(Date.now() - 72 * 60 * 60 * 1000);
+    
+    // We sort on the primary field. Missing index risk is low if we filter by rawFieldsCleared.
+    const expiredSnap = await adminDb.collection('import_logs')
+        .where('workspaceId', '==', workspaceId)
+        .where('rawFieldsCleared', '==', false)
+        .get();
+
+    let logsClearedCount = 0;
+    
+    for (const docSnap of expiredSnap.docs) {
+        const data = docSnap.data();
+        const startedAtDate = data.startedAt?.toDate?.() || new Date(data.startedAt);
+        
+        if (startedAtDate < ttlThreshold) {
+            // Delete subcollection failed_rows
+            const subSnap = await docSnap.ref.collection('failed_rows').limit(500).get();
+            if (!subSnap.empty) {
+                const wb = adminDb.batch();
+                subSnap.docs.forEach(d => wb.delete(d.ref));
+                await wb.commit();
+            }
+            
+            // Mark as cleared
+            await docSnap.ref.update({ rawFieldsCleared: true });
+            logsClearedCount++;
+        }
     }
-    return { success: false, error: row?.error || 'Unknown error' };
+    
+    return { success: true, logsClearedCount };
+}
+
+export async function getFailedRowsAction(importLogId: string) {
+    const snap = await adminDb.collection('import_logs').doc(importLogId).collection('failed_rows')
+        .orderBy('createdAt', 'desc')
+        .limit(100)
+        .get();
+    return snap.docs.map(d => {
+        const data = d.data();
+        return { 
+            id: d.id, 
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt
+        };
+    });
+}
+
+export async function updateFailedRowAction(importLogId: string, rowId: string, updatedPayload: any) {
+    await adminDb.collection('import_logs').doc(importLogId).collection('failed_rows').doc(rowId).update({
+        rawPayload: updatedPayload,
+        updatedAt: FieldValue.serverTimestamp()
+    });
+    return { success: true };
+}
+
+export async function getDuplicateRowsAction(importLogId: string) {
+    const snap = await adminDb.collection('import_logs')
+        .doc(importLogId)
+        .collection('duplicate_rows')
+        .orderBy('createdAt', 'desc')
+        .limit(100)
+        .get();
+    return snap.docs.map(d => {
+        const data = d.data();
+        return { 
+            id: d.id, 
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt
+        };
+    });
+}
+
+export async function resolveDuplicatesAction(
+    importLogId: string, 
+    resolutions: { duplicateRowId: string; strategy: DuplicateStrategy; tagIds?: string[]; customPayload?: any }[],
+    globalTagIds: string[] = []
+) {
+    const importLogRef = adminDb.collection('import_logs').doc(importLogId);
+    const importLogSnap = await importLogRef.get();
+    if (!importLogSnap.exists) {
+        throw new Error('Import log not found');
+    }
+    const importLog = importLogSnap.data() as any;
+    
+    // Resolve stored import config
+    const cfg = importLog._importConfig ?? {};
+    const {
+        mapping = {} as Record<string, string>,
+        autoCreateTags = false,
+        defaultValues = {} as Record<string, string>,
+        globalTagIds: cfgGlobalTagIds = [] as string[],
+        automationId = null as string | null,
+        manualTagNames = [] as string[],
+        workspaceIndustry = 'SaaS',
+    } = cfg;
+
+    const resolutionTags = globalTagIds.length > 0 ? globalTagIds : cfgGlobalTagIds;
+
+    // Fetch resolution context once
+    const context = await getResolutionContext(importLog.workspaceId);
+
+    let manualCorrectionsCount = 0;
+
+    // Process in batches
+    for (let i = 0; i < resolutions.length; i += 100) {
+        const chunk = resolutions.slice(i, i + 100);
+        const automationsToRun: { automationPayload: any; automationId?: string | null }[] = [];
+        
+        await adminDb.runTransaction(async (transaction) => {
+            for (const { duplicateRowId, strategy, tagIds, customPayload } of chunk) {
+                const dupRef = adminDb.collection('import_logs').doc(importLogId).collection('duplicate_rows').doc(duplicateRowId);
+                const dupSnap = await transaction.get(dupRef);
+                
+                if (!dupSnap.exists) continue;
+                
+                const dupData = dupSnap.data();
+                if (dupData?.resolved) continue;
+                
+                const existingEntityRef = adminDb.collection('workspace_entities').doc(dupData?.matchedEntityId);
+                const existingSnap = await transaction.get(existingEntityRef);
+                
+                if (strategy === 'MANUAL_CORRECTION') {
+                    const payload = customPayload || dupData?.rawPayload;
+                    
+                    const nameHeader = mapping['name'];
+                    const isMapped = nameHeader && nameHeader !== 'none';
+                    let rawName = isMapped ? payload[nameHeader] : undefined;
+
+                    if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
+                        const contactHeader = mapping['contact_0_name'];
+                        const contactName = (contactHeader && contactHeader !== 'none') ? payload[contactHeader] : undefined;
+                        if (contactName && typeof contactName === 'string' && contactName.trim()) {
+                            rawName = contactName.trim();
+                        } else {
+                            throw new Error('Missing Entity Name, and no Contact Name was found to use as fallback.');
+                        }
+                    }
+
+                    const name = rawName.trim();
+                    
+                    const extracted = await processRow(
+                        payload, mapping, name, importLog.entityType, context,
+                        workspaceIndustry, importLog.workspaceId, importLog.organizationId,
+                        importLog.userId, importLog.filename, autoCreateTags,
+                        defaultValues, tagIds || resolutionTags, automationId ?? undefined, manualTagNames
+                    );
+                    
+                    transaction.set(adminDb.collection('entities').doc(extracted.entityId), extracted.entityDoc);
+                    transaction.set(adminDb.collection('workspace_entities').doc(extracted.workspaceEntityId), extracted.workspaceEntityDoc);
+                    
+                    automationsToRun.push({
+                        automationPayload: extracted.automationPayload,
+                        automationId
+                    });
+                    
+                    manualCorrectionsCount++;
+                } else if (existingSnap.exists) {
+                    if (strategy !== 'SKIP') {
+                        const existingEntity = { id: existingSnap.id, ...existingSnap.data() };
+                        const reconciled = IngestionDeduplicator.reconcile(existingEntity, dupData?.rawPayload, strategy, tagIds || resolutionTags);
+                        
+                        if (reconciled) {
+                            transaction.update(existingEntityRef, {
+                                ...reconciled,
+                                updatedAt: new Date().toISOString()
+                            });
+                        }
+                    }
+                }
+                
+                // Mark duplicate row as resolved
+                transaction.update(dupRef, {
+                    resolved: true,
+                    resolvedAt: FieldValue.serverTimestamp(),
+                    appliedStrategy: strategy
+                });
+            }
+        });
+
+        // Trigger automations
+        if (automationsToRun.length > 0) {
+            try {
+                const { triggerAutomationProtocols, runAutomationById } = await import('./automation-processor');
+                for (const auto of automationsToRun) {
+                    await triggerAutomationProtocols('ENTITY_CREATED', auto.automationPayload);
+                    if (auto.automationId) {
+                        await runAutomationById(auto.automationId, auto.automationPayload);
+                    }
+                }
+            } catch (err) {
+                console.error('[BULK-RESOLVE] Automations failed:', err);
+            }
+        }
+    }
+    
+    // Update main import log duplicate metrics
+    await adminDb.collection('import_logs').doc(importLogId).update({
+        resolvedDuplicateCount: FieldValue.increment(resolutions.length),
+        successCount: FieldValue.increment(manualCorrectionsCount),
+        updatedAt: FieldValue.serverTimestamp()
+    });
+    
+    return { success: true };
 }

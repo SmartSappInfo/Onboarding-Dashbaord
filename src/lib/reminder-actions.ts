@@ -133,11 +133,24 @@ export async function cancelRemindersForMeeting(meetingId: string): Promise<void
 
   if (snap.empty) return;
 
-  const batch = adminDb.batch();
+  const MAX_BATCH_SIZE = 450;
+  let batch = adminDb.batch();
+  let opCount = 0;
+
   for (const doc of snap.docs) {
-    batch.update(doc.ref, { status: 'cancelled' });
+    batch.delete(doc.ref);
+    opCount++;
+
+    if (opCount >= MAX_BATCH_SIZE) {
+      await batch.commit();
+      batch = adminDb.batch();
+      opCount = 0;
+    }
   }
-  await batch.commit();
+
+  if (opCount > 0) {
+    await batch.commit();
+  }
 }
 
 // ---------------------------------------------------------------------------

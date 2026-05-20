@@ -33,6 +33,7 @@ export interface TagFilter {
 
 interface TagFilterProps {
   onFilterChange: (filter: TagFilter) => void;
+  value?: TagFilter;
   className?: string;
 }
 
@@ -52,7 +53,7 @@ const LOGIC_OPTIONS: { value: TagFilter['logic']; label: string; description: st
   { value: 'NOT', label: 'None of tags', description: 'Contact must not have any selected tag' },
 ];
 
-export function TagFilter({ onFilterChange, className }: TagFilterProps) {
+export function TagFilter({ onFilterChange, value, className }: TagFilterProps) {
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace() as any;
 
@@ -62,6 +63,15 @@ export function TagFilter({ onFilterChange, className }: TagFilterProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+
+  // Sync controlled value prop to local states
+  useEffect(() => {
+    if (value) {
+      setSelectedTagIds(value.tagIds || []);
+      setLogic(value.logic || 'OR');
+      setCategoryFilter(value.categoryFilter || 'all');
+    }
+  }, [value]);
 
   const listRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();

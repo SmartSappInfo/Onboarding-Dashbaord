@@ -8,6 +8,7 @@
  */
 
 import type { Meeting, MeetingFacilitator, MeetingRegistrant } from './types';
+import { ensureAbsoluteUrl } from './utils/url-helpers';
 
 // ---------------------------------------------------------------------------
 // Meeting base variables (available in ALL meeting templates)
@@ -79,9 +80,12 @@ export function buildRegistrantVariables(
     registrant_name: registrant.name || '',
     registrant_email: registrant.email || '',
     registrant_phone: registrant.phone || '',
-    registrant_join_link: registrant.personalizedMeetingUrl || '',
-    // Backward compat alias
-    join_url: registrant.personalizedMeetingUrl || '',
+    registrant_join_link: ensureAbsoluteUrl(registrant.personalizedMeetingUrl || ''),
+    // Backward compat aliases for templates
+    contact_name: registrant.name || '',
+    contact_email: registrant.email || '',
+    contact_phone: registrant.phone || '',
+    join_url: ensureAbsoluteUrl(registrant.personalizedMeetingUrl || ''),
     registration_status: registrant.status || '',
   };
 

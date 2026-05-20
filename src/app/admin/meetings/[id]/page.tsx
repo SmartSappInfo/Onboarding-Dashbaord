@@ -8,7 +8,7 @@ import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { endMeetingAction } from '@/app/actions/meeting-post-event-action';
-import type { Meeting, ScheduledMessage, QRCode, MeetingFacilitator } from '@/lib/types';
+import type { Meeting, ScheduledMessage, QRCode, MeetingFacilitator, MeetingReminderSlot } from '@/lib/types';
 import { resendFacilitatorLinksAction } from '@/app/actions/meeting-facilitator-actions';
 import { REMINDER_OFFSETS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,11 @@ import {
   CopyCheck,
   Copy,
   BarChart3,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Eye,
+  Mail,
+  MessageSquare,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import dynamic from 'next/dynamic';
@@ -47,6 +51,12 @@ const QRPreview = dynamic(() => import('@/app/admin/qr-studio/components/qr-prev
   loading: () => <Skeleton className="h-[160px] w-[160px] rounded-xl mx-auto" />
 });
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { renderScheduledMessageAction, sendTestMessageAction } from '@/app/actions/scheduled-message-actions';
+import { useUser } from '@/firebase';
+import { RecipientLogDrawer } from './components/RecipientLogDrawer';
 
 export default function MeetingDetailPage() {
   const params = useParams();
@@ -58,6 +68,14 @@ export default function MeetingDetailPage() {
   const [isEnding, startTransition] = React.useTransition();
   const [copiedLink, setCopiedLink] = React.useState<'short' | 'long' | string | null>(null);
   const [isSendingLinks, setIsSendingLinks] = React.useState(false);
+  const { user } = useUser();
+  const [previewModalOpen, setPreviewModalOpen] = React.useState(false);
+  const [previewContent, setPreviewContent] = React.useState<any>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = React.useState(false);
+  const [testRecipient, setTestRecipient] = React.useState('');
+  const [isTesting, setIsTesting] = React.useState(false);
+  const [logDrawerOpen, setLogDrawerOpen] = React.useState(false);
+  const [selectedReminderType, setSelectedReminderType] = React.useState<string | null>(null);
 
   const handleCopy = (text: string, type: 'short' | 'long' | string) => {
     navigator.clipboard.writeText(text);
@@ -83,6 +101,52 @@ export default function MeetingDetailPage() {
     }
   };
 
+  const handleOpenPreview = async (messageId: string) => {
+    setPreviewModalOpen(true);
+    setIsPreviewLoading(true);
+    setPreviewContent(null);
+    setTestRecipient(user?.email || user?.phoneNumber || '');
+    try {
+      const res = await renderScheduledMessageAction(messageId);
+      if (res.success) {
+        setPreviewContent(res);
+      } else {
+        toast({ variant: 'destructive', title: 'Preview Error', description: res.error });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const handleTestSend = async () => {
+    if (!testRecipient) {
+      toast({ variant: 'destructive', title: 'Required', description: 'Please enter a test recipient' });
+      return;
+    }
+    if (!previewContent) return;
+    setIsTesting(true);
+    try {
+      const res = await sendTestMessageAction(
+        previewContent.channel,
+        testRecipient,
+        previewContent.body,
+        previewContent.subject,
+        activeWorkspaceId ? [activeWorkspaceId] : ['onboarding']
+      );
+      if (res.success) {
+        toast({ title: 'Success', description: res.message });
+      } else {
+        toast({ variant: 'destructive', title: 'Test Failed', description: res.error });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   const meetingDocRef = useMemoFirebase(() => {
     if (!firestore || !meetingId) return null;
     return doc(firestore, 'meetings', meetingId);
@@ -90,59 +154,110 @@ export default function MeetingDetailPage() {
 
   const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
 
-  // Task 12.5: Query scheduled reminders for this meeting
-  const remindersQuery = useMemoFirebase(() => {
-    if (!firestore || !meetingId) return null;
-    return query(
-      collection(firestore, 'scheduled_messages'),
-      where('sourceEventId', '==', meetingId),
-      where('sourceEventType', '==', 'meeting'),
-      orderBy('scheduledAt', 'asc')
-    );
-  }, [firestore, meetingId]);
+  interface ActiveSlot {
+    id: string;
+    type: string;
+    label: string;
+    channel: string;
+    description: string;
+  }
 
-  const { data: reminders, isLoading: isLoadingReminders } = useCollection<ScheduledMessage>(remindersQuery);
+  const getReminderOffsetLabel = (offset: number) => {
+    if (offset === 0) return 'At meeting start';
+    const absOffset = Math.abs(offset);
+    const days = Math.floor(absOffset / 1440);
+    const hours = Math.floor((absOffset % 1440) / 60);
+    const mins = absOffset % 60;
+    const timeParts = [];
+    if (days > 0) timeParts.push(`${days} day${days > 1 ? 's' : ''}`);
+    if (hours > 0) timeParts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+    if (mins > 0) timeParts.push(`${mins} min${mins > 1 ? 's' : ''}`);
+    return `${timeParts.join(' ')} ${offset > 0 ? 'before' : 'after'}`;
+  };
+
+  const activeSlots = React.useMemo<ActiveSlot[]>(() => {
+    if (!meeting) return [];
+    const slots: ActiveSlot[] = [];
+    const config = meeting.messagingConfig;
+
+    // 1. Registration Ack
+    if (config?.registrationAckEnabled) {
+      slots.push({
+        id: 'registration_ack',
+        type: 'registration_ack',
+        label: 'Registration Confirmation',
+        channel: config.registrationAckChannels?.join(', ') || 'email',
+        description: 'Sent immediately to participants upon registration.'
+      });
+    }
+
+    // 2. Custom Scheduler Slots
+    if (config?.reminders) {
+      config.reminders
+        .filter((slot: MeetingReminderSlot) => slot.enabled)
+        .forEach((slot: MeetingReminderSlot) => {
+          slots.push({
+            id: `messaging_slot_${slot.id}`,
+            type: `messaging_slot_${slot.id}`,
+            label: `Reminder (${getReminderOffsetLabel(slot.offsetMinutes)})`,
+            channel: slot.channels?.join(', ') || 'email',
+            description: `Sent to all registered participants.`
+          });
+        });
+    }
+
+    // 3. Facilitator Alerts
+    slots.push({
+      id: 'facilitator_pre_event',
+      type: 'facilitator_pre_event',
+      label: 'Facilitator Pre-Event Alert',
+      channel: 'email',
+      description: 'Sent 1 hour before to assigned facilitators.'
+    });
+
+    slots.push({
+      id: 'facilitator_post_event',
+      type: 'facilitator_post_event',
+      label: 'Facilitator Post-Event Checklist',
+      channel: 'email',
+      description: 'Sent at meeting end to facilitators to close out the session.'
+    });
+
+    // 4. Post-event participant follow-ups
+    slots.push({
+      id: 'post_event_thankyou',
+      type: 'post_event_thankyou',
+      label: 'Attendee Thank You',
+      channel: 'email',
+      description: 'Sent post-event to all participants who attended.'
+    });
+
+    slots.push({
+      id: 'post_event_absentee',
+      type: 'post_event_absentee',
+      label: 'Absentee Follow-up',
+      channel: 'email',
+      description: 'Sent post-event to registered participants who did not join.'
+    });
+
+    return slots;
+  }, [meeting]);
 
   // Parallel Query for QR Codes
   const qrQuery = useMemoFirebase(() => {
-    if (!firestore || !meetingId) return null;
+    if (!firestore || !meetingId || !activeOrganizationId || !activeWorkspaceId) return null;
     return query(
-      collection(firestore, 'qrcodes'),
+      collection(firestore, 'organizations', activeOrganizationId, 'workspaces', activeWorkspaceId, 'qr_codes'),
       where('destination.resourceId', '==', meetingId),
       where('type', '==', 'meeting'),
       limit(1)
     );
-  }, [firestore, meetingId]);
+  }, [firestore, meetingId, activeOrganizationId, activeWorkspaceId]);
 
   const { data: qrCodes, isLoading: isLoadingQR } = useCollection<QRCode>(qrQuery);
   const qrCode = qrCodes && qrCodes.length > 0 ? qrCodes[0] : null;
 
-  const getReminderLabel = (reminderType: string) => {
-    const labels: Record<string, string> = {
-      'meeting_reminder_15min': '15 minutes before',
-      'meeting_reminder_1hour': '1 hour before',
-      'meeting_reminder_2hours': '2 hours before',
-      'meeting_reminder_1day': '1 day before',
-      'meeting_time_up': 'At meeting time',
-    };
-    return labels[reminderType] || reminderType;
-  };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode; label: string }> = {
-      pending: { variant: 'outline', icon: <Clock className="h-3 w-3" />, label: 'Pending' },
-      sent: { variant: 'default', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Sent' },
-      failed: { variant: 'destructive', icon: <XCircle className="h-3 w-3" />, label: 'Failed' },
-      cancelled: { variant: 'secondary', icon: <AlertCircle className="h-3 w-3" />, label: 'Cancelled' },
-    };
-    const config = variants[status] || variants.pending;
-    return (
-      <Badge variant={config.variant} className="gap-1.5">
-        {config.icon}
-        {config.label}
-      </Badge>
-    );
-  };
 
   const handleEndMeeting = () => {
     if (!meeting || meeting.status === 'ended') return;
@@ -282,70 +397,48 @@ export default function MeetingDetailPage() {
             </Card>
 
             {/* Task 12.5: Scheduled Reminders Display */}
-            {(isLoadingReminders || (reminders && reminders.length > 0)) && (
-              <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
-                <CardHeader className="bg-muted/30 border-b">
-                  <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
-                    <Bell className="h-5 w-5 text-blue-600" />
-                    Scheduled Reminders
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Automatic reminders configured for this meeting
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {isLoadingReminders ? (
-                    <div className="space-y-3">
-                      {[1, 2, 3].map((i) => (
-                        <Skeleton key={i} className="h-16 w-full" />
-                      ))}
-                    </div>
-                  ) : reminders && reminders.length > 0 ? (
-                    <div className="space-y-3">
-                      {reminders.map((reminder) => (
-                        <div 
-                          key={reminder.id}
-                          className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-colors"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-1">
-                              <p className="text-sm font-semibold">
-                                {getReminderLabel(reminder.reminderType || '')}
-                              </p>
-                              {getStatusBadge(reminder.status)}
-                            </div>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Scheduled: {format(new Date(reminder.scheduledAt), 'PPp')}
-                              </span>
-                              {reminder.sentAt && (
-                                <span className="flex items-center gap-1">
-                                  <Send className="h-3 w-3" />
-                                  Sent: {format(new Date(reminder.sentAt), 'PPp')}
-                                </span>
-                              )}
-                            </div>
-                            {reminder.error && (
-                              <p className="text-xs text-destructive mt-1">Error: {reminder.error}</p>
-                            )}
-                          </div>
-                          <Badge variant="outline" className="ml-4">
-                            {reminder.channel}
-                          </Badge>
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
+              <CardHeader className="bg-muted/30 border-b py-4">
+                <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-blue-600" />
+                  Scheduled Reminders
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {activeSlots.length > 0 ? (
+                  <div className="space-y-3">
+                    {activeSlots.map((slot) => (
+                      <div 
+                        key={slot.id}
+                        className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
+                        onClick={() => {
+                          setSelectedReminderType(slot.type);
+                          setLogDrawerOpen(true);
+                        }}
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold group-hover:text-primary transition-colors">
+                            {slot.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {slot.description}
+                          </p>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                      <p className="text-sm font-medium">No reminders scheduled yet</p>
-                      <p className="text-xs">Reminders will appear here once they are created</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                        <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
+                          {slot.channel}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm font-medium">No active slots configured</p>
+                    <p className="text-xs">Reminders will appear here once configured in settings</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar */}
@@ -362,14 +455,11 @@ export default function MeetingDetailPage() {
 
             {/* Distribution & Access */}
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-              <CardHeader className="bg-muted/30 border-b pb-4">
+              <CardHeader className="bg-muted/30 border-b py-4">
                 <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2">
                   <LinkIcon className="h-4 w-4 text-primary" />
                   Distribution & Access
                 </CardTitle>
-                <CardDescription className="text-xs">
-                  Share this meeting using links or QR code.
-                </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="p-4 space-y-4">
@@ -467,16 +557,11 @@ export default function MeetingDetailPage() {
 
             {/* Facilitators Card */}
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-              <CardHeader className="bg-muted/30 border-b flex flex-row items-start justify-between pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    Meeting Facilitators
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Team members assigned to manage this session.
-                  </CardDescription>
-                </div>
+              <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between py-4">
+                <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Meeting Facilitators
+                </CardTitle>
                 {meeting.facilitators && meeting.facilitators.length > 0 && (
                   <Button 
                     size="sm" 
@@ -576,6 +661,109 @@ export default function MeetingDetailPage() {
           </div>
         </div>
       </div>
+      
+      {/* Preview Modal */}
+      <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
+        <DialogContent className="sm:max-w-[700px] gap-0 p-0 overflow-hidden bg-background">
+          <DialogHeader className="p-6 pb-4 border-b">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Eye className="h-5 w-5 text-primary" />
+              Message Preview
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-0">
+            {isPreviewLoading ? (
+              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-4">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p>Generating preview...</p>
+              </div>
+            ) : previewContent ? (
+              <div className="flex flex-col h-full max-h-[70vh]">
+                <div className="flex-1 overflow-y-auto bg-muted/10 p-6">
+                  {previewContent.channel === 'email' ? (
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-1.5 p-4 rounded-xl border bg-white shadow-sm">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Mail className="h-4 w-4" />
+                          <span className="font-semibold">Subject:</span>
+                        </div>
+                        <p className="font-medium">{previewContent.subject || 'No Subject'}</p>
+                      </div>
+                      <div className="border rounded-xl overflow-hidden bg-white shadow-sm min-h-[400px]">
+                        <iframe 
+                          srcDoc={previewContent.body} 
+                          title="Message Preview"
+                          className="w-full h-full min-h-[400px] border-0"
+                          sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-center py-8">
+                      <div className="max-w-[320px] w-full border-[6px] border-slate-800 rounded-[32px] overflow-hidden shadow-2xl bg-slate-50 relative">
+                        <div className="absolute top-0 inset-x-0 h-6 bg-slate-800 rounded-b-xl mx-auto w-[120px] z-10" />
+                        <div className="bg-white p-4 pb-2 border-b flex items-center justify-center pt-8">
+                          <p className="text-xs font-semibold text-center text-slate-500 flex items-center gap-1.5">
+                            <MessageSquare className="h-3 w-3" />
+                            SMS Preview
+                          </p>
+                        </div>
+                        <div className="p-4 bg-slate-100 min-h-[400px] flex flex-col justify-end">
+                          <div className="bg-[#007AFF] text-white p-3.5 rounded-2xl rounded-br-sm text-[15px] leading-snug shadow-sm whitespace-pre-wrap">
+                            {previewContent.body}
+                          </div>
+                          <p className="text-[10px] text-slate-400 text-right mt-1.5 mr-1">Delivered via SmartSapp</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="p-4 border-t bg-muted/30">
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <div className="flex-1 w-full">
+                      <Label htmlFor="test-recipient" className="sr-only">Test Recipient</Label>
+                      <Input 
+                        id="test-recipient"
+                        type={previewContent.channel === 'email' ? "email" : "tel"}
+                        placeholder={previewContent.channel === 'email' ? "Enter email address for test" : "Enter phone number for test"}
+                        value={testRecipient}
+                        onChange={(e) => setTestRecipient(e.target.value)}
+                        className="bg-background shadow-sm"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleTestSend} 
+                      disabled={isTesting || !testRecipient}
+                      className="w-full sm:w-auto shadow-sm gap-2"
+                    >
+                      {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      {isTesting ? 'Sending...' : 'Test Dispatch'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-12 text-center text-muted-foreground">
+                <p>Failed to load preview content.</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recipient Log Drawer */}
+      {selectedReminderType && (
+        <RecipientLogDrawer 
+          isOpen={logDrawerOpen}
+          onClose={() => {
+            setLogDrawerOpen(false);
+            setSelectedReminderType(null);
+          }}
+          meetingId={meetingId}
+          reminderType={selectedReminderType}
+          onPreviewMessage={handleOpenPreview}
+        />
+      )}
     </div>
   );
 }

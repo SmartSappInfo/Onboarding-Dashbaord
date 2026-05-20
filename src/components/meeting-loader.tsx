@@ -54,7 +54,7 @@ function MeetingPageSkeleton() {
             </div>
             <Skeleton className="h-16 w-48 rounded-full" />
         </div>
-        <div className="relative flex items-center justify-center min-h-[400px] w-full order-first md:order-last">
+        <div className="relative flex items-center justify-center min-h-[400px] w-full order-last">
             <div className="relative flex items-center justify-center">
                 <Skeleton className="relative w-[640px] h-[640px] object-contain" />
             </div>

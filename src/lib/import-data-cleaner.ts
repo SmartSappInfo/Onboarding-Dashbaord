@@ -77,7 +77,8 @@ export function toTitleCase(value: string): string {
     if (acronyms.has(upper)) return upper;
 
     const lower = word.toLowerCase();
-    if (index > 0 && smallWords.has(lower)) return lower;
+    // Keep single-letter words capitalized if they are not the first word (e.g. "School A")
+    if (index > 0 && smallWords.has(lower) && word.length > 1) return lower;
 
     // Capitalise first letter, lowercase the rest
     return lower.charAt(0).toUpperCase() + lower.slice(1);
@@ -251,7 +252,8 @@ export interface CleaningStats {
 export function cleanRow(
   row: Record<string, any>,
   mapping: Record<string, string>,
-  defaultCountryCode: string = 'GH'
+  defaultCountryCode: string = 'GH',
+  enableTitleCase: boolean = false
 ): { row: Record<string, any>; stats: CleaningStats } {
   const stats: CleaningStats = {
     trimmed: 0,
@@ -320,7 +322,14 @@ export function cleanRow(
         cleaned = afterNumeric;
         break;
       }
-      // 'text' — no additional transform beyond whitespace + encoding
+      case 'text': {
+        if (enableTitleCase) {
+          const afterCase = toTitleCase(cleaned);
+          if (afterCase !== cleaned) stats.titleCased++;
+          cleaned = afterCase;
+        }
+        break;
+      }
     }
 
     row[header] = cleaned;
@@ -336,7 +345,8 @@ export function cleanRow(
 export function cleanBatch(
   rows: Record<string, any>[],
   mapping: Record<string, string>,
-  defaultCountryCode: string = 'GH'
+  defaultCountryCode: string = 'GH',
+  enableTitleCase: boolean = false
 ): { rows: Record<string, any>[]; stats: CleaningStats } {
   const aggregate: CleaningStats = {
     trimmed: 0,
@@ -349,7 +359,7 @@ export function cleanBatch(
   };
 
   for (const row of rows) {
-    const { stats } = cleanRow(row, mapping, defaultCountryCode);
+    const { stats } = cleanRow(row, mapping, defaultCountryCode, enableTitleCase);
     aggregate.trimmed += stats.trimmed;
     aggregate.titleCased += stats.titleCased;
     aggregate.phonesNormalized += stats.phonesNormalized;

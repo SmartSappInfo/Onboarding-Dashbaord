@@ -314,13 +314,13 @@ function ContactRow({ contact, onEdit, onDelete, disabled }: {
         if (isRechecking) return;
         setIsRechecking(true);
         try {
-            const res = await fetch('/api/verify-email/bulk', {
+            const res = await fetch('/api/verify-email/trigger', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ emails: [email], forceRefresh: true })
+                body: JSON.stringify({ emails: [email] })
             });
-            if (!res.ok) throw new Error('Verification failed');
-            toast({ title: 'Recheck Complete', description: `Successfully re-verified ${email}.` });
+            if (!res.ok) throw new Error('Verification trigger failed');
+            toast({ title: 'Verification Queued', description: `${email} is being verified in the background.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Recheck Failed', description: e.message });
         } finally {

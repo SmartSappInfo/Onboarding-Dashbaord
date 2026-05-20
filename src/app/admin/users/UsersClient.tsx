@@ -443,7 +443,7 @@ export default function UsersClient() {
                 <WorkspaceAccessDialog
                     open={!!accessDialogUser}
                     onOpenChange={(open) => { if (!open) setAccessDialogUser(null); }}
-                    user={accessDialogUser}
+                    user={users?.find(u => u.id === accessDialogUser.id) || accessDialogUser}
                     roles={roles || []}
                 />
             )}

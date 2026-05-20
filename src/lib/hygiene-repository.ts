@@ -1,27 +1,131 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { VerifyEmailResult } from './email-verifier';
 
+const LOCK_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Handles all database interactions for contact hygiene.
- * Encapsulates caching and bulk entity updates.
+ * Encapsulates caching, locking, and bulk entity updates.
  */
 export class ContactHygieneRepository {
+
+  /** Convert email to its cache document ID */
+  static hashEmail(email: string): string {
+    return Buffer.from(email.toLowerCase()).toString('base64');
+  }
   
   /**
    * Retrieves the verification result from the global cache collection.
    * Returns null if cache miss or not found.
    */
-  static async getCache(email: string): Promise<Partial<VerifyEmailResult> | null> {
+  static async getCache(email: string): Promise<Partial<VerifyEmailResult> & { lockedAt?: string; _status?: string } | null> {
     try {
-      const hashed = Buffer.from(email.toLowerCase()).toString('base64');
-      const doc = await adminDb.collection('verification_cache').doc(hashed).get();
-      
+      const doc = await adminDb.collection('verification_cache').doc(this.hashEmail(email)).get();
       if (!doc.exists) return null;
-      return doc.data() as Partial<VerifyEmailResult>;
+      return doc.data() as any;
     } catch (err) {
       console.warn(`[HygieneRepo] Cache read failed for ${email}:`, err);
       return null;
     }
+  }
+
+  /**
+   * Atomically sets a "verifying" lock on an email to prevent duplicate
+   * concurrent verification requests (idempotency guard).
+   */
+  static async setVerifyingLock(email: string): Promise<void> {
+    const ref = adminDb.collection('verification_cache').doc(this.hashEmail(email));
+    await ref.set({
+      _status: 'verifying',
+      lockedAt: new Date().toISOString(),
+    }, { merge: true });
+  }
+
+  /**
+   * Checks if an email is currently being verified by another worker.
+   * Returns true if a lock exists and is less than LOCK_TTL_MS old.
+   */
+  static async isLocked(email: string): Promise<boolean> {
+    const cached = await this.getCache(email);
+    if (!cached || cached._status !== 'verifying') return false;
+    if (!cached.lockedAt) return false;
+    const elapsed = Date.now() - new Date(cached.lockedAt).getTime();
+    return elapsed < LOCK_TTL_MS;
+  }
+
+  /**
+   * Discovers emails from workspace_entities that have never been verified.
+   * Queries workspace_entities in paginated batches, extracts contact emails,
+   * and cross-references them against the verification_cache to find unchecked ones.
+   * Memory-safe and highly scalable for 10,000+ uploads.
+   */
+  static async getUncheckedEmails(limit: number = 50): Promise<string[]> {
+    const unchecked: string[] = [];
+    const processedEmails = new Set<string>();
+    
+    let lastDoc: any = null;
+    let keepQuerying = true;
+    const BATCH_SIZE = 100;
+    
+    while (keepQuerying && unchecked.length < limit) {
+      let query = adminDb.collection('workspace_entities')
+        .orderBy('email')
+        .limit(BATCH_SIZE);
+        
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
+      }
+      
+      const snapshot = await query.get();
+      if (snapshot.empty) {
+        break;
+      }
+      
+      lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      
+      const emailsInBatch = new Set<string>();
+      for (const doc of snapshot.docs) {
+        const email = doc.data().email;
+        if (email && typeof email === 'string' && email.includes('@')) {
+          const lowerEmail = email.toLowerCase().trim();
+          if (!processedEmails.has(lowerEmail)) {
+            emailsInBatch.add(lowerEmail);
+            processedEmails.add(lowerEmail);
+          }
+        }
+      }
+      
+      if (emailsInBatch.size > 0) {
+        const emailArray = Array.from(emailsInBatch);
+        // Chunk Firestore IN query (max 30 items)
+        for (let i = 0; i < emailArray.length; i += 30) {
+          const chunk = emailArray.slice(i, i + 30);
+          const hashes = chunk.map(e => this.hashEmail(e));
+          
+          const cacheSnap = await adminDb.collection('verification_cache')
+            .where('__name__', 'in', hashes)
+            .get();
+            
+          const verifiedHashes = new Set(cacheSnap.docs.map(d => d.id));
+          
+          for (const email of chunk) {
+            if (unchecked.length >= limit) {
+              keepQuerying = false;
+              break;
+            }
+            if (!verifiedHashes.has(this.hashEmail(email))) {
+              unchecked.push(email);
+            }
+          }
+        }
+      }
+      
+      if (snapshot.docs.length < BATCH_SIZE) {
+        break;
+      }
+    }
+    
+    return unchecked;
   }
 
   /**
@@ -35,15 +139,16 @@ export class ContactHygieneRepository {
     
     // We run queries in parallel to find all contact documents mapped to these emails
     const entityQueries = updates.map(async ([email, result]) => {
-      const emailLower = email.toLowerCase();
-      const hashed = Buffer.from(emailLower).toString('base64');
+      const hashed = this.hashEmail(email);
       
-      // Queue Cache Write
+      // Queue Cache Write — clear the lock and persist the result
       const cacheRef = adminDb.collection('verification_cache').doc(hashed);
       writes.push({
         ref: cacheRef,
         data: {
           ...result,
+          _status: 'complete',
+          lockedAt: null,
           lastVerifiedAt: new Date().toISOString()
         },
         isMerge: true

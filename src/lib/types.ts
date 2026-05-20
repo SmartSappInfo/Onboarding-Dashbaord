@@ -299,11 +299,8 @@ export type ContactScope = 'institution' | 'family' | 'person';
 export type EntityType = 'institution' | 'family' | 'person';
 
 /**
+ * @deprecated Migration is complete. All records use the unified entity-only model.
  * Migration status for tracking school-to-entity migration progress (Requirement 18)
- * 
- * - "legacy": Not yet migrated, still using old schools collection exclusively
- * - "migrated": Fully migrated to entities + workspace_entities model
- * - "dual-write": Transitional state where writes go to both old and new models
  */
 export type MigrationStatus = 'legacy' | 'migrated' | 'dual-write';
 
@@ -713,17 +710,7 @@ export interface School {
   taggedAt?: { [tagId: string]: string };
   taggedBy?: { [tagId: string]: string };
   /**
-   * Migration tracking field (Requirement 18)
-   * 
-   * Tracks the migration progress from the legacy schools collection to the new
-   * entities + workspace_entities model. The adapter layer uses this field to
-   * determine whether to read from the legacy schools collection or the new model.
-   * 
-   * - "legacy": Not yet migrated, still using old schools collection exclusively
-   * - "migrated": Fully migrated to entities + workspace_entities model
-   * - "dual-write": Transitional state where writes go to both old and new models
-   * 
-   * @default undefined (treated as "legacy")
+   * @deprecated Migration is complete. All records use the unified entity-only model.
    */
   migrationStatus?: MigrationStatus;
   entityId?: string; // Reference to the unified entity (for migrated schools)
@@ -1022,7 +1009,11 @@ export interface ResolvedContact {
   referee?: string;
   locationString?: string;
   zoneName?: string;
+
   // Migration tracking
+  /**
+   * @deprecated Migration is complete. All records use the unified entity-only model. Always returns 'migrated'.
+   */
   migrationStatus: MigrationStatus;
   // Legacy school data (for backward compatibility)
   schoolData?: School;

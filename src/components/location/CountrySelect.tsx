@@ -25,6 +25,7 @@ interface CountrySelectProps {
   disabled?: boolean;
   error?: boolean;
   placeholder?: string;
+  className?: string;
 }
 
 export function CountrySelect({
@@ -34,6 +35,7 @@ export function CountrySelect({
   disabled,
   error,
   placeholder = 'Select a country…',
+  className,
 }: CountrySelectProps) {
   const firestore = useFirestore();
   const [search, setSearch] = React.useState('');
@@ -97,7 +99,7 @@ export function CountrySelect({
     >
       <SelectTrigger
         className={cn(
-          'h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all',
+          className || 'h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all',
           error && 'ring-1 ring-destructive',
         )}
       >

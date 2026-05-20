@@ -52,7 +52,7 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
   }, [orgId, wsId]);
 
   const [canvas, setCanvas] = React.useState<CanvasState>(() => {
-    if (qrDesign.posterData) return qrDesign.posterData;
+    if (qrDesign?.posterData) return qrDesign.posterData;
     return {
       width: 600,
       height: 800,
@@ -234,7 +234,7 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
                     key={tpl.id}
                     onClick={() => {
                       // Apply posterData if present, or just use design colors
-                      if (tpl.design.posterData) {
+                      if (tpl?.design?.posterData) {
                         setCanvas(tpl.design.posterData);
                         setActiveTemplate(tpl.id);
                         setShowTemplates(false);
@@ -246,13 +246,20 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
                     className="group text-left p-3 border border-primary/30 rounded-2xl bg-primary/5 hover:border-primary/60 hover:shadow-md transition-all"
                   >
                     <div className="w-full aspect-[3/4] rounded-xl overflow-hidden mb-3 bg-muted/20 flex items-center justify-center">
-                      {tpl.design.posterData ? (
+                      {tpl?.design?.posterData ? (
                         <div className="text-[10px] text-muted-foreground text-center p-2">
                           <div className="font-bold text-foreground text-xs mb-1 truncate">{tpl.name}</div>
                           Poster Layout
                         </div>
                       ) : (
-                        <QRPreview data="https://smartsapp.com" design={tpl.design} size={60} />
+                        tpl?.design ? (
+                          <QRPreview data="https://smartsapp.com" design={tpl.design} size={60} />
+                        ) : (
+                          <div className="text-[10px] text-muted-foreground text-center p-2">
+                            <div className="font-bold text-foreground text-xs mb-1 truncate">{tpl.name}</div>
+                            No Design
+                          </div>
+                        )
                       )}
                     </div>
                     <p className="text-xs font-bold text-foreground truncate">{tpl.name}</p>

@@ -38,6 +38,9 @@ export function EmailHygieneHoverCardContent({
   onManualRecheck?: (email: string) => void; 
   isRechecking?: boolean; 
 }) {
+  const [localRechecking, setLocalRechecking] = React.useState(false);
+  const activeRechecking = isRechecking || localRechecking;
+  
   const status = hygiene?.verificationStatus || 'unchecked';
   const score = hygiene?.verificationScore || 0;
   
@@ -107,14 +110,21 @@ export function EmailHygieneHoverCardContent({
             size="sm" 
             variant="outline" 
             className="h-7 text-xs bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200 focus-visible:ring-2 focus-visible:ring-primary"
-            disabled={isRechecking || !onManualRecheck}
-            onClick={(e) => {
+            disabled={activeRechecking || !onManualRecheck}
+            onClick={async (e) => {
               e.preventDefault();
-              if (onManualRecheck) onManualRecheck(email);
+              if (onManualRecheck) {
+                setLocalRechecking(true);
+                try {
+                  await onManualRecheck(email);
+                } finally {
+                  setLocalRechecking(false);
+                }
+              }
             }}
           >
-            {isRechecking ? <Loader2 size={12} className="animate-spin mr-1.5" aria-live="polite" /> : <RotateCw size={12} className="mr-1.5" />}
-            {isRechecking ? 'Scanning' : 'Recheck'}
+            {activeRechecking ? <Loader2 size={12} className="animate-spin mr-1.5" aria-live="polite" /> : <RotateCw size={12} className="mr-1.5" />}
+            {activeRechecking ? 'Scanning' : 'Recheck'}
           </Button>
         </div>
       </div>

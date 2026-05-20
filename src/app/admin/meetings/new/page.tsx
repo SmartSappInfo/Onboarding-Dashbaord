@@ -613,8 +613,7 @@ export default function NewMeetingPage() {
   }
 
     return (
-        <div className="h-full overflow-y-auto">
- <div className="max-w-5xl mx-auto space-y-8 text-left">
+        <div className="w-full space-y-8 pb-24 text-left">
         
         {/* Header */}
  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
@@ -745,16 +744,13 @@ export default function NewMeetingPage() {
 
             {/* ──────── STEP 1: Configuration ──────── */}
             {currentStep === stepIndex('config') && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
- <div className="lg:col-span-2 space-y-8">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+ <div className="xl:col-span-7 space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl"><Calendar className="h-5 w-5 text-primary" /></div>
-                                    <div>
- <CardTitle className="text-lg font-semibold tracking-tight">Session Configuration</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Core institutional setup and timing.</CardDescription>
-                                    </div>
+ <CardHeader className="bg-muted/30 border-b py-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-xl"><Calendar className="h-5 w-5 text-primary" /></div>
+                                    <CardTitle className="text-lg font-semibold tracking-tight">Session Configuration</CardTitle>
                                 </div>
                             </CardHeader>
  <CardContent className="p-6 space-y-8 bg-background">
@@ -890,7 +886,7 @@ export default function NewMeetingPage() {
                     </div>
 
                     {/* Preview Sidebar */}
-                    <div className="space-y-6">
+                    <div className="xl:col-span-5 space-y-6">
                         <MeetingPreviewPanel 
                             data={{
                                 heroTitle: form.watch('heroTitle'),
@@ -902,7 +898,7 @@ export default function NewMeetingPage() {
                                 brandingEnabled: form.watch('brandingEnabled'),
                                 heroLayout: form.watch('heroLayout'),
                                 type: form.watch('type'),
-                                entityName: form.watch('entity')?.displayName,
+                                entityName: form.watch('entity')?.displayName || form.watch('brandingName'),
                                 registrationEnabled: form.watch('registrationEnabled'),
                             }}
                         />
@@ -912,16 +908,13 @@ export default function NewMeetingPage() {
 
             {/* ──────── STEP 2: Branding (V3) ──────── */}
             {currentStep === stepIndex('branding') && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
- <div className="lg:col-span-2 space-y-8">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+ <div className="xl:col-span-7 space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
-                                    <div>
- <CardTitle className="text-lg font-semibold tracking-tight">Branding & Layout</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Control logo, entity branding visibility, and hero layout mode.</CardDescription>
-                                    </div>
+ <CardHeader className="bg-muted/30 border-b py-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
+                                    <CardTitle className="text-lg font-semibold tracking-tight">Branding & Layout</CardTitle>
                                 </div>
                             </CardHeader>
  <CardContent className="p-6 space-y-8 bg-background">
@@ -1129,13 +1122,10 @@ export default function NewMeetingPage() {
 
                         {/* Hero Content Card (merged from old Step 4) */}
                         <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-muted/30 border-b pb-6">
+                            <CardHeader className="bg-muted/30 border-b py-4">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-violet-500/10 rounded-xl"><Type className="h-5 w-5 text-violet-600" /></div>
-                                    <div>
-                                        <CardTitle className="text-lg font-semibold tracking-tight">Hero Content</CardTitle>
-                                        <CardDescription className="text-xs font-medium text-left">Customize the public-facing messaging shown on the meeting page.</CardDescription>
-                                    </div>
+                                    <CardTitle className="text-lg font-semibold tracking-tight">Hero Content</CardTitle>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-6 space-y-8 bg-background">
@@ -1183,56 +1173,37 @@ export default function NewMeetingPage() {
                     </div>
 
                     {/* Live Preview (Right Column) */}
-                    <div className="space-y-6">
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden sticky top-24">
-                            <CardHeader className="bg-muted/30 border-b pb-4">
-                                <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Live Preview</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-4 space-y-3">
-                                {form.watch('logoUrl') && (
-                                    <div className="w-10 h-10 rounded-lg bg-muted/30 overflow-hidden">
-                                        <img src={form.watch('logoUrl')} alt="Logo" className="w-full h-full object-contain" />
-                                    </div>
-                                )}
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground">
-                                    {watchedType?.name || 'Meeting'}
-                                </div>
-                                <h3 className="text-lg font-semibold tracking-tight leading-tight">
-                                    {form.watch('heroTitle') || 'Hero Title Will Appear Here'}
-                                </h3>
-                                <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-4">
-                                    {form.watch('heroDescription') || 'Hero description text will appear here...'}
-                                </p>
-                                {form.watch('heroTagline') && <p className="text-[10px] font-bold text-primary tracking-wider">{form.watch('heroTagline')}</p>}
-                                {form.watch('heroImageUrl') && (
-                                    <div className="rounded-xl overflow-hidden border bg-muted/20 mt-2">
-                                        <img src={form.watch('heroImageUrl')} alt="Hero" className="w-full h-32 object-cover" />
-                                    </div>
-                                )}
-                                <div className="pt-2">
-                                    <div className="h-9 rounded-lg bg-primary/80 flex items-center justify-center">
-                                        <span className="text-[10px] font-bold text-white">{form.watch('heroCtaLabel') || (registrationEnabled ? 'Register Now' : 'Join Session')}</span>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                    <div className="xl:col-span-5 space-y-6">
+                        <MeetingPreviewPanel 
+                            data={{
+                                heroTitle: form.watch('heroTitle'),
+                                heroDescription: form.watch('heroDescription'),
+                                heroTagline: form.watch('heroTagline'),
+                                heroCtaLabel: form.watch('heroCtaLabel'),
+                                heroImageUrl: form.watch('heroImageUrl'),
+                                logoUrl: form.watch('logoUrl'),
+                                brandingEnabled: form.watch('brandingEnabled'),
+                                heroLayout: form.watch('heroLayout'),
+                                type: form.watch('type'),
+                                entityName: form.watch('entity')?.displayName || form.watch('brandingName'),
+                                registrationEnabled: form.watch('registrationEnabled'),
+                            }}
+                            className="sticky top-24"
+                        />
                     </div>
                 </div>
             )}
 
             {/* ──────── STEP 3: Registration ──────── */}
             {currentStep === stepIndex('registration') && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
- <div className="lg:col-span-2 space-y-8">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+ <div className="xl:col-span-7 space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6">
- <div className="flex items-center justify-between">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-amber-500/10 rounded-xl"><ClipboardCheck className="h-5 w-5 text-amber-600" /></div>
-                                        <div>
- <CardTitle className="text-lg font-semibold tracking-tight">Registration Engine</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Control how attendees sign up and reserve a spot.</CardDescription>
-                                        </div>
+ <CardHeader className="bg-muted/30 border-b py-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-amber-500/10 rounded-xl"><ClipboardCheck className="h-5 w-5 text-amber-600" /></div>
+                                        <CardTitle className="text-lg font-semibold tracking-tight">Registration Engine</CardTitle>
                                     </div>
                                     <FormField
                                         control={form.control}
@@ -1399,6 +1370,26 @@ export default function NewMeetingPage() {
                             )}
                         </Card>
                     </div>
+
+                    {/* Live Preview (Right Column) */}
+                    <div className="xl:col-span-5 space-y-6">
+                        <MeetingPreviewPanel 
+                            data={{
+                                heroTitle: form.watch('heroTitle'),
+                                heroDescription: form.watch('heroDescription'),
+                                heroTagline: form.watch('heroTagline'),
+                                heroCtaLabel: form.watch('heroCtaLabel'),
+                                heroImageUrl: form.watch('heroImageUrl'),
+                                logoUrl: form.watch('logoUrl'),
+                                brandingEnabled: form.watch('brandingEnabled'),
+                                heroLayout: form.watch('heroLayout'),
+                                type: form.watch('type'),
+                                entityName: form.watch('entity')?.displayName || form.watch('brandingName'),
+                                registrationEnabled: form.watch('registrationEnabled'),
+                            }}
+                            className="sticky top-24"
+                        />
+                    </div>
                 </div>
             )}
 
@@ -1417,13 +1408,10 @@ export default function NewMeetingPage() {
 
                     {/* ── Assets Card: Recording & Brochure ── */}
                     <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                        <CardHeader className="bg-muted/30 border-b pb-4">
+                        <CardHeader className="bg-muted/30 border-b py-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-500/10 rounded-xl"><Video className="h-4 w-4 text-blue-600" /></div>
-                                <div>
-                                    <CardTitle className="text-sm font-semibold tracking-tight">Meeting Assets</CardTitle>
-                                    <CardDescription className="text-[10px] font-medium text-left">Attach recording and brochure for attendees.</CardDescription>
-                                </div>
+                                <CardTitle className="text-sm font-semibold tracking-tight">Meeting Assets</CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-4 bg-background">
@@ -1448,14 +1436,11 @@ export default function NewMeetingPage() {
 
                     {/* ── Registration Webhook Card ── */}
                     <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                        <CardHeader className="bg-muted/30 border-b pb-4">
+                        <CardHeader className="bg-muted/30 border-b py-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-violet-500/10 rounded-xl"><Webhook className="h-4 w-4 text-violet-600" /></div>
-                                    <div>
-                                        <CardTitle className="text-sm font-semibold tracking-tight">Registration Webhook</CardTitle>
-                                        <CardDescription className="text-[10px] font-medium text-left">POST registrant data to an external endpoint on every signup.</CardDescription>
-                                    </div>
+                                    <CardTitle className="text-sm font-semibold tracking-tight">Registration Webhook</CardTitle>
                                 </div>
                                 <FormField control={form.control} name="registrationWebhookEnabled" render={({ field }) => (
                                     <FormItem className="flex items-center gap-2 space-y-0">
@@ -1506,13 +1491,10 @@ export default function NewMeetingPage() {
 
                     {/* ── Publish Card ── */}
                     <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                        <CardHeader className="bg-muted/30 border-b pb-6">
+                        <CardHeader className="bg-muted/30 border-b py-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-emerald-500/10 rounded-xl"><Rocket className="h-5 w-5 text-emerald-600" /></div>
-                                <div>
-                                    <CardTitle className="text-lg font-semibold tracking-tight">Launch Your Session</CardTitle>
-                                    <CardDescription className="text-xs font-medium text-left">Review and create your meeting.</CardDescription>
-                                </div>
+                                <CardTitle className="text-lg font-semibold tracking-tight">Launch Your Session</CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6 bg-background">
@@ -1618,7 +1600,6 @@ export default function NewMeetingPage() {
 
           </form>
         </FormProvider>
-      </div>
     </div>
   )
 }

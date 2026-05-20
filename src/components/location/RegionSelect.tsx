@@ -22,6 +22,7 @@ interface RegionSelectProps {
   disabled?: boolean;
   error?: boolean;
   placeholder?: string;
+  className?: string;
 }
 
 export function RegionSelect({
@@ -31,6 +32,7 @@ export function RegionSelect({
   disabled,
   error,
   placeholder = 'Select a region…',
+  className,
 }: RegionSelectProps) {
   const firestore = useFirestore();
   const { activeOrganizationId } = useTenant();
@@ -74,7 +76,7 @@ export function RegionSelect({
     >
       <SelectTrigger
         className={cn(
-          'h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all',
+          className || 'h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all',
           error && 'ring-1 ring-destructive',
           isDisabled && 'opacity-50',
         )}
