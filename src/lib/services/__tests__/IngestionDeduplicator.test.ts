@@ -101,4 +101,89 @@ describe('IngestionDeduplicator', () => {
         // Because John was primary and his phone changed, primaryPhone changes to 333
         expect(result.primaryPhone).toBe('333');
     });
+
+    it('should handle KEEP_AND_MERGE strategy correctly', () => {
+        const existingWithMissing = {
+            ...existingEntity,
+            displayName: 'Test Company',
+            primaryPhone: '', // Missing field
+            entityContacts: [
+                { id: 'c1', name: 'John', email: 'john@test.com', phone: '111', isPrimary: true, isSignatory: true, order: 0 }
+            ]
+        };
+
+        const incomingWithNull = {
+            displayName: 'New Company Name', // Conflict (should NOT overwrite)
+            primaryPhone: '0987654321', // Null in existing, should fill
+            entityContacts: [
+                { id: 'c2', name: 'John Doe', email: 'john.doe@test.com', phone: '333', isPrimary: true, isSignatory: true, order: 0 }
+            ]
+        };
+
+        const result = IngestionDeduplicator.reconcile(existingWithMissing, incomingWithNull, 'KEEP_AND_MERGE', []);
+        expect(result).not.toBeNull();
+        if (!result) return;
+
+        // Details should NOT be overwritten (existing details kept)
+        expect(result.displayName).toBe('Test Company');
+        // Missing fields should be filled
+        expect(result.primaryPhone).toBe('111'); // Wait, primaryPhone is re-derived from primary contact. Since c1 remains primary, primaryPhone is '111'.
+        
+        // Let's check contacts
+        // Existing John (c1) remains primary
+        // Incoming John Doe (c2) is appended as non-primary
+        expect(result.entityContacts).toHaveLength(2);
+        
+        const c1 = result.entityContacts.find((c: any) => c.id === 'c1');
+        expect(c1?.isPrimary).toBe(true);
+        expect(c1?.isSignatory).toBe(true);
+        expect(c1?.order).toBe(0);
+
+        const c2 = result.entityContacts.find((c: any) => c.id === 'c2');
+        expect(c2?.isPrimary).toBe(false);
+        expect(c2?.isSignatory).toBe(false);
+        expect(c2?.order).toBe(1); // sequential order
+    });
+
+    it('should handle REPLACE_AND_MERGE strategy correctly', () => {
+        const existing = {
+            ...existingEntity,
+            displayName: 'Test Company',
+            entityContacts: [
+                { id: 'c1', name: 'John', email: 'john@test.com', phone: '111', isPrimary: true, isSignatory: true, order: 0 }
+            ]
+        };
+
+        const incoming = {
+            displayName: 'Test Company Updated', // Conflict (should overwrite)
+            primaryPhone: '', // Empty in incoming, should preserve existing '1234567890'
+            entityContacts: [
+                { id: 'c2', name: 'John Doe', email: 'john.doe@test.com', phone: '333', isPrimary: true, isSignatory: true, order: 0 }
+            ]
+        };
+
+        const result = IngestionDeduplicator.reconcile(existing, incoming, 'REPLACE_AND_MERGE', []);
+        expect(result).not.toBeNull();
+        if (!result) return;
+
+        // Conflict should be overwritten
+        expect(result.displayName).toBe('Test Company Updated');
+        // Empty fields in incoming should preserve existing values
+        expect(result.primaryPhone).toBe('333'); // Re-derived from primary contact c2
+        
+        // Let's check contacts
+        // Incoming c2 becomes primary
+        // Existing c1 is demoted and appended
+        expect(result.entityContacts).toHaveLength(2);
+        
+        const c2 = result.entityContacts.find((c: any) => c.id === 'c2');
+        expect(c2?.isPrimary).toBe(true);
+        expect(c2?.isSignatory).toBe(true);
+        expect(c2?.order).toBe(0);
+
+        const c1 = result.entityContacts.find((c: any) => c.id === 'c1');
+        expect(c1?.isPrimary).toBe(false);
+        expect(c1?.isSignatory).toBe(false);
+        expect(c1?.order).toBe(1);
+    });
 });

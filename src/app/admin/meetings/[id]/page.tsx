@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { doc, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, limit, updateDoc } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
@@ -76,6 +76,7 @@ export default function MeetingDetailPage() {
   const [isTesting, setIsTesting] = React.useState(false);
   const [logDrawerOpen, setLogDrawerOpen] = React.useState(false);
   const [selectedReminderType, setSelectedReminderType] = React.useState<string | null>(null);
+  const [isTogglingRegistration, setIsTogglingRegistration] = React.useState(false);
 
   const handleCopy = (text: string, type: 'short' | 'long' | string) => {
     navigator.clipboard.writeText(text);
@@ -153,6 +154,37 @@ export default function MeetingDetailPage() {
   }, [firestore, meetingId]);
 
   const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
+
+  // Fetch registrants for real-time count
+  const registrantsColRef = useMemoFirebase(() => {
+    if (!firestore || !meetingId) return null;
+    return collection(firestore, `meetings/${meetingId}/registrants`);
+  }, [firestore, meetingId]);
+
+  const { data: registrants } = useCollection<any>(registrantsColRef);
+
+  // Derive count safely in render (zero-effect derivation)
+  const registrantsCount = registrants?.length ?? 0;
+
+  // Toggle registration status with race-condition protection
+  const handleToggleRegistration = async () => {
+    if (!meeting || !meetingDocRef || isTogglingRegistration) return;
+    setIsTogglingRegistration(true);
+    const newStatus = !(meeting.registrationEnabled ?? false);
+    try {
+      await updateDoc(meetingDocRef, { registrationEnabled: newStatus });
+      toast({
+        title: newStatus ? 'Registration Enabled' : 'Registration Disabled',
+        description: newStatus
+          ? 'Participants can now register for this meeting.'
+          : 'Registration has been turned off for this meeting.',
+      });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+    } finally {
+      setIsTogglingRegistration(false);
+    }
+  };
 
   interface ActiveSlot {
     id: string;
@@ -374,25 +406,43 @@ export default function MeetingDetailPage() {
                   </a>
                 </div>
 
-                {meeting.registrationEnabled && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">Registration</p>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="default" className="gap-1.5">
-                          <Users className="h-3 w-3" />
-                          Enabled
-                        </Badge>
-                        {meeting.capacityLimit && meeting.capacityLimit > 0 && (
-                          <span className="text-sm text-muted-foreground">
-                            Capacity: {meeting.capacityLimit}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
+                <Separator />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Registration</p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleToggleRegistration}
+                      disabled={isTogglingRegistration}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed ring-1 ${
+                        (meeting.registrationEnabled ?? false)
+                          ? 'bg-blue-600/10 text-blue-600 dark:text-blue-400 ring-blue-500/20 hover:bg-blue-600/20'
+                          : 'bg-muted/80 text-muted-foreground ring-border/60 hover:bg-muted'
+                      }`}
+                    >
+                      {isTogglingRegistration ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Users className="h-3 w-3" />
+                      )}
+                      {(meeting.registrationEnabled ?? false) ? 'Enabled' : 'Disabled'}
+                    </button>
+
+                    <Link
+                      href={`/admin/meetings/${meetingId}/registrants`}
+                      className="inline-flex items-center gap-1.5 text-sm font-bold text-foreground hover:text-primary transition-colors duration-150 hover:underline underline-offset-4"
+                    >
+                      {registrantsCount}
+                      <span className="text-xs font-medium text-muted-foreground">registrants</span>
+                    </Link>
+
+                    {meeting.capacityLimit && meeting.capacityLimit > 0 ? (
+                      <span className="text-xs font-medium text-muted-foreground">
+                        / {meeting.capacityLimit} capacity
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

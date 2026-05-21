@@ -363,9 +363,6 @@ export async function mapSchoolToSaaSEntity(school: School): Promise<Entity> {
     industry: 'SaaS',
     industryData: saasIndustryData,
     financeData,
-    // Migration tracking
-    migrationStatus: school.migrationStatus || 'legacy',
-    legacySchoolId: school.id,
   };
 
   return entity;
@@ -476,43 +473,7 @@ export async function getEntity(
   if (!entityId) return null;
 
   try {
-    // Determine migration status if not provided
-    let status = migrationStatus;
-    if (!status) {
-      // Try to read from entities first to check migration status
-      const entity = await readFromEntities(entityId);
-      if (entity) {
-        status = entity.migrationStatus || 'migrated';
-      } else {
-        // If not in entities, assume legacy
-        status = 'legacy';
-      }
-    }
-
-    // Branch on migration status (Requirement 11.8–11.10)
-    switch (status) {
-      case 'legacy':
-        // Read from schools collection only
-        return await readFromLegacySchools(entityId);
-
-      case 'dual-write':
-        // Read from entities with fallback to schools
-        const entityFromNew = await readFromEntities(entityId);
-        if (entityFromNew) {
-          return entityFromNew;
-        }
-        // Fallback to legacy schools collection
-        // If entity has legacySchoolId, use it; otherwise use entityId
-        return await readFromLegacySchools(entityId);
-
-      case 'migrated':
-        // Read from entities only
-        return await readFromEntities(entityId);
-
-      default:
-        console.warn(`[ADAPTER] Unknown migration status: ${status}`);
-        return await readFromEntities(entityId);
-    }
+    return await readFromEntities(entityId);
   } catch (error: any) {
     console.error(`[ADAPTER] Failed to get entity ${entityId}:`, error.message);
     return null;

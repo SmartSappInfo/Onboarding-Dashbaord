@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { collection, doc, deleteDoc, query, where, orderBy, updateDoc, getDoc } from 'firebase/firestore';
@@ -13,7 +13,12 @@ import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';
 import { useEntityFilters, DEFAULT_FILTERS, type DirectoryFilterState } from './hooks/useEntityFilters';
 import { InterestFilterSelect } from './components/InterestFilterSelect';
 import { getContactsByTagsAction } from '@/lib/tag-actions';
-import { deleteEntityPermanentlyAction } from '@/lib/workspace-entity-actions';
+import { 
+  deleteEntityPermanentlyAction, 
+  bulkArchiveEntitiesAction, 
+  bulkDeleteEntitiesAction 
+} from '@/lib/workspace-entity-actions';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -125,6 +130,8 @@ export default function EntitiesClient() {
   const [changingStatusEntity, setChangingStatusEntity] = useState<WorkspaceEntity | null>(null);
   const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
   const [managingWorkspacesEntity, setManagingWorkspacesEntity] = useState<WorkspaceEntity | null>(null);
+  const [isBulkArchiveOpen, setIsBulkArchiveOpen] = useState(false);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   const [isScanning, setIsScanning] = useState(false);
   const [scanProcessed, setScanProcessed] = useState(0);
@@ -484,6 +491,90 @@ export default function EntitiesClient() {
     } finally {
       setIsPermanentDeleting(false);
     }
+  };
+
+  const [isBulkArchiving, startBulkArchiveTransition] = useTransition();
+  const [isBulkDeleting, startBulkDeleteTransition] = useTransition();
+
+  const handleBulkArchive = () => {
+    if (selectedEntityIds.length === 0 || !currentUser) return;
+    if (!canEdit) {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'You do not have permissions to edit/archive these records.',
+      });
+      return;
+    }
+
+    startBulkArchiveTransition(async () => {
+      try {
+        const result = await bulkArchiveEntitiesAction({
+          workspaceEntityIds: selectedEntityIds,
+          userId: currentUser.uid,
+          userName: currentUser.displayName || undefined,
+          userEmail: currentUser.email || undefined,
+        });
+
+        if (result.success) {
+          toast({
+            title: 'Bulk Archiving Complete',
+            description: `${result.count} selected records have been archived successfully.`,
+          });
+          clearSelection();
+          setIsBulkArchiveOpen(false);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (e: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Bulk Archive Failed',
+          description: e.message,
+        });
+      }
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedEntityIds.length === 0 || !currentUser) return;
+    if (!canDelete) {
+      toast({
+        variant: 'destructive',
+        title: 'Permission Denied',
+        description: 'You do not have administrative permissions to delete records permanently.',
+      });
+      return;
+    }
+
+    startBulkDeleteTransition(async () => {
+      try {
+        const result = await bulkDeleteEntitiesAction({
+          workspaceEntityIds: selectedEntityIds,
+          userId: currentUser.uid,
+          userName: currentUser.displayName || undefined,
+          userEmail: currentUser.email || undefined,
+          purgeRootEntity: true,
+        });
+
+        if (result.success) {
+          toast({
+            title: 'Bulk Deletion Complete',
+            description: `${result.count} selected records have been permanently purged.`,
+          });
+          clearSelection();
+          setIsBulkDeleteOpen(false);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (e: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Bulk Delete Failed',
+          description: e.message,
+        });
+      }
+    });
   };
 
     return (
@@ -895,6 +986,19 @@ export default function EntitiesClient() {
 
                     {/* Data Table */}
                     <div className={cn("border border-border bg-muted/30 overflow-hidden", selectedCount > 0 ? "rounded-b-2xl border-t-0" : "rounded-2xl")}>
+                        {/* Top Pagination */}
+                        <BentoPagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          totalRecords={sortedEntities.length}
+                          pageSize={pageSize}
+                          onPageChange={setCurrentPage}
+                          onPageSizeChange={(size) => {
+                            setPageSize(size);
+                            setCurrentPage(1);
+                          }}
+                          className="border-t-0 border-b bg-card/40"
+                        />
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-transparent">
@@ -1120,6 +1224,40 @@ export default function EntitiesClient() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <AlertDialog open={isBulkArchiveOpen} onOpenChange={setIsBulkArchiveOpen}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="font-semibold">Archive Selected?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will archive the <span className="font-bold">{selectedEntityIds.length}</span> selected {selectedEntityIds.length === 1 ? singular : plural}. You can restore them later from the Archived status filter.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl" disabled={isBulkArchiving}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkArchive} disabled={isBulkArchiving} className="bg-amber-600 text-white hover:bg-amber-700 rounded-xl font-bold gap-2">
+                            {isBulkArchiving ? 'Archiving…' : `Archive ${selectedEntityIds.length} ${selectedEntityIds.length === 1 ? singular : plural}`}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="font-semibold text-destructive">Permanently Delete Selected?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will <span className="font-bold text-foreground">irreversibly purge</span> the <span className="font-bold">{selectedEntityIds.length}</span> selected {selectedEntityIds.length === 1 ? singular : plural} and all associated data. Only previously archived records can be deleted. Core identity records will be purged if they belong to no other workspace. This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl" disabled={isBulkDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} disabled={isBulkDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold gap-2">
+                            {isBulkDeleting ? 'Deleting…' : `⚠ Delete ${selectedEntityIds.length} ${selectedEntityIds.length === 1 ? singular : plural} Forever`}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             
             <BulkScanProgress 
                 isScanning={isScanning} 
@@ -1208,6 +1346,8 @@ export default function EntitiesClient() {
               onInitiateDeals={() => setIsBulkDealOpen(true)}
               onCreateTasks={() => setIsBulkTaskOpen(true)}
               onInviteMeetings={() => setIsBulkMeetingOpen(true)}
+              onArchive={() => setIsBulkArchiveOpen(true)}
+              onDelete={() => setIsBulkDeleteOpen(true)}
             />
 
             {managingWorkspacesEntity && (

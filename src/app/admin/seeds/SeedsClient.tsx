@@ -4,13 +4,14 @@ import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Zap, Loader2, ShieldCheck, Mail, CalendarDays } from 'lucide-react';
+import { Zap, Loader2, ShieldCheck, Mail, CalendarDays, Database, Trash2 } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { seedNativeFieldsAction } from '@/lib/fields-actions';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
 import { useTenant } from '@/context/TenantContext';
 import { runMeetingsFerAction } from '@/app/actions/run-meetings-fer-action';
+import { clearAllImportLogsAction } from '@/app/actions/clear-import-logs-action';
 
 export default function SeedsClient() {
     const { user } = useUser();
@@ -19,6 +20,7 @@ export default function SeedsClient() {
     const [isSeeding, setIsSeeding] = React.useState(false);
     const [isSeedingTemplates, setIsSeedingTemplates] = React.useState(false);
     const [isSeedingMeetings, setIsSeedingMeetings] = React.useState(false);
+    const [isClearingLogs, setIsClearingLogs] = React.useState(false);
 
     const handleSeedMeetings = async () => {
         if (!activeWorkspaceId || !activeOrganizationId) return;
@@ -45,6 +47,37 @@ export default function SeedsClient() {
             });
         }
         setIsSeedingMeetings(false);
+    };
+
+    const handleClearLogs = async () => {
+        if (!user?.uid) return;
+        if (!window.confirm('WARNING: This will permanently delete all bulk import logs, pending queues, validation failure records, and duplicate resolution entries across all workspaces. This action is irreversible. Do you wish to proceed?')) {
+            return;
+        }
+
+        setIsClearingLogs(true);
+        try {
+            const result = await clearAllImportLogsAction(user.uid);
+            if (result.success) {
+                toast({
+                    title: 'Import Logs Purged',
+                    description: `Successfully cleared ${result.deletedLogsCount} bulk import logs and ${result.deletedSubdocsCount} associated subcollection documents.`,
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Purge Failed',
+                    description: result.error || 'Failed to clear import logs.',
+                });
+            }
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Execution Error',
+                description: error.message || 'An error occurred during log purging.',
+            });
+        }
+        setIsClearingLogs(false);
     };
 
     const handleSeed = async () => {
@@ -217,6 +250,46 @@ export default function SeedsClient() {
                                         <CalendarDays className="h-4 w-4 mr-2" />
                                     )}
                                     {isSeedingMeetings ? 'Migrating...' : 'Run FER Migration'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Clear Import Logs Card */}
+                    <Card className="border-amber-200/50 bg-amber-500/[0.02] overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Database className="h-24 w-24 text-amber-600" />
+                        </div>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Data Cleanup & Maintenance</span>
+                            </div>
+                            <CardTitle className="text-xl text-amber-950 dark:text-amber-100">Purge Bulk Import Logs</CardTitle>
+                            <CardDescription className="max-w-2xl text-amber-900/70 dark:text-amber-300/70">
+                                Permanently delete all bulk ingestion histories, queued items, validation failures, and duplicate resolution profiles across all workspaces.
+                                This is a destructive administrative utility used to clean up storage and reset upload state.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                                <div className="flex flex-wrap gap-2">
+                                    <Badge variant="outline" className="bg-white/50 border-amber-200 text-amber-700 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-300">Validation Logs</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-amber-200 text-amber-700 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-300">Conflict Profiles</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-amber-200 text-amber-700 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-300">Irreversible</Badge>
+                                </div>
+                                <Button 
+                                    onClick={handleClearLogs} 
+                                    disabled={isClearingLogs}
+                                    variant="destructive"
+                                    className="min-w-[160px] shadow-lg shadow-red-200 dark:shadow-none"
+                                >
+                                    {isClearingLogs ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                    )}
+                                    {isClearingLogs ? 'Purging...' : 'Purge Import Logs'}
                                 </Button>
                             </div>
                         </CardContent>

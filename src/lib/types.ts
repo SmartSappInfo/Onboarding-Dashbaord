@@ -199,6 +199,10 @@ export type AutomationTrigger =
   | 'CAMPAIGN_PAGE_SUBMITTED'
   | 'FORM_SUBMITTED'
   | 'ENTITY_CREATED'
+  | 'DEAL_CREATED'
+  | 'DEAL_STAGE_CHANGED'
+  | 'DEAL_STATUS_CHANGED'
+  | 'DEAL_VALUE_CHANGED'
   // Phase 6: Campaign engagement triggers
   | 'CAMPAIGN_DELIVERED'
   | 'CAMPAIGN_FAILED'
@@ -845,10 +849,6 @@ export interface Entity {
   industry?: IndustryVertical;
   industryData?: IndustryData;
   
-  // Migration fields (Requirement 12)
-  migrationStatus?: 'legacy' | 'migrated' | 'dual-write';
-  legacySchoolId?: string;
-  
   // Reserved for future cross-entity relationships
   relatedEntityIds?: string[];
 
@@ -956,7 +956,8 @@ export interface Deal {
     name: string | null;
     email: string | null;
   } | null;
-  expectedCloseDate?: string;
+  expectedCloseDate?: string | null;
+  description?: string | null;
   customFields?: Record<string, any>; // Persists across workspaces
   createdAt: string;
   updatedAt: string;

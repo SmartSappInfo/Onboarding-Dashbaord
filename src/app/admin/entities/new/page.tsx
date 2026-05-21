@@ -26,7 +26,7 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Layout, Camera, AlertTriangle } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Layout, Camera, AlertTriangle, Share2, Globe, Hash, Network, Phone as PhoneIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 
@@ -63,6 +63,10 @@ import { LocationCascade } from '@/components/location/LocationCascade';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
+// Deal opportunity integration
+import { DealOpportunityCard, type DealConfig } from '../components/DealOpportunityCard';
+import { createDeal } from '@/app/actions/deal-actions';
+
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Required name must be at least 2 characters.' }),
   initials: z.string().optional(),
@@ -83,6 +87,7 @@ const formSchema = z.object({
   }).optional(),
   locationString: z.string().optional(),
   workspaceTags: z.array(z.string()).optional().default([]),
+  capacity: z.coerce.number().optional().default(0),
 
   // ── Narrative Fields (non-required, all industries) ──────────────────────
   currentNeeds: z.string().optional(),
@@ -110,6 +115,22 @@ const formSchema = z.object({
   subscriptionPackageId: z.string().optional().nullable(),
   subscriptionRate: z.coerce.number().default(0),
   discountPercentage: z.coerce.number().min(0).max(100).default(0),
+  arrearsBalance: z.coerce.number().default(0),
+  creditBalance: z.coerce.number().default(0),
+
+  // Online Presence
+  op_website: z.string().optional(),
+  op_digitalAddress: z.string().optional(),
+  op_googleMapLocation: z.string().optional(),
+  op_googleBusinessProfile: z.string().optional(),
+  op_facebook: z.string().optional(),
+  op_whatsapp: z.string().optional(),
+  op_linkedin: z.string().optional(),
+  op_pinterest: z.string().optional(),
+  op_instagram: z.string().optional(),
+  op_tiktok: z.string().optional(),
+  op_youtube: z.string().optional(),
+  op_x: z.string().optional(),
 
   // Person fields
   firstName: z.string().optional(),
@@ -118,6 +139,24 @@ const formSchema = z.object({
   jobTitle: z.string().optional(),
   leadSource: z.string().optional(),
   customData: z.record(z.any()).optional(),
+
+  // Deal creation fields (optional/conditional)
+  createDeal: z.boolean().default(false),
+  dealPipelineId: z.string().optional(),
+  dealStageId: z.string().optional(),
+  dealName: z.string().optional(),
+  dealValue: z.coerce.number().optional().default(0),
+  dealExpectedCloseDate: z.string().optional(),
+  dealSuppressAutomations: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  if (data.createDeal) {
+    if (!data.dealPipelineId) {
+      ctx.addIssue({ code: 'custom', path: ['dealPipelineId'], message: 'Select a pipeline.' });
+    }
+    if (!data.dealStageId) {
+      ctx.addIssue({ code: 'custom', path: ['dealStageId'], message: 'Select a stage.' });
+    }
+  }
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -176,6 +215,36 @@ export default function NewEntityPage() {
   }, [firestore, activeWorkspaceId]);
   const { data: fieldGroups } = useCollection<any>(groupsQuery);
 
+  // Deal opportunity queries
+  const pipelinesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'pipelines'), orderBy('name', 'asc'));
+  }, [firestore]);
+  const { data: pipelines } = useCollection<any>(pipelinesQuery);
+
+  const stagesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'onboardingStages'), orderBy('order', 'asc'));
+  }, [firestore]);
+  const { data: stages } = useCollection<any>(stagesQuery);
+
+  // Deal opportunity state
+  const [dealConfig, setDealConfig] = React.useState<DealConfig>({
+    enabled: false,
+    pipelineId: '',
+    stageId: '',
+    name: '',
+    value: 0,
+    expectedCloseDate: '',
+    suppressAutomations: false,
+  });
+
+  const dealNameManuallyEdited = React.useRef(false);
+
+  const setDealConfigPatch = React.useCallback((patch: Partial<DealConfig>) => {
+    setDealConfig(prev => ({ ...prev, ...patch }));
+  }, []);
+
   const methods = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -188,6 +257,7 @@ export default function NewEntityPage() {
       location: {},
       locationString: '',
       workspaceTags: [],
+      capacity: 0,
 
       entityContacts: [{ name: '', email: '', phone: '', typeKey: 'administrator', typeLabel: 'Administrator', isSignatory: true, isPrimary: true }],
       modules: [],
@@ -195,12 +265,36 @@ export default function NewEntityPage() {
       currency: 'GHS',
       subscriptionRate: 0,
       discountPercentage: 0,
+      arrearsBalance: 0,
+      creditBalance: 0,
+
+      op_website: '',
+      op_digitalAddress: '',
+      op_googleMapLocation: '',
+      op_googleBusinessProfile: '',
+      op_facebook: '',
+      op_whatsapp: '',
+      op_linkedin: '',
+      op_pinterest: '',
+      op_instagram: '',
+      op_tiktok: '',
+      op_youtube: '',
+      op_x: '',
 
       subscriptionPackageId: null,
       customData: {},
       currentNeeds: '',
       currentChallenges: '',
       interests: '',
+
+      // Deal creation default values
+      createDeal: false,
+      dealPipelineId: '',
+      dealStageId: '',
+      dealName: '',
+      dealValue: 0,
+      dealExpectedCloseDate: '',
+      dealSuppressAutomations: false,
     },
   });
 
@@ -234,6 +328,24 @@ export default function NewEntityPage() {
         methods.setValue('initials', initials, { shouldValidate: true, shouldDirty: false });
     }
   }, [watchName, methods]);
+
+  // Auto-sync deal name from entity name
+  React.useEffect(() => {
+    if (!dealNameManuallyEdited.current) {
+      setDealConfig(prev => ({ ...prev, name: watchName || '' }));
+    }
+  }, [watchName]);
+
+  // Sync local dealConfig into react-hook-form values for cross-field Zod validation
+  React.useEffect(() => {
+    methods.setValue('createDeal', dealConfig.enabled);
+    methods.setValue('dealPipelineId', dealConfig.pipelineId);
+    methods.setValue('dealStageId', dealConfig.stageId);
+    methods.setValue('dealName', dealConfig.name);
+    methods.setValue('dealValue', dealConfig.value);
+    methods.setValue('dealExpectedCloseDate', dealConfig.expectedCloseDate);
+    methods.setValue('dealSuppressAutomations', dealConfig.suppressAutomations);
+  }, [dealConfig, methods]);
 
   React.useEffect(() => {
       if (user && methods.getValues('assignedToId') === 'unassigned') {
@@ -299,7 +411,25 @@ export default function NewEntityPage() {
         subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
         subscriptionRate: data.subscriptionRate,
         discountPercentage: data.discountPercentage,
-
+        arrearsBalance: data.arrearsBalance || 0,
+        creditBalance: data.creditBalance || 0,
+      };
+      entityPayload.industryData = {
+        capacity: data.capacity ?? 0,
+      };
+      entityPayload.onlinePresence = {
+        ...(data.op_website ? { website: data.op_website } : {}),
+        ...(data.op_digitalAddress ? { digitalAddress: data.op_digitalAddress } : {}),
+        ...(data.op_googleMapLocation ? { googleMapLocation: data.op_googleMapLocation } : {}),
+        ...(data.op_googleBusinessProfile ? { googleBusinessProfile: data.op_googleBusinessProfile } : {}),
+        ...(data.op_facebook ? { facebook: data.op_facebook } : {}),
+        ...(data.op_whatsapp ? { whatsapp: data.op_whatsapp } : {}),
+        ...(data.op_linkedin ? { linkedin: data.op_linkedin } : {}),
+        ...(data.op_pinterest ? { pinterest: data.op_pinterest } : {}),
+        ...(data.op_instagram ? { instagram: data.op_instagram } : {}),
+        ...(data.op_tiktok ? { tiktok: data.op_tiktok } : {}),
+        ...(data.op_youtube ? { youtube: data.op_youtube } : {}),
+        ...(data.op_x ? { x: data.op_x } : {}),
       };
     } else if (contactScope === 'person') {
       entityPayload.personData = {
@@ -335,6 +465,32 @@ export default function NewEntityPage() {
       );
       
       if (result.success) {
+        // Create Deal Opportunity if enabled (Phase 1 / Risk 7 implementation)
+        if (dealConfig.enabled) {
+          const selectedStage = stages?.find(s => s.id === dealConfig.stageId);
+          const dealResult = await createDeal({
+            entityId: result.id!,
+            pipelineId: dealConfig.pipelineId,
+            stageId: dealConfig.stageId,
+            stageName: selectedStage?.name || '',
+            name: dealConfig.name || data.name,
+            value: dealConfig.value || 0,
+            expectedCloseDate: dealConfig.expectedCloseDate || null,
+            workspaceId: activeWorkspaceId,
+            organizationId: activeOrganizationId || 'smartsapp-hq',
+            assignedTo,
+            suppressAutomations: dealConfig.suppressAutomations,
+          }).catch(err => ({ error: err.message }));
+
+          if (dealResult.error) {
+            toast({
+              variant: 'destructive',
+              title: 'Deal Not Created',
+              description: 'Entity saved. The deal could not be added — try from the Pipeline view.'
+            });
+          }
+        }
+
         toast({ title: 'Record Initialized', description: `${data.name} created successfully.` });
         router.push('/admin/entities');
       } else if (result.isDuplicate) {
@@ -369,13 +525,13 @@ export default function NewEntityPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
               <div className="lg:col-span-2 space-y-8 text-left">
                 {/* Hub Authorization Card */}
- <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
- <CardHeader className="bg-primary/10 border-b p-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-card rounded-xl shadow-sm text-primary text-left"><Layout className="h-4 w-4" /></div>
- <CardTitle className="text-sm font-semibold tracking-tight text-left">Hub Authorization</CardTitle>
-                        </div>
-                    </CardHeader>
+ <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+  <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <Layout className="h-4 w-4 text-primary" />
+ <CardTitle className="text-sm font-semibold tracking-tight">Hub Authorization</CardTitle>
+ </div>
+ </CardHeader>
  <CardContent className="p-6 space-y-4 text-left">
  <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2 text-left">
  <Zap className="h-3 w-3" /> Targeted Workspaces
@@ -398,22 +554,20 @@ export default function NewEntityPage() {
                     </CardContent>
                 </Card>
 
- <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
- <CardHeader className="bg-card/20 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left">
- <Building className="h-5 w-5 text-primary" />
-                        </div>
- <CardTitle className="text-lg font-semibold tracking-tight text-left">General Identity</CardTitle>
-                    </div>
-                  </CardHeader>
+ <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+  <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <Building className="h-4 w-4 text-primary" />
+ <CardTitle className="text-sm font-semibold tracking-tight">General Identity</CardTitle>
+ </div>
+ </CardHeader>
  <CardContent className="p-6 space-y-8 text-left">
  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
                       <FormField control={methods.control} name="name" render={({ field }) => (
- <FormItem className="md:col-span-2 text-left"><FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Official Name</FormLabel><FormControl><Input placeholder={`${singular} name...`} {...field} className="h-12 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" /></FormControl><FormMessage /></FormItem>
+ <FormItem className="md:col-span-2 text-left"><FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Official Name</FormLabel><FormControl><Input placeholder={`${singular} name...`} {...field} className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-bold text-lg" /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={methods.control} name="initials" render={({ field }) => (
- <FormItem className="text-left"><FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Initials</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-center" /></FormControl><FormMessage /></FormItem>
+ <FormItem className="text-left"><FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Initials</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-center" /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
 
@@ -421,7 +575,7 @@ export default function NewEntityPage() {
                         <FormField control={methods.control} name="status" render={({ field }) => (
  <FormItem className="text-left"><FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">{termStatus}</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
- <FormControl><SelectTrigger className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"><SelectValue /></SelectTrigger></FormControl>
+ <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-bold"><SelectValue /></SelectTrigger></FormControl>
  <SelectContent className="rounded-xl shadow-2xl border-none">
  <SelectItem value="active" className="font-bold">Active</SelectItem>
  <SelectItem value="inactive" className="font-bold">Inactive</SelectItem>
@@ -433,7 +587,7 @@ export default function NewEntityPage() {
                         <FormField control={methods.control} name="lifecycleStatus" render={({ field }) => (
  <FormItem className="text-left"><FormLabel className="text-[10px] font-semibold text-primary ml-1">Operational State</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
- <FormControl><SelectTrigger className="h-11 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold"><SelectValue /></SelectTrigger></FormControl>
+ <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-semibold text-primary"><SelectValue /></SelectTrigger></FormControl>
  <SelectContent className="rounded-xl shadow-2xl border-none">
                                         {(activeWorkspace?.statuses || []).map(s => (
  <SelectItem key={s.value} value={s.value} className="font-semibold">{s.label}</SelectItem>
@@ -458,7 +612,7 @@ export default function NewEntityPage() {
  <div className="space-y-2 text-left">
  <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Vision / Motto</Label>
                         <FormField control={methods.control} name="slogan" render={({ field }) => (
- <FormItem className="text-left"><FormControl><Input placeholder="e.g. Forward Ever" {...field} className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 italic font-medium" /></FormControl><FormMessage /></FormItem>
+ <FormItem className="text-left"><FormControl><Input placeholder="e.g. Forward Ever" {...field} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium italic" /></FormControl><FormMessage /></FormItem>
                         )} />
                     </div>
 
@@ -472,16 +626,13 @@ export default function NewEntityPage() {
                 </Card>
 
                 {/* Financial Profile Card */}
- <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
- <CardHeader className="bg-card/20 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><Banknote className="h-5 w-5 text-primary" /></div>
- <div className="text-left">
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Financial Configuration</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Initial billing rules and effective termly rates.</CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
+ <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+  <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <Banknote className="h-4 w-4 text-primary" />
+ <CardTitle className="text-sm font-semibold tracking-tight">Financial Configuration</CardTitle>
+ </div>
+ </CardHeader>
  <CardContent className="p-6 space-y-8 text-left">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                             <FormField control={methods.control} name="subscriptionPackageId" render={({ field, fieldState }) => (
@@ -507,7 +658,7 @@ export default function NewEntityPage() {
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Billing Currency</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
- <SelectTrigger className="h-12 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+ <SelectTrigger className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-bold">
                                                 <SelectValue />
                                             </SelectTrigger>
                                         </FormControl>
@@ -523,7 +674,7 @@ export default function NewEntityPage() {
                         {/* Rate and Discount Adjustment */}
  <div className={cn(
                             "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500 text-left",
-                            watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-background/50 border-border opacity-40 pointer-events-none"
+                            watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-border opacity-40 pointer-events-none"
                         )}>
  <div className="flex items-center gap-3 mb-6 text-left">
  <div className="p-2 bg-primary text-white rounded-lg shadow-sm text-left"><Target className="h-4 w-4" /></div>
@@ -544,7 +695,7 @@ export default function NewEntityPage() {
                                                     field.onChange(val);
                                                     handleDiscountChange(val);
                                                 }}
- className="h-12 rounded-xl bg-background/50 border-primary/10 shadow-inner font-semibold text-xl text-center" 
+ className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-xl text-center" 
                                             />
                                         </FormControl>
  <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Grant a reduction for this record</FormDescription>
@@ -563,7 +714,7 @@ export default function NewEntityPage() {
                                                     field.onChange(val);
                                                     handleRateChange(val);
                                                 }}
- className="h-12 rounded-xl bg-background/50 border-primary/10 shadow-inner font-semibold text-xl text-center" 
+ className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-xl text-center" 
                                             />
                                         </FormControl>
  <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Effective rate billed per unit</FormDescription>
@@ -576,23 +727,53 @@ export default function NewEntityPage() {
  <FormItem className="text-left">
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Detailed Billing Address</FormLabel>
                                 <FormControl>
- <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-background/50 border-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
+ <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
 
+                        {/* Capacity & Ledger */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                            <FormField control={methods.control} name="capacity" render={({ field }) => (
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><Hash className="h-3 w-3" /> Capacity</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" {...field} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-center" />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] font-bold opacity-60 text-left">Total unit capacity</FormDescription>
+                                </FormItem>
+                            )} />
+                            <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-semibold text-rose-500 ml-1 flex items-center gap-1.5 text-left"><Wallet className="h-3 w-3" /> Arrears</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-center" />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] font-bold opacity-60 text-left">Outstanding balance owed</FormDescription>
+                                </FormItem>
+                            )} />
+                            <FormField control={methods.control} name="creditBalance" render={({ field }) => (
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-semibold text-emerald-600 ml-1 flex items-center gap-1.5 text-left"><CreditCard className="h-3 w-3" /> Credit</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-center" />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] font-bold opacity-60 text-left">Advance credit on file</FormDescription>
+                                </FormItem>
+                            )} />
+                        </div>
 
                     </CardContent>
                 </Card>
 
- <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
- <CardHeader className="bg-card/20 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><UserCheck className="h-5 w-5 text-primary" /></div>
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Account Ownership</CardTitle>
-                        </div>
-                    </CardHeader>
+ <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+  <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <UserCheck className="h-4 w-4 text-primary" />
+ <CardTitle className="text-sm font-semibold tracking-tight">Account Ownership</CardTitle>
+ </div>
+ </CardHeader>
  <CardContent className="p-6 text-left">
                         <FormField control={methods.control} name="assignedToId" render={({ field, fieldState }) => (
  <FormItem className="text-left">
@@ -610,28 +791,25 @@ export default function NewEntityPage() {
                     </CardContent>
                 </Card>
 
- <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
- <CardHeader className="bg-card/20 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><User className="h-5 w-5 text-primary" /></div>
- <div className="text-left">
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Administrative Stakeholders</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Primary directory of entity contacts.</CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
+ <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+  <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <User className="h-4 w-4 text-primary" />
+ <CardTitle className="text-sm font-semibold tracking-tight">Administrative Stakeholders</CardTitle>
+ </div>
+ </CardHeader>
  <CardContent className="p-6 text-left">
                         <EntityContactManager />
                     </CardContent>
                 </Card>
 
- <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
- <CardHeader className="bg-card/20 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><Plus className="h-5 w-5 text-primary" /></div>
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Interests</CardTitle>
-                        </div>
-                    </CardHeader>
+ <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+  <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <Plus className="h-4 w-4 text-primary" />
+ <CardTitle className="text-sm font-semibold tracking-tight">Interests</CardTitle>
+ </div>
+ </CardHeader>
  <CardContent className="p-6 space-y-6 text-left">
                         <FormField control={methods.control} name="modules" render={({ field }) => (
  <FormItem className="text-left">
@@ -647,7 +825,7 @@ export default function NewEntityPage() {
                             <FormItem className="text-left">
                                 <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Interests (Text)</FormLabel>
                                 <FormControl>
-                                    <Input {...field} placeholder="e.g. Technology, Sports, Arts..." className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" />
+                                    <Input {...field} placeholder="e.g. Technology, Sports, Arts..." className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" />
                                 </FormControl>
                                 <FormDescription className="text-[9px] font-bold opacity-60 text-left">Comma-separated list of areas of interest.</FormDescription>
                                 <FormMessage />
@@ -657,22 +835,19 @@ export default function NewEntityPage() {
                 </Card>
 
                 {/* Current Situation Card */}
-                <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
-                    <CardHeader className="bg-card/20 border-b pb-6 text-left">
-                        <div className="flex items-center gap-3 text-left">
-                            <div className="p-2 bg-amber-500/10 rounded-xl text-left"><Target className="h-5 w-5 text-amber-600" /></div>
-                            <div className="text-left">
-                                <CardTitle className="text-lg font-semibold tracking-tight text-left">Current Situation</CardTitle>
-                                <CardDescription className="text-xs font-medium text-left">Discovery notes for sales & pipeline context.</CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
+                <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+                     <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <Target className="h-4 w-4 text-amber-600" />
+ <CardTitle className="text-sm font-semibold tracking-tight">Current Situation</CardTitle>
+ </div>
+ </CardHeader>
                     <CardContent className="p-6 space-y-6 text-left">
                         <FormField control={methods.control} name="currentNeeds" render={({ field }) => (
                             <FormItem className="text-left">
                                 <FormLabel className="text-[10px] font-semibold text-amber-600 ml-1 text-left">Current Needs</FormLabel>
                                 <FormControl>
-                                    <Textarea {...field} placeholder="What is this entity actively looking for or needing right now?" className="min-h-[90px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
+                                    <Textarea {...field} placeholder="What is this entity actively looking for or needing right now?" className="min-h-[90px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -681,7 +856,7 @@ export default function NewEntityPage() {
                             <FormItem className="text-left">
                                 <FormLabel className="text-[10px] font-semibold text-rose-600 ml-1 text-left">Current Challenges</FormLabel>
                                 <FormControl>
-                                    <Textarea {...field} placeholder="What pain points or obstacles is this entity facing?" className="min-h-[90px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
+                                    <Textarea {...field} placeholder="What pain points or obstacles is this entity facing?" className="min-h-[90px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -689,15 +864,111 @@ export default function NewEntityPage() {
                     </CardContent>
                 </Card>
 
+                {/* Online Presence Card */}
+                <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+                     <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <Globe className="h-4 w-4 text-primary" />
+ <CardTitle className="text-sm font-semibold tracking-tight">Online Presence</CardTitle>
+ </div>
+ </CardHeader>
+                    <CardContent className="p-6 space-y-6 text-left">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                            <FormField control={methods.control} name="op_website" render={({ field }) => (
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><Globe className="h-3 w-3" /> Website</FormLabel>
+                                    <FormControl><Input {...field} placeholder="https://example.com" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={methods.control} name="op_digitalAddress" render={({ field }) => (
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><Hash className="h-3 w-3" /> Digital Address</FormLabel>
+                                    <FormControl><Input {...field} placeholder="e.g. GA-000-0000" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={methods.control} name="op_googleMapLocation" render={({ field }) => (
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><MapPin className="h-3 w-3" /> Google Map Link</FormLabel>
+                                    <FormControl><Input {...field} placeholder="https://maps.google.com/..." className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={methods.control} name="op_googleBusinessProfile" render={({ field }) => (
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><Network className="h-3 w-3" /> Google Business</FormLabel>
+                                    <FormControl><Input {...field} placeholder="Google Business Profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
+
+                        <div className="pt-2">
+                            <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left mb-4"><Share2 className="h-3 w-3" /> Social Media</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                                <FormField control={methods.control} name="op_facebook" render={({ field }) => (
+                                    <FormItem className="text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Facebook</FormLabel>
+                                        <FormControl><Input {...field} placeholder="Facebook page URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <FormField control={methods.control} name="op_whatsapp" render={({ field }) => (
+                                    <FormItem className="text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">WhatsApp</FormLabel>
+                                        <FormControl><Input {...field} placeholder="WhatsApp number or link" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <FormField control={methods.control} name="op_instagram" render={({ field }) => (
+                                    <FormItem className="text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Instagram</FormLabel>
+                                        <FormControl><Input {...field} placeholder="Instagram profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <FormField control={methods.control} name="op_linkedin" render={({ field }) => (
+                                    <FormItem className="text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">LinkedIn</FormLabel>
+                                        <FormControl><Input {...field} placeholder="LinkedIn page URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <FormField control={methods.control} name="op_x" render={({ field }) => (
+                                    <FormItem className="text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">X (Twitter)</FormLabel>
+                                        <FormControl><Input {...field} placeholder="X profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <FormField control={methods.control} name="op_youtube" render={({ field }) => (
+                                    <FormItem className="text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">YouTube</FormLabel>
+                                        <FormControl><Input {...field} placeholder="YouTube channel URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <FormField control={methods.control} name="op_tiktok" render={({ field }) => (
+                                    <FormItem className="text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">TikTok</FormLabel>
+                                        <FormControl><Input {...field} placeholder="TikTok profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <FormField control={methods.control} name="op_pinterest" render={({ field }) => (
+                                    <FormItem className="text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Pinterest</FormLabel>
+                                        <FormControl><Input {...field} placeholder="Pinterest profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                                    </FormItem>
+                                )} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Dynamic Custom Field Groups */}
                 {customFieldGroups.map((group) => (
                     <Card key={group.id} className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
-                        <CardHeader className="bg-card/20 border-b pb-6 text-left">
-                            <div className="flex items-center gap-3 text-left">
-                                <div className="p-2 bg-primary/10 rounded-xl text-left"><Layout className="h-5 w-5 text-primary" /></div>
-                                <CardTitle className="text-lg font-semibold tracking-tight text-left">{group.name}</CardTitle>
-                            </div>
-                        </CardHeader>
+                         <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <Layout className="h-4 w-4 text-primary" />
+ <CardTitle className="text-sm font-semibold tracking-tight">{group.name}</CardTitle>
+ </div>
+ </CardHeader>
                         <CardContent className="p-6 text-left grid grid-cols-1 md:grid-cols-2 gap-6">
                             {group.fields.map((field: any) => (
                                 <FormField key={field.id} control={methods.control} name={`customData.${field.variableName}`} render={({ field: formField }) => (
@@ -705,9 +976,9 @@ export default function NewEntityPage() {
                                         <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">{field.label}</FormLabel>
                                         <FormControl>
                                             {field.type === 'long_text' ? (
-                                                <Textarea {...formField} value={formField.value || ''} className="min-h-[80px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
+                                                <Textarea {...formField} value={formField.value || ''} className="min-h-[80px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4" />
                                             ) : (
-                                                <Input {...formField} value={formField.value || ''} type={field.type === 'number' ? 'number' : 'text'} className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold" />
+                                                <Input {...formField} value={formField.value || ''} type={field.type === 'number' ? 'number' : 'text'} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold" />
                                             )}
                                         </FormControl>
                                         <FormMessage />
@@ -721,13 +992,13 @@ export default function NewEntityPage() {
 
               {/* Right Sidebar: Operations */}
  <div className="space-y-8 text-left">
- <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
- <CardHeader className="bg-card/20 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><MapPin className="h-5 w-5 text-primary" /></div>
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Regional Metadata</CardTitle>
-                        </div>
-                    </CardHeader>
+ <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+  <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+ <div className="flex items-center gap-2 text-left">
+ <MapPin className="h-4 w-4 text-primary" />
+ <CardTitle className="text-sm font-semibold tracking-tight">Regional Metadata</CardTitle>
+ </div>
+ </CardHeader>
  <CardContent className="p-6 space-y-6 text-left">
                         <FormField control={methods.control} name="zone" render={({ field, fieldState }) => (
  <FormItem className="text-left">
@@ -753,7 +1024,7 @@ export default function NewEntityPage() {
                             <FormItem className="text-left">
                                 <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Descriptive Physical Address</FormLabel>
                                 <FormControl>
-                                    <Textarea {...field} className="min-h-[80px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
+                                    <Textarea {...field} className="min-h-[80px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -761,7 +1032,17 @@ export default function NewEntityPage() {
 
                     </CardContent>
                 </Card>
-  <div className="pt-4 sticky top-24 text-left">
+
+                {/* Deal Opportunity integration card */}
+                <DealOpportunityCard
+                  config={dealConfig}
+                  onChange={setDealConfigPatch}
+                  pipelines={pipelines || []}
+                  stages={stages || []}
+                  dealNameManuallyEdited={dealNameManuallyEdited}
+                />
+
+                <div className="pt-4 sticky top-24 text-left">
   <Button type="submit" className="w-full h-14 rounded-2xl font-semibold text-lg shadow-xl gap-3 transition-all active:scale-95 text-left" disabled={methods.formState.isSubmitting || isUsersLoading || isForceSubmitting}>
   {(methods.formState.isSubmitting || isForceSubmitting) ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Building className="mr-3 h-6 w-6" />} Initialize {singular}
                    </Button>

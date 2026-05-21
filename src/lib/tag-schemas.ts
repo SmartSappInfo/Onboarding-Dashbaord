@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Tag } from './types';
 
 const TAG_CATEGORIES = [
   'behavioral',
@@ -75,3 +76,35 @@ export const MergeTagsSchema = z.object({
   targetTagId: z.string().min(1, 'Target tag ID is required'),
   userId: z.string().min(1, 'User ID is required'),
 });
+
+/**
+ * Shared factory helper to construct a fully populated Tag document structure.
+ * Ensures consistent tag records across manual creation, bulk imports, and migrations.
+ */
+export function buildTagDocument(params: {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  name: string;
+  category?: string;
+  color?: string;
+  createdBy: string;
+}): Tag {
+  const slug = params.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+  return {
+    id: params.id,
+    workspaceId: params.workspaceId,
+    organizationId: params.organizationId,
+    name: params.name.trim(),
+    slug,
+    category: (params.category || 'custom') as any,
+    color: params.color || '#94a3b8',
+    description: '',
+    isSystem: false,
+    usageCount: 0,
+    scope: 'workspace',
+    createdBy: params.createdBy,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}

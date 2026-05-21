@@ -169,7 +169,7 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
                                 <div className="flex flex-col text-left min-w-0 flex-1">
                                     <div className="flex items-center gap-1 min-w-0 text-left">
                                         <MapPin className="h-2.5 w-2.5 text-primary/40 shrink-0 text-left" />
-                                        <span className="text-[9px] font-bold text-foreground/80 truncate leading-none text-left">{toTitleCase(entity.zone?.name || 'Global')}</span>
+                                        <span className="text-[9px] font-bold text-foreground/80 truncate leading-none text-left">{toTitleCase(entity.location?.region?.name || entity.zone?.name || 'Global')}</span>
                                     </div>
                                     <span className="text-[7px] font-semibold text-muted-foreground tracking-tighter opacity-40 mt-0.5 text-left">Region</span>
                                 </div>

@@ -52,7 +52,8 @@ import {
     Code,
     Unplug,
     ShieldCheck,
-    ChevronRight
+    ChevronRight,
+    Lock
 } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -71,12 +72,7 @@ export function AdminSidebar() {
   const { can, isSystemAdmin } = usePermissions();
   const { hasBackofficeAccess } = useBackofficeAccess();
 
-  // Feature-aware visibility
-  const isVisible = React.useCallback((hasPermission: boolean, featureId?: AppFeatureId) => {
-    if (!hasPermission) return false;
-    if (!featureId) return true;
-    return isFeatureEnabled(featureId);
-  }, [isFeatureEnabled]);
+
 
   const wrapHref = React.useCallback((href: string) => {
     if (!activeWorkspaceId) return href;
@@ -91,35 +87,35 @@ export function AdminSidebar() {
   }, [pathname]);
 
   const coreNavItems = React.useMemo(() => [
-    { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: isVisible(can('operations', 'dashboard', 'view')) },
-    { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isVisible(can('operations', 'campuses', 'view'), 'entities') },
-    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: dealPlural || 'Deals', visible: isVisible(can('operations', 'pipeline', 'view'), 'pipeline') },
-    { href: wrapHref('/admin/tasks'), icon: CheckSquare, label: 'Tasks', visible: isVisible(can('operations', 'tasks', 'view'), 'tasks') },
-    { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isVisible(can('operations', 'meetings', 'view'), 'meetings') },
-    { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isVisible(can('operations', 'automations', 'view'), 'automations') },
-    { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Intelligence', visible: isVisible(can('operations', 'intelligence', 'view'), 'reports') },
-  ], [wrapHref, isVisible, can, plural, dealPlural]);
+    { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: true, disabled: !can('operations', 'dashboard', 'view') },
+    { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isFeatureEnabled('entities'), disabled: !can('operations', 'campuses', 'view') },
+    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: dealPlural || 'Deals', visible: isFeatureEnabled('pipeline'), disabled: !can('operations', 'pipeline', 'view') },
+    { href: wrapHref('/admin/tasks'), icon: CheckSquare, label: 'Tasks', visible: isFeatureEnabled('tasks'), disabled: !can('operations', 'tasks', 'view') },
+    { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isFeatureEnabled('meetings'), disabled: !can('operations', 'meetings', 'view') },
+    { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isFeatureEnabled('automations'), disabled: !can('operations', 'automations', 'view') },
+    { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Intelligence', visible: isFeatureEnabled('reports'), disabled: !can('operations', 'intelligence', 'view') },
+  ], [wrapHref, isFeatureEnabled, can, plural, dealPlural]);
 
   const financeNavItems = React.useMemo(() => [
-    { href: wrapHref('/admin/finance/contracts'), icon: FileCheck, label: 'Agreements', visible: isVisible(can('finance', 'agreements', 'view'), 'agreements') },
-    { href: wrapHref('/admin/finance/invoices'), icon: Receipt, label: 'Invoices', visible: isVisible(can('finance', 'invoices', 'view'), 'invoices') },
-    { href: wrapHref('/admin/finance/packages'), icon: Package, label: 'Packages', visible: isVisible(can('finance', 'packages', 'view'), 'packages') },
-    { href: wrapHref('/admin/finance/periods'), icon: Timer, label: 'Cycles', visible: isVisible(can('finance', 'cycles', 'view'), 'billing_periods') },
-    { href: wrapHref('/admin/finance/settings'), icon: Settings2, label: 'Billing Setup', visible: isVisible(can('finance', 'billingSetup', 'view'), 'billing_setup') },
-  ], [wrapHref, isVisible, can]);
+    { href: wrapHref('/admin/finance/contracts'), icon: FileCheck, label: 'Agreements', visible: isFeatureEnabled('agreements'), disabled: !can('finance', 'agreements', 'view') },
+    { href: wrapHref('/admin/finance/invoices'), icon: Receipt, label: 'Invoices', visible: isFeatureEnabled('invoices'), disabled: !can('finance', 'invoices', 'view') },
+    { href: wrapHref('/admin/finance/packages'), icon: Package, label: 'Packages', visible: isFeatureEnabled('packages'), disabled: !can('finance', 'packages', 'view') },
+    { href: wrapHref('/admin/finance/periods'), icon: Timer, label: 'Cycles', visible: isFeatureEnabled('billing_periods'), disabled: !can('finance', 'cycles', 'view') },
+    { href: wrapHref('/admin/finance/settings'), icon: Settings2, label: 'Billing Setup', visible: isFeatureEnabled('billing_setup'), disabled: !can('finance', 'billingSetup', 'view') },
+  ], [wrapHref, isFeatureEnabled, can]);
 
   const studioNavItems = React.useMemo(() => [
-    { href: wrapHref('/admin/portals'), icon: Globe, label: 'Public Portals', visible: isVisible(can('studios', 'publicPortals', 'view'), 'portals') },
-    { href: wrapHref('/admin/pages'), icon: Layout, label: 'Landing Pages', visible: isVisible(can('studios', 'landingPages', 'view'), 'portals') },
-    { href: wrapHref('/admin/media'), icon: Film, label: 'Media', visible: isVisible(can('studios', 'media', 'view'), 'media') },
-    { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isVisible(can('studios', 'surveys', 'view'), 'surveys') },
-    { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isVisible(can('studios', 'docSigning', 'view'), 'pdfs') },
-    { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isVisible(can('studios', 'messaging', 'view'), 'messaging') },
-    { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isVisible(can('studios', 'forms', 'view'), 'forms') },
-    { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isVisible(can('studios', 'tags', 'view'), 'tags') },
-    { href: wrapHref('/admin/qr-studio'), icon: QrCode, label: 'QR Studio', visible: isVisible(can('studios', 'qrStudio', 'view'), 'qr_studio') },
-    { href: wrapHref('/admin/verify-studio'), icon: ShieldCheck, label: 'Verify Studio', visible: isVisible(can('studios', 'verifyStudio', 'view'), 'verify_studio') },
-  ], [wrapHref, isVisible, can]);
+    { href: wrapHref('/admin/portals'), icon: Globe, label: 'Public Portals', visible: isFeatureEnabled('portals'), disabled: !can('studios', 'publicPortals', 'view') },
+    { href: wrapHref('/admin/pages'), icon: Layout, label: 'Landing Pages', visible: isFeatureEnabled('portals'), disabled: !can('studios', 'landingPages', 'view') },
+    { href: wrapHref('/admin/media'), icon: Film, label: 'Media', visible: isFeatureEnabled('media'), disabled: !can('studios', 'media', 'view') },
+    { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isFeatureEnabled('surveys'), disabled: !can('studios', 'surveys', 'view') },
+    { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isFeatureEnabled('pdfs'), disabled: !can('studios', 'docSigning', 'view') },
+    { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isFeatureEnabled('messaging'), disabled: !can('studios', 'messaging', 'view') },
+    { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isFeatureEnabled('forms'), disabled: !can('studios', 'forms', 'view') },
+    { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isFeatureEnabled('tags'), disabled: !can('studios', 'tags', 'view') },
+    { href: wrapHref('/admin/qr-studio'), icon: QrCode, label: 'QR Studio', visible: isFeatureEnabled('qr_studio'), disabled: !can('studios', 'qrStudio', 'view') },
+    { href: wrapHref('/admin/verify-studio'), icon: ShieldCheck, label: 'Verify Studio', visible: isFeatureEnabled('verify_studio'), disabled: !can('studios', 'verifyStudio', 'view') },
+  ], [wrapHref, isFeatureEnabled, can]);
 
   const systemNavItems = React.useMemo(() => [
     { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: can('management', 'activities', 'view') },
@@ -149,7 +145,27 @@ export function AdminSidebar() {
           <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
             <SidebarMenu className="gap-1.5 px-3 group-data-[collapsible=icon]:px-2">
               {visibleItems.map((item) => {
-                const active = isActive(item.href);
+                const active = !item.disabled && isActive(item.href);
+                const isLocked = !!item.disabled;
+
+                // Locked/disabled state: show with reduced opacity and lock icon
+                if (isLocked) {
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        tooltip={`${item.label} — Requires permission`}
+                        className="text-muted-foreground/40 rounded-xl h-10 cursor-not-allowed relative overflow-hidden select-none hover:bg-transparent"
+                      >
+                        <div className="flex items-center gap-3 pointer-events-none">
+                          <item.icon className="h-[18px] w-[18px] shrink-0 opacity-40" />
+                          <span className="text-xs tracking-wide group-data-[collapsible=icon]:hidden truncate opacity-50">{item.label}</span>
+                          <Lock className="h-3 w-3 ml-auto opacity-30 shrink-0 group-data-[collapsible=icon]:hidden" />
+                        </div>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }
+
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton 

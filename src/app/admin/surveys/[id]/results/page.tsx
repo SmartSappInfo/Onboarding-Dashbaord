@@ -27,6 +27,39 @@ const FieldTeamView = dynamic(() => import('./components/field-team-view'), {
     loading: () => <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>,
 });
 
+/**
+ * Extracts a human-readable string from a survey answer value.
+ * Handles: plain strings/numbers, {option, other} objects, arrays of mixed types.
+ */
+function formatAnswerForCsv(value: any): string {
+    if (value === null || value === undefined) return '';
+
+    // Plain primitive
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+
+    // Single object with option/other pattern (e.g. multiple-choice with "Other")
+    if (typeof value === 'object' && !Array.isArray(value)) {
+        if ('option' in value) {
+            const other = value.other ? String(value.other).trim() : '';
+            const option = value.option ? String(value.option).trim() : '';
+            // If "other" text is filled and meaningful, prefer it; otherwise use the option
+            return other.length > 0 ? `${option} (${other})` : option;
+        }
+        // Generic object fallback — extract values
+        const vals = Object.values(value).filter(v => v !== '' && v !== null && v !== undefined);
+        return vals.length > 0 ? vals.map(String).join(' | ') : '';
+    }
+
+    // Array (checkboxes, multi-select)
+    if (Array.isArray(value)) {
+        return value.map(item => formatAnswerForCsv(item)).filter(Boolean).join(' | ');
+    }
+
+    return String(value);
+}
+
 export default function SurveyResultsPage() {
     const params = useParams();
     const router = useRouter();
@@ -103,13 +136,7 @@ export default function SurveyResultsPage() {
                 const value = answerMap.get(id);
                 let cellValue = '';
                 if (value !== undefined && value !== null) {
-                    if (Array.isArray(value)) {
-                        cellValue = JSON.stringify(value);
-                    } else if (typeof value === 'object') {
-                        cellValue = JSON.stringify(value);
-                    } else {
-                        cellValue = String(value);
-                    }
+                    cellValue = formatAnswerForCsv(value);
                 }
                 return `"${cellValue.replace(/"/g, '""')}"`;
             });

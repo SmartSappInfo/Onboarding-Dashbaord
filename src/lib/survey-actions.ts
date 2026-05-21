@@ -16,10 +16,9 @@ import { processLeadCaptureAction } from './lead-actions';
 import { getWorkspaceIndustry } from './industry-cache';
 
 /**
- * Get surveys for a specific contact (by entityId or entityId)
- * Implements query fallback pattern: prefer entityId, fallback to entityId
+ * Get surveys for a specific contact (by entityId)
  * 
- * Requirements: 13.5, 22.1, 22.2
+ * Requirements: 13.5, 22.1
  */
 export async function getSurveysForContact(
   entityId: string,
@@ -45,10 +44,9 @@ export async function getSurveysForContact(
 }
 
 /**
- * Get survey responses for a specific contact (by entityId or entityId)
- * Implements query fallback pattern: prefer entityId, fallback to entityId
+ * Get survey responses for a specific contact (by entityId)
  * 
- * Requirements: 13.5, 22.1, 22.2
+ * Requirements: 13.5, 22.1
  */
 export async function getSurveyResponsesForContact(
   surveyId: string,

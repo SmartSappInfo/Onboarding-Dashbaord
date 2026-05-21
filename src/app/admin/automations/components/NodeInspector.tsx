@@ -19,7 +19,8 @@ import {
     Smartphone, 
     PlusCircle,
     Tag,
-    X
+    X,
+    DollarSign
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -27,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import type { MessageTemplate, UserProfile, OnboardingStage, VariableDefinition, Tag as TagType } from '@/lib/types';
+import type { MessageTemplate, UserProfile, OnboardingStage, VariableDefinition, Tag as TagType, Pipeline } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -49,12 +50,20 @@ const TRIGGER_OPTIONS = [
     { value: 'PDF_SIGNED', label: 'Agreement Execution', icon: Target, desc: 'Fires when a legal PDF is fully signed.' },
     { value: 'MEETING_CREATED', label: 'Session Initialization', icon: Play, desc: 'Fires when a new meeting is scheduled.' },
     { value: 'WEBHOOK_RECEIVED', label: 'External Ingress', icon: Globe, desc: 'Fires when data is POSTed to the hub endpoint.' },
+    { value: 'DEAL_CREATED', label: 'Deal Initialized', icon: Target, desc: 'Fires when a new deal is created.' },
+    { value: 'DEAL_STAGE_CHANGED', label: 'Deal Stage Advanced', icon: ArrowRightLeft, desc: 'Fires when a deal progresses to another stage.' },
+    { value: 'DEAL_STATUS_CHANGED', label: 'Deal Status Updated', icon: Zap, desc: 'Fires when a deal is Won, Lost, or Opened.' },
+    { value: 'DEAL_VALUE_CHANGED', label: 'Deal Value Modified', icon: DollarSign, desc: 'Fires when a deal\'s estimated value changes.' }
 ];
 
 const ACTION_TYPES = [
     { value: 'SEND_MESSAGE', label: 'Dispatch Message', icon: Mail, desc: 'Send an automated Email or SMS.' },
     { value: 'CREATE_TASK', label: 'Initialize Task', icon: Clock, desc: 'Add a new mission to the CRM registry.' },
     { value: 'UPDATE_SCHOOL', label: 'Mutate School Record', icon: Building, desc: 'Automatically advance stages or status.' },
+    { value: 'CREATE_DEAL', label: 'Create New Deal', icon: Target, desc: 'Generate a new active deal in a pipeline.' },
+    { value: 'UPDATE_DEAL_STAGE', label: 'Update Deal Stage', icon: ArrowRightLeft, desc: 'Progress a deal to another stage.' },
+    { value: 'UPDATE_DEAL_VALUE', label: 'Update Deal Value', icon: DollarSign, desc: 'Change estimated financial value.' },
+    { value: 'UPDATE_DEAL_STATUS', label: 'Update Deal Status', icon: Zap, desc: 'Change deal status (Won, Lost, Open).' }
 ];
 
 const CONDITION_OPERATORS = [
@@ -84,6 +93,10 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
         firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, 
     [firestore]);
 
+    const pipelinesQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'pipelines'), orderBy('name', 'asc')) : null, 
+    [firestore]);
+
     const varsQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'messaging_variables')) : null, 
     [firestore]);
@@ -94,6 +107,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
 
     const { data: users } = useCollection<UserProfile>(usersQuery);
     const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
+    const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
     const { data: allTags } = useCollection<TagType>(tagsQuery);
 
@@ -375,6 +389,139 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                     {users?.map(u => (
                                                         <SelectItem key={u.id} value={u.id} className="rounded-lg py-2.5">{u.name}</SelectItem>
                                                     ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {data.actionType === 'CREATE_DEAL' && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Deal Title (Tag Supported)</Label>
+                                            <Input 
+                                                placeholder="e.g. {{entityName}} Deal" 
+                                                value={config.name || ''} 
+                                                onChange={(e) => updateConfig({ name: e.target.value })} 
+                                                className="h-12 rounded-xl bg-card border shadow-sm font-bold"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Estimated Value ($)</Label>
+                                                <Input 
+                                                    type="number"
+                                                    placeholder="0.00" 
+                                                    value={config.value || ''} 
+                                                    onChange={(e) => updateConfig({ value: parseFloat(e.target.value) || 0 })} 
+                                                    className="h-12 rounded-xl bg-card border shadow-sm font-bold"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assignee</Label>
+                                                <Select value={config.assignedTo || 'auto'} onValueChange={(v) => updateConfig({ assignedTo: v })}>
+                                                    <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-semibold text-xs"><SelectValue placeholder="Auto-Resolve" /></SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
+                                                        <SelectItem value="auto" className="font-semibold italic text-primary rounded-lg py-2.5">Auto-Resolve (Entity Owner)</SelectItem>
+                                                        {users?.map(u => (
+                                                            <SelectItem key={u.id} value={u.id} className="rounded-lg py-2.5">{u.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Pipeline</Label>
+                                            <Select value={config.pipelineId || ''} onValueChange={(val) => updateConfig({ pipelineId: val, stageId: '' })}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                                                    <SelectValue placeholder="Select Pipeline..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                                                    {pipelines?.map(p => (
+                                                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Stage (Optional)</Label>
+                                            <Select value={config.stageId || ''} onValueChange={(val) => updateConfig({ stageId: val })} disabled={!config.pipelineId}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                                                    <SelectValue placeholder="First Pipeline Stage" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                                                    {stages?.filter(s => s.pipelineId === config.pipelineId).map(s => (
+                                                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {data.actionType === 'UPDATE_DEAL_STAGE' && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Filter by Pipeline</Label>
+                                            <Select value={config.pipelineId || ''} onValueChange={(val) => updateConfig({ pipelineId: val, stageId: '' })}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                                                    <SelectValue placeholder="All Pipelines..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                                                    <SelectItem value="">All Pipelines</SelectItem>
+                                                    {pipelines?.map(p => (
+                                                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Stage</Label>
+                                            <Select value={config.stageId || ''} onValueChange={(val) => updateConfig({ stageId: val })}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                                                    <SelectValue placeholder="Select stage to move to..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                                                    {stages?.filter(s => !config.pipelineId || s.pipelineId === config.pipelineId).map(s => (
+                                                        <SelectItem key={s.id} value={s.id}>
+                                                            {s.name} ({pipelines?.find(p => p.id === s.pipelineId)?.name || 'Default Pipeline'})
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {data.actionType === 'UPDATE_DEAL_VALUE' && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Value ($)</Label>
+                                            <Input 
+                                                placeholder="e.g. 5000 or +1000 or -500" 
+                                                value={config.value || ''} 
+                                                onChange={(e) => updateConfig({ value: e.target.value })} 
+                                                className="h-12 rounded-xl bg-card border shadow-sm font-mono text-sm px-4"
+                                            />
+                                            <span className="text-[9px] font-semibold text-muted-foreground leading-relaxed block ml-1 opacity-70">
+                                                Tip: Prefix with + or - to perform a relative adjustment of the deal value.
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {data.actionType === 'UPDATE_DEAL_STATUS' && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Status</Label>
+                                            <Select value={config.status || 'open'} onValueChange={(v) => updateConfig({ status: v })}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="open">Open (Active)</SelectItem>
+                                                    <SelectItem value="won">Won (Closed Won)</SelectItem>
+                                                    <SelectItem value="lost">Lost (Closed Lost)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>

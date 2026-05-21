@@ -7,11 +7,12 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Deal, OnboardingStage } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { GripVertical, ShieldCheck as ShieldIcon } from 'lucide-react';
+import { GripVertical, ShieldCheck as ShieldIcon, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, toTitleCase } from '@/lib/utils';
 import DealCard from './DealCard';
+import CreateDealModal from '../../entities/components/CreateDealModal';
 
 interface StageColumnProps {
     stage: OnboardingStage;
@@ -25,6 +26,7 @@ interface StageColumnProps {
  * Powered by deals collection for modern transactional tracking.
  */
 export default function StageColumn({ stage, deals, isOverlay, customWidth = 320 }: StageColumnProps) {
+    const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
     const {
         attributes,
         listeners,
@@ -112,8 +114,18 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                                 <p className="text-xs font-semibold tracking-[0.3em] leading-none">Segment Clear</p>
                             </div>
                         )}
+
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setIsCreateDealOpen(true)}
+                            className="w-full mt-4 h-9 border border-dashed border-border hover:border-primary/40 text-muted-foreground hover:text-primary rounded-xl font-bold text-xs gap-1.5 flex items-center justify-center bg-muted/10 hover:bg-primary/5 transition-all"
+                        >
+                            <Plus className="h-3.5 w-3.5" /> Add Deal
+                        </Button>
                     </CardContent>
                 </ScrollArea>
+                <CreateDealModal open={isCreateDealOpen} onOpenChange={setIsCreateDealOpen} initialStageId={stage.id} />
             </Card>
         </div>
     );

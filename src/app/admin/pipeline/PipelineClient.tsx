@@ -4,6 +4,7 @@
 import * as React from 'react';
 import KanbanBoard from './components/KanbanBoard';
 import PipelineConfigView from './components/PipelineConfigView';
+import CreateDealModal from '../entities/components/CreateDealModal';
 import { 
     Workflow, 
     Search, 
@@ -54,6 +55,7 @@ export default function PipelineClient() {
   const [activeView, setActiveView] = React.useState<'board' | 'config'>('board');
   const [isSearchExpanded, setIsSearchExpanded] = React.useState(false);
   const [isInitializing, setIsInitializing] = React.useState(false);
+  const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
 
   // SHARED PIPELINES: Query by array-contains for active workspace
   const pipelinesQuery = useMemoFirebase(() => 
@@ -220,6 +222,10 @@ export default function PipelineClient() {
                         )}
                     </AnimatePresence>
 
+                    <Button onClick={() => setIsCreateDealOpen(true)} className="h-9 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-1.5 shadow-md mr-1 px-4 text-xs">
+                        <Plus className="h-4 w-4" /> Add Deal
+                    </Button>
+
                     <div className="flex items-center gap-1.5 bg-muted/30 p-1 rounded-xl border shadow-inner">
                         <Button variant="ghost" onClick={() => setActiveView('board')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-4 transition-all", activeView === 'board' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100")}><Layout className="mr-1.5 h-3.5 w-3.5" /> Board</Button>
                         <Button variant="ghost" onClick={() => setActiveView('config')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-4 transition-all", activeView === 'config' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100")}><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Config</Button>
@@ -241,6 +247,7 @@ export default function PipelineClient() {
                 )}
             </AnimatePresence>
         </div>
+        <CreateDealModal open={isCreateDealOpen} onOpenChange={setIsCreateDealOpen} initialPipelineId={currentPipelineId || undefined} />
     </div>
   );
 }

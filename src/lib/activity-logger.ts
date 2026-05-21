@@ -47,9 +47,9 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
             ...finalData,
             entityId: entityId || null,
             entityName: entityName || null,
-            entitySlug: entitySlug || null,
+            entitySlug: entitySlug || undefined,
             entityType: entityType || null,
-            displayName: displayName || null,
+            displayName: displayName || undefined,
         };
 
         // 3. Persist the Audit Log with all workspace-aware fields (Requirement 12)
@@ -69,7 +69,11 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
             'task_completed': 'TASK_COMPLETED',
             'meeting_created': 'MEETING_CREATED',
             'tag_added': 'TAG_ADDED',
-            'tag_removed': 'TAG_REMOVED'
+            'tag_removed': 'TAG_REMOVED',
+            'deal_created': 'DEAL_CREATED',
+            'deal_stage_changed': 'DEAL_STAGE_CHANGED',
+            'deal_status_changed': 'DEAL_STATUS_CHANGED',
+            'deal_value_changed': 'DEAL_VALUE_CHANGED'
         };
 
         const triggerType = triggerMap[activityData.type];

@@ -12,6 +12,12 @@ import { logActivity } from './activity-logger';
 import { resolveContact } from './contact-adapter';
 import { evaluateTagCondition } from './tag-condition';
 import { dispatchWebhooksByTrigger } from './webhook-engine';
+import {
+    handleCreateDeal as autoCreateDeal,
+    handleUpdateDealStage as autoUpdateDealStage,
+    handleUpdateDealValue as autoUpdateDealValue,
+    handleUpdateDealStatus as autoUpdateDealStatus
+} from './automations/actions/deal-automation-actions';
 
 /**
  * @fileOverview The SmartSapp Logic Processor (Execution Engine).
@@ -380,7 +386,16 @@ async function processActionNode(node: any, context: ExecutionContext) {
             await handleUpdateSchool(resolvedConfig, context);
             break;
         case 'CREATE_DEAL':
-            await handleCreateDeal(resolvedConfig, context);
+            await autoCreateDeal(resolvedConfig, context);
+            break;
+        case 'UPDATE_DEAL_STAGE':
+            await autoUpdateDealStage(resolvedConfig, context);
+            break;
+        case 'UPDATE_DEAL_VALUE':
+            await autoUpdateDealValue(resolvedConfig, context);
+            break;
+        case 'UPDATE_DEAL_STATUS':
+            await autoUpdateDealStatus(resolvedConfig, context);
             break;
     }
 }
@@ -622,33 +637,4 @@ async function handleUpdateSchool(config: any, context: ExecutionContext) {
     } else {
         throw new Error("Cannot update contact: Contact not found or invalid.");
     }
-}
-
-async function handleCreateDeal(config: any, context: ExecutionContext) {
-    const { createDeal } = await import('../app/actions/deal-actions');
-    
-    let pipelineId = config.pipelineId;
-    if (!pipelineId) {
-        const pipelinesSnap = await adminDb.collection('pipelines')
-            .where('workspaceId', '==', context.workspaceId)
-            .limit(1)
-            .get();
-        if (!pipelinesSnap.empty) {
-            pipelineId = pipelinesSnap.docs[0].id;
-        } else {
-            throw new Error("No pipeline found in workspace to create a deal.");
-        }
-    }
-
-    const name = config.name || `${context.payload.entityName || context.payload.name || 'New'} Deal`;
-
-    await createDeal({
-        entityId: context.entityId!,
-        workspaceId: context.workspaceId,
-        organizationId: context.payload.organizationId || 'smartsapp-hq',
-        pipelineId,
-        name,
-        value: config.value || 0,
-        assignmentStrategy: config.assignmentStrategy || 'direct'
-    });
 }

@@ -107,10 +107,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         const urlTrack = searchParams.get('track') || null;
         
         let initialWsId = '';
-        // Note: Accessible workspaces will be filtered in the next step, 
-        // we just need an ID to start with.
-        if (urlTrack) initialWsId = urlTrack;
-        else if (storedWs) initialWsId = storedWs;
+        // Prioritize the URL track param if present to allow link sharing,
+        // otherwise fall back to the previously open workspace from localStorage.
+        if (urlTrack) {
+            initialWsId = urlTrack;
+        } else if (storedWs) {
+            initialWsId = storedWs;
+        }
 
         setActiveWorkspaceIdState(initialWsId);
         setIsInitialized(true);
@@ -132,7 +135,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   // 6. Final Workspace Correction & URL Sync
   React.useEffect(() => {
-    if (isInitialized && accessibleWorkspaces.length > 0) {
+    // Only perform fallback/correction once workspaces have finished loading.
+    // This prevents aggressive resetting to the default workspace during partial cache hits.
+    if (isInitialized && !isWorkspacesLoading && accessibleWorkspaces.length > 0) {
         let currentId = activeWorkspaceId;
         
         // 6.1. If we don't have a valid ID selected in state, pick an accessible one
@@ -147,9 +152,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('activeWorkspaceId', currentId);
         }
 
-        // 6.2. URL Enforcement: If on dashboard and 'track' param is missing, add it.
-        // This ensures Server Components (like the Dashboard Page) see the client's resolved workspace.
-        if (pathname === '/admin' && currentId) {
+        // 6.2. URL Enforcement: Ensure the 'track' param matches the active workspace globally.
+        // This prevents back-navigation or old links from silently changing the active workspace.
+        if (pathname.startsWith('/admin') && currentId) {
             const urlTrack = searchParams.get('track');
             if (!urlTrack || urlTrack !== currentId) {
                 const params = new URLSearchParams(searchParams.toString());

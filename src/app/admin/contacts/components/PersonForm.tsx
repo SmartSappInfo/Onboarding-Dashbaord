@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { LeadSourceSelect } from '@/components/LeadSourceSelect';
 
 const personFormSchema = z.object({
   firstName: z.string().min(2, { message: 'First name must be at least 2 characters.' }),
@@ -219,10 +220,10 @@ export function PersonForm({ entity, onSubmit, isSubmitting }: PersonFormProps) 
                     Lead Source
                   </FormLabel>
                   <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="e.g., Referral, Website, Event"
- className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" 
+                    <LeadSourceSelect 
+                      value={field.value} 
+                      onValueChange={field.onChange} 
+                      placeholder="Select or create lead source..."
                     />
                   </FormControl>
  <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60">

@@ -27,12 +27,18 @@ import { createEntityAction } from '../entity-actions';
 import { linkEntityToWorkspaceAction } from '../workspace-entity-actions';
 import { adminDb } from '../firebase-admin';
 import type { Entity, Workspace, WorkspaceEntity, EntityType } from '../types';
+import crypto from 'crypto';
 
 // Mock Firebase Admin
 vi.mock('../firebase-admin', () => ({
   adminDb: {
     collection: vi.fn(),
   },
+}));
+
+// Mock workspace-permissions
+vi.mock('../workspace-permissions', () => ({
+  canUser: vi.fn().mockResolvedValue({ granted: true }),
 }));
 
 // Mock activity logger
@@ -44,6 +50,26 @@ vi.mock('../activity-logger', () => ({
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
+
+// Helper to create a chainable Firestore mock query/collection/document
+const createMockFirestoreChain = (options?: { getVal?: any; empty?: boolean; addVal?: any }) => {
+  const chain: any = {};
+  chain.where = vi.fn(() => chain);
+  chain.limit = vi.fn(() => chain);
+  chain.orderBy = vi.fn(() => chain);
+  chain.add = vi.fn().mockResolvedValue(options?.addVal ?? { id: 'mock-id' });
+  chain.doc = vi.fn(() => chain);
+  chain.set = vi.fn().mockResolvedValue(undefined);
+  chain.update = vi.fn().mockResolvedValue(undefined);
+  chain.get = vi.fn().mockResolvedValue({
+    exists: options?.getVal !== undefined,
+    empty: options?.empty ?? (options?.getVal === undefined),
+    id: options?.getVal?.id || 'mock-id',
+    data: () => options?.getVal,
+    docs: options?.getVal ? [{ id: options.getVal.id || 'mock-id', data: () => options.getVal }] : [],
+  });
+  return chain;
+};
 
 describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
 
@@ -57,29 +83,65 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       const mockWorkspaceEntityId = 'we_institution_1';
       const timestamp = new Date().toISOString();
 
-      // Mock entity creation
-      const mockEntityCollection = {
-        add: vi.fn().mockResolvedValue({ id: mockEntityId }),
-        where: vi.fn(() => ({
-          where: vi.fn(() => ({
-            limit: vi.fn(() => ({
-              get: vi.fn().mockResolvedValue({ empty: true }), // No existing slug
-            })),
-          })),
-        })),
-      };
+      // Mock randomUUID to match mockEntityId prefix
+      vi.spyOn(crypto, 'randomUUID').mockReturnValue('institution_1');
+
+      // Mock entity lookup for linking & creation
+      const mockEntityDoc = createMockFirestoreChain({
+        getVal: {
+          id: mockEntityId,
+          organizationId: 'org_1',
+          name: 'Test Institution',
+          slug: 'test-institution',
+          contacts: [
+            {
+              name: 'John Principal',
+              phone: '+1234567890',
+              email: 'principal@institution.edu',
+              type: 'Principal',
+              isSignatory: true,
+            },
+          ],
+          entityType: 'institution',
+          entityContacts: [
+            {
+              id: 'ec_institut',
+              name: 'John Principal',
+              phone: '+1234567890',
+              email: 'principal@institution.edu',
+              typeKey: 'principal',
+              typeLabel: 'Principal',
+              isPrimary: true,
+              isSignatory: true,
+              order: 0,
+            }
+          ],
+          globalTags: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          referee: 'District Office',
+          interests: ['billing', 'admissions'],
+          financeData: {
+            subscriptionPackageId: 'pkg_1',
+            subscriptionRate: 50,
+            billingAddress: '123 School St',
+            currency: 'USD',
+          },
+          industryData: {
+            industry: 'SaaS',
+            capacity: 500,
+            accountStatus: 'active',
+          },
+        }
+      });
+      const mockEntityCollection = createMockFirestoreChain({ addVal: { id: mockEntityId } });
+      mockEntityCollection.doc = vi.fn(() => mockEntityDoc);
 
       // Mock workspace_entities creation
-      const mockWorkspaceEntitiesCollection = {
-        add: vi.fn().mockResolvedValue({ id: mockWorkspaceEntityId }),
-        where: vi.fn(() => ({
-          where: vi.fn(() => ({
-            limit: vi.fn(() => ({
-              get: vi.fn().mockResolvedValue({ empty: true }), // No existing link
-            })),
-          })),
-        })),
-      };
+      const mockWorkspaceEntitiesCollection = createMockFirestoreChain({
+        addVal: { id: mockWorkspaceEntityId },
+        empty: true
+      });
 
       // Mock workspace lookup
       const mockWorkspace: Workspace = {
@@ -105,78 +167,20 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         updatedAt: timestamp,
       };
 
-      const mockWorkspaceDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          id: mockWorkspace.id,
-          data: () => mockWorkspace,
-        }),
-        update: vi.fn().mockResolvedValue(undefined),
-      };
-
-      const mockWorkspaceCollection = {
-        doc: vi.fn(() => mockWorkspaceDoc),
-      };
-
-      // Mock entity lookup for linking
-      const mockEntityDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          id: mockEntityId,
-          data: () => ({
-            organizationId: 'org_1',
-            
-            name: 'Test Institution',
-            slug: 'test-institution',
-            contacts: [
-              {
-                name: 'John Principal',
-                phone: '+1234567890',
-                email: 'principal@institution.edu',
-                type: 'Principal',
-                isSignatory: true,
-              },
-            ],
-            entityType: 'institution',
-    entityContacts: [],
-    globalTags: [],
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            institutionData: {
-              nominalRoll: 500,
-              subscriptionPackageId: 'pkg_1',
-              subscriptionRate: 50,
-              billingAddress: '123 School St',
-              currency: 'USD',
-              modules: [
-          { id: 'billing', name: 'Billing', abbreviation: 'BIL', color: '#3b82f6' },
-          { id: 'admissions', name: 'Admissions', abbreviation: 'ADM', color: '#10b981' }
-        ],
-              implementationDate: '2024-01-01',
-              referee: 'District Office',
-            },
-          }),
-        }),
-      };
+      const mockWorkspaceDoc = createMockFirestoreChain({ getVal: mockWorkspace });
+      const mockWorkspaceCollection = createMockFirestoreChain();
+      mockWorkspaceCollection.doc = vi.fn(() => mockWorkspaceDoc);
 
       // Mock stages collection
-      const mockStageDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          data: () => ({ name: 'Onboarding' }),
-        }),
-      };
-
-      const mockStagesCollection = {
-        doc: vi.fn(() => mockStageDoc),
-      };
+      const mockStageDoc = createMockFirestoreChain({
+        getVal: { name: 'Onboarding' }
+      });
+      const mockStagesCollection = createMockFirestoreChain();
+      mockStagesCollection.doc = vi.fn(() => mockStageDoc);
 
       const mockCollection = vi.fn((collectionName: string) => {
         if (collectionName === 'entities') {
-          return {
-            ...mockEntityCollection,
-            doc: vi.fn(() => mockEntityDoc),
-          };
+          return mockEntityCollection;
         }
         if (collectionName === 'workspace_entities') {
           return mockWorkspaceEntitiesCollection;
@@ -187,54 +191,65 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         if (collectionName === 'stages') {
           return mockStagesCollection;
         }
-        return { get: vi.fn() };
+        return createMockFirestoreChain();
       });
 
       (adminDb.collection as any) = mockCollection;
 
       // Step 1: Create institution entity
       const createResult = await createEntityAction(
-      {name: 'Test Institution',
-        contacts: [
-          {
-            name: 'John Principal',
-            phone: '+1234567890',
-            email: 'principal@institution.edu',
-            type: 'Principal',
-            isSignatory: true,
-          },
-        ],
-        institutionData: {
-          nominalRoll: 500,
-          subscriptionPackageId: 'pkg_1',
-          subscriptionRate: 50,
-          billingAddress: '123 School St',
-          currency: 'USD',
-          modules: [
-          { id: 'billing', name: 'Billing', abbreviation: 'BIL', color: '#3b82f6' },
-          { id: 'admissions', name: 'Admissions', abbreviation: 'ADM', color: '#10b981' }
-        ],
-          implementationDate: '2024-01-01',
+        {
+          name: 'Test Institution',
+          contacts: [
+            {
+              name: 'John Principal',
+              phone: '+1234567890',
+              email: 'principal@institution.edu',
+              type: 'Principal',
+              isSignatory: true,
+            },
+          ],
           referee: 'District Office',
-        }
-      },
-      'user_1',
-      'workspace_institution_1',
-      'institution',
-      'org_1'
-    );
+          modules: [
+            { id: 'billing', name: 'Billing', abbreviation: 'BIL', color: '#3b82f6' },
+            { id: 'admissions', name: 'Admissions', abbreviation: 'ADM', color: '#10b981' }
+          ],
+          financeData: {
+            subscriptionPackageId: 'pkg_1',
+            subscriptionRate: 50,
+            billingAddress: '123 School St',
+            currency: 'USD',
+          },
+          industryData: {
+            industry: 'SaaS',
+            capacity: 500,
+            accountStatus: 'active',
+          }
+        },
+        'user_1',
+        'workspace_institution_1',
+        'institution',
+        'org_1'
+      );
 
       expect(createResult.success).toBe(true);
       expect(createResult.id).toBe(mockEntityId);
-      expect(mockEntityCollection.add).toHaveBeenCalledWith(
+      expect(mockEntityDoc.set).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: 'org_1',
-          
           name: 'Test Institution',
-          institutionData: expect.objectContaining({
-            nominalRoll: 500,
+          referee: 'District Office',
+          interests: ['billing', 'admissions'],
+          financeData: expect.objectContaining({
             subscriptionPackageId: 'pkg_1',
             subscriptionRate: 50,
+            billingAddress: '123 School St',
+            currency: 'USD',
+          }),
+          industryData: expect.objectContaining({
+            industry: 'SaaS',
+            capacity: 500,
+            accountStatus: 'active',
           }),
         })
       );
@@ -282,22 +297,90 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       const mockWorkspaceEntityId = 'we_family_1';
       const timestamp = new Date().toISOString();
 
-      // Mock entity creation
-      const mockEntityCollection = {
-        add: vi.fn().mockResolvedValue({ id: mockEntityId }),
-      };
+      // Mock randomUUID to match mockEntityId prefix
+      vi.spyOn(crypto, 'randomUUID').mockReturnValue('family_1');
+
+      // Mock entity lookup for linking & creation
+      const mockEntityDoc = createMockFirestoreChain({
+        getVal: {
+          id: mockEntityId,
+          organizationId: 'org_1',
+          entityType: 'family',
+          name: 'Smith Family',
+          contacts: [
+            {
+              name: 'Jane Smith',
+              phone: '+1234567890',
+              email: 'jane@smith.com',
+              type: 'Mother',
+              isSignatory: true,
+            },
+          ],
+          entityContacts: [
+            {
+              id: 'ec_family_1',
+              name: 'Jane Smith',
+              phone: '+1234567890',
+              email: 'jane@smith.com',
+              typeKey: 'mother',
+              typeLabel: 'Mother',
+              isPrimary: true,
+              isSignatory: true,
+              order: 0,
+            }
+          ],
+          globalTags: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          familyData: {
+            guardians: [
+              {
+                name: 'Jane Smith',
+                phone: '+1234567890',
+                email: 'jane@smith.com',
+                relationship: 'Mother',
+                isPrimary: true,
+              },
+              {
+                name: 'John Smith',
+                phone: '+1234567891',
+                email: 'john@smith.com',
+                relationship: 'Father',
+                isPrimary: false,
+              },
+            ],
+            children: [
+              {
+                firstName: 'Emma',
+                lastName: 'Smith',
+                dateOfBirth: '2015-05-15',
+                gradeLevel: '3rd Grade',
+                enrollmentStatus: 'enrolled',
+              },
+              {
+                firstName: 'Liam',
+                lastName: 'Smith',
+                dateOfBirth: '2017-08-20',
+                gradeLevel: '1st Grade',
+                enrollmentStatus: 'enrolled',
+              },
+            ],
+            admissionsData: {
+              applicationDate: '2024-01-15',
+              status: 'accepted',
+              notes: 'Siblings enrolled',
+            },
+          },
+        }
+      });
+      const mockEntityCollection = createMockFirestoreChain({ addVal: { id: mockEntityId } });
+      mockEntityCollection.doc = vi.fn(() => mockEntityDoc);
 
       // Mock workspace_entities creation
-      const mockWorkspaceEntitiesCollection = {
-        add: vi.fn().mockResolvedValue({ id: mockWorkspaceEntityId }),
-        where: vi.fn(() => ({
-          where: vi.fn(() => ({
-            limit: vi.fn(() => ({
-              get: vi.fn().mockResolvedValue({ empty: true }), // No existing link
-            })),
-          })),
-        })),
-      };
+      const mockWorkspaceEntitiesCollection = createMockFirestoreChain({
+        addVal: { id: mockWorkspaceEntityId },
+        empty: true
+      });
 
       // Mock workspace lookup
       const mockWorkspace: Workspace = {
@@ -323,103 +406,20 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         updatedAt: timestamp,
       };
 
-      const mockWorkspaceDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          id: mockWorkspace.id,
-          data: () => mockWorkspace,
-        }),
-        update: vi.fn().mockResolvedValue(undefined),
-      };
-
-      const mockWorkspaceCollection = {
-        doc: vi.fn(() => mockWorkspaceDoc),
-      };
-
-      // Mock entity lookup for linking
-      const mockEntityDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          id: mockEntityId,
-          data: () => ({
-            organizationId: 'org_1',
-            entityType: 'family',
-            name: 'Smith Family',
-            contacts: [
-              {
-                name: 'Jane Smith',
-                phone: '+1234567890',
-                email: 'jane@smith.com',
-                type: 'Mother',
-                isSignatory: true,
-              },
-            ],
-            entityType: 'institution',
-    entityContacts: [],
-    globalTags: [],
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            familyData: {
-              guardians: [
-                {
-                  name: 'Jane Smith',
-                  phone: '+1234567890',
-                  email: 'jane@smith.com',
-                  relationship: 'Mother',
-                  isPrimary: true,
-                },
-                {
-                  name: 'John Smith',
-                  phone: '+1234567891',
-                  email: 'john@smith.com',
-                  relationship: 'Father',
-                  isPrimary: false,
-                },
-              ],
-              children: [
-                {
-                  firstName: 'Emma',
-                  lastName: 'Smith',
-                  dateOfBirth: '2015-05-15',
-                  gradeLevel: '3rd Grade',
-                  enrollmentStatus: 'enrolled',
-                },
-                {
-                  firstName: 'Liam',
-                  lastName: 'Smith',
-                  dateOfBirth: '2017-08-20',
-                  gradeLevel: '1st Grade',
-                  enrollmentStatus: 'enrolled',
-                },
-              ],
-              admissionsData: {
-                applicationDate: '2024-01-15',
-                status: 'accepted',
-                notes: 'Siblings enrolled',
-              },
-            },
-          }),
-        }),
-      };
+      const mockWorkspaceDoc = createMockFirestoreChain({ getVal: mockWorkspace });
+      const mockWorkspaceCollection = createMockFirestoreChain();
+      mockWorkspaceCollection.doc = vi.fn(() => mockWorkspaceDoc);
 
       // Mock stages collection
-      const mockStageDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          data: () => ({ name: 'Admissions Review' }),
-        }),
-      };
-
-      const mockStagesCollection = {
-        doc: vi.fn(() => mockStageDoc),
-      };
+      const mockStageDoc = createMockFirestoreChain({
+        getVal: { name: 'Admissions Review' }
+      });
+      const mockStagesCollection = createMockFirestoreChain();
+      mockStagesCollection.doc = vi.fn(() => mockStageDoc);
 
       const mockCollection = vi.fn((collectionName: string) => {
         if (collectionName === 'entities') {
-          return {
-            ...mockEntityCollection,
-            doc: vi.fn(() => mockEntityDoc),
-          };
+          return mockEntityCollection;
         }
         if (collectionName === 'workspace_entities') {
           return mockWorkspaceEntitiesCollection;
@@ -430,7 +430,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         if (collectionName === 'stages') {
           return mockStagesCollection;
         }
-        return { get: vi.fn() };
+        return createMockFirestoreChain();
       });
 
       (adminDb.collection as any) = mockCollection;
@@ -495,7 +495,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
 
       expect(createResult.success).toBe(true);
       expect(createResult.id).toBe(mockEntityId);
-      expect(mockEntityCollection.add).toHaveBeenCalledWith(
+      expect(mockEntityDoc.set).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: 'org_1',
           entityType: 'family',
@@ -562,22 +562,38 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       const mockWorkspaceEntityId = 'we_person_1';
       const timestamp = new Date().toISOString();
 
-      // Mock entity creation
-      const mockEntityCollection = {
-        add: vi.fn().mockResolvedValue({ id: mockEntityId }),
-      };
+      // Mock randomUUID to match mockEntityId prefix
+      vi.spyOn(crypto, 'randomUUID').mockReturnValue('person_1');
+
+      // Mock entity lookup for linking & creation
+      const mockEntityDoc = createMockFirestoreChain({
+        getVal: {
+          id: mockEntityId,
+          organizationId: 'org_1',
+          name: 'Sarah Johnson',
+          contacts: [],
+          entityType: 'person',
+          entityContacts: [],
+          globalTags: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          personData: {
+            firstName: 'Sarah',
+            lastName: 'Johnson',
+            company: 'Tech Corp',
+            jobTitle: 'CTO',
+            leadSource: 'Website',
+          },
+        }
+      });
+      const mockEntityCollection = createMockFirestoreChain({ addVal: { id: mockEntityId } });
+      mockEntityCollection.doc = vi.fn(() => mockEntityDoc);
 
       // Mock workspace_entities creation
-      const mockWorkspaceEntitiesCollection = {
-        add: vi.fn().mockResolvedValue({ id: mockWorkspaceEntityId }),
-        where: vi.fn(() => ({
-          where: vi.fn(() => ({
-            limit: vi.fn(() => ({
-              get: vi.fn().mockResolvedValue({ empty: true }), // No existing link
-            })),
-          })),
-        })),
-      };
+      const mockWorkspaceEntitiesCollection = createMockFirestoreChain({
+        addVal: { id: mockWorkspaceEntityId },
+        empty: true
+      });
 
       // Mock workspace lookup
       const mockWorkspace: Workspace = {
@@ -603,63 +619,20 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         updatedAt: timestamp,
       };
 
-      const mockWorkspaceDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          id: mockWorkspace.id,
-          data: () => mockWorkspace,
-        }),
-        update: vi.fn().mockResolvedValue(undefined),
-      };
-
-      const mockWorkspaceCollection = {
-        doc: vi.fn(() => mockWorkspaceDoc),
-      };
-
-      // Mock entity lookup for linking
-      const mockEntityDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          id: mockEntityId,
-          data: () => ({
-            organizationId: 'org_1',
-            
-            name: 'Sarah Johnson',
-            contacts: [],
-            entityType: 'institution',
-    entityContacts: [],
-    globalTags: [],
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            personData: {
-              firstName: 'Sarah',
-              lastName: 'Johnson',
-              company: 'Tech Corp',
-              jobTitle: 'CTO',
-              leadSource: 'Website',
-            },
-          }),
-        }),
-      };
+      const mockWorkspaceDoc = createMockFirestoreChain({ getVal: mockWorkspace });
+      const mockWorkspaceCollection = createMockFirestoreChain();
+      mockWorkspaceCollection.doc = vi.fn(() => mockWorkspaceDoc);
 
       // Mock stages collection
-      const mockStageDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          data: () => ({ name: 'Qualified Lead' }),
-        }),
-      };
-
-      const mockStagesCollection = {
-        doc: vi.fn(() => mockStageDoc),
-      };
+      const mockStageDoc = createMockFirestoreChain({
+        getVal: { name: 'Qualified Lead' }
+      });
+      const mockStagesCollection = createMockFirestoreChain();
+      mockStagesCollection.doc = vi.fn(() => mockStageDoc);
 
       const mockCollection = vi.fn((collectionName: string) => {
         if (collectionName === 'entities') {
-          return {
-            ...mockEntityCollection,
-            doc: vi.fn(() => mockEntityDoc),
-          };
+          return mockEntityCollection;
         }
         if (collectionName === 'workspace_entities') {
           return mockWorkspaceEntitiesCollection;
@@ -670,7 +643,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         if (collectionName === 'stages') {
           return mockStagesCollection;
         }
-        return { get: vi.fn() };
+        return createMockFirestoreChain();
       });
 
       (adminDb.collection as any) = mockCollection;
@@ -694,7 +667,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
 
       expect(createResult.success).toBe(true);
       expect(createResult.id).toBe(mockEntityId);
-      expect(mockEntityCollection.add).toHaveBeenCalledWith(
+      expect(mockEntityDoc.set).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: 'org_1',
           
@@ -750,27 +723,23 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       const timestamp = new Date().toISOString();
 
       // Mock entity lookup
-      const mockEntityDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
+      const mockEntityDoc = createMockFirestoreChain({
+        getVal: {
           id: mockEntityId,
-          data: () => ({
-            organizationId: 'org_1',
-            
-            name: 'Test Institution',
-            slug: 'test-institution',
-            contacts: [],
-            entityType: 'institution',
-    entityContacts: [],
-    globalTags: [],
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            institutionData: {
-              nominalRoll: 500,
-            },
-          }),
-        }),
-      };
+          organizationId: 'org_1',
+          name: 'Test Institution',
+          slug: 'test-institution',
+          contacts: [],
+          entityType: 'institution',
+          entityContacts: [],
+          globalTags: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          institutionData: {
+            nominalRoll: 500,
+          },
+        }
+      });
 
       // Mock workspace lookup (family workspace)
       const mockWorkspace: Workspace = {
@@ -796,39 +765,23 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         updatedAt: timestamp,
       };
 
-      const mockWorkspaceDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          id: mockWorkspace.id,
-          data: () => mockWorkspace,
-        }),
-      };
-
-      const mockWorkspaceCollection = {
-        doc: vi.fn(() => mockWorkspaceDoc),
-      };
+      const mockWorkspaceDoc = createMockFirestoreChain({ getVal: mockWorkspace });
+      const mockWorkspaceCollection = createMockFirestoreChain();
+      mockWorkspaceCollection.doc = vi.fn(() => mockWorkspaceDoc);
 
       const mockCollection = vi.fn((collectionName: string) => {
         if (collectionName === 'entities') {
-          return {
-            doc: vi.fn(() => mockEntityDoc),
-          };
+          const entitiesChain = createMockFirestoreChain();
+          entitiesChain.doc = vi.fn(() => mockEntityDoc);
+          return entitiesChain;
         }
         if (collectionName === 'workspaces') {
           return mockWorkspaceCollection;
         }
         if (collectionName === 'workspace_entities') {
-          return {
-            where: vi.fn(() => ({
-              where: vi.fn(() => ({
-                limit: vi.fn(() => ({
-                  get: vi.fn().mockResolvedValue({ empty: true }),
-                })),
-              })),
-            })),
-          };
+          return createMockFirestoreChain({ empty: true });
         }
-        return { get: vi.fn() };
+        return createMockFirestoreChain();
       });
 
       (adminDb.collection as any) = mockCollection;
@@ -853,27 +806,23 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       const timestamp = new Date().toISOString();
 
       // Mock entity lookup
-      const mockEntityDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
+      const mockEntityDoc = createMockFirestoreChain({
+        getVal: {
           id: mockEntityId,
-          data: () => ({
-            organizationId: 'org_1',
-            entityType: 'family',
-            name: 'Test Family',
-            contacts: [],
-            entityType: 'institution',
-    entityContacts: [],
-    globalTags: [],
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            familyData: {
-              guardians: [],
-              children: [],
-            },
-          }),
-        }),
-      };
+          organizationId: 'org_1',
+          entityType: 'family',
+          name: 'Test Family',
+          contacts: [],
+          entityContacts: [],
+          globalTags: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          familyData: {
+            guardians: [],
+            children: [],
+          },
+        }
+      });
 
       // Mock workspace lookup (person workspace)
       const mockWorkspace: Workspace = {
@@ -899,39 +848,23 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         updatedAt: timestamp,
       };
 
-      const mockWorkspaceDoc = {
-        get: vi.fn().mockResolvedValue({
-          exists: true,
-          id: mockWorkspace.id,
-          data: () => mockWorkspace,
-        }),
-      };
-
-      const mockWorkspaceCollection = {
-        doc: vi.fn(() => mockWorkspaceDoc),
-      };
+      const mockWorkspaceDoc = createMockFirestoreChain({ getVal: mockWorkspace });
+      const mockWorkspaceCollection = createMockFirestoreChain();
+      mockWorkspaceCollection.doc = vi.fn(() => mockWorkspaceDoc);
 
       const mockCollection = vi.fn((collectionName: string) => {
         if (collectionName === 'entities') {
-          return {
-            doc: vi.fn(() => mockEntityDoc),
-          };
+          const entitiesChain = createMockFirestoreChain();
+          entitiesChain.doc = vi.fn(() => mockEntityDoc);
+          return entitiesChain;
         }
         if (collectionName === 'workspaces') {
           return mockWorkspaceCollection;
         }
         if (collectionName === 'workspace_entities') {
-          return {
-            where: vi.fn(() => ({
-              where: vi.fn(() => ({
-                limit: vi.fn(() => ({
-                  get: vi.fn().mockResolvedValue({ empty: true }),
-                })),
-              })),
-            })),
-          };
+          return createMockFirestoreChain({ empty: true });
         }
-        return { get: vi.fn() };
+        return createMockFirestoreChain();
       });
 
       (adminDb.collection as any) = mockCollection;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Meeting, MeetingRegistrant } from '@/lib/types';
@@ -8,7 +8,8 @@ import { format } from 'date-fns';
 import { 
     Users, ArrowLeft, CheckCircle2, Clock, Download, Mail, Search,
     UserCheck, ClipboardCheck, Calendar, AlertCircle, Loader2,
-    MoreHorizontal, Check, X, Trash2, Plus, UsersRound, Send
+    MoreHorizontal, Check, X, Trash2, Plus, UsersRound, Send,
+    SlidersHorizontal
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -32,7 +33,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
-    DropdownMenuSeparator, DropdownMenuTrigger 
+    DropdownMenuSeparator, DropdownMenuTrigger,
+    DropdownMenuCheckboxItem
 } from '@/components/ui/dropdown-menu';
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -66,6 +68,11 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   const [isRegistering, setIsRegistering] = useState(false);
   const [regForm, setRegForm] = useState({ name: '', email: '', phone: '' });
 
+  // Dynamic columns configuration (conforming to vercel-react-best-practices and next-best-practices)
+  const [isPendingTransition, startTransition] = useTransition();
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>([]);
+  const [hasCustomizedColumns, setHasCustomizedColumns] = useState(false);
+
   // Fetch Meeting
   const meetingDocRef = useMemoFirebase(() => {
     if (!firestore || !meetingId) return null;
@@ -83,6 +90,65 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   }, [firestore, meetingId]);
 
   const { data: registrants, isLoading: isLoadingRegistrants, error: registrantsError } = useCollection<MeetingRegistrant>(registrantsColRef);
+
+  // Compute all available custom registration fields safely and efficiently
+  const allAvailableFields = useMemo(() => {
+    const fieldsMap = new Map<string, { key: string; label: string }>();
+
+    // 1. Configured meeting registration fields (excluding standard Name/Email fields)
+    if (meeting?.registrationFields) {
+      meeting.registrationFields.forEach(f => {
+        if (f.key !== 'name' && f.key !== 'email') {
+          fieldsMap.set(f.key, { key: f.key, label: f.label });
+        }
+      });
+    }
+
+    // 2. Extra dynamic fields found in actual registrant submissions (legacy/fallback support)
+    if (registrants) {
+      registrants.forEach(r => {
+        if (r.registrationData) {
+          Object.keys(r.registrationData).forEach(key => {
+            if (key !== 'name' && key !== 'email' && !fieldsMap.has(key)) {
+              const label = key
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/[_-]/g, ' ')
+                .replace(/^\w/, c => c.toUpperCase());
+              fieldsMap.set(key, { key, label });
+            }
+          });
+        }
+      });
+    }
+
+    return Array.from(fieldsMap.values());
+  }, [meeting?.registrationFields, registrants]);
+
+  // Derived state: Active visible columns (O(1) lookups)
+  const activeColumns = useMemo(() => {
+    if (hasCustomizedColumns) {
+      return visibleColumnKeys;
+    }
+    // Default to showing all available columns initially
+    return allAvailableFields.map(f => f.key);
+  }, [allAvailableFields, visibleColumnKeys, hasCustomizedColumns]);
+
+  // Helper to retrieve and format registrant field values safely
+  const getFormattedFieldValue = (registrant: MeetingRegistrant, key: string) => {
+    const rawVal = key === 'phone' ? registrant.phone : registrant.registrationData?.[key];
+    
+    if (rawVal === undefined || rawVal === null) return '';
+    
+    if (Array.isArray(rawVal)) {
+      return rawVal.join(', ');
+    }
+    
+    if (typeof rawVal === 'boolean') {
+      return rawVal ? 'Yes' : 'No';
+    }
+    
+    return String(rawVal);
+  };
 
   // Derived Stats
   const stats = useMemo(() => {
@@ -409,14 +475,76 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                     <CardTitle className="text-lg font-semibold tracking-tight">Registration Roster</CardTitle>
                     <CardDescription className="text-xs font-medium">Manage and review all signups for this session.</CardDescription>
                 </div>
-                <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search by name or email..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 h-10 rounded-xl bg-background border-none ring-1 ring-border shadow-sm focus-visible:ring-primary"
-                    />
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                    <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search by name or email..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 h-10 rounded-xl bg-background border-none ring-1 ring-border shadow-sm focus-visible:ring-primary w-full"
+                        />
+                    </div>
+                    {allAvailableFields.length > 0 ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button 
+                                    variant="outline" 
+                                    className="font-bold gap-2 rounded-xl h-10 bg-background/95 backdrop-blur-md border-none ring-1 ring-border hover:bg-muted/50 transition-all duration-200"
+                                >
+                                    <SlidersHorizontal className="h-4 w-4" />
+                                    <span>Columns</span>
+                                    {activeColumns.length < allAvailableFields.length ? (
+                                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] bg-primary/10 text-primary border-none font-bold">
+                                            {activeColumns.length}/{allAvailableFields.length}
+                                        </Badge>
+                                    ) : null}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 rounded-xl bg-background/95 backdrop-blur-md border-none ring-1 ring-border shadow-lg p-1 animate-in fade-in-50 slide-in-from-top-2 duration-200 z-[100]">
+                                <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                    Visible Columns
+                                </div>
+                                <DropdownMenuSeparator className="bg-border/60" />
+                                {allAvailableFields.map((field) => {
+                                    const isChecked = activeColumns.includes(field.key);
+                                    return (
+                                        <DropdownMenuCheckboxItem
+                                            key={field.key}
+                                            checked={isChecked}
+                                            onCheckedChange={(checked) => {
+                                                startTransition(() => {
+                                                    setHasCustomizedColumns(true);
+                                                    if (checked) {
+                                                        setVisibleColumnKeys((prev) => [...prev, field.key]);
+                                                    } else {
+                                                        setVisibleColumnKeys((prev) =>
+                                                            prev.filter((k) => k !== field.key)
+                                                        );
+                                                    }
+                                                });
+                                            }}
+                                            className="rounded-lg text-xs py-2 px-2.5 font-medium focus:bg-muted focus:text-foreground cursor-pointer transition-colors duration-150"
+                                        >
+                                            {field.label}
+                                        </DropdownMenuCheckboxItem>
+                                    );
+                                })}
+                                <DropdownMenuSeparator className="bg-border/60" />
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        startTransition(() => {
+                                            setHasCustomizedColumns(false);
+                                            setVisibleColumnKeys([]);
+                                        });
+                                    }}
+                                    className="rounded-lg text-xs py-2 px-2.5 font-bold text-primary focus:bg-primary/5 focus:text-primary cursor-pointer text-center justify-center transition-colors duration-150"
+                                >
+                                    Reset to Default
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : null}
                 </div>
             </CardHeader>
             <CardContent className="p-0 bg-background">
@@ -434,22 +562,30 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-background hover:bg-background">
+                                <TableRow className="bg-background hover:bg-background border-b border-border/40">
                                     <TableHead className="w-[40px] pl-4">
                                       <Checkbox 
                                         checked={selectedIds.size === filteredRegistrants.length && filteredRegistrants.length > 0}
                                         onCheckedChange={toggleAll}
                                       />
                                     </TableHead>
-                                    <TableHead className="text-[10px] font-semibold h-12">Name</TableHead>
-                                    <TableHead className="text-[10px] font-semibold">Registered</TableHead>
-                                    <TableHead className="text-[10px] font-semibold">Status</TableHead>
-                                    <TableHead className="w-[150px] text-right text-[10px] font-semibold pr-6">Action</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider h-12">Name</TableHead>
+                                    {allAvailableFields.map((field) => {
+                                        const isVisible = activeColumns.includes(field.key);
+                                        return isVisible ? (
+                                            <TableHead key={field.key} className="text-[10px] font-bold uppercase tracking-wider">
+                                                {field.label}
+                                            </TableHead>
+                                        ) : null;
+                                    })}
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Registered</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Status</TableHead>
+                                    <TableHead className="w-[150px] text-right text-[10px] font-bold uppercase tracking-wider pr-6">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredRegistrants.map((registrant) => (
-                                    <TableRow key={registrant.id} className="group" data-state={selectedIds.has(registrant.id) ? "selected" : undefined}>
+                                    <TableRow key={registrant.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150" data-state={selectedIds.has(registrant.id) ? "selected" : undefined}>
                                         <TableCell className="pl-4">
                                           <Checkbox 
                                             checked={selectedIds.has(registrant.id)}
@@ -458,12 +594,22 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-sm">{registrant.name}</span>
+                                                <span className="font-bold text-sm text-foreground">{registrant.name}</span>
                                                 <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                                                     <Mail className="h-3 w-3" /> {registrant.email || 'N/A'}
                                                 </span>
                                             </div>
                                         </TableCell>
+                                        {allAvailableFields.map((field) => {
+                                            const isVisible = activeColumns.includes(field.key);
+                                            if (!isVisible) return null;
+                                            const val = getFormattedFieldValue(registrant, field.key);
+                                            return (
+                                                <TableCell key={field.key} className="text-xs font-semibold text-foreground/90 max-w-[200px] truncate">
+                                                    {val ? val : <span className="text-muted-foreground/30 font-normal">—</span>}
+                                                </TableCell>
+                                            );
+                                        })}
                                         <TableCell className="text-xs font-medium text-muted-foreground">
                                             {registrant.registeredAt ? format(new Date(registrant.registeredAt), 'MMM d, h:mm a') : 'Unknown'}
                                         </TableCell>

@@ -40,6 +40,25 @@ function getDateBoundary(preset: string): number | null {
   }
 }
 
+// Helper function to match query against phone numbers in different formats
+function matchPhoneNumber(storedPhone: string | undefined | null, query: string): boolean {
+  if (!storedPhone) return false;
+  const sClean = storedPhone.replace(/\D/g, '');
+  const qClean = query.replace(/\D/g, '');
+  if (!qClean) return false;
+  
+  // Direct substring match
+  if (sClean.includes(qClean) || qClean.includes(sClean)) return true;
+  
+  // Handle local Ghana zero leading format matching E.164 (without zero, with country code)
+  if (qClean.startsWith('0')) {
+    const qCleanNoZero = qClean.slice(1);
+    if (qCleanNoZero && sClean.includes(qCleanNoZero)) return true;
+  }
+  
+  return false;
+}
+
 // ─── Hook Parameters ───────────────────────────────────────────────
 interface UseEntityFiltersParams {
   entities: WorkspaceEntity[] | null | undefined;
@@ -78,7 +97,27 @@ export function useEntityFilters({
       }
 
       // 2. Text Search (early exit on miss)
-      if (query && !entity.displayName?.toLowerCase().includes(query)) return false;
+      if (query) {
+        const matchesEntityName = 
+          entity.displayName?.toLowerCase().includes(query) || 
+          entity.entityName?.toLowerCase().includes(query);
+          
+        const matchesContactName = 
+          entity.primaryContactName?.toLowerCase().includes(query) ||
+          entity.entityContacts?.some(c => c.name?.toLowerCase().includes(query));
+          
+        const matchesEmail = 
+          entity.primaryEmail?.toLowerCase().includes(query) ||
+          entity.entityContacts?.some(c => c.email?.toLowerCase().includes(query));
+          
+        const matchesPhone = 
+          matchPhoneNumber(entity.primaryPhone, query) ||
+          entity.entityContacts?.some(c => matchPhoneNumber(c.phone, query));
+
+        if (!matchesEntityName && !matchesContactName && !matchesEmail && !matchesPhone) {
+          return false;
+        }
+      }
 
       // 3. Status Filter
       if (filterState.status !== 'all' && entity.status !== filterState.status) return false;

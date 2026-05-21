@@ -41,6 +41,7 @@ import { useTenant } from '@/context/TenantContext';
 import { updateEntityAction } from '@/lib/entity-actions';
 import { useTerminology } from '@/hooks/use-terminology';
 import EntityNotesTab from '../../components/EntityNotesTab';
+import { TagSelector } from '@/components/tags/TagSelector';
 
 const entityEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -56,6 +57,11 @@ const entityEditSchema = z.object({
   }, { required_error: 'Please assign a geographic zone.' }),
   locationString: z.string().optional(),
   capacity: z.coerce.number().optional(),
+  workspaceTags: z.array(z.string()).optional().default([]),
+  currentNeeds: z.string().optional(),
+  currentChallenges: z.string().optional(),
+  interests: z.string().optional(),
+  customData: z.record(z.any()).optional(),
   entityContacts: z.array(z.object({
     name: z.string().min(2, 'Name required.'),
     email: z.string().email('Invalid email.').optional().or(z.literal('')),
@@ -156,6 +162,46 @@ function EditEntityForm({ entityId }: EditFormProps) {
   }, [firestore, activeWorkspaceId]);
   const { data: packages } = useCollection<SubscriptionPackage>(packagesQuery);
 
+  const fieldsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+        collection(firestore, 'app_fields'),
+        where('workspaceId', '==', activeWorkspaceId),
+        where('status', '==', 'active')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: appFields } = useCollection<any>(fieldsQuery);
+
+  const groupsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+        collection(firestore, 'field_groups'),
+        where('workspaceId', '==', activeWorkspaceId),
+        orderBy('order', 'asc')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: fieldGroups } = useCollection<any>(groupsQuery);
+
+  const contactScope = activeWorkspace?.contactScope || 'institution';
+
+  const customFieldGroups = React.useMemo(() => {
+      if (!fieldGroups || !appFields) return [];
+      
+      return fieldGroups.map(group => {
+          const groupFields = appFields.filter((f: any) => 
+              f.groupId === group.id && 
+              f.status === 'active' && 
+              f.type !== 'hidden' &&
+              (f.compatibilityScope?.includes('common') || f.compatibilityScope?.includes(contactScope))
+          );
+          
+          return {
+              ...group,
+              fields: groupFields
+          };
+      }).filter(g => g.fields.length > 0 && !g.isSystem); // Only non-system groups for generic custom inputs
+  }, [fieldGroups, appFields, contactScope]);
+
   const methods = useForm<EntityEditValues>({
     resolver: zodResolver(entityEditSchema),
     defaultValues: {
@@ -163,7 +209,12 @@ function EditEntityForm({ entityId }: EditFormProps) {
       capacity: 0, entityContacts: [], modules: [],
       assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
-      subscriptionPackageId: 'none'
+      subscriptionPackageId: 'none',
+      workspaceTags: [],
+      currentNeeds: '',
+      currentChallenges: '',
+      interests: '',
+      customData: {},
     }
   });
 
@@ -206,6 +257,11 @@ function EditEntityForm({ entityId }: EditFormProps) {
         discountPercentage: financeData.discountPercentage ?? 0,
         arrearsBalance: financeData.arrearsBalance ?? 0,
         creditBalance: financeData.creditBalance ?? 0,
+        workspaceTags: weData.workspaceTags || [],
+        currentNeeds: (weData as any).currentNeeds || (entityData as any).currentNeeds || '',
+        currentChallenges: (weData as any).currentChallenges || (entityData as any).currentChallenges || '',
+        interests: (weData as any).interestsText || (entityData as any).interestsText || '',
+        customData: entityData.customData || {},
         // Online Presence
         op_website: entityData.onlinePresence?.website || (entityData as any).website || '',
         op_digitalAddress: entityData.onlinePresence?.digitalAddress || '',
@@ -266,6 +322,11 @@ function EditEntityForm({ entityId }: EditFormProps) {
         slogan: data.slogan,
         logoUrl: data.logoUrl,
         heroImageUrl: data.heroImageUrl,
+        workspaceTags: data.workspaceTags || [],
+        currentNeeds: data.currentNeeds || '',
+        currentChallenges: data.currentChallenges || '',
+        interestsText: data.interests || '',
+        customData: data.customData || {},
         location: {
             zone: data.zone,
             locationString: data.locationString,
@@ -351,430 +412,531 @@ function EditEntityForm({ entityId }: EditFormProps) {
  <form onSubmit={methods.handleSubmit(handleFormSubmit)} className="space-y-8 pb-24 text-left">
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
  <div className="lg:col-span-2 space-y-8">
-            {/* Identity Card */}
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left">
- <Building className="h-5 w-5 text-primary" />
-                    </div>
- <div className="text-left">
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Identity & Status</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Core institutional metadata.</CardDescription>
-                    </div>
+            {/* General Identity Card */}
+            <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+              <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                <div className="flex items-center gap-2 text-left">
+                  <Building className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm font-semibold tracking-tight">General Identity</CardTitle>
                 </div>
               </CardHeader>
- <CardContent className="p-6 space-y-8 text-left">
- <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                  <FormField 
-                    control={methods.control} 
-                    name="name" 
+              <CardContent className="p-6 space-y-8 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                  <FormField control={methods.control} name="name" render={({ field }) => (
+                    <FormItem className="md:col-span-2 text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Official Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder={`${singular} name...`} {...field} className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-bold text-lg" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={methods.control} name="initials" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Initials</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-center" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                  <FormField control={methods.control} name="status" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">{termStatus}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-bold">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-xl shadow-2xl border-none">
+                          <SelectItem value="active" className="font-bold">Active</SelectItem>
+                          <SelectItem value="inactive" className="font-bold">Inactive</SelectItem>
+                          <SelectItem value="archived" className="font-bold">Archived</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={methods.control} name="lifecycleStatus" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-primary ml-1">Operational State</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-semibold text-primary">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-xl shadow-2xl border-none">
+                          {(activeWorkspace?.statuses || []).map(s => (
+                            <SelectItem key={s.value} value={s.value} className="font-semibold">{s.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+
+                <div className="space-y-2 text-left">
+                  <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left flex items-center gap-2"><Camera className="h-3 w-3" /> {singular} Logo</Label>
+                  <Controller 
+                    name="logoUrl"
+                    control={methods.control}
                     render={({ field }) => (
- <FormItem className="md:col-span-2 text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Official {singular} Name</FormLabel>
-                            <FormControl>
- <Input {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} 
-                  />
-                  <FormField 
-                    control={methods.control} 
-                    name="status" 
-                    render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">{termStatus}</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
- <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                </FormControl>
- <SelectContent className="rounded-xl shadow-2xl border-none">
- <SelectItem value="active" className="font-bold">Active</SelectItem>
- <SelectItem value="inactive" className="font-bold">Inactive</SelectItem>
- <SelectItem value="archived" className="font-bold">Archived</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} 
+                      <MediaSelect {...field} filterType="image" className="rounded-2xl" />
+                    )}
                   />
                 </div>
 
- <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                    <FormField 
-                        control={methods.control} 
-                        name="lifecycleStatus" 
-                        render={({ field }) => (
- <FormItem className="md:col-span-1 text-left">
- <FormLabel className="text-[10px] font-semibold text-primary ml-1">Operational State</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
- <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 shadow-sm font-semibold text-xs text-primary">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                    </FormControl>
- <SelectContent className="rounded-xl shadow-2xl border-none">
-                                        {(activeWorkspace?.statuses || []).map(s => (
- <SelectItem key={s.value} value={s.value} className="font-semibold">{s.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} 
-                    />
- <div className="md:col-span-2 pt-2 text-left">
- <p className="text-[10px] font-medium text-muted-foreground leading-relaxed italic text-left">
-                            Resolution cycle: {activeWorkspace?.name}. Updating this affects pipeline categorization.
-                        </p>
-                    </div>
+                <div className="space-y-2 text-left">
+                  <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Vision / Motto</Label>
+                  <FormField control={methods.control} name="slogan" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormControl>
+                        <Input placeholder="e.g. Forward Ever" {...field} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium italic" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
 
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left flex items-center gap-2"><Camera className="h-3 w-3" /> {singular} Logo</Label>
-                    <Controller 
-                        name="logoUrl"
-                        control={methods.control}
-                        render={({ field }) => (
- <MediaSelect {...field} filterType="image" className="rounded-2xl" />
-                        )}
-                    />
-                </div>
-
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50 text-left">
-                    <FormField control={methods.control} name="initials" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">{singular} Initials</FormLabel>
-                            <FormControl>
- <Input {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-center" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                    <FormField control={methods.control} name="slogan" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Vision/Motto</FormLabel>
-                            <FormControl>
- <Input {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 italic font-medium" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
+                <div className="space-y-2 text-left pt-4">
+                  <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Tags & Categories</Label>
+                  <FormField control={methods.control} name="workspaceTags" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormControl>
+                        <TagSelector currentTagIds={field.value || []} onTagsChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
               </CardContent>
             </Card>
 
             {/* Financial Profile Card */}
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
- <CardHeader className="bg-muted/30 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><Banknote className="h-5 w-5 text-primary" /></div>
- <div className="text-left">
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Financial Configuration</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Billing rules and effective termly rates.</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
- <CardContent className="p-6 space-y-8 text-left">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                        <FormField control={methods.control} name="subscriptionPackageId" render={({ field, fieldState }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Subscription Tier</FormLabel>
-                                <FormControl>
-                                    <PackageSelect 
-                                        value={field.value} 
-                                        onValueChange={(val, pkg) => {
-                                            field.onChange(val);
-                                            if (pkg) {
-                                                methods.setValue('subscriptionRate', pkg.ratePerStudent, { shouldDirty: true });
-                                                methods.setValue('discountPercentage', 0, { shouldDirty: true });
-                                            }
-                                        }}
-                                        error={!!fieldState.error}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={methods.control} name="currency" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Default Currency</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
- <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                    </FormControl>
- <SelectContent className="rounded-xl shadow-2xl border-none">
- <SelectItem value="GHS" className="font-semibold">Ghanaian Cedi (GH¢)</SelectItem>
- <SelectItem value="USD" className="font-semibold">US Dollar ($)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </FormItem>
-                        )} />
-                    </div>
+            <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+              <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                <div className="flex items-center gap-2 text-left">
+                  <Banknote className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm font-semibold tracking-tight">Financial Configuration</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-8 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                  <FormField control={methods.control} name="subscriptionPackageId" render={({ field, fieldState }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Subscription Tier</FormLabel>
+                      <FormControl>
+                        <PackageSelect 
+                          value={field.value || 'none'} 
+                          onValueChange={(val, pkg) => {
+                            field.onChange(val);
+                            if (pkg) {
+                              methods.setValue('subscriptionRate', pkg.ratePerStudent, { shouldDirty: true });
+                              methods.setValue('discountPercentage', 0, { shouldDirty: true });
+                            }
+                          }}
+                          error={!!fieldState.error}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )} />
+                  <FormField control={methods.control} name="currency" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Billing Currency</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-bold">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-xl shadow-2xl border-none">
+                          <SelectItem value="GHS" className="font-semibold">Ghanaian Cedi (GH¢)</SelectItem>
+                          <SelectItem value="USD" className="font-semibold">US Dollar ($)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                </div>
 
-                    {/* Rate and Discount Adjustment */}
- <div className={cn(
-                        "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500 text-left",
-                        watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-background border-border opacity-40 pointer-events-none"
-                    )}>
- <div className="flex items-center gap-3 mb-6 text-left">
- <div className="p-2 bg-primary text-white rounded-lg shadow-sm text-left"><Target className="h-4 w-4" /></div>
- <p className="text-[10px] font-semibold text-left">Rate Optimization Engine</p>
-                        </div>
-                        
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-                            <FormField control={methods.control} name="discountPercentage" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-1.5 text-left"><Percent className="h-3 w-3" /> Grant Factor</FormLabel>
-                                    <FormControl>
-                                        <Input 
-                                            type="number" 
-                                            step="0.01" 
-                                            {...field} 
-                                            onChange={(e) => {
-                                                const val = parseFloat(e.target.value) || 0;
-                                                field.onChange(val);
-                                                handleDiscountChange(val);
-                                            }}
- className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-semibold text-xl text-center" 
-                                        />
-                                    </FormControl>
- <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Specific fee reduction percentage</FormDescription>
-                                </FormItem>
-                            )} />
-                            <FormField control={methods.control} name="subscriptionRate" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-1.5 text-left"><Banknote className="h-3 w-3" /> Net Unit Rate</FormLabel>
-                                    <FormControl>
-                                        <Input 
-                                            type="number" 
-                                            step="0.01" 
-                                            {...field} 
-                                            onChange={(e) => {
-                                                const val = parseFloat(e.target.value) || 0;
-                                                field.onChange(val);
-                                                handleRateChange(val);
-                                            }}
- className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-semibold text-xl text-center" 
-                                        />
-                                    </FormControl>
- <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Final billed unit cost</FormDescription>
-                                </FormItem>
-                            )} />
-                        </div>
-                    </div>
-
-                    <FormField control={methods.control} name="billingAddress" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Service Address</FormLabel>
-                            <FormControl>
- <Textarea {...field} placeholder="If different from primary location..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-inner" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
+                {/* Rate and Discount Adjustment */}
+                <div className={cn(
+                  "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500 text-left",
+                  watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-border opacity-40 pointer-events-none"
+                )}>
+                  <div className="flex items-center gap-3 mb-6 text-left">
+                    <div className="p-2 bg-primary text-white rounded-lg shadow-sm text-left"><Target className="h-4 w-4" /></div>
+                    <p className="text-[10px] font-semibold text-primary text-left">Rate Optimization Engine</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                    <FormField control={methods.control} name="discountPercentage" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-1.5 text-left"><Percent className="h-3 w-3" /> Preferred Grant</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            {...field} 
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              field.onChange(val);
+                              handleDiscountChange(val);
+                            }}
+                            className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-xl text-center" 
+                          />
+                        </FormControl>
+                        <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Grant a reduction for this record</FormDescription>
+                      </FormItem>
                     )} />
+                    <FormField control={methods.control} name="subscriptionRate" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-1.5 text-left"><Banknote className="h-3 w-3" /> Expected Net Rate</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            {...field} 
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              field.onChange(val);
+                              handleRateChange(val);
+                            }}
+                            className="h-12 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-xl text-center" 
+                          />
+                        </FormControl>
+                        <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Effective rate billed per unit</FormDescription>
+                      </FormItem>
+                    )} />
+                  </div>
+                </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50 text-left">
-                        <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-rose-600 ml-1 flex items-center gap-1.5 text-left"><CreditCard className="h-3 w-3" /> Arrears Balance</FormLabel>
-                                <FormControl>
- <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-50/50 border-none shadow-inner font-semibold text-rose-700" />
-                                </FormControl>
- <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Initial outstanding debt</FormDescription>
-                            </FormItem>
-                        )} />
-                        <FormField control={methods.control} name="creditBalance" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-emerald-600 ml-1 flex items-center gap-1.5 text-left"><Wallet className="h-3 w-3" /> Credit Limit</FormLabel>
-                                <FormControl>
- <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-50/50 border-none shadow-inner font-semibold text-emerald-700" />
-                                </FormControl>
- <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Initial overpayment credit</FormDescription>
-                            </FormItem>
-                        )} />
-                    </div>
-                </CardContent>
+                <FormField control={methods.control} name="billingAddress" render={({ field }) => (
+                  <FormItem className="text-left">
+                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Detailed Billing Address</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                {/* Capacity & Ledger */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                  <FormField control={methods.control} name="capacity" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><Hash className="h-3 w-3" /> Capacity</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-center" />
+                      </FormControl>
+                      <FormDescription className="text-[9px] font-bold opacity-60 text-left">Total unit capacity</FormDescription>
+                    </FormItem>
+                  )} />
+                  <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-rose-500 ml-1 flex items-center gap-1.5 text-left"><Wallet className="h-3 w-3" /> Arrears</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-center" />
+                      </FormControl>
+                      <FormDescription className="text-[9px] font-bold opacity-60 text-left">Outstanding balance owed</FormDescription>
+                    </FormItem>
+                  )} />
+                  <FormField control={methods.control} name="creditBalance" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-emerald-600 ml-1 flex items-center gap-1.5 text-left"><CreditCard className="h-3 w-3" /> Credit</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-center" />
+                      </FormControl>
+                      <FormDescription className="text-[9px] font-bold opacity-60 text-left">Advance credit on file</FormDescription>
+                    </FormItem>
+                  )} />
+                </div>
+              </CardContent>
             </Card>
-            
+
             {/* Account Assignment Card */}
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
- <CardHeader className="bg-muted/30 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><UserCheck className="h-5 w-5 text-primary" /></div>
- <div className="text-left">
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Account Ownership</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Internal manager responsible for this record.</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
- <CardContent className="p-6 text-left">
-                    <FormField control={methods.control} name="assignedToId" render={({ field, fieldState }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Account Manager</FormLabel>
-                            <FormControl>
-                                <ManagerSelect 
-                                    value={field.value} 
-                                    onValueChange={field.onChange}
-                                    error={!!fieldState.error}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                </CardContent>
+            <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+              <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                <div className="flex items-center gap-2 text-left">
+                  <UserCheck className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm font-semibold tracking-tight">Account Ownership</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 text-left">
+                <FormField control={methods.control} name="assignedToId" render={({ field, fieldState }) => (
+                  <FormItem className="text-left">
+                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Primary Representative</FormLabel>
+                    <FormControl>
+                      <ManagerSelect 
+                        value={field.value} 
+                        onValueChange={field.onChange}
+                        error={!!fieldState.error}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </CardContent>
             </Card>
 
             {/* Contacts & Modules Section */}
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
- <CardHeader className="bg-muted/30 border-b pb-6 text-left">  <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><User className="h-5 w-5 text-primary" /></div>
- <div className="text-left">
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Administrative stakeholders</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Primary directory of entity contacts.</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
- <CardContent className="p-6 text-left">
-                    <EntityContactManager />
-                </CardContent>
+            <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+              <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                <div className="flex items-center gap-2 text-left">
+                  <User className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm font-semibold tracking-tight">Administrative Stakeholders</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 text-left">
+                <EntityContactManager />
+              </CardContent>
             </Card>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
- <CardHeader className="bg-muted/30 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><Plus className="h-5 w-5 text-primary" /></div>
- <div className="text-left">
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Requested Capabilities</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Features activated for this institution.</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
- <CardContent className="p-6 text-left">
-                    <FormField control={methods.control} name="modules" render={({ field }) => (
- <FormItem className="text-left">
-                            <FormControl>
-                                <ModuleSelect {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                </CardContent>
+            {/* Interests Card */}
+            <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+              <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                <div className="flex items-center gap-2 text-left">
+                  <Plus className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm font-semibold tracking-tight">Interests</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6 text-left">
+                <FormField control={methods.control} name="modules" render={({ field }) => (
+                  <FormItem className="text-left">
+                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/50 ml-1 text-left">Specific Interests</FormLabel>
+                    <FormControl>
+                      <ModuleSelect {...field} />
+                    </FormControl>
+                    <FormDescription className="text-[9px] font-bold opacity-60 text-left">Identify the specific interests for this workspace.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={methods.control} name="interests" render={({ field }) => (
+                  <FormItem className="text-left">
+                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Interests (Text)</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="e.g. Technology, Sports, Arts..." className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" />
+                    </FormControl>
+                    <FormDescription className="text-[9px] font-bold opacity-60 text-left">Comma-separated list of areas of interest.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </CardContent>
             </Card>
-          </div>
 
-          {/* Right Sidebar: Operations */}
- <div className="space-y-8 text-left">
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
- <CardHeader className="bg-muted/30 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
- <div className="p-2 bg-primary/10 rounded-xl text-left"><MapPin className="h-5 w-5 text-primary" /></div>
- <div className="text-left">
- <CardTitle className="text-lg font-semibold tracking-tight text-left">Regional Metadata</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Geographic and scale classification.</CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
- <CardContent className="p-6 space-y-6 text-left">
-                    <FormField control={methods.control} name="zone" render={({ field, fieldState }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Geographic Zone</FormLabel>
-                            <FormControl>
-                                <ZoneSelect value={field.value} onValueChange={field.onChange} error={!!fieldState.error} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-
-                    {/* Location Hierarchy: Country → Region → District */}
-                    <div className="pt-2 border-t border-border/30">
-                        <p className="text-[10px] font-semibold text-muted-foreground/60 ml-1 mb-2">Administrative Location</p>
-                        <LocationCascade
-                            value={locationValue}
-                            onChange={setLocationValue}
-                            defaultCountryId={defaultCountryId}
-                        />
-                    </div>
-                    <FormField control={methods.control} name="locationString" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Physical Hub</FormLabel>
-                            <FormControl>
- <Textarea {...field} className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} /> 
-                    <FormField control={methods.control} name="capacity" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Capacity</FormLabel>
-                            <FormControl>
- <Input type="number" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                </CardContent>
+            {/* Current Situation Card */}
+            <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+              <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                <div className="flex items-center gap-2 text-left">
+                  <Target className="h-4 w-4 text-amber-600" />
+                  <CardTitle className="text-sm font-semibold tracking-tight">Current Situation</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6 text-left">
+                <FormField control={methods.control} name="currentNeeds" render={({ field }) => (
+                  <FormItem className="text-left">
+                    <FormLabel className="text-[10px] font-semibold text-amber-600 ml-1 text-left">Current Needs</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="What is this entity actively looking for or needing right now?" className="min-h-[90px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={methods.control} name="currentChallenges" render={({ field }) => (
+                  <FormItem className="text-left">
+                    <FormLabel className="text-[10px] font-semibold text-rose-600 ml-1 text-left">Current Challenges</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="What pain points or obstacles is this entity facing?" className="min-h-[90px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </CardContent>
             </Card>
 
             {/* Online Presence Card */}
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
-                <CardHeader className="bg-muted/30 border-b pb-6 text-left">
-                    <div className="flex items-center gap-3 text-left">
-                        <div className="p-2 bg-primary/10 rounded-xl text-left"><Share2 className="h-5 w-5 text-primary" /></div>
-                        <div className="text-left">
-                            <CardTitle className="text-lg font-semibold tracking-tight text-left">Online Presence</CardTitle>
-                            <CardDescription className="text-xs font-medium text-left">Digital address, social media, and web presence.</CardDescription>
-                        </div>
-                    </div>
+            <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+              <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                <div className="flex items-center gap-2 text-left">
+                  <Globe className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm font-semibold tracking-tight">Online Presence</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                  <FormField control={methods.control} name="op_website" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><Globe className="h-3 w-3" /> Website</FormLabel>
+                      <FormControl><Input {...field} placeholder="https://example.com" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={methods.control} name="op_digitalAddress" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><Hash className="h-3 w-3" /> Digital Address</FormLabel>
+                      <FormControl><Input {...field} placeholder="e.g. GA-000-0000" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={methods.control} name="op_googleMapLocation" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><MapPin className="h-3 w-3" /> Google Map Link</FormLabel>
+                      <FormControl><Input {...field} placeholder="https://maps.google.com/..." className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={methods.control} name="op_googleBusinessProfile" render={({ field }) => (
+                    <FormItem className="text-left">
+                      <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left"><Network className="h-3 w-3" /> Google Business</FormLabel>
+                      <FormControl><Input {...field} placeholder="Google Business Profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+
+                <div className="pt-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-1.5 text-left mb-4"><Share2 className="h-3 w-3" /> Social Media</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                    <FormField control={methods.control} name="op_facebook" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Facebook</FormLabel>
+                        <FormControl><Input {...field} placeholder="Facebook page URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={methods.control} name="op_whatsapp" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">WhatsApp</FormLabel>
+                        <FormControl><Input {...field} placeholder="WhatsApp number or link" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={methods.control} name="op_instagram" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Instagram</FormLabel>
+                        <FormControl><Input {...field} placeholder="Instagram profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={methods.control} name="op_linkedin" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">LinkedIn</FormLabel>
+                        <FormControl><Input {...field} placeholder="LinkedIn page URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={methods.control} name="op_x" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">X (Twitter)</FormLabel>
+                        <FormControl><Input {...field} placeholder="X profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={methods.control} name="op_youtube" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">YouTube</FormLabel>
+                        <FormControl><Input {...field} placeholder="YouTube channel URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={methods.control} name="op_tiktok" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">TikTok</FormLabel>
+                        <FormControl><Input {...field} placeholder="TikTok profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={methods.control} name="op_pinterest" render={({ field }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Pinterest</FormLabel>
+                        <FormControl><Input {...field} placeholder="Pinterest profile URL" className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-medium" /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dynamic Custom Field Groups */}
+            {customFieldGroups.map((group) => (
+              <Card key={group.id} className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+                <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                  <div className="flex items-center gap-2 text-left">
+                    <Layout className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-sm font-semibold tracking-tight">{group.name}</CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent className="p-6 space-y-4 text-left">
-                    <div className="grid grid-cols-1 gap-4">
-                        {([
-                            { name: 'op_website' as const, label: 'Website', icon: Globe, placeholder: 'https://example.com' },
-                            { name: 'op_digitalAddress' as const, label: 'Digital Address', icon: MapPin, placeholder: 'GA-XXX-XXXX' },
-                            { name: 'op_googleMapLocation' as const, label: 'Google Map Location', icon: MapPin, placeholder: 'https://maps.google.com/...' },
-                            { name: 'op_googleBusinessProfile' as const, label: 'Google Business Profile', icon: Globe, placeholder: 'https://business.google.com/...' },
-                            { name: 'op_facebook' as const, label: 'Facebook', icon: Globe, placeholder: 'https://facebook.com/...' },
-                            { name: 'op_whatsapp' as const, label: 'WhatsApp', icon: PhoneIcon, placeholder: '+233...' },
-                            { name: 'op_linkedin' as const, label: 'LinkedIn', icon: Network, placeholder: 'https://linkedin.com/in/...' },
-                            { name: 'op_pinterest' as const, label: 'Pinterest', icon: Share2, placeholder: 'https://pinterest.com/...' },
-                            { name: 'op_instagram' as const, label: 'Instagram', icon: Globe, placeholder: '@username' },
-                            { name: 'op_tiktok' as const, label: 'TikTok', icon: Zap, placeholder: '@username' },
-                            { name: 'op_youtube' as const, label: 'YouTube', icon: Globe, placeholder: 'https://youtube.com/...' },
-                            { name: 'op_x' as const, label: 'X (Twitter)', icon: Hash, placeholder: '@username' },
-                        ]).map(({ name, label, icon: FieldIcon, placeholder }) => (
-                            <FormField key={name} control={methods.control} name={name} render={({ field }) => (
-                                <FormItem className="text-left">
-                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left flex items-center gap-1.5">
-                                        <FieldIcon className="h-3 w-3" /> {label}
-                                    </FormLabel>
-                                    <FormControl>
-                                        <Input {...field} placeholder={placeholder} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium text-sm" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                        ))}
-                    </div>
+                <CardContent className="p-6 text-left grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {group.fields.map((field: any) => (
+                    <FormField key={field.id} control={methods.control} name={`customData.${field.variableName}`} render={({ field: formField }) => (
+                      <FormItem className="text-left">
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">{field.label}</FormLabel>
+                        <FormControl>
+                          {field.type === 'long_text' ? (
+                            <Textarea {...formField} value={formField.value || ''} className="min-h-[80px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4" />
+                          ) : (
+                            <Input {...formField} value={formField.value || ''} type={field.type === 'number' ? 'number' : 'text'} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold" />
+                          )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  ))}
                 </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Right Sidebar: Operations */}
+          <div className="space-y-8 text-left">
+            <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+              <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                <div className="flex items-center gap-2 text-left">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm font-semibold tracking-tight">Regional Metadata</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6 text-left">
+                <FormField control={methods.control} name="zone" render={({ field, fieldState }) => (
+                  <FormItem className="text-left">
+                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Geographic Zone</FormLabel>
+                    <FormControl>
+                      <ZoneSelect value={field.value} onValueChange={field.onChange} error={!!fieldState.error} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                {/* Location Hierarchy: Country → Region → District */}
+                <div className="pt-2 border-t border-border/30">
+                  <p className="text-[10px] font-semibold text-muted-foreground/60 ml-1 mb-2">Administrative Location</p>
+                  <LocationCascade
+                    value={locationValue}
+                    onChange={setLocationValue}
+                    defaultCountryId={defaultCountryId}
+                  />
+                </div>
+                <FormField control={methods.control} name="locationString" render={({ field }) => (
+                  <FormItem className="text-left">
+                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Descriptive Physical Address</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} className="min-h-[80px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </CardContent>
             </Card>
 
             <EntityNotesTab entityId={entityId} />
 
- <div className="pt-4 sticky top-24 text-left">
-                <Button 
-                    type="submit" 
- className="w-full h-14 rounded-2xl font-semibold text-lg shadow-xl gap-3 transition-all active:scale-95" 
-                    disabled={methods.formState.isSubmitting}
-                >
- {methods.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />} 
-                    Update Profile
-                </Button>
+            <div className="pt-4 sticky top-24 text-left">
+              <Button 
+                type="submit" 
+                className="w-full h-14 rounded-2xl font-semibold text-lg shadow-xl gap-3 transition-all active:scale-95" 
+                disabled={methods.formState.isSubmitting}
+              >
+                {methods.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />} 
+                Update Profile
+              </Button>
             </div>
           </div>
         </div>

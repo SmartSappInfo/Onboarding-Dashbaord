@@ -12,7 +12,10 @@ import {
   CalendarDays, 
   X,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  MoreHorizontal,
+  Archive,
+  Trash2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -33,6 +36,8 @@ interface BulkActionDockProps {
   onInitiateDeals: () => void;
   onCreateTasks: () => void;
   onInviteMeetings: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
   className?: string;
 }
 
@@ -45,6 +50,8 @@ export function BulkActionDock({
   onInitiateDeals,
   onCreateTasks,
   onInviteMeetings,
+  onArchive,
+  onDelete,
   className,
 }: BulkActionDockProps) {
   const { singular, plural } = useTerminology();
@@ -74,10 +81,10 @@ export function BulkActionDock({
         className
       )}
     >
-      <div className="flex items-center gap-3 px-4 py-3 rounded-2xl backdrop-blur-xl bg-slate-950/85 dark:bg-slate-900/90 border border-slate-800 dark:border-slate-800/80 shadow-[0_20px_50px_rgba(0,0,0,0.4)] ring-1 ring-white/5 max-w-[90vw] md:max-w-max">
+      <div className="flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3 rounded-2xl backdrop-blur-xl bg-slate-950/85 dark:bg-slate-900/90 border border-slate-800 dark:border-slate-800/80 shadow-[0_20px_50px_rgba(0,0,0,0.4)] ring-1 ring-white/5 max-w-[95vw] md:max-w-max">
         {/* Selection Indicator */}
-        <div className="flex items-center gap-2 pr-3 border-r border-slate-800/80">
-          <div className="h-6 px-2 rounded-lg bg-primary/20 flex items-center justify-center">
+        <div className="flex items-center gap-1.5 sm:gap-2 pr-1.5 sm:pr-3 border-r border-slate-800/80">
+          <div className="h-6 px-1.5 sm:px-2 rounded-lg bg-primary/20 flex items-center justify-center">
             <span className="font-mono text-xs font-black text-primary animate-pulse">{selectedCount}</span>
           </div>
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 hidden sm:inline">
@@ -86,16 +93,16 @@ export function BulkActionDock({
         </div>
 
         {/* Action Buttons Matrix */}
-        <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap">
           {/* Quick Verify */}
           <Button
             variant="ghost"
             size="sm"
             onClick={onVerify}
-            className="h-9 px-3 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors font-bold text-xs gap-2"
+            className="h-9 w-9 sm:w-auto px-0 sm:px-3 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors font-bold text-xs gap-2"
           >
             <ShieldCheck className="h-4 w-4" />
-            <span className="hidden md:inline">Verify Emails</span>
+            <span className="hidden sm:inline">Verify Emails</span>
           </Button>
 
           {/* Tag Operations */}
@@ -103,10 +110,10 @@ export function BulkActionDock({
             variant="ghost"
             size="sm"
             onClick={onTags}
-            className="h-9 px-3 rounded-xl text-slate-300 hover:text-violet-400 hover:bg-violet-500/10 transition-colors font-bold text-xs gap-2"
+            className="h-9 w-9 sm:w-auto px-0 sm:px-3 rounded-xl text-slate-300 hover:text-violet-400 hover:bg-violet-500/10 transition-colors font-bold text-xs gap-2"
           >
             <TagIcon className="h-4 w-4" />
-            <span className="hidden md:inline">Manage Tags</span>
+            <span className="hidden sm:inline">Manage Tags</span>
           </Button>
 
           {/* Assign Owner */}
@@ -114,10 +121,10 @@ export function BulkActionDock({
             variant="ghost"
             size="sm"
             onClick={onAssign}
-            className="h-9 px-3 rounded-xl text-slate-300 hover:text-sky-400 hover:bg-sky-500/10 transition-colors font-bold text-xs gap-2"
+            className="h-9 w-9 sm:w-auto px-0 sm:px-3 rounded-xl text-slate-300 hover:text-sky-400 hover:bg-sky-500/10 transition-colors font-bold text-xs gap-2"
           >
             <UserPlus className="h-4 w-4" />
-            <span className="hidden md:inline">Assign Owner</span>
+            <span className="hidden sm:inline">Assign Owner</span>
           </Button>
 
           {/* More Actions Dropdown Menu */}
@@ -126,10 +133,11 @@ export function BulkActionDock({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-9 px-3 rounded-xl text-slate-300 hover:text-primary hover:bg-primary/10 transition-colors font-bold text-xs gap-1.5"
+                className="h-9 w-9 sm:w-auto px-0 sm:px-3 rounded-xl text-slate-300 hover:text-primary hover:bg-primary/10 transition-colors font-bold text-xs gap-1.5"
               >
-                <span>More Actions</span>
-                <ChevronDown className="h-3.5 w-3.5" />
+                <MoreHorizontal className="h-4 w-4 sm:hidden" />
+                <span className="hidden sm:inline">More Actions</span>
+                <ChevronDown className="h-3.5 w-3.5 hidden sm:inline" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl bg-slate-950 dark:bg-slate-900 border border-slate-800 text-slate-200">
@@ -166,6 +174,29 @@ export function BulkActionDock({
                   <CalendarDays className="h-3.5 w-3.5" />
                 </div>
                 <span className="font-bold text-sm">Invite to Session</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="my-2 border-slate-800" />
+              <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-3 py-2">Data Management</DropdownMenuLabel>
+
+              <DropdownMenuItem 
+                onClick={onArchive}
+                className="rounded-xl p-2.5 gap-3 hover:bg-slate-800 cursor-pointer focus:bg-amber-500/25 focus:text-white"
+              >
+                <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400">
+                  <Archive className="h-3.5 w-3.5" />
+                </div>
+                <span className="font-bold text-sm">Archive Selected</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                onClick={onDelete}
+                className="rounded-xl p-2.5 gap-3 hover:bg-slate-800 cursor-pointer focus:bg-destructive/25 focus:text-destructive-foreground"
+              >
+                <div className="p-1.5 bg-red-500/10 rounded-lg text-red-400">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </div>
+                <span className="font-bold text-sm text-red-400">Delete Permanently</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

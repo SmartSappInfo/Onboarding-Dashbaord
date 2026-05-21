@@ -11,6 +11,9 @@ import { revalidatePath } from 'next/cache';
 import { normalizeContactType } from './entity-contact-helpers';
 import { resolveFieldStorageBucket } from './field-storage-utils';
 import { cleanBatch, type CleaningStats } from './import-data-cleaner';
+import { buildTagDocument } from './tag-schemas';
+import { isDealImportConfig, type DealImportConfig } from './import-types';
+import { buildDealDocument, resolveDealName } from './deal-writer';
 
 /**
  * @fileOverview Entity-aware Batch Ingestion Engine.
@@ -28,17 +31,34 @@ interface ResolutionContext {
     regions: { id: string; name: string }[];
     districts: { id: string; name: string }[];
     tags: { id: string; name: string }[];
+    countries: { id: string; name: string; code: string; flag: string }[];
+    pipelines: { id: string; name: string }[];
+    stages: { id: string; name: string; pipelineId: string }[];
 }
 
 async function getResolutionContext(workspaceId: string): Promise<ResolutionContext> {
-    const [zonesSnap, usersSnap, packagesSnap, modulesSnap, regionsSnap, districtsSnap, tagsSnap] = await Promise.all([
+    const [
+        zonesSnap,
+        usersSnap,
+        packagesSnap,
+        modulesSnap,
+        regionsSnap,
+        districtsSnap,
+        tagsSnap,
+        countriesSnap,
+        pipelinesSnap,
+        stagesSnap
+    ] = await Promise.all([
         adminDb.collection('zones').orderBy('name').get(),
         adminDb.collection('users').where('isAuthorized', '==', true).get(),
         adminDb.collection('subscription_packages').where('isActive', '==', true).get(),
         adminDb.collection('modules').orderBy('order').get(),
         adminDb.collection('regions').get(),
         adminDb.collection('districts').get(),
-        adminDb.collection('tags').where('workspaceId', '==', workspaceId).get()
+        adminDb.collection('tags').where('workspaceId', '==', workspaceId).get(),
+        adminDb.collection('countries').get(),
+        adminDb.collection('pipelines').get(),
+        adminDb.collection('onboardingStages').get()
     ]);
 
     return {
@@ -49,6 +69,9 @@ async function getResolutionContext(workspaceId: string): Promise<ResolutionCont
         regions: regionsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
         districts: districtsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
         tags: tagsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
+        countries: countriesSnap.docs.map(d => ({ id: d.id, name: d.data().name, code: d.data().code, flag: d.data().flag })),
+        pipelines: pipelinesSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
+        stages: stagesSnap.docs.map(d => ({ id: d.id, name: d.data().name, pipelineId: d.data().pipelineId })),
     };
 }
 
@@ -91,6 +114,14 @@ function fuzzyMatch<T extends { name: string }>(items: T[], query: string): T | 
     return items.find(item => item.name.toLowerCase().includes(q)) || null;
 }
 
+function fuzzyMatchCountry(countries: { id: string; name: string; code: string; flag: string }[], query: string): { id: string; name: string; code: string; flag: string } | null {
+    if (!query) return null;
+    const q = query.toLowerCase().trim();
+    return countries.find(c => c.code.toLowerCase() === q || c.name.toLowerCase() === q) ||
+           countries.find(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)) ||
+           null;
+}
+
 // ─── Batch Ingestion Constants ────────────────────────────────────────────────
 
 /** Number of pending rows processed per background invocation. */
@@ -124,7 +155,8 @@ export async function ingestBatchAction(
     globalTagIds: string[] = [],
     automationId?: string,
     manualTagNames: string[] = [],
-    enableTitleCase: boolean = false
+    enableTitleCase: boolean = false,
+    dealConfig?: DealImportConfig
 ): Promise<{ importLogId: string }> {
     // 1. Workspace metadata (needed for data cleaning)
     let workspaceIndustry = 'SaaS';
@@ -173,6 +205,7 @@ export async function ingestBatchAction(
             workspaceIndustry,
             defaultCountryCode,
             enableTitleCase,
+            dealConfig: dealConfig || null,
         }
     });
 
@@ -268,6 +301,7 @@ export async function processImportChunkBackground(importLogId: string): Promise
         automationId = null as string | null,
         manualTagNames = [] as string[],
         workspaceIndustry = 'SaaS',
+        defaultCountryCode = 'GH',
     } = cfg;
 
     // Fetch resolution context once per chunk (zones, tags, users, etc.)
@@ -310,6 +344,11 @@ export async function processImportChunkBackground(importLogId: string): Promise
     let duplicateIncrement = 0;
     const failedRowDocs: any[] = [];
     const duplicateRowDocs: any[] = [];
+    const pendingDealDocs: any[] = [];
+    const pendingDealAudit: { entityId: string; dealId: string }[] = [];
+
+    // Hoist the dynamic import above the loop to avoid repeating it per row (Risk 3)
+    const { triggerAutomationProtocols, runAutomationById } = await import('./automation-processor');
 
     for (const pendingDoc of pendingSnap.docs) {
         const { rowIdx, rawPayload } = pendingDoc.data();
@@ -341,7 +380,8 @@ export async function processImportChunkBackground(importLogId: string): Promise
                 rawPayload, mapping, name, importLog.entityType, context,
                 workspaceIndustry, importLog.workspaceId, importLog.organizationId,
                 importLog.userId, importLog.filename, autoCreateTags,
-                defaultValues, globalTagIds, automationId ?? undefined, manualTagNames
+                defaultValues, globalTagIds, automationId ?? undefined, manualTagNames,
+                defaultCountryCode
             );
 
             const normalisedEmail = extracted.workspaceEntityDoc.primaryEmail?.toLowerCase().trim();
@@ -369,7 +409,45 @@ export async function processImportChunkBackground(importLogId: string): Promise
                 await adminDb.collection('entities').doc(extracted.entityId).set(extracted.entityDoc);
                 await adminDb.collection('workspace_entities').doc(extracted.workspaceEntityId).set(extracted.workspaceEntityDoc);
 
-                const { triggerAutomationProtocols, runAutomationById } = await import('./automation-processor');
+                // Build deal document if configured (Risk 1 — no nested after)
+                const dealConfig = isDealImportConfig(cfg.dealConfig) ? cfg.dealConfig : null;
+                if (dealConfig) {
+                    // Idempotency check (Risk 8): Check if a deal already exists for this entity in the same pipeline imported via bulk_import
+                    const existingDeal = await adminDb.collection('deals')
+                        .where('entityId', '==', extracted.entityId)
+                        .where('pipelineId', '==', dealConfig.pipelineId)
+                        .where('source', '==', 'bulk_import')
+                        .limit(1)
+                        .get();
+
+                    if (existingDeal.empty) {
+                        const stage = context.stages.find(s => s.id === dealConfig.stageId);
+                        const dealId = adminDb.collection('deals').doc().id;
+                        
+                        // Inherit assignee from entity if mapped, otherwise null (Open Q1)
+                        const assignedTo = extracted.workspaceEntityDoc.assignedTo || null;
+
+                        const dealDoc = buildDealDocument({
+                            entityId: extracted.entityId,
+                            entityName: name,
+                            pipelineId: dealConfig.pipelineId,
+                            stageId: dealConfig.stageId,
+                            stageName: stage?.name,
+                            dealName: resolveDealName(dealConfig.nameTemplate, name),
+                            value: dealConfig.value,
+                            workspaceId: importLog.workspaceId,
+                            organizationId: importLog.organizationId,
+                            source: 'bulk_import',
+                            isBulkImport: true,
+                            suppressAutomations: dealConfig.suppressAutomations,
+                            assignedTo,
+                        }, dealId);
+
+                        pendingDealDocs.push(dealDoc);
+                        pendingDealAudit.push({ entityId: extracted.entityId, dealId });
+                    }
+                }
+
                 await triggerAutomationProtocols('ENTITY_CREATED', extracted.automationPayload);
                 if (automationId) await runAutomationById(automationId, extracted.automationPayload);
 
@@ -395,6 +473,20 @@ export async function processImportChunkBackground(importLogId: string): Promise
     for (const fr of failedRowDocs) wb.set(importLogRef.collection('failed_rows').doc(fr.id), fr);
     for (const dr of duplicateRowDocs) wb.set(importLogRef.collection('duplicate_rows').doc(dr.id), dr);
     for (const doc of pendingSnap.docs) wb.delete(doc.ref);
+    
+    // NEW — batched deal writes:
+    for (const dealDoc of pendingDealDocs) {
+        wb.set(adminDb.collection('deals').doc(dealDoc.id), dealDoc);
+    }
+    
+    // NEW — audit trail (Risk 13):
+    if (pendingDealAudit.length > 0) {
+        wb.set(importLogRef.collection('deal_audit').doc(`chunk_${Date.now()}`), {
+            deals: pendingDealAudit,
+            createdAt: FieldValue.serverTimestamp(),
+        });
+    }
+
     await wb.commit();
 
     // Atomic counter update — no read-modify-write race
@@ -403,6 +495,25 @@ export async function processImportChunkBackground(importLogId: string): Promise
         failedCount: FieldValue.increment(failedIncrement),
         duplicateCount: FieldValue.increment(duplicateIncrement),
     });
+
+    // AFTER wb.commit() — automation triggers are non-critical, outside the batch (Risk 6)
+    if (pendingDealDocs.length > 0) {
+        for (const dealDoc of pendingDealDocs) {
+            if (!dealDoc.suppressAutomations) {
+                await triggerAutomationProtocols('DEAL_CREATED', {
+                    dealId: dealDoc.id,
+                    entityId: dealDoc.entityId,
+                    workspaceId: dealDoc.workspaceId,
+                    organizationId: dealDoc.organizationId,
+                    pipelineId: dealDoc.pipelineId,
+                    stageId: dealDoc.stageId,
+                    dealName: dealDoc.name,
+                    dealValue: dealDoc.value,
+                    isBulkImport: true,
+                });
+            }
+        }
+    }
 
     // Self-schedule next chunk
     after(async () => {
@@ -440,7 +551,8 @@ async function processRow(
     defaultValues: Record<string, string> = {},
     globalTagIds: string[] = [],
     automationId?: string,
-    manualTagNames: string[] = []
+    manualTagNames: string[] = [],
+    defaultCountryCode: string = 'GH'
 ): Promise<any> {
     const getValue = (key: string) => {
         const header = mapping[key];
@@ -461,8 +573,18 @@ async function processRow(
     const selectedRegion = fuzzyMatch(context.regions, String(getValue('locationRegion') || ''));
     const selectedDistrict = fuzzyMatch(context.districts, String(getValue('locationDistrict') || ''));
     const selectedZone = fuzzyMatch(context.zones, String(getValue('zone') || ''));
+
+    const mappedCountryVal = String(getValue('locationCountry') || '').trim();
+    let selectedCountry = fuzzyMatchCountry(context.countries, mappedCountryVal);
+    if (!selectedCountry) {
+        selectedCountry = context.countries.find(c => c.code.toLowerCase() === defaultCountryCode.toLowerCase()) || null;
+    }
+    if (!selectedCountry && defaultCountryCode) {
+        selectedCountry = { id: defaultCountryCode, name: defaultCountryCode === 'GH' ? 'Ghana' : defaultCountryCode, code: defaultCountryCode, flag: defaultCountryCode === 'GH' ? '🇬🇭' : '' };
+    }
     
     const locationObj = {
+        country: selectedCountry ? { id: selectedCountry.id, name: selectedCountry.name, code: selectedCountry.code, flag: selectedCountry.flag } : null,
         region: selectedRegion ? { id: selectedRegion.id, name: selectedRegion.name } : null,
         district: selectedDistrict ? { id: selectedDistrict.id, name: selectedDistrict.name } : null,
         zone: selectedZone ? { id: selectedZone.id, name: selectedZone.name } : null,
@@ -546,15 +668,13 @@ async function processRow(
                 if (!tagIds.includes(matchedTag.id)) tagIds.push(matchedTag.id);
             } else if (autoCreateTags) {
                 const newTagRef = adminDb.collection('tags').doc();
-                const newTagData = {
-                    name: tagName,
-                    slug: normaliseName(tagName).replace(/\s+/g, '-'),
+                const newTagData = buildTagDocument({
+                    id: newTagRef.id,
                     workspaceId,
                     organizationId,
-                    color: '#94a3b8',
-                    createdBy: userId,
-                    createdAt: new Date().toISOString()
-                };
+                    name: tagName,
+                    createdBy: userId
+                });
                 await newTagRef.set(newTagData);
                 tagIds.push(newTagRef.id);
                 context.tags.push({ id: newTagRef.id, name: tagName });
@@ -568,15 +688,13 @@ async function processRow(
             if (!tagIds.includes(matchedTag.id)) tagIds.push(matchedTag.id);
         } else {
             const newTagRef = adminDb.collection('tags').doc();
-            const newTagData = {
-                name: tagName,
-                slug: normaliseName(tagName).replace(/\s+/g, '-'),
+            const newTagData = buildTagDocument({
+                id: newTagRef.id,
                 workspaceId,
                 organizationId,
-                color: '#94a3b8',
-                createdBy: userId,
-                createdAt: new Date().toISOString()
-            };
+                name: tagName,
+                createdBy: userId
+            });
             await newTagRef.set(newTagData);
             tagIds.push(newTagRef.id);
             context.tags.push({ id: newTagRef.id, name: tagName });
@@ -717,6 +835,12 @@ async function processRow(
         entityContacts,
         interests: entityDoc.interests || [],
         customData: entityDoc.customData || {},
+        location: locationObj,
+        locationString: locationObj.locationString || '',
+        locationCountryId: selectedCountry?.id || null,
+        locationRegionId: selectedRegion?.id || null,
+        locationDistrictId: selectedDistrict?.id || null,
+        zone: selectedZone ? { id: selectedZone.id, name: selectedZone.name } : null,
         ...(entityDoc.currentNeeds && { currentNeeds: entityDoc.currentNeeds }),
         ...(entityDoc.currentChallenges && { currentChallenges: entityDoc.currentChallenges }),
         ...(entityDoc.interestsText && { interestsText: entityDoc.interestsText }),
@@ -837,6 +961,33 @@ export async function updateFailedRowAction(importLogId: string, rowId: string, 
     return { success: true };
 }
 
+export async function resolveFailedRowAction(importLogId: string, rowId: string) {
+    const importLogRef = adminDb.collection('import_logs').doc(importLogId);
+    const failedRowRef = importLogRef.collection('failed_rows').doc(rowId);
+
+    await adminDb.runTransaction(async (transaction) => {
+        const failedRowSnap = await transaction.get(failedRowRef);
+        if (!failedRowSnap.exists) {
+            // Row is already resolved or deleted
+            return;
+        }
+
+        // Delete the failed row document
+        transaction.delete(failedRowRef);
+
+        // Reconcile status and decrement failedCount atomically
+        await reconcileImportLogStatus(
+            transaction,
+            importLogRef,
+            0,
+            0,
+            -1
+        );
+    });
+
+    return { success: true };
+}
+
 export async function getDuplicateRowsAction(importLogId: string) {
     const snap = await adminDb.collection('import_logs')
         .doc(importLogId)
@@ -866,7 +1017,7 @@ export async function getDuplicateRowsAction(importLogId: string) {
 
     // Enrich with existing entity data for side-by-side comparison
     const uniqueEntityIds = [...new Set(rows.map((r: any) => r.matchedEntityId).filter(Boolean))];
-    const entityDataMap: Record<string, { name: string; entityContacts: any[] }> = {};
+    const entityDataMap: Record<string, any> = {};
 
     await Promise.all(uniqueEntityIds.map(async (entityId) => {
         try {
@@ -875,6 +1026,7 @@ export async function getDuplicateRowsAction(importLogId: string) {
             if (weSnap.exists) {
                 const we = weSnap.data()!;
                 entityDataMap[entityId as string] = {
+                    ...we,
                     name: we.displayName || we.name || we.entityName || '',
                     entityContacts: we.entityContacts || [],
                 };
@@ -885,6 +1037,7 @@ export async function getDuplicateRowsAction(importLogId: string) {
             if (entSnap.exists) {
                 const ent = entSnap.data()!;
                 entityDataMap[entityId as string] = {
+                    ...ent,
                     name: ent.name || '',
                     entityContacts: ent.entityContacts || [],
                 };
@@ -898,6 +1051,51 @@ export async function getDuplicateRowsAction(importLogId: string) {
         ...row,
         existingEntityData: row.matchedEntityId ? (entityDataMap[row.matchedEntityId] || null) : null,
     }));
+}
+
+
+/**
+ * Atomic status and metrics reconciliation helper.
+ * Reads the current state of an import log within a transaction,
+ * applies increments/decrements to metrics, and transitions the status to
+ * 'completed' if no issues remain (failedCount === 0 and resolvedDuplicateCount >= duplicateCount).
+ */
+async function reconcileImportLogStatus(
+    transaction: FirebaseFirestore.Transaction,
+    importLogRef: FirebaseFirestore.DocumentReference,
+    duplicateResolvedIncrement: number,
+    successIncrement: number,
+    failedIncrement: number
+): Promise<void> {
+    const logSnap = await transaction.get(importLogRef);
+    if (!logSnap.exists) {
+        throw new Error('Import log not found during status reconciliation');
+    }
+    const data = logSnap.data() as any;
+
+    const newResolvedDuplicateCount = Math.max(0, (data.resolvedDuplicateCount ?? 0) + duplicateResolvedIncrement);
+    const newSuccessCount = Math.max(0, (data.successCount ?? 0) + successIncrement);
+    const newFailedCount = Math.max(0, (data.failedCount ?? 0) + failedIncrement);
+    const duplicateCount = data.duplicateCount ?? 0;
+
+    const hasIssues = newFailedCount > 0 || newResolvedDuplicateCount < duplicateCount;
+    const newStatus = hasIssues ? 'partially_completed' : 'completed';
+
+    const updatePayload: any = {
+        resolvedDuplicateCount: newResolvedDuplicateCount,
+        successCount: newSuccessCount,
+        failedCount: newFailedCount,
+        updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    if (newStatus !== data.status) {
+        updatePayload.status = newStatus;
+        if (newStatus === 'completed') {
+            updatePayload.completedAt = FieldValue.serverTimestamp();
+        }
+    }
+
+    transaction.update(importLogRef, updatePayload);
 }
 
 
@@ -923,6 +1121,7 @@ export async function resolveDuplicatesAction(
         automationId = null as string | null,
         manualTagNames = [] as string[],
         workspaceIndustry = 'SaaS',
+        defaultCountryCode = 'GH',
     } = cfg;
 
     const resolutionTags = globalTagIds.length > 0 ? globalTagIds : cfgGlobalTagIds;
@@ -940,15 +1139,13 @@ export async function resolveDuplicatesAction(
             } else {
                 // If somehow it wasn't created during the background processing, create it now
                 const newTagRef = adminDb.collection('tags').doc();
-                const newTagData = {
-                    name: tagName,
-                    slug: normaliseName(tagName).replace(/\s+/g, '-'),
+                const newTagData = buildTagDocument({
+                    id: newTagRef.id,
                     workspaceId: importLog.workspaceId,
                     organizationId: importLog.organizationId || 'smartsapp-hq',
-                    color: '#94a3b8',
-                    createdBy: importLog.userId,
-                    createdAt: new Date().toISOString()
-                };
+                    name: tagName,
+                    createdBy: importLog.userId
+                });
                 await newTagRef.set(newTagData);
                 resolvedManualTagIds.push(newTagRef.id);
                 context.tags.push({ id: newTagRef.id, name: tagName });
@@ -1030,7 +1227,8 @@ export async function resolveDuplicatesAction(
                         payload, mapping, name, importLog.entityType, context,
                         workspaceIndustry, importLog.workspaceId, importLog.organizationId,
                         importLog.userId, importLog.filename, autoCreateTags,
-                        defaultValues, tagIds || effectiveResolutionTags, automationId ?? undefined, manualTagNames
+                        defaultValues, tagIds || effectiveResolutionTags, automationId ?? undefined, manualTagNames,
+                        defaultCountryCode
                     );
 
                     transaction.set(adminDb.collection('entities').doc(extracted.entityId), extracted.entityDoc);
@@ -1046,13 +1244,72 @@ export async function resolveDuplicatesAction(
                     if (strategy !== 'SKIP') {
                         const existingEntity = { id: existingSnap.id, ...existingSnap.data() };
                         const finalTagsForReconciliation = tagIds || effectiveResolutionTags;
-                        const reconciled = IngestionDeduplicator.reconcile(existingEntity, dupData?.rawPayload, strategy, finalTagsForReconciliation);
+
+                        // 1. Process the raw row payload to get a clean structured workspaceEntityDoc
+                        const payload = dupData?.rawPayload || {};
+                        const nameHeader = mapping['name'];
+                        const isMapped = nameHeader && nameHeader !== 'none';
+                        let rawName = isMapped ? payload[nameHeader] : undefined;
+                        if (rawName === undefined || rawName === null || rawName === '') {
+                            rawName = defaultValues?.['name'];
+                        }
+
+                        if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
+                            const contactHeader = mapping['contact_0_name'];
+                            let contactName = (contactHeader && contactHeader !== 'none') ? payload[contactHeader] : undefined;
+                            if (contactName === undefined || contactName === null || contactName === '') {
+                                contactName = defaultValues?.['contact_0_name'];
+                            }
+                            if (contactName && typeof contactName === 'string' && contactName.trim()) {
+                                rawName = contactName.trim();
+                            } else {
+                                throw new Error('Missing Entity Name, and no Contact Name was found to use as fallback.');
+                            }
+                        }
+
+                        const name = rawName.trim();
+
+                        const extracted = await processRow(
+                            payload, mapping, name, importLog.entityType, context,
+                            workspaceIndustry, importLog.workspaceId, importLog.organizationId,
+                            importLog.userId, importLog.filename, false,
+                            defaultValues, finalTagsForReconciliation, automationId ?? undefined, [],
+                            defaultCountryCode
+                        );
+
+                        // 2. Reconcile the existing entity with the newly mapped workspaceEntityDoc
+                        const reconciled = IngestionDeduplicator.reconcile(
+                            existingEntity,
+                            extracted.workspaceEntityDoc,
+                            strategy,
+                            finalTagsForReconciliation
+                        );
 
                         if (reconciled) {
-                            transaction.update(existingEntityRef, {
-                                ...reconciled,
-                                updatedAt: new Date().toISOString()
-                            });
+                            transaction.set(existingEntityRef, reconciled);
+
+                            if (reconciled.entityId) {
+                                const mainEntityRef = adminDb.collection('entities').doc(reconciled.entityId);
+                                const entityUpdate: any = {
+                                    name: reconciled.displayName,
+                                    slug: reconciled.displayName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+                                    entityContacts: reconciled.entityContacts,
+                                    updatedAt: reconciled.updatedAt,
+                                };
+                                if (reconciled.location !== undefined) entityUpdate.location = reconciled.location;
+                                if (reconciled.customData !== undefined) entityUpdate.customData = reconciled.customData;
+                                if (reconciled.currentNeeds !== undefined) entityUpdate.currentNeeds = reconciled.currentNeeds;
+                                if (reconciled.currentChallenges !== undefined) entityUpdate.currentChallenges = reconciled.currentChallenges;
+                                if (reconciled.interestsText !== undefined) entityUpdate.interestsText = reconciled.interestsText;
+                                if (reconciled.familyData !== undefined) entityUpdate.familyData = reconciled.familyData;
+                                if (reconciled.personData !== undefined) entityUpdate.personData = reconciled.personData;
+                                if (reconciled.financeData !== undefined) entityUpdate.financeData = reconciled.financeData;
+                                if (reconciled.industryData !== undefined) entityUpdate.industryData = reconciled.industryData;
+                                if (reconciled.interests !== undefined) entityUpdate.interests = reconciled.interests;
+                                if (reconciled.initials !== undefined) entityUpdate.initials = reconciled.initials;
+
+                                transaction.update(mainEntityRef, entityUpdate);
+                            }
                         }
                     }
                 }
@@ -1082,11 +1339,15 @@ export async function resolveDuplicatesAction(
         }
     }
     
-    // Update main import log duplicate metrics
-    await adminDb.collection('import_logs').doc(importLogId).update({
-        resolvedDuplicateCount: FieldValue.increment(resolutions.length),
-        successCount: FieldValue.increment(manualCorrectionsCount),
-        updatedAt: FieldValue.serverTimestamp()
+    // Reconcile status and update metrics in a transaction
+    await adminDb.runTransaction(async (transaction) => {
+        await reconcileImportLogStatus(
+            transaction,
+            importLogRef,
+            resolutions.length,
+            manualCorrectionsCount,
+            0
+        );
     });
     
     return { success: true };

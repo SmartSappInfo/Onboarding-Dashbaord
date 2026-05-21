@@ -16,7 +16,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { FileUp, Search, RefreshCw, AlertCircle, CheckCircle2, ChevronRight, HardDrive } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { purgeExpiredFailedImportsAction, getFailedRowsAction, updateFailedRowAction, ingestBatchAction, getDuplicateRowsAction, cancelBulkUploadAction, resumeBulkUploadAction } from '@/lib/bulk-upload-actions';
+import { purgeExpiredFailedImportsAction, getFailedRowsAction, updateFailedRowAction, ingestBatchAction, getDuplicateRowsAction, cancelBulkUploadAction, resumeBulkUploadAction, resolveFailedRowAction } from '@/lib/bulk-upload-actions';
 import { DuplicateResolutionPortal } from './components/DuplicateResolutionPortal';
 import { useToast } from '@/hooks/use-toast';
 
@@ -122,7 +122,7 @@ export default function ImportsLogClient() {
         setRetryingRow(row.id);
         try {
             // Re-run single row through batch action
-            const res = await ingestBatchAction(
+            await ingestBatchAction(
                 [row.rawPayload],
                 {}, // mapping should ideally be stored in log or payload, assume payload is pre-mapped for simple retry
                 user?.uid || '',
@@ -137,9 +137,13 @@ export default function ImportsLogClient() {
                 []
             );
             
-            // If it succeeds, the background worker handles it, but since we retry 1 row, we can just reload failed rows
-            toast({ title: 'Retry dispatched' });
-            setTimeout(() => handleViewPortal(selectedLogId!, 'failed'), 2000);
+            // Resolve the failed row in the original import log document
+            await resolveFailedRowAction(selectedLogId!, row.id);
+
+            // Update local state immediately to remove the resolved row
+            setFailedRows(prev => prev.filter(r => r.id !== row.id));
+
+            toast({ title: 'Retry dispatched successfully' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Retry failed', description: error.message });
         } finally {
@@ -207,17 +211,25 @@ export default function ImportsLogClient() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                {log.status === 'queued' ? (
-                                                     <Badge variant="secondary" className="bg-slate-100 text-slate-600">Queued</Badge>
-                                                 ) : log.status === 'processing' ? (
-                                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 animate-pulse">Processing</Badge>
-                                                ) : log.status === 'completed' ? (
-                                                    <Badge className="bg-emerald-50 text-emerald-700 border-none">Completed</Badge>
-                                                ) : log.status === 'cancelled' ? (
-                                                    <Badge variant="secondary" className="bg-slate-100 text-slate-600">Cancelled</Badge>
-                                                ) : (
-                                                    <Badge variant="destructive" className="bg-red-50 text-red-700 border-none">Has Errors</Badge>
-                                                )}
+                                                <Badge
+                                                    className={`transition-all duration-300 ease-in-out transform hover:scale-[1.02] border-none shadow-sm ${
+                                                        log.status === 'queued'
+                                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                            : log.status === 'processing'
+                                                            ? 'bg-blue-50 text-blue-700 animate-pulse hover:bg-blue-100'
+                                                            : log.status === 'completed'
+                                                            ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                                            : log.status === 'cancelled'
+                                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                            : 'bg-red-50 text-red-700 hover:bg-red-100'
+                                                    }`}
+                                                >
+                                                    {log.status === 'queued' && 'Queued'}
+                                                    {log.status === 'processing' && 'Processing'}
+                                                    {log.status === 'completed' && 'Completed'}
+                                                    {log.status === 'cancelled' && 'Cancelled'}
+                                                    {!['queued', 'processing', 'completed', 'cancelled'].includes(log.status) && 'Has Errors'}
+                                                </Badge>
                                             </TableCell>
                                             <TableCell className="w-[200px]">
                                                 <div className="flex items-center gap-2 mb-1">

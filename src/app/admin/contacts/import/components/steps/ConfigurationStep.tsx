@@ -10,6 +10,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { getContactPolicyLabel } from '@/lib/contact-policy';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { ContactIdentifierPolicy } from '@/lib/types';
+import { TagSelector } from '@/components/tags/TagSelector';
 
 interface Props {
   state: ImportState;
@@ -41,9 +42,7 @@ const DEFAULT_FIELDS: Record<string, Array<{ key: string; label: string; placeho
 export function ConfigurationStep({ state, updateState, onNext, onBack }: Props) {
   const firestore = useFirestore();
   const { activeWorkspace } = useWorkspace();
-  const [availableTags, setAvailableTags] = useState<Array<{ id: string, name: string }>>([]);
   const [availableAutomations, setAvailableAutomations] = useState<Array<{ id: string, name: string }>>([]);
-  const [newTagName, setNewTagName] = useState('');
 
   const contactPolicy: ContactIdentifierPolicy = activeWorkspace?.contactPolicy || 'phone_or_email';
   const entityType = state.entityType || 'institution';
@@ -62,13 +61,6 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
       if (!firestore || !state.workspaceId || !state.organizationId) return;
 
       try {
-        // Load Tags
-        const tagsRef = collection(firestore, 'tags');
-        const qTags = query(tagsRef, where('workspaceId', '==', state.workspaceId));
-        const tagsSnap = await getDocs(qTags);
-        const loadedTags = tagsSnap.docs.map(d => ({ id: d.id, name: d.data().name }));
-        setAvailableTags(loadedTags);
-
         // Load Automations
         const autoRef = collection(firestore, 'automations');
         const qAuto = query(autoRef, where('workspaceIds', 'array-contains', state.workspaceId), where('isActive', '==', true));
@@ -76,23 +68,12 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
         const loadedAuto = autoSnap.docs.map(d => ({ id: d.id, name: d.data().name }));
         setAvailableAutomations(loadedAuto);
       } catch (err) {
-        console.error("Failed to load tags or automations:", err);
+        console.error("Failed to load automations:", err);
       }
     }
 
     loadResources();
   }, [firestore, state.workspaceId, state.organizationId]);
-
-  const toggleTag = (id: string) => {
-    const current = config.selectedTags || [];
-    const next = current.includes(id)
-      ? current.filter(t => t !== id)
-      : [...current, id];
-
-    updateState({
-      configuration: { ...config, selectedTags: next }
-    });
-  };
 
   const toggleAutomation = (id: string) => {
     const current = config.selectedAutomations || [];
@@ -169,49 +150,17 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
           <h4 className="text-md font-medium flex items-center text-foreground">
             <TagIcon className="w-4 h-4 mr-2 text-primary" /> Apply Tags
           </h4>
-          <div className="bg-card/50 border rounded-xl p-5 shadow-sm space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {availableTags.map(tag => {
-                const isSelected = config.selectedTags.includes(tag.id);
-                return (
-                  <button
-                    key={tag.id}
-                    onClick={() => toggleTag(tag.id)}
-                    className={`px-3 py-1.5 text-sm rounded-full border transition-all ${isSelected
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                        : 'bg-background hover:bg-muted text-muted-foreground'
-                      }`}
-                  >
-                    {tag.name}
-                  </button>
-                );
-              })}
-              {availableTags.length === 0 && (
-                <span className="text-sm text-muted-foreground italic">No existing tags found in this workspace.</span>
-              )}
-            </div>
-
-            <div className="pt-2 border-t flex items-center gap-3">
-              <Input
-                placeholder="Create a new tag..."
-                value={newTagName}
-                onChange={e => setNewTagName(e.target.value)}
-                className="max-w-[200px] h-9 text-sm"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={!newTagName.trim()}
-                onClick={() => {
-                  const fakeId = `new_${Date.now()}`;
-                  setAvailableTags([...availableTags, { id: fakeId, name: newTagName }]);
-                  toggleTag(fakeId);
-                  setNewTagName('');
-                }}
-              >
-                Add
-              </Button>
-            </div>
+          <div className="bg-card/50 border rounded-xl p-5 shadow-sm">
+            <TagSelector
+              currentTagIds={config.selectedTags || []}
+              onTagsChange={(tagIds) => {
+                React.startTransition(() => {
+                  updateState({
+                    configuration: { ...config, selectedTags: tagIds }
+                  });
+                });
+              }}
+            />
           </div>
         </section>
 

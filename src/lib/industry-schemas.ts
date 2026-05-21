@@ -246,8 +246,6 @@ export const EntitySchema = z.object({
   status: z.enum(['active', 'archived']).optional(),
   industry: IndustryVerticalSchema.optional(),
   industryData: IndustryDataSchema.optional(),
-  migrationStatus: z.enum(['legacy', 'migrated', 'dual-write']).optional(),
-  legacySchoolId: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

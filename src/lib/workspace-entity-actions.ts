@@ -10,6 +10,7 @@ import {
   logWorkspaceEntityDeleted 
 } from './entity-audit';
 import type { Entity, Workspace, WorkspaceEntity, EntityType } from './types';
+import { extractPrimaryContactFields } from './entity-contact-helpers';
 
 /**
  * @fileOverview Server actions for workspace-entity relationship management.
@@ -28,7 +29,6 @@ import type { Entity, Workspace, WorkspaceEntity, EntityType } from './types';
  * FER-01: Now resolves from entityContacts (isPrimary flag) via helpers.
  */
 function extractPrimaryContact(entity: Entity): { primaryContactName?: string; primaryEmail?: string; primaryPhone?: string } {
-  const { extractPrimaryContactFields } = require('./entity-contact-helpers');
   const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields(entity);
   
   return {
@@ -561,6 +561,264 @@ export async function deleteEntityPermanentlyAction(input: DeleteEntityPermanent
     return { success: true, rootEntityDeleted };
   } catch (e: any) {
     console.error('>>> [WORKSPACE_ENTITY:PERMANENT_DELETE] Failed:', e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+interface BulkArchiveEntitiesInput {
+  workspaceEntityIds: string[];
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+}
+
+/**
+ * Bulk archives selected workspace_entities documents.
+ * Employs batch chunking (max 250 operations per batch) to ensure firestore constraints aren't exceeded.
+ */
+export async function bulkArchiveEntitiesAction(input: BulkArchiveEntitiesInput) {
+  try {
+    const timestamp = new Date().toISOString();
+    const { workspaceEntityIds, userId, userName, userEmail } = input;
+
+    if (!workspaceEntityIds || workspaceEntityIds.length === 0) {
+      return { success: false, error: 'No entities selected' };
+    }
+
+    // Retrieve workspace entities in batches using getAll
+    const refs = workspaceEntityIds.map(id => adminDb.collection('workspace_entities').doc(id));
+    const snaps = await adminDb.getAll(...refs);
+
+    const validEntities: WorkspaceEntity[] = [];
+    const chunks: FirebaseFirestore.DocumentSnapshot[][] = [];
+    const chunkSize = 250;
+
+    // Partition operations into safe chunks
+    let currentChunk: FirebaseFirestore.DocumentSnapshot[] = [];
+    for (const snap of snaps) {
+      if (snap.exists) {
+        const data = { id: snap.id, ...snap.data() } as WorkspaceEntity;
+        if (data.status !== 'archived') {
+          validEntities.push(data);
+          currentChunk.push(snap);
+          if (currentChunk.length === chunkSize) {
+            chunks.push(currentChunk);
+            currentChunk = [];
+          }
+        }
+      }
+    }
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk);
+    }
+
+    if (validEntities.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    // Commit batches in parallel
+    await Promise.all(
+      chunks.map(async (chunk) => {
+        const batch = adminDb.batch();
+        for (const snap of chunk) {
+          batch.update(snap.ref, {
+            status: 'archived',
+            updatedAt: timestamp,
+          });
+        }
+        await batch.commit();
+      })
+    );
+
+    // Asynchronously log audit trails and activities (non-blocking)
+    const logPromises = validEntities.map(async (weData) => {
+      const updatedValue = { ...weData, status: 'archived', updatedAt: timestamp };
+      
+      try {
+        await logWorkspaceEntityUpdated({
+          organizationId: weData.organizationId,
+          workspaceId: weData.workspaceId,
+          entityId: weData.entityId,
+          entityType: weData.entityType,
+          userId,
+          userName: userName || 'Unknown User',
+          userEmail: userEmail || '',
+          oldValue: weData,
+          newValue: updatedValue,
+          changedFields: ['status'],
+          operationContext: 'manual_edit',
+        });
+
+        await logActivity({
+          organizationId: weData.organizationId,
+          workspaceId: weData.workspaceId,
+          entityId: weData.entityId,
+          entityType: weData.entityType,
+          displayName: weData.displayName,
+          userId,
+          type: 'workspace_entity_updated',
+          source: 'user_action',
+          description: `archived ${weData.entityType} entity "${weData.displayName}"`,
+          metadata: {
+            workspaceEntityId: weData.id,
+            updatedFields: ['status'],
+            status: 'archived',
+          },
+        });
+      } catch (err) {
+        console.error(`>>> [BULK_ARCHIVE:LOG] Failed for ${weData.id}:`, err);
+      }
+    });
+
+    // Run logging promises in background
+    Promise.all(logPromises).catch(err => {
+      console.error('>>> [BULK_ARCHIVE:LOGGER_PROMISES_FAIL]', err);
+    });
+
+    revalidatePath('/admin/entities');
+    revalidatePath('/admin/contacts');
+
+    return { success: true, count: validEntities.length };
+  } catch (e: any) {
+    console.error('>>> [WORKSPACE_ENTITY:BULK_ARCHIVE] Failed:', e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+interface BulkDeleteEntitiesInput {
+  workspaceEntityIds: string[];
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  purgeRootEntity?: boolean;
+}
+
+/**
+ * Bulk permanently deletes selected archived workspace_entities documents.
+ * Validates that all targets are currently archived.
+ */
+export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
+  try {
+    const timestamp = new Date().toISOString();
+    const { workspaceEntityIds, userId, userName, userEmail, purgeRootEntity = true } = input;
+
+    if (!workspaceEntityIds || workspaceEntityIds.length === 0) {
+      return { success: false, error: 'No entities selected' };
+    }
+
+    const refs = workspaceEntityIds.map(id => adminDb.collection('workspace_entities').doc(id));
+    const snaps = await adminDb.getAll(...refs);
+
+    const validEntities: WorkspaceEntity[] = [];
+    const entityIdsToCheck = new Set<string>();
+
+    for (const snap of snaps) {
+      if (snap.exists) {
+        const data = { id: snap.id, ...snap.data() } as WorkspaceEntity;
+        if (data.status === 'archived') {
+          validEntities.push(data);
+          entityIdsToCheck.add(data.entityId);
+        }
+      }
+    }
+
+    if (validEntities.length === 0) {
+      return { success: false, error: 'Only archived entities can be permanently deleted. Please archive them first.' };
+    }
+
+    // Partition deletion operations into chunks of 250
+    const chunks: WorkspaceEntity[][] = [];
+    const chunkSize = 250;
+    for (let i = 0; i < validEntities.length; i += chunkSize) {
+      chunks.push(validEntities.slice(i, i + chunkSize));
+    }
+
+    // Commit deletions
+    await Promise.all(
+      chunks.map(async (chunk) => {
+        const batch = adminDb.batch();
+        for (const we of chunk) {
+          batch.delete(adminDb.collection('workspace_entities').doc(we.id));
+        }
+        await batch.commit();
+      })
+    );
+
+    // Verify and purge root entities when no other workspace memberships remain
+    let purgedRootCount = 0;
+    if (purgeRootEntity && entityIdsToCheck.size > 0) {
+      const rootEntitiesArray = Array.from(entityIdsToCheck);
+      const rootPurgeBatch = adminDb.batch();
+      let hasRootDeletes = false;
+
+      for (const entityId of rootEntitiesArray) {
+        const remainingSnap = await adminDb
+          .collection('workspace_entities')
+          .where('entityId', '==', entityId)
+          .limit(1)
+          .get();
+        if (remainingSnap.empty) {
+          rootPurgeBatch.delete(adminDb.collection('entities').doc(entityId));
+          hasRootDeletes = true;
+          purgedRootCount++;
+        }
+      }
+
+      if (hasRootDeletes) {
+        await rootPurgeBatch.commit();
+      }
+    }
+
+    // Asynchronously log audit trails and activities (non-blocking)
+    const logPromises = validEntities.map(async (weData) => {
+      try {
+        await logWorkspaceEntityDeleted({
+          organizationId: weData.organizationId,
+          workspaceId: weData.workspaceId,
+          entityId: weData.entityId,
+          entityType: weData.entityType,
+          userId,
+          userName: userName || 'Unknown User',
+          userEmail: userEmail || '',
+          oldValue: weData,
+          operationContext: 'permanent_delete',
+        });
+
+        await logActivity({
+          organizationId: weData.organizationId,
+          workspaceId: weData.workspaceId,
+          entityId: weData.entityId,
+          entityType: weData.entityType,
+          displayName: weData.displayName,
+          userId,
+          type: 'entity_unlinked_from_workspace',
+          source: 'user_action',
+          description: `permanently deleted "${weData.displayName}" from workspace`,
+          metadata: {
+            workspaceEntityId: weData.id,
+            deletedAt: timestamp,
+          },
+        });
+      } catch (err) {
+        console.error(`>>> [BULK_DELETE:LOG] Failed for ${weData.id}:`, err);
+      }
+    });
+
+    // Run logging promises in background
+    Promise.all(logPromises).catch(err => {
+      console.error('>>> [BULK_DELETE:LOGGER_PROMISES_FAIL]', err);
+    });
+
+    revalidatePath('/admin/entities');
+    revalidatePath('/admin/contacts');
+
+    return { 
+      success: true, 
+      count: validEntities.length, 
+      purgedRootCount 
+    };
+  } catch (e: any) {
+    console.error('>>> [WORKSPACE_ENTITY:BULK_DELETE] Failed:', e.message);
     return { success: false, error: e.message };
   }
 }

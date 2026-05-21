@@ -299,11 +299,14 @@ export async function createEntityAction(
     };
     
     // Build financeData
-    const financeData: any = {};
+    const financeData: any = {
+      ...(data.financeData || {})
+    };
     const financeFields = [
       'planType', 'subscriptionIds', 'currency', 'billingAddress', 
       'subscriptionRate', 'customerTier', 'signupDate', 'renewalDate', 
-      'paymentMethod', 'lastPaymentDate', 'nextPaymentDue', 'invoiceIds', 'paymentIds'
+      'paymentMethod', 'lastPaymentDate', 'nextPaymentDue', 'invoiceIds', 'paymentIds',
+      'subscriptionPackageId', 'subscriptionPackageName', 'discountPercentage', 'arrearsBalance', 'creditBalance'
     ];
     for (const f of financeFields) {
       if (data[f] !== undefined) financeData[f] = data[f];
@@ -328,6 +331,11 @@ export async function createEntityAction(
     // Append custom fields data
     if (data.customData) {
       entityData.customData = data.customData;
+    }
+
+    // Online Presence
+    if (data.onlinePresence) {
+      entityData.onlinePresence = data.onlinePresence;
     }
 
     // Narrative Fields (currentNeeds, currentChallenges, interests text)
@@ -372,6 +380,13 @@ export async function createEntityAction(
         primaryPhone,
         entityContacts, // Denormalized for list performance
         interests: data.modules || [],
+        // Location fields for filtering and display
+        location: data.location || null,
+        locationString: data.location?.locationString || '',
+        locationCountryId: data.location?.country?.id || null,
+        locationRegionId: data.location?.region?.id || null,
+        locationDistrictId: data.location?.district?.id || null,
+        zone: data.location?.zone || null,
         ...(entityData.currentNeeds && { currentNeeds: entityData.currentNeeds }),
         ...(entityData.currentChallenges && { currentChallenges: entityData.currentChallenges }),
         ...(entityData.interestsText && { interestsText: entityData.interestsText }),
@@ -526,18 +541,25 @@ export async function updateEntityAction(
 
     // Root fields update
     if (data.initials !== undefined) entityUpdate.initials = data.initials;
+    if (data.slogan !== undefined) entityUpdate.slogan = data.slogan;
     if (data.logoUrl !== undefined) entityUpdate.logoUrl = data.logoUrl;
     if (data.referee !== undefined) entityUpdate.referee = data.referee;
     if (data.location !== undefined) entityUpdate.location = data.location;
     if (data.interests !== undefined) entityUpdate.interests = data.interests;
     else if (data.modules !== undefined) entityUpdate.interests = data.modules.map((m: any) => m.id || m.name || m);
+    if (data.currentNeeds !== undefined) entityUpdate.currentNeeds = data.currentNeeds;
+    if (data.currentChallenges !== undefined) entityUpdate.currentChallenges = data.currentChallenges;
+    if (data.interestsText !== undefined) entityUpdate.interestsText = data.interestsText;
 
     // Build financeData update
-    const financeData: any = {};
+    const financeData: any = {
+      ...(data.financeData || {})
+    };
     const financeFields = [
       'planType', 'subscriptionIds', 'currency', 'billingAddress', 
       'subscriptionRate', 'customerTier', 'signupDate', 'renewalDate', 
-      'paymentMethod', 'lastPaymentDate', 'nextPaymentDue', 'invoiceIds', 'paymentIds'
+      'paymentMethod', 'lastPaymentDate', 'nextPaymentDue', 'invoiceIds', 'paymentIds',
+      'subscriptionPackageId', 'subscriptionPackageName', 'discountPercentage', 'arrearsBalance', 'creditBalance'
     ];
     for (const f of financeFields) {
       if (data[f] !== undefined) financeData[f] = data[f];
@@ -551,7 +573,7 @@ export async function updateEntityAction(
          if (!entityUpdate.financeData.currency) entityUpdate.financeData.currency = 'GHS';
       } else {
          for (const key of Object.keys(financeData)) {
-           entityUpdate[`financeData.${key}`] = financeData[key];
+            entityUpdate[`financeData.${key}`] = financeData[key];
          }
       }
     }
@@ -633,6 +655,20 @@ export async function updateEntityAction(
 
         if (data.modules !== undefined) {
             weUpdate.interests = data.modules;
+        }
+
+        if (data.currentNeeds !== undefined) weUpdate.currentNeeds = data.currentNeeds;
+        if (data.currentChallenges !== undefined) weUpdate.currentChallenges = data.currentChallenges;
+        if (data.interestsText !== undefined) weUpdate.interestsText = data.interestsText;
+
+        // Sync location fields to workspace_entities for filtering
+        if (data.location !== undefined) {
+            weUpdate.location = data.location || null;
+            weUpdate.locationString = data.location?.locationString || '';
+            weUpdate.locationCountryId = data.location?.country?.id || null;
+            weUpdate.locationRegionId = data.location?.region?.id || null;
+            weUpdate.locationDistrictId = data.location?.district?.id || null;
+            weUpdate.zone = data.location?.zone || null;
         }
         
         await weRef.update(weUpdate);

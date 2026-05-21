@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting } from './types';
+import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting, EntityType } from './types';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
@@ -471,9 +471,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       sentAt: scheduledAt || new Date().toISOString(),
       variables: JSON.parse(JSON.stringify(finalVariables)),
       workspaceIds: workspaceIds, // Bind to institutional track(s)
-      workspaceId: resolvedWorkspaceId || null, // Primary workspace context (Requirement 11)
+      workspaceId: resolvedWorkspaceId || undefined, // Primary workspace context (Requirement 11)
       entityId: resolvedEntityId || null, // New unified entity reference
-      entityType: resolvedEntityType || null, // Entity type
+      entityType: (resolvedEntityType || undefined) as EntityType | undefined, // Entity type
       providerId: providerId || null,
       providerStatus: providerStatus || null,
       hasAttachments: !!(attachments && attachments.length > 0),
@@ -487,7 +487,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         entityType: resolvedEntityType || null,
         organizationId: 'default',
         userId: null, 
-        workspaceId: resolvedWorkspaceId || null,
+        workspaceId: resolvedWorkspaceId || 'onboarding',
         type: 'notification_sent',
         source: 'system',
         description: `${scheduledAt ? 'Scheduled' : 'Sent'} ${template.channel} "${resolvedLogTitle}" to ${recipient}`,

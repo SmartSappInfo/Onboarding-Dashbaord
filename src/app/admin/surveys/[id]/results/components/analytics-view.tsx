@@ -349,9 +349,10 @@ type StatCardProps = {
     icon: React.ElementType;
     iconClassName: string;
     index?: number;
+    subtext?: React.ReactNode;
 };
 
-const StatCard = React.memo(function StatCard({ label, value, icon: Icon, iconClassName, index = 0 }: StatCardProps) {
+const StatCard = React.memo(function StatCard({ label, value, icon: Icon, iconClassName, index = 0, subtext }: StatCardProps) {
     return (
         <motion.div custom={index} variants={fadeInUp} initial="hidden" animate="visible">
             <Card className="bg-card/60 backdrop-blur-md border-border/40 shadow-sm hover:shadow-lg transition-shadow">
@@ -361,7 +362,10 @@ const StatCard = React.memo(function StatCard({ label, value, icon: Icon, iconCl
                     </div>
                     <div>
                         <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">{label}</p>
-                        <p className="text-2xl font-semibold">{value}</p>
+                        <div className="flex items-baseline gap-2">
+                            <p className="text-2xl font-semibold">{value}</p>
+                            {subtext && <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">{subtext}</span>}
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -394,13 +398,30 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
     const attributionData = React.useMemo(() => computeAttribution(responses, users), [responses, users]);
     const totalLeads = React.useMemo(() => responses.filter(r => r.entityId).length, [responses]);
 
+    const viewToSubmissionRate = sessions && sessions.length > 0 ? ((responses.length / sessions.length) * 100).toFixed(1) : 0;
+    const submissionToLeadRate = responses.length > 0 ? ((totalLeads / responses.length) * 100).toFixed(1) : 0;
+
     return (
  <div className="space-y-8">
             
             {/* Top Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard index={0} label="Submissions" value={responses.length} icon={Users} iconClassName="bg-primary/10 text-primary" />
-                <StatCard index={1} label="CRM Leads Gen." value={totalLeads} icon={ShieldCheck} iconClassName="bg-emerald-500/10 text-emerald-600" />
+                <StatCard 
+                    index={0} 
+                    label="Submissions" 
+                    value={responses.length} 
+                    icon={Users} 
+                    iconClassName="bg-primary/10 text-primary" 
+                    subtext={`${viewToSubmissionRate}% conv. rate`}
+                />
+                <StatCard 
+                    index={1} 
+                    label="CRM Leads Gen." 
+                    value={totalLeads} 
+                    icon={ShieldCheck} 
+                    iconClassName="bg-emerald-500/10 text-emerald-600" 
+                    subtext={`${submissionToLeadRate}% capture rate`}
+                />
                 <StatCard index={2} label="Total Visits" value={sessions?.length || 0} icon={MousePointer2} iconClassName="bg-orange-500/10 text-orange-600" />
                 {survey.scoringEnabled && scoringMetrics && (
                     <>

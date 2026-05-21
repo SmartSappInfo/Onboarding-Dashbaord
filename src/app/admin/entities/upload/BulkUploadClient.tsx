@@ -30,19 +30,25 @@ import {
     Eye,
     PartyPopper,
     ExternalLink,
-    ClipboardList
+    ClipboardList,
+    Search,
+    TrendingUp,
+    ShieldAlert,
+    AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, orderBy, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc, arrayUnion, addDoc } from 'firebase/firestore';
+import { LeadSourceSelect } from '@/components/LeadSourceSelect';
 import { ingestBatchAction } from '@/lib/bulk-upload-actions';
-import type { DuplicateStrategy } from '@/lib/import-types';
+import type { DuplicateStrategy, DealImportConfig } from '@/lib/import-types';
 import { cn } from '@/lib/utils';
+import { TagSelector } from '@/components/tags/TagSelector';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
@@ -272,12 +278,17 @@ const DefaultValueRow = React.memo(({
     parentRegionValue,
     customLeadSources
 }: DefaultValueRowProps) => {
+    const firestore = useFirestore();
+    const { activeWorkspace } = useWorkspace();
+    const { toast } = useToast();
 
     const regions = regionsList || [];
     const districts = districtsList || [];
     const packages = packagesList || [];
     const modules = modulesList || [];
     const [isCustomLeadSource, setIsCustomLeadSource] = React.useState(false);
+    const [districtSearch, setDistrictSearch] = React.useState('');
+    const [isCreatingDistrict, setIsCreatingDistrict] = React.useState(false);
 
     // Cascading district list calculation derived synchronously in render
     const filteredDistricts = React.useMemo(() => {
@@ -286,6 +297,58 @@ const DefaultValueRow = React.memo(({
         const regionDoc = regions.find((r: any) => r.name?.toLowerCase().trim() === parentRegionValue.toLowerCase().trim());
         return regionDoc ? districts.filter((d: any) => d.regionId === regionDoc.id) : districts;
     }, [fieldKey, parentRegionValue, regions, districts]);
+
+    // Parent region doc resolver
+    const parentRegionDoc = React.useMemo(() => {
+        if (!parentRegionValue) return null;
+        return regions.find((r: any) => r.name?.toLowerCase().trim() === parentRegionValue.toLowerCase().trim());
+    }, [parentRegionValue, regions]);
+
+    // Filter districts by districtSearch
+    const filteredDistrictsBySearch = React.useMemo(() => {
+        const base = filteredDistricts.length > 0 ? filteredDistricts : districts;
+        if (!districtSearch.trim()) return base;
+        const q = districtSearch.toLowerCase();
+        return base.filter((d: any) => d.name?.toLowerCase().includes(q));
+    }, [filteredDistricts, districts, districtSearch]);
+
+    // Check if district can be created
+    const canCreateDistrict = React.useMemo(() => {
+        if (!districtSearch.trim() || !parentRegionDoc) return false;
+        const q = districtSearch.trim().toLowerCase();
+        const base = filteredDistricts.length > 0 ? filteredDistricts : districts;
+        return !base.some((d: any) => d.name?.toLowerCase() === q);
+    }, [districtSearch, filteredDistricts, districts, parentRegionDoc]);
+
+    const handleCreateDistrict = async () => {
+        if (!firestore || !parentRegionDoc || !activeWorkspace || isCreatingDistrict) return;
+        const name = districtSearch.trim();
+        if (!name) return;
+
+        setIsCreatingDistrict(true);
+        try {
+            const orgId = activeWorkspace?.organizationId || 'smartsapp-hq';
+            await addDoc(collection(firestore, 'districts'), {
+                name,
+                regionId: parentRegionDoc.id,
+                organizationId: orgId,
+            });
+            onValueChange('locationDistrict', name);
+            setDistrictSearch('');
+            toast({
+                title: 'District Created',
+                description: `"${name}" has been added to districts under region "${parentRegionValue}".`,
+            });
+        } catch (e: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: e.message || 'Failed to create district.',
+            });
+        } finally {
+            setIsCreatingDistrict(false);
+        }
+    };
 
     // Handle cascading reset: if region changes and district is no longer in filtered list, we clear it!
     React.useEffect(() => {
@@ -337,19 +400,82 @@ const DefaultValueRow = React.memo(({
                         />
                     );
                 }
-                const currentDistricts = filteredDistricts.length > 0 ? filteredDistricts : districts;
+                const isDistrictDisabled = !parentRegionValue;
 
                 return (
-                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                    <Select
+                        value={value || undefined}
+                        onValueChange={val => {
+                            if (val === '__clear__') {
+                                onValueChange(fieldKey, '');
+                                return;
+                            }
+                            if (val === '__create__') {
+                                handleCreateDistrict();
+                                return;
+                            }
+                            onValueChange(fieldKey, val);
+                        }}
+                        disabled={isDistrictDisabled}
+                    >
                         <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
                             <SelectValue placeholder={parentRegionValue ? "Select district..." : "Select region first..."} />
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl max-h-[250px] bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
-                            {currentDistricts.map((d: any) => (
-                                <SelectItem key={d.id} value={d.name} className="font-semibold text-xs py-2">
-                                    {d.name}
+                        <SelectContent className="rounded-xl max-h-[280px] bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
+                            {/* Search */}
+                            <div className="px-2 pb-2 pt-1 sticky top-0 bg-popover z-10 border-b border-border/20">
+                                <div className="relative">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search or create district…"
+                                        value={districtSearch}
+                                        onChange={(e) => setDistrictSearch(e.target.value)}
+                                        className="h-8 pl-7 rounded-lg text-[11px] bg-muted/30 border-none focus-visible:ring-1 focus-visible:ring-primary/20"
+                                        onClick={(e) => e.stopPropagation()}
+                                        onKeyDown={(e) => {
+                                            e.stopPropagation();
+                                            if (e.key === 'Enter' && canCreateDistrict) {
+                                                e.preventDefault();
+                                                handleCreateDistrict();
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            {value && (
+                                <SelectItem value="__clear__" className="text-xs text-muted-foreground italic py-1.5">
+                                    Clear selection
                                 </SelectItem>
-                            ))}
+                            )}
+
+                            {/* Inline create option */}
+                            {canCreateDistrict && (
+                                <SelectItem value="__create__" className="text-primary font-bold text-xs py-2">
+                                    <span className="flex items-center gap-2">
+                                        {isCreatingDistrict ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                            <Plus className="h-3 w-3" />
+                                        )}
+                                        <span>Create &ldquo;{districtSearch.trim()}&rdquo;</span>
+                                    </span>
+                                </SelectItem>
+                            )}
+
+                            <SelectGroup>
+                                {filteredDistrictsBySearch.length === 0 && !canCreateDistrict ? (
+                                    <div className="text-center py-4 text-xs text-muted-foreground">
+                                        No districts found. Type to create one.
+                                    </div>
+                                ) : (
+                                    filteredDistrictsBySearch.map((d: any) => (
+                                        <SelectItem key={d.id} value={d.name} className="font-semibold text-xs py-2">
+                                            {d.name}
+                                        </SelectItem>
+                                    ))
+                                )}
+                            </SelectGroup>
                         </SelectContent>
                     </Select>
                 );
@@ -462,65 +588,12 @@ const DefaultValueRow = React.memo(({
                 );
             }
             case 'leadSource': {
-                const baseSources = ['Referral', 'Website', 'Social Media', 'Event', 'Partner', 'Cold Outreach', 'Other'];
-                const sources = Array.from(new Set([...baseSources, ...(customLeadSources || [])]));
-                
-                // Show custom input if explicit flag is set, or if an existing custom value is passed in
-                const showCustom = isCustomLeadSource || (value && !sources.includes(value));
-
-                if (showCustom) {
-                    return (
-                        <div className="flex items-center gap-2">
-                            <Input 
-                                autoFocus
-                                value={value} 
-                                onChange={e => onValueChange(fieldKey, e.target.value)}
-                                placeholder="Enter custom lead source..."
-                                className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
-                            />
-                            <Button 
-                                variant="ghost" 
-                                size="icon"
-                                className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
-                                onClick={() => {
-                                    setIsCustomLeadSource(false);
-                                    if (value && !sources.includes(value)) {
-                                        onValueChange(fieldKey, '');
-                                    }
-                                }}
-                                title="Back to default list"
-                            >
-                                <X size={14} />
-                            </Button>
-                        </div>
-                    );
-                }
-
                 return (
-                    <Select value={value || undefined} onValueChange={val => {
-                        if (val === '__custom') {
-                            setIsCustomLeadSource(true);
-                            onValueChange(fieldKey, '');
-                        } else {
-                            onValueChange(fieldKey, val);
-                        }
-                    }}>
-                        <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
-                            <SelectValue placeholder="Select lead source..." />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
-                            {sources.map(s => (
-                                <SelectItem key={s} value={s} className="font-semibold text-xs py-2">{s}</SelectItem>
-                            ))}
-                            <div className="h-px bg-border/50 my-1 mx-2" />
-                            <SelectItem value="__custom" className="font-semibold text-xs py-2 text-primary focus:bg-primary/5 focus:text-primary">
-                                <div className="flex items-center gap-2">
-                                    <Plus size={12} />
-                                    Add custom source...
-                                </div>
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <LeadSourceSelect 
+                        value={value} 
+                        onValueChange={val => onValueChange(fieldKey, val)}
+                        className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                    />
                 );
             }
             default:
@@ -573,6 +646,19 @@ const DefaultValueRow = React.memo(({
     );
 });
 DefaultValueRow.displayName = 'DefaultValueRow';
+const STAGE_COLOR_MAP: Record<string, string> = {
+    lead: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+    qualified: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    proposal: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    negotiation: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+    won: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    lost: 'bg-red-500/10 text-red-400 border-red-500/20',
+};
+
+function getStageColor(stageName: string): string {
+    const key = stageName.toLowerCase().replace(/\s+/g, '');
+    return STAGE_COLOR_MAP[key] ?? 'bg-muted/10 text-muted-foreground border-border/20';
+}
 
 /**
  * @fileOverview Entity Import Engine — scope-aware bulk upload.
@@ -644,6 +730,17 @@ export default function BulkUploadClient() {
     }, [firestore, activeWorkspace?.organizationId]);
     const { data: modulesList } = useCollection<any>(modulesQuery);
 
+    // Fetch Pipelines and Onboarding Stages for bulk deal creation
+    const pipelinesQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'pipelines'), orderBy('name', 'asc')) : null,
+    [firestore]);
+    const { data: pipelinesList } = useCollection<any>(pipelinesQuery);
+
+    const stagesQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order', 'asc')) : null,
+    [firestore]);
+    const { data: stagesList } = useCollection<any>(stagesQuery);
+
     // Build TARGET_FIELDS from the advanced template fields + base fallback for the mapping step
     // Override the 'name' field label with the workspace's custom entity terminology
     const TARGET_FIELDS = React.useMemo(() => {
@@ -702,8 +799,46 @@ export default function BulkUploadClient() {
         });
     }, []);
     const [selectedGlobalTags, setSelectedGlobalTags] = React.useState<string[]>([]);
-    const [manualTags, setManualTags] = React.useState<string[]>([]);
     const [selectedAutomationId, setSelectedAutomationId] = React.useState<string | null>(null);
+
+    // ── Bulk Deal Creation Configuration ──────────────────────────────────────
+    const [createDealForImport, setCreateDealForImport] = React.useState(false);
+    const [dealImportConfig, setDealImportConfig] = React.useState<DealImportConfig>({
+        pipelineId: '',
+        stageId: '',
+        nameTemplate: '{{name}}',
+        value: 0,
+        suppressAutomations: true,
+    });
+
+    const stagesByPipeline = React.useMemo(() => {
+        const map = new globalThis.Map<string, any[]>();
+        stagesList?.forEach(s => {
+            if (!map.has(s.pipelineId)) map.set(s.pipelineId, []);
+            map.get(s.pipelineId)!.push(s);
+        });
+        return map;
+    }, [stagesList]);
+
+    const handlePipelineChange = React.useCallback((val: string) => {
+        const pipelineStages = stagesByPipeline.get(val) || [];
+        const firstStageId = pipelineStages[0]?.id || '';
+        setDealImportConfig(prev => ({ ...prev, pipelineId: val, stageId: firstStageId }));
+    }, [stagesByPipeline]);
+
+    // Auto-select first pipeline and stage when loaded
+    React.useEffect(() => {
+        if (pipelinesList && pipelinesList.length > 0 && !dealImportConfig.pipelineId) {
+            const firstPipelineId = pipelinesList[0].id;
+            const pipelineStages = stagesByPipeline.get(firstPipelineId) || [];
+            const firstStageId = pipelineStages[0]?.id || '';
+            setDealImportConfig(prev => ({
+                ...prev,
+                pipelineId: firstPipelineId,
+                stageId: firstStageId,
+            }));
+        }
+    }, [pipelinesList, stagesByPipeline, dealImportConfig.pipelineId]);
 
     const [editingRowIdx, setEditingRowIdx] = React.useState<number | null>(null);
     const [executionResults, setExecutionResults] = React.useState<{ row: number; status: 'success' | 'error'; entityName?: string; error?: string }[]>([]);
@@ -892,8 +1027,9 @@ export default function BulkUploadClient() {
                 sanitizedDefaultValues,
                 selectedGlobalTags,
                 selectedAutomationId || undefined,
-                manualTags,
-                enableTitleCase
+                [],
+                enableTitleCase,
+                createDealForImport ? dealImportConfig : undefined
             );
 
             setLastImportLogId(result.importLogId);
@@ -1360,19 +1496,12 @@ export default function BulkUploadClient() {
                                             <p className="text-sm text-muted-foreground">Select tags to apply to all records in this batch import.</p>
                                         </div>
                                         
-                                        <MultiSelect
-                                            options={[
-                                                ...(tagsList?.map((t: any) => ({ label: t.name, value: t.id })) || []),
-                                                ...manualTags.map((t: string) => ({ label: t, value: t }))
-                                            ]}
-                                            value={selectedGlobalTags}
-                                            onChange={setSelectedGlobalTags}
-                                            placeholder="Create or Search Tags"
-                                            onCreate={(newTagName) => {
-                                                if (!manualTags.includes(newTagName)) {
-                                                    setManualTags(prev => [...prev, newTagName]);
-                                                    setSelectedGlobalTags(prev => [...prev, newTagName]);
-                                                }
+                                        <TagSelector
+                                            currentTagIds={selectedGlobalTags}
+                                            onTagsChange={(tagIds) => {
+                                                React.startTransition(() => {
+                                                    setSelectedGlobalTags(tagIds);
+                                                });
                                             }}
                                         />
 
@@ -1393,6 +1522,156 @@ export default function BulkUploadClient() {
                                                 <Switch checked={enableTitleCase} onCheckedChange={setEnableTitleCase} />
                                             </div>
                                         </div>
+                                    </div>
+
+
+                                    {/* Deal Opportunity Section */}
+                                    <div className="space-y-4 pt-8 border-t">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-lg font-bold flex items-center gap-2">
+                                                    <TrendingUp className={cn("h-5 w-5", createDealForImport ? "text-emerald-500" : "text-muted-foreground")} />
+                                                    Auto-Create Deals
+                                                </h3>
+                                                <p className="text-sm text-muted-foreground">Automatically create and link a pipeline deal for every imported record.</p>
+                                            </div>
+                                            <Switch 
+                                                checked={createDealForImport} 
+                                                onCheckedChange={setCreateDealForImport} 
+                                            />
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {createDealForImport && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: "auto", opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    <div className={cn(
+                                                        "p-6 rounded-xl bg-background border flex flex-col gap-6 relative mt-4",
+                                                        "border-emerald-500/20 bg-emerald-950/5 dark:bg-emerald-950/10 shadow-sm"
+                                                    )}>
+                                                        {/* Top premium border indicator */}
+                                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/20 via-teal-500/40 to-emerald-500/20 rounded-t-xl" />
+
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                            {/* Pipeline */}
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-semibold">Pipeline</Label>
+                                                                <Select 
+                                                                    value={dealImportConfig.pipelineId} 
+                                                                    onValueChange={handlePipelineChange}
+                                                                >
+                                                                    <SelectTrigger className="w-full h-11 bg-background">
+                                                                        <SelectValue placeholder="Select pipeline" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        {pipelinesList?.map((pipeline: any) => (
+                                                                            <SelectItem key={pipeline.id} value={pipeline.id} className="font-semibold">
+                                                                                {pipeline.name}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+
+                                                            {/* Stage */}
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-semibold">Stage</Label>
+                                                                <Select 
+                                                                    value={dealImportConfig.stageId} 
+                                                                    onValueChange={(val) => setDealImportConfig(prev => ({ ...prev, stageId: val }))}
+                                                                    disabled={!dealImportConfig.pipelineId}
+                                                                >
+                                                                    <SelectTrigger className="w-full h-11 bg-background">
+                                                                        <SelectValue placeholder="Select stage" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        {(stagesByPipeline.get(dealImportConfig.pipelineId) || []).map((stage: any) => {
+                                                                            const pillClass = getStageColor(stage.name);
+                                                                            return (
+                                                                                <SelectItem key={stage.id} value={stage.id} className="font-semibold">
+                                                                                    <span className={cn("px-2 py-0.5 rounded text-xs border font-medium inline-block", pillClass)}>
+                                                                                        {stage.name}
+                                                                                    </span>
+                                                                                </SelectItem>
+                                                                            );
+                                                                        })}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                            {/* Name Template */}
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="deal-name-template" className="text-sm font-semibold">Deal Name Template</Label>
+                                                                <Input
+                                                                    id="deal-name-template"
+                                                                    value={dealImportConfig.nameTemplate}
+                                                                    onChange={(e) => setDealImportConfig(prev => ({ ...prev, nameTemplate: e.target.value }))}
+                                                                    placeholder="e.g. {{name}} - Onboarding"
+                                                                    className="h-11 rounded-xl bg-background"
+                                                                />
+                                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                                    Supported variables: <code className="text-primary font-mono font-bold bg-primary/5 px-1 rounded">{"{{name}}"}</code> (inserts entity name), <code className="text-primary font-mono font-bold bg-primary/5 px-1 rounded">{"{{date}}"}</code> (inserts current date).
+                                                                </p>
+                                                            </div>
+
+                                                            {/* Default Deal Value */}
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="deal-default-value" className="text-sm font-semibold">Default Deal Value</Label>
+                                                                <div className="relative">
+                                                                    <span className="absolute left-4 top-3 text-sm text-muted-foreground font-semibold">$</span>
+                                                                    <Input
+                                                                        id="deal-default-value"
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="0.01"
+                                                                        value={dealImportConfig.value || ''}
+                                                                        onChange={(e) => setDealImportConfig(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))}
+                                                                        placeholder="0.00"
+                                                                        className="h-11 rounded-xl pl-8 bg-background text-emerald-500 font-semibold"
+                                                                    />
+                                                                </div>
+                                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                                    Est. value of each created deal in USD.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Suppress Automations */}
+                                                        <div className="flex items-center justify-between p-4 rounded-xl bg-background border border-border/50">
+                                                            <div className="flex items-start gap-3">
+                                                                <ShieldAlert className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                                                                <div>
+                                                                    <p className="font-semibold text-sm">Suppress Automation Workflows</p>
+                                                                    <p className="text-xs text-muted-foreground">Skip triggering any automated protocols or background action plans when deals are created. Recommended to prevent system-wide spam during large imports.</p>
+                                                                </div>
+                                                            </div>
+                                                            <Switch 
+                                                                checked={dealImportConfig.suppressAutomations} 
+                                                                onCheckedChange={(checked) => setDealImportConfig(prev => ({ ...prev, suppressAutomations: checked }))} 
+                                                            />
+                                                        </div>
+
+                                                        {/* Automation Warning alert inside config */}
+                                                        {selectedAutomationId && !dealImportConfig.suppressAutomations && (
+                                                            <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-500 dark:text-amber-400 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                                                                <div>
+                                                                    <p className="font-bold">Automation Storm Risk</p>
+                                                                    <p className="mt-0.5 font-medium leading-relaxed">Both deal creation and active batch automation triggers are enabled, and Suppress Automations is off. Every imported record will fire all automated DEAL_CREATED trigger workflows. For large datasets, this may cause significant rate-limit issues or system slowdowns. Consider checking &quot;Suppress Automation Workflows&quot;.</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
 
 

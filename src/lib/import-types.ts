@@ -4,6 +4,8 @@ export type DuplicateStrategy =
   | 'ADD_TAG_ONLY' 
   | 'UPDATE_FIELDS_AND_TAG' 
   | 'UPDATE_MISSING_FIELDS_AND_TAG'
+  | 'KEEP_AND_MERGE'
+  | 'REPLACE_AND_MERGE'
   | 'SKIP' 
   | 'TRIGGER_AUTOMATION' 
   | 'MANUAL_CORRECTION'
@@ -41,3 +43,21 @@ export interface FailedRowDoc {
   retryCount: number;
   createdAt: Timestamp | Date | any;
 }
+
+export interface DealImportConfig {
+  pipelineId: string;
+  stageId: string;
+  nameTemplate: string;
+  value: number;
+  suppressAutomations: boolean;
+}
+
+export function isDealImportConfig(val: unknown): val is DealImportConfig {
+  return (
+    typeof val === 'object' && val !== null &&
+    typeof (val as any).pipelineId === 'string' &&
+    typeof (val as any).stageId === 'string' &&
+    typeof (val as any).nameTemplate === 'string'
+  );
+}
+
