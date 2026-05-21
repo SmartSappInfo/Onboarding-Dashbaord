@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { BulkVerificationService } from '@/lib/bulk-verifier';
 import { ContactHygieneRepository } from '@/lib/hygiene-repository';
@@ -12,8 +12,7 @@ const TriggerSchema = z.object({
  *
  * Fire-and-forget email verification endpoint.
  * Returns 202 Accepted immediately while processing verification
- * within the same request window (Cloud Run keeps CPU active until
- * the response stream closes, so we process before responding).
+ * asynchronously in the background using Next.js after().
  *
  * Idempotency: checks verification_cache for active locks before
  * starting a new verification to prevent duplicate storm processing.
@@ -55,18 +54,20 @@ export async function POST(req: Request) {
       unlocked.map((email) => ContactHygieneRepository.setVerifyingLock(email))
     );
 
-    // Execute verification synchronously within the request window.
-    // Cloud Run keeps CPU active for the full request duration.
-    // For small batches (1-10) this completes in seconds.
-    // For larger batches, the BulkVerificationService handles
-    // domain-serialized throttling and batched Firestore writes.
-    const service = new BulkVerificationService();
-    const results = await service.processBulk(unlocked, { forceRefresh: true });
+    // Execute verification asynchronously in the background via Next.js after()
+    after(async () => {
+      try {
+        const service = new BulkVerificationService();
+        await service.processBulk(unlocked, { forceRefresh: true });
+      } catch (err: any) {
+        console.error('[verify-email/trigger] Background verification failed:', err.message);
+      }
+    });
 
     return NextResponse.json(
       {
         queued: true,
-        processedCount: results.length,
+        processedCount: unlocked.length,
         skippedCount: skipped.length,
       },
       { status: 202 }

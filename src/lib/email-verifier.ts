@@ -270,6 +270,25 @@ export class SmtpValidator implements IVerificationStrategy {
       return { passed: false, scoreWeight: 0, error: 'No MX host — DNS must pass first' };
     }
 
+    // In production serverless environments (like Cloud Run or Vercel), outbound port 25 is blocked by default.
+    // To prevent API timeouts and extremely slow response times, skip SMTP ping and return inconclusive/uncertain.
+    const isProductionServerless = 
+      process.env.NODE_ENV === 'production' || 
+      process.env.K_SERVICE !== undefined || // Cloud Run (used by Firebase App Hosting under the hood)
+      process.env.FIREBASE_CONFIG !== undefined || 
+      process.env.VERCEL !== undefined;
+
+    if (isProductionServerless) {
+      return {
+        passed: true,
+        scoreWeight: 15,
+        details: { 
+          error: 'SMTP verification bypassed due to outbound port 25 block in serverless environment.', 
+          uncertain: true 
+        },
+      };
+    }
+
     const result = await this.pingSmtp(mxHost, context.email, context.domain);
 
     if (result.timedOut || result.error) {

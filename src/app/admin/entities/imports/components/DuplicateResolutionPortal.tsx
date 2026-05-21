@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -250,6 +250,8 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [expandedRowIds, setExpandedRowIds] = useState<string[]>([]);
+    const [resolvedRowIds, setResolvedRowIds] = useState<Set<string>>(new Set());
+    const [exitingRowIds, setExitingRowIds] = useState<Set<string>>(new Set());
     const [verifyingEmails, setVerifyingEmails] = useState<Record<string, boolean>>({});
 
     const toggleRowExpanded = (rowId: string) => {
@@ -294,7 +296,13 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
     const [isResolving, setIsResolving] = useState(false);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [isCreatingTag, setIsCreatingTag] = useState(false);
-    const [resolutions, setResolutions] = useState<Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any }>>({});
+    const [resolutions, setResolutions] = useState<Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any }>>(() => {
+        const initial: Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any }> = {};
+        duplicateRows.filter(r => !r.resolved).forEach(row => {
+            initial[row.id] = { strategy: 'SKIP', tagIds: [] };
+        });
+        return initial;
+    });
     const [editingRow, setEditingRow] = useState<DuplicateRow | null>(null);
     const [editedPayload, setEditedPayload] = useState<any>(null);
 
@@ -305,6 +313,21 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
             setEditedPayload(null);
         }
     }, [editingRow]);
+
+    // Initialize newly-appearing duplicate rows with default SKIP strategy
+    React.useEffect(() => {
+        setResolutions(prev => {
+            const next = { ...prev };
+            let changed = false;
+            duplicateRows.filter(r => !r.resolved).forEach(row => {
+                if (!next[row.id]) {
+                    next[row.id] = { strategy: 'SKIP', tagIds: [] };
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
+        });
+    }, [duplicateRows]);
 
     // Fetch tags for the tag selector
     const tagsQuery = useMemoFirebase(() => 
@@ -333,8 +356,8 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
     const requiresTags = (strategy: DuplicateStrategy) => 
         ['ADD_TAG_ONLY', 'UPDATE_MISSING_FIELDS_AND_TAG', 'UPDATE_FIELDS_AND_TAG', 'KEEP_AND_MERGE', 'REPLACE_AND_MERGE'].includes(strategy);
 
-    // Only show unresolved duplicates
-    const pendingRows = duplicateRows.filter(r => !r.resolved);
+    // Only show unresolved duplicates that haven't been locally resolved
+    const pendingRows = duplicateRows.filter(r => !r.resolved && !resolvedRowIds.has(r.id));
 
     const toggleSelectAll = () => {
         if (selectedIds.length === pendingRows.length) {
@@ -348,29 +371,40 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
-    const handleResolve = async (resolutionsToExecute: { duplicateRowId: string; strategy: DuplicateStrategy; tagIds?: string[]; customPayload?: any }[]) => {
+    const handleResolve = useCallback(async (resolutionsToExecute: { duplicateRowId: string; strategy: DuplicateStrategy; tagIds?: string[]; customPayload?: any }[]) => {
         setIsResolving(true);
         try {
             await resolveDuplicatesAction(importLogId, resolutionsToExecute);
             toast({ title: 'Duplicates Resolved', description: `Successfully processed ${resolutionsToExecute.length} record(s).` });
             
-            // Filter out resolved ids from selection and local resolutions state
-            const resolvedIds = resolutionsToExecute.map(r => r.duplicateRowId);
-            setSelectedIds(prev => prev.filter(id => !resolvedIds.includes(id)));
+            const resolvedIds = new Set(resolutionsToExecute.map(r => r.duplicateRowId));
+
+            // Phase 1: Trigger exit animation
+            setExitingRowIds(prev => new Set([...prev, ...resolvedIds]));
+
+            // Clean up selections and resolutions state immediately
+            setSelectedIds(prev => prev.filter(id => !resolvedIds.has(id)));
             setResolutions(prev => {
                 const next = { ...prev };
-                resolvedIds.forEach(id => {
-                    delete next[id];
-                });
+                resolvedIds.forEach(id => { delete next[id]; });
                 return next;
             });
-            onResolved(); // Refresh parent state
+
+            // Phase 2: After animation completes, remove rows from DOM
+            setTimeout(() => {
+                setResolvedRowIds(prev => new Set([...prev, ...resolvedIds]));
+                setExitingRowIds(prev => {
+                    const next = new Set(prev);
+                    resolvedIds.forEach(id => next.delete(id));
+                    return next;
+                });
+            }, 350);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Resolution Failed', description: error.message });
         } finally {
             setIsResolving(false);
         }
-    };
+    }, [importLogId, toast]);
 
     const handleApplyBulk = () => {
         if (selectedIds.length === 0) return;
@@ -394,6 +428,55 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
         });
         toast({ title: 'Local Strategy Set for All', description: `Applied "${bulkStrategy}" strategy to all ${pendingRows.length} pending row(s). Click Execute All to save.` });
     };
+
+    // Identify rows where incoming data is identical to existing data (no conflicts)
+    const identicalRowIds = useMemo(() => {
+        const mapping = importLog?._importConfig?.mapping || {};
+        const defaultValues = importLog?._importConfig?.defaultValues || {};
+        const ids = new Set<string>();
+
+        for (const row of pendingRows) {
+            if (!row.existingEntityData) continue;
+            const payload = resolutions[row.id]?.customPayload || row.rawPayload;
+            const inc = extractIncomingFields(payload, mapping, defaultValues, userMap);
+            const existingContact = getPrimaryContact(row.existingEntityData?.entityContacts || []);
+
+            const ext: Record<string, string> = {
+                entityName: row.existingEntityData?.name || '',
+                contactName: existingContact?.name || '',
+                contactEmail: existingContact?.email || '',
+                contactPhone: existingContact?.phone || '',
+                contactRole: existingContact?.typeLabel || existingContact?.typeKey || '',
+            };
+
+            const hasAnyConflict = Object.keys(ext).some(key => isConflict(inc[key] || '', ext[key]));
+            if (!hasAnyConflict) {
+                ids.add(row.id);
+            }
+        }
+
+        return ids;
+    }, [pendingRows, importLog, resolutions, userMap]);
+
+    // Auto-resolve all identical rows as SKIP
+    const handleSkipIdentical = useCallback(() => {
+        const identicalResolutions = Array.from(identicalRowIds)
+            .filter(id => !exitingRowIds.has(id))
+            .map(id => ({
+                duplicateRowId: id,
+                strategy: 'SKIP' as DuplicateStrategy,
+                tagIds: [] as string[],
+            }));
+        if (identicalResolutions.length === 0) return;
+        handleResolve(identicalResolutions);
+    }, [identicalRowIds, exitingRowIds, handleResolve]);
+
+    // Notify parent only when ALL rows are resolved (no more pending rows)
+    React.useEffect(() => {
+        if (resolvedRowIds.size > 0 && pendingRows.length === 0) {
+            onResolved();
+        }
+    }, [resolvedRowIds.size, pendingRows.length, onResolved]);
 
     const handleExecuteSelected = () => {
         const selectedResolutions = selectedIds
@@ -560,6 +643,18 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                             Execute Selected ({selectedIds.filter(id => resolutions[id]?.strategy).length})
                         </Button>
                     )}
+                    {identicalRowIds.size > 0 && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isResolving}
+                            onClick={handleSkipIdentical}
+                            className="font-semibold border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                        >
+                            <CheckCircle2 size={14} className="mr-1" />
+                            Skip Identical ({identicalRowIds.size})
+                        </Button>
+                    )}
                     <Button
                         size="sm"
                         variant="secondary"
@@ -576,7 +671,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
             <ScrollArea className="flex-1 min-h-0 pr-4">
                 <div className="space-y-4 pb-12">
                     {pendingRows.map(row => (
-                        <Card key={row.id} className={`overflow-hidden transition-all ${selectedIds.includes(row.id) ? 'border-primary shadow-sm shadow-primary/10' : 'border-border/50'}`}>
+                        <Card key={row.id} className={`overflow-hidden transition-all duration-300 ease-out ${exitingRowIds.has(row.id) ? 'opacity-0 scale-[0.97] -translate-y-1 pointer-events-none' : 'opacity-100 scale-100'} ${selectedIds.includes(row.id) ? 'border-primary shadow-sm shadow-primary/10' : 'border-border/50'}`}>
                             <div className="flex">
                                 {/* Checkbox Column */}
                                 <div className="p-4 border-r border-border/50 bg-slate-50/50 dark:bg-slate-900/20 flex flex-col items-center">

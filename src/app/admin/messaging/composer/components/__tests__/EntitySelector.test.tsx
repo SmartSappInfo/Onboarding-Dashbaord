@@ -3,6 +3,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EntitySelector } from '../EntitySelector';
 import type { ResolvedContact } from '@/lib/types';
 
+// Mock Firebase
+vi.mock('firebase/firestore', () => ({
+  doc: vi.fn((db, collection, id) => ({ 
+    path: `${collection}/${id}`,
+    id,
+    collection 
+  })),
+  collection: vi.fn((db, name) => ({ path: name, name })),
+  getFirestore: vi.fn(() => ({})),
+}));
+
+// Mock Firebase hooks
+vi.mock('@/firebase', () => ({
+  useDoc: vi.fn(() => ({ data: null, loading: false, error: null })),
+  useFirestore: vi.fn(() => ({})),
+}));
+
 // Mock Firebase provider
 vi.mock('@/firebase/provider', () => ({
   useFirebase: () => ({
@@ -11,19 +28,9 @@ vi.mock('@/firebase/provider', () => ({
     db: {},
     storage: {},
   }),
-  useFirestore: () => ({
-    collection: vi.fn(),
-  }),
+  useFirestore: () => ({}),
   useAuth: () => ({}),
   useStorage: () => ({}),
-}));
-
-// Mock useDoc hook from Firebase
-vi.mock('@/firebase', () => ({
-  useDoc: () => ({ data: null, loading: false, error: null }),
-  useFirestore: () => ({
-    collection: vi.fn(),
-  }),
 }));
 
 // EntitySelector no longer fetches data itself — it receives entities as props.

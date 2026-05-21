@@ -9,6 +9,17 @@ vi.mock('../messaging-engine', () => ({
   sendMessage: vi.fn()
 }));
 
+// Mock contact-adapter to prevent resolution failures
+vi.mock('../contact-adapter', () => ({
+  resolveContact: vi.fn().mockResolvedValue(null)
+}));
+
+// Mock migration-status-utils
+vi.mock('../migration-status-utils', () => ({
+  getContactEmail: vi.fn().mockReturnValue('test@example.com'),
+  getContactPhone: vi.fn().mockReturnValue('+1234567890')
+}));
+
 describe('Sequential_Scheduler', () => {
   beforeEach(() => {
     vi.clearAllMocks();

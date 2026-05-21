@@ -186,13 +186,15 @@ describe('Contact Adapter New Methods', () => {
       expect(result).toBe(true);
     });
 
-    it('should return true when school exists', async () => {
+    it('should return false when checking non-existent legacy school (deprecated)', async () => {
+      // Note: contactExists now only checks entities collection
+      // Legacy schools are no longer supported in this function
       const mockCollection = vi.fn((collectionName: string) => {
-        if (collectionName === 'schools') {
+        if (collectionName === 'entities') {
           return {
             doc: vi.fn().mockReturnValue({
               get: vi.fn().mockResolvedValue({
-                exists: true,
+                exists: false, // Legacy school IDs won't exist in entities
               }),
             }),
           };
@@ -204,7 +206,8 @@ describe('Contact Adapter New Methods', () => {
 
       const result = await contactExists('school_1');
 
-      expect(result).toBe(true);
+      // Should return false since legacy schools are not checked
+      expect(result).toBe(false);
     });
 
     it('should return false when contact does not exist', async () => {

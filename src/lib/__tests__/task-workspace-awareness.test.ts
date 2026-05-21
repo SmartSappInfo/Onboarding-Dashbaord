@@ -23,11 +23,25 @@ vi.mock('../firebase-admin', () => ({
     collection: vi.fn(() => ({
       add: vi.fn().mockResolvedValue({ id: 'task_123' }),
       doc: vi.fn(() => ({
+        get: vi.fn().mockResolvedValue({
+          exists: true,
+          data: () => ({
+            id: 'task_123',
+            title: 'Test task',
+            workspaceId: 'workspace_1',
+          }),
+        }),
         update: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn().mockResolvedValue(undefined),
       })),
     })),
   },
+}));
+
+// Mock workspace permissions
+vi.mock('../workspace-permissions', () => ({
+  canUser: vi.fn().mockResolvedValue({ granted: true }),
+  checkWorkspaceAccess: vi.fn().mockResolvedValue(true),
 }));
 
 // Mock activity logger
@@ -224,18 +238,11 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
 
       await createTaskAction(taskData, 'test_user');
 
-      // Verify no contact fields are set
-      expect(mockAdd).toHaveBeenCalledWith(
-        expect.objectContaining({
-          entityName: null,
-          entityId: null,
-          entityType: null,
-        })
-      );
-      
-      // Verify entityId is not in the object (or is undefined/null)
+      // Verify no contact fields are set (entityId can be undefined or null)
       const callArgs = mockAdd.mock.calls[0][0];
-      expect(callArgs.entityId).toBeUndefined();
+      expect(callArgs.entityName).toBe(null);
+      expect(callArgs.entityType).toBe(null);
+      expect(callArgs.entityId === null || callArgs.entityId === undefined).toBe(true);
     });
   });
 
