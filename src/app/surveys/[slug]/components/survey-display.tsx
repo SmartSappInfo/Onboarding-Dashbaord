@@ -2,9 +2,7 @@
 
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { Survey, Organization } from '@/lib/types';
-import { useDoc, useFirestore } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import type { Survey } from '@/lib/types';
 import Image from 'next/image';
 import SurveyForm from './survey-form';
 import { BackgroundPattern } from '../../components/survey-background-pattern';
@@ -18,9 +16,10 @@ interface SurveyDisplayProps {
     sourcePageId?: string;
     assignedUserId?: string;
     organizationLogoUrl?: string | null;
+    entityLogoUrl?: string | null;
 }
 
-export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, organizationLogoUrl }: SurveyDisplayProps) {
+export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, organizationLogoUrl, entityLogoUrl }: SurveyDisplayProps) {
     const [isSubmitted, setIsSubmitted] = React.useState(false);
     const [isMounted, setIsMounted] = React.useState(false);
     const searchParams = useSearchParams();
@@ -28,26 +27,11 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, or
 
     // Capture the full URL on mount so "Submit Another Response" preserves assignment params
     const initialUrl = React.useRef<string>('');
-
-    const firestore = useFirestore();
-    const entityDocRef = React.useMemo(() => {
-        if (!firestore || !survey.entityId) return null;
-        return doc(firestore, 'entities', survey.entityId);
-    }, [firestore, survey.entityId]);
-    
-    const { data: entity } = useDoc<any>(entityDocRef);
-
-    // Fetch organization for logo fallback
-    const orgDocRef = React.useMemo(() => {
-        if (!firestore || !survey.organizationId) return null;
-        return doc(firestore, 'organizations', survey.organizationId);
-    }, [firestore, survey.organizationId]);
-    const { data: organization } = useDoc<Organization>(orgDocRef);
     
     // Logo resolution chain: survey logo → entity logo → org logo → null (generic avatar)
     const displayLogoUrl = survey.showBranding === false 
         ? 'none' 
-        : (survey.logoUrl || entity?.institutionData?.logoUrl || entity?.logoUrl || organizationLogoUrl || organization?.logoUrl || null);
+        : (survey.logoUrl || entityLogoUrl || organizationLogoUrl || null);
 
     React.useEffect(() => {
         initialUrl.current = window.location.href;

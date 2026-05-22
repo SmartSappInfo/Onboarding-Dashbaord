@@ -94,6 +94,7 @@ export default async function PublicSurveyPage({
     }
 
     let organizationLogoUrl: string | null = null;
+    let entityLogoUrl: string | null = null;
     try {
         // Resolve organizationId: direct field → workspace lookup
         let orgId = survey.organizationId;
@@ -109,16 +110,23 @@ export default async function PublicSurveyPage({
                 organizationLogoUrl = orgSnap.data()?.logoUrl || null;
             }
         }
+        if (survey.entityId) {
+            const entitySnap = await adminDb.collection('entities').doc(survey.entityId).get();
+            if (entitySnap.exists) {
+                const entityData = entitySnap.data();
+                entityLogoUrl = entityData?.institutionData?.logoUrl || entityData?.logoUrl || null;
+            }
+        }
     } catch (e) {
-        console.error("Error fetching organization logo:", e);
+        console.error("Error fetching organization or entity logo:", e);
     }
 
     // Block non-published surveys unless in preview mode
     if (survey.status !== 'published' && preview !== 'true') {
-        return <SurveyUnavailable status={survey.status as any || 'draft'} survey={survey} logoUrl={survey.logoUrl || organizationLogoUrl} />;
+        return <SurveyUnavailable status={survey.status as any || 'draft'} survey={survey} logoUrl={survey.logoUrl || entityLogoUrl || organizationLogoUrl} />;
     }
     
-    return <SurveyDisplay survey={survey} sourcePageId={sourcePageId} assignedUserId={ref} organizationLogoUrl={organizationLogoUrl} />;
+    return <SurveyDisplay survey={survey} sourcePageId={sourcePageId} assignedUserId={ref} organizationLogoUrl={organizationLogoUrl} entityLogoUrl={entityLogoUrl} />;
 }
 
 
