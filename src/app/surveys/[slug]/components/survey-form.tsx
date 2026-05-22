@@ -39,6 +39,7 @@ import { logActivity } from '@/lib/activity-logger';
 import SurveyLoader from '../../components/survey-loader';
 import VideoHero from '@/components/video-hero';
 import { submitPublicSurveyResponse, triggerSurveyWebhook } from '@/lib/survey-actions';
+import { useTheme } from 'next-themes';
 
 
 
@@ -722,18 +723,18 @@ const ElementRenderer = ({
                 return <hr className="my-6 sm:my-8 border-border/30" />;
             case 'image':
                 return block.url ? (
-                    <div className={cn("relative my-6 rounded-xl overflow-hidden shadow-xl border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
+                    <div className={cn("relative my-6 rounded-xl overflow-hidden shadow-xl border-4 border-white dark:border-slate-800", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
                         <img src={block.url} alt={block.title || 'Survey Image'} className="w-full h-auto" />
                     </div>
                 ) : null;
             case 'video':
-                 return block.url ? <div className={cn("my-6 shadow-xl rounded-xl overflow-hidden border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div> : null;
+                 return block.url ? <div className={cn("my-6 shadow-xl rounded-xl overflow-hidden border-4 border-white dark:border-slate-800", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div> : null;
             case 'audio':
                 return block.url ? <div className="my-6 p-6 bg-muted/10 border border-border/30 rounded-xl"><audio controls src={block.url} className="w-full text-sm">Your browser does not support the audio element.</audio></div> : null;
             case 'document':
                 return (
                     <div className={cn("my-6", alignmentClass)}>
-                        <Button asChild variant="outline" className="h-12 px-8 rounded-xl border-2 font-bold shadow-sm transition-all hover:bg-slate-50 text-base uppercase tracking-tight"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2.5 h-5 w-5 text-primary"/> Download Document</a></Button>
+                        <Button asChild variant="outline" className="h-12 px-8 rounded-xl border-2 font-bold shadow-sm transition-all hover:bg-slate-50 dark:hover:bg-slate-800 text-base uppercase tracking-tight"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2.5 h-5 w-5 text-primary"/> Download Document</a></Button>
                     </div>
                 );
             case 'embed':
@@ -788,6 +789,8 @@ const getRequiredMessage = (type: string) => {
 };
 
 function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, elementStates, variant = 'full', isPageVisible = () => true }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number, onStepClick: (idx: number) => void, elementStates: Record<string, ElementState>, variant?: 'full' | 'simple', isPageVisible?: (idx: number) => boolean }) {
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
     const hasCover = pages[0].length === 0;
     const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
     if (actualPagesCount <= 1) return null;
@@ -808,7 +811,7 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, element
                                 initial={false}
                                 animate={{
                                     width: isActive ? 24 : 8,
-                                    backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : '#e2e8f0',
+                                    backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#334155' : '#e2e8f0'),
                                 }}
                                 className="h-2 rounded-full transition-all group-hover:scale-110"
                             />
@@ -837,7 +840,7 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, element
                     return (
                         <div key={index} className="flex-1 relative flex flex-col items-center min-w-[60px]">
                             {!isLast && (
-                                <div className="absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 z-0">
+                                <div className="absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 dark:bg-slate-800 z-0">
                                     <motion.div 
                                         initial={false}
                                         animate={{ width: isCompleted ? '100%' : '0%' }}
@@ -853,8 +856,8 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, element
                                 <motion.div
                                     initial={false}
                                     animate={{
-                                        backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : '#fff',
-                                        borderColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : '#e2e8f0',
+                                        backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#0f172a' : '#fff'),
+                                        borderColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#334155' : '#e2e8f0'),
                                         scale: isActive ? 1.2 : 1,
                                     }}
                                     className={cn(
@@ -1787,9 +1790,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                 <div className="flex items-center gap-4">
                                     <div className={cn(
                                         "p-2 rounded-xl transition-all",
-                                        task.status === 'success' ? "bg-emerald-100 text-emerald-600" :
-                                        task.status === 'failed' ? "bg-rose-100 text-rose-600" : 
-                                        task.status === 'skipped' ? "bg-byte-100 text-amber-600" :
+                                        task.status === 'success' ? "bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                                        task.status === 'failed' ? "bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400" : 
+                                        task.status === 'skipped' ? "bg-byte-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400" :
                                         "bg-muted text-muted-foreground opacity-40"
                                     )}>
                                         <task.icon className="h-4 w-4" />
@@ -1806,7 +1809,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                     ) : task.status === 'success' ? (
                                         <CheckCircle2 className="h-5 w-5 text-emerald-500 animate-in zoom-in duration-300" />
                                     ) : task.status === 'skipped' ? (
-                                        <div className="p-1 rounded-full border border-amber-200">
+                                        <div className="p-1 rounded-full border border-amber-200 dark:border-amber-700">
                                             <Info className="h-3 w-3 text-amber-500" />
                                         </div>
                                     ) : (

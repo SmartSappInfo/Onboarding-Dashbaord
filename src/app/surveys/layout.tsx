@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 export default function SurveysLayout({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider attribute="class" forcedTheme="light" enableSystem={false}>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true}>
       {children}
     </ThemeProvider>
   );

@@ -54,7 +54,10 @@
 - ✅ `sequential-scheduler-invocation-count.property.test.ts` - 7/7 passing
 - ✅ `sequential-execution-order.property.test.ts` - 7/7 passing
 
-### 10. Other Tests
+### 10. Component Tests
+- ✅ `EntitySelector.test.tsx` - 19/19 passing
+
+### 11. Other Tests
 - ✅ `tag-condition.test.ts` - 12/12 passing
 - ✅ `background-concurrency.test.ts` - 7/7 passing
 - ✅ `feature-gate.test.ts` - Multiple passing
@@ -80,13 +83,6 @@
 
 ---
 
-### 2. Task Workspace Awareness Tests (MEDIUM PRIORITY)
-**File**: `src/lib/__tests__/task-workspace-awareness.test.ts`
-
-**Status**: COMPLETE ✅ (7/7 passing)
-
----
-
 ### 3. Bulk Hygiene Tests (MEDIUM PRIORITY)
 **File**: `src/lib/__tests__/bulk-hygiene.test.ts`
 
@@ -106,25 +102,7 @@
 
 ---
 
-### 4. Entity Selector Component Tests (LOW PRIORITY)
-**File**: `src/app/admin/messaging/composer/components/__tests__/EntitySelector.test.tsx`
-
-**Issues**:
-- Pagination tests failing
-- Navigation tests failing
-
-**Impact**: Low - UI component tests
-
-**Fix Strategy**:
-1. Update component test mocks
-2. Fix pagination logic tests
-3. Update navigation assertions
-
-**Estimated Effort**: 1-2 hours
-
----
-
-### 5. Surveys Module Tests (LOW PRIORITY)
+### 4. Other Component Tests (LOW PRIORITY)
 **File**: `src/lib/__tests__/surveys-module-unit.test.ts`
 
 **Issues**:

@@ -29,10 +29,8 @@ export function createTestOrganization(overrides: Partial<Organization> = {}): O
     id,
     name: `Test Organization ${organizationCounter}`,
     slug: `test-org-${organizationCounter}`,
-    industry: 'education',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    createdBy: 'test-user-id',
     ...overrides,
   };
 }
@@ -50,11 +48,13 @@ export function createTestWorkspace(
     id,
     name: `Test Workspace ${workspaceCounter}`,
     organizationId,
-    industry: 'education',
+    industry: 'SchoolEnrollment',
+    industryScopeLocked: false,
+    status: 'active',
+    statuses: [],
     description: `Test workspace ${workspaceCounter} description`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    createdBy: 'test-user-id',
     ...overrides,
   };
 }
@@ -82,13 +82,11 @@ export function createTestUser(overrides: Partial<UserProfile> = {}): UserProfil
     id,
     email: `user${userCounter}@test.com`,
     name: `Test User ${userCounter}`,
+    phone: `+1234567${String(userCounter).padStart(4, '0')}`,
     organizationId: 'test-org-id',
     workspaceIds: ['test-workspace-id'],
-    roles: [],
-    permissions: [],
     isAuthorized: true,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -114,14 +112,29 @@ export function createTestUserWithWorkspaceRoles(
     },
     workspacePermissionsSchemas: {
       [workspaceId]: {
-        entities: { view: true, create: false, edit: false, delete: false },
-        tags: { view: true, create: false, edit: false, delete: false },
-        pipelines: { view: true, create: false, edit: false, delete: false },
-        messaging: { view: true, create: false, edit: false, delete: false },
-        automation: { view: true, create: false, edit: false, delete: false },
-        forms: { view: true, create: false, edit: false, delete: false },
-        billing: { view: false, create: false, edit: false, delete: false },
-        settings: { view: false, create: false, edit: false, delete: false },
+        operations: {
+          enabled: true,
+          features: {
+            entities: { view: true, create: false, edit: false, delete: false },
+            pipeline: { view: true, create: false, edit: false, delete: false },
+            tasks: { view: true, create: false, edit: false, delete: false },
+          },
+        },
+        finance: {
+          enabled: false,
+          features: {},
+        },
+        studios: {
+          enabled: true,
+          features: {
+            messaging: { view: true, create: false, edit: false, delete: false },
+            tags: { view: true, create: false, edit: false, delete: false },
+          },
+        },
+        management: {
+          enabled: false,
+          features: {},
+        },
       },
     },
   };
@@ -132,7 +145,6 @@ export function createTestUserWithWorkspaceRoles(
  */
 export function createTestAdminUser(overrides: Partial<UserProfile> = {}): UserProfile {
   return createTestUser({
-    permissions: ['system_admin'],
     isAuthorized: true,
     ...overrides,
   });

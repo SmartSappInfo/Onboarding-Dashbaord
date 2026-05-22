@@ -8,9 +8,10 @@ import { doc } from 'firebase/firestore';
 import Image from 'next/image';
 import SurveyForm from './survey-form';
 import { BackgroundPattern } from '../../components/survey-background-pattern';
-import { Building2, RotateCcw } from 'lucide-react';
+import { Building2, RotateCcw, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SurveyLoader from '../../components/survey-loader';
+import { useTheme } from 'next-themes';
 
 interface SurveyDisplayProps {
     survey: Survey;
@@ -23,6 +24,7 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, or
     const [isSubmitted, setIsSubmitted] = React.useState(false);
     const [isMounted, setIsMounted] = React.useState(false);
     const searchParams = useSearchParams();
+    const { resolvedTheme, setTheme } = useTheme();
 
     // Capture the full URL on mount so "Submit Another Response" preserves assignment params
     const initialUrl = React.useRef<string>('');
@@ -52,7 +54,8 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, or
         setIsMounted(true);
     }, []);
     
-    const bgColor = survey.backgroundColor || '#F1F5F9';
+    const isDark = resolvedTheme === 'dark';
+    const bgColor = isDark ? '#090d16' : (survey.backgroundColor || '#F1F5F9');
 
     if (!isMounted) {
         return <SurveyLoader label="Customizing Your Survey..." logoUrl={displayLogoUrl} />;
@@ -62,6 +65,23 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, or
         return (
             <div className="flex flex-col relative" style={{ backgroundColor: bgColor, minHeight: '100dvh' }}>
                  <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
+                 {isMounted && (
+                     <div className="absolute top-4 right-4 z-50">
+                         <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-10 w-10 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground dark:text-slate-400 hover:text-foreground dark:hover:text-slate-100 transition-all duration-300 active:scale-95" 
+                             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                         >
+                             {resolvedTheme === 'dark' ? (
+                                 <Sun className="h-5 w-5 text-yellow-500 animate-in spin-in-90 duration-500" />
+                             ) : (
+                                 <Moon className="h-5 w-5 text-slate-700 dark:text-slate-400 animate-in spin-in-90 duration-500" />
+                             )}
+                             <span className="sr-only">Toggle theme</span>
+                         </Button>
+                     </div>
+                 )}
                  <main className="flex-1 flex items-center justify-center p-4 relative z-10 py-12">
                     <div className="max-w-4xl w-full mx-auto text-center animate-in fade-in zoom-in duration-500">
                         <div className="flex justify-center mb-6">
@@ -110,7 +130,7 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, or
                         )}
                     </div>
                 </main>
-                 <footer className="mt-auto py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10 border-t border-black/5">
+                  <footer className="mt-auto py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10 border-t border-black/5 dark:border-white/5">
                     <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
                     <p>&copy; {new Date().getFullYear()} SmartSapp</p>
                 </footer>
@@ -124,6 +144,23 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, or
     return (
         <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
             <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
+            {isMounted && (
+                <div className="absolute top-4 right-4 z-50">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-10 w-10 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground dark:text-slate-400 hover:text-foreground dark:hover:text-slate-100 transition-all duration-300 active:scale-95" 
+                        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                    >
+                        {resolvedTheme === 'dark' ? (
+                            <Sun className="h-5 w-5 text-yellow-500 animate-in spin-in-90 duration-500" />
+                        ) : (
+                            <Moon className="h-5 w-5 text-slate-700 dark:text-slate-400 animate-in spin-in-90 duration-500" />
+                        )}
+                        <span className="sr-only">Toggle theme</span>
+                    </Button>
+                </div>
+            )}
             <main className="flex-grow flex items-center justify-center relative z-10 py-8 sm:py-16">
                 <div className="max-w-4xl w-full mx-auto px-4">
                     {/* Branding logo and Title are now handled natively inside SurveyForm to support both client-side and studio-preview consistency */}

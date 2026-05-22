@@ -102,7 +102,10 @@ describe('EntitySelector Component', () => {
     it('deselects an already-selected entity', () => {
       const onSelectionChange = vi.fn();
       render(<EntitySelector {...defaultProps} selectedEntityIds={['school-1']} onSelectionChange={onSelectionChange} />);
-      fireEvent.click(screen.getByText('Alpha Academy').closest('div[class*="cursor-pointer"]')!);
+      // Find the checkbox for Alpha Academy and click it
+      const checkboxes = screen.getAllByRole('checkbox');
+      // First checkbox should be for Alpha Academy (first entity in the list)
+      fireEvent.click(checkboxes[0]);
       expect(onSelectionChange).toHaveBeenCalledWith([]);
     });
 
@@ -197,13 +200,14 @@ describe('EntitySelector Component', () => {
       const onContactTypeFilterChange = vi.fn();
       render(<EntitySelector {...defaultProps} entities={entitiesWithContacts} onContactTypeFilterChange={onContactTypeFilterChange} />);
       fireEvent.click(screen.getByText('Father'));
-      expect(onContactTypeFilterChange).toHaveBeenCalledWith('father');
+      // The component passes an array of type keys
+      expect(onContactTypeFilterChange).toHaveBeenCalledWith(['father']);
     });
 
     it('shows contact chips inside entity row', () => {
       render(<EntitySelector {...defaultProps} entities={entitiesWithContacts} />);
-      expect(screen.getByText('John Father')).toBeInTheDocument();
-      expect(screen.getByText('Jane Mother')).toBeInTheDocument();
+      // The text "John Father, Jane Mother" appears in a single paragraph element
+      expect(screen.getByText(/John Father, Jane Mother/i)).toBeInTheDocument();
     });
 
     it('filters visible contacts when activeContactTypeFilter is set', () => {

@@ -4,6 +4,7 @@
  * Provides utilities for testing with Firebase emulator
  */
 
+import { vi } from 'vitest';
 import { initializeApp, getApps, deleteApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { Firestore } from 'firebase-admin/firestore';
