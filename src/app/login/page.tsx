@@ -137,6 +137,9 @@ export default function LoginPage() {
           } else {
             router.push('/admin');
           }
+        } else if (data.profileCompleted === false || !data.profileCompleted || data.approvalStatus === 'pending') {
+          toast({ title: 'Sign-in Successful' });
+          router.push('/admin');
         } else {
           await auth.signOut();
           toast({
@@ -163,14 +166,16 @@ export default function LoginPage() {
         email: profile.email,
         phone: profile.phone || '',
         isAuthorized: false,
+        profileCompleted: false,
+        approvalStatus: 'pending',
         createdAt: new Date().toISOString(),
       });
-      await auth.signOut();
       toast({
-        title: 'Account Created',
-        description: 'Your account has been created and is now awaiting authorization.',
+        title: 'Welcome to SmartSapp',
+        description: 'Your account has been created. Let\'s set up your profile details.',
         duration: 5000,
       });
+      router.push('/admin');
     },
     [auth, firestore, router, toast, isSuperAdminEmail, ensureSuperAdminProfile]
   );
@@ -256,6 +261,9 @@ export default function LoginPage() {
           } else {
             router.push('/admin');
           }
+        } else if (data.profileCompleted === false || !data.profileCompleted || data.approvalStatus === 'pending') {
+          toast({ title: 'Sign-in Successful' });
+          router.push('/admin');
         } else {
           await auth.signOut();
           toast({
@@ -271,13 +279,19 @@ export default function LoginPage() {
         toast({ title: 'Login Successful', description: 'Super admin account activated.' });
         router.push('/admin/settings/organizations');
       } else {
-        await auth.signOut();
-        toast({
-          variant: 'destructive',
-          title: 'Authorization Required',
-          description: 'Your account is not authorized. Please contact an administrator.',
-          duration: 5000,
+        // Regular user with no user document yet (e.g. direct auth setup)
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await setDoc(userDocRef, {
+          name: user.displayName || '',
+          email: user.email,
+          phone: '',
+          isAuthorized: false,
+          profileCompleted: false,
+          approvalStatus: 'pending',
+          createdAt: new Date().toISOString(),
         });
+        toast({ title: 'Welcome to SmartSapp', description: 'Let\'s complete your profile.' });
+        router.push('/admin');
       }
     } catch (error: unknown) {
       const errorCode = error instanceof Error ? (error as Error & { code?: string }).code : undefined;

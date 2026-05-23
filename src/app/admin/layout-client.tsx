@@ -94,16 +94,31 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           // Allow access if doc exists (isAuthorized may not be set on all accounts)
           if (docSnap.exists()) {
             const data = docSnap.data();
-            // Only block if explicitly set to false
-            if (data.isAuthorized === false) {
-              setLoaderStatus('failed');
-              toast({ variant: "destructive", title: 'Authorization Required', description: 'Access restricted to approved personnel.' });
-              setTimeout(() => { 
-                auth.signOut(); 
-                router.push('/login'); 
-              }, 1500);
+
+            // 1. Check if user has completed their profile setup
+            if (data.profileCompleted === false || !data.profileCompleted) {
+              setLoaderStatus('success');
+              router.push('/profile-setup');
               return;
             }
+
+            // 2. Check authorization
+            if (data.isAuthorized === false) {
+              if (data.approvalStatus === 'pending') {
+                setLoaderStatus('success');
+                router.push('/awaiting-approval');
+                return;
+              } else {
+                setLoaderStatus('failed');
+                toast({ variant: "destructive", title: 'Authorization Required', description: 'Access restricted to approved personnel.' });
+                setTimeout(() => { 
+                  auth.signOut(); 
+                  router.push('/login'); 
+                }, 1500);
+                return;
+              }
+            }
+
             let perms = data.permissions || [];
             const roleIds = data.roles || [];
             
@@ -120,9 +135,9 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             const timer = setTimeout(() => setIsReady(true), 600);
             return () => clearTimeout(timer);
           } else {
-            // User doc doesn't exist yet - allow access anyway (new user)
+            // User doc doesn't exist yet - redirect to profile setup wizard
             setLoaderStatus('success');
-            setTimeout(() => setIsReady(true), 600);
+            router.push('/profile-setup');
           }
         })
         .catch((err) => {
@@ -210,9 +225,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 flex flex-col overflow-auto relative w-full">
-          <div className="mx-auto w-full max-w-screen-2xl p-4 sm:p-6 lg:p-8">
-            {children}
-          </div>
+          {children}
         </main>
         {isOperationsPage && <QuickComposeButton />}
       </SidebarInset>

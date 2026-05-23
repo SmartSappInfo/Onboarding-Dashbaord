@@ -72,20 +72,21 @@ export default function SignupPage() {
           email: data.email,
           phone: '',
           isAuthorized: false,
+          profileCompleted: false,
+          approvalStatus: 'pending' as const,
           createdAt: new Date().toISOString(),
         };
 
         const userDocRef = doc(firestore, 'users', user.uid);
         
         await setDoc(userDocRef, userProfile);
-        await auth.signOut();
 
         toast({
-          title: 'Account Created',
-          description: 'Your account has been created and is now awaiting authorization.',
+          title: 'Welcome to SmartSapp',
+          description: 'Your account has been created. Let\'s set up your profile details.',
           duration: 5000,
         });
-        router.push('/login');
+        router.push('/admin');
 
       })
       .catch((error) => {
@@ -138,18 +139,19 @@ export default function SignupPage() {
             email: user.email,
             phone: user.phoneNumber || '',
             isAuthorized: false,
+            profileCompleted: false,
+            approvalStatus: 'pending' as const,
             createdAt: new Date().toISOString(),
           };
 
           await setDoc(userDocRef, userProfile);
-          await auth.signOut();
           
           toast({
-            title: 'Account Created',
-            description: 'Your account has been created and is now awaiting authorization.',
+            title: 'Welcome to SmartSapp',
+            description: 'Your account has been created. Let\'s set up your profile details.',
             duration: 5000,
           });
-          router.push('/login');
+          router.push('/admin');
         }
       })
       .catch((error) => {

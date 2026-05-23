@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -8,32 +7,7 @@ import { sendSms } from './mnotify-service';
 import { mergePermissionsSchemas, getBlankPermissions } from './permissions-engine';
 import type { PermissionsSchema } from './types';
 import crypto from 'crypto';
-
-interface TemplateVariables {
-    userName: string;
-    email: string;
-    orgName: string;
-    tempPassword?: string;
-    loginLink: string;
-}
-
-/**
- * Utility to replace {{variable}} placeholders in templates.
- */
-function replaceVariables(template: string, variables: TemplateVariables): string {
-    let result = template;
-    const { userName, email, orgName, tempPassword, loginLink } = variables;
-    
-    result = result.replace(/{{userName}}/g, userName);
-    result = result.replace(/{{email}}/g, email);
-    result = result.replace(/{{orgName}}/g, orgName);
-    if (tempPassword) {
-        result = result.replace(/{{tempPassword}}/g, tempPassword);
-    }
-    result = result.replace(/{{loginLink}}/g, loginLink);
-    
-    return result;
-}
+import { resolveAndRender } from './template-resolver';
 
 /**
  * Generates a random secure password.
@@ -46,30 +20,6 @@ function generateRandomPassword(length = 10): string {
         password += chars.charAt(bytes[i] % chars.length);
     }
     return password;
-}
-
-/**
- * Fetches the merged template (Org override -> System default).
- */
-async function getEffectiveTemplate(organizationId: string, type: 'invitation' | 'passwordReset') {
-    // 1. Get System Defaults
-    const systemSnap = await adminDb.collection('system_settings').doc('templates').get();
-    const systemDefaults = systemSnap.exists ? systemSnap.data() : null;
-
-    // 2. Get Org Overrides
-    const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-    const orgData = orgSnap.exists ? orgSnap.data() : null;
-    const orgOverrides = orgData?.templateOverrides;
-
-    // Merge logic
-    const defaultTemplate = systemDefaults?.[type] || {};
-    const overrideTemplate = orgOverrides?.[type] || {};
-
-    return {
-        subject: overrideTemplate.subject || defaultTemplate.subject || (type === 'invitation' ? 'You have been invited' : 'Password Reset'),
-        emailHtml: overrideTemplate.emailHtml || defaultTemplate.emailHtml || '',
-        smsBody: overrideTemplate.smsBody || defaultTemplate.smsBody || ''
-    };
 }
 
 /**
@@ -173,36 +123,91 @@ export async function inviteUserAction(params: {
         };
         await adminDb.collection('users').doc(userRecord.uid).set(userProfile, { merge: true });
 
-        // 4. Send Notifications
-        const template = await getEffectiveTemplate(organizationId, 'invitation');
-        const variables: TemplateVariables = {
-            userName: fullName,
-            email,
-            orgName,
-            tempPassword,
-            loginLink
-        };
+        // 5. Resolve templates with resilient defaults
+        let emailSubject = `Invitation to join ${orgName}`;
+        let emailHtml = `Hello ${fullName}, you have been invited to join ${orgName}. Your temporary password is: ${tempPassword}. Log in here: ${loginLink}`;
+        let smsBody = `Hello ${fullName}, you have been invited to join ${orgName}. Temp password: ${tempPassword}. Link: ${loginLink}`;
 
-        const settledResults = [];
+        try {
+            const emailTemplate = await resolveAndRender(
+                'users',
+                'user_invitation',
+                organizationId,
+                {
+                    userId: userRecord.uid,
+                    extraVars: { temp_password: tempPassword, login_link: loginLink }
+                },
+                'email'
+            );
+            if (emailTemplate.subject) emailSubject = emailTemplate.subject;
+            emailHtml = emailTemplate.body;
+        } catch (err) {
+            console.error('Failed to resolve email template, using fallback:', err);
+        }
+
+        try {
+            const smsTemplate = await resolveAndRender(
+                'users',
+                'user_invitation',
+                organizationId,
+                {
+                    userId: userRecord.uid,
+                    extraVars: { temp_password: tempPassword, login_link: loginLink }
+                },
+                'sms'
+            );
+            smsBody = smsTemplate.body;
+        } catch (err) {
+            console.error('Failed to resolve SMS template, using fallback:', err);
+        }
+
+        // 6. Send notifications using Promise.allSettled()
+        const settledResults: Promise<{ type: string; success: boolean; error?: any }>[] = [];
 
         if (sendMethods.includes('email')) {
-            const subject = replaceVariables(template.subject, variables);
-            const html = replaceVariables(template.emailHtml, variables);
-            settledResults.push(sendEmail({ to: email, subject, html }));
+            settledResults.push(
+                sendEmail({ to: email, subject: emailSubject, html: emailHtml })
+                    .then(() => ({ type: 'email', success: true }))
+                    .catch((err) => {
+                        console.error('Email notification failed:', err);
+                        return { type: 'email', success: false, error: err };
+                    })
+            );
         }
 
         if (sendMethods.includes('sms') && phone) {
-            const message = replaceVariables(template.smsBody, variables);
-            settledResults.push(sendSms({ 
-                recipient: phone, 
-                message, 
-                sender: orgName.substring(0, 11) || 'SmartSapp' 
-            }));
+            settledResults.push(
+                sendSms({ 
+                    recipient: phone, 
+                    message: smsBody, 
+                    sender: orgName.substring(0, 11) || 'SmartSapp' 
+                })
+                    .then(() => ({ type: 'sms', success: true }))
+                    .catch((err) => {
+                        console.error('SMS notification failed:', err);
+                        return { type: 'sms', success: false, error: err };
+                    })
+            );
         }
 
-        await Promise.all(settledResults);
+        const results = await Promise.allSettled(settledResults);
+        const warnings: string[] = [];
+        results.forEach((r) => {
+            if (r.status === 'fulfilled') {
+                const val = r.value;
+                if (!val.success) {
+                    warnings.push(`Failed to send ${val.type}: ${val.error?.message || val.error}`);
+                }
+            } else {
+                warnings.push(`Failed to send notification: ${r.reason?.message || r.reason}`);
+            }
+        });
 
-        return { success: true, message: 'User invited successfully.' };
+        return { 
+            success: true, 
+            message: 'User invited successfully.', 
+            warnings: warnings.length > 0 ? warnings : undefined 
+        };
     } catch (error: any) {
         console.error('>>> [INVITE] Error:', error.message);
         return { success: false, error: error.message };
@@ -218,7 +223,7 @@ export async function adminResetUserPasswordAction(userId: string) {
         const userSnap = await adminDb.collection('users').doc(userId).get();
         if (!userSnap.exists) throw new Error('User not found.');
         
-        const userData = userSnap.data();
+        const userData = userSnap.data()!;
         const tempPassword = generateRandomPassword();
         const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
 
@@ -231,39 +236,95 @@ export async function adminResetUserPasswordAction(userId: string) {
             updatedAt: new Date().toISOString()
         });
 
-        // 3. Send Notification
-        const organizationId = userData?.organizationId || 'system';
+        const organizationId = userData.organizationId || 'system';
         const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
         const orgName = orgSnap.exists ? orgSnap.data()?.name || 'SmartSapp' : 'SmartSapp';
 
-        const template = await getEffectiveTemplate(organizationId, 'passwordReset');
-        const variables: TemplateVariables = {
-            userName: userData?.name || 'User',
-            email: userData?.email || '',
-            orgName,
-            tempPassword,
-            loginLink
+        // 3. Resolve templates with resilient defaults
+        let emailSubject = `Password Reset for ${orgName}`;
+        let emailHtml = `Hello ${userData.name || 'User'}, your password has been reset. Your temporary password is: ${tempPassword}. Log in here: ${loginLink}`;
+        let smsBody = `Hello ${userData.name || 'User'}, your password has been reset. Temp password: ${tempPassword}. Link: ${loginLink}`;
+
+        try {
+            const emailTemplate = await resolveAndRender(
+                'users',
+                'user_password_reset',
+                organizationId,
+                {
+                    userId,
+                    extraVars: { temp_password: tempPassword, login_link: loginLink }
+                },
+                'email'
+            );
+            if (emailTemplate.subject) emailSubject = emailTemplate.subject;
+            emailHtml = emailTemplate.body;
+        } catch (err) {
+            console.error('Failed to resolve email template, using fallback:', err);
+        }
+
+        try {
+            const smsTemplate = await resolveAndRender(
+                'users',
+                'user_password_reset',
+                organizationId,
+                {
+                    userId,
+                    extraVars: { temp_password: tempPassword, login_link: loginLink }
+                },
+                'sms'
+            );
+            smsBody = smsTemplate.body;
+        } catch (err) {
+            console.error('Failed to resolve SMS template, using fallback:', err);
+        }
+
+        // 4. Send notifications using Promise.allSettled()
+        const settledResults: Promise<{ type: string; success: boolean; error?: any }>[] = [];
+        if (userData.email) {
+            settledResults.push(
+                sendEmail({ to: userData.email, subject: emailSubject, html: emailHtml })
+                    .then(() => ({ type: 'email', success: true }))
+                    .catch((err) => {
+                        console.error('Email notification failed:', err);
+                        return { type: 'email', success: false, error: err };
+                    })
+            );
+        }
+        if (userData.phone && userData.phone.length > 5) {
+            settledResults.push(
+                sendSms({ 
+                    recipient: userData.phone, 
+                    message: smsBody, 
+                    sender: orgName.substring(0, 11) || 'SmartSapp' 
+                })
+                    .then(() => ({ type: 'sms', success: true }))
+                    .catch((err) => {
+                        console.error('SMS notification failed:', err);
+                        return { type: 'sms', success: false, error: err };
+                    })
+            );
+        }
+
+        const results = await Promise.allSettled(settledResults);
+        const warnings: string[] = [];
+        results.forEach((r) => {
+            if (r.status === 'fulfilled') {
+                const val = r.value;
+                if (!val.success) {
+                    warnings.push(`Failed to send ${val.type}: ${val.error?.message || val.error}`);
+                }
+            } else {
+                warnings.push(`Failed to send notification: ${r.reason?.message || r.reason}`);
+            }
+        });
+
+        return { 
+            success: true, 
+            message: 'Password reset and notification sent.', 
+            warnings: warnings.length > 0 ? warnings : undefined 
         };
-
-        const notifications = [];
-        if (userData?.email) {
-            const subject = replaceVariables(template.subject, variables);
-            const html = replaceVariables(template.emailHtml, variables);
-            notifications.push(sendEmail({ to: userData.email, subject, html }));
-        }
-        if (userData?.phone && userData?.phone.length > 5) {
-            const message = replaceVariables(template.smsBody, variables);
-            notifications.push(sendSms({ 
-                recipient: userData.phone, 
-                message, 
-                sender: orgName.substring(0, 11) || 'SmartSapp' 
-            }));
-        }
-
-        await Promise.all(notifications);
-
-        return { success: true, message: 'Password reset and notification sent.' };
     } catch (error: any) {
+        console.error('>>> [RESET PASSWORD] Error:', error.message);
         return { success: false, error: error.message };
     }
 }
@@ -276,7 +337,7 @@ export async function publicResetPasswordViaPhoneAction(phone: string) {
     try {
         const auth = getAuth();
         
-        // Find user by phone in Firestore (Auth lookup by phone is tricky without specific E164 formatting)
+        // Find user by phone in Firestore
         const usersSnap = await adminDb.collection('users').where('phone', '==', phone).limit(1).get();
         if (usersSnap.empty) throw new Error('Phone number not recognized.');
         
@@ -301,27 +362,151 @@ export async function publicResetPasswordViaPhoneAction(phone: string) {
         const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
         const orgName = orgSnap.exists ? orgSnap.data()?.name || 'SmartSapp' : 'SmartSapp';
 
-        const template = await getEffectiveTemplate(organizationId, 'passwordReset');
-        const variables: TemplateVariables = {
-            userName: userData?.name || 'User',
-            email: userData?.email || '',
-            orgName,
-            tempPassword,
-            loginLink
-        };
+        let smsBody = `Hello ${userData?.name || 'User'}, your password has been reset. Temp password: ${tempPassword}. Link: ${loginLink}`;
+        try {
+            const smsTemplate = await resolveAndRender(
+                'users',
+                'user_password_reset',
+                organizationId,
+                {
+                    userId,
+                    extraVars: { temp_password: tempPassword, login_link: loginLink }
+                },
+                'sms'
+            );
+            smsBody = smsTemplate.body;
+        } catch (err) {
+            console.error('Failed to resolve SMS template, using fallback:', err);
+        }
 
-        const message = replaceVariables(template.smsBody, variables);
         await sendSms({ 
             recipient: phone, 
-            message, 
+            message: smsBody, 
             sender: orgName.substring(0, 11) || 'SmartSapp' 
         });
 
-
         return { success: true, message: 'If your number is registered, you will receive a new password via SMS.' };
     } catch (error: any) {
-        // Return success even on error to prevent enumeration? Or be specific for internal dashboards.
-        // For public forgot password, be generic.
+        console.error('>>> [PUBLIC RESET PASSWORD] Error:', error.message);
         return { success: true, message: 'Password recovery initiated.' };
+    }
+}
+
+/**
+ * ADMIN UPDATE USER ACCESS ACTION
+ * Toggles access authorization for a user: Updates Firestore, Enables/Disables Auth user, sends cancellation notification if disabled.
+ */
+export async function adminUpdateUserAccessAction(userId: string, isAuthorized: boolean) {
+    try {
+        const auth = getAuth();
+        
+        // 1. Get User Profile from Firestore
+        const userSnap = await adminDb.collection('users').doc(userId).get();
+        if (!userSnap.exists) throw new Error('User not found.');
+        const userData = userSnap.data()!;
+
+        // 2. Toggle Firebase Auth user status (disabled flag)
+        await auth.updateUser(userId, { disabled: !isAuthorized });
+
+        // 3. Update Firestore profile
+        await adminDb.collection('users').doc(userId).update({
+            isAuthorized,
+            approvalStatus: isAuthorized ? 'approved' : 'rejected',
+            updatedAt: new Date().toISOString()
+        });
+
+        // 4. Send cancellation notification if access is revoked (isAuthorized = false)
+        const warnings: string[] = [];
+        if (!isAuthorized) {
+            const organizationId = userData.organizationId || 'system';
+            const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+            const orgName = orgSnap.exists ? orgSnap.data()?.name || 'SmartSapp' : 'SmartSapp';
+            const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+
+            let emailSubject = `Access Cancelled for ${orgName}`;
+            let emailHtml = `Hello ${userData.name || 'User'}, your access to ${orgName} has been cancelled.`;
+            let smsBody = `Hello ${userData.name || 'User'}, your access to ${orgName} has been cancelled.`;
+
+            // Attempt resolving templates
+            try {
+                const emailTemplate = await resolveAndRender(
+                    'users',
+                    'user_access_cancellation',
+                    organizationId,
+                    {
+                        userId,
+                        extraVars: { login_link: loginLink }
+                    },
+                    'email'
+                );
+                if (emailTemplate.subject) emailSubject = emailTemplate.subject;
+                emailHtml = emailTemplate.body;
+            } catch (err) {
+                console.error('Failed to resolve cancellation email template, using fallback:', err);
+            }
+
+            try {
+                const smsTemplate = await resolveAndRender(
+                    'users',
+                    'user_access_cancellation',
+                    organizationId,
+                    {
+                        userId,
+                        extraVars: { login_link: loginLink }
+                    },
+                    'sms'
+                );
+                smsBody = smsTemplate.body;
+            } catch (err) {
+                console.error('Failed to resolve cancellation SMS template, using fallback:', err);
+            }
+
+            const settledResults: Promise<{ type: string; success: boolean; error?: any }>[] = [];
+            if (userData.email) {
+                settledResults.push(
+                    sendEmail({ to: userData.email, subject: emailSubject, html: emailHtml })
+                        .then(() => ({ type: 'email', success: true }))
+                        .catch((err) => {
+                            console.error('Email notification failed:', err);
+                            return { type: 'email', success: false, error: err };
+                        })
+                );
+            }
+            if (userData.phone && userData.phone.length > 5) {
+                settledResults.push(
+                    sendSms({ 
+                        recipient: userData.phone, 
+                        message: smsBody, 
+                        sender: orgName.substring(0, 11) || 'SmartSapp' 
+                    })
+                        .then(() => ({ type: 'sms', success: true }))
+                        .catch((err) => {
+                            console.error('SMS notification failed:', err);
+                            return { type: 'sms', success: false, error: err };
+                        })
+                );
+            }
+
+            const results = await Promise.allSettled(settledResults);
+            results.forEach((r) => {
+                if (r.status === 'fulfilled') {
+                    const val = r.value;
+                    if (!val.success) {
+                        warnings.push(`Failed to send cancellation ${val.type}: ${val.error?.message || val.error}`);
+                    }
+                } else {
+                    warnings.push(`Failed to send cancellation notification: ${r.reason?.message || r.reason}`);
+                }
+            });
+        }
+
+        return { 
+            success: true, 
+            message: `User access has been ${isAuthorized ? 'restored' : 'cancelled'}.`, 
+            warnings: warnings.length > 0 ? warnings : undefined 
+        };
+    } catch (error: any) {
+        console.error('>>> [UPDATE ACCESS] Error:', error.message);
+        return { success: false, error: error.message };
     }
 }

@@ -612,6 +612,9 @@ export interface UserProfile {
   phone: string;
   photoURL?: string;
   isAuthorized: boolean;
+  profileCompleted?: boolean;
+  department?: string;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
   roles?: string[]; // Legacy global roles
   permissions?: AppPermissionId[]; // Legacy global permissions
   /** Hierarchical permission structure (Permissions Expansion) */
@@ -2023,6 +2026,7 @@ export type TemplateCategory =
   | 'tasks'
   | 'automations'
   | 'qr_codes'
+  | 'users'
   | 'general';
 
 /**
@@ -2056,6 +2060,7 @@ export type VariableContext =
   | 'agreement'
   | 'entity'
   | 'campaign'
+  | 'users'
   | 'common'
   | (string & {});
 
@@ -2883,6 +2888,7 @@ export interface Form {
   createdAt: string;
   updatedAt?: string;
   publishedAt?: string;
+  version?: number;
 }
 
 export interface FormFieldInstance {

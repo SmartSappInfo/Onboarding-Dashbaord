@@ -169,6 +169,27 @@ export default function OrganizationsClient() {
                                     </p>
                                 )}
 
+                                {/* Join Code / Token */}
+                                <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between text-xs gap-3">
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-[9px] uppercase font-bold text-muted-foreground block tracking-wider">Join Code</span>
+                                        <code className="text-foreground font-mono font-bold tracking-wide truncate block mt-0.5 select-all">
+                                            {org.slug || org.id}
+                                        </code>
+                                    </div>
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(org.slug || org.id);
+                                            toast({ title: 'Code Copied', description: 'Organization join code has been copied.' });
+                                        }}
+                                        className="h-7 px-2.5 text-[10px] rounded-lg border-primary/20 text-primary hover:bg-primary/5 hover:text-primary shrink-0"
+                                    >
+                                        Copy
+                                    </Button>
+                                </div>
+
                                 {/* Contact Info */}
  <div className="space-y-2 pt-2 border-t">
                                     {org.website && (

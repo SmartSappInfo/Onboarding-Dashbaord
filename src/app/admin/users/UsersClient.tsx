@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { useTenant } from '@/context/TenantContext';
 import InviteUserModal from './components/InviteUserModal';
 import WorkspaceAccessDialog from './components/WorkspaceAccessDialog';
-import { adminResetUserPasswordAction } from '@/lib/user-invite-actions';
+import { adminResetUserPasswordAction, adminUpdateUserAccessAction } from '@/lib/user-invite-actions';
 
 // Extracted outside component per rerender-no-inline-components
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
@@ -170,6 +170,29 @@ export default function UsersClient() {
       }
   }, [toast]);
 
+  const handleToggleAccess = React.useCallback(async (userId: string, isAuthorized: boolean, userName: string) => {
+      setUpdatingId(userId);
+      try {
+          const result = await adminUpdateUserAccessAction(userId, isAuthorized);
+          if (result.success) {
+              toast({ 
+                  title: isAuthorized ? 'Access Restored' : 'Access Revoked', 
+                  description: result.message 
+              });
+          } else {
+              throw new Error(result.error);
+          }
+      } catch (error: any) {
+          toast({ 
+              variant: 'destructive', 
+              title: 'Update Failed', 
+              description: error.message 
+          });
+      } finally {
+          setUpdatingId(null);
+      }
+  }, [toast]);
+
   // Helper: get human-readable role names for workspace
   const getUserRoleNames = React.useCallback((user: UserProfile): string[] => {
     const roleIds = user.workspaceRoles?.[activeWorkspaceId] || user.roles || [];
@@ -307,8 +330,20 @@ export default function UsersClient() {
                                                 )}
                                             </div>
                                             <div className="min-w-0">
-       <span className="font-semibold text-sm tracking-tight text-foreground block truncate">{user.name}</span>
-       <span className="text-[10px] text-muted-foreground block truncate">{user.email}</span>
+                                                <div className="flex items-center flex-wrap gap-1.5">
+                                                    <span className="font-semibold text-sm tracking-tight text-foreground block truncate">{user.name}</span>
+                                                    {user.approvalStatus === 'pending' && (
+                                                        <Badge variant="outline" className="bg-amber-500/5 text-amber-500 border-amber-500/20 text-[8px] font-bold uppercase tracking-wider h-4 px-1 shrink-0">
+                                                            Pending Approval
+                                                        </Badge>
+                                                    )}
+                                                    {user.department && (
+                                                        <Badge variant="secondary" className="text-[8px] font-semibold uppercase tracking-wider h-4 px-1.5 shrink-0 bg-muted/60 text-muted-foreground border-0 rounded-md">
+                                                            {user.department}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] text-muted-foreground block truncate">{user.email}</span>
                                                 {wsCount > 0 && (
                                                     <button
                                                         onClick={() => setAccessDialogUser(user)}
@@ -371,6 +406,15 @@ export default function UsersClient() {
                                         {/* Actions Column */}
  <TableCell className="text-center">
                                             <div className="flex items-center justify-center gap-2">
+                                                {user.approvalStatus === 'pending' && (
+                                                    <Button
+                                                        onClick={() => handleToggleAccess(user.id, true, user.name || 'User')}
+                                                        className="h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase transition-all shadow-sm shrink-0 border-none mr-1"
+                                                        disabled={updatingId === user.id}
+                                                    >
+                                                        Approve
+                                                    </Button>
+                                                )}
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
@@ -394,7 +438,7 @@ export default function UsersClient() {
                                                             <div className="flex items-center">
                                                                 <Switch
                                                                     checked={user.isAuthorized}
-                                                                    onCheckedChange={(checked) => handleUpdateUser(user.id, { isAuthorized: checked })}
+                                                                    onCheckedChange={(checked) => handleToggleAccess(user.id, checked, user.name || 'User')}
                                                                     className="scale-[0.8]"
                                                                     disabled={updatingId === user.id}
                                                                 />
