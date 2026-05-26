@@ -20,6 +20,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -281,7 +282,8 @@ export default function SenderProfilesPage() {
 
     return (
         <div className="h-full overflow-y-auto text-left">
- <div className=" space-y-8">
+            <PageContainerFluid>
+                <div className="space-y-8">
  <div className="flex items-center justify-end flex-wrap gap-4">
  <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl font-semibold shadow-lg h-11 px-8">
  {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
@@ -534,6 +536,7 @@ export default function SenderProfilesPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            </PageContainerFluid>
         </div>
     );
 }

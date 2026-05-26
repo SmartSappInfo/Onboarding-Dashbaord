@@ -2,9 +2,8 @@
 
 import { adminDb } from './firebase-admin';
 import { createBulkMessageJob, processBulkJobChunk } from './bulk-messaging';
-import { previewCampaignAudience } from './messaging-actions';
+import { previewCampaignAudience, resolveRecipientContacts } from './messaging-actions';
 import { syncCampaignStats } from './campaign-analytics';
-import { resolveContact } from './contact-adapter';
 import type { MessageCampaign } from './types';
 
 /**
@@ -76,36 +75,35 @@ export async function dispatchCampaign(campaignId: string): Promise<{
       templateId = ephemeralRef.id;
     }
 
-    // 4. R2 fix: Resolve actual email/phone per entity via resolveContact
+    // 4. Resolve actual email/phone per entity via resolveRecipientContacts
     const recipients: { recipient: string; variables: Record<string, any>; entityId: string; displayName: string }[] = [];
+    const contactRolesFilter = campaign.audienceDefinition?.filters?.find((f: any) => f.field === 'contactRoles');
+    const contactRoles = contactRolesFilter ? contactRolesFilter.value as string[] : null;
 
     for (const entity of audienceResult.preview!) {
       try {
-        const contact = await resolveContact(entity.id, campaign.workspaceId);
-        if (!contact) continue;
-
-        let resolvedRecipient = '';
-        if (campaign.channel === 'email') {
-          const primary = contact.entityContacts?.find((ec: any) => ec.isPrimary);
-          resolvedRecipient = primary?.email || contact.contacts?.[0]?.email || '';
-        } else {
-          const primary = contact.entityContacts?.find((ec: any) => ec.isPrimary);
-          resolvedRecipient = primary?.phone || contact.contacts?.[0]?.phone || '';
-        }
-
-        if (!resolvedRecipient) continue; // Skip entities without valid contact info
-
-        recipients.push({
-          recipient: resolvedRecipient,
-          variables: {
-            entity_name: entity.name,
-            entity_email: contact.entityContacts?.find((ec: any) => ec.isPrimary)?.email || '',
-            entity_phone: contact.entityContacts?.find((ec: any) => ec.isPrimary)?.phone || '',
-            tags: entity.tags.join(', '),
-          },
+        const resolved = await resolveRecipientContacts({
           entityId: entity.id,
-          displayName: entity.name,
+          workspaceId: campaign.workspaceId,
+          contactScope: campaign.audienceDefinition?.contactScope || 'primary',
+          channel: campaign.channel === 'email' ? 'email' : 'sms',
+          contactRoles,
         });
+
+        for (const r of resolved) {
+          recipients.push({
+            recipient: r.contact,
+            variables: {
+              entity_name: entity.name,
+              entity_email: r.contact,
+              entity_phone: r.contact,
+              contact_name: r.contactName,
+              tags: entity.tags.join(', '),
+            },
+            entityId: entity.id,
+            displayName: entity.name,
+          });
+        }
       } catch (resolveErr) {
         console.warn(`[DISPATCH] Skipped entity ${entity.id}:`, (resolveErr as Error).message);
       }

@@ -79,8 +79,13 @@ export function resolveVariables(text: string, variables: Record<string, any>): 
  * - Proper font styling for email client compatibility
  * - Emoji/Unicode safe rendering
  */
-export function plainTextToHtml(text: string): string {
+export function plainTextToHtml(text: string, isDark?: boolean): string {
   if (!text) return '';
+
+  const outerBg = isDark ? '#090d16' : '#F1F5F9';
+  const cardBg = isDark ? '#111827' : '#FFFFFF';
+  const textColor = isDark ? '#f3f4f6' : '#1e293b';
+  const footerColor = isDark ? '#6b7280' : '#94a3b8';
 
   // Escape HTML entities to prevent XSS in user-authored content
   const escaped = text
@@ -102,16 +107,16 @@ export function plainTextToHtml(text: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body style="margin: 0; padding: 40px 20px; background-color: #F1F5F9; font-family: 'Figtree', Helvetica, Arial, sans-serif;">
+<body style="margin: 0; padding: 40px 20px; background-color: ${outerBg}; font-family: 'Figtree', Helvetica, Arial, sans-serif;">
   <div style="max-width: 600px; margin: 0 auto;">
     <div style="height: 4px; background: linear-gradient(to right, #3B5FFF, #8B5CF6, #3B5FFF); border-radius: 24px 24px 0 0;"></div>
-    <div style="background-color: #FFFFFF; padding: 48px 40px; border-radius: 0 0 24px 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-      <div style="font-family: 'Figtree', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #1e293b; font-weight: 500;">
+    <div style="background-color: ${cardBg}; padding: 48px 40px; border-radius: 0 0 24px 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+      <div style="font-family: 'Figtree', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: ${textColor}; font-weight: 500;">
         ${withBreaks}
       </div>
     </div>
     <div style="margin-top: 32px; text-align: center;">
-      <p style="font-family: 'Figtree', sans-serif; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;">
+      <p style="font-family: 'Figtree', sans-serif; font-size: 11px; font-weight: 700; color: ${footerColor}; text-transform: uppercase; letter-spacing: 0.1em;">
         Powered by SmartSapp Intelligence Hub &copy; ${new Date().getFullYear()}
       </p>
     </div>
@@ -206,14 +211,20 @@ export function renderBlocksToHtml(
   options?: { 
     width?: string, 
     backgroundColor?: string,
-    wrapper?: string 
+    wrapper?: string,
+    isDark?: boolean
   }
 ): string {
   if (!blocks || !blocks.length) return '';
 
+  const isDark = options?.isDark;
   const maxWidth = options?.width || '600px';
-  const outerBg = options?.backgroundColor || '#F1F5F9'; // Light gray viewport
-  const cardBg = '#FFFFFF';
+  const outerBg = options?.backgroundColor || (isDark ? '#090d16' : '#F1F5F9');
+  const cardBg = isDark ? '#111827' : '#FFFFFF';
+  const textColor = isDark ? '#f3f4f6' : '#1e293b';
+  const dividerColor = isDark ? '#374151' : '#e2e8f0';
+  const footerTextColor = isDark ? '#6b7280' : '#94a3b8';
+  const subBg = isDark ? '#1f2937' : '#f8fafc';
 
   const renderBlock = (block: MessageBlock): string => {
     if (!shouldShowBlock(block, variables)) {
@@ -228,7 +239,7 @@ export function renderBlocksToHtml(
     const padding = block.style?.padding || '12px 0';
     
     // Core typography inheritance
-    const baseStyle = `font-family: 'Figtree', Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b;`;
+    const baseStyle = `font-family: 'Figtree', Helvetica, Arial, sans-serif; line-height: 1.6; color: ${textColor};`;
     const wrapperStyle = `padding: ${padding}; ${alignStyle} ${blockBgColor} ${baseStyle}`;
 
     let blockHtml = '';
@@ -259,7 +270,7 @@ export function renderBlocksToHtml(
         if (!url) {
             blockHtml = '';
         } else {
-            blockHtml = `<div style="${wrapperStyle}"><img src="${url}" style="max-width: 100%; height: auto; border-radius: 16px; display: block; border: 1px solid #e2e8f0; ${align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin-left: auto;' : ''}" alt="Image" /></div>`;
+            blockHtml = `<div style="${wrapperStyle}"><img src="${url}" style="max-width: 100%; height: auto; border-radius: 16px; display: block; border: 1px solid ${dividerColor}; ${align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin-left: auto;' : ''}" alt="Image" /></div>`;
         }
         break;
       }
@@ -280,7 +291,7 @@ export function renderBlocksToHtml(
       case 'quote': {
         const content = resolveVariables(block.content || '', variables);
         blockHtml = `
-          <div style="margin: 24px 0; padding: 24px; border-left: 4px solid #3B5FFF; background-color: #f8fafc; font-family: 'Figtree', sans-serif; font-style: italic; color: #475569; font-size: 18px; line-height: 1.6; border-radius: 0 16px 16px 0; ${alignStyle}">
+          <div style="margin: 24px 0; padding: 24px; border-left: 4px solid #3B5FFF; background-color: ${subBg}; font-family: 'Figtree', sans-serif; font-style: italic; color: ${isDark ? '#9ca3af' : '#475569'}; font-size: 18px; line-height: 1.6; border-radius: 0 16px 16px 0; ${alignStyle}">
             ${content}
           </div>
         `;
@@ -295,7 +306,7 @@ export function renderBlocksToHtml(
       }
 
       case 'divider':
-        blockHtml = `<div style="padding: 32px 0;"><hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0;" /></div>`;
+        blockHtml = `<div style="padding: 32px 0;"><hr style="border: 0; border-top: 1px solid ${dividerColor}; margin: 0;" /></div>`;
         break;
 
       case 'score-card': {
@@ -315,14 +326,14 @@ export function renderBlocksToHtml(
         const headerLogo = resolveVariables(block.url || '{{org_logo_url}}', variables);
         const headerName = resolveVariables('{{org_name}}', variables);
         blockHtml = `
-          <div style="${wrapperStyle} padding: 24px 0; border-bottom: 1px solid #e2e8f0;">
+          <div style="${wrapperStyle} padding: 24px 0; border-bottom: 1px solid ${dividerColor};">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
               <tr>
                 <td style="vertical-align: middle;">
                   <img src="${headerLogo}" alt="${headerName}" style="height: 40px; width: auto; display: block;" width="100" height="40" />
                 </td>
                 <td style="vertical-align: middle; text-align: right;">
-                  <span style="${baseStyle} font-size: 16px; font-weight: 800; color: #1e293b;">${headerName}</span>
+                  <span style="${baseStyle} font-size: 16px; font-weight: 800; color: ${textColor};">${headerName}</span>
                 </td>
               </tr>
             </table>
@@ -338,11 +349,11 @@ export function renderBlocksToHtml(
         const fAddr = resolveVariables('{{org_address}}', variables);
         const fYear = resolveVariables('{{current_year}}', variables) || new Date().getFullYear().toString();
         blockHtml = `
-          <div style="padding: 32px 0 16px; margin-top: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-family: 'Figtree', sans-serif;">
-            <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: #475569;">${fName}</p>
-            <p style="margin: 0 0 4px; font-size: 11px; font-weight: 500; color: #94a3b8;">${fAddr}</p>
-            <p style="margin: 0 0 8px; font-size: 11px; font-weight: 500; color: #94a3b8;">${fEmail} | ${fPhone}</p>
-            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #cbd5e1;">&copy; ${fYear} ${fName}. All rights reserved.</p>
+          <div style="padding: 32px 0 16px; margin-top: 24px; border-top: 1px solid ${dividerColor}; text-align: center; font-family: 'Figtree', sans-serif;">
+            <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: ${isDark ? '#9ca3af' : '#475569'};">${fName}</p>
+            <p style="margin: 0 0 4px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${fAddr}</p>
+            <p style="margin: 0 0 8px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${fEmail} | ${fPhone}</p>
+            <p style="margin: 0; font-size: 10px; font-weight: 600; color: ${isDark ? '#4b5563' : '#cbd5e1'};">&copy; ${fYear} ${fName}. All rights reserved.</p>
           </div>
         `;
         break;
@@ -396,7 +407,7 @@ export function renderBlocksToHtml(
       
       <!-- Footer -->
       <div style="margin-top: 32px; text-align: center;">
-        <p style="font-family: 'Figtree', sans-serif; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;">
+        <p style="font-family: 'Figtree', sans-serif; font-size: 11px; font-weight: 700; color: ${footerTextColor}; text-transform: uppercase; letter-spacing: 0.1em;">
           Powered by SmartSapp Intelligence Hub &copy; ${new Date().getFullYear()}
         </p>
       </div>

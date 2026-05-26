@@ -15,11 +15,11 @@ export function DealsClosingSoon({ workspaceId }: { workspaceId: string }) {
       {mockDeals.map(deal => (
         <div key={deal.id} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
           <div className="flex flex-col">
-            <span className="text-sm font-semibold">{deal.name}</span>
+            <span className="text-sm font-medium">{deal.name}</span>
             <span className="text-xs text-muted-foreground">Owner: {deal.owner}</span>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-sm font-bold text-green-600 dark:text-green-400">{deal.amount}</span>
+            <span className="text-sm font-medium text-green-600 dark:text-green-400">{deal.amount}</span>
             <span className={`text-xs font-medium ${deal.daysLeft <= 3 ? 'text-red-500' : 'text-amber-500'}`}>
               in {deal.daysLeft} days
             </span>

@@ -36,7 +36,7 @@ import { useTenant } from '@/context/TenantContext';
 import Link from 'next/link';
 import { duplicatePageAction } from '@/lib/page-actions';
 import { useUser } from '@/firebase';
-
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 
 export default function PagesClient() {
@@ -198,7 +198,7 @@ export default function PagesClient() {
     };
 
     return (
-        <div className="h-full overflow-y-auto w-full">
+        <PageContainerFluid>
             <div className="space-y-12 pb-32 text-left w-full">
                 
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -254,6 +254,6 @@ export default function PagesClient() {
                     </div>
                 )}
             </div>
-        </div>
+        </PageContainerFluid>
     );
 }

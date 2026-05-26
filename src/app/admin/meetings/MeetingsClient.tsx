@@ -78,6 +78,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MeetingCalendar from './components/MeetingCalendar';
 import MeetingQRDialog from './components/MeetingQRDialog';
 import { QrCode } from 'lucide-react';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -353,6 +354,12 @@ export default function MeetingsHubClient() {
                     </Link>
                 </DropdownMenuItem>
             )}
+            <DropdownMenuItem asChild>
+                <Link href={`/admin/meetings/${meeting.id}/invitations`}>
+                    <Send className="mr-2 h-4 w-4" />
+                    <span>Manage Invitations</span>
+                </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setMeetingForQR(meeting)}>
                 <QrCode className="mr-2 h-4 w-4" />
                 <span>Generate QR Code</span>
@@ -383,6 +390,7 @@ export default function MeetingsHubClient() {
 
     return (
         <TooltipProvider>
+            <PageContainerFluid>
             <div className="h-full overflow-y-auto w-full">
                 <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -590,6 +598,7 @@ export default function MeetingsHubClient() {
             </AlertDialogContent>
         </AlertDialog>
 
+        </PageContainerFluid>
         </TooltipProvider>
   );
 }

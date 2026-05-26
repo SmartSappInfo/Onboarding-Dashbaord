@@ -106,6 +106,7 @@ import { EntityAvatar } from '../components/EntityAvatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useTenant } from '@/context/TenantContext';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
     urgent: { label: 'Urgent', color: 'text-rose-600 bg-rose-500/10 border-rose-200/20', icon: ShieldAlert },
@@ -370,7 +371,8 @@ export default function TasksClient() {
     };
 
     return (
-        <div className="space-y-8 pb-32 w-full">
+        <PageContainerFluid>
+            <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex flex-col items-start">
                         <h1 className="text-3xl font-bold text-foreground">
@@ -684,7 +686,8 @@ export default function TasksClient() {
                     </div>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+            </div>
+        </PageContainerFluid>
     );
 }
 

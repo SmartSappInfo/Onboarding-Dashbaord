@@ -10,6 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { FormNotificationSettings } from '../../components/form-notification-settings';
+import SaveStatusIndicator, { type SaveStatus } from './components/SaveStatusIndicator';
+import { updateFormAction } from '@/lib/forms-actions';
+import { useFormHistory } from '@/hooks/use-form-history';
+import FieldsSidebar from './components/FieldsSidebar';
+import PropertiesSidebar from './components/PropertiesSidebar';
+import BuilderCanvas from './components/BuilderCanvas';
+import ViewportToggle, { type ViewportSize } from './components/ViewportToggle';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,52 +44,18 @@ import {
   Layout,
   Zap,
   Share2,
-  Plus,
-  Trash2,
-  GripVertical,
   Copy,
   ExternalLink,
-  ChevronUp,
-  ChevronDown,
-  Link as LinkIcon,
   Code,
   Eye,
-  Lock,
-  CaseSensitive,
-  Hash,
-  Calendar,
-  Mail,
-  Phone,
-  ListFilter,
-  ToggleLeft,
-  MapPin,
-  FileText,
-  EyeOff,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // ────────────────────────────────────────────
 // Constants
 // ────────────────────────────────────────────
-
-const FIELD_TYPE_ICONS: Record<string, React.ElementType> = {
-  short_text: CaseSensitive,
-  long_text: FileText,
-  email: Mail,
-  phone: Phone,
-  number: Hash,
-  currency: Hash,
-  date: Calendar,
-  datetime: Calendar,
-  select: ListFilter,
-  multi_select: ListFilter,
-  radio: ToggleLeft,
-  checkbox: ToggleLeft,
-  yes_no: ToggleLeft,
-  address: MapPin,
-  url: LinkIcon,
-  hidden: EyeOff,
-};
 
 const THEME_PRESETS: { value: FormThemeConfig['preset']; label: string; desc: string }[] = [
   { value: 'minimal', label: 'Minimal', desc: 'Clean and borderless' },
@@ -144,6 +117,8 @@ function Stepper({ currentStep, onStepClick }: { currentStep: number; onStepClic
   );
 }
 
+
+
 // ────────────────────────────────────────────
 // Main Editor Component
 // ────────────────────────────────────────────
@@ -155,14 +130,34 @@ export default function EditFormPage() {
   const formId = params.id as string;
   const { toast } = useToast();
   const { activeWorkspaceId } = useTenant();
+  const { user } = useUser();
 
   // State
   const [step, setStep] = React.useState(1);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('idle');
   const [hasInitialized, setHasInitialized] = React.useState(false);
+  const [isMounted, setIsMounted] = React.useState(false);
+  const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
+  const [viewportSize, setViewportSize] = React.useState<ViewportSize>('desktop');
+  const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedSnapshotRef = React.useRef<string>(''); // JSON snapshot for dirty detection
+  const [isPendingSave, startSaveTransition] = React.useTransition();
 
-  // Form document data stored in local state for editing
-  const [formData, setFormData] = React.useState<Partial<Form>>({});
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Form document history state tracker (enabling Undo/Redo)
+  const {
+    state: formData,
+    update: setFormData,
+    undo,
+    redo,
+    reset: resetFormHistory,
+    canUndo,
+    canRedo,
+  } = useFormHistory<Partial<Form>>({});
 
   // Firestore subscriptions
   const formDocRef = useMemoFirebase(() => {
@@ -200,14 +195,84 @@ export default function EditFormPage() {
   // Initialize from Firestore
   React.useEffect(() => {
     if (formDoc && !hasInitialized) {
-      setFormData(formDoc);
+      resetFormHistory(formDoc);
+      lastSavedSnapshotRef.current = JSON.stringify(formDoc);
       setHasInitialized(true);
     }
-  }, [formDoc, hasInitialized]);
+  }, [formDoc, hasInitialized, resetFormHistory]);
+
+  // Keyboard listeners for Undo/Redo shortcuts (Ctrl+Z / Meta+Z, Ctrl+Shift+Z / Meta+Shift+Z)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isInput) return;
+
+      const isMod = e.metaKey || e.ctrlKey;
+      if (isMod && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
+
+  // Debounced autosave — fires 2 seconds after any formData change
+  React.useEffect(() => {
+    if (!hasInitialized) return;
+    const currentSnapshot = JSON.stringify(formData);
+    if (currentSnapshot === lastSavedSnapshotRef.current) return; // Not dirty
+
+    setSaveStatus('dirty');
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      startSaveTransition(async () => {
+        setSaveStatus('saving');
+        const uid = user?.uid;
+        if (!uid || !formId) { setSaveStatus('error'); return; }
+        
+        // Pass expectedVersion for conflict detection
+        const expectedVersion = formData.version;
+        const res = await updateFormAction(formId, formData as Partial<Form>, uid, expectedVersion);
+        
+        if (res.conflict) {
+          setSaveStatus('conflict');
+          toast({
+            variant: 'destructive',
+            title: 'Version Conflict Detected',
+            description: 'Another user has edited this form. Please refresh to load the latest changes and avoid overwriting them.',
+          });
+        } else if (res.success) {
+          // If version was returned, update the state version to match the backend
+          const nextVersion = res.version !== undefined ? res.version : (expectedVersion || 0) + 1;
+          const updatedFormData = { ...formData, version: nextVersion };
+          
+          setFormData(updatedFormData);
+          lastSavedSnapshotRef.current = JSON.stringify(updatedFormData);
+          setSaveStatus('saved');
+          setTimeout(() => setSaveStatus('idle'), 3000);
+        } else {
+          setSaveStatus('error');
+          toast({
+            variant: 'destructive',
+            title: 'Autosave Failed',
+            description: res.error || 'Could not autosave changes.',
+          });
+        }
+      });
+    }, 2000);
+
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [formData, hasInitialized]);
 
   // Helpers
   const updateField = <K extends keyof Form>(key: K, value: Form[K]) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+    setFormData({ ...formData, [key]: value });
   };
 
   const slugify = (text: string) =>
@@ -331,13 +396,39 @@ export default function EditFormPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <SaveStatusIndicator status={saveStatus} />
+
+          <div className="flex items-center gap-1 border-r pr-3 border-border/60">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-lg"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo"
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-lg"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo"
+            >
+              <Redo2 className="h-4 w-4" />
+            </Button>
+          </div>
+
           <Button
-            disabled={isSaving}
+            disabled={isSaving || isPendingSave || saveStatus === 'saving'}
             onClick={handleSave}
-            className="rounded-xl font-semibold shadow-lg gap-2 px-6 h-10 text-[10px] active:scale-95 transition-all"
+            variant="outline"
+            className="rounded-xl font-semibold gap-2 px-5 h-10 text-[10px] active:scale-95 transition-all"
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save Changes
+            Save
           </Button>
         </div>
       </header>
@@ -562,168 +653,79 @@ export default function EditFormPage() {
 
             {/* ── Step 2: Builder Canvas ── */}
             {step === 2 && (
-              <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Left: Available Fields Palette */}
-                  <Card className="rounded-2xl border-none shadow-sm lg:col-span-1">
-                    <CardHeader>
-                      <CardTitle className="text-base font-semibold">Field Registry</CardTitle>
-                      <CardDescription className="text-xs">Click a field to add it to your form.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {!availableFields || !fieldGroups || fieldGroups.length === 0 ? (
-                        <div className="py-8 text-center">
-                          <p className="text-[10px] text-muted-foreground font-semibold">No fields available. Seed native fields first.</p>
-                          <Button variant="link" size="sm" className="mt-2" onClick={() => router.push('/admin/settings/fields')}>
-                            Go to Fields Manager →
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-6">
-                          {fieldGroups.map(group => {
-                            const groupFields = availableFields.filter(f => f.groupId === group.id);
-                            if (groupFields.length === 0) return null;
-                            
-                            // Sort hidden fields to the bottom of the group
-                            const sortedFields = [...groupFields].sort((a, b) => {
-                              if (a.type === 'hidden' && b.type !== 'hidden') return 1;
-                              if (a.type !== 'hidden' && b.type === 'hidden') return -1;
-                              return 0;
-                            });
+              <motion.div
+                key="step2"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="flex-1 flex flex-col min-h-0 bg-background"
+              >
+                {/* Viewport & Options Toolbar */}
+                <div className="h-12 border-b bg-card/20 px-8 flex items-center justify-between shrink-0 select-none">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Device Viewport Simulation:
+                  </span>
+                  <ViewportToggle currentSize={viewportSize} onChange={setViewportSize} />
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg"
+                      onClick={undo}
+                      disabled={!canUndo}
+                      title="Undo"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg"
+                      onClick={redo}
+                      disabled={!canRedo}
+                      title="Redo"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
 
-                            return (
-                              <div key={group.id} className="space-y-2">
-                                <h4 className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5 px-1 uppercase tracking-wider">
-                                  {group.name}
-                                </h4>
-                                <div className="space-y-1.5">
-                                  {sortedFields.map(af => {
-                                    const isAlreadyAdded = fields.some(f => f.appFieldId === af.id);
-                                    const Icon = FIELD_TYPE_ICONS[af.type] || CaseSensitive;
-                                    return (
-                                      <button
-                                        key={af.id}
-                                        type="button"
-                                        disabled={isAlreadyAdded}
-                                        onClick={() => addFieldFromRegistry(af)}
-                                        className={cn(
-                                          'w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all border group/item',
-                                          isAlreadyAdded
-                                            ? 'opacity-40 cursor-not-allowed border-border/30 bg-muted/20'
-                                            : 'hover:bg-accent/10 hover:border-primary/30 border-border/50 cursor-pointer'
-                                        )}
-                                      >
-                                        <div className="p-1.5 bg-primary/10 rounded-lg group-hover/item:scale-110 transition-transform">
-                                          <Icon className="h-3.5 w-3.5 text-primary" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-1.5 mb-0.5">
-                                              <p className="text-xs font-bold truncate">{af.label}</p>
-                                              {af.isNative && (
-                                                  <Badge variant="secondary" className="h-3 text-[7px] uppercase px-1 font-extrabold tracking-tighter bg-primary/10 text-primary border-none">
-                                                      Native
-                                                  </Badge>
-                                              )}
-                                              {af.type === 'hidden' && (
-                                                  <Badge variant="outline" className="h-3 text-[7px] uppercase px-1 font-extrabold tracking-tighter">
-                                                      Hidden
-                                                  </Badge>
-                                              )}
-                                          </div>
-                                          <p className="text-[9px] text-muted-foreground font-mono truncate">{'{{' + af.variableName + '}}'}</p>
-                                        </div>
-                                        {isAlreadyAdded ? (
-                                          <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                        ) : (
-                                          <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                                        )}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                <div className="flex-1 flex min-h-0 overflow-hidden">
+                  {/* Left Sidebar: Fields Registry */}
+                  <FieldsSidebar
+                    availableFields={availableFields || undefined}
+                    fieldGroups={fieldGroups || undefined}
+                    addedFields={fields}
+                    formType={formData.formType || 'global'}
+                    contactScope={formData.contactScope}
+                    onAddField={addFieldFromRegistry}
+                  />
 
-                  {/* Right: Canvas (field list) */}
-                  <Card className="rounded-2xl border-none shadow-sm lg:col-span-2">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-base font-semibold">Form Canvas</CardTitle>
-                          <CardDescription className="text-xs">{fields.length} fields added. Drag to reorder.</CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {fields.length === 0 ? (
-                        <div className="py-16 text-center border-2 border-dashed rounded-2xl bg-background">
-                          <Layout className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
-                          <p className="text-xs font-semibold text-muted-foreground">No fields yet. Pick from the registry to start building.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {fields.sort((a, b) => a.order - b.order).map((instance, idx) => {
-                            const appField = getAppField(instance.appFieldId);
-                            const Icon = FIELD_TYPE_ICONS[appField?.type || 'short_text'] || CaseSensitive;
-                            return (
-                              <div
-                                key={instance.id}
-                                className="flex items-center gap-3 p-4 rounded-xl border border-border/50 bg-background hover:shadow-sm transition-all group"
-                              >
-                                <GripVertical className="h-4 w-4 text-muted-foreground/30 cursor-grab shrink-0" />
-                                <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
-                                  <Icon className="h-3.5 w-3.5 text-primary" />
-                                </div>
-                                <div className="flex-1 min-w-0 text-left">
-                                  <p className="text-sm font-bold truncate">{instance.labelOverride || appField?.label || 'Unknown Field'}</p>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <code className="text-[9px] font-mono text-primary/60">{'{{' + (appField?.variableName || '?') + '}}'}</code>
-                                    {appField?.isNative && (
-                                      <Badge variant="secondary" className="h-3.5 text-[7px] uppercase px-1 gap-0.5"><Lock className="h-2 w-2" /> Native</Badge>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Select
-                                    value={instance.width || 'full'}
-                                    onValueChange={v => updateFieldInstance(instance.id, { width: v as any })}
-                                  >
-                                    <SelectTrigger className="h-7 w-16 rounded-lg text-[9px] border-none bg-muted/30"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="rounded-lg">
-                                      <SelectItem value="full">Full</SelectItem>
-                                      <SelectItem value="half">Half</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <div className="flex items-center gap-0.5 bg-muted/30 rounded-lg p-0.5">
-                                    <Switch
-                                      checked={instance.required}
-                                      onCheckedChange={v => updateFieldInstance(instance.id, { required: v })}
-                                      className="scale-[0.65]"
-                                    />
-                                    <span className="text-[8px] font-semibold text-muted-foreground pr-1">Req</span>
-                                  </div>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(instance.id, 'up')} disabled={idx === 0}>
-                                    <ChevronUp className="h-3 w-3" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveField(instance.id, 'down')} disabled={idx === fields.length - 1}>
-                                    <ChevronDown className="h-3 w-3" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeField(instance.id)}>
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                  {/* Center Canvas: Interactive Sandbox Simulator */}
+                  <BuilderCanvas
+                    form={formData}
+                    fields={fields}
+                    selectedFieldId={selectedFieldId}
+                    viewportSize={viewportSize}
+                    getAppField={getAppField}
+                    onSelectField={(instance) => setSelectedFieldId(instance.id)}
+                    onUpdateFieldInstance={updateFieldInstance}
+                    onMoveField={moveField}
+                    onRemoveField={removeField}
+                    onReorderFields={(reordered) => updateField('fields', reordered)}
+                  />
+
+                  {/* Right Sidebar: Selected Field Properties configuration */}
+                  <PropertiesSidebar
+                    selectedInstance={fields.find(f => f.id === selectedFieldId) || null}
+                    appField={fields.find(f => f.id === selectedFieldId) ? getAppField(fields.find(f => f.id === selectedFieldId)!.appFieldId) : undefined}
+                    onUpdate={updateFieldInstance}
+                    onRemove={(id) => {
+                      removeField(id);
+                      setSelectedFieldId(null);
+                    }}
+                    onClose={() => setSelectedFieldId(null)}
+                  />
                 </div>
               </motion.div>
             )}

@@ -976,9 +976,51 @@ export default function NewEntityPage() {
                                         <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">{field.label}</FormLabel>
                                         <FormControl>
                                             {field.type === 'long_text' ? (
-                                                <Textarea {...formField} value={formField.value || ''} className="min-h-[80px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4" />
+                                                <Textarea {...formField} value={formField.value || ''} placeholder={field.placeholder || ''} className="min-h-[80px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4 text-left" />
+                                            ) : (field.type === 'select' || field.type === 'dropdown') ? (
+                                                <Select onValueChange={formField.onChange} value={formField.value || ''}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-semibold text-left">
+                                                            <SelectValue placeholder={field.placeholder || "Select option..."} />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent className="rounded-xl shadow-2xl border-none">
+                                                        {(field.options || []).map((opt: any) => (
+                                                            <SelectItem key={opt.value} value={opt.value} className="font-semibold">
+                                                                {opt.label}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : field.type === 'multi_select' ? (
+                                                <MultiSelect
+                                                    options={(field.options || []).map((opt: any) => ({ label: opt.label, value: opt.value }))}
+                                                    value={Array.isArray(formField.value) ? formField.value : (formField.value ? [formField.value] : [])}
+                                                    onChange={formField.onChange}
+                                                    placeholder={field.placeholder || "Select options..."}
+                                                />
                                             ) : (
-                                                <Input {...formField} value={formField.value || ''} type={field.type === 'number' ? 'number' : 'text'} className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold" />
+                                                <Input
+                                                    {...formField}
+                                                    value={formField.value || ''}
+                                                    type={
+                                                        field.type === 'number' || field.type === 'currency'
+                                                            ? 'number'
+                                                            : field.type === 'date'
+                                                            ? 'date'
+                                                            : field.type === 'datetime'
+                                                            ? 'datetime-local'
+                                                            : field.type === 'email'
+                                                            ? 'email'
+                                                            : field.type === 'phone'
+                                                            ? 'tel'
+                                                            : field.type === 'url'
+                                                            ? 'url'
+                                                            : 'text'
+                                                    }
+                                                    placeholder={field.placeholder || ''}
+                                                    className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-left"
+                                                />
                                             )}
                                         </FormControl>
                                         <FormMessage />

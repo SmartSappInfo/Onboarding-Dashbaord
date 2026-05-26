@@ -21,22 +21,30 @@ import {
   collection,
   orderBy,
   query,
-  doc,
-  updateDoc,
   where,
-  getDocs,
 } from 'firebase/firestore';
 
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Deal, OnboardingStage } from '@/lib/types';
+import type { Deal, OnboardingStage, Task } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Workflow } from 'lucide-react';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { logActivity } from '@/lib/activity-logger';
 import { triggerInternalNotification } from '@/lib/notification-engine';
+import { updateDealStageAction, updateDealStatusAction } from '@/app/actions/deal-actions';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StageColumn from './StageColumn';
 import DealCard from './DealCard';
 
@@ -86,9 +94,54 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   );
   const { data: deals, isLoading: isLoadingDeals } = useCollection<Deal>(dealsQuery);
 
+  // 3. Fetch Tasks to index badges
+  const tasksQuery = useMemoFirebase(
+    () => (firestore && activeWorkspaceId ? query(
+        collection(firestore, 'tasks'), 
+        where('workspaceId', '==', activeWorkspaceId),
+        where('relatedEntityType', '==', 'Deal')
+    ) : null),
+    [firestore, activeWorkspaceId]
+  );
+  const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+
+  const tasksByDealId = React.useMemo(() => {
+    const map: Record<string, { total: number; completed: number; hasOverdue: boolean }> = {};
+    if (!tasks) return map;
+    
+    const now = new Date();
+    tasks.forEach((task) => {
+      const dealId = task.relatedEntityId;
+      if (!dealId) return;
+      
+      if (!map[dealId]) {
+        map[dealId] = { total: 0, completed: 0, hasOverdue: false };
+      }
+      
+      map[dealId].total += 1;
+      if (task.status === 'done') {
+        map[dealId].completed += 1;
+      } else {
+        if (task.dueDate) {
+          const due = new Date(task.dueDate);
+          if (due < now) {
+            map[dealId].hasOverdue = true;
+          }
+        }
+      }
+    });
+    return map;
+  }, [tasks]);
+
   const [activeElement, setActiveElement] = React.useState<Deal | OnboardingStage | null>(null);
   const [dealsByStage, setDealsByStage] = React.useState<Record<string, Deal[]>>({});
   const initialDealsByStage = React.useRef<Record<string, Deal[]>>({});
+  
+  // Pending state for deal marking as lost
+  const [pendingLostDeal, setPendingLostDeal] = React.useState<{ deal: Deal; targetStage: OnboardingStage } | null>(null);
+  const [selectedReason, setSelectedReason] = React.useState<string>('Competitor');
+  const [extraNotes, setExtraNotes] = React.useState<string>('');
+  const [isSavingLoss, setIsSavingLoss] = React.useState<boolean>(false);
 
   const allDeals = React.useMemo(() => {
     return deals || [];
@@ -200,6 +253,45 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
     }
   };
 
+  const handleSaveLossReason = async () => {
+    if (!pendingLostDeal) return;
+    const { deal, targetStage } = pendingLostDeal;
+    setIsSavingLoss(true);
+
+    try {
+      const lostReasonString = `${selectedReason}${extraNotes ? ': ' + extraNotes : ''}`;
+      
+      const resStage = await updateDealStageAction(deal.id, targetStage.id);
+      if (!resStage.success) throw new Error(resStage.error || 'Failed to update deal stage');
+
+      const resStatus = await updateDealStatusAction(deal.id, 'lost', lostReasonString);
+      if (!resStatus.success) throw new Error(resStatus.error || 'Failed to update deal status');
+
+      toast({
+        title: 'Deal Updated',
+        description: `Deal marked as lost: ${selectedReason}`,
+      });
+
+      initialDealsByStage.current = dealsByStage;
+      setPendingLostDeal(null);
+      setSelectedReason('Competitor');
+      setExtraNotes('');
+    } catch (error: any) {
+      console.error('Failed to save loss reason:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to complete deal status transition.',
+      });
+      setDealsByStage(initialDealsByStage.current);
+      setPendingLostDeal(null);
+      setSelectedReason('Competitor');
+      setExtraNotes('');
+    } finally {
+      setIsSavingLoss(false);
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveElement(null);
     const { active, over } = event;
@@ -220,46 +312,48 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
       const deal = active.data.current?.deal as Deal;
 
       if (newStage && activeContainer !== overContainer) {
+        if (newStage.name.toLowerCase().includes('lost')) {
+          setPendingLostDeal({ deal, targetStage: newStage });
+          return;
+        }
+
         try {
-          const dealRef = doc(firestore!, 'deals', dealId);
-          await updateDoc(dealRef, {
-            stageId: newStage.id,
-            updatedAt: new Date().toISOString(),
-          });
+          const resStage = await updateDealStageAction(dealId, newStage.id);
+          if (!resStage.success) {
+            throw new Error(resStage.error || 'Failed to update deal stage');
+          }
+
+          const isWonStage = newStage.name.toLowerCase().includes('live') || newStage.name.toLowerCase().includes('won');
+          const targetStatus = isWonStage ? 'won' : 'open';
+
+          if (deal.status !== targetStatus) {
+            const resStatus = await updateDealStatusAction(dealId, targetStatus);
+            if (!resStatus.success) {
+              throw new Error(resStatus.error || 'Failed to update deal status');
+            }
+          }
 
           toast({ title: 'Deal Moved', description: `Deal advanced to "${newStage.name}".` });
-          
-          if (user && deal) {
-              logActivity({
-                  organizationId: activeOrganizationId,
-                  entityId: deal.entityId,
-                  userId: user.uid,
-                  type: 'pipeline_stage_changed',
-                  source: 'user_action',
-                  workspaceId: activeWorkspaceId,
-                  description: `progressed deal "${deal.name}" to "${newStage.name}"`,
-                  metadata: { dealId, to: newStage.name, pipelineId }
-              });
+          initialDealsByStage.current = dealsByStage;
 
-              if (newStage.name.toLowerCase().includes('live') || newStage.name.toLowerCase().includes('won')) {
-                  triggerInternalNotification({
-                      entityId: deal.entityId,
-                      notifyManager: true,
-                      channel: 'both',
-                      variables: { school_name: deal.name, new_stage: newStage.name, event_type: 'Deal Progression' }
-                  }).catch(console.error);
-              }
+          if (isWonStage) {
+            triggerInternalNotification({
+              entityId: deal.entityId,
+              notifyManager: true,
+              channel: 'both',
+              variables: { school_name: deal.name, new_stage: newStage.name, event_type: 'Deal Progression' }
+            }).catch(console.error);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to update stage:', error);
-          toast({ variant: 'destructive', title: 'Logic Error', description: 'Failed to update deal state.' });
+          toast({ variant: 'destructive', title: 'Logic Error', description: error.message || 'Failed to update deal state.' });
           setDealsByStage(initialDealsByStage.current);
         }
       }
     }
   };
 
-  const isLoading = isLoadingDeals || isLoadingStages || isLoadingFilter;
+  const isLoading = isLoadingDeals || isLoadingStages || isLoadingFilter || isLoadingTasks;
 
   if (isLoading) {
     return (
@@ -304,6 +398,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
               stage={stage}
               customWidth={customWidth}
               deals={dealsByStage[stage.id] || []}
+              tasksByDealId={tasksByDealId}
             />
           ))}
         </div>
@@ -317,14 +412,92 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
               customWidth={customWidth}
               deals={dealsByStage[(activeElement as OnboardingStage).id] || []}
               isOverlay
+              tasksByDealId={tasksByDealId}
             />
           ) : (
             <div className="w-72 pointer-events-none">
-              <DealCard deal={activeElement as Deal} isOverlay />
+              <DealCard 
+                deal={activeElement as Deal} 
+                isOverlay 
+                taskStats={tasksByDealId[(activeElement as Deal).id]}
+              />
             </div>
           )
         ) : null}
       </DragOverlay>
+
+      {/* Loss Reason Dialog */}
+      <Dialog open={pendingLostDeal !== null} onOpenChange={(open) => {
+        if (!open) {
+          setDealsByStage(initialDealsByStage.current);
+          setPendingLostDeal(null);
+          setSelectedReason('Competitor');
+          setExtraNotes('');
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              Mark Deal as Lost
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">
+              Please specify the reason why you lost the deal for <strong>{pendingLostDeal?.deal.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reason Category</label>
+              <Select value={selectedReason} onValueChange={setSelectedReason}>
+                <SelectTrigger className="w-full rounded-xl border border-input bg-background/50 hover:bg-background/80 transition-colors">
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-none shadow-2xl">
+                  <SelectItem value="Competitor" className="rounded-lg">Competitor</SelectItem>
+                  <SelectItem value="Price/Budget" className="rounded-lg">Price / Budget</SelectItem>
+                  <SelectItem value="Feature Gap" className="rounded-lg">Feature Gap</SelectItem>
+                  <SelectItem value="Timeout" className="rounded-lg">Timeout / No Response</SelectItem>
+                  <SelectItem value="Other" className="rounded-lg">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Additional Details (Optional)</label>
+              <Textarea
+                placeholder="Describe what happened..."
+                value={extraNotes}
+                onChange={(e) => setExtraNotes(e.target.value)}
+                className="min-h-[100px] rounded-xl bg-background/50 border border-input focus:bg-background transition-all"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setDealsByStage(initialDealsByStage.current);
+                setPendingLostDeal(null);
+                setSelectedReason('Competitor');
+                setExtraNotes('');
+              }}
+              disabled={isSavingLoss}
+              className="rounded-xl font-bold text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveLossReason}
+              disabled={isSavingLoss}
+              className="rounded-xl font-bold text-xs bg-red-600 hover:bg-red-700 text-white shrink-0"
+            >
+              {isSavingLoss ? 'Saving...' : 'Confirm Lost'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DndContext>
   );
 }

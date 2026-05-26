@@ -264,6 +264,56 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                     </div>
                                 </div>
                             )}
+
+                            {data.trigger === 'DEAL_STAGE_CHANGED' && (
+                                <div className="space-y-6 animate-in slide-in-from-top-2 duration-500 bg-primary/5 p-6 rounded-[2rem] border border-primary/20 shadow-inner">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+                                                <Target className="h-3.5 w-3.5" /> Scoped Pipeline
+                                            </Label>
+                                            <Select 
+                                                value={config.pipelineId || 'all_pipelines'} 
+                                                onValueChange={(v) => updateConfig({ pipelineId: v === 'all_pipelines' ? null : v, stageId: null })}
+                                            >
+                                                <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                    <SelectValue placeholder="All Pipelines" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
+                                                    <SelectItem value="all_pipelines" className="rounded-lg p-2 font-semibold">All Pipelines</SelectItem>
+                                                    {(pipelines || []).map((p: Pipeline) => (
+                                                        <SelectItem key={p.id} value={p.id} className="rounded-lg p-2 font-semibold">{p.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+                                                <ArrowRightLeft className="h-3.5 w-3.5" /> Targeted Stage
+                                            </Label>
+                                            <Select 
+                                                value={config.stageId || 'all_stages'} 
+                                                onValueChange={(v) => updateConfig({ stageId: v === 'all_stages' ? null : v })}
+                                                disabled={!config.pipelineId}
+                                            >
+                                                <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                    <SelectValue placeholder={config.pipelineId ? "All Stages" : "Choose pipeline first"} />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
+                                                    <SelectItem value="all_stages" className="rounded-lg p-2 font-semibold">All Stages</SelectItem>
+                                                    {(stages || [])
+                                                        .filter((s: OnboardingStage) => s.pipelineId === config.pipelineId)
+                                                        .map((s: OnboardingStage) => (
+                                                            <SelectItem key={s.id} value={s.id} className="rounded-lg p-2 font-semibold">{s.name}</SelectItem>
+                                                        ))
+                                                    }
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { collection, orderBy, query, doc, updateDoc, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import type { UserProfile, Role, AppPermissionId, PermissionsSchema } from '@/lib/types';
 import { mergePermissionsSchemas } from '@/lib/permissions-engine';
 import Link from 'next/link';
@@ -15,16 +15,17 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, ShieldEllipsis, UserPlus, Key, Building2, Search, Filter, ChevronDown } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, ShieldEllipsis, UserPlus, UserMinus, Key, Building2, Search, Filter, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { useTenant } from '@/context/TenantContext';
 import InviteUserModal from './components/InviteUserModal';
 import WorkspaceAccessDialog from './components/WorkspaceAccessDialog';
-import { adminResetUserPasswordAction, adminUpdateUserAccessAction } from '@/lib/user-invite-actions';
+import { adminResetUserPasswordAction, adminUpdateUserAccessAction, declineJoinRequestAction, removeUserFromOrgAction } from '@/lib/user-invite-actions';
 
 // Extracted outside component per rerender-no-inline-components
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
@@ -46,6 +47,7 @@ export default function UsersClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { activeOrganizationId, activeWorkspaceId, activeWorkspace, isSuperAdmin } = useTenant();
+  const { user: currentUser } = useUser();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = React.useState(false);
   const [accessDialogUser, setAccessDialogUser] = React.useState<UserProfile | null>(null);
@@ -193,6 +195,66 @@ export default function UsersClient() {
       }
   }, [toast]);
 
+  const handleDeclineRequest = React.useCallback(async (userId: string, userName: string) => {
+      if (!currentUser?.uid) return;
+      if (!confirm(`Are you sure you want to decline ${userName}'s joining request? This will reject their onboarding and disable their access.`)) return;
+      
+      setUpdatingId(userId);
+      try {
+          const result = await declineJoinRequestAction(userId, currentUser.uid);
+          if (result.success) {
+              toast({ 
+                  title: 'Request Declined', 
+                  description: result.message 
+              });
+          } else {
+              throw new Error(result.error);
+          }
+      } catch (error: any) {
+          toast({ 
+              variant: 'destructive', 
+              title: 'Operation Failed', 
+              description: error.message 
+          });
+      } finally {
+          setUpdatingId(null);
+      }
+  }, [currentUser, toast]);
+
+  const handleRemoveUser = React.useCallback(async (userId: string, userName: string) => {
+      if (!currentUser?.uid) return;
+      if (userId === currentUser.uid) {
+          toast({ 
+              variant: 'destructive', 
+              title: 'Action Denied', 
+              description: 'You cannot remove yourself from the organization.' 
+          });
+          return;
+      }
+      if (!confirm(`Are you sure you want to remove ${userName} from the organization? This will immediately strip all organization and workspace access and reset their onboarding profile.`)) return;
+      
+      setUpdatingId(userId);
+      try {
+          const result = await removeUserFromOrgAction(userId, currentUser.uid);
+          if (result.success) {
+              toast({ 
+                  title: 'User Removed', 
+                  description: result.message 
+              });
+          } else {
+              throw new Error(result.error);
+          }
+      } catch (error: any) {
+          toast({ 
+              variant: 'destructive', 
+              title: 'Operation Failed', 
+              description: error.message 
+          });
+      } finally {
+          setUpdatingId(null);
+      }
+  }, [currentUser, toast]);
+
   // Helper: get human-readable role names for workspace
   const getUserRoleNames = React.useCallback((user: UserProfile): string[] => {
     const roleIds = user.workspaceRoles?.[activeWorkspaceId] || user.roles || [];
@@ -204,7 +266,7 @@ export default function UsersClient() {
   if (error) return <div className="text-destructive p-8 text-left">Error loading registry: {error.message}</div>;
 
     return (
-        <div className="h-full overflow-y-auto w-full">
+        <PageContainerFluid>
             <div className="space-y-6 pb-32 w-full">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -404,53 +466,84 @@ export default function UsersClient() {
                                         </TableCell>
 
                                         {/* Actions Column */}
- <TableCell className="text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                {user.approvalStatus === 'pending' && (
-                                                    <Button
-                                                        onClick={() => handleToggleAccess(user.id, true, user.name || 'User')}
-                                                        className="h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase transition-all shadow-sm shrink-0 border-none mr-1"
-                                                        disabled={updatingId === user.id}
-                                                    >
-                                                        Approve
-                                                    </Button>
-                                                )}
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="icon" 
-                                                                className="h-7 w-7 rounded-md hover:bg-amber-500/10 hover:text-amber-600 text-muted-foreground"
-                                                                onClick={() => handleResetPassword(user.id, user.name || 'User')}
-                                                                disabled={updatingId === user.id}
-                                                            >
-                                                                <Key className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent className="text-xs">Reset Password</TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                         <TableCell className="text-center">
+                                             <div className="flex items-center justify-center gap-2">
+                                                 {user.approvalStatus === 'pending' ? (
+                                                     <>
+                                                         <Button
+                                                             onClick={() => handleToggleAccess(user.id, true, user.name || 'User')}
+                                                             className="h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase transition-all shadow-sm shrink-0 border-none mr-1 animate-in fade-in duration-200"
+                                                             disabled={updatingId === user.id}
+                                                         >
+                                                             Approve
+                                                         </Button>
+                                                         <Button
+                                                             onClick={() => handleDeclineRequest(user.id, user.name || 'User')}
+                                                             className="h-7 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold uppercase transition-all shadow-sm shrink-0 border-none mr-1 animate-in fade-in duration-200"
+                                                             disabled={updatingId === user.id}
+                                                         >
+                                                             Decline
+                                                         </Button>
+                                                     </>
+                                                 ) : (
+                                                     <>
+                                                         <TooltipProvider>
+                                                             <Tooltip>
+                                                                 <TooltipTrigger asChild>
+                                                                     <Button 
+                                                                         variant="ghost" 
+                                                                         size="icon" 
+                                                                         className="h-7 w-7 rounded-md hover:bg-amber-500/10 hover:text-amber-600 text-muted-foreground"
+                                                                         onClick={() => handleResetPassword(user.id, user.name || 'User')}
+                                                                         disabled={updatingId === user.id}
+                                                                     >
+                                                                         <Key className="h-3.5 w-3.5" />
+                                                                     </Button>
+                                                                 </TooltipTrigger>
+                                                                 <TooltipContent className="text-xs">Reset Password</TooltipContent>
+                                                             </Tooltip>
+                                                         </TooltipProvider>
 
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <div className="flex items-center">
-                                                                <Switch
-                                                                    checked={user.isAuthorized}
-                                                                    onCheckedChange={(checked) => handleToggleAccess(user.id, checked, user.name || 'User')}
-                                                                    className="scale-[0.8]"
-                                                                    disabled={updatingId === user.id}
-                                                                />
-                                                            </div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent className="text-xs">
-                                                            {user.isAuthorized ? 'Access Enabled' : 'Access Disabled'}
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            </div>
-                                        </TableCell>
+                                                         <TooltipProvider>
+                                                             <Tooltip>
+                                                                 <TooltipTrigger asChild>
+                                                                     <div className="flex items-center">
+                                                                         <Switch
+                                                                             checked={user.isAuthorized}
+                                                                             onCheckedChange={(checked) => handleToggleAccess(user.id, checked, user.name || 'User')}
+                                                                             className="scale-[0.8]"
+                                                                             disabled={updatingId === user.id}
+                                                                         />
+                                                                     </div>
+                                                                 </TooltipTrigger>
+                                                                 <TooltipContent className="text-xs">
+                                                                     {user.isAuthorized ? 'Access Enabled' : 'Access Disabled'}
+                                                                 </TooltipContent>
+                                                             </Tooltip>
+                                                         </TooltipProvider>
+
+                                                         <TooltipProvider>
+                                                             <Tooltip>
+                                                                 <TooltipTrigger asChild>
+                                                                     <Button 
+                                                                         variant="ghost" 
+                                                                         size="icon" 
+                                                                         className="h-7 w-7 rounded-md hover:bg-rose-500/10 hover:text-rose-600 text-muted-foreground"
+                                                                         onClick={() => handleRemoveUser(user.id, user.name || 'User')}
+                                                                         disabled={updatingId === user.id || user.id === currentUser?.uid}
+                                                                     >
+                                                                         <UserMinus className="h-3.5 w-3.5" />
+                                                                     </Button>
+                                                                 </TooltipTrigger>
+                                                                 <TooltipContent className="text-xs">
+                                                                     {user.id === currentUser?.uid ? 'Cannot Remove Yourself' : 'Remove from Org'}
+                                                                 </TooltipContent>
+                                                             </Tooltip>
+                                                         </TooltipProvider>
+                                                     </>
+                                                 )}
+                                             </div>
+                                         </TableCell>
                                     </TableRow>
                                     );
                                 })
@@ -492,6 +585,6 @@ export default function UsersClient() {
                 />
             )}
         </div>
-    </div>
+    </PageContainerFluid>
   );
 }

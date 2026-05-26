@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
+import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, TemplateStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from '../../../messaging/templates/components/template-gallery';
 import { TemplateWorkshop } from '../../../messaging/templates/components/template-workshop';
@@ -23,17 +23,25 @@ import { Loader2, Trash2, Plus, Zap, Database, ShieldCheck } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { seedGlobalMessagingBlueprint } from '@/lib/seed-messaging-blueprint';
+import { useTerminology } from '@/hooks/use-terminology';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 export default function TemplatesClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user } = useUser();
+    const { singular } = useTerminology();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     
     const [isAdding, setIsAdding] = React.useState(false);
     const [editingTemplate, setEditingTemplate] = React.useState<MessageTemplate | null>(null);
     const [templateToDelete, setTemplateToDelete] = React.useState<MessageTemplate | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [isSeeding, setIsSeeding] = React.useState(false);
+
+    const editId = searchParams.get('edit');
 
     // Data Subscriptions - Filtered for GLOBAL scope
     const templatesQuery = useMemoFirebase(() => {
@@ -64,13 +72,98 @@ export default function TemplatesClient() {
     const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
 
+    React.useEffect(() => {
+        if (editId && templates) {
+            const tmpl = templates.find(t => t.id === editId);
+            if (tmpl) {
+                setEditingTemplate(tmpl);
+                setIsAdding(true);
+                // Clear the edit param so it doesn't reopen if cancelled
+                const params = new URLSearchParams(window.location.search);
+                params.delete('edit');
+                router.replace(`${window.location.pathname}?${params.toString()}`);
+            }
+        }
+    }, [editId, templates, router]);
+
     const variables = React.useMemo(() => {
         const contactVarDefs = generateContactVariableDefinitions('institution');
         const firestoreVars = firestoreVariables || [];
         const existingKeys = new Set(contactVarDefs.map(v => v.key));
-        const deduped = firestoreVars.filter(v => !existingKeys.has(v.key));
-        return [...contactVarDefs, ...deduped];
-    }, [firestoreVariables]);
+        const deduped = firestoreVars.filter(v => !existingKeys.has(v.key) && !v.key.startsWith('school_'));
+
+        // Dynamic terminology variables
+        const terminologyVars: VariableDefinition[] = [
+            {
+                id: 'branding_entity_name',
+                key: 'entity_name',
+                label: `${singular || 'Campus'} Name`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'name',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_email',
+                key: 'entity_email',
+                label: `${singular || 'Campus'} Email`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'email',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_phone',
+                key: 'entity_phone',
+                label: `${singular || 'Campus'} Phone`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'phone',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_location',
+                key: 'entity_location',
+                label: `${singular || 'Campus'} Location`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'locationString',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_initials',
+                key: 'entity_initials',
+                label: `${singular || 'Campus'} Initials`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'initials',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_package',
+                key: 'entity_package',
+                label: `${singular || 'Campus'} Package`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'subscriptionPackageName',
+                type: 'string',
+            }
+        ];
+
+        return [...contactVarDefs, ...terminologyVars, ...deduped];
+    }, [firestoreVariables, singular]);
 
     const handleEdit = (tmpl: MessageTemplate) => {
         setEditingTemplate(tmpl);
@@ -127,6 +220,20 @@ export default function TemplatesClient() {
         }
     };
 
+    const handleUpdateStatus = async (tmpl: MessageTemplate, newStatus: TemplateStatus) => {
+        if (!firestore) return;
+        try {
+            await updateDoc(doc(firestore, 'message_templates', tmpl.id), {
+                status: newStatus,
+                isActive: newStatus !== 'archived',
+                updatedAt: new Date().toISOString()
+            });
+            toast({ title: `Global Blueprint status updated to ${newStatus}` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed to update status', description: e.message });
+        }
+    };
+
     const handleSyncBlueprint = async () => {
         setIsSeeding(true);
         try {
@@ -161,7 +268,9 @@ export default function TemplatesClient() {
                         isSaving={false}
                     />
                 ) : (
-                    <div className="flex-1 overflow-y-auto text-left space-y-8">
+                    <div className="flex-1 overflow-y-auto text-left">
+                        <PageContainerFluid>
+                            <div className="space-y-8">
                         {/* Header */}
                         <div className="flex items-center justify-between flex-wrap gap-4">
                             <div className="space-y-1">
@@ -207,7 +316,10 @@ export default function TemplatesClient() {
                             onClone={() => {}}
                             onDelete={setTemplateToDelete as any}
                             onPreview={handleEdit}
+                            onUpdateStatus={handleUpdateStatus}
                         />
+                            </div>
+                        </PageContainerFluid>
                     </div>
                 )}
             </AnimatePresence>

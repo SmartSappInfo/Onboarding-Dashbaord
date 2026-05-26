@@ -40,14 +40,22 @@ function resolvePdfVariables(text: string, school?: School): string {
     
     const contactVars = getContactVariables({ entityContacts });
     
+    const termLower = ((school as any).terminology?.singular || 'Campus').toLowerCase();
+    
     return text.replace(/\{\{(.*?)\}\}/g, (match, key) => {
         const cleanKey = key.trim();
-        // Check static school fields first
-        switch (cleanKey) {
-            case 'school_name': return school.name || '';
-            case 'school_initials': return school.initials || '';
-            case 'school_location': return school.location || '';
+        
+        const isEntityKey = (k: string) => {
+            const prefixes = ['entity', 'campus', 'institution', 'company', 'hub', 'family', 'person', termLower];
+            return prefixes.some(p => k.startsWith(p + '_'));
+        };
+
+        if (isEntityKey(cleanKey)) {
+            if (cleanKey.endsWith('_name')) return school.name || '';
+            if (cleanKey.endsWith('_initials')) return school.initials || '';
+            if (cleanKey.endsWith('_location')) return school.location || '';
         }
+
         // Then check dynamic contact variables
         if (contactVars[cleanKey] !== undefined) {
             return contactVars[cleanKey];
@@ -213,9 +221,11 @@ export async function saveAgreementProgressAction(
         let contractDoc;
         if (contractQuery.empty) {
             const pdfSnap = await pdfRef.get();
+            const termLower = (pdfSnap.data()?.terminology?.singular || 'Campus').toLowerCase();
+            const entityName = formData.entity_name || formData[`${termLower}_name`] || 'Institution';
             contractDoc = await contractsCol.add({
                 entityId: entityId,
-                entityName: (formData.school_name || 'School'),
+                entityName,
                 pdfId,
                 pdfName: pdfSnap.data()?.name || 'Agreement',
                 status: 'partially_signed',
@@ -280,10 +290,13 @@ export async function finalizeAgreementAction(
         let contractRef;
         let submissionId;
 
+        const termLower = ((pdfData as any).terminology?.singular || 'Campus').toLowerCase();
+        const entityName = formData.entity_name || formData[`${termLower}_name`] || pdfData.entityName || 'Institution';
+
         if (contractQuery.empty) {
             const newContract = await contractsCol.add({
                 entityId: entityId,
-                entityName: (formData.school_name || pdfData.entityName || 'School'),
+                entityName,
                 pdfId,
                 pdfName: pdfData.name || 'Agreement',
                 status: 'signed',
@@ -377,7 +390,7 @@ export async function finalizeAgreementAction(
                 variables: { 
                     ...formData, 
                     event_type: 'Agreement Executed', 
-                    school_name: contractData?.entityName || 'Institution',
+                    entity_name: contractData?.entityName || 'Institution',
                     submission_id: submissionId
                 },
                 channel: pdfData.adminAlertChannel

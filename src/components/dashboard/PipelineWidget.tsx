@@ -75,12 +75,12 @@ export function PipelineWidget({
         {/* Summary stats */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold tabular-nums">{totalCount}</span>
-            <span className="text-[10px] font-semibold text-muted-foreground">
+            <span className="text-2xl font-semibold tabular-nums">{totalCount}</span>
+            <span className="text-[10px] font-medium text-muted-foreground">
               {totalCount === 1 ? terminology.singular : terminology.plural}
             </span>
           </div>
-          <Badge variant="secondary" className="text-[8px] font-bold uppercase px-2 h-5">
+          <Badge variant="secondary" className="text-[8px] font-medium px-2 h-5">
             {stages.length} Stages
           </Badge>
         </div>
@@ -102,8 +102,8 @@ export function PipelineWidget({
                   <span className="text-xs font-medium text-foreground truncate">{stage.name}</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-[10px] font-bold text-muted-foreground tabular-nums">{pct}%</span>
-                  <span className="text-xs font-bold tabular-nums">{stage.count}</span>
+                  <span className="text-[10px] font-medium text-muted-foreground tabular-nums">{pct}%</span>
+                  <span className="text-xs font-medium tabular-nums">{stage.count}</span>
                 </div>
               </div>
             );
@@ -111,7 +111,7 @@ export function PipelineWidget({
         </div>
 
         {/* Link to pipeline */}
-        <Button asChild variant="ghost" size="sm" className="w-full h-8 rounded-xl text-[10px] font-bold text-primary hover:bg-primary/5 mt-2 gap-2">
+        <Button asChild variant="ghost" size="sm" className="w-full h-8 rounded-xl text-[10px] font-medium text-primary hover:bg-primary/5 mt-2 gap-2">
           <Link href="/admin/pipeline">
             View Pipeline <ArrowRight className="h-3 w-3" />
           </Link>

@@ -304,4 +304,33 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     recipientType: 'internal_alert',
     supportedChannels: ['email', 'push'],
   },
+
+  // ── Users ─────────────────────────────────────────────────────────────────
+  {
+    id: 'user_invitation',
+    name: 'User Invitation',
+    description: 'Sent to a new team member when they are invited to join.',
+    category: 'users',
+    target: 'internal_team',
+    recipientType: 'internal_alert',
+    supportedChannels: ['email', 'sms'],
+  },
+  {
+    id: 'user_password_reset',
+    name: 'User Password Reset',
+    description: 'Sent when an administrator resets a user\'s password.',
+    category: 'users',
+    target: 'internal_team',
+    recipientType: 'internal_alert',
+    supportedChannels: ['email', 'sms'],
+  },
+  {
+    id: 'user_access_cancellation',
+    name: 'Access Cancellation',
+    description: 'Sent when a user\'s access to the workspace is revoked.',
+    category: 'users',
+    target: 'internal_team',
+    recipientType: 'internal_alert',
+    supportedChannels: ['email', 'sms'],
+  },
 ];

@@ -23,6 +23,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AuthorizationLoader from './components/authorization-loader';
+import { enforceSuperAdminProfileAction } from '@/app/actions/onboarding-actions';
 import NotificationBell from './components/NotificationBell';
 import NotificationCenter from './components/NotificationCenter';
 import UnifiedOrgWorkspaceSwitcher from './components/UnifiedOrgWorkspaceSwitcher';
@@ -94,16 +95,17 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           // Allow access if doc exists (isAuthorized may not be set on all accounts)
           if (docSnap.exists()) {
             const data = docSnap.data();
+            const isSuperAdminUser = data.permissions?.includes('system_admin') || false;
 
-            // 1. Check if user has completed their profile setup
-            if (data.profileCompleted === false || !data.profileCompleted) {
+            // 1. Check if user has completed their profile setup (Bypassed for Superadmins)
+            if (!isSuperAdminUser && (data.profileCompleted === false || !data.profileCompleted)) {
               setLoaderStatus('success');
               router.push('/profile-setup');
               return;
             }
 
-            // 2. Check authorization
-            if (data.isAuthorized === false) {
+            // 2. Check authorization (Bypassed for Superadmins)
+            if (!isSuperAdminUser && data.isAuthorized === false) {
               if (data.approvalStatus === 'pending') {
                 setLoaderStatus('success');
                 router.push('/awaiting-approval');
@@ -135,7 +137,16 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             const timer = setTimeout(() => setIsReady(true), 600);
             return () => clearTimeout(timer);
           } else {
-            // User doc doesn't exist yet - redirect to profile setup wizard
+            // User doc doesn't exist yet - check if this user is a superadmin first before redirecting to onboarding
+            if (user.email) {
+              const checkSuper = await enforceSuperAdminProfileAction(user.uid, user.email, user.displayName || '');
+              if (checkSuper.success && checkSuper.isSuperAdmin) {
+                // Re-fetch document or reload page to let them in
+                window.location.reload();
+                return;
+              }
+            }
+
             setLoaderStatus('success');
             router.push('/profile-setup');
           }
@@ -149,7 +160,8 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
         });
     } else if (!isUserLoading) {
         setLoaderStatus('failed');
-        setTimeout(() => router.push('/login'), 500);
+        setIsReady(false);
+        router.push('/login');
     }
   }, [isUserLoading, user, mounted, firestore, auth, router, toast]);
 

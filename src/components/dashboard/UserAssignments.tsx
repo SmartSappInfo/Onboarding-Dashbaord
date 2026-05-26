@@ -60,7 +60,7 @@ export function UserAssignments({
                                 <Users className="h-6 w-6 text-primary" />
                             </div>
                             <div>
-                                <p className="text-3xl font-bold">{totalSchools}</p>
+                                <p className="text-3xl font-semibold">{totalSchools}</p>
                                 <p className="text-sm text-muted-foreground">Total {terminology.plural}</p>
                             </div>
                         </div>
@@ -69,7 +69,7 @@ export function UserAssignments({
                                 <User className="h-6 w-6 text-green-500" />
                             </div>
                             <div>
-                                <p className="text-3xl font-bold">{totalStudents.toLocaleString()}</p>
+                                <p className="text-3xl font-semibold">{totalStudents.toLocaleString()}</p>
                                 <p className="text-sm text-muted-foreground">Total Students</p>
                             </div>
                         </div>
@@ -87,7 +87,7 @@ export function UserAssignments({
                                             </Avatar>
                                             <span className="text-sm font-medium">{item.user.name?.split(' ')[0]}</span>
                                         </div>
-                                        <span className="text-sm font-semibold text-muted-foreground">
+                                        <span className="text-sm font-medium text-muted-foreground">
                                             {item.totalAssigned} / {totalSchools} {item.totalAssigned === 1 ? terminology.singular.toLowerCase() : terminology.plural.toLowerCase()} ({item.percentage.toFixed(0)}%)
                                         </span>
                                     </div>
@@ -114,8 +114,8 @@ export function UserAssignments({
                                 <Users className="h-5 w-5 text-primary" />
                             </div>
                             <div className="space-y-0.5">
-                                <p className="text-2xl font-black tracking-tight">{totalSchools}</p>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Total {terminology.plural}</p>
+                                <p className="text-2xl font-semibold tracking-tight">{totalSchools}</p>
+                                <p className="text-[10px] font-medium text-muted-foreground tracking-wider opacity-60">Total {terminology.plural}</p>
                             </div>
                         </div>
                         <div className="h-8 w-px bg-border/40" />
@@ -124,8 +124,8 @@ export function UserAssignments({
                                 <User className="h-5 w-5 text-emerald-500" />
                             </div>
                             <div className="space-y-0.5">
-                                <p className="text-2xl font-black tracking-tight">{totalStudents.toLocaleString()}</p>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Cumulative Nominal Roll</p>
+                                <p className="text-2xl font-semibold tracking-tight">{totalStudents.toLocaleString()}</p>
+                                <p className="text-[10px] font-medium text-muted-foreground tracking-wider opacity-60">Cumulative Nominal Roll</p>
                             </div>
                         </div>
                     </div>
@@ -145,13 +145,13 @@ export function UserAssignments({
                                             <div className="flex items-center gap-1.5">
                                                 <Avatar className="h-5 w-5 rounded-md border border-background shadow-sm ring-1 ring-primary/5">
                                                     <AvatarImage src={item.user.photoURL} alt={item.user.name} />
-                                                    <AvatarFallback className="text-[8px] font-bold bg-primary/5 text-primary">{getInitials(item.user.name)}</AvatarFallback>
+                                                    <AvatarFallback className="text-[8px] font-medium bg-primary/5 text-primary">{getInitials(item.user.name)}</AvatarFallback>
                                                 </Avatar>
-                                                <span className="text-[10px] font-black uppercase tracking-tight text-foreground truncate max-w-[50px]">
+                                                <span className="text-[10px] font-medium tracking-tight text-foreground truncate max-w-[50px]">
                                                     {getFirstName(item.user.name)}
                                                 </span>
                                             </div>
-                                            <div className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest mt-0.5 ml-6">
+                                            <div className="text-[9px] font-medium text-muted-foreground/60 tracking-wider mt-0.5 ml-6">
                                                 {item.percentage.toFixed(0)}%
                                             </div>
                                         </div>
@@ -165,12 +165,12 @@ export function UserAssignments({
 
                                         {/* Statistics Below */}
                                         <div className="mt-3 flex flex-col items-start">
-                                            <div className="text-xs font-black tracking-tighter text-foreground whitespace-nowrap">
-                                                {item.totalAssigned} <span className="text-[8px] font-bold text-muted-foreground uppercase ml-0.5 opacity-60">
+                                            <div className="text-xs font-semibold tracking-tighter text-foreground whitespace-nowrap">
+                                                {item.totalAssigned} <span className="text-[8px] font-medium text-muted-foreground ml-0.5 opacity-60">
                                                     {item.totalAssigned === 1 ? terminology.singular : terminology.plural}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-500/80 uppercase tracking-tighter">
+                                            <div className="flex items-center gap-1 text-[9px] font-medium text-emerald-500/80 tracking-tighter">
                                                 {item.totalStudents.toLocaleString()} <span className="opacity-60">Students</span>
                                             </div>
                                         </div>
@@ -181,7 +181,7 @@ export function UserAssignments({
                     ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center gap-3 opacity-20 border-2 border-dashed rounded-[2.5rem] bg-muted/10">
                             <Users className="h-10 w-10" />
-                            <p className="text-[10px] font-black uppercase tracking-widest">No assigned operations</p>
+                            <p className="text-[10px] font-medium tracking-wider">No Assigned Operations</p>
                         </div>
                     )}
                 </div>

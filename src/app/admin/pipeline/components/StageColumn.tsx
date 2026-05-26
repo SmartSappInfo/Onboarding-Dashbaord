@@ -19,13 +19,14 @@ interface StageColumnProps {
     deals: Deal[];
     isOverlay?: boolean;
     customWidth?: number;
+    tasksByDealId?: Record<string, { total: number; completed: number; hasOverdue: boolean }>;
 }
 
 /**
  * @fileOverview High-fidelity Kanban Column.
  * Powered by deals collection for modern transactional tracking.
  */
-export default function StageColumn({ stage, deals, isOverlay, customWidth = 320 }: StageColumnProps) {
+export default function StageColumn({ stage, deals, isOverlay, customWidth = 320, tasksByDealId }: StageColumnProps) {
     const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
     const {
         attributes,
@@ -102,7 +103,7 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                             <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0 overflow-hidden">
                                 {deals.map(deal => (
                                     <div key={deal.id} className="w-full min-w-0">
-                                        <DealCard deal={deal} />
+                                        <DealCard deal={deal} taskStats={tasksByDealId?.[deal.id]} />
                                     </div>
                                 ))}
                             </div>

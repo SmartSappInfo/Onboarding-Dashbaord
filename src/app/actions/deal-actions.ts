@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { Deal, WorkspaceEntity } from '@/lib/types';
+import type { Deal, WorkspaceEntity, DealContact } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
 
 export type AssignmentStrategy = 'direct' | 'round-robin' | 'value-based' | 'unassigned';
@@ -190,7 +190,11 @@ export async function updateDealValueAction(dealId: string, value: number): Prom
     }
 }
 
-export async function updateDealStatusAction(dealId: string, status: 'open' | 'won' | 'lost'): Promise<{ success: boolean; error?: string }> {
+export async function updateDealStatusAction(
+    dealId: string, 
+    status: 'open' | 'won' | 'lost',
+    lostReason?: string
+): Promise<{ success: boolean; error?: string }> {
     try {
         const dealRef = adminDb.collection('deals').doc(dealId);
         const dealSnap = await dealRef.get();
@@ -198,11 +202,15 @@ export async function updateDealStatusAction(dealId: string, status: 'open' | 'w
         const deal = dealSnap.data() as Deal;
 
         const oldStatus = deal.status || 'open';
-        if (oldStatus === status) return { success: true };
+        const finalLostReason = status === 'lost' ? (lostReason || 'Not Specified') : null;
+        if (oldStatus === status && (status !== 'lost' || deal.lostReason === finalLostReason)) {
+            return { success: true };
+        }
 
         const timestamp = new Date().toISOString();
         await dealRef.update({
             status,
+            lostReason: finalLostReason,
             updatedAt: timestamp
         });
 
@@ -213,8 +221,17 @@ export async function updateDealStatusAction(dealId: string, status: 'open' | 'w
             workspaceId: deal.workspaceId,
             type: 'deal_status_changed',
             source: 'system',
-            description: `marked deal "${deal.name}" as ${status.toUpperCase()}`,
-            metadata: { dealId, fromStatus: oldStatus, toStatus: status }
+            description: status === 'lost'
+                ? `marked deal "${deal.name}" as CLOSED LOST: ${finalLostReason}`
+                : `marked deal "${deal.name}" as ${status.toUpperCase()}`,
+            metadata: { 
+                dealId, 
+                fromStatus: oldStatus, 
+                toStatus: status, 
+                value: deal.value || 0,
+                pipelineId: deal.pipelineId,
+                lostReason: finalLostReason
+            }
         });
 
         return { success: true };
@@ -302,6 +319,103 @@ export async function updateDealDetailsAction(
         return { success: true };
     } catch (e: any) {
         console.error('Failed to update deal details:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function addDealContactAction(
+    dealId: string, 
+    entityId: string, 
+    role: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const dealRef = adminDb.collection('deals').doc(dealId);
+        const dealSnap = await dealRef.get();
+        if (!dealSnap.exists) throw new Error('Deal not found');
+        const deal = dealSnap.data() as Deal;
+
+        // Resolve contact name and email
+        const entitySnap = await adminDb.collection('workspace_entities')
+            .doc(`${deal.workspaceId}_${entityId}`).get();
+        if (!entitySnap.exists) throw new Error('Contact entity not found in this workspace');
+        const entity = entitySnap.data() as WorkspaceEntity;
+
+        const currentContacts = deal.contacts || [];
+        if (currentContacts.some(c => c.entityId === entityId)) {
+            throw new Error('Contact already associated with this deal');
+        }
+
+        const newContact: DealContact = {
+            entityId,
+            role,
+            name: entity.displayName || entity.entityName || 'Unknown',
+            email: entity.primaryEmail || ''
+        };
+
+        const updatedContacts = [...currentContacts, newContact];
+        const timestamp = new Date().toISOString();
+
+        await dealRef.update({
+            contacts: updatedContacts,
+            updatedAt: timestamp
+        });
+
+        await logActivity({
+            organizationId: deal.organizationId,
+            entityId: deal.entityId,
+            userId: null,
+            workspaceId: deal.workspaceId,
+            type: 'deal_updated',
+            source: 'system',
+            description: `associated contact "${newContact.name}" to deal "${deal.name}" as ${role}`,
+            metadata: { dealId, entityId, role, contactName: newContact.name }
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        console.error('Failed to add deal contact:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function removeDealContactAction(
+    dealId: string, 
+    entityId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const dealRef = adminDb.collection('deals').doc(dealId);
+        const dealSnap = await dealRef.get();
+        if (!dealSnap.exists) throw new Error('Deal not found');
+        const deal = dealSnap.data() as Deal;
+
+        const currentContacts = deal.contacts || [];
+        const contactToRemove = currentContacts.find(c => c.entityId === entityId);
+        if (!contactToRemove) {
+            return { success: true }; // Already removed
+        }
+
+        const updatedContacts = currentContacts.filter(c => c.entityId !== entityId);
+        const timestamp = new Date().toISOString();
+
+        await dealRef.update({
+            contacts: updatedContacts,
+            updatedAt: timestamp
+        });
+
+        await logActivity({
+            organizationId: deal.organizationId,
+            entityId: deal.entityId,
+            userId: null,
+            workspaceId: deal.workspaceId,
+            type: 'deal_updated',
+            source: 'system',
+            description: `removed contact association "${contactToRemove.name || entityId}" from deal "${deal.name}"`,
+            metadata: { dealId, entityId }
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        console.error('Failed to remove deal contact:', e);
         return { success: false, error: e.message };
     }
 }

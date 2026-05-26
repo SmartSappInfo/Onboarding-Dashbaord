@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 /**
  * ActivitiesClient - Audit Timeline Registry
@@ -86,7 +87,8 @@ export default function ActivitiesClient() {
 
     return (
         <div className="h-full overflow-y-auto w-full">
-            <div className="space-y-8 pb-32 w-full">
+            <PageContainerFluid>
+                <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex flex-col items-start">
                         <h1 className="text-3xl font-bold text-foreground">
@@ -196,6 +198,7 @@ export default function ActivitiesClient() {
                     />
                 </div>
                 </div>
+            </PageContainerFluid>
         </div>
     );
 }

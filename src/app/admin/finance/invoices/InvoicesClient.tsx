@@ -64,6 +64,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 /**
  * InvoicesClient - Invoice Registry UI
@@ -191,6 +192,7 @@ export default function InvoicesClient() {
     const isLoading = isLoadingInvoices || isLoadingEntities || isLoadingFilter;
 
     return (
+        <PageContainerFluid>
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -337,5 +339,6 @@ export default function InvoicesClient() {
             </Dialog>
             </div>
         </div>
+        </PageContainerFluid>
     );
 }

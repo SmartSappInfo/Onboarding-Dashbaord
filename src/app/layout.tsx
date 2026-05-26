@@ -48,7 +48,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true} disableTransitionOnChange>
           <FirebaseClientProvider>
             <GtmProvider />
             {children}

@@ -9,6 +9,7 @@ import { useUser } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { createTaskAction } from "@/lib/task-server-actions";
 import TaskEditor from "@/app/admin/tasks/components/TaskEditor";
+import { PageContainerFluid } from "@/components/ui/page-container";
 
 interface DashboardClientWrapperProps {
     activeWorkspaceId: string;
@@ -55,29 +56,31 @@ export function DashboardClientWrapper({
     };
 
     return (
-        <div className="space-y-10">
-            <DashboardHeader 
-                activeWorkspaceId={activeWorkspaceId}
-                activeWorkspace={activeWorkspace}
-                canManageDashboard={canManageDashboard}
-                terminology={terminology}
-                onOpenCustomizer={() => setIsCustomizerOpen(true)}
-                onOpenTaskEditor={() => setIsTaskEditorOpen(true)}
-            />
+        <PageContainerFluid>
+            <div className="space-y-10">
+                <DashboardHeader 
+                    activeWorkspaceId={activeWorkspaceId}
+                    activeWorkspace={activeWorkspace}
+                    canManageDashboard={canManageDashboard}
+                    terminology={terminology}
+                    onOpenCustomizer={() => setIsCustomizerOpen(true)}
+                    onOpenTaskEditor={() => setIsTaskEditorOpen(true)}
+                />
 
-            <DashboardGrid 
-                widgets={widgets}
-                pipelines={pipelines}
-                isCustomizerOpen={isCustomizerOpen}
-                onCustomizerChange={setIsCustomizerOpen}
-            />
+                <DashboardGrid 
+                    widgets={widgets}
+                    pipelines={pipelines}
+                    isCustomizerOpen={isCustomizerOpen}
+                    onCustomizerChange={setIsCustomizerOpen}
+                />
 
-            <TaskEditor
-                open={isTaskEditorOpen}
-                onOpenChange={setIsTaskEditorOpen}
-                onSave={handleSaveTask}
-                isSaving={isSavingTask}
-            />
-        </div>
+                <TaskEditor
+                    open={isTaskEditorOpen}
+                    onOpenChange={setIsTaskEditorOpen}
+                    onSave={handleSaveTask}
+                    isSaving={isSavingTask}
+                />
+            </div>
+        </PageContainerFluid>
     );
 }

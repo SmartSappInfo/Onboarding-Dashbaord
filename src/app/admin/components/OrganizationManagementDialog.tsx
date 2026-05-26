@@ -18,7 +18,8 @@ import {
     Phone,
     MapPin,
     Eye,
-    EyeOff
+    EyeOff,
+    Briefcase
 } from 'lucide-react';
 import { getCountries } from 'libphonenumber-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,8 +33,8 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction, deleteOrganizationAction } from '@/lib/organization-actions';
-import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import MediaSelectorTrigger from './MediaSelectorTrigger';
 
 // ── IANA Timezone List (hoisted per server-hoist-static-io, advanced-init-once) ──
@@ -80,6 +81,12 @@ export default function OrganizationManagementDialog({
     const [phone, setPhone] = React.useState('');
     const [address, setAddress] = React.useState('');
     
+    // Aesthetic Branding Customizations
+    const [unsubscribeCopy, setUnsubscribeCopy] = React.useState('');
+    const [brandPrimaryColor, setBrandPrimaryColor] = React.useState('#3B5FFF');
+    const [brandSecondaryColor, setBrandSecondaryColor] = React.useState('#8B5CF6');
+    const [brandFontFamily, setBrandFontFamily] = React.useState('Figtree');
+
     // AI Keys
     const [aiKeyMode, setAiKeyMode] = React.useState<'platform' | 'custom'>('platform');
     const [geminiApiKey, setGeminiApiKey] = React.useState('');
@@ -98,6 +105,40 @@ export default function OrganizationManagementDialog({
     const [defaultLanguage, setDefaultLanguage] = React.useState('en');
     const [defaultCountryCode, setDefaultCountryCode] = React.useState('GH');
 
+    // Departments Config
+    const [departments, setDepartments] = React.useState<string[]>(['General']);
+    const [newDept, setNewDept] = React.useState('');
+
+    const handleAddDepartment = () => {
+        const cleanDept = newDept.trim();
+        if (!cleanDept) return;
+
+        if (cleanDept.length > 50) {
+            toast({
+                variant: 'destructive',
+                title: 'Department Name Too Long',
+                description: 'Department name must be 50 characters or less.'
+            });
+            return;
+        }
+
+        if (departments.some(d => d.toLowerCase() === cleanDept.toLowerCase())) {
+            toast({
+                variant: 'destructive',
+                title: 'Duplicate Department',
+                description: `"${cleanDept}" already exists in the departments list.`
+            });
+            return;
+        }
+
+        setDepartments([...departments, cleanDept]);
+        setNewDept('');
+    };
+
+    const handleRemoveDepartment = (deptToRemove: string) => {
+        setDepartments(departments.filter(d => d !== deptToRemove));
+    };
+
     React.useEffect(() => {
         if (organization) {
             setName(organization.name);
@@ -112,12 +153,19 @@ export default function OrganizationManagementDialog({
             setDefaultLanguage(organization.settings?.defaultLanguage || 'en');
             setDefaultCountryCode(organization.defaultCountryCode || 'GH');
             
+            // Aesthetic customizations
+            setUnsubscribeCopy(organization.unsubscribeCopy || '');
+            setBrandPrimaryColor(organization.brandPrimaryColor || '#3B5FFF');
+            setBrandSecondaryColor(organization.brandSecondaryColor || '#8B5CF6');
+            setBrandFontFamily(organization.brandFontFamily || 'Figtree');
+
             setAiKeyMode(organization.aiKeyMode || 'platform');
             setGeminiApiKey(organization.geminiApiKey || '');
             setOpenRouterApiKey(organization.openRouterApiKey || '');
             setOpenaiApiKey(organization.openaiApiKey || '');
             setClaudeApiKey(organization.claudeApiKey || '');
             setDefaultRoleId(organization.defaultRoleId || '');
+            setDepartments(organization.departments && organization.departments.length > 0 ? organization.departments : ['General']);
         } else {
             // Reset for new organization
             setName('');
@@ -132,6 +180,14 @@ export default function OrganizationManagementDialog({
             setDefaultLanguage('en');
             setDefaultCountryCode('GH');
             setDefaultRoleId('');
+            setDepartments(['General']);
+            setNewDept('');
+
+            // Reset aesthetic customizations
+            setUnsubscribeCopy('');
+            setBrandPrimaryColor('#3B5FFF');
+            setBrandSecondaryColor('#8B5CF6');
+            setBrandFontFamily('Figtree');
 
             setAiKeyMode('platform');
             setGeminiApiKey('');
@@ -179,6 +235,11 @@ export default function OrganizationManagementDialog({
                 },
                 defaultCountryCode,
                 defaultRoleId,
+                departments: departments.length > 0 ? departments : ['General'],
+                unsubscribeCopy: unsubscribeCopy.trim(),
+                brandPrimaryColor: brandPrimaryColor.trim(),
+                brandSecondaryColor: brandSecondaryColor.trim(),
+                brandFontFamily: brandFontFamily.trim(),
                 aiKeyMode,
                 geminiApiKey: geminiApiKey.trim(),
                 openRouterApiKey: openRouterApiKey.trim(),
@@ -407,6 +468,157 @@ export default function OrganizationManagementDialog({
                                             ))}
                                         </select>
                                         <p className="text-[9px] text-muted-foreground ml-1 font-bold">This role will be pre-selected in the invitation modal.</p>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Onboarding Departments */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                                            <Briefcase className="h-3.5 w-3.5" /> Onboarding Departments
+                                        </h4>
+                                        <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                                            Custom per Org
+                                        </span>
+                                    </div>
+                                    
+                                    <p className="text-[11px] text-muted-foreground ml-1">
+                                        Define the departments available for selection during team member onboarding. If no departments are defined, it will default to <strong>General</strong>.
+                                    </p>
+
+                                    <div className="flex gap-2">
+                                        <Input
+                                            value={newDept}
+                                            onChange={e => setNewDept(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddDepartment();
+                                                }
+                                            }}
+                                            placeholder="Add new department (e.g. Engineering, Sales)..."
+                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 flex-1 animate-none"
+                                        />
+                                        <Button
+                                            type="button"
+                                            onClick={handleAddDepartment}
+                                            className="h-11 rounded-xl font-semibold bg-primary text-white hover:bg-primary/90 shrink-0 px-5"
+                                        >
+                                            <Plus className="h-4 w-4" /> Add
+                                        </Button>
+                                    </div>
+
+                                    {/* Badges container */}
+                                    <div className="flex flex-wrap gap-2 p-4 rounded-2xl bg-muted/10 border border-border/50 min-h-[60px]">
+                                        {departments.length === 0 ? (
+                                            <div className="text-[11px] text-muted-foreground italic flex items-center h-full w-full justify-center">
+                                                No departments configured. Will fall back to &quot;General&quot;.
+                                            </div>
+                                        ) : (
+                                            departments.map(dept => (
+                                                <Badge
+                                                    key={dept}
+                                                    variant="secondary"
+                                                    className="pl-3 pr-2 py-1 bg-muted/50 border border-border rounded-xl text-xs font-semibold flex items-center gap-1.5 group hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all"
+                                                >
+                                                    {dept}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveDepartment(dept)}
+                                                        className="w-4 h-4 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </Badge>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Brand Branding & Customization */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-primary">Brand Branding & Customization</h4>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                Primary Brand Color
+                                            </Label>
+                                            <div className="flex gap-2">
+                                                <Input 
+                                                    type="color" 
+                                                    value={brandPrimaryColor} 
+                                                    onChange={e => setBrandPrimaryColor(e.target.value)} 
+                                                    className="w-12 h-11 p-1 bg-muted/20 border-none cursor-pointer rounded-xl" 
+                                                />
+                                                <Input 
+                                                    value={brandPrimaryColor} 
+                                                    onChange={e => setBrandPrimaryColor(e.target.value)} 
+                                                    placeholder="#3B5FFF" 
+                                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 flex-1" 
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                Secondary Brand Color
+                                            </Label>
+                                            <div className="flex gap-2">
+                                                <Input 
+                                                    type="color" 
+                                                    value={brandSecondaryColor} 
+                                                    onChange={e => setBrandSecondaryColor(e.target.value)} 
+                                                    className="w-12 h-11 p-1 bg-muted/20 border-none cursor-pointer rounded-xl" 
+                                                />
+                                                <Input 
+                                                    value={brandSecondaryColor} 
+                                                    onChange={e => setBrandSecondaryColor(e.target.value)} 
+                                                    placeholder="#8B5CF6" 
+                                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 flex-1" 
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                Brand Font Family
+                                            </Label>
+                                            <select 
+                                                value={brandFontFamily}
+                                                onChange={e => setBrandFontFamily(e.target.value)}
+                                                className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 text-sm"
+                                            >
+                                                <option value="Figtree">Figtree</option>
+                                                <option value="Inter">Inter</option>
+                                                <option value="Roboto">Roboto</option>
+                                                <option value="Outfit">Outfit</option>
+                                                <option value="Montserrat">Montserrat</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                            Unsubscribe Copy (Max 300 characters)
+                                        </Label>
+                                        <Textarea 
+                                            value={unsubscribeCopy} 
+                                            onChange={e => {
+                                                if (e.target.value.length <= 300) {
+                                                    setUnsubscribeCopy(e.target.value);
+                                                }
+                                            }} 
+                                            placeholder="e.g. You are receiving this because you signed up for our services. Click here to unsubscribe." 
+                                            className="min-h-[80px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium leading-relaxed" 
+                                        />
+                                        <div className="text-[9px] text-muted-foreground text-right font-bold">
+                                            {unsubscribeCopy.length}/300 characters
+                                        </div>
                                     </div>
                                 </div>
 

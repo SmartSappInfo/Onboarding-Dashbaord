@@ -94,7 +94,7 @@ const taskSchema = z.object({
         type: z.string(),
         createdAt: z.string()
     })).default([]),
-    relatedEntityType: z.enum(['SurveyResponse', 'Submission', 'Meeting', 'School']).optional().nullable(),
+    relatedEntityType: z.enum(['SurveyResponse', 'Submission', 'Meeting', 'School', 'Deal']).optional().nullable(),
     relatedParentId: z.string().optional().nullable(),
     relatedEntityId: z.string().optional().nullable(),
 });
@@ -121,33 +121,33 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
     const { singular, plural } = useTerminology();
     
     const usersQuery = useMemoFirebase(() => 
-        firestore && activeOrganizationId ? query(
+        open && firestore && activeOrganizationId ? query(
             collection(firestore, 'users'), 
             where('organizationId', '==', activeOrganizationId),
             where('isAuthorized', '==', true), 
             orderBy('name')
         ) : null, 
-    [firestore, activeOrganizationId]);
+    [open, firestore, activeOrganizationId]);
     
     // Updated to fetch from workspace_entities
     const entitiesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
+        if (!open || !firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'workspace_entities'), 
             where('workspaceId', '==', activeWorkspaceId), 
             orderBy('displayName', 'asc')
         );
-    }, [firestore, activeWorkspaceId]);
+    }, [open, firestore, activeWorkspaceId]);
 
     const surveysQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
+        if (!open || !firestore || !activeWorkspaceId) return null;
         return query(collection(firestore, 'surveys'), where('workspaceIds', 'array-contains', activeWorkspaceId), where('status', '==', 'published'));
-    }, [firestore, activeWorkspaceId]);
+    }, [open, firestore, activeWorkspaceId]);
 
     const pdfsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
+        if (!open || !firestore || !activeWorkspaceId) return null;
         return query(collection(firestore, 'pdfs'), where('workspaceIds', 'array-contains', activeWorkspaceId), where('status', '==', 'published'));
-    }, [firestore, activeWorkspaceId]);
+    }, [open, firestore, activeWorkspaceId]);
     
     const { data: users } = useCollection<UserProfile>(usersQuery);
     const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
@@ -186,14 +186,14 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
     const watchedParentId = useWatch({ control, name: 'relatedParentId' });
 
     const responsesQuery = useMemoFirebase(() => {
-        if (!firestore || watchedEntityType !== 'SurveyResponse' || !watchedParentId) return null;
+        if (!open || !firestore || watchedEntityType !== 'SurveyResponse' || !watchedParentId) return null;
         return query(collection(firestore, `surveys/${watchedParentId}/responses`), orderBy('submittedAt', 'desc'), limit(50));
-    }, [firestore, watchedEntityType, watchedParentId]);
+    }, [open, firestore, watchedEntityType, watchedParentId]);
 
     const submissionsQuery = useMemoFirebase(() => {
-        if (!firestore || watchedEntityType !== 'Submission' || !watchedParentId) return null;
+        if (!open || !firestore || watchedEntityType !== 'Submission' || !watchedParentId) return null;
         return query(collection(firestore, `pdfs/${watchedParentId}/submissions`), orderBy('submittedAt', 'desc'), limit(50));
-    }, [firestore, watchedEntityType, watchedParentId]);
+    }, [open, firestore, watchedEntityType, watchedParentId]);
 
     const { data: responses } = useCollection<SurveyResponse>(responsesQuery);
     const { data: submissions } = useCollection<Submission>(submissionsQuery);

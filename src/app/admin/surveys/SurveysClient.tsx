@@ -50,6 +50,7 @@ import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { PageContainer } from '@/components/ui/page-container';
 
 function SurveyResponseCount({ surveyId }: { surveyId: string }) {
     const firestore = useFirestore();
@@ -373,6 +374,7 @@ export default function SurveysClient() {
 
     return (
         <TooltipProvider>
+            <PageContainer>
             <div className="h-full overflow-y-auto w-full">
                 <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -531,6 +533,7 @@ export default function SurveysClient() {
         onSendMessage={handleSendMessageToAssignee}
         isLoading={loadingAssignees}
       />
+            </PageContainer>
     </TooltipProvider>
   );
 }

@@ -285,6 +285,26 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
     const msg = { id: doc.id, ...doc.data() } as ScheduledMessage;
 
     try {
+      const meetingId = msg.variables?.meetingId || (msg.sourceEventType === 'meeting' ? msg.sourceEventId : null);
+      if (meetingId && msg.recipientContact) {
+        const isEmail = msg.recipientContact.includes('@');
+        const regSnap = await adminDb
+          .collection('meetings')
+          .doc(meetingId)
+          .collection('registrants')
+          .where(isEmail ? 'email' : 'phone', '==', msg.recipientContact.toLowerCase().trim())
+          .limit(1)
+          .get();
+
+        if (!regSnap.empty) {
+          const regData = regSnap.docs[0].data();
+          if (regData.status === 'cancelled') {
+            await doc.ref.update({ status: 'cancelled', cancelledAt: new Date().toISOString() });
+            continue;
+          }
+        }
+      }
+
       const result = await sendMessage({
         templateId: msg.templateId,
         senderProfileId: 'default',

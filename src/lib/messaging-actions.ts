@@ -7,6 +7,8 @@ import { fetchSmsStatusAction } from './mnotify-actions';
 import { fetchEmailStatusAction } from './resend-actions';
 import { resolveContact } from './contact-adapter';
 import { getContactEmail, getContactPhone } from './migration-status-utils';
+import { buildMeetingBaseVariables, buildFacilitatorVariables } from './meeting-variable-helpers';
+import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
 
 /**
  * @fileOverview Server-side actions for the Variable Registry.
@@ -579,7 +581,55 @@ export async function previewCampaignAudience(params: {
       }
     }
 
-    // (Contact Roles filter logic removed; now handled dynamically in contactScope)
+    // JS Filtering for lifecycleStatus (if operator is any_of or is/is_not)
+    const lifecycleStatusFilters = filters.filter(f => f.field === 'lifecycleStatus');
+    for (const f of lifecycleStatusFilters) {
+      if (f.operator === 'any_of' && Array.isArray(f.value)) {
+        const valSet = new Set(f.value);
+        results = results.filter(c => c.data.lifecycleStatus && valSet.has(c.data.lifecycleStatus));
+      } else if (f.operator === 'is') {
+        results = results.filter(c => c.data.lifecycleStatus === f.value);
+      } else if (f.operator === 'is_not') {
+        results = results.filter(c => c.data.lifecycleStatus !== f.value);
+      }
+    }
+
+    // JS Filtering for interests (any_of)
+    const interestFilters = filters.filter(f => f.field === 'interests');
+    for (const f of interestFilters) {
+      if (f.operator === 'any_of' && Array.isArray(f.value)) {
+        const valSet = new Set(f.value);
+        results = results.filter(c => {
+          const entInterests = c.data.interests;
+          if (!entInterests || !Array.isArray(entInterests)) return false;
+          return entInterests.some((ei: any) => {
+            const identifier = typeof ei === 'string' ? ei : (ei?.id || ei?.name || '');
+            return valSet.has(identifier);
+          });
+        });
+      }
+    }
+
+    // JS Filtering for contactRoles (any_of)
+    const contactRolesFilters = filters.filter(f => f.field === 'contactRoles');
+    for (const f of contactRolesFilters) {
+      if (f.operator === 'any_of' && Array.isArray(f.value) && f.value.length > 0) {
+        results = results.filter(c => {
+          const sourceContacts = c.data.entityContacts || c.data.contacts || [];
+          if (sourceContacts.length === 0) {
+            return f.value.includes('primary');
+          }
+          return sourceContacts.some((sc: any) => {
+            return f.value.some((role: string) => {
+              if (role === 'primary') return !!sc.isPrimary;
+              if (role === 'signatories' || role === 'signatory') return !!sc.isSignatory;
+              const cleanRole = role.startsWith('role:') ? role.substring(5) : role;
+              return sc.typeKey === cleanRole;
+            });
+          });
+        });
+      }
+    }
 
     // ── CRM & Automation Filters (Tier 2 JS Filter via Pre-flight Queries) ─
 
@@ -712,6 +762,8 @@ export async function previewCampaignAudience(params: {
     let contactCount = 0;
     const isRoleBased = contactScope !== 'primary' && contactScope !== 'signatories' && contactScope !== 'all';
     const targetRole = isRoleBased && contactScope.startsWith('role:') ? contactScope.split(':')[1] : contactScope;
+    const contactRolesFilter = filters.find(f => f.field === 'contactRoles');
+    const contactRoles = contactRolesFilter ? contactRolesFilter.value as string[] : null;
 
     results.forEach(c => {
       const sourceContacts = c.data.entityContacts || c.data.contacts || [];
@@ -724,7 +776,17 @@ export async function previewCampaignAudience(params: {
         return false;
       };
 
-      if (isRoleBased) {
+      if (contactRoles && contactRoles.length > 0) {
+        const matched = sourceContacts.filter((sc: any) => {
+          return contactRoles.some((role: string) => {
+            if (role === 'primary') return !!sc.isPrimary;
+            if (role === 'signatories' || role === 'signatory') return !!sc.isSignatory;
+            const cleanRole = role.startsWith('role:') ? role.substring(5) : role;
+            return sc.typeKey === cleanRole;
+          });
+        });
+        contactCount += matched.filter((sc: any) => isValidForChannel(sc, c.data)).length;
+      } else if (isRoleBased) {
         // Only count contacts that have the specific role and valid channel data
         contactCount += sourceContacts.filter((sc: any) => sc.typeKey === targetRole && isValidForChannel(sc, c.data)).length;
       } else if (contactScope === 'primary') {
@@ -772,8 +834,9 @@ export async function resolveRecipientContacts(params: {
   contactScope: 'primary' | 'signatories' | 'all' | 'custom' | (string & {});
   channel: 'email' | 'sms';
   contactTypeFilter?: string[] | null; // e.g. ['father', 'mother', 'guardian']
+  contactRoles?: string[] | null;
 }): Promise<ResolvedRecipient[]> {
-  const { entityId, workspaceId = 'onboarding', contactScope, channel, contactTypeFilter } = params;
+  const { entityId, workspaceId = 'onboarding', contactScope, channel, contactTypeFilter, contactRoles } = params;
 
   try {
     const contact = await resolveContact(entityId, workspaceId);
@@ -790,6 +853,27 @@ export async function resolveRecipientContacts(params: {
         entityName
       })).filter(r => !!r.contact);
     };
+
+    if (contactRoles && contactRoles.length > 0) {
+      const matched = sourceContacts.filter((c: any) => {
+        return contactRoles.some(role => {
+          if (role === 'primary') return !!c.isPrimary;
+          if (role === 'signatories' || role === 'signatory') return !!c.isSignatory;
+          const cleanRole = role.startsWith('role:') ? role.substring(5) : role;
+          return c.typeKey === cleanRole;
+        });
+      });
+      if (matched.length > 0) {
+        return mapContacts(matched);
+      }
+      if (contactRoles.includes('primary')) {
+        const email = getContactEmail(contact);
+        const phone = getContactPhone(contact);
+        const val = channel === 'email' ? email : phone;
+        return val ? [{ contact: val, contactName: entityName, entityName }] : [];
+      }
+      return [];
+    }
 
     if (contactTypeFilter && contactTypeFilter.length > 0) {
       const typed = sourceContacts.filter((c: any) => contactTypeFilter.includes(c.typeKey));
@@ -854,3 +938,179 @@ export async function updateEntityLastContactedAt(entityId: string, workspaceId:
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Resolves all variables for simulation/preview exactly like the live messaging engine.
+ */
+export async function getSimulationVariablesAction(params: {
+  entityId?: string;
+  workspaceId?: string;
+  meetingId?: string;
+  surveyId?: string;
+  pdfId?: string;
+}): Promise<{ success: boolean; variables?: Record<string, any>; error?: string }> {
+  try {
+    const variables: Record<string, any> = {};
+    const resolvedWorkspaceId = params.workspaceId || 'onboarding';
+
+    // 1. System constants & branding defaults
+    variables.current_date = new Date().toLocaleDateString();
+    variables.current_time = new Date().toLocaleTimeString();
+    variables.current_year = new Date().getFullYear().toString();
+    variables.unsubscribe_link = 'https://onboarding.smartsapp.com/unsubscribe/sample';
+
+    // Fetch workspace name & branding
+    try {
+      const wsSnap = await adminDb.collection('workspaces').doc(resolvedWorkspaceId).get();
+      if (wsSnap.exists) {
+        variables.workspace_name = wsSnap.data()?.name || '';
+        const orgId = wsSnap.data()?.organizationId;
+        if (orgId) {
+          const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+          if (orgSnap.exists) {
+            const org = orgSnap.data() || {};
+            variables.org_name = org.name || '';
+            variables.org_logo_url = org.logoUrl || '';
+            variables.org_email = org.email || '';
+            variables.org_phone = org.phone || '';
+            variables.org_address = org.address || '';
+            variables.org_website = org.website || '';
+            variables.meeting_timezone = org.settings?.defaultTimezone || 'UTC';
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load branding info for simulation:', e);
+    }
+
+    // 2. Fetch workspace active custom fields defaults (app_fields)
+    try {
+      const fieldsSnap = await adminDb.collection('app_fields')
+        .where('workspaceId', '==', resolvedWorkspaceId)
+        .where('status', '==', 'active')
+        .get();
+
+      fieldsSnap.forEach(doc => {
+        const field = doc.data() as any;
+        if (field.defaultValue !== undefined) {
+          variables[field.variableName] = field.defaultValue;
+        }
+      });
+    } catch (e) {
+      console.error('Failed to load workspace custom fields for simulation:', e);
+    }
+
+    // 3. Resolve Entity/Contact Variables
+    if (params.entityId) {
+      const contact = await resolveContact(params.entityId, resolvedWorkspaceId);
+      if (contact) {
+        // Base variables
+        variables.school_name = contact.name;
+        variables.entity_name = contact.name;
+        variables.id = contact.id;
+        variables.initials = contact.initials || '';
+        variables.referee = contact.referee || '';
+        variables.location_string = contact.locationString || '';
+        variables.zone_name = contact.zoneName || '';
+
+        // Recipient variables (we simulate with primary contact)
+        const primary = contact.entityContacts?.find(c => c.isPrimary) || contact.entityContacts?.[0];
+        if (primary) {
+          variables.contact_name = primary.name || '';
+          variables.contact_email = primary.email || '';
+          variables.contact_phone = primary.phone || '';
+          
+          variables.recipient_name = primary.name || '';
+          variables.recipient_email = primary.email || '';
+          variables.recipient_phone = primary.phone || '';
+          variables.recipient_role = primary.typeLabel || '';
+          variables.recipient_first_name = (primary.name || '').split(' ')[0];
+        }
+
+        // Dynamic role/primary/signatory variables
+        const contactVars = getContactVariables({ entityContacts: contact.entityContacts || [] });
+        Object.assign(variables, contactVars);
+
+        // Tags
+        const tagVars = await resolveTagVariables(contact.id, 'school', resolvedWorkspaceId);
+        Object.assign(variables, tagVars);
+
+        // Agreement link
+        const contractSnap = await adminDb.collection('contracts').where('entityId', '==', contact.id).limit(1).get();
+        if (!contractSnap.empty) {
+          const contractData = contractSnap.docs[0].data();
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+          variables.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?entityId=${contact.id}`;
+          variables.contract_name = contractData.name || '';
+          variables.contract_status = contractData.status || '';
+        }
+
+        // Dynamic buckets
+        const buckets = [
+          contact.financeData,
+          contact.industryData,
+          contact.personData,
+          contact.familyData,
+          contact.customData
+        ];
+        buckets.forEach(bucket => {
+          if (bucket) {
+            Object.entries(bucket).forEach(([k, v]) => {
+              if (v !== undefined) {
+                variables[k] = v;
+              }
+            });
+          }
+        });
+      }
+    }
+
+    // 4. Resolve Meeting Variables
+    if (params.meetingId) {
+      const meetingSnap = await adminDb.collection('meetings').doc(params.meetingId).get();
+      if (meetingSnap.exists) {
+        const meeting = { id: meetingSnap.id, ...meetingSnap.data() } as any;
+        const meetingVars = buildMeetingBaseVariables(meeting, variables.meeting_timezone);
+        Object.assign(variables, meetingVars);
+
+        if (meeting.facilitators?.length) {
+          const facVars = buildFacilitatorVariables(meeting.facilitators[0]);
+          Object.assign(variables, facVars);
+        }
+      }
+    }
+
+    // 5. Resolve Survey Variables (latest response)
+    if (params.surveyId) {
+      const responsesSnap = await adminDb.collection('surveys').doc(params.surveyId).collection('responses').orderBy('submittedAt', 'desc').limit(1).get();
+      if (!responsesSnap.empty) {
+        const resData = responsesSnap.docs[0].data();
+        variables.survey_score = resData.score || 0;
+        variables.max_score = resData.maxScore || 100;
+        variables.outcome_label = resData.outcome || '';
+        
+        // Flatten answers
+        resData.answers?.forEach((a: any) => {
+          variables[a.questionId] = typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value);
+        });
+      }
+    }
+
+    // 6. Resolve PDF Form/Submission Variables (latest submission)
+    if (params.pdfId) {
+      const submissionsSnap = await adminDb.collection('pdfs').doc(params.pdfId).collection('submissions').orderBy('submittedAt', 'desc').limit(1).get();
+      if (!submissionsSnap.empty) {
+        const subData = submissionsSnap.docs[0].data();
+        Object.entries(subData.formData || {}).forEach(([k, v]) => {
+          variables[k] = String(v);
+        });
+      }
+    }
+
+    return { success: true, variables };
+  } catch (error: any) {
+    console.error('getSimulationVariablesAction error:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { Button } from './ui/button';
 import { Phone } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const Header = () => {
   return (
@@ -22,6 +23,7 @@ const Header = () => {
                 <span className="font-semibold text-white">+233 50 162 6873</span>
               </span>
             </a>
+            <ThemeToggle />
             <Button asChild>
               <a href="#download">Download App</a>
             </Button>

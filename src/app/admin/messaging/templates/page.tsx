@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
+import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, AppField } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
@@ -37,6 +37,9 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useTerminology } from '@/hooks/use-terminology';
+import { PageContainer } from '@/components/ui/page-container';
 
 /**
  * @fileOverview Messaging Templates Management Page.
@@ -48,8 +51,11 @@ export default function MessageTemplatesPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user } = useUser();
+    const { singular } = useTerminology();
     const { activeWorkspaceId } = useWorkspace();
     const { activeOrganizationId } = useTenant();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     
     // Global Navigation State
     const [isAdding, setIsAdding] = React.useState(false);
@@ -57,11 +63,6 @@ export default function MessageTemplatesPage() {
     const [cloningId, setCloningId] = React.useState<string | null>(null);
     const [templateToDelete, setTemplateToDelete] = React.useState<MessageTemplate | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
-
-    // AI Architect State
-    const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
-    const [aiPrompt, setAiPrompt] = React.useState('');
-    const [isAiProcessing, setIsAiProcessing] = React.useState(false);
 
     // Data Subscriptions - GLOBAL + WORKSPACE
     const templatesQuery = useMemoFirebase(() => {
@@ -73,6 +74,27 @@ export default function MessageTemplatesPage() {
     }, [firestore, activeWorkspaceId]);
 
     const { data: allTemplates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
+
+    const editId = searchParams.get('edit');
+
+    React.useEffect(() => {
+        if (editId && allTemplates) {
+            const tmpl = allTemplates.find(t => t.id === editId);
+            if (tmpl) {
+                setEditingTemplate(tmpl);
+                setIsAdding(true);
+                // Clear the edit param so it doesn't reopen if cancelled
+                const params = new URLSearchParams(window.location.search);
+                params.delete('edit');
+                router.replace(`${window.location.pathname}?${params.toString()}`);
+            }
+        }
+    }, [editId, allTemplates, router]);
+
+    // AI Architect State
+    const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
+    const [aiPrompt, setAiPrompt] = React.useState('');
+    const [isAiProcessing, setIsAiProcessing] = React.useState(false);
 
     // Filter and Deduplicate (Org > Global)
     const templates = React.useMemo(() => {
@@ -125,21 +147,134 @@ export default function MessageTemplatesPage() {
         return query(collection(firestore, 'pdfs'), where('status', '==', 'published'));
     }, [firestore]);
 
+    const appFieldsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'app_fields'),
+            where('workspaceId', '==', activeWorkspaceId),
+            where('status', '==', 'active')
+        );
+    }, [firestore, activeWorkspaceId]);
+
     const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
+    const { data: appFields } = useCollection<AppField>(appFieldsQuery);
 
     const variables = React.useMemo(() => {
         const contactVarDefs = generateContactVariableDefinitions('institution');
         const firestoreVars = firestoreVariables || [];
         // Deduplicate by key — dynamic defs take precedence for contact_* keys
         const existingKeys = new Set(contactVarDefs.map(v => v.key));
-        const deduped = firestoreVars.filter(v => !existingKeys.has(v.key));
-        return [...contactVarDefs, ...deduped];
-    }, [firestoreVariables]);
+        const deduped = firestoreVars.filter(v => !existingKeys.has(v.key) && !v.key.startsWith('school_'));
+
+        // Map workspace-specific active custom fields
+        const customFieldVars = (appFields || []).map(f => {
+            let category = 'custom';
+            let source = 'custom_fields';
+            let sourceName = 'Custom Fields';
+            let path = `customData.${f.variableName}`;
+
+            if (f.id.startsWith('survey_')) {
+                category = 'surveys';
+                source = 'surveys';
+                sourceName = 'Surveys';
+                path = f.variableName; // Survey responses are resolved directly
+            } else if (f.id.startsWith('pdf_')) {
+                category = 'forms';
+                source = 'forms';
+                sourceName = 'Forms';
+                path = f.variableName; // PDF fields are resolved directly
+            }
+
+            return {
+                id: f.id,
+                key: f.variableName,
+                label: f.label,
+                category,
+                source,
+                sourceName,
+                entity: 'Entity',
+                path,
+                type: f.type,
+            };
+        }).filter(f => !f.key.startsWith('school_'));
+
+        // Dynamic terminology variables
+        const terminologyVars: VariableDefinition[] = [
+            {
+                id: 'branding_entity_name',
+                key: 'entity_name',
+                label: `${singular || 'Campus'} Name`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'name',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_email',
+                key: 'entity_email',
+                label: `${singular || 'Campus'} Email`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'email',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_phone',
+                key: 'entity_phone',
+                label: `${singular || 'Campus'} Phone`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'phone',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_location',
+                key: 'entity_location',
+                label: `${singular || 'Campus'} Location`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'locationString',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_initials',
+                key: 'entity_initials',
+                label: `${singular || 'Campus'} Initials`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'initials',
+                type: 'string',
+            },
+            {
+                id: 'branding_entity_package',
+                key: 'entity_package',
+                label: `${singular || 'Campus'} Package`,
+                category: 'common',
+                source: 'branding',
+                sourceName: 'Branding & Constants',
+                entity: 'Entity',
+                path: 'subscriptionPackageName',
+                type: 'string',
+            }
+        ];
+
+        return [...contactVarDefs, ...terminologyVars, ...deduped, ...customFieldVars];
+    }, [firestoreVariables, appFields, singular]);
 
     const handleEdit = (tmpl: MessageTemplate) => {
         setEditingTemplate(tmpl);
@@ -281,6 +416,19 @@ export default function MessageTemplatesPage() {
         }
     };
 
+    const handleUpdateStatus = async (tmpl: MessageTemplate, status: any) => {
+        if (!firestore) return;
+        try {
+            await updateDoc(doc(firestore, 'message_templates', tmpl.id), {
+                status,
+                updatedAt: new Date().toISOString()
+            });
+            toast({ title: 'Template Status Updated', description: `Set to ${status}` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        }
+    };
+
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <AnimatePresence mode="wait">
@@ -300,7 +448,8 @@ export default function MessageTemplatesPage() {
                     />
                 ) : (
                     <div className="flex-1 overflow-y-auto text-left">
-                        <div className=" space-y-8 p-8">
+                        <PageContainer>
+                            <div className="space-y-8">
                             {/* Dashboard Header */}
                             <div className="flex items-center justify-between flex-wrap gap-6">
                                 <div className="space-y-1">
@@ -331,8 +480,10 @@ export default function MessageTemplatesPage() {
                                 onClone={handleClone}
                                 onDelete={setTemplateToDelete}
                                 onPreview={handleEdit}
+                                onUpdateStatus={handleUpdateStatus}
                             />
-                        </div>
+                            </div>
+                        </PageContainer>
                     </div>
                 )}
             </AnimatePresence>

@@ -40,6 +40,7 @@ import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { useTenant } from '@/context/TenantContext';
 import { SmartSappIcon } from '@/components/icons';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 export default function PortalsClient() {
     const firestore = useFirestore();
@@ -205,6 +206,7 @@ export default function PortalsClient() {
     );
 
     return (
+        <PageContainerFluid>
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-8 w-full">
                 
@@ -337,5 +339,6 @@ export default function PortalsClient() {
                 )}
             </div>
         </div>
+        </PageContainerFluid>
     );
 }

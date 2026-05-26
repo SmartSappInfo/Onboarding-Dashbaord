@@ -2,8 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
 import type { Survey, SurveyResponse, SurveySession } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -93,6 +94,7 @@ interface RepStats {
 export default function FieldTeamView({ survey, responses }: { survey: Survey; responses: SurveyResponse[] }) {
     const firestore = useFirestore();
     const router = useRouter();
+    const { activeOrganizationId } = useTenant();
 
     // Fetch sessions for this survey
     const sessionsQuery = useMemoFirebase(() => {
@@ -103,9 +105,14 @@ export default function FieldTeamView({ survey, responses }: { survey: Survey; r
 
     // Fetch team users
     const usersQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'users'), where('isAuthorized', '==', true));
-    }, [firestore]);
+        if (!firestore || !activeOrganizationId) return null;
+        return query(
+            collection(firestore, 'users'),
+            where('organizationId', '==', activeOrganizationId),
+            where('isAuthorized', '==', true),
+            orderBy('name', 'asc')
+        );
+    }, [firestore, activeOrganizationId]);
     const { data: users } = useCollection<any>(usersQuery);
 
     // ─── Compute per-representative stats ───

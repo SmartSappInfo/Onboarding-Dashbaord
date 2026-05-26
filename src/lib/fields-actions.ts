@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import type { AppField, FieldGroup, IndustryVertical, Workspace, UserProfile } from './types';
 import { INDUSTRY_FIELD_REGISTRY, PLATFORM_FIELD_GROUPS, resolveGroupIcon } from './industry-field-registry';
 import { STATIC_VARIABLES } from './template-variable-registry-data';
+import { listPlatformIndustryFieldGroups } from './backoffice/backoffice-field-actions';
 import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
 
@@ -300,6 +301,21 @@ export async function deleteFieldAction(id: string, userId: string) {
       return { success: false, error: 'Native fields cannot be deleted. You can deactivate them instead.' };
     }
 
+    // Query workspace forms to check if any form uses this field
+    const formsSnap = await adminDb.collection('forms')
+      .where('workspaceId', '==', field.workspaceId)
+      .get();
+    
+    const usingForms = formsSnap.docs.filter(doc => {
+      const f = doc.data();
+      return f.fields?.some((inst: any) => inst.appFieldId === id);
+    });
+
+    if (usingForms.length > 0) {
+      const titles = usingForms.map(doc => `"${doc.data().internalName || doc.data().title || 'Untitled Form'}"`).join(', ');
+      return { success: false, error: `This field is currently in use by the following form(s): ${titles}. Please remove it from these forms before deleting.` };
+    }
+
     await ref.delete();
     revalidatePath(REVALIDATION_PATH);
     return { success: true };
@@ -331,10 +347,11 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
     // Default to SchoolEnrollment if no industry is set to maintain backwards compatibility
     const industry: IndustryVertical = workspace.industry || 'SchoolEnrollment';
     
-    const industryConfig = INDUSTRY_FIELD_REGISTRY[industry];
-    if (!industryConfig) {
-      throw new Error(`No field registry configuration found for industry: ${industry}`);
+    const industryConfigRes = await listPlatformIndustryFieldGroups(industry);
+    if (!industryConfigRes.success || !industryConfigRes.data) {
+      throw new Error(`Failed to load industry field configuration: ${industryConfigRes.error || 'Unknown error'}`);
     }
+    const industryConfig = industryConfigRes.data;
 
     const now = new Date().toISOString();
     let seededGroups = 0;
@@ -348,7 +365,7 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
     const existingFieldVars = new Set(fieldsSnap.docs.map(d => (d.data() as AppField).variableName));
 
     // 3. Combine platform groups + industry groups
-    const allGroups: import('./industry-field-registry').IndustryGroupDef[] = [
+    const allGroups = [
       ...PLATFORM_FIELD_GROUPS,
       ...industryConfig,
     ];
@@ -358,12 +375,13 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
     let opsInBatch = 0;
 
     for (const groupDef of allGroups) {
+      const groupDocId = `group_${workspaceId}_${groupDef.slug}`;
+      const groupRef = adminDb.collection('field_groups').doc(groupDocId);
       let groupId = existingGroupSlugs.get(groupDef.slug);
       
-      // Create group if it doesn't exist
+      // Create/update group
       if (!groupId) {
-        const groupRef = adminDb.collection('field_groups').doc();
-        groupId = groupRef.id;
+        groupId = groupDocId;
         
         // Determine if this is a platform group or industry group
         const isPlatform = PLATFORM_FIELD_GROUPS.some(g => g.slug === groupDef.slug);
@@ -385,7 +403,7 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
           updatedAt: now,
         };
         
-        batch.set(groupRef, newGroup);
+        batch.set(groupRef, newGroup, { merge: true });
         existingGroupSlugs.set(groupDef.slug, groupId);
         seededGroups++;
         opsInBatch++;
@@ -394,11 +412,12 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
       // Process fields within this group
       for (const fieldDef of groupDef.fields) {
         if (!existingFieldVars.has(fieldDef.variableName)) {
-          const fieldRef = adminDb.collection('app_fields').doc();
+          const fieldDocId = `field_${workspaceId}_${fieldDef.variableName}`;
+          const fieldRef = adminDb.collection('app_fields').doc(fieldDocId);
           const isPlatform = PLATFORM_FIELD_GROUPS.some(g => g.slug === groupDef.slug);
           
           const newField: Record<string, any> = {
-            id: fieldRef.id,
+            id: fieldDocId,
             workspaceId,
             organizationId,
             name: fieldDef.name,
@@ -422,7 +441,7 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
           if (fieldDef.options !== undefined) newField.options = fieldDef.options;
           if (fieldDef.validationRules !== undefined) newField.validationRules = fieldDef.validationRules;
           
-          batch.set(fieldRef, newField);
+          batch.set(fieldRef, newField, { merge: true });
           existingFieldVars.add(fieldDef.variableName);
           seededFields++;
           opsInBatch++;
@@ -447,7 +466,6 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
     console.error('>>> [FIELDS] Seed Failed:', error.message);
     return { success: false, error: error.message };
   }
-
 }
 
 /**
@@ -498,30 +516,69 @@ export async function getWorkspaceVariablesAction(workspaceId: string): Promise<
   error?: string;
 }> {
   try {
-    // 1. Fetch dynamic fields
+    // 1. Fetch workspace enabled features
+    const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+    const enabledFeatures = wsSnap.exists ? (wsSnap.data()?.enabledFeatures || {}) : {};
+
+    // 2. Fetch active dynamic fields
     const fieldsSnap = await adminDb
       .collection('app_fields')
       .where('workspaceId', '==', workspaceId)
       .where('status', '==', 'active')
       .get();
 
-    const dynamicVars = fieldsSnap.docs.map(doc => {
-      const field = doc.data() as AppField;
-      return {
-        id: field.id,
-        name: field.variableName,
-        label: field.label,
-        description: field.helpText || `Dynamic ${field.industryOrigin || ''} field`,
-        dataType: mapFieldToVariableType(field.type),
-        context: 'common',
-        exampleValue: field.defaultValue,
-        isDynamic: true,
-        isComputed: false,
-      };
+    const sectionToFeatureMap: Record<string, string> = {
+      meetings: 'meetings',
+      surveys: 'surveys',
+      forms: 'forms',
+      agreements: 'agreements',
+    };
+
+    const dynamicVars = fieldsSnap.docs
+      .map(doc => {
+        const field = doc.data() as AppField;
+        return {
+          id: field.id,
+          name: field.variableName,
+          label: field.label,
+          description: field.helpText || `Dynamic ${field.industryOrigin || ''} field`,
+          dataType: mapFieldToVariableType(field.type),
+          context: 'common',
+          exampleValue: field.defaultValue,
+          isDynamic: true,
+          isComputed: false,
+          section: field.section,
+        };
+      })
+      .filter(v => {
+        if (v.section) {
+          const featureId = sectionToFeatureMap[v.section];
+          if (featureId && enabledFeatures[featureId] === false) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+    // 3. Filter Static Variables based on workspace features
+    const contextToFeatureMap: Record<string, string> = {
+      meeting: 'meetings',
+      survey: 'surveys',
+      form: 'forms',
+      agreement: 'agreements',
+      users: 'users',
+    };
+
+    const filteredStaticVariables = STATIC_VARIABLES.filter(v => {
+      const featureId = contextToFeatureMap[v.context];
+      if (featureId && enabledFeatures[featureId] === false) {
+        return false;
+      }
+      return true;
     });
 
-    // 2. Combine with Static Variables
-    const allVariables = [...STATIC_VARIABLES, ...dynamicVars];
+    // 4. Combine static & dynamic
+    const allVariables = [...filteredStaticVariables, ...dynamicVars];
 
     return { success: true, variables: allVariables };
   } catch (error: any) {
@@ -544,5 +601,131 @@ function mapFieldToVariableType(fieldType: string): string {
     case 'yes_no':
     case 'checkbox': return 'boolean';
     default: return 'string';
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Workspace Auto-Initialization Seeding Actions
+// ─────────────────────────────────────────────────
+
+export async function listIndustryPredefinedGroupsAction(industry: IndustryVertical): Promise<{
+  success: boolean;
+  data?: any[];
+  error?: string;
+}> {
+  try {
+    return await listPlatformIndustryFieldGroups(industry);
+  } catch (error: any) {
+    console.error('>>> [FIELDS] listIndustryPredefinedGroupsAction failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function installPredefinedIndustryGroupsAction(
+  workspaceId: string,
+  organizationId: string,
+  groupSlugs: string[],
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 0. Permission check
+    const permission = await canUser(userId, 'management', 'fields', 'create', workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
+
+    // 1. Get workspace industry
+    const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+    if (!wsSnap.exists) {
+      return { success: false, error: 'Workspace not found' };
+    }
+    const workspace = wsSnap.data();
+    const industry: IndustryVertical = workspace?.industry || 'SchoolEnrollment';
+
+    // 2. Fetch predefined groups for this industry
+    const groupsSnap = await adminDb
+      .collection('platform_industry_field_groups')
+      .where('industry', '==', industry)
+      .get();
+
+    const groupsToInstall = groupsSnap.docs
+      .map(d => d.data())
+      .filter(g => groupSlugs.includes(g.slug));
+
+    if (groupsToInstall.length === 0) {
+      return { success: false, error: 'No matching predefined groups selected' };
+    }
+
+    const now = new Date().toISOString();
+    const batch = adminDb.batch();
+
+    // 3. Batch insert selected groups and fields
+    for (const group of groupsToInstall) {
+      const groupDocId = `group_${workspaceId}_${group.slug}`;
+      const groupRef = adminDb.collection('field_groups').doc(groupDocId);
+
+      const groupPayload: Record<string, any> = {
+        id: groupDocId,
+        workspaceId,
+        organizationId,
+        name: group.name,
+        slug: group.slug,
+        description: group.description || '',
+        icon: resolveGroupIcon(group.name),
+        color: '#3b82f6', // default industry fields color (blue)
+        entityTypes: group.entityTypes,
+        industry: industry,
+        isSystem: false,
+        order: group.order,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      batch.set(groupRef, groupPayload, { merge: true });
+
+      // Add fields inside the group
+      if (group.fields && Array.isArray(group.fields)) {
+        for (const field of group.fields) {
+          const fieldDocId = `field_${workspaceId}_${field.variableName}`;
+          const fieldRef = adminDb.collection('app_fields').doc(fieldDocId);
+
+          const fieldPayload: Record<string, any> = {
+            id: fieldDocId,
+            workspaceId,
+            organizationId,
+            name: field.name,
+            label: field.name,
+            variableName: field.variableName,
+            type: field.type,
+            groupId: groupDocId,
+            section: group.slug,
+            industryOrigin: industry,
+            isNative: false,
+            compatibilityScope: field.compatibilityScope,
+            status: 'active',
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          // Sanitize undefined fields to prevent Firestore serialization failure
+          if (field.helpText !== undefined) fieldPayload.helpText = field.helpText;
+          if (field.placeholder !== undefined) fieldPayload.placeholder = field.placeholder;
+          if (field.defaultValue !== undefined) fieldPayload.defaultValue = field.defaultValue;
+          if (field.options !== undefined) fieldPayload.options = field.options;
+          if (field.validationRules !== undefined) fieldPayload.validationRules = field.validationRules;
+
+          batch.set(fieldRef, fieldPayload, { merge: true });
+        }
+      }
+    }
+
+    await batch.commit();
+
+    const REVALIDATION_PATH = '/admin/settings/fields';
+    revalidatePath(REVALIDATION_PATH);
+    return { success: true };
+  } catch (error: any) {
+    console.error('>>> [FIELDS] installPredefinedIndustryGroupsAction failed:', error.message);
+    return { success: false, error: error.message };
   }
 }

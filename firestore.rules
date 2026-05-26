@@ -107,8 +107,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isSystemAdmin());
-      allow list: if isSignedIn() && (isSystemAdmin() || (isAuthorized() && request.query.filters.organizationId == getUserData().organizationId));
+      allow get: if isSignedIn() && (isSystemAdmin() || isAuthorized());
+      allow list: if isSignedIn() && (isSystemAdmin() || isAuthorized());
       allow update: if isSignedIn() && isSystemAdmin();
       allow create: if isSignedIn() && request.auth.uid == userId; 
     }
@@ -239,7 +239,7 @@ service cloud.firestore {
 
     match /subscription_packages/{pkgId} {
       allow get: if (isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds))) || resource.data.isActive == true;
-      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds)) || request.query.filters.isActive == true;
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds)) || resource.data.isActive == true;
       allow write: if isAuthorized() && isSystemAdmin();
     }
 
@@ -390,7 +390,22 @@ service cloud.firestore {
     match /message_styles/{sId} {
       // Allow read for all authorized users - workspace filtering happens in queries
       allow read: if isAuthorized();
-      allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
+      allow write: if isAuthorized() && (
+        isSystemAdmin() ||
+        (
+          request.method != 'delete' &&
+          (!request.resource.data.keys().hasAll(['scope']) || request.resource.data.scope != 'global') &&
+          (resource == null || !resource.data.keys().hasAll(['scope']) || resource.data.scope != 'global') &&
+          hasPermission('studios_edit') &&
+          canAccessWorkspace(request.resource.data.workspaceIds)
+        ) ||
+        (
+          request.method == 'delete' &&
+          (!resource.data.keys().hasAll(['scope']) || resource.data.scope != 'global') &&
+          hasPermission('studios_edit') &&
+          canAccessWorkspace(resource.data.workspaceIds)
+        )
+      );
     }
 
     match /automations/{aId} {

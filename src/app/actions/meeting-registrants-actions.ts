@@ -143,3 +143,195 @@ export async function adminRegisterParticipantAction(
     return { success: false, error: error.message };
   }
 }
+
+export async function sendMeetingInvitationsAction(
+  meetingId: string,
+  workspaceId: string,
+  recipients: { entityId: string; name: string; email?: string; phone?: string }[],
+  channels: ('email' | 'sms')[],
+  emailTemplateId?: string,
+  smsTemplateId?: string,
+  scheduleTime?: string
+) {
+  try {
+    const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
+    if (!meetingSnap.exists) {
+      throw new Error('Meeting not found');
+    }
+    const meeting = meetingSnap.data()!;
+
+    const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+    const typeSlug = meeting.type?.id || 'meeting';
+    const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingId;
+    const now = new Date().toISOString();
+
+    const isScheduled = !!scheduleTime && new Date(scheduleTime) > new Date();
+
+    const results = await Promise.allSettled(
+      recipients.map(async (rec) => {
+        let registrantId: string | null = null;
+        let token = '';
+        let personalizedMeetingUrl = '';
+
+        const existingQuery = await registrantsRef
+          .where('entityId', '==', rec.entityId)
+          .limit(1)
+          .get();
+
+        if (!existingQuery.empty) {
+          const existingDoc = existingQuery.docs[0];
+          registrantId = existingDoc.id;
+          token = existingDoc.data().token;
+          personalizedMeetingUrl = existingDoc.data().personalizedMeetingUrl;
+        } else {
+          token = generateRegistrantToken();
+          personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+
+          const docRef = await registrantsRef.add({
+            meetingId,
+            workspaceIds: meeting.workspaceIds || [workspaceId],
+            entityId: rec.entityId,
+            token,
+            status: 'pending',
+            name: rec.name,
+            email: rec.email?.toLowerCase().trim() || '',
+            phone: rec.phone || '',
+            registeredAt: now,
+            personalizedMeetingUrl,
+          });
+          registrantId = docRef.id;
+        }
+
+        const rsvpGoingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=going`;
+        const rsvpDeclinedUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=not_going`;
+        const rsvpLaterUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=later`;
+
+        for (const channel of channels) {
+          const contactDetail = channel === 'email' ? rec.email : rec.phone;
+          if (!contactDetail) continue;
+
+          if (isScheduled) {
+            const scheduledRef = adminDb.collection('scheduled_messages').doc();
+            await scheduledRef.set({
+              organizationId: meeting.organizationId || 'default',
+              workspaceId,
+              templateId: channel === 'email' ? emailTemplateId : smsTemplateId,
+              channel,
+              recipientContact: contactDetail,
+              recipientEntityId: rec.entityId,
+              variables: {
+                meetingId,
+                rsvpGoingUrl,
+                rsvpDeclinedUrl,
+                rsvpLaterUrl,
+                meeting_title: meeting.heroTitle || meeting.entityName || 'Meeting',
+                meeting_time: new Date(meeting.meetingTime).toLocaleString(),
+                recipient_name: rec.name,
+              },
+              scheduledAt: scheduleTime,
+              status: 'pending',
+              reminderType: 'meeting_invitation',
+              sourceEventId: meetingId,
+              sourceEventType: 'meeting',
+              retryCount: 0,
+              createdAt: now,
+            });
+          } else {
+            const subject = `Invitation: ${meeting.heroTitle || 'Meeting Session'}`;
+            let body = '';
+
+            if (channel === 'email') {
+              body = `
+<div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+  <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; margin-top: 0;">You're Invited!</h2>
+  <p style="font-size: 14px; color: #475569; line-height: 1.6;">Hello ${rec.name},</p>
+  <p style="font-size: 14px; color: #475569; line-height: 1.6;">You are cordially invited to the upcoming session: <strong>${meeting.heroTitle || 'Meeting Session'}</strong>.</p>
+  
+  <div style="margin: 24px 0; padding: 16px; background-color: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9;">
+    <p style="font-size: 13px; margin: 0 0 8px 0; color: #64748b;"><strong>Date & Time:</strong> ${new Date(meeting.meetingTime).toLocaleString()}</p>
+    <p style="font-size: 13px; margin: 0; color: #64748b;"><strong>Platform:</strong> SmartSapp Portal</p>
+  </div>
+
+  <p style="font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 12px;">Please RSVP by clicking one of the options below:</p>
+  
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px;">
+    <a href="${rsvpGoingUrl}" style="background-color: #10b981; color: #ffffff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 700; display: inline-block;">Going</a>
+    <a href="${rsvpDeclinedUrl}" style="background-color: #ef4444; color: #ffffff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 700; display: inline-block;">Not Going</a>
+    <a href="${rsvpLaterUrl}" style="background-color: #f59e0b; color: #ffffff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 700; display: inline-block;">Decide Later</a>
+  </div>
+
+  <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+  <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">Sent via SmartSapp Onboarding. All rights reserved.</p>
+</div>
+              `;
+            } else {
+              body = `Invitation: ${meeting.heroTitle || 'Meeting'}\nTime: ${new Date(meeting.meetingTime).toLocaleString()}\nRSVP:\nGoing: ${rsvpGoingUrl}\nNo: ${rsvpDeclinedUrl}`;
+            }
+
+            const res = await sendRawMessage({
+              channel,
+              recipient: contactDetail,
+              subject: channel === 'email' ? subject : undefined,
+              body,
+              workspaceIds: [workspaceId],
+            });
+
+            if (!res.success) {
+              throw new Error(res.error || 'Failed to dispatch message.');
+            }
+          }
+        }
+
+        await registrantsRef.doc(registrantId).update({
+          lastInviteSentAt: new Date().toISOString(),
+        });
+
+        return { registrantId, success: true };
+      })
+    );
+
+    const successes = results.filter((r) => r.status === 'fulfilled').length;
+    const failures = results.filter((r) => r.status === 'rejected').length;
+
+    return {
+      success: failures === 0,
+      message: isScheduled
+        ? `Scheduled ${successes} invitations successfully for ${new Date(scheduleTime!).toLocaleString()}. ${failures > 0 ? `${failures} failed.` : ''}`
+        : `Dispatched ${successes} invitations immediately. ${failures > 0 ? `${failures} failed.` : ''}`,
+    };
+  } catch (error: any) {
+    console.error('[sendMeetingInvitationsAction]', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function submitRsvpResponseAction(
+  meetingId: string,
+  token: string,
+  responseStatus: 'going' | 'not_going' | 'later'
+) {
+  try {
+    const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
+    const qSnap = await registrantsRef.where('token', '==', token).limit(1).get();
+
+    if (qSnap.empty) {
+      throw new Error('Invalid registrant token.');
+    }
+
+    const regDoc = qSnap.docs[0];
+    const targetStatus = responseStatus === 'going' ? 'approved' : responseStatus === 'not_going' ? 'cancelled' : 'pending';
+
+    await regDoc.ref.update({
+      rsvpStatus: responseStatus,
+      status: targetStatus,
+      rsvpUpdatedAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[submitRsvpResponseAction]', error);
+    return { success: false, error: error.message };
+  }
+}
+

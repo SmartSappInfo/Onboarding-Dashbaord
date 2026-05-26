@@ -75,14 +75,14 @@ export function RecentActivity({
                     );
                 })
             ) : (
-                <p className="text-muted-foreground text-[10px] font-bold uppercase text-center pt-20 tracking-widest opacity-30">
-                  No recent movements detected
+                <p className="text-muted-foreground text-[10px] font-medium text-center pt-20 tracking-wider opacity-30">
+                  No Recent Movements Detected
                 </p>
             )}
         </div>
       </ScrollArea>
       <div className="flex justify-start pt-6">
-        <Button variant="outline" asChild className="rounded-xl font-bold h-10 border-primary/10 hover:bg-primary/5 hover:text-primary transition-all group">
+        <Button variant="outline" asChild className="rounded-xl font-medium h-10 border-primary/10 hover:bg-primary/5 hover:text-primary transition-all group">
           <Link href="/admin/activities" className="flex items-center">
             Operational History <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>

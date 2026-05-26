@@ -62,23 +62,39 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return effectivePermissions?.includes(perm) || effectivePermissions?.includes('system_admin' as any) || false;
   }, [profile, activeWorkspaceId]);
 
-  // 2. Fetch Organizations
+  // 2. Fetch Organizations (Superadmins list all, regular users fetch their own org doc)
   const orgsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    // Super Admins see everything. Others only see their assigned org via rules.
+    if (!firestore || !user || isProfileLoading || !isSuperAdmin) return null;
     return query(collection(firestore, 'organizations'), orderBy('name', 'asc'));
-  }, [firestore]);
-  const { data: organizations, isLoading: isOrgsLoading } = useCollection<Organization>(orgsQuery);
+  }, [firestore, user, isProfileLoading, isSuperAdmin]);
+  const { data: allOrgs, isLoading: isAllOrgsLoading } = useCollection<Organization>(orgsQuery);
 
-  // 3. Fetch all Workspaces belonging to the active Organization
+  const orgDocRef = useMemoFirebase(() => {
+    if (!firestore || !user || isProfileLoading || isSuperAdmin || !profile?.organizationId) return null;
+    return doc(firestore, 'organizations', profile.organizationId);
+  }, [firestore, user, isProfileLoading, isSuperAdmin, profile?.organizationId]);
+  const { data: singleOrg, isLoading: isSingleOrgLoading } = useDoc<Organization>(orgDocRef);
+
+  const organizations = React.useMemo(() => {
+    if (isSuperAdmin) {
+      return allOrgs || [];
+    } else if (singleOrg) {
+      return [singleOrg];
+    }
+    return [];
+  }, [isSuperAdmin, allOrgs, singleOrg]);
+
+  const isOrgsLoading = isSuperAdmin ? isAllOrgsLoading : isSingleOrgLoading;
+
+  // 3. Fetch all Workspaces belonging to the active Organization (Bypassed if unauthorized)
   const workspacesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeOrganizationId) return null;
+    if (!firestore || !activeOrganizationId || !user || !profile || !profile.isAuthorized) return null;
     return query(
         collection(firestore, 'workspaces'), 
         where('organizationId', '==', activeOrganizationId),
         orderBy('name', 'asc')
     );
-  }, [firestore, activeOrganizationId]);
+  }, [firestore, activeOrganizationId, user, profile]);
   const { data: orgWorkspaces, isLoading: isWorkspacesLoading } = useCollection<Workspace>(workspacesQuery);
 
   // 4. Initial Context Synchronization

@@ -28,6 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PageContainer } from '@/components/ui/page-container';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog,
@@ -169,7 +170,8 @@ export default function ScheduledMessagesPage() {
 
     return (
         <div className="h-full overflow-y-auto">
-            <div className="max-w-6xl mx-auto">
+            <PageContainer maxWidth="6xl">
+                <div className="space-y-8">
                 <div className="mb-8 flex justify-end">
                     <Button variant="outline" onClick={loadSms} disabled={isLoading} className="rounded-xl font-bold h-10 gap-2 shadow-sm border-primary/20 hover:bg-primary/5">
                         <RefreshCw className={cn("h-4 w-4 text-primary", isLoading && "animate-spin")} />
@@ -337,6 +339,7 @@ export default function ScheduledMessagesPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            </PageContainer>
         </div>
     );
 }

@@ -38,6 +38,9 @@ interface SmartTemplateDropdownProps {
     className?: string;
 }
 
+// Simple global cache to prevent duplicate fetches across concurrent dropdown selectors
+const dropdownCache: Record<string, Promise<MessageTemplate[]>> = {};
+
 /**
  * PHASE 4: UI Integration (No-Bloat Dropdown)
  * A context-aware template selector that only shows relevant blueprints.
@@ -65,16 +68,23 @@ export function SmartTemplateDropdown({
         }
     };
 
-    const fetchTemplates = React.useCallback(async () => {
+    const fetchTemplates = React.useCallback(async (bypassCache = false) => {
+        const cacheKey = `${category}_${recipientType}_${channel}_${activeWorkspaceId || ''}_${activeOrganizationId || ''}`;
         setIsLoading(true);
         try {
-            const result = await getFilteredTemplatesAction({
-                category,
-                recipientType,
-                channel,
-                workspaceId: activeWorkspaceId || undefined,
-                organizationId: activeOrganizationId || undefined
-            });
+            let promise = dropdownCache[cacheKey];
+            if (!promise || bypassCache) {
+                promise = getFilteredTemplatesAction({
+                    category,
+                    recipientType,
+                    channel,
+                    workspaceId: activeWorkspaceId || undefined,
+                    organizationId: activeOrganizationId || undefined
+                });
+                dropdownCache[cacheKey] = promise;
+            }
+
+            const result = await promise;
             // Apply optional client-side templateType prefix filter (rerender-derived-state)
             const filtered = templateTypePrefix
                 ? result.filter(t => t.templateType?.startsWith(templateTypePrefix))
@@ -102,23 +112,27 @@ export function SmartTemplateDropdown({
         }
     }, [value]);
 
+    // Fetch templates when filters change (never when selection value changes)
     React.useEffect(() => {
-        fetchTemplates().then(filtered => {
-            if (filtered && filtered.length > 0 && !value && !hasAutoSelectedRef.current) {
-                hasAutoSelectedRef.current = true;
-                const defaultTemplate = filtered[0];
-                handleValueChange(defaultTemplate.id);
-            }
-        });
-    }, [fetchTemplates, value]);
+        fetchTemplates();
+    }, [fetchTemplates]);
 
-    // Phase 4: Auto-refetch if a value is provided but not found in the current list
+    // Auto-select first template if no value is set, only after templates are fetched
+    React.useEffect(() => {
+        if (templates.length > 0 && !value && !hasAutoSelectedRef.current) {
+            hasAutoSelectedRef.current = true;
+            const defaultTemplate = templates[0];
+            handleValueChange(defaultTemplate.id);
+        }
+    }, [templates, value]);
+
+    // Phase 4: Auto-refetch if a value is provided but not found in the current list (e.g. newly created custom template)
     const refetchAttemptedForValue = React.useRef<string | null>(null);
     React.useEffect(() => {
         if (value && templates.length > 0 && !templates.some(t => t.id === value)) {
             if (refetchAttemptedForValue.current !== value) {
                 refetchAttemptedForValue.current = value;
-                fetchTemplates();
+                fetchTemplates(true); // Bypass cache to get newly created templates
             }
         }
     }, [value, templates, fetchTemplates]);

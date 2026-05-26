@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import ComposerWizard from './components/ComposerWizard';
 import type { TemplateCategory } from '@/lib/types';
 
+import { PageContainer } from '@/components/ui/page-container';
+
 export default function MessageComposerPage() {
     const searchParams = useSearchParams();
     
@@ -37,10 +39,10 @@ export default function MessageComposerPage() {
     }, [searchParams]);
 
     return (
-        <div className="h-full overflow-y-auto ">
-            <div className="max-w-5xl mx-auto">
+        <div className="h-full overflow-y-auto">
+            <PageContainer maxWidth="5xl">
                 <ComposerWizard composerContext={composerContext} />
-            </div>
+            </PageContainer>
         </div>
     );
 }

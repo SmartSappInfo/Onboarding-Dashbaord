@@ -454,7 +454,6 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
     entityTypes: ['institution', 'person', 'family'],
     order: 55,
     fields: [
-      { name: 'School Name', variableName: 'school_name', type: 'short_text', compatibilityScope: ['institution', 'common'], helpText: 'Alias for entity name (backward-compatible)' },
       { name: 'First Name', variableName: 'first_name', type: 'short_text', compatibilityScope: ['person', 'common'], helpText: 'First name of the contact (derived from contact_name)' },
       { name: 'Link', variableName: 'link', type: 'url', compatibilityScope: ['common'], helpText: 'Generic action link for the message' },
       { name: 'ID', variableName: 'id', type: 'short_text', compatibilityScope: ['common'], helpText: 'Entity identifier' },

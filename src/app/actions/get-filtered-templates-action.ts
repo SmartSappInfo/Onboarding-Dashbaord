@@ -26,29 +26,30 @@ export async function getFilteredTemplatesAction(filters: FilterOptions): Promis
     const { category, recipientType, channel, workspaceId, organizationId } = filters;
 
     try {
-        // 1. Fetch relevant Global Templates
-        const globalSnap = await adminDb.collection('message_templates')
-            .where('scope', '==', 'global')
-            .where('category', '==', category)
-            .where('recipientType', '==', recipientType)
-            .where('channel', '==', channel)
-            .where('status', '==', 'active')
-            .get();
+        // Run both global template search and organization overrides concurrently to reduce latency
+        const [globalSnap, overrideSnap] = await Promise.all([
+            adminDb.collection('message_templates')
+                .where('scope', '==', 'global')
+                .where('category', '==', category)
+                .where('recipientType', '==', recipientType)
+                .where('channel', '==', channel)
+                .where('status', '==', 'active')
+                .get(),
+            workspaceId || organizationId
+                ? adminDb.collection('message_templates')
+                    .where('category', '==', category)
+                    .where('recipientType', '==', recipientType)
+                    .where('channel', '==', channel)
+                    .where('status', '==', 'active')
+                    .get()
+                : Promise.resolve(null)
+        ]);
 
         const globalTemplates = globalSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MessageTemplate));
 
         // 2. Fetch relevant Organization/Workspace Overrides
         let overrides: MessageTemplate[] = [];
-        if (workspaceId || organizationId) {
-            let overrideQuery = adminDb.collection('message_templates')
-                .where('category', '==', category)
-                .where('recipientType', '==', recipientType)
-                .where('channel', '==', channel)
-                .where('status', '==', 'active');
-
-            // Firebase doesn't support complex OR filters easily here without extra setup
-            // We'll fetch and filter in-memory for precision
-            const overrideSnap = await overrideQuery.get();
+        if (overrideSnap) {
             overrides = overrideSnap.docs
                 .map(doc => ({ id: doc.id, ...doc.data() } as MessageTemplate))
                 .filter(t => t.scope === 'organization' && (

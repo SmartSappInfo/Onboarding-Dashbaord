@@ -80,8 +80,9 @@ import {
   updateOrgTemplate,
   revertToGlobal,
   listTemplates,
-  approveTemplate,
-  rejectTemplate,
+  activateTemplate,
+  archiveTemplate,
+  unarchiveTemplate,
 } from '../template-actions';
 import type { MessageTemplate } from '../types';
 
@@ -392,54 +393,58 @@ describe('template-actions', () => {
   });
 
   // -------------------------------------------------------------------------
-  // approveTemplate
+  // activateTemplate
   // -------------------------------------------------------------------------
 
-  describe('approveTemplate', () => {
+  describe('activateTemplate', () => {
     it('throws when template does not exist', async () => {
-      await expect(approveTemplate('missing', 'user-1')).rejects.toThrow('not found');
+      await expect(activateTemplate('missing', 'user-1')).rejects.toThrow('not found');
     });
 
-    it('throws when template is already approved', async () => {
-      seedDoc('message_templates', 'tpl-1', baseTemplate({ status: 'approved' }));
+    it('sets status to active and isActive to true', async () => {
+      seedDoc('message_templates', 'tpl-1', baseTemplate({ status: 'draft', isActive: false }));
 
-      await expect(approveTemplate('tpl-1', 'user-1')).rejects.toThrow('Cannot approve');
-    });
-
-    it('sets status to approved and isActive to true', async () => {
-      seedDoc('message_templates', 'tpl-1', baseTemplate({ status: 'pending_approval' }));
-
-      await approveTemplate('tpl-1', 'user-1');
+      await activateTemplate('tpl-1', 'user-1');
 
       const updated = mockDocs['message_templates/tpl-1'];
-      expect(updated?.status).toBe('approved');
+      expect(updated?.status).toBe('active');
       expect(updated?.isActive).toBe(true);
     });
   });
 
   // -------------------------------------------------------------------------
-  // rejectTemplate
+  // archiveTemplate
   // -------------------------------------------------------------------------
 
-  describe('rejectTemplate', () => {
+  describe('archiveTemplate', () => {
     it('throws when template does not exist', async () => {
-      await expect(rejectTemplate('missing', 'reason', 'user-1')).rejects.toThrow('not found');
+      await expect(archiveTemplate('missing', 'user-1')).rejects.toThrow('not found');
     });
 
-    it('throws when template is already rejected', async () => {
-      seedDoc('message_templates', 'tpl-1', baseTemplate({ status: 'rejected' }));
+    it('sets status to archived and isActive to false', async () => {
+      seedDoc('message_templates', 'tpl-1', baseTemplate({ status: 'active', isActive: true }));
 
-      await expect(rejectTemplate('tpl-1', 'reason', 'user-1')).rejects.toThrow('Cannot reject');
-    });
-
-    it('sets status to rejected and isActive to false', async () => {
-      seedDoc('message_templates', 'tpl-1', baseTemplate({ status: 'pending_approval' }));
-
-      await rejectTemplate('tpl-1', 'Not suitable', 'user-1');
+      await archiveTemplate('tpl-1', 'user-1');
 
       const updated = mockDocs['message_templates/tpl-1'];
-      expect(updated?.status).toBe('rejected');
+      expect(updated?.status).toBe('archived');
       expect(updated?.isActive).toBe(false);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // unarchiveTemplate
+  // -------------------------------------------------------------------------
+
+  describe('unarchiveTemplate', () => {
+    it('unarchives template back to active', async () => {
+      seedDoc('message_templates', 'tpl-1', baseTemplate({ status: 'archived', isActive: false }));
+
+      await unarchiveTemplate('tpl-1', 'user-1');
+
+      const updated = mockDocs['message_templates/tpl-1'];
+      expect(updated?.status).toBe('active');
+      expect(updated?.isActive).toBe(true);
     });
   });
 });

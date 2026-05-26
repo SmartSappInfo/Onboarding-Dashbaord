@@ -54,6 +54,7 @@ import { cn } from '@/lib/utils';
 import { TagUsageDashboard } from '@/components/tags/TagUsageDashboard';
 import { TagCleanupTools } from '@/components/tags/TagCleanupTools';
 import { TagAuditLogViewer } from '@/components/tags/TagAuditLogViewer';
+import { PageContainer } from '@/components/ui/page-container';
 
 const TAG_CATEGORIES: { value: TagCategory; label: string }[] = [
   { value: 'behavioral', label: 'Behavioral' },
@@ -333,6 +334,7 @@ function TagsClientInner() {
   };
 
   return (
+    <PageContainer>
     <div className="space-y-8 pb-32 w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
@@ -641,6 +643,7 @@ function TagsClientInner() {
         onComplete={() => invalidate()}
       />
     </div>
+    </PageContainer>
   );
 }
 

@@ -43,6 +43,7 @@ import MessageJobsView from './jobs/page';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import type { MessageLog } from '@/lib/types';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 const chartConfig = {
   sent: {
@@ -241,6 +242,7 @@ export default function MessagingClient() {
     }, [logs, emailStats, reportData]);
 
     return (
+        <PageContainerFluid>
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -392,7 +394,7 @@ export default function MessagingClient() {
                     </TabsContent>
 
                     <TabsContent value="jobs" className="animate-in fade-in slide-in-from-bottom-2">
-                        <MessageJobsView />
+                        <MessageJobsView noPadding />
                     </TabsContent>
 
                     <TabsContent value="analytics" className="animate-in fade-in slide-in-from-bottom-2">
@@ -511,5 +513,6 @@ export default function MessagingClient() {
                 </Tabs>
             </div>
         </div>
+        </PageContainerFluid>
     );
 }

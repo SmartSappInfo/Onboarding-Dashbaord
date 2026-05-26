@@ -104,6 +104,7 @@ export function VariablePicker({
       agreement: 'Agreement',
       entity: 'Entity',
       campaign: 'Campaign',
+      custom: 'Custom Variables',
     };
     return defaultLabels[context] || context;
   };

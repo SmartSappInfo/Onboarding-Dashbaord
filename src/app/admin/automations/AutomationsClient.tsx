@@ -51,6 +51,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 /**
  * @fileOverview High-fidelity Automation Hub Client.
@@ -135,6 +136,7 @@ export default function AutomationsClient() {
     };
 
     return (
+        <PageContainerFluid>
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -423,5 +425,6 @@ export default function AutomationsClient() {
             </Dialog>
             </div>
         </div>
+        </PageContainerFluid>
     );
 }

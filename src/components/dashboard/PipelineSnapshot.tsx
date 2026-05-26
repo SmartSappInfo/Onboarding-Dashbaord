@@ -10,7 +10,7 @@ export function PipelineSnapshot({ stages }: { stages: { name: string; count: nu
           {stages.map(stage => (
             <Link key={stage.name} href="/admin/pipeline" className="flex justify-between items-center p-2 rounded-md hover:bg-muted/50 transition-colors -m-2">
               <span className="text-sm text-foreground">{stage.name}</span>
-              <span className="font-semibold">{stage.count}</span>
+              <span className="font-medium">{stage.count}</span>
             </Link>
           ))}
         </div>

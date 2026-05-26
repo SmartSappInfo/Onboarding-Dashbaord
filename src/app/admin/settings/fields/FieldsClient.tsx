@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, doc, query, where, orderBy } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { AppField, FieldGroup, EntityType } from '@/lib/types';
-import { seedNativeFieldsAction, createFieldAction, updateFieldAction, deleteFieldAction, createFieldGroupAction, updateFieldGroupAction, deleteFieldGroupAction, reorderFieldGroupsAction } from '@/lib/fields-actions';
+import type { AppField, FieldGroup, EntityType, Workspace } from '@/lib/types';
+import { seedNativeFieldsAction, createFieldAction, updateFieldAction, deleteFieldAction, createFieldGroupAction, updateFieldGroupAction, deleteFieldGroupAction, reorderFieldGroupsAction, listIndustryPredefinedGroupsAction, installPredefinedIndustryGroupsAction } from '@/lib/fields-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,7 @@ import { CSS } from '@dnd-kit/utilities';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import Link from 'next/link';
 
 // ────────────────────────────────────────────
 // Constants
@@ -77,7 +78,7 @@ type FieldFormData = {
   placeholder: string;
   compatibilityScope: string[];
   validationRequired: boolean;
-  options: string;
+  options: { label: string; value: string }[];
 };
 
 const defaultFieldData: FieldFormData = {
@@ -89,7 +90,7 @@ const defaultFieldData: FieldFormData = {
   placeholder: '',
   compatibilityScope: ['common'],
   validationRequired: false,
-  options: '',
+  options: [],
 };
 
 type GroupFormData = {
@@ -270,10 +271,99 @@ export default function FieldsClient() {
   const { data: rawGroups, isLoading: loadingGroups } = useCollection<FieldGroup>(groupsQuery);
   const { data: fields, isLoading: loadingFields } = useCollection<AppField>(fieldsQuery);
 
+  // Load workspace enabled features
+  const workspaceDocRef = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return doc(firestore, 'workspaces', activeWorkspaceId);
+  }, [firestore, activeWorkspaceId]);
+
+  const { data: workspace } = useDoc<Workspace>(workspaceDocRef);
+  const enabledFeatures = (workspace?.enabledFeatures || {}) as Record<string, boolean | undefined>;
+
+  const [systemVarContext, setSystemVarContext] = React.useState<string>('all');
+
+  const filteredStaticVariables = React.useMemo(() => {
+    const contextToFeatureMap: Record<string, string> = {
+      meeting: 'meetings',
+      survey: 'surveys',
+      form: 'forms',
+      agreement: 'agreements',
+      users: 'users',
+    };
+
+    return STATIC_VARIABLES.filter(v => {
+      // 1. Filter by workspace feature toggle
+      const featureId = contextToFeatureMap[v.context];
+      if (featureId && enabledFeatures[featureId] === false) {
+        return false;
+      }
+      // 2. Filter by selected context tab/dropdown
+      if (systemVarContext !== 'all' && v.context !== systemVarContext) {
+        return false;
+      }
+      return true;
+    });
+  }, [enabledFeatures, systemVarContext]);
+
   const [groups, setGroups] = React.useState<FieldGroup[]>([]);
   React.useEffect(() => {
     if (rawGroups) setGroups(rawGroups);
   }, [rawGroups]);
+
+  // Predefined industry groups states
+  const [predefinedGroups, setPredefinedGroups] = React.useState<any[]>([]);
+  const [selectedGroupSlugs, setSelectedGroupSlugs] = React.useState<string[]>([]);
+  const [loadingPredefined, setLoadingPredefined] = React.useState(false);
+  const [isInitializing, setIsInitializing] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!loadingGroups && groups.length === 0) {
+      async function fetchPredefined() {
+        setLoadingPredefined(true);
+        try {
+          const industry = workspace?.industry || 'SchoolEnrollment';
+          const res = await listIndustryPredefinedGroupsAction(industry as any);
+          if (res.success && res.data) {
+            setPredefinedGroups(res.data);
+            setSelectedGroupSlugs(res.data.map(g => g.slug));
+          }
+        } catch (e) {
+          console.error('Failed to fetch predefined groups:', e);
+        } finally {
+          setLoadingPredefined(false);
+        }
+      }
+      fetchPredefined();
+    }
+  }, [loadingGroups, groups.length, workspace?.industry]);
+
+  const handleInitializeGroups = async () => {
+    if (!activeWorkspaceId || !activeOrganizationId || !user?.uid || selectedGroupSlugs.length === 0) return;
+    setIsInitializing(true);
+    try {
+      const res = await installPredefinedIndustryGroupsAction(
+        activeWorkspaceId,
+        activeOrganizationId,
+        selectedGroupSlugs,
+        user.uid
+      );
+      if (res.success) {
+        toast({ title: 'Workspace Initialized', description: 'Selected field groups have been installed.' });
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Initialization Failed', description: err.message });
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
+  const handleToggleGroupSlug = (slug: string) => {
+    setSelectedGroupSlugs(prev =>
+      prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug]
+    );
+  };
 
   // State
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -290,6 +380,26 @@ export default function FieldsClient() {
 
   const [deletingField, setDeletingField] = React.useState<AppField | null>(null);
   const [deletingGroup, setDeletingGroup] = React.useState<FieldGroup | null>(null);
+
+  // Options Dialog for select/multiselect fields (themed blue for Admin)
+  const [optionsDialogOpen, setOptionsDialogOpen] = React.useState(false);
+  const [newOptionLabel, setNewOptionLabel] = React.useState('');
+  const [newOptionValue, setNewOptionValue] = React.useState('');
+
+  const handleAddOption = () => {
+    if (!newOptionLabel || !newOptionValue) return;
+    const currentOptions = fieldForm.options || [];
+    const updatedOptions = [...currentOptions, { label: newOptionLabel, value: newOptionValue }];
+    setFieldForm(prev => ({ ...prev, options: updatedOptions }));
+    setNewOptionLabel('');
+    setNewOptionValue('');
+  };
+
+  const handleRemoveOption = (optionIdx: number) => {
+    const updatedOptions = [...(fieldForm.options || [])];
+    updatedOptions.splice(optionIdx, 1);
+    setFieldForm(prev => ({ ...prev, options: updatedOptions }));
+  };
 
   // DnD Sensors
   const sensors = useSensors(
@@ -400,7 +510,7 @@ export default function FieldsClient() {
       placeholder: f.placeholder || '',
       compatibilityScope: f.compatibilityScope || ['common'],
       validationRequired: f.validationRules?.required || false,
-      options: f.options?.map(o => o.label).join(', ') || '',
+      options: f.options || [],
     });
     setEditingField(f);
     setFieldModalOpen(true);
@@ -411,7 +521,9 @@ export default function FieldsClient() {
     setIsSubmitting(true);
     try {
       const variableName = fieldForm.variableName || slugify(fieldForm.label);
-      const options = fieldForm.options ? fieldForm.options.split(',').map(o => o.trim()).filter(Boolean).map(o => ({ value: slugify(o), label: o })) : undefined;
+      const options = ['select', 'multi_select', 'radio'].includes(fieldForm.type) && fieldForm.options && fieldForm.options.length > 0
+        ? fieldForm.options
+        : undefined;
       const payload: Partial<AppField> = {
         label: fieldForm.label,
         variableName,
@@ -478,14 +590,19 @@ export default function FieldsClient() {
       <Tabs defaultValue="custom" className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <TabsList className="bg-muted/50 border border-border rounded-xl p-1 h-auto flex flex-wrap gap-1">
-            <TabsTrigger value="custom" className="rounded-lg text-sm font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none">
+            <TabsTrigger value="custom" className="rounded-lg text-sm font-semibold data-[state=active]:bg-blue-500/15 data-[state=active]:text-blue-400 cursor-pointer flex-1 sm:flex-none">
               <LucideIcons.Database className="h-4 w-4 mr-2" /> Custom Fields
             </TabsTrigger>
-            <TabsTrigger value="system" className="rounded-lg text-sm font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none">
+            <TabsTrigger value="system" className="rounded-lg text-sm font-semibold data-[state=active]:bg-blue-500/15 data-[state=active]:text-blue-400 cursor-pointer flex-1 sm:flex-none">
               <LucideIcons.Terminal className="h-4 w-4 mr-2" /> System Variables
             </TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
+            <Link href="/admin/settings/fields/diagnostics">
+              <Button variant="outline" className="border-blue-500/20 text-blue-600 hover:bg-blue-50/50 gap-2">
+                <LucideIcons.ShieldAlert className="h-4 w-4" /> Audit Templates
+              </Button>
+            </Link>
             <Button onClick={openNewGroup}>
               <LucideIcons.Plus className="h-4 w-4 mr-2" /> New Group
             </Button>
@@ -527,10 +644,150 @@ export default function FieldsClient() {
       </DndContext>
 
       {groups.length === 0 && (
-        <div className="text-center p-12 border rounded-xl bg-muted/10 border-dashed">
-          <LucideIcons.Database className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No Field Groups Found</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">Start by creating a new group or seeding native groups from the System Seeding Hub.</p>
+        <div className="rounded-2xl border border-border bg-muted/20 backdrop-blur-md p-8 max-w-3xl mx-auto space-y-6 shadow-xl">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl">
+              <LucideIcons.Sparkles className="h-6 w-6" />
+            </div>
+            <div className="text-left">
+              <h3 className="text-lg font-bold text-foreground">Initialize Workspace Fields</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                We detected that this workspace has no field groups configured. Choose which predefined parameters from the backoffice template for the <span className="font-semibold text-blue-400">{workspace?.industry || 'SchoolEnrollment'}</span> industry vertical you would like to initialize:
+              </p>
+            </div>
+          </div>
+
+          {loadingPredefined ? (
+            <div className="space-y-3">
+              {[1, 2].map(i => (
+                <div key={i} className="h-20 bg-accent/30 rounded-xl border border-border animate-pulse" />
+              ))}
+            </div>
+          ) : predefinedGroups.length === 0 ? (
+            <div className="text-center py-8 bg-muted/30 border border-dashed border-border rounded-xl">
+              <LucideIcons.AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No predefined field groups found for this industry.</p>
+              <Button onClick={openNewGroup} className="mt-4 h-9 bg-primary text-primary-foreground rounded-xl">
+                Create Custom Group
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {predefinedGroups.map(pg => {
+                const isSelected = selectedGroupSlugs.includes(pg.slug);
+                const GroupIcon = (LucideIcons as any)[pg.icon] || LucideIcons.Database;
+                return (
+                  <div
+                    key={pg.slug}
+                    onClick={() => handleToggleGroupSlug(pg.slug)}
+                    className={cn(
+                      "p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-4 text-left select-none",
+                      isSelected
+                        ? "bg-blue-500/5 border-blue-500/30 text-foreground"
+                        : "bg-muted/10 border-border text-muted-foreground hover:bg-muted/20 hover:border-slate-500"
+                    )}
+                  >
+                    <div className="mt-1">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => {}} // handled by div onClick
+                        className={cn(
+                          "rounded border-border pointer-events-none data-[state=checked]:bg-blue-500 data-[state=checked]:text-blue-950"
+                        )}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <GroupIcon className={cn("h-4 w-4 shrink-0", isSelected ? "text-blue-400" : "text-muted-foreground")} />
+                        <span className="font-semibold text-sm">{pg.name}</span>
+                        <Badge variant="outline" className="text-[8px] uppercase tracking-wider h-4 border-border text-muted-foreground">
+                          {pg.slug}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{pg.description}</p>
+                      
+                      {/* Fields inside the group */}
+                      {pg.fields && pg.fields.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {pg.fields.map((f: any) => (
+                            <Badge
+                              key={f.variableName}
+                              variant="outline"
+                              className={cn(
+                                "text-[9px] px-1.5 py-0 border-border/50 font-normal",
+                                isSelected ? "bg-blue-500/5 text-blue-400" : "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {f.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedGroupSlugs(predefinedGroups.map(g => g.slug));
+                    }}
+                    className="h-8 border-border text-xs rounded-lg"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedGroupSlugs([]);
+                    }}
+                    className="h-8 border-border text-xs rounded-lg"
+                  >
+                    Unselect All
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-3 justify-end flex-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openNewGroup();
+                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
+                  >
+                    Skip and Create Custom Group
+                  </button>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleInitializeGroups();
+                    }}
+                    disabled={isInitializing || selectedGroupSlugs.length === 0}
+                    className="bg-blue-600 hover:bg-blue-700 text-white h-9 rounded-xl px-6 text-xs flex items-center gap-2"
+                  >
+                    {isInitializing ? (
+                      <>
+                        <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Initializing...
+                      </>
+                    ) : (
+                      <>
+                        <LucideIcons.Sparkles className="h-3.5 w-3.5" />
+                        Initialize Selected ({selectedGroupSlugs.length})
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
         </TabsContent>
@@ -538,14 +795,34 @@ export default function FieldsClient() {
         <TabsContent value="system" className="mt-4">
           <Card className="border-border">
             <CardHeader className="bg-muted/30 border-b border-border pb-4">
-              <CardTitle className="text-xl flex items-center gap-2">
-                <LucideIcons.Terminal className="h-5 w-5 text-emerald-500" />
-                System & Organization Variables
-              </CardTitle>
-              <CardDescription>
-                These variables are automatically available in the messaging engine and templates.
-                Use the <code className="bg-muted px-1.5 py-0.5 rounded text-emerald-500">{"{{"}variable_name{"}}"}</code> syntax to inject them into content.
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
+                <div className="space-y-1">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <LucideIcons.Terminal className="h-5 w-5 text-blue-500" />
+                    System & Organization Variables
+                  </CardTitle>
+                  <CardDescription>
+                    These variables are automatically available in the messaging engine and templates.
+                    Use the <code className="bg-muted px-1.5 py-0.5 rounded text-blue-500">{"{{"}variable_name{"}}"}</code> syntax to inject them into content.
+                  </CardDescription>
+                </div>
+                <div className="shrink-0 min-w-[180px]">
+                  <Select value={systemVarContext} onValueChange={setSystemVarContext}>
+                    <SelectTrigger className="w-full bg-background border shadow-sm rounded-xl">
+                      <SelectValue placeholder="Filter Context..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="all">All Contexts</SelectItem>
+                      <SelectItem value="common">Common</SelectItem>
+                      {enabledFeatures.meetings !== false && <SelectItem value="meeting">Meetings</SelectItem>}
+                      {enabledFeatures.surveys !== false && <SelectItem value="survey">Surveys</SelectItem>}
+                      {enabledFeatures.forms !== false && <SelectItem value="form">Forms</SelectItem>}
+                      {enabledFeatures.agreements !== false && <SelectItem value="agreement">Agreements</SelectItem>}
+                      {enabledFeatures.users !== false && <SelectItem value="users">Users</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -557,9 +834,9 @@ export default function FieldsClient() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {STATIC_VARIABLES.map(variable => (
+                  {filteredStaticVariables.map(variable => (
                     <TableRow key={variable.id} className="hover:bg-muted/30">
-                      <TableCell className="font-mono text-sm text-emerald-600 dark:text-emerald-400">
+                      <TableCell className="font-mono text-sm text-blue-600 dark:text-blue-400">
                         {"{{"}{variable.name}{"}}"}
                       </TableCell>
                       <TableCell>
@@ -578,6 +855,13 @@ export default function FieldsClient() {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {filteredStaticVariables.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center p-8 text-muted-foreground">
+                        No variables found for this filter.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -696,8 +980,29 @@ export default function FieldsClient() {
             )}
             {['select', 'multi_select', 'radio'].includes(fieldForm.type) && !editingField?.isNative && (
               <div className="space-y-2">
-                <Label>Options</Label>
-                <Textarea value={fieldForm.options} onChange={e => setFieldForm({...fieldForm, options: e.target.value})} placeholder="Comma separated (e.g. Yes, No, Maybe)" />
+                <div className="flex items-center justify-between">
+                  <Label>Options</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setOptionsDialogOpen(true)}
+                    className="h-8 border-blue-500/30 text-xs flex items-center justify-center gap-1 bg-blue-500/5 hover:bg-blue-500/15 text-blue-400 rounded-lg"
+                  >
+                    <LucideIcons.List className="h-3 w-3" /> Configure Options ({(fieldForm.options || []).length})
+                  </Button>
+                </div>
+                {fieldForm.options && fieldForm.options.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 p-2 bg-muted/30 border border-border/50 rounded-lg">
+                    {fieldForm.options.map((opt, optIdx) => (
+                      <Badge key={optIdx} variant="outline" className="bg-muted text-foreground/80 border-border text-[9px] px-1.5 py-0.5">
+                        {opt.label} <span className="opacity-60 ml-0.5">({opt.value})</span>
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No options configured yet.</p>
+                )}
               </div>
             )}
             <div className="space-y-2">
@@ -712,6 +1017,80 @@ export default function FieldsClient() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setFieldModalOpen(false)}>Cancel</Button>
             <Button onClick={saveField} disabled={isSubmitting || !fieldForm.label || !fieldForm.groupId}>{isSubmitting ? 'Saving...' : 'Save Field'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Select Options Config Dialog (Themed Blue for Admin) */}
+      <Dialog open={optionsDialogOpen} onOpenChange={setOptionsDialogOpen}>
+        <DialogContent className="max-w-md bg-card border-border rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Configure Options</DialogTitle>
+            <DialogDescription>Add value options for selecting the dropdown values.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="flex gap-2">
+              <div className="flex-1 space-y-1">
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Label</Label>
+                <Input
+                  value={newOptionLabel}
+                  onChange={e => {
+                    setNewOptionLabel(e.target.value);
+                    setNewOptionValue(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+                  }}
+                  placeholder="e.g. Premium Tier"
+                  className="h-8 bg-muted/50 border-border text-xs rounded-lg"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Value</Label>
+                <Input
+                  value={newOptionValue}
+                  onChange={e => setNewOptionValue(e.target.value)}
+                  placeholder="e.g. premium_tier"
+                  className="h-8 bg-muted border-border font-mono text-xs rounded-lg"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  onClick={handleAddOption}
+                  className="h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg"
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            <div className="border border-border rounded-lg bg-muted/20 p-3 min-h-[100px] max-h-[200px] overflow-y-auto space-y-1.5">
+              {fieldForm.options && fieldForm.options.length > 0 ? (
+                fieldForm.options.map((opt, oIdx) => (
+                  <div key={oIdx} className="flex items-center justify-between p-1.5 bg-accent/20 border border-border/50 rounded-lg">
+                    <div className="text-xs text-foreground font-medium">
+                      {opt.label} <span className="text-[10px] text-muted-foreground font-mono">({opt.value})</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveOption(oIdx)}
+                      className="text-muted-foreground hover:text-red-400 transition-colors"
+                    >
+                      <LucideIcons.X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-xs text-muted-foreground">No options configured.</div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-border pt-4">
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs rounded-xl"
+              onClick={() => setOptionsDialogOpen(false)}
+            >
+              Done
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -11,6 +11,7 @@ import EntityContextPanel from './components/EntityContextPanel';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import DOMPurify from 'isomorphic-dompurify';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 const READ_STATE_KEY = 'smartsapp:conversations:v1';
 type ReadState = Record<string, string>; // { [entityId]: lastViewedAt ISO }
@@ -119,14 +120,17 @@ export default function ConversationsClient() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-120px)] items-center justify-center rounded-[2rem] border bg-card shadow-sm">
-        <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
-      </div>
+      <PageContainerFluid className="h-[calc(100vh-64px)] flex flex-col">
+        <div className="flex flex-1 items-center justify-center rounded-[2rem] border bg-card shadow-sm">
+          <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+        </div>
+      </PageContainerFluid>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-120px)] overflow-hidden rounded-[2rem] border bg-card shadow-xl ring-1 ring-black/5">
+    <PageContainerFluid className="h-[calc(100vh-64px)] flex flex-col">
+      <div className="flex flex-1 overflow-hidden rounded-[2rem] border bg-card shadow-xl ring-1 ring-black/5">
       {/* Panel 1: Thread List */}
       <ThreadList 
         threads={threads}
@@ -160,6 +164,7 @@ export default function ConversationsClient() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

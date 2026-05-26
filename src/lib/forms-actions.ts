@@ -1,9 +1,13 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { Form, FormSubmission } from './types';
+import { FieldValue } from 'firebase-admin/firestore';
+import type { Form, FormSubmission, AppField } from './types';
 import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
+import { COLLECTIONS } from './collection-constants';
+import { submissionsToCSV, normaliseSubmissionData } from './forms-utils';
+import { z } from 'zod';
 
 /**
  * @fileOverview Server-side actions for the Form Builder.
@@ -56,7 +60,7 @@ export async function createFormAction(data: Omit<Form, 'id' | 'createdAt' | 'up
 /**
  * Updates an existing form.
  */
-export async function updateFormAction(id: string, data: Partial<Form>, userId: string) {
+export async function updateFormAction(id: string, data: Partial<Form>, userId: string, expectedVersion?: number) {
   try {
     const ref = adminDb.collection('forms').doc(id);
     const snap = await ref.get();
@@ -72,6 +76,14 @@ export async function updateFormAction(id: string, data: Partial<Form>, userId: 
       return { success: false, error: permission.reason };
     }
 
+    // Version Conflict Check
+    if (expectedVersion !== undefined) {
+      const currentVersion = existing.version || 0;
+      if (currentVersion !== expectedVersion) {
+        return { success: false, conflict: true, error: 'Another user edited this form. Please refresh.' };
+      }
+    }
+
     // If slug changed, validate uniqueness
     if (data.slug && data.slug !== existing.slug) {
       const dup = await adminDb
@@ -85,14 +97,21 @@ export async function updateFormAction(id: string, data: Partial<Form>, userId: 
       }
     }
 
-    await ref.update({
+    const nextVersion = (existing.version || 0) + 1;
+    const updateData = {
       ...data,
+      version: nextVersion,
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    // Ensure we don't accidentally update read-only properties
+    delete (updateData as any).id;
+
+    await ref.update(updateData);
 
     revalidatePath(REVALIDATION_PATH);
     revalidatePath(`/admin/forms/${id}/edit`);
-    return { success: true };
+    return { success: true, version: nextVersion };
   } catch (error: any) {
     console.error('>>> [FORMS] Update Failed:', error.message);
     return { success: false, error: error.message };
@@ -100,11 +119,12 @@ export async function updateFormAction(id: string, data: Partial<Form>, userId: 
 }
 
 /**
- * Deletes a form and optionally its submissions.
+ * Deletes a form and all its submissions.
+ * Uses chunked batches to stay under Firestore's 500-doc batch limit.
  */
 export async function deleteFormAction(id: string, userId: string) {
   try {
-    const ref = adminDb.collection('forms').doc(id);
+    const ref = adminDb.collection(COLLECTIONS.FORMS).doc(id);
     const snap = await ref.get();
     if (!snap.exists) {
       return { success: false, error: 'Form not found.' };
@@ -118,19 +138,32 @@ export async function deleteFormAction(id: string, userId: string) {
       return { success: false, error: permission.reason };
     }
 
-    // Delete all related submissions
-    const subsSnap = await adminDb
-      .collection('form_submissions')
-      .where('formId', '==', id)
-      .get();
+    // Delete all related submissions in chunks of 400 (safely under 500 Firestore limit)
+    let totalDeleted = 0;
+    let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined;
 
-    const batch = adminDb.batch();
-    subsSnap.docs.forEach(doc => batch.delete(doc.ref));
-    batch.delete(ref);
-    await batch.commit();
+    while (true) {
+      let q = adminDb
+        .collection(COLLECTIONS.FORM_SUBMISSIONS)
+        .where('formId', '==', id)
+        .limit(400);
+      if (lastDoc) q = q.startAfter(lastDoc);
 
+      const subsSnap = await q.get();
+      if (subsSnap.empty) break;
+
+      const batch = adminDb.batch();
+      subsSnap.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+
+      totalDeleted += subsSnap.size;
+      lastDoc = subsSnap.docs[subsSnap.docs.length - 1];
+      if (subsSnap.size < 400) break;
+    }
+
+    await ref.delete();
     revalidatePath(REVALIDATION_PATH);
-    return { success: true, deletedSubmissions: subsSnap.size };
+    return { success: true, deletedSubmissions: totalDeleted };
   } catch (error: any) {
     console.error('>>> [FORMS] Delete Failed:', error.message);
     return { success: false, error: error.message };
@@ -229,7 +262,173 @@ export async function processFormSubmissionAction(input: {
     if (!formSnap.exists) throw new Error('Form not found');
     const form = { id: formSnap.id, ...formSnap.data() } as Form;
 
-    // 2. Persist Submission
+    // 2. Resolve entityId (Bound Forms)
+    let resolvedEntityId = input.entityId || null;
+
+    if (form.formType === 'bound' && !resolvedEntityId) {
+      const email = input.data.email || input.data.primaryEmail;
+      const phone = input.data.phone || input.data.primaryPhone;
+      const displayName = input.data.name || input.data.displayName || input.data.schoolName || 'Form Contact';
+
+      const entityHandling = form.actions?.entityHandling || 'create_or_update';
+
+      // Try to match existing entity by email or phone within the workspace
+      if ((email || phone) && (entityHandling === 'update_matching' || entityHandling === 'create_or_update')) {
+        const matchSnap = await adminDb.collection('workspace_entities')
+          .where('workspaceId', '==', form.workspaceId)
+          .get();
+        
+        const matchedDoc = matchSnap.docs.find(doc => {
+          const d = doc.data();
+          return (email && d.primaryEmail === email) || (phone && d.primaryPhone === phone);
+        });
+
+        if (matchedDoc) {
+          resolvedEntityId = matchedDoc.data().entityId;
+        }
+      }
+
+      // Separate native vs custom data based on form fields definitions
+      const fieldsSnap = await adminDb.collection(COLLECTIONS.APP_FIELDS)
+        .where('workspaceId', '==', form.workspaceId)
+        .get();
+      
+      const fieldsMap = new Map(fieldsSnap.docs.map(doc => [doc.data().variableName, doc.data()]));
+
+      const entityUpdates: Record<string, any> = {};
+      const customData: Record<string, any> = {};
+
+      Object.entries(input.data).forEach(([varName, val]) => {
+        const definition = fieldsMap.get(varName);
+        if (definition) {
+          if (definition.isNative) {
+            entityUpdates[varName] = val;
+          } else {
+            customData[varName] = val;
+          }
+        }
+      });
+
+      if (resolvedEntityId && entityHandling !== 'create_new') {
+        const { updateEntityAction } = await import('./entity-actions');
+        
+        const updatePayload: any = {
+          ...entityUpdates,
+          customData
+        };
+
+        if (input.data.firstName || input.data.lastName) {
+          updatePayload.personData = {
+            firstName: input.data.firstName || '',
+            lastName: input.data.lastName || ''
+          };
+        }
+        if (input.data.familyName) {
+          updatePayload.familyData = {
+            familyName: input.data.familyName
+          };
+        }
+
+        await updateEntityAction(
+          resolvedEntityId,
+          updatePayload,
+          `system-form-${form.id}`,
+          form.workspaceId,
+          form.organizationId
+        );
+      } else if (entityHandling !== 'update_matching') {
+        // Create new entity
+        const { createEntityAction } = await import('./entity-actions');
+        const contacts = [];
+        if (email || phone) {
+          contacts.push({
+            name: displayName,
+            email,
+            phone,
+            typeKey: 'other',
+            isPrimary: true,
+            isSignatory: true,
+          });
+        }
+
+        const entityPayload: any = {
+          name: displayName,
+          contacts,
+          personData: {
+            firstName: input.data.firstName || displayName.split(' ')[0] || '',
+            lastName: input.data.lastName || displayName.split(' ').slice(1).join(' ') || '',
+          },
+        };
+
+        if (Object.keys(customData).length > 0) {
+          entityPayload.customData = customData;
+        }
+
+        const entityType = form.contactScope || 'person';
+        const createRes = await createEntityAction(
+          entityPayload,
+          `system-form-${form.id}`,
+          form.workspaceId,
+          entityType,
+          form.organizationId,
+          true // forceCreate to avoid duplicate error loop
+        );
+
+        if (createRes.success && createRes.id) {
+          resolvedEntityId = createRes.id;
+        }
+      }
+    } else if (form.formType === 'bound' && resolvedEntityId) {
+      // If entityId is passed, update it
+      const fieldsSnap = await adminDb.collection(COLLECTIONS.APP_FIELDS)
+        .where('workspaceId', '==', form.workspaceId)
+        .get();
+      
+      const fieldsMap = new Map(fieldsSnap.docs.map(doc => [doc.data().variableName, doc.data()]));
+
+      const entityUpdates: Record<string, any> = {};
+      const customData: Record<string, any> = {};
+
+      Object.entries(input.data).forEach(([varName, val]) => {
+        const definition = fieldsMap.get(varName);
+        if (definition) {
+          if (definition.isNative) {
+            entityUpdates[varName] = val;
+          } else {
+            customData[varName] = val;
+          }
+        }
+      });
+
+      const { updateEntityAction } = await import('./entity-actions');
+      
+      const updatePayload: any = {
+        ...entityUpdates,
+        customData
+      };
+
+      if (input.data.firstName || input.data.lastName) {
+        updatePayload.personData = {
+          firstName: input.data.firstName || '',
+          lastName: input.data.lastName || ''
+        };
+      }
+      if (input.data.familyName) {
+        updatePayload.familyData = {
+          familyName: input.data.familyName
+        };
+      }
+
+      await updateEntityAction(
+        resolvedEntityId,
+        updatePayload,
+        `system-form-${form.id}`,
+        form.workspaceId,
+        form.organizationId
+      );
+    }
+
+    // 2b. Persist Submission
     const subRef = adminDb.collection('form_submissions').doc();
     const submission: FormSubmission = {
       id: subRef.id,
@@ -237,7 +436,7 @@ export async function processFormSubmissionAction(input: {
       workspaceId: form.workspaceId,
       organizationId: form.organizationId,
       data: input.data,
-      entityId: input.entityId || undefined,
+      entityId: resolvedEntityId || undefined,
       sourcePageId: input.sourcePageId || undefined,
       submittedAt: timestamp,
       ipAddress: input.ipAddress,
@@ -245,48 +444,19 @@ export async function processFormSubmissionAction(input: {
     };
     await subRef.set(submission);
 
-    // 3. Increment Submission Count
+    // 3. Increment Submission Count (atomic — immune to race conditions)
     await formRef.update({
-      submissionCount: (form.submissionCount || 0) + 1,
-      updatedAt: timestamp
+      submissionCount: FieldValue.increment(1),
+      updatedAt: timestamp,
     });
-
-    // 4. Handle Entity Data Mapping (For High-Fidelity "Bound" Forms)
-    // If bound, we map native fields to the actual entity record
-    if (form.formType === 'bound' && input.entityId) {
-      const entityUpdates: Record<string, any> = {};
-      
-      // Fetch the app fields for this workspace to identify native mappings
-      const fieldsSnap = await adminDb.collection('app_fields')
-        .where('workspaceId', '==', form.workspaceId)
-        .where('variableName', 'in', Object.keys(input.data))
-        .get();
-
-      fieldsSnap.docs.forEach(doc => {
-        const field = doc.data();
-        if (field.isNative) {
-          // Determine where this native field maps to (e.g., direct property vs nested)
-          // For now, we update the primary record fields.
-          entityUpdates[field.variableName] = input.data[field.variableName];
-        }
-      });
-
-      if (Object.keys(entityUpdates).length > 0) {
-        const entityCollection = form.contactScope === 'institution' ? 'schools' : 'entities';
-        await adminDb.collection(entityCollection).doc(input.entityId).update({
-          ...entityUpdates,
-          updatedAt: timestamp
-        });
-      }
-    }
 
     // 5. Execute FormActions: Tagging & Webhooks
     if (form.actions) {
       // 5a. Tagging
-      if (form.actions.tags?.length && input.entityId) {
+      if (form.actions.tags?.length && resolvedEntityId) {
         const { applyTagsAction } = await import('./tag-actions');
         await applyTagsAction(
-          input.entityId,
+          resolvedEntityId,
           form.contactScope === 'institution' ? 'school' : 'prospect',
           form.actions.tags,
           'system-form-engine',
@@ -294,28 +464,30 @@ export async function processFormSubmissionAction(input: {
         );
       }
 
-      // 5b. Webhooks
+      // 5b. Webhooks — dispatched in parallel; allSettled prevents one failure blocking others
       if (form.actions.webhooks?.length) {
         const { dispatchWebhook } = await import('./webhook-engine');
-        for (const hook of form.actions.webhooks) {
-          await dispatchWebhook({
-            webhookIdOrUrl: hook,
-            payload: {
-              trigger: 'FORM_SUBMITTED',
-              formId: form.id,
-              formTitle: form.title,
-              submissionId: subRef.id,
-              data: input.data,
-              submittedAt: timestamp
-            },
-            workspaceId: form.workspaceId,
-            organizationId: form.organizationId,
-            entityId: input.entityId,
-            trigger: 'FORM_SUBMITTED' as any,
-            source: 'form_engine',
-            description: `Webhook dispatched for form "${form.title}"`
-          });
-        }
+        await Promise.allSettled(
+          form.actions.webhooks.map(hook =>
+            dispatchWebhook({
+              webhookIdOrUrl: hook,
+              payload: {
+                trigger: 'FORM_SUBMITTED',
+                formId: form.id,
+                formTitle: form.title,
+                submissionId: subRef.id,
+                data: input.data,
+                submittedAt: timestamp,
+              },
+              workspaceId: form.workspaceId,
+              organizationId: form.organizationId,
+              entityId: resolvedEntityId || undefined,
+              trigger: 'FORM_SUBMITTED' as any,
+              source: 'form_engine',
+              description: `Webhook dispatched for form "${form.title}"`,
+            })
+          )
+        );
       }
     }
 
@@ -326,7 +498,7 @@ export async function processFormSubmissionAction(input: {
       form_title: form.title,
       workspaceId: form.workspaceId,
       organizationId: form.organizationId,
-      entityId: input.entityId,
+      entityId: resolvedEntityId || undefined,
       submission_id: subRef.id
     };
 
@@ -363,7 +535,7 @@ export async function processFormSubmissionAction(input: {
             senderProfileId: 'default',
             recipient: respondentEmail,
             variables: automationVars,
-            entityId: input.entityId,
+            entityId: resolvedEntityId || undefined,
             workspaceId: form.workspaceId
           });
         }
@@ -374,7 +546,7 @@ export async function processFormSubmissionAction(input: {
             senderProfileId: 'default',
             recipient: respondentPhone,
             variables: automationVars,
-            entityId: input.entityId,
+            entityId: resolvedEntityId || undefined,
             workspaceId: form.workspaceId
           });
         }
@@ -392,10 +564,10 @@ export async function processFormSubmissionAction(input: {
     await logActivity({
       workspaceId: form.workspaceId,
       organizationId: form.organizationId,
-      entityId: input.entityId || null,
+      entityId: resolvedEntityId || null,
       type: 'form_submitted',
       source: 'public_form',
-      description: `Form "${form.title}" submitted by ${input.entityId || 'anonymous'}`,
+      description: `Form "${form.title}" submitted by ${resolvedEntityId || 'anonymous'}`,
       metadata: {
         formId: input.formId,
         submissionId: subRef.id,
@@ -408,7 +580,7 @@ export async function processFormSubmissionAction(input: {
       await logActivity({
         workspaceId: form.workspaceId,
         organizationId: form.organizationId,
-        entityId: input.entityId || null,
+        entityId: resolvedEntityId || null,
         type: 'page_conversion' as any,
         source: 'campaign_page',
         description: `Conversion recorded for campaign page from form "${form.title}"`,
@@ -423,6 +595,88 @@ export async function processFormSubmissionAction(input: {
     return { success: true, submissionId: subRef.id };
   } catch (error: any) {
     console.error('>>> [FORMS:SUBMIT] Failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Read Actions (used by Submissions Page RSC)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetches a single form by ID. Used by RSC pages to avoid duplicate fetches.
+ */
+export async function getFormByIdAction(formId: string): Promise<Form | null> {
+  const snap = await adminDb.collection(COLLECTIONS.FORMS).doc(formId).get();
+  if (!snap.exists) return null;
+  return { id: snap.id, ...snap.data() } as Form;
+}
+
+/**
+ * Paginated query for form submissions.
+ * Uses cursor-based pagination (submittedAt timestamp of last doc).
+ */
+export async function getFormSubmissionsAction(
+  formId: string,
+  opts: { limit?: number; cursor?: string } = {}
+): Promise<{ submissions: FormSubmission[]; nextCursor: string | null }> {
+  const limit = opts.limit ?? 50;
+
+  let q = adminDb
+    .collection(COLLECTIONS.FORM_SUBMISSIONS)
+    .where('formId', '==', formId)
+    .orderBy('submittedAt', 'desc')
+    .limit(limit + 1); // fetch one extra to know if there's a next page
+
+  if (opts.cursor) {
+    q = q.startAfter(opts.cursor);
+  }
+
+  const snap = await q.get();
+  const docs = snap.docs.slice(0, limit);
+  const hasMore = snap.docs.length > limit;
+
+  const submissions = docs.map(d => ({ id: d.id, ...d.data() } as FormSubmission));
+  const nextCursor = hasMore ? submissions[submissions.length - 1]?.submittedAt ?? null : null;
+
+  return { submissions, nextCursor };
+}
+
+/**
+ * Generates a CSV export of all submissions for a form.
+ * Fetches field metadata to build human-readable headers.
+ * Returns the CSV as a plain string — the client triggers the download.
+ */
+export async function exportSubmissionsAsCsvAction(
+  formId: string
+): Promise<{ success: true; csv: string; filename: string } | { success: false; error: string }> {
+  try {
+    const [formSnap, subsSnap, fieldsSnap] = await Promise.all([
+      adminDb.collection(COLLECTIONS.FORMS).doc(formId).get(),
+      adminDb
+        .collection(COLLECTIONS.FORM_SUBMISSIONS)
+        .where('formId', '==', formId)
+        .orderBy('submittedAt', 'desc')
+        .get(),
+      adminDb.collection(COLLECTIONS.APP_FIELDS).get(), // Fields fetched broadly; filtered client-side
+    ]);
+
+    if (!formSnap.exists) return { success: false, error: 'Form not found.' };
+
+    const form = { id: formSnap.id, ...formSnap.data() } as Form;
+    const submissions = subsSnap.docs.map(d => ({ id: d.id, ...d.data() } as FormSubmission));
+    const allFields = fieldsSnap.docs.map(d => ({ id: d.id, ...d.data() } as AppField));
+
+    // Only include fields that belong to this form's workspace
+    const workspaceFields = allFields.filter(f => f.workspaceId === form.workspaceId);
+
+    const csv = submissionsToCSV(submissions, workspaceFields);
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `${form.internalName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_submissions_${date}.csv`;
+
+    return { success: true, csv, filename };
+  } catch (error: any) {
+    console.error('>>> [FORMS] Export Failed:', error.message);
     return { success: false, error: error.message };
   }
 }

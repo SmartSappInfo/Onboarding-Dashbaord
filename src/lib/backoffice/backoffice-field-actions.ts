@@ -4,7 +4,9 @@ import { adminDb } from '../firebase-admin';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
 import type { AuditActor, PlatformFieldPack, PlatformFieldDefinition } from './backoffice-types';
-import type { ContactTypeEntry, EntityType } from '../types';
+import type { ContactTypeEntry, EntityType, IndustryVertical } from '../types';
+import { INDUSTRY_FIELD_REGISTRY, IndustryGroupDef } from '../industry-field-registry';
+import { propagateIndustryGroupChanges } from './industry-propagation';
 
 // ─────────────────────────────────────────────────
 // Backoffice Fields & Variables Actions
@@ -182,6 +184,162 @@ export async function saveNativeField(
     return { success: true };
   } catch (error: any) {
     console.error('[BACKOFFICE_FIELDS] saveNativeField failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Platform Industry-Specific Fields Actions
+// ─────────────────────────────────────────────────
+
+export async function listPlatformIndustryFieldGroups(industry: IndustryVertical): Promise<{
+  success: boolean;
+  data?: IndustryGroupDef[];
+  error?: string;
+}> {
+  try {
+    const snap = await adminDb
+      .collection('platform_industry_field_groups')
+      .where('industry', '==', industry)
+      .get();
+
+    if (snap.empty) {
+      // Lazy self-seeding: write defaults to Firestore
+      const defaults = INDUSTRY_FIELD_REGISTRY[industry];
+      if (defaults && defaults.length > 0) {
+        const batch = adminDb.batch();
+        const now = new Date().toISOString();
+
+        for (const group of defaults) {
+          const docId = `${industry}_${group.slug}`;
+          const ref = adminDb.collection('platform_industry_field_groups').doc(docId);
+          batch.set(ref, {
+            ...group,
+            industry,
+            createdAt: now,
+            updatedAt: now,
+            updatedBy: 'system',
+          });
+        }
+        await batch.commit();
+
+        // Query again to get the seeded data
+        const seededSnap = await adminDb
+          .collection('platform_industry_field_groups')
+          .where('industry', '==', industry)
+          .get();
+        const seededGroups = seededSnap.docs.map(doc => doc.data() as IndustryGroupDef);
+        return { success: true, data: seededGroups };
+      }
+      return { success: true, data: [] };
+    }
+
+    const groups = snap.docs.map(doc => doc.data() as IndustryGroupDef);
+    // Sort groups by 'order' asc
+    groups.sort((a, b) => a.order - b.order);
+    return { success: true, data: groups };
+  } catch (error: any) {
+    console.error('[BACKOFFICE_FIELDS] listPlatformIndustryFieldGroups failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function savePlatformIndustryFieldGroup(
+  industry: IndustryVertical,
+  groupSlug: string,
+  groupDef: Omit<IndustryGroupDef, 'slug'> & { slug?: string },
+  actor: AuditActor
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const docId = `${industry}_${groupSlug}`;
+    const ref = adminDb.collection('platform_industry_field_groups').doc(docId);
+    const snap = await ref.get();
+
+    let before = null;
+    if (snap.exists) {
+      before = createAuditSnapshot(snap.data() as Record<string, unknown>);
+    }
+
+    const now = new Date().toISOString();
+    const payload = {
+      ...groupDef,
+      slug: groupSlug, // Lock slug to passed value
+      industry,
+      updatedAt: now,
+      updatedBy: actor.userId,
+    };
+
+    if (!snap.exists) {
+      (payload as any).createdAt = now;
+    }
+
+    await ref.set(payload, { merge: true });
+
+    const afterSnap = await ref.get();
+    const after = createAuditSnapshot(afterSnap.data() as Record<string, unknown>);
+
+    await logBackofficeAction(
+      actor,
+      snap.exists ? 'industry_field_group.update' : 'industry_field_group.create',
+      'industry_field_group',
+      docId,
+      {
+        before,
+        after,
+      }
+    );
+
+    // Propagate changes to all workspaces in this industry
+    const propRes = await propagateIndustryGroupChanges(industry, groupSlug, false, payload as IndustryGroupDef);
+    if (!propRes.success) {
+      console.warn(`[BACKOFFICE_FIELDS] Propagation failed during save: ${propRes.error}`);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[BACKOFFICE_FIELDS] savePlatformIndustryFieldGroup failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deletePlatformIndustryFieldGroup(
+  industry: IndustryVertical,
+  groupSlug: string,
+  actor: AuditActor
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const docId = `${industry}_${groupSlug}`;
+    const ref = adminDb.collection('platform_industry_field_groups').doc(docId);
+    const snap = await ref.get();
+
+    if (!snap.exists) {
+      return { success: false, error: 'Industry field group not found.' };
+    }
+
+    const before = createAuditSnapshot(snap.data() as Record<string, unknown>);
+
+    await ref.delete();
+
+    await logBackofficeAction(
+      actor,
+      'industry_field_group.delete',
+      'industry_field_group',
+      docId,
+      {
+        before,
+        after: null,
+      }
+    );
+
+    // Propagate deletion to all workspaces in this industry
+    const propRes = await propagateIndustryGroupChanges(industry, groupSlug, true);
+    if (!propRes.success) {
+      console.warn(`[BACKOFFICE_FIELDS] Propagation failed during delete: ${propRes.error}`);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[BACKOFFICE_FIELDS] deletePlatformIndustryFieldGroup failed:', error);
     return { success: false, error: error.message };
   }
 }

@@ -70,6 +70,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EntityAvatar } from '../components/EntityAvatar';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
+import { PageContainer } from '@/components/ui/page-container';
 
 export default function FormsClient() {
   const firestore = useFirestore();
@@ -306,6 +307,7 @@ export default function FormsClient() {
 
     return (
         <TooltipProvider>
+            <PageContainer>
                 <div className="space-y-8 pb-32 w-full">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -493,6 +495,7 @@ export default function FormsClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+            </PageContainer>
     </TooltipProvider>
   );
 }

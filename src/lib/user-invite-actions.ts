@@ -510,3 +510,199 @@ export async function adminUpdateUserAccessAction(userId: string, isAuthorized: 
         return { success: false, error: error.message };
     }
 }
+
+/**
+ * DECLINE JOIN REQUEST ACTION
+ * Declines a pending join request by setting approvalStatus to 'rejected' and disabling the Firebase Auth account.
+ */
+export async function declineJoinRequestAction(userId: string, adminUserId: string): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+    warnings?: string[];
+}> {
+    try {
+        const auth = getAuth();
+        
+        // 1. Authenticate caller (server-auth-actions)
+        if (!adminUserId) throw new Error('Unauthorized: Admin User ID is required.');
+        const adminSnap = await adminDb.collection('users').doc(adminUserId).get();
+        if (!adminSnap.exists) throw new Error('Unauthorized: Admin profile not found.');
+        const adminData = adminSnap.data()!;
+        if (!adminData.isAuthorized || (!adminData.permissions?.includes('system_admin') && !adminData.roles?.includes('administrator'))) {
+            throw new Error('Unauthorized: Insufficient administrative privileges.');
+        }
+
+        // 2. Fetch User Profile
+        const userSnap = await adminDb.collection('users').doc(userId).get();
+        if (!userSnap.exists) throw new Error('User not found.');
+        const userData = userSnap.data()!;
+        if (userData.organizationId !== adminData.organizationId && !adminData.permissions?.includes('system_admin')) {
+            throw new Error('Unauthorized: Cannot decline users outside your organization.');
+        }
+
+        // 3. Disable Auth Account
+        await auth.updateUser(userId, { disabled: true });
+
+        // 4. Update Firestore Profile
+        await adminDb.collection('users').doc(userId).update({
+            isAuthorized: false,
+            approvalStatus: 'rejected',
+            updatedAt: new Date().toISOString()
+        });
+
+        // 5. Revoke session refresh tokens to force log out
+        await auth.revokeRefreshTokens(userId);
+
+        // 6. Send Rejection Email/SMS
+        const warnings: string[] = [];
+        const organizationId = userData.organizationId || 'system';
+        const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+        const orgName = orgSnap.exists ? orgSnap.data()?.name || 'SmartSapp' : 'SmartSapp';
+        const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+
+        let emailSubject = `Join Request Declined for ${orgName}`;
+        let emailHtml = `Hello ${userData.name || 'User'}, your request to join ${orgName} has been declined.`;
+        let smsBody = `Hello ${userData.name || 'User'}, your request to join ${orgName} has been declined.`;
+
+        try {
+            const emailTemplate = await resolveAndRender(
+                'users',
+                'user_access_cancellation',
+                organizationId,
+                {
+                    userId,
+                    extraVars: { login_link: loginLink }
+                },
+                'email'
+            );
+            if (emailTemplate.subject) emailSubject = emailTemplate.subject;
+            emailHtml = emailTemplate.body;
+        } catch (err) {
+            console.error('Failed to resolve declined email template, using fallback:', err);
+        }
+
+        try {
+            const smsTemplate = await resolveAndRender(
+                'users',
+                'user_access_cancellation',
+                organizationId,
+                {
+                    userId,
+                    extraVars: { login_link: loginLink }
+                },
+                'sms'
+            );
+            smsBody = smsTemplate.body;
+        } catch (err) {
+            console.error('Failed to resolve declined SMS template, using fallback:', err);
+        }
+
+        const settledResults: Promise<{ type: string; success: boolean; error?: any }>[] = [];
+        if (userData.email) {
+            settledResults.push(
+                sendEmail({ to: userData.email, subject: emailSubject, html: emailHtml })
+                    .then(() => ({ type: 'email', success: true }))
+                    .catch((err) => {
+                        console.error('Email notification failed:', err);
+                        return { type: 'email', success: false, error: err };
+                    })
+            );
+        }
+        if (userData.phone && userData.phone.length > 5) {
+            settledResults.push(
+                sendSms({ 
+                    recipient: userData.phone, 
+                    message: smsBody, 
+                    sender: orgName.substring(0, 11) || 'SmartSapp' 
+                })
+                    .then(() => ({ type: 'sms', success: true }))
+                    .catch((err) => {
+                        console.error('SMS notification failed:', err);
+                        return { type: 'sms', success: false, error: err };
+                    })
+            );
+        }
+
+        const results = await Promise.allSettled(settledResults);
+        results.forEach((r) => {
+            if (r.status === 'fulfilled') {
+                const val = r.value;
+                if (!val.success) {
+                    warnings.push(`Failed to send rejection ${val.type}: ${val.error?.message || val.error}`);
+                }
+            } else {
+                warnings.push(`Failed to send rejection notification: ${r.reason?.message || r.reason}`);
+            }
+        });
+
+        return { 
+            success: true, 
+            message: `Join request from ${userData.name || 'User'} has been declined.`,
+            warnings: warnings.length > 0 ? warnings : undefined
+        };
+    } catch (error: any) {
+        console.error('>>> [DECLINE JOIN REQUEST] Error:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * REMOVE USER FROM ORGANIZATION ACTION
+ * Removes a user from the organization by clearing their organization bindings, resetting onboarding state,
+ * and removing their workspace permissions, so they are detached from the organization completely.
+ */
+export async function removeUserFromOrgAction(userId: string, adminUserId: string): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        const auth = getAuth();
+
+        // 1. Authenticate caller (server-auth-actions)
+        if (!adminUserId) throw new Error('Unauthorized: Admin User ID is required.');
+        const adminSnap = await adminDb.collection('users').doc(adminUserId).get();
+        if (!adminSnap.exists) throw new Error('Unauthorized: Admin profile not found.');
+        const adminData = adminSnap.data()!;
+        if (!adminData.isAuthorized || (!adminData.permissions?.includes('system_admin') && !adminData.roles?.includes('administrator'))) {
+            throw new Error('Unauthorized: Insufficient administrative privileges.');
+        }
+
+        // 2. Fetch User Profile
+        const userSnap = await adminDb.collection('users').doc(userId).get();
+        if (!userSnap.exists) throw new Error('User not found.');
+        const userData = userSnap.data()!;
+        if (userData.organizationId !== adminData.organizationId && !adminData.permissions?.includes('system_admin')) {
+            throw new Error('Unauthorized: Cannot remove users outside your organization.');
+        }
+
+        // 3. Clear all organization-bound and workspace-bound fields from user document
+        await adminDb.collection('users').doc(userId).update({
+            organizationId: '',
+            workspaceIds: [],
+            workspaceRoles: {},
+            workspacePermissions: {},
+            workspacePermissionsSchemas: {},
+            isAuthorized: false,
+            profileCompleted: false,
+            approvalStatus: 'none', // reset status
+            updatedAt: new Date().toISOString()
+        });
+
+        // 4. Invalidate the target user's active sessions (force them out immediately)
+        try {
+            await auth.revokeRefreshTokens(userId);
+        } catch (e) {
+            console.error('Failed to revoke tokens on user removal (non-blocking):', e);
+        }
+
+        return { 
+            success: true, 
+            message: `${userData.name || 'User'} has been removed from the organization.` 
+        };
+    } catch (error: any) {
+        console.error('>>> [REMOVE USER FROM ORG] Error:', error.message);
+        return { success: false, error: error.message };
+    }
+}

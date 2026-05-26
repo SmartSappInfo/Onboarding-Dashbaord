@@ -242,11 +242,12 @@ export const getZoneDistribution = async (workspaceId: string) => {
 };
 
 /**
- * Fetch authorized users.
+ * Fetch authorized users for a specific organization.
  */
-export const getAuthorizedUsers = cache(async () => {
+export const getAuthorizedUsers = cache(async (organizationId: string) => {
     const snap = await adminDb.collection('users')
         .where('isAuthorized', '==', true)
+        .where('organizationId', '==', organizationId)
         .get();
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
 });
@@ -255,9 +256,14 @@ export const getAuthorizedUsers = cache(async () => {
  * Fetch user assignments.
  */
 export const getUserAssignments = async (workspaceId: string) => {
+    const workspace = await getActiveWorkspace(workspaceId);
+    if (!workspace?.organizationId) {
+        return [];
+    }
+
     const [entities, users] = await Promise.all([
         getWorkspaceEntities(workspaceId),
-        getAuthorizedUsers()
+        getAuthorizedUsers(workspace.organizationId)
     ]);
 
     const totalEntities = entities.length;

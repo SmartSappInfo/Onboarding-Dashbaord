@@ -75,6 +75,10 @@ export function getTaskInterlinkUrl(task: Task): string | null {
         return `/admin/meetings/${task.relatedEntityId}/edit`;
     }
 
+    if (task.relatedEntityType === 'Deal') {
+        return `/admin/deals/${task.relatedEntityId}`;
+    }
+
     return null;
 }
 

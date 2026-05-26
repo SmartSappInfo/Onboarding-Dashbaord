@@ -113,6 +113,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number; onStepClic
                         type="button"
                         onClick={() => isDone && onStepClick(s.n)}
                         className={cn('flex flex-col items-center gap-1.5 outline-none group', isDone && 'cursor-pointer')}
+                        aria-label={`Step ${s.n}: ${s.label}${isDone ? ' (Completed)' : isActive ? ' (Active)' : ''}`}
                     >
                         <div className={cn(
                             'w-9 h-9 rounded-2xl border-2 flex items-center justify-center transition-all duration-300',
@@ -122,7 +123,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number; onStepClic
                         )}>
                             {isDone ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                         </div>
-                        <span className={cn('text-[9px] font-bold uppercase tracking-widest transition-colors hidden sm:block',
+                        <span className={cn('text-[9px] font-bold uppercase tracking-widest transition-colors sr-only sm:not-sr-only sm:block',
                             isActive || isDone ? 'text-primary' : 'text-muted-foreground opacity-50'
                         )}>{s.label}</span>
                     </button>
@@ -351,6 +352,28 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         if (!searchParams) return;
         const r = searchParams.get('recipient');
         if (r) setValue('recipient', r);
+        
+        // Parse contactRoles from directory link and pre-populate contact type filter
+        const rolesParam = searchParams.get('contactRoles');
+        if (rolesParam) {
+            const roles = rolesParam.split(',').filter(Boolean);
+            if (roles.length > 0) {
+                // Map directory role filter keys to composer contactTypeFilter keys
+                const typeFilterKeys = roles.filter(r => r !== 'primary' && r !== 'signatories')
+                    .map(r => r.startsWith('role:') ? r.substring(5) : r);
+                if (typeFilterKeys.length > 0) {
+                    setValue('contactTypeFilter', typeFilterKeys);
+                }
+                // If primary or signatories is in roles, set contactScope accordingly
+                if (roles.includes('primary')) {
+                    setValue('contactScope', 'primary');
+                } else if (roles.includes('signatories') || roles.includes('signatory')) {
+                    setValue('contactScope', 'signatories');
+                } else {
+                    setValue('contactScope', 'all');
+                }
+            }
+        }
     }, [searchParams, setValue]);
 
     React.useEffect(() => {

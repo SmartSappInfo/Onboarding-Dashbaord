@@ -9,6 +9,7 @@ import type { MessageCampaign } from '@/lib/types';
 import { CampaignList } from './components/campaign-list';
 import { Button } from '@/components/ui/button';
 import { Plus, Megaphone } from 'lucide-react';
+import { PageContainer } from '@/components/ui/page-container';
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -113,7 +114,8 @@ export default function CampaignsPage() {
 
     return (
         <div className="h-full overflow-y-auto">
-            <div className="space-y-8">
+            <PageContainer>
+                <div className="space-y-8">
                 {/* Header */}
                 <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3">
@@ -164,6 +166,7 @@ export default function CampaignsPage() {
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
+            </PageContainer>
         </div>
     );
 }

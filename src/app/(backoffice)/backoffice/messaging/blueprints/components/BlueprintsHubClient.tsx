@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 
 import { 
   Zap, Loader2, ArrowLeft, Building2, BarChart2, Search, 
-  SlidersHorizontal, X, Info, Inbox
+  SlidersHorizontal, X, Info, Inbox, RefreshCw, Database
 } from 'lucide-react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -18,6 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 import dynamic from 'next/dynamic';
 import { getBlueprintAdoptionStats, updateGlobalTemplate, createGlobalTemplate } from '@/lib/template-actions';
+import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
+import { migrateTemplatesAction } from '@/app/actions/migrate-templates-action';
 import { useBackoffice } from '../../../context/BackofficeProvider';
 import { BlueprintListItem } from './BlueprintListItem';
 import { BlueprintDetailPane } from './BlueprintDetailPane';
@@ -41,14 +43,91 @@ const TemplateWorkshop = dynamic(
   }
 );
 
+import { useTerminology } from '@/hooks/use-terminology';
+
 export default function BlueprintsHubClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { profile } = useBackoffice();
+  const { singular } = useTerminology();
   const [editingTemplate, setEditingTemplate] = React.useState<MessageTemplate | null>(null);
   const [isCustomizing, setIsCustomizing] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [adoptionStats, setAdoptionStats] = React.useState<Record<string, number>>({});
+  const [isSeedingBlueprints, setIsSeedingBlueprints] = React.useState(false);
+  const [isMigratingTemplates, setIsMigratingTemplates] = React.useState(false);
+
+  const handleSeedBlueprints = async () => {
+    setIsSeedingBlueprints(true);
+    try {
+      const result = await seedGlobalTemplatesAction();
+      if (result.created > 0) {
+        toast({
+          title: 'Blueprints Seeded',
+          description: `Successfully initialized ${result.created} global messaging templates.`,
+        });
+      } else if (result.failed > 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Seeding Failed',
+          description: result.errors?.[0]?.error || 'Failed to seed messaging templates.',
+        });
+      } else {
+        toast({
+          title: 'Blueprints Synchronized',
+          description: 'Global messaging templates are already up-to-date.',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Execution Error',
+        description: error.message || 'An error occurred during template seeding.',
+      });
+    } finally {
+      setIsSeedingBlueprints(false);
+    }
+  };
+
+  const handleMigrateTemplates = async () => {
+    if (!profile?.id) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'User profile is not loaded.',
+      });
+      return;
+    }
+    setIsMigratingTemplates(true);
+    try {
+      const result = await migrateTemplatesAction(profile.id);
+      if (result.migrated > 0) {
+        toast({
+          title: 'Migration Successful',
+          description: `Migrated ${result.migrated} templates. (Scanned: ${result.total}, Skipped: ${result.skipped})`,
+        });
+      } else if (result.failed > 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Migration Partially Failed',
+          description: `Failed to migrate ${result.failed} templates. Check console logs for details.`,
+        });
+      } else {
+        toast({
+          title: 'Migration Checked',
+          description: `No legacy templates required migration. (Scanned: ${result.total}, Skipped: ${result.skipped})`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Migration Failed',
+        description: error.message || 'An error occurred during template migration.',
+      });
+    } finally {
+      setIsMigratingTemplates(false);
+    }
+  };
 
   // Fetch only global templates
   const globalQuery = useMemoFirebase(() => {
@@ -176,9 +255,80 @@ export default function BlueprintsHubClient() {
     const contactVarDefs = generateContactVariableDefinitions('institution');
     const firestoreVars = firestoreVariables || [];
     const existingKeys = new Set(contactVarDefs.map((v: VariableDefinition) => v.key));
-    const deduped = firestoreVars.filter((v: VariableDefinition) => !existingKeys.has(v.key));
-    return [...contactVarDefs, ...deduped];
-  }, [firestoreVariables]);
+    const deduped = firestoreVars.filter((v: VariableDefinition) => !existingKeys.has(v.key) && !v.key.startsWith('school_'));
+
+    // Dynamic terminology variables
+    const terminologyVars: VariableDefinition[] = [
+        {
+            id: 'branding_entity_name',
+            key: 'entity_name',
+            label: `${singular || 'Campus'} Name`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'name',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_email',
+            key: 'entity_email',
+            label: `${singular || 'Campus'} Email`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'email',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_phone',
+            key: 'entity_phone',
+            label: `${singular || 'Campus'} Phone`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'phone',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_location',
+            key: 'entity_location',
+            label: `${singular || 'Campus'} Location`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'locationString',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_initials',
+            key: 'entity_initials',
+            label: `${singular || 'Campus'} Initials`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'initials',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_package',
+            key: 'entity_package',
+            label: `${singular || 'Campus'} Package`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'subscriptionPackageName',
+            type: 'string',
+        }
+    ];
+
+    return [...contactVarDefs, ...terminologyVars, ...deduped];
+  }, [firestoreVariables, singular]);
 
   const categories = [
     { value: 'all', label: 'All Categories' },
@@ -186,20 +336,12 @@ export default function BlueprintsHubClient() {
     { value: 'forms', label: 'Forms' },
     { value: 'surveys', label: 'Surveys' },
     { value: 'agreements', label: 'Agreements' },
+    { value: 'users', label: 'Users' },
     { value: 'general', label: 'General' },
     { value: 'tasks', label: 'Tasks' },
     { value: 'automations', label: 'Automations' },
     { value: 'qr_codes', label: 'QR Codes' }
   ];
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-4">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" />
-        <p className="text-sm font-semibold text-muted-foreground">Loading Blueprints Registry...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="h-[calc(100vh-10rem)] min-h-[600px] flex flex-col overflow-hidden bg-background rounded-3xl border border-border shadow-md">
@@ -285,10 +427,44 @@ export default function BlueprintsHubClient() {
                   </h1>
                 </div>
               </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  onClick={handleSeedBlueprints}
+                  disabled={isSeedingBlueprints}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md border-none gap-2 font-semibold text-xs h-9 px-4 shrink-0"
+                >
+                  {isSeedingBlueprints ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {isSeedingBlueprints ? 'Syncing...' : 'Sync Blueprints'}
+                </Button>
+
+                <Button
+                  onClick={handleMigrateTemplates}
+                  disabled={isMigratingTemplates}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md border-none gap-2 font-semibold text-xs h-9 px-4 shrink-0"
+                >
+                  {isMigratingTemplates ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Database className="h-4 w-4" />
+                  )}
+                  {isMigratingTemplates ? 'Migrating...' : 'Migrate Legacy Variables'}
+                </Button>
+              </div>
             </div>
 
             {/* Split Master-Detail layout */}
-            <div className="flex-1 flex overflow-hidden">
+            {isLoading ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-20 space-y-4 bg-background">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                <p className="text-sm font-semibold text-muted-foreground animate-pulse">Loading Blueprints Registry...</p>
+              </div>
+            ) : (
+              <div className="flex-1 flex overflow-hidden">
               
               {/* Left Column: Master list of triggers */}
               <div className="w-full lg:w-[420px] shrink-0 border-r flex flex-col bg-card overflow-hidden">
@@ -452,7 +628,8 @@ export default function BlueprintsHubClient() {
                 )}
               </div>
 
-            </div>
+              </div>
+            )}
           </div>
         )}
       </AnimatePresence>

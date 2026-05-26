@@ -80,6 +80,7 @@ import { useIndustry } from '@/context/IndustryContext';
 import EntityNotesTab from '../components/EntityNotesTab';
 import EntityNotesWidget from '../components/EntityNotesWidget';
 import EntityContactDirectory from '../components/EntityContactDirectory';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
  loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -284,7 +285,7 @@ export default function EntityDetailPage() {
     const displayName = entityData.name || weData.displayName;
 
     return (
-        <div className={cn("h-full overflow-y-auto w-full", weData.status === 'archived' && "grayscale opacity-80")}>
+        <PageContainerFluid className={cn(weData.status === 'archived' && "grayscale opacity-80")}>
             <div className="space-y-6 w-full">
 
             <div className="relative overflow-visible rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg">
@@ -636,6 +637,6 @@ export default function EntityDetailPage() {
                     onOpenChange={setIsManageWorkspacesOpen}
                 />
             )}
-        </div>
+        </PageContainerFluid>
     );
 }

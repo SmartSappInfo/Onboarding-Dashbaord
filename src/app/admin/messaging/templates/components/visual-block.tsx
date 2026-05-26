@@ -128,7 +128,7 @@ export function VisualBlock({
                                 value={block.title || ''} 
                                 onChange={(e) => onContentUpdate?.({ title: e.target.value })} 
                                 placeholder="Button Label"
- className="h-12 px-8 font-semibold rounded-xl shadow-lg w-auto text-center border-primary/20 bg-primary text-white placeholder:text-white/50"
+ className="h-12 px-8 font-semibold rounded-xl shadow-lg w-auto text-center border-blue-200 bg-blue-600 text-white placeholder:text-white/50"
                             />
                         </div>
                     ) : (
@@ -174,8 +174,8 @@ export function VisualBlock({
             );
         case 'quote':
             return (
- <div className={cn("w-full my-4 p-6 bg-muted/10 border-l-4 border-primary rounded-r-2xl italic text-xl leading-relaxed text-slate-700", alignmentClass)}>
- <Quote className="h-6 w-6 text-primary/20 mb-2" />
+ <div className={cn("w-full my-4 p-6 bg-muted/10 border-l-4 border-blue-600 rounded-r-2xl italic text-xl leading-relaxed text-slate-700", alignmentClass)}>
+ <Quote className="h-6 w-6 text-blue-600/20 mb-2" />
                     {isEditing ? (
                         <RichTextEditor 
                             value={block.content || ''} 
@@ -217,7 +217,7 @@ export function VisualBlock({
         case 'score-card':
             return (
  <div className="w-full py-6">
- <Card className="bg-primary text-white border-none shadow-2xl rounded-[2rem] p-8 flex flex-col items-center text-center">
+ <Card className="bg-blue-600 text-white border-none shadow-2xl rounded-[2rem] p-8 flex flex-col items-center text-center">
                         <Badge variant="outline" className="mb-4 bg-card/10 text-white border-white/20 px-3 py-1 text-[8px] font-semibold uppercase ">Assessment Result</Badge>
  <span className="text-6xl font-semibold tabular-nums tracking-tighter">{simulationVars.score || 0}</span>
  <span className="text-[10px] font-bold opacity-60 mt-1">Total Points Recorded</span>
@@ -231,9 +231,9 @@ export function VisualBlock({
                     {logoUrl && !logoUrl.includes('{{') ? (
                         <img src={logoUrl} alt="Organization Logo" style={{ height: '48px', width: 'auto', display: 'block', ...(align === 'center' ? { margin: '0 auto' } : align === 'right' ? { marginLeft: 'auto' } : {}) }} width={120} height={48} />
                     ) : (
-                        <div className={cn("inline-flex items-center gap-2 p-3 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5", align === 'center' ? 'mx-auto' : '')}>
-                            <ImageIcon className="h-5 w-5 text-primary/40" />
-                            <span className="text-[10px] font-bold text-primary/60">{'{{org_logo_url}}'}</span>
+                        <div className={cn("inline-flex items-center gap-2 p-3 rounded-xl border-2 border-dashed border-blue-100 bg-blue-50", align === 'center' ? 'mx-auto' : '')}>
+                            <ImageIcon className="h-5 w-5 text-blue-600/40" />
+                            <span className="text-[10px] font-bold text-blue-600/60">{'{{org_logo_url}}'}</span>
                         </div>
                     )}
                 </div>
@@ -248,8 +248,8 @@ export function VisualBlock({
                         {headerLogo && !headerLogo.includes('{{') ? (
                             <img src={headerLogo} alt="Logo" style={{ height: '40px', width: 'auto' }} width={100} height={40} />
                         ) : (
-                            <div className="p-2 rounded-lg border border-dashed border-primary/20 bg-primary/5">
-                                <ImageIcon className="h-5 w-5 text-primary/40" />
+                            <div className="p-2 rounded-lg border border-dashed border-blue-100 bg-blue-50">
+                                <ImageIcon className="h-5 w-5 text-blue-600/40" />
                             </div>
                         )}
                         <span className="text-lg font-bold text-foreground/80">{orgName.includes('{{') ? 'Organization Name' : orgName}</span>
@@ -312,14 +312,14 @@ export function SortableBlockItem({
         >
  <div className={cn(
                 "absolute -inset-4 border-2 rounded-[1.5rem] pointer-events-none transition-all duration-300",
-                isSelected ? "border-primary shadow-2xl shadow-primary/10 bg-primary/[0.02]" : "border-transparent"
+                isSelected ? "border-blue-600 shadow-2xl shadow-blue-500/10 bg-blue-50/10" : "border-transparent"
             )} />
 
  <div className={cn(
                 "absolute -left-12 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1 transition-all duration-300",
                 isSelected || "opacity-0 group-hover/block:opacity-100"
             )}>
- <div {...attributes} {...listeners} className="cursor-grab p-2 bg-background border rounded-full shadow-xl hover:text-primary">
+ <div {...attributes} {...listeners} className="cursor-grab p-2 bg-background border rounded-full shadow-xl hover:text-blue-600">
  <GripVertical className="h-4 w-4 text-muted-foreground" />
                 </div>
  <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg" onClick={(e) => { e.stopPropagation(); onSwap(index, index - 1); }} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
@@ -330,7 +330,7 @@ export function SortableBlockItem({
                 "absolute -right-12 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1 transition-all duration-300",
                 isSelected || "opacity-0 group-hover/block:opacity-100"
             )}>
- <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg hover:text-primary" onClick={(e) => { e.stopPropagation(); onDuplicate(); }}><Copy className="h-3.5 w-3.5" /></Button>
+ <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg hover:text-blue-600" onClick={(e) => { e.stopPropagation(); onDuplicate(); }}><Copy className="h-3.5 w-3.5" /></Button>
  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onRemove(); }}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
 

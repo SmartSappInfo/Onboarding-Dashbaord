@@ -54,6 +54,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -218,6 +219,7 @@ export default function ReportsClient() {
 
     if (isLoading) {
         return (
+            <PageContainerFluid>
             <div className="h-full overflow-y-auto">
                 <div className="max-w-5xl mx-auto space-y-8 pb-32">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -229,10 +231,12 @@ export default function ReportsClient() {
                     </div>
                 </div>
             </div>
+            </PageContainerFluid>
         );
     }
 
     return (
+        <PageContainerFluid>
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -367,6 +371,7 @@ export default function ReportsClient() {
                 </div>
             </div>
         </div>
+        </PageContainerFluid>
     );
 }
 

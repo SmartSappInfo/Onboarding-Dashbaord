@@ -20,6 +20,7 @@ import { saveOrganizationAction } from '@/lib/organization-actions';
 import { useToast } from '@/hooks/use-toast';
 import { ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+import { PageContainer } from '@/components/ui/page-container';
 
 export default function SettingsClient() {
   const { activeOrganization } = useTenant();
@@ -60,6 +61,7 @@ export default function SettingsClient() {
   };
 
   return (
+    <PageContainer>
     <div className="space-y-8 pb-32 w-full">
         <Card className="border-none shadow-2xl ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-background/40 backdrop-blur-sm relative group/card">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-50" />
@@ -200,5 +202,6 @@ export default function SettingsClient() {
         organization={activeOrganization} 
       />
     </div>
+    </PageContainer>
   );
 }

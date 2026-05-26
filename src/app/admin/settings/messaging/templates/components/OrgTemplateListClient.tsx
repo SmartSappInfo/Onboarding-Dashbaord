@@ -34,6 +34,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   tasks:      'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
   automations:'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
   qr_codes:   'bg-rose-500/15 text-rose-400 border-rose-500/20',
+  users:      'bg-violet-500/15 text-violet-400 border-violet-500/20',
   general:    'bg-slate-500/15 text-muted-foreground border-slate-500/20',
 };
 
@@ -47,6 +48,7 @@ const CATEGORIES: { value: TemplateCategory; label: string }[] = [
   { value: 'tasks', label: 'Tasks' },
   { value: 'automations', label: 'Automations' },
   { value: 'qr_codes', label: 'QR Codes' },
+  { value: 'users', label: 'Users' },
   { value: 'general', label: 'General' },
 ];
 

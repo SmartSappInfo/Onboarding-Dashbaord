@@ -18,6 +18,7 @@ import {
   bulkArchiveEntitiesAction, 
   bulkDeleteEntitiesAction 
 } from '@/lib/workspace-entity-actions';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -58,10 +59,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AssignUserModal from './components/AssignUserModal';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import ChangeStatusModal from './components/ChangeStatusModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, toTitleCase } from '@/lib/utils';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { createAudience } from '@/lib/audience-hooks';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Loader2 } from 'lucide-react';
 import { LocationCascade, type LocationValue } from '@/components/location/LocationCascade';
 import { CountrySelect } from '@/components/location/CountrySelect';
 import { RegionSelect } from '@/components/location/RegionSelect';
@@ -260,6 +266,110 @@ export default function EntitiesClient() {
   const setInterestFilter = useCallback((v: string[]) => setFilterState(prev => ({ ...prev, interests: v })), []);
   const clearAllFilters = useCallback(() => setFilterState(DEFAULT_FILTERS), []);
 
+  // Save Audience Dialog state
+  const [isSaveAudienceOpen, setIsSaveAudienceOpen] = useState(false);
+  const [audienceName, setAudienceName] = useState('');
+  const [audienceDesc, setAudienceDesc] = useState('');
+  const [isSavingAudience, setIsSavingAudience] = useState(false);
+
+  const handleSaveAudience = async () => {
+    if (!firestore || !currentUser || !activeWorkspaceId) return;
+    setIsSavingAudience(true);
+    try {
+      const filters: any[] = [];
+      
+      if (filterState.status && filterState.status !== 'all') {
+        filters.push({
+          id: `status_${Date.now()}`,
+          field: 'status',
+          operator: 'is',
+          value: filterState.status,
+        });
+      }
+      
+      if (filterState.location) {
+        if (filterState.location.country) {
+          filters.push({
+            id: `country_${Date.now()}`,
+            field: 'locationCountry',
+            operator: 'is',
+            value: filterState.location.country.id,
+          });
+        }
+        if (filterState.location.region) {
+          filters.push({
+            id: `region_${Date.now()}`,
+            field: 'locationRegion',
+            operator: 'is',
+            value: filterState.location.region.id,
+          });
+        }
+        if (filterState.location.district) {
+          filters.push({
+            id: `district_${Date.now()}`,
+            field: 'locationDistrict',
+            operator: 'is',
+            value: filterState.location.district.id,
+          });
+        }
+      }
+      
+      if (filterState.tags && filterState.tags.tagIds.length > 0) {
+        filters.push({
+          id: `tags_${Date.now()}`,
+          field: 'tags',
+          operator: filterState.tags.logic === 'AND' ? 'all_of' : (filterState.tags.logic === 'NOT' ? 'is_not' : 'any_of'),
+          value: filterState.tags.tagIds,
+        });
+      }
+      
+      if (filterState.lifecycle && filterState.lifecycle.length > 0) {
+        filters.push({
+          id: `lifecycle_${Date.now()}`,
+          field: 'lifecycleStatus',
+          operator: 'any_of',
+          value: filterState.lifecycle,
+        });
+      }
+      
+      if (filterState.interests && filterState.interests.length > 0) {
+        filters.push({
+          id: `interests_${Date.now()}`,
+          field: 'interests',
+          operator: 'any_of',
+          value: filterState.interests,
+        });
+      }
+      
+      if (filterState.contactRoles && filterState.contactRoles.length > 0) {
+        filters.push({
+          id: `contactRoles_${Date.now()}`,
+          field: 'contactRoles',
+          operator: 'any_of',
+          value: filterState.contactRoles,
+        });
+      }
+
+      await createAudience(firestore, {
+        workspaceId: activeWorkspaceId,
+        name: audienceName.trim(),
+        description: audienceDesc.trim() || undefined,
+        filters,
+        filterLogic: 'AND',
+        createdBy: currentUser.uid,
+      });
+
+      toast({ title: 'Audience Saved', description: `Saved "${audienceName}" for use in messaging.` });
+      setIsSaveAudienceOpen(false);
+      setAudienceName('');
+      setAudienceDesc('');
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+    } finally {
+      setIsSavingAudience(false);
+    }
+  };
+
   // Tag-related state
   const [isBulkTagOpen, setIsBulkTagOpen] = useState(false);
 
@@ -337,6 +447,35 @@ export default function EntitiesClient() {
   [firestore, activeWorkspaceId]);
 
   const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
+
+  // Extract unique contact roles from RAW entities for dropdown list
+  const contactRoleOptions = useMemo(() => {
+    const options = [
+      { value: 'primary', label: 'Primary Contact' },
+      { value: 'signatories', label: 'Signatory' },
+    ];
+    
+    if (entities) {
+      const uniqueRoles = new Map<string, string>();
+      entities.forEach((entity: any) => {
+        const sourceContacts = entity.entityContacts || entity.contacts || [];
+        sourceContacts.forEach((c: any) => {
+          if (c.typeKey && c.typeKey !== 'primary' && c.typeKey !== 'signatory' && c.typeKey !== 'signatories') {
+            const label = c.typeLabel || c.typeKey.charAt(0).toUpperCase() + c.typeKey.slice(1);
+            uniqueRoles.set(c.typeKey, label);
+          }
+        });
+      });
+      
+      const sortedCustomRoles = Array.from(uniqueRoles.entries())
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([key, label]) => ({ value: `role:${key}`, label }));
+        
+      options.push(...sortedCustomRoles);
+    }
+    
+    return options;
+  }, [entities]);
 
   // Frequently used tags calculation for filtering
   const frequentlyUsedTags = useMemo(() => {
@@ -579,6 +718,7 @@ export default function EntitiesClient() {
 
     return (
         <TooltipProvider>
+            <PageContainerFluid>
             <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                         <div className="flex flex-col items-start">
@@ -749,8 +889,8 @@ export default function EntitiesClient() {
                                     </div>
                                 </div>
 
-                                {/* Row 2: Status + Country + Region + District + Date Added + Interests — inline dropdowns */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                                {/* Row 2: Status + Country + Region + District + Date Added + Interests + Contact Roles — inline dropdowns */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
                                     {/* Status */}
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between h-5">
@@ -865,6 +1005,25 @@ export default function EntitiesClient() {
                                             onChange={setInterestFilter}
                                         />
                                     </div>
+
+                                    {/* Contact Roles — multi select */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <User className="h-2.5 w-2.5" /> Contact Roles
+                                            </label>
+                                            {filterState.contactRoles && filterState.contactRoles.length > 0 && (
+                                                <button type="button" onClick={() => setFilterState(prev => ({ ...prev, contactRoles: [] }))} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
+                                        <MultiSelect
+                                            options={contactRoleOptions}
+                                            value={filterState.contactRoles || []}
+                                            onChange={(val) => setFilterState(prev => ({ ...prev, contactRoles: val }))}
+                                            placeholder="Select roles..."
+                                            className="h-9 min-h-9 py-0.5 px-2 text-[10px] font-bold bg-background/50 border-border shadow-sm rounded-xl"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Row 3: Lifecycle Stage capsules — inline */}
@@ -932,6 +1091,14 @@ export default function EntitiesClient() {
                                 className="h-7 rounded-xl text-[10px] font-black uppercase tracking-widest text-destructive/70 hover:text-destructive hover:bg-destructive/5 px-2.5"
                             >
                                 Clear All
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsSaveAudienceOpen(true)}
+                                className="h-7 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary border-primary/20 hover:bg-primary/5 px-2.5"
+                            >
+                                Save as Audience
                             </Button>
                         </div>
                     )}
@@ -1083,7 +1250,7 @@ export default function EntitiesClient() {
                                                 <Badge className="text-[10px] font-bold uppercase border-none h-6 bg-primary/10 text-primary">{entity.lifecycleStatus || 'Welcome'}</Badge>
                                             </TableCell>
                                             <TableCell>
-                                                <CompactContactList entityId={entity.entityId} onManualRecheck={handleManualRecheck} />
+                                                <CompactContactList entityId={entity.entityId} onManualRecheck={handleManualRecheck} activeContactRoles={filterState.contactRoles} />
                                             </TableCell>
                                             <TableCell className="text-xs font-medium text-muted-foreground">
                                                 {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
@@ -1142,9 +1309,9 @@ export default function EntitiesClient() {
                                                             <DropdownMenuSeparator className="my-2" />
                                                             
                                                             <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{editProfile}</span></Link></DropdownMenuItem>
-                                                            <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${entity.entityId}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
+                                                            <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${entity.entityId}${filterState.contactRoles?.length ? `&contactRoles=${encodeURIComponent(filterState.contactRoles.join(','))}` : ''}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
                                                             <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
-                                                                <Link href={`/admin/messaging/composer?entityId=${entity.entityId}&recipient=${entity.primaryEmail || entity.primaryPhone || ''}`}>
+                                                                <Link href={buildComposerLink(entity, filterState.contactRoles)}>
                                                                     <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Send className="h-3.5 w-3.5" /></div>
                                                                     <span className="font-bold text-sm">Send Message</span>
                                                                 </Link>
@@ -1359,8 +1526,85 @@ export default function EntitiesClient() {
                     onOpenChange={(open) => !open && setManagingWorkspacesEntity(null)}
                 />
             )}
+            
+            <Dialog open={isSaveAudienceOpen} onOpenChange={setIsSaveAudienceOpen}>
+                <DialogContent className="rounded-2xl max-w-md bg-card text-card-foreground border border-border shadow-xl">
+                    <DialogHeader>
+                        <DialogTitle className="font-semibold text-lg">Save Filter as Audience</DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Create a reusable audience segment from your active directory filters.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-3">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase">Audience Name</label>
+                            <Input 
+                                placeholder="e.g. Active Signatories in Greater Accra" 
+                                value={audienceName} 
+                                onChange={e => setAudienceName(e.target.value)} 
+                                className="rounded-xl font-bold bg-background border-border"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase">Description</label>
+                            <Textarea 
+                                placeholder="Describe this audience segment..." 
+                                value={audienceDesc} 
+                                onChange={e => setAudienceDesc(e.target.value)} 
+                                className="rounded-xl min-h-[80px] bg-background border-border"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="outline" className="rounded-xl font-bold" onClick={() => setIsSaveAudienceOpen(false)} disabled={isSavingAudience}>
+                            Cancel
+                        </Button>
+                        <Button className="rounded-xl font-bold" onClick={handleSaveAudience} disabled={isSavingAudience || !audienceName.trim()}>
+                            {isSavingAudience && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Segment
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            </PageContainerFluid>
         </TooltipProvider>
     );
+}
+
+/**
+ * Checks if a contact matches any of the given role filter values.
+ * Reuses the same matching logic as useEntityFilters.ts for consistency.
+ */
+function matchesContactRoles(contact: any, roles: string[]): boolean {
+    return roles.some(role => {
+        if (role === 'primary') return !!contact.isPrimary;
+        if (role === 'signatories' || role === 'signatory') return !!contact.isSignatory;
+        const cleanRole = role.startsWith('role:') ? role.substring(5) : role;
+        return contact.typeKey === cleanRole;
+    });
+}
+
+/**
+ * Builds the composer link URL for a given entity.
+ * When contact roles filter is active, resolves the first matching contact's
+ * email/phone as the recipient and passes contactRoles so the composer can
+ * scope its audience correctly.
+ */
+function buildComposerLink(entity: any, activeContactRoles?: string[]): string {
+    const base = `/admin/messaging/composer?entityId=${entity.entityId}`;
+    
+    if (activeContactRoles && activeContactRoles.length > 0) {
+        // Resolve matched contact from workspace entity's denormalized contacts
+        const contacts: any[] = entity.entityContacts || [];
+        const matched = contacts.filter((c: any) => matchesContactRoles(c, activeContactRoles));
+        const firstMatch = matched[0];
+        const recipient = firstMatch?.email || firstMatch?.phone || entity.primaryEmail || entity.primaryPhone || '';
+        const rolesParam = encodeURIComponent(activeContactRoles.join(','));
+        return `${base}&recipient=${encodeURIComponent(recipient)}&contactRoles=${rolesParam}`;
+    }
+    
+    return `${base}&recipient=${entity.primaryEmail || entity.primaryPhone || ''}`;
 }
 
 function PrimaryContactName({ entityId, fallback }: { entityId: string, fallback?: string }) {
@@ -1376,15 +1620,23 @@ function PrimaryContactName({ entityId, fallback }: { entityId: string, fallback
     return <span className="tracking-tight">{name}</span>;
 }
 
-function CompactContactList({ entityId, onManualRecheck }: { entityId: string, onManualRecheck: (email: string) => void }) {
+function CompactContactList({ entityId, onManualRecheck, activeContactRoles }: { entityId: string, onManualRecheck: (email: string) => void, activeContactRoles?: string[] }) {
     const firestore = useFirestore();
     const docRef = useMemoFirebase(() => firestore ? doc(firestore, 'entities', entityId) : null, [firestore, entityId]);
     const { data: baseEntity } = useDoc<Entity>(docRef);
 
-    const contacts = baseEntity?.entityContacts || [];
+    const allContacts = baseEntity?.entityContacts || [];
+
+    // When a role filter is active, show only matching contacts
+    const contacts = useMemo(() => {
+        if (!activeContactRoles || activeContactRoles.length === 0) return allContacts;
+        return allContacts.filter(c => matchesContactRoles(c, activeContactRoles));
+    }, [allContacts, activeContactRoles]);
+
+    const isRoleFiltered = activeContactRoles && activeContactRoles.length > 0;
 
     if (contacts.length === 0) {
-        return <span className="text-[10px] italic opacity-40">No Contacts</span>;
+        return <span className="text-[10px] italic opacity-40">{isRoleFiltered ? 'No match' : 'No Contacts'}</span>;
     }
 
     return (
@@ -1395,6 +1647,11 @@ function CompactContactList({ entityId, onManualRecheck }: { entityId: string, o
             {contacts.length > 4 && (
                 <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-[10px] font-bold ring-2 ring-background z-0 relative border border-border/50">
                     +{contacts.length - 4}
+                </div>
+            )}
+            {isRoleFiltered && allContacts.length > contacts.length && (
+                <div className="ml-1 flex items-center">
+                    <span className="text-[8px] text-muted-foreground/60 italic">{contacts.length}/{allContacts.length}</span>
                 </div>
             )}
         </div>

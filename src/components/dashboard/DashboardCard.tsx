@@ -39,7 +39,7 @@ export default function DashboardCard({
         {...props}
       >
         <CardHeader className="h-14 flex items-center justify-start py-0 px-6 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
-          <CardTitle className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-70 flex items-center gap-2">
+          <CardTitle className="text-[10px] font-medium tracking-[0.05em] opacity-70 flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shadow-[0_0_8px_rgba(var(--primary),0.6)]" />
             {displayTitle}
           </CardTitle>

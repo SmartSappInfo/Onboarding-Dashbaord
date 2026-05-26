@@ -33,20 +33,20 @@ export function PipelinePieChart({
             {hoveredSegment ? (
                 <>
                     <p className="text-sm text-muted-foreground truncate px-2">{hoveredSegment.label}</p>
-                    <p className="text-3xl font-bold">
+                    <p className="text-3xl font-semibold">
                         {totalCount > 0 ? ((hoveredSegment.value / totalCount) * 100).toFixed(1) : 0}%
                     </p>
                     <p className="text-sm text-muted-foreground">
                         {hoveredSegment.value} {hoveredSegment.value === 1 ? terminology.singular : terminology.plural}
                     </p>
-                    <p className="text-lg font-semibold mt-1">{hoveredSegment.students?.toLocaleString()}</p>
+                    <p className="text-lg font-medium mt-1">{hoveredSegment.students?.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">Students</p>
                 </>
             ) : (
                 <>
-                    <p className="text-3xl font-bold">{totalCount}</p>
+                    <p className="text-3xl font-semibold">{totalCount}</p>
                     <p className="text-sm text-muted-foreground">Total {terminology.plural}</p>
-                    <p className="text-xl font-semibold mt-2">{totalStudents.toLocaleString()}</p>
+                    <p className="text-xl font-medium mt-2">{totalStudents.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">Total Students</p>
                 </>
             )}
@@ -96,7 +96,7 @@ export function PipelinePieChart({
                                     />
                                     <span className="text-sm font-medium">{segment.label}</span>
                                 </div>
-                                <span className="font-semibold text-sm">{segment.value}</span>
+                                <span className="font-medium text-sm">{segment.value}</span>
                             </div>
                          )
                     })}

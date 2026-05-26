@@ -286,6 +286,15 @@ export interface Organization {
   enabledFeatures?: FeatureToggleMap;
   /** Global default values applied when entities are created via survey submissions */
   surveyEntityDefaults?: SurveyEntityDefaults;
+  /** Departments list configured for this organization, presented during user onboarding */
+  departments?: string[];
+  
+  // Custom brand styling fields
+  unsubscribeCopy?: string;
+  brandPrimaryColor?: string;
+  brandSecondaryColor?: string;
+  brandFontFamily?: string;
+
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -938,6 +947,13 @@ export interface WorkspaceEntity {
   customData?: Record<string, any>;
 }
 
+export interface DealContact {
+  entityId: string;
+  role: string;          // e.g., 'Decision Maker', 'Billing', 'Evaluator', 'Parent'
+  name?: string;
+  email?: string;
+}
+
 /**
  * Deal (Opportunity) - represents an independent transactional record
  * Multiple deals can be linked to a single Entity within a workspace.
@@ -954,6 +970,8 @@ export interface Deal {
   value: number;              // Deal value
   propertyId?: string;        // Optional property reference for real estate deals
   status: 'open' | 'won' | 'lost';
+  lostReason?: string | null; // Captures why the deal was closed lost
+  contacts?: DealContact[];   // Associated secondary contacts
   assignedTo?: {
     userId: string | null;
     name: string | null;
@@ -1818,7 +1836,7 @@ export interface Task {
   notes?: TaskNote[];
   reminders: TaskReminder[];
   reminderSent: boolean;
-  relatedEntityType?: 'SurveyResponse' | 'Submission' | 'Meeting' | 'School' | null;
+  relatedEntityType?: 'SurveyResponse' | 'Submission' | 'Meeting' | 'School' | 'Deal' | null;
   relatedParentId?: string | null; // e.g. Survey ID or PDF ID
   relatedEntityId?: string | null; // e.g. Response ID
 }
@@ -2229,6 +2247,9 @@ export interface MessageStyle {
   name: string;
   htmlWrapper: string;
   workspaceIds: string[];
+  isDefault?: boolean;
+  scope?: 'global' | 'organization';
+  organizationId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

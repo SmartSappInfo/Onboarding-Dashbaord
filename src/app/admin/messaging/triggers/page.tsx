@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import { useToast } from '@/hooks/use-toast';
 import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 import {
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useTerminology } from '@/hooks/use-terminology';
 
 export default function MessagingTriggersPage() {
   const firestore = useFirestore();
@@ -40,6 +42,7 @@ export default function MessagingTriggersPage() {
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
   const { activeOrganizationId } = useTenant();
+  const { singular } = useTerminology();
 
   // State for customizing a trigger
   const [isAdding, setIsAdding] = React.useState(false);
@@ -196,9 +199,80 @@ export default function MessagingTriggersPage() {
     const contactVarDefs = generateContactVariableDefinitions('institution');
     const firestoreVars = firestoreVariables || [];
     const existingKeys = new Set(contactVarDefs.map(v => v.key));
-    const deduped = firestoreVars.filter(v => !existingKeys.has(v.key));
-    return [...contactVarDefs, ...deduped];
-  }, [firestoreVariables]);
+    const deduped = firestoreVars.filter(v => !existingKeys.has(v.key) && !v.key.startsWith('school_'));
+
+    // Dynamic terminology variables
+    const terminologyVars: VariableDefinition[] = [
+        {
+            id: 'branding_entity_name',
+            key: 'entity_name',
+            label: `${singular || 'Campus'} Name`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'name',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_email',
+            key: 'entity_email',
+            label: `${singular || 'Campus'} Email`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'email',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_phone',
+            key: 'entity_phone',
+            label: `${singular || 'Campus'} Phone`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'phone',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_location',
+            key: 'entity_location',
+            label: `${singular || 'Campus'} Location`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'locationString',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_initials',
+            key: 'entity_initials',
+            label: `${singular || 'Campus'} Initials`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'initials',
+            type: 'string',
+        },
+        {
+            id: 'branding_entity_package',
+            key: 'entity_package',
+            label: `${singular || 'Campus'} Package`,
+            category: 'common',
+            source: 'branding',
+            sourceName: 'Branding & Constants',
+            entity: 'Entity',
+            path: 'subscriptionPackageName',
+            type: 'string',
+        }
+    ];
+
+    return [...contactVarDefs, ...terminologyVars, ...deduped];
+  }, [firestoreVariables, singular]);
 
   // ── 6. Actions ──────────────────────────────────────────────────────────
 
@@ -303,7 +377,8 @@ export default function MessagingTriggersPage() {
   ];
 
   return (
-    <div className="h-[calc(100vh-10rem)] min-h-[600px] flex flex-col overflow-hidden bg-background rounded-3xl border border-border shadow-md">
+    <PageContainerFluid className="h-full flex flex-col">
+      <div className="h-[calc(100vh-10rem)] min-h-[600px] flex flex-col overflow-hidden bg-background rounded-3xl border border-border shadow-md">
       <AnimatePresence mode="wait">
         {isAdding ? (
           <TemplateWorkshop 
@@ -582,6 +657,7 @@ export default function MessagingTriggersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </PageContainerFluid>
   );
 }

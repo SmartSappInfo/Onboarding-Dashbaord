@@ -1,17 +1,21 @@
 'use client';
 
 import * as React from 'react';
-import type { VariableDefinition } from '@/lib/types';
+import type { VariableDefinition, TemplateVariable } from '@/lib/types';
+import { VariablePicker } from '@/components/messaging/VariablePicker';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSlashAutocomplete } from '@/hooks/use-slash-autocomplete';
 
 interface HtmlCodeEditorProps {
     value: string;
     onChange: (value: string) => void;
     variables: VariableDefinition[];
     placeholder?: string;
+    registerInsertCallback?: (cb: ((key: string) => void) | null) => void;
+    contextLabels?: Record<string, string>;
 }
 
 /**
@@ -22,13 +26,71 @@ const HtmlCodeEditor = React.memo(function HtmlCodeEditor({
     value,
     onChange,
     variables,
-    placeholder = '<!-- Write your HTML email here… -->'
+    placeholder = '<!-- Write your HTML email here… -->',
+    registerInsertCallback,
+    contextLabels
 }: HtmlCodeEditorProps) {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
     const [validationWarnings, setValidationWarnings] = React.useState<string[]>([]);
 
     // Debounced preview value to avoid thrashing the iframe
     const deferredValue = React.useDeferredValue(value);
+
+    // Map VariableDefinition to TemplateVariable format for useSlashAutocomplete
+    const templateVars = React.useMemo<TemplateVariable[]>(() => {
+        return variables.map(v => {
+            let ctx = v.category;
+            if (v.id.startsWith('survey_')) {
+                const parts = v.id.split('_');
+                ctx = `survey_${parts[1]}`;
+            } else if (v.id.startsWith('pdf_')) {
+                const parts = v.id.split('_');
+                ctx = `pdf_${parts[1]}`;
+            }
+
+            return {
+                id: v.id || v.key,
+                name: v.key,
+                label: v.label,
+                description: `${v.label} (Source: ${v.source || 'system'})`,
+                dataType: (v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'string') as any,
+                context: ctx as any,
+                exampleValue: v.constantValue || `{{${v.key}}}`,
+                isDynamic: v.source !== 'system',
+                isComputed: false
+            };
+        });
+    }, [variables]);
+
+    const {
+        showAutocomplete,
+        autocompleteCoords,
+        autocompleteIndex,
+        filteredVars,
+        handleKeyDown,
+        handleInputChange,
+        handleSelectChange,
+        selectAndInsert,
+    } = useSlashAutocomplete({
+        variables: templateVars,
+        value,
+        onChange,
+    });
+
+    // Auto-scroll selected autocomplete item into view
+    React.useEffect(() => {
+        if (!dropdownRef.current) return;
+        const activeEl = dropdownRef.current.querySelector('[data-active="true"]');
+        if (activeEl) {
+            activeEl.scrollIntoView({ block: 'nearest' });
+        }
+    }, [autocompleteIndex, showAutocomplete]);
+
+    const handleTextAreaChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onChange(e.target.value);
+        handleInputChange(e);
+    }, [onChange, handleInputChange]);
 
     // Basic HTML validation
     React.useEffect(() => {
@@ -77,6 +139,15 @@ const HtmlCodeEditor = React.memo(function HtmlCodeEditor({
         });
     }, [value, onChange]);
 
+    React.useEffect(() => {
+        if (registerInsertCallback) {
+            registerInsertCallback(insertVariable);
+        }
+        return () => {
+            if (registerInsertCallback) registerInsertCallback(null);
+        };
+    }, [insertVariable, registerInsertCallback]);
+
     return (
         <div className="space-y-3">
             {/* Validation warnings */}
@@ -107,11 +178,13 @@ const HtmlCodeEditor = React.memo(function HtmlCodeEditor({
                             {value.length} chars
                         </Badge>
                     </div>
-                    <div className="flex-1 rounded-2xl overflow-hidden shadow-2xl bg-slate-900 border border-slate-700">
+                    <div className="relative flex-1 rounded-2xl shadow-2xl bg-slate-900 border border-slate-700">
                         <Textarea
                             ref={textareaRef}
                             value={value}
-                            onChange={e => onChange(e.target.value)}
+                            onChange={handleTextAreaChange}
+                            onKeyDown={handleKeyDown}
+                            onSelect={handleSelectChange}
                             placeholder={placeholder}
                             aria-label="HTML source code"
                             spellCheck={false}
@@ -120,10 +193,63 @@ const HtmlCodeEditor = React.memo(function HtmlCodeEditor({
                                 'font-mono text-sm leading-relaxed p-6',
                                 'bg-slate-900 text-blue-400',
                                 'placeholder:text-slate-600',
-                                'focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-inset',
+                                'focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:ring-inset',
                                 'resize-none'
                             )}
                         />
+
+                        {/* Floating Autocomplete Dropdown Popover */}
+                        {showAutocomplete && filteredVars.length > 0 && (
+                            <div
+                                ref={dropdownRef}
+                                style={{
+                                    position: 'absolute',
+                                    top: autocompleteCoords.top,
+                                    left: autocompleteCoords.left,
+                                    zIndex: 1000,
+                                }}
+                                className="w-64 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
+                            >
+                                {filteredVars.map((v, idx) => {
+                                    const labelText = contextLabels && contextLabels[v.context]
+                                        ? contextLabels[v.context]
+                                        : String(v.context);
+                                    
+                                    const isSelected = idx === autocompleteIndex;
+                                    
+                                    return (
+                                        <button
+                                            key={v.id}
+                                            type="button"
+                                            data-active={isSelected ? 'true' : 'false'}
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                if (textareaRef.current) {
+                                                    selectAndInsert(v.name, textareaRef.current);
+                                                }
+                                            }}
+                                            onTouchStart={(e) => {
+                                                e.preventDefault();
+                                                if (textareaRef.current) {
+                                                    selectAndInsert(v.name, textareaRef.current);
+                                                }
+                                            }}
+                                            className={cn(
+                                                "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none",
+                                                isSelected
+                                                    ? "bg-primary text-primary-foreground"
+                                                    : "text-foreground hover:bg-muted"
+                                            )}
+                                        >
+                                            <span className="truncate w-full">{v.label}</span>
+                                            <span className={cn("text-[9px] font-mono truncate w-full", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                                                {`{{${v.name}}}`} • {labelText}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -150,35 +276,7 @@ const HtmlCodeEditor = React.memo(function HtmlCodeEditor({
                 </div>
             </div>
 
-            {/* Variable quick-insert row */}
-            {variables.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-border/30">
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider px-1">
-                        Insert Variables
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                        {variables.slice(0, 20).map(v => (
-                            <button
-                                key={v.id}
-                                type="button"
-                                onClick={() => insertVariable(v.key)}
-                                aria-label={`Insert variable ${v.label}`}
-                                className={cn(
-                                    'px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono',
-                                    'bg-primary/5 text-primary border border-primary/10',
-                                    'hover:bg-primary/10 hover:border-primary/20',
-                                    'focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:outline-none',
-                                    'transition-colors duration-150'
-                                )}
-                            >
-                                {'{{'}
-                                {v.key}
-                                {'}}'}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
+            {/* Variable insertion via VariablePicker removed as we now use Slash commands autocomplete */}
         </div>
     );
 });

@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 /**
  * @fileOverview Billing Cycles Management.
@@ -145,7 +146,7 @@ export default function PeriodsClient() {
     };
 
     return (
-        <div className="h-full overflow-y-auto w-full">
+        <PageContainerFluid>
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex flex-col items-start">
@@ -312,6 +313,6 @@ export default function PeriodsClient() {
                     </form>
                 </DialogContent>
             </Dialog>
-        </div>
+        </PageContainerFluid>
     );
 }

@@ -42,14 +42,14 @@ export function resolveVariableValue(key: string, school?: any): string | null {
     const rate = school.subscriptionRate || 0;
     const roll = school.nominalRoll || 0;
     
+    if (key === 'entity_name') return school.name;
+    if (key === 'entity_initials') return school.initials || '';
+    if (key === 'entity_location') return school.location || '';
+    if (key === 'entity_phone') return school.phone || '';
+    if (key === 'entity_email') return school.email || '';
+    if (key === 'entity_package') return school.subscriptionPackageName || 'Standard';
+
     switch(key) {
-        // Institutional Data
-        case 'school_name': return school.name;
-        case 'school_initials': return school.initials || '';
-        case 'school_location': return school.location || '';
-        case 'school_phone': return school.phone || '';
-        case 'school_email': return school.email || '';
-        
         // Signatory Data (Primary variables)
         case 'contact_name': return signatory?.name || '';
         case 'contact_email': return signatory?.email || '';
@@ -57,7 +57,6 @@ export function resolveVariableValue(key: string, school?: any): string | null {
         case 'contact_position': return signatory?.type || '';
         
         // Financial Logic
-        case 'school_package': return school.subscriptionPackageName || 'Standard';
         case 'subscription_rate': return `${currency} ${rate.toLocaleString()}`;
         case 'subscription_total': return `${currency} ${(rate * roll).toLocaleString()}`;
         case 'nominal_roll': return roll.toLocaleString();

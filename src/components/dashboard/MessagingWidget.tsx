@@ -34,9 +34,9 @@ export function MessagingWidget({ emailSuccess, smsSuccess, recentLogs }: Messag
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2 text-blue-500">
                                 <Mail className="h-4 w-4" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Email</span>
+                                <span className="text-[10px] font-medium tracking-wider">Email</span>
                             </div>
-                            <span className="text-sm font-black tabular-nums">{emailSuccess}%</span>
+                            <span className="text-sm font-semibold tabular-nums">{emailSuccess}%</span>
                         </div>
                         <Progress value={emailSuccess} className="h-1.5 bg-blue-100 [&>div]:bg-blue-500 shadow-sm" />
                     </div>
@@ -44,9 +44,9 @@ export function MessagingWidget({ emailSuccess, smsSuccess, recentLogs }: Messag
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2 text-orange-500">
                                 <Smartphone className="h-4 w-4" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">SMS</span>
+                                <span className="text-[10px] font-medium tracking-wider">SMS</span>
                             </div>
-                            <span className="text-sm font-black tabular-nums">{smsSuccess}%</span>
+                            <span className="text-sm font-semibold tabular-nums">{smsSuccess}%</span>
                         </div>
                         <Progress value={smsSuccess} className="h-1.5 bg-orange-100 [&>div]:bg-orange-500 shadow-sm" />
                     </div>
@@ -57,7 +57,7 @@ export function MessagingWidget({ emailSuccess, smsSuccess, recentLogs }: Messag
                 {/* Recent Dispatches */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between px-1">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Recent Dispatches</h4>
+                        <h4 className="text-[10px] font-medium tracking-wider text-muted-foreground">Recent Dispatches</h4>
                         <Target className="h-3 w-3 text-muted-foreground opacity-40" />
                     </div>
                     
@@ -71,8 +71,8 @@ export function MessagingWidget({ emailSuccess, smsSuccess, recentLogs }: Messag
                                     {log.channel === 'email' ? <Mail className="h-3.5 w-3.5" /> : <Smartphone className="h-3.5 w-3.5" />}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-black truncate text-foreground">{log.recipient}</p>
-                                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight truncate opacity-60">
+                                    <p className="text-xs font-medium truncate text-foreground">{log.recipient}</p>
+                                    <p className="text-[9px] font-medium text-muted-foreground tracking-tight truncate opacity-60">
                                         {formatDistanceToNow(new Date(log.sentAt), { addSuffix: true })}
                                     </p>
                                 </div>
@@ -92,7 +92,7 @@ export function MessagingWidget({ emailSuccess, smsSuccess, recentLogs }: Messag
                     </div>
                 </div>
 
-                <Button variant="outline" asChild className="w-full rounded-xl font-bold h-10 border-primary/10 hover:bg-primary/5 hover:text-primary transition-all group mt-2">
+                <Button variant="outline" asChild className="w-full rounded-xl font-medium h-10 border-primary/10 hover:bg-primary/5 hover:text-primary transition-all group mt-2">
                     <Link href="/admin/messaging/logs">
                         Full Audit Trail
                         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />

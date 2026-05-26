@@ -14,12 +14,13 @@ vi.mock('../firebase-admin', () => {
   const where = vi.fn();
   where.mockReturnValue({ where, limit, get });
   const docGet = vi.fn();
-  const doc = vi.fn(() => ({ get: docGet }));
+  const docCollection = vi.fn(() => ({ where }));
+  const doc = vi.fn(() => ({ get: docGet, collection: docCollection }));
   const collection = vi.fn(() => ({ where, doc }));
 
   return {
     adminDb: { collection },
-    __mocks: { get, limit, where, doc, docGet, collection },
+    __mocks: { get, limit, where, doc, docGet, collection, docCollection },
   };
 });
 
@@ -200,13 +201,13 @@ describe('buildVariableMap', () => {
       data: () => ({
         heroTitle: 'Team Sync',
         meetingLink: 'https://meet.example.com/abc',
-        meetingTime: '10:00 AM',
+        meetingTime: '2025-06-20 10:00 AM',
       }),
     });
     const vars = await buildVariableMap('meeting', { meetingId: 'mtg-1' });
     expect(vars['meeting_title']).toBe('Team Sync');
     expect(vars['meeting_link']).toBe('https://meet.example.com/abc');
-    expect(vars['meeting_time']).toBe('10:00 AM');
+    expect(vars['meeting_time']).toBe('2025-06-20 10:00 AM');
   });
 });
 

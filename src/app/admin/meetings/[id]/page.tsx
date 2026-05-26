@@ -682,6 +682,12 @@ export default function MeetingDetailPage() {
               </CardHeader>
               <CardContent className="p-4 space-y-2">
                 <Button asChild variant="outline" size="sm" className="w-full justify-start rounded-xl">
+                  <Link href={`/admin/meetings/${meetingId}/invitations`}>
+                    <Send className="h-4 w-4 mr-2 text-muted-foreground" />
+                    Manage Invitations & RSVPs
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" className="w-full justify-start rounded-xl">
                   <Link href={`/admin/meetings/${meetingId}/registrants`}>
                     <Users className="h-4 w-4 mr-2 text-muted-foreground" />
                     Manage Registrants

@@ -15,6 +15,7 @@ import MediaAssetCard from './components/media-asset-card';
 import UploadButton from './components/upload-button';
 import AddLinkButton from './components/add-link-button';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 /**
  * @fileOverview Media Hub Client.
@@ -75,6 +76,7 @@ export default function MediaClient() {
   const isLoading = isWorkspaceLoading || isMediaLoading;
 
     return (
+        <PageContainerFluid>
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -151,5 +153,6 @@ export default function MediaClient() {
         </div>
             </div>
         </div>
+        </PageContainerFluid>
     );
 }

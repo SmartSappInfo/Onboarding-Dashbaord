@@ -10,6 +10,7 @@ import { cn, stripHtml } from '@/lib/utils';
 import { SmartSappLogo } from '@/components/icons';
 import VideoHero from '@/components/video-hero';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTheme } from 'next-themes';
 
 export default function LivePreviewPane() {
     const { watch } = useFormContext();
@@ -33,6 +34,9 @@ export default function LivePreviewPane() {
         showIntroAsPage
     } = watchedValues;
 
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
+
     const BackgroundPattern = () => {
         if (!backgroundPattern || backgroundPattern === 'none') return null;
         return (
@@ -49,8 +53,8 @@ export default function LivePreviewPane() {
     };
 
     return (
- <div className="h-full flex flex-col bg-slate-100 rounded-[2.5rem] border shadow-inner overflow-hidden animate-in fade-in duration-700">
- <div className="p-4 border-b bg-background flex items-center justify-between shrink-0">
+        <div className="h-full flex flex-col bg-slate-100 dark:bg-slate-950/20 rounded-[2.5rem] border shadow-inner overflow-hidden animate-in fade-in duration-700">
+            <div className="p-4 border-b bg-background flex items-center justify-between shrink-0">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl">
  <Layout className="h-4 w-4 text-primary" />
@@ -77,11 +81,11 @@ export default function LivePreviewPane() {
 
  <div className="flex-1 overflow-hidden p-8 flex justify-center">
                 <div 
- className={cn(
+                    className={cn(
                         "transition-all duration-700 bg-card shadow-2xl rounded-[3rem] overflow-hidden relative ring-1 ring-black/5",
                         device === 'mobile' ? "w-[375px] h-[667px]" : "w-full h-full max-w-4xl"
                     )}
-                    style={{ backgroundColor: backgroundColor || '#F1F5F9' }}
+                    style={{ backgroundColor: isDark ? '#090d16' : (backgroundColor || '#F1F5F9') }}
                 >
                     <BackgroundPattern />
                     
@@ -144,7 +148,7 @@ export default function LivePreviewPane() {
                                     </div>
                                     
                                     {/* Dummy Question Card */}
-                                    <Card className="text-left border border-border/50 shadow-lg rounded-3xl bg-card overflow-hidden">
+                                    <Card className="text-left border transition-all duration-500 overflow-hidden rounded-[2rem] border-border/60 shadow-sm bg-card">
                                         <div className="p-6 sm:p-8 space-y-6">
                                             <div className="space-y-2">
                                                 <div className="flex items-center gap-2 text-primary font-bold text-[10px] tracking-widest uppercase">
@@ -155,7 +159,7 @@ export default function LivePreviewPane() {
                                                 <p className="text-sm font-medium text-muted-foreground">We will use this to send your results.</p>
                                             </div>
                                             <div className="relative">
-                                                <div className="h-14 w-full bg-background rounded-2xl border border-border shadow-sm flex items-center px-5 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                                                <div className="h-14 w-full bg-background/50 rounded-2xl border border-border/60 shadow-sm flex items-center px-5 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
                                                     <div className="h-4 w-[1px] bg-primary animate-pulse mr-1"></div>
                                                     <span className="text-muted-foreground/50 text-sm font-medium">hello@example.com</span>
                                                 </div>

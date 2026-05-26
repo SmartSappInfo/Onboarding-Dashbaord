@@ -51,8 +51,8 @@ export default function OrganizationsClient() {
     const [deleteConfirmOrg, setDeleteConfirmOrg] = React.useState<Organization | null>(null);
 
     const organizationsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'organizations'), orderBy('createdAt', 'desc')) : null, 
-    [firestore]);
+        firestore && user ? query(collection(firestore, 'organizations'), orderBy('createdAt', 'desc')) : null, 
+    [firestore, user]);
     const { data: organizations, isLoading } = useCollection<Organization>(organizationsQuery);
 
     const handleSelectOrganization = (orgId: string) => {

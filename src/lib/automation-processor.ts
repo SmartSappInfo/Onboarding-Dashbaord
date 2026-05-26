@@ -136,6 +136,12 @@ function evaluateTriggerConfig(automation: Automation, payload: Record<string, a
         }
     }
 
+    // Deal Stage change filtering
+    if (automation.trigger === 'DEAL_STAGE_CHANGED') {
+        if (config.pipelineId && config.pipelineId !== payload.pipelineId) return false;
+        if (config.stageId && config.stageId !== payload.stageId) return false;
+    }
+
     return true;
 }
 
@@ -523,6 +529,41 @@ async function handleSendMessage(config: any, context: ExecutionContext) {
             resolvedRecipient = contact.contacts[0].email;
         }
     }
+
+    // Extract dynamic contextual keys from trigger payload (Component 4)
+    const meetingId = context.payload.meetingId || context.payload.meeting_id || context.payload.id;
+    const formId = context.payload.formId || context.payload.form_id || context.payload.pdfId;
+    const surveyId = context.payload.surveyId || context.payload.survey_id;
+    const agreementId = context.payload.agreementId || context.payload.agreement_id || context.payload.contractId;
+    const responseId = context.payload.responseId || context.payload.response_id;
+    const submissionId = context.payload.submissionId || context.payload.submission_id;
+    const userId = context.payload.userId || context.payload.user_id;
+
+    // Construct resolutionCtx for resolveAndRender
+    const resolutionCtx: any = {
+        entityId: context.entityId,
+        workspaceId: context.workspaceId,
+        extraVars: { ...context.payload }
+    };
+    if (meetingId) resolutionCtx.meetingId = meetingId;
+    if (formId) resolutionCtx.formId = formId;
+    if (surveyId) resolutionCtx.surveyId = surveyId;
+    if (agreementId) resolutionCtx.agreementId = agreementId;
+    if (responseId) resolutionCtx.responseId = responseId;
+    if (submissionId) resolutionCtx.submissionId = submissionId;
+    if (userId) resolutionCtx.userId = userId;
+
+    // Construct variables payload for sendMessage (inherits underscores for legacy path)
+    const sendMessageVars = {
+        ...context.payload,
+        ...(meetingId && { _meetingId: meetingId }),
+        ...(formId && { _formId: formId }),
+        ...(surveyId && { _surveyId: surveyId }),
+        ...(agreementId && { _agreementId: agreementId }),
+        ...(responseId && { _responseId: responseId }),
+        ...(submissionId && { _submissionId: submissionId }),
+        ...(userId && { _userId: userId })
+    };
     
     // Task 15.1: Use new template resolution if category/type provided
     // Otherwise fall back to legacy templateId approach for backward compatibility
@@ -540,11 +581,7 @@ async function handleSendMessage(config: any, context: ExecutionContext) {
             config.templateCategory,
             config.templateType,
             organizationId,
-            {
-                entityId: context.entityId,
-                workspaceId: context.workspaceId,
-                extraVars: context.payload
-            }
+            resolutionCtx
         );
         
         // Send message with rendered content
@@ -552,7 +589,7 @@ async function handleSendMessage(config: any, context: ExecutionContext) {
             templateId: config.templateId || 'automation-generated',
             senderProfileId: config.senderProfileId || 'default',
             recipient: resolvedRecipient,
-            variables: { ...context.payload },
+            variables: sendMessageVars,
             entityId: context.entityId,
             workspaceId: context.workspaceId,
             // Override with rendered content
@@ -565,7 +602,7 @@ async function handleSendMessage(config: any, context: ExecutionContext) {
             templateId: config.templateId,
             senderProfileId: config.senderProfileId || 'default',
             recipient: resolvedRecipient, 
-            variables: { ...context.payload },
+            variables: sendMessageVars,
             entityId: context.entityId,
             workspaceId: context.workspaceId
         });

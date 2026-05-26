@@ -91,20 +91,20 @@ export function TaskWidget({
                                     
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <p className="text-sm font-black uppercase tracking-tight truncate leading-none">{task.title}</p>
+                                            <p className="text-sm font-medium truncate leading-none">{task.title}</p>
                                             {task.isUrgent && <Zap className="h-3 w-3 text-rose-600 animate-pulse" />}
                                         </div>
                                         
                                         <div className="flex items-center gap-3">
                                             <div className={cn(
-                                                "flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter transition-colors",
+                                                "flex items-center gap-1 text-[9px] font-medium tracking-tighter transition-colors",
                                                 task.isOverdue ? "text-rose-600" : task.isTodayDue ? "text-orange-600" : "text-muted-foreground opacity-60"
                                             )}>
                                                 <Clock className="h-2.5 w-2.5" />
                                                 {task.isTodayDue ? 'Today' : task.isOverdue ? 'Overdue' : format(task.dueDateObj, 'MMM d')}
                                             </div>
                                             {task.entityName && (
-                                                <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-40 truncate">
+                                                <span className="text-[9px] font-medium text-muted-foreground opacity-40 truncate">
                                                     {task.entityName}
                                                 </span>
                                             )}
@@ -113,9 +113,9 @@ export function TaskWidget({
                                     
                                     <div className="shrink-0">
                                         {task.isUrgent ? (
-                                            <Badge className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border-rose-500/20 shadow-none text-[7px] font-black h-4 px-1.5">{task.priority}</Badge>
+                                            <Badge className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border-rose-500/20 shadow-none text-[7px] font-semibold h-4 px-1.5 capitalize">{task.priority}</Badge>
                                         ) : (
-                                            <Badge variant="outline" className="text-[7px] font-bold h-4 px-1.5 border-black/10 dark:border-white/20 text-muted-foreground">{task.category}</Badge>
+                                            <Badge variant="outline" className="text-[7px] font-medium h-4 px-1.5 border-black/10 dark:border-white/20 text-muted-foreground capitalize">{task.category}</Badge>
                                         )}
                                     </div>
                                 </div>
@@ -129,11 +129,11 @@ export function TaskWidget({
                             <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse" />
                             <CheckCircle2 className="h-10 w-10 text-emerald-500 relative z-10" />
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] leading-none text-emerald-600/80 dark:text-emerald-400/80 relative z-10">All Missions Resolved</p>
+                        <p className="text-[10px] font-medium tracking-[0.05em] leading-none text-emerald-600/80 dark:text-emerald-400/80 relative z-10">All Missions Resolved</p>
                     </div>
                 )}
 
-                <Button variant="outline" asChild className="w-full rounded-xl font-bold h-10 border-primary/10 hover:bg-primary/5 hover:text-primary transition-all group mt-2">
+                <Button variant="outline" asChild className="w-full rounded-xl font-medium h-10 border-primary/10 hover:bg-primary/5 hover:text-primary transition-all group mt-2">
                     <Link href="/admin/tasks">
                         Command Hub
                         <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />

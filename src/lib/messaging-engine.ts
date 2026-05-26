@@ -130,8 +130,12 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             // All contact identity is resolved through getContactVariables —
             // no direct schoolData field reads for contact/location/initials.
             const contactVars: Record<string, any> = {
-                school_name: contact.name,
-                entity_name: contact.name, // Unified name
+                entity_name: contact.name,
+                entity_email: contact.primaryContactEmail || '',
+                entity_phone: contact.primaryContactPhone || '',
+                entity_location: contact.locationString || '',
+                entity_initials: contact.initials || '',
+                entity_package: contact.schoolData?.subscriptionPackageName || 'Standard',
                 id: resolvedEntityId || '',
                 initials: contact.initials || '',
                 referee: contact.referee || '',
@@ -263,59 +267,67 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
     }
 
-    // Inject Workspace Name
-    if (resolvedWorkspaceId && finalVariables.workspace_name === undefined) {
-        try {
-            const wsSnap = await adminDb.collection('workspaces').doc(resolvedWorkspaceId).get();
-            if (wsSnap.exists) {
-                finalVariables.workspace_name = wsSnap.data()?.name || '';
-            }
-        } catch (e) {
-            console.error('[MESSAGING_ENGINE] Failed to resolve workspace details:', e);
-        }
-    }
-
-    // 5. Resolve Global Fields & Constants from the new Registry
-    const fieldsSnap = await adminDb.collection('app_fields')
-        .where('workspaceId', '==', resolvedWorkspaceId)
-        .where('status', '==', 'active')
-        .get();
-
-    fieldsSnap.forEach(doc => {
-        const field = doc.data() as any;
-        // Use defaultValue as the constant value if it's a global/common field
-        if (field.defaultValue !== undefined && finalVariables[field.variableName] === undefined) {
-            finalVariables[field.variableName] = field.defaultValue;
-        }
-    });
-
-    // 5.5 Inject Organization Branding Variables (Dynamic Org Branding)
-    // These variables power dynamic logos, footers, and style wrappers.
-    // Resolution priority: variables already set > org record > empty string fallback.
+    // Inject Workspace Name & Organization Branding Variables concurrently (Promise.all)
     const orgId = template.organizationId || variables.organizationId || '';
-    if (orgId) {
-        try {
-            const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
-            if (orgSnap.exists) {
-                const org = orgSnap.data() as Record<string, any>;
-                const orgVars: Record<string, string> = {
-                    org_name: org.name || '',
-                    org_logo_url: org.logoUrl || '',
-                    org_email: org.email || '',
-                    org_phone: org.phone || '',
-                    org_address: org.address || '',
-                    org_website: org.website || '',
-                    current_year: new Date().getFullYear().toString(),
-                    meeting_timezone: org.settings?.defaultTimezone || 'UTC',
-                };
-                // Only set if not already provided by the caller
-                Object.entries(orgVars).forEach(([k, v]) => {
-                    if (finalVariables[k] === undefined) finalVariables[k] = v;
-                });
+    try {
+        const wsPromise = resolvedWorkspaceId ? adminDb.collection('workspaces').doc(resolvedWorkspaceId).get() : Promise.resolve(null);
+        const orgPromise = orgId ? adminDb.collection('organizations').doc(orgId).get() : Promise.resolve(null);
+
+        const [wsSnap, orgSnap] = await Promise.all([wsPromise, orgPromise]);
+
+        if (wsSnap && wsSnap.exists) {
+            const wsData = wsSnap.data()!;
+            if (finalVariables.workspace_name === undefined) {
+                finalVariables.workspace_name = wsData.name || '';
             }
-        } catch (e) {
-            console.warn('>>> [MSG-ENGINE] Org branding lookup skipped:', (e as Error).message);
+            // If orgId was not provided, but workspace points to an org, fetch it
+            if (!orgId && wsData.organizationId) {
+                const lazyOrgSnap = await adminDb.collection('organizations').doc(wsData.organizationId).get();
+                if (lazyOrgSnap.exists) {
+                    const org = lazyOrgSnap.data()!;
+                    const orgVars: Record<string, string> = {
+                        org_name: org.name || '',
+                        org_logo_url: org.logoUrl || '',
+                        org_email: org.email || '',
+                        org_phone: org.phone || '',
+                        org_address: org.address || '',
+                        org_website: org.website || '',
+                        unsubscribe_copy: org.unsubscribeCopy || 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.',
+                        brand_primary_color: org.brandPrimaryColor || '#3B5FFF',
+                        brand_secondary_color: org.brandSecondaryColor || '#8B5CF6',
+                        brand_font_family: org.brandFontFamily || 'Figtree',
+                        current_year: new Date().getFullYear().toString(),
+                        meeting_timezone: org.settings?.defaultTimezone || 'UTC',
+                    };
+                    Object.entries(orgVars).forEach(([k, v]) => {
+                        if (finalVariables[k] === undefined) finalVariables[k] = v;
+                    });
+                }
+            }
         }
+
+        if (orgSnap && orgSnap.exists) {
+            const org = orgSnap.data()!;
+            const orgVars: Record<string, string> = {
+                org_name: org.name || '',
+                org_logo_url: org.logoUrl || '',
+                org_email: org.email || '',
+                org_phone: org.phone || '',
+                org_address: org.address || '',
+                org_website: org.website || '',
+                unsubscribe_copy: org.unsubscribeCopy || 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.',
+                brand_primary_color: org.brandPrimaryColor || '#3B5FFF',
+                brand_secondary_color: org.brandSecondaryColor || '#8B5CF6',
+                brand_font_family: org.brandFontFamily || 'Figtree',
+                current_year: new Date().getFullYear().toString(),
+                meeting_timezone: org.settings?.defaultTimezone || 'UTC',
+            };
+            Object.entries(orgVars).forEach(([k, v]) => {
+                if (finalVariables[k] === undefined) finalVariables[k] = v;
+            });
+        }
+    } catch (e) {
+        console.error('[MESSAGING_ENGINE] Failed resolving workspace/organization concurrently:', e);
     }
     // Ensure current_year is always available even without an org
     if (finalVariables.current_year === undefined) {

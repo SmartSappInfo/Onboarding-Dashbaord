@@ -35,12 +35,13 @@ import Link from 'next/link';
 interface DealCardProps {
     deal: Deal;
     isOverlay?: boolean;
+    taskStats?: { total: number; completed: number; hasOverdue: boolean };
 }
 
 /**
  * @fileOverview High-fidelity Deal Card for Kanban boards.
  */
-export default function DealCard({ deal, isOverlay }: DealCardProps) {
+export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) {
 
   const {
     attributes,
@@ -159,13 +160,43 @@ export default function DealCard({ deal, isOverlay }: DealCardProps) {
                     </div>
                 </div>
 
-                <Badge 
-                    variant="outline" 
-                    className="h-4 text-[7px] font-semibold border-none px-1.5 rounded-sm shadow-inner shrink-0 uppercase tracking-wider"
-                    style={{ backgroundColor: `${statusColor}15`, color: statusColor }}
-                >
-                    {deal.status}
-                </Badge>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {taskStats && taskStats.total > 0 && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                        "h-4 text-[8px] font-bold border px-1.5 rounded-sm shrink-0 flex items-center gap-1 transition-colors",
+                                        taskStats.hasOverdue 
+                                            ? "border-destructive/30 bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-red-400 animate-pulse" 
+                                            : taskStats.completed === taskStats.total
+                                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+                                                : "border-border bg-muted text-muted-foreground"
+                                    )}
+                                >
+                                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: taskStats.hasOverdue ? '#ef4444' : taskStats.completed === taskStats.total ? '#10b981' : '#6b7280' }} />
+                                    <span>{taskStats.completed}/{taskStats.total} Tasks</span>
+                                </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                <p className="text-xs font-bold">
+                                    {taskStats.hasOverdue 
+                                        ? "Overdue tasks pending!" 
+                                        : `${taskStats.completed} of ${taskStats.total} tasks completed`}
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
+
+                    <Badge 
+                        variant="outline" 
+                        className="h-4 text-[7px] font-semibold border-none px-1.5 rounded-sm shadow-inner shrink-0 uppercase tracking-wider"
+                        style={{ backgroundColor: `${statusColor}15`, color: statusColor }}
+                    >
+                        {deal.status}
+                    </Badge>
+                </div>
             </div>
 
             {/* Actions Hub */}

@@ -36,6 +36,7 @@ import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 /**
  * @fileOverview Billing Profile Architect.
@@ -148,7 +149,7 @@ export default function FinanceSettingsClient() {
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
     return (
-        <div className="h-full overflow-y-auto w-full">
+        <PageContainerFluid>
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex flex-col items-start">
@@ -303,6 +304,6 @@ export default function FinanceSettingsClient() {
                 onClose={() => setIsSigModalOpen(false)} 
                 onSave={(url) => { setSignatureUrl(url); setIsSigModalOpen(false); }} 
             />
-        </div>
+        </PageContainerFluid>
     );
 }

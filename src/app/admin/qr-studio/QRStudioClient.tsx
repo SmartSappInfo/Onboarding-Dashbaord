@@ -78,6 +78,7 @@ import {
 import type { QRCode as QRCodeType, QRStatus, QRCodeMode, QRCodeType as QRCodeTypeEnum } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import BatchImportDialog from './components/batch-import-dialog';
+import { PageContainer } from '@/components/ui/page-container';
 
 const QR_TYPE_LABELS: Record<string, string> = {
   url: 'External URL',
@@ -281,6 +282,7 @@ export default function QRStudioClient() {
   ];
 
   return (
+    <PageContainer>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -468,13 +470,13 @@ export default function QRStudioClient() {
                     onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
                   />
                 </TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Name</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Type</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground hidden md:table-cell">Destination</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Mode</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Status</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-right">Scans</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-10"></TableHead>
+                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground min-w-[200px]">Name</TableHead>
+                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap hidden lg:table-cell">Type</TableHead>
+                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-48 hidden sm:table-cell">Destination</TableHead>
+                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap hidden md:table-cell">Mode</TableHead>
+                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap">Status</TableHead>
+                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-right w-px whitespace-nowrap">Scans</TableHead>
+                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -496,7 +498,7 @@ export default function QRStudioClient() {
                           onCheckedChange={(checked) => handleSelect(qr.id, checked as boolean)}
                         />
                       </TableCell>
-                      <TableCell className="font-semibold text-sm text-foreground">
+                      <TableCell className="font-semibold text-sm text-foreground min-w-[200px]">
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-lg bg-primary/5 flex items-center justify-center shrink-0">
                             <QrCode className="h-4 w-4 text-primary" />
@@ -540,17 +542,17 @@ export default function QRStudioClient() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell w-px whitespace-nowrap">
                         <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider rounded-lg">
                           {QR_TYPE_LABELS[qr.type] || qr.type}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                      <TableCell className="hidden sm:table-cell max-w-[192px] truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {qr.destination.resourceName || qr.destination.url || '—'}
                         </p>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell w-px whitespace-nowrap">
                         <Badge
                           variant="outline"
                           className={`text-[9px] uppercase font-bold tracking-wider rounded-lg ${
@@ -562,16 +564,30 @@ export default function QRStudioClient() {
                           {qr.mode}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="w-px whitespace-nowrap">
                         <Badge variant="outline" className={`text-[9px] uppercase font-bold tracking-wider rounded-lg ${statusStyle.className}`}>
                           {statusStyle.label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-bold text-sm tabular-nums">
+                      <TableCell className="text-right font-bold text-sm tabular-nums w-px whitespace-nowrap">
                         {qr.stats.totalScans.toLocaleString()}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-1">
+                      <TableCell onClick={(e) => e.stopPropagation()} className="w-px whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          {qr.destination.url && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                              onClick={() => {
+                                navigator.clipboard.writeText(qr.destination.url || '');
+                                toast({ title: 'Copied Destination Link!', description: qr.destination.url });
+                              }}
+                              title="Copy Destination Link"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
                           {qr.mode === 'dynamic' && qr.shortPath && (
                             <Button
                               variant="ghost"
@@ -590,6 +606,18 @@ export default function QRStudioClient() {
                               <Link2 className="h-4 w-4" />
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/admin/qr-studio/${qr.id}`);
+                            }}
+                            title="Edit QR Code"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
@@ -672,5 +700,6 @@ export default function QRStudioClient() {
         onSuccess={fetchData}
       />
     </div>
+    </PageContainer>
   );
 }

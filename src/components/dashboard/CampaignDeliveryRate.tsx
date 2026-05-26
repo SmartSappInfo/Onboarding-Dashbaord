@@ -16,8 +16,8 @@ export function CampaignDeliveryRate({ workspaceId }: { workspaceId: string }) {
           }}
         ></div>
         <div className="absolute w-24 h-24 bg-card rounded-full flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold">{deliveryRate}%</span>
-          <span className="text-[10px] text-muted-foreground uppercase font-semibold">Delivered</span>
+          <span className="text-2xl font-semibold">{deliveryRate}%</span>
+          <span className="text-[10px] text-muted-foreground font-medium">Delivered</span>
         </div>
       </div>
       <div className="flex items-center space-x-6 text-sm">

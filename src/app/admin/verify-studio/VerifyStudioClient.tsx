@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { VerifyEmailResult } from '@/lib/email-verifier';
+import { PageContainer } from '@/components/ui/page-container';
 
 export default function VerifyStudioClient() {
   const [email, setEmail] = useState('');
@@ -126,6 +127,7 @@ export default function VerifyStudioClient() {
   );
 
   return (
+    <PageContainer>
     <div className="space-y-8 pb-32 w-full font-sans">
       
       {/* Header */}
@@ -277,5 +279,6 @@ export default function VerifyStudioClient() {
 
       </AnimatePresence>
     </div>
+    </PageContainer>
   );
 }

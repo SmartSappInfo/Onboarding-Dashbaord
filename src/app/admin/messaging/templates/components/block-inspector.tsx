@@ -51,7 +51,7 @@ export function BlockInspector({ block, onUpdate, templateCategory }: BlockInspe
                             <Input 
                                 value={block.title || ''} 
                                 onChange={e => onUpdate({ title: e.target.value })} 
- className="font-bold rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" 
+ className="font-bold rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-blue-500/20" 
                             />
                         </div>
  <div className="space-y-2">
@@ -80,7 +80,7 @@ export function BlockInspector({ block, onUpdate, templateCategory }: BlockInspe
                         <Textarea 
                             value={block.content || ''} 
                             onChange={e => onUpdate({ content: e.target.value })}
- className="min-h-[150px] rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 p-4 leading-relaxed" 
+ className="min-h-[150px] rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-blue-500/20 p-4 leading-relaxed" 
                         />
                     </div>
                 )}
@@ -115,7 +115,7 @@ export function BlockInspector({ block, onUpdate, templateCategory }: BlockInspe
                             <Textarea 
                                 value={block.items?.join('\n') || ''}
                                 onChange={e => onUpdate({ items: e.target.value.split('\n') })}
- className="min-h-[200px] text-sm rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed"
+ className="min-h-[200px] text-sm rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 p-4 leading-relaxed"
                                 placeholder="Pasting a list works here too..."
                             />
                         </div>
@@ -138,7 +138,7 @@ export function BlockInspector({ block, onUpdate, templateCategory }: BlockInspe
                                                 <button 
                                                     type="button"
                                                     onClick={() => onUpdate({ link: '{{agreement_url}}' })}
- className="flex items-center gap-1 text-[9px] font-semibold text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/20 hover:bg-primary/10 transition-all"
+ className="flex items-center gap-1 text-[9px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 hover:bg-blue-100/50 transition-all"
                                                 >
  <FileText className="h-2.5 w-2.5" /> Use Agreement Link
                                                 </button>
@@ -211,7 +211,7 @@ export function BlockInspector({ block, onUpdate, templateCategory }: BlockInspe
                                         key={a}
                                         type="button" 
                                         variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
- className={cn("flex-1 h-10 rounded-xl transition-all", block.style?.textAlign === a ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")} 
+ className={cn("flex-1 h-10 rounded-xl transition-all", block.style?.textAlign === a ? "bg-card shadow-md text-blue-600" : "text-muted-foreground opacity-60")} 
                                         onClick={() => onUpdate({ style: { ...block.style, textAlign: a } })}
                                         title={a.charAt(0).toUpperCase() + a.slice(1)}
                                     >

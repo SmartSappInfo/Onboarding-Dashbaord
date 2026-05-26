@@ -18,6 +18,8 @@ import {
 import LightRays from '@/components/LightRays';
 import { ThemeToggle } from '@/components/theme-toggle';
 
+const DEFAULT_DEPARTMENTS = ['General'];
+
 export default function ProfileSetupPage() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
@@ -36,6 +38,7 @@ export default function ProfileSetupPage() {
   const [fullName, setFullName] = React.useState('');
   const [phoneNumber, setPhoneNumber] = React.useState('');
   const [department, setDepartment] = React.useState('');
+  const [orgDepartments, setOrgDepartments] = React.useState<string[]>(DEFAULT_DEPARTMENTS);
 
   const [notifEmail, setNotifEmail] = React.useState(true);
   const [notifSms, setNotifSms] = React.useState(false);
@@ -82,6 +85,11 @@ export default function ProfileSetupPage() {
           id: result.organizationId,
           name: result.organizationName
         });
+        const validDepts = result.departments || DEFAULT_DEPARTMENTS;
+        setOrgDepartments(validDepts);
+        if (!validDepts.includes(department)) {
+          setDepartment('');
+        }
         toast({
           title: 'Organization Found',
           description: `You are requesting to join: ${result.organizationName}`,
@@ -298,6 +306,7 @@ export default function ProfileSetupPage() {
                       onChange={(e) => {
                         setJoinCode(e.target.value);
                         setValidatedOrg(null);
+                        setOrgDepartments(DEFAULT_DEPARTMENTS);
                         setCodeError('');
                       }}
                       className="rounded-xl border-white/10 bg-white/5 text-white h-11 focus-visible:ring-emerald-500/30"
@@ -369,12 +378,11 @@ export default function ProfileSetupPage() {
                         <SelectValue placeholder="Select Department" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-white/10 bg-slate-900 text-white">
-                        <SelectItem value="operations">Operations</SelectItem>
-                        <SelectItem value="finance">Finance</SelectItem>
-                        <SelectItem value="hr">HR & Admin</SelectItem>
-                        <SelectItem value="academic">Academic / Teaching</SelectItem>
-                        <SelectItem value="technical">Technical / Support</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        {orgDepartments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

@@ -2,8 +2,9 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
 import type { Survey, SurveyResponse, SurveySession } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -47,9 +48,14 @@ type TimeGranularity = 'hour' | 'day' | 'month';
 function computeResponseTrend(responses: SurveyResponse[], granularity: TimeGranularity): { label: string; count: number }[] {
     if (!responses || responses.length === 0) return [];
 
+    // Sort responses chronologically (oldest first, newest last) so that the trend line goes from past to present (left to right)
+    const sortedResponses = [...responses].sort(
+        (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
+    );
+
     const bucketMap = new Map<string, number>();
 
-    responses.forEach(res => {
+    sortedResponses.forEach(res => {
         const date = new Date(res.submittedAt);
         let key: string;
         switch (granularity) {
@@ -375,12 +381,18 @@ const StatCard = React.memo(function StatCard({ label, value, icon: Icon, iconCl
 
 export default function AnalyticsView({ survey, responses }: { survey: Survey; responses: SurveyResponse[] }) {
     const firestore = useFirestore();
+    const { activeOrganizationId } = useTenant();
 
     // Fetch Team for resolution
     const usersQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'users'), where('isAuthorized', '==', true));
-    }, [firestore]);
+        if (!firestore || !activeOrganizationId) return null;
+        return query(
+            collection(firestore, 'users'),
+            where('organizationId', '==', activeOrganizationId),
+            where('isAuthorized', '==', true),
+            orderBy('name', 'asc')
+        );
+    }, [firestore, activeOrganizationId]);
     const { data: users } = useCollection<any>(usersQuery);
 
     // Fetch Sessions for Drop-off Analytics

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { PageContainer, PageContainerNarrow } from '@/components/ui/page-container';
 
 export default function AudiencesPage() {
     const firestore = useFirestore();
@@ -116,7 +117,8 @@ export default function AudiencesPage() {
     if (editorOpen) {
         return (
             <div className="h-full overflow-y-auto">
-                <div className="max-w-3xl mx-auto space-y-6 pb-20">
+                <PageContainerNarrow className="pb-20">
+                    <div className="space-y-6">
                     <Button variant="ghost" size="sm" onClick={() => setEditorOpen(false)} className="gap-2 text-xs font-bold rounded-xl">
                         <ArrowLeft className="h-4 w-4" /> Back to Audiences
                     </Button>
@@ -148,7 +150,8 @@ export default function AudiencesPage() {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
+                    </div>
+                </PageContainerNarrow>
             </div>
         );
     }
@@ -156,7 +159,8 @@ export default function AudiencesPage() {
     // ── List View ─────────────────────────────────────────────────────────────
     return (
         <div className="h-full overflow-y-auto">
-            <div className="space-y-8">
+            <PageContainer>
+                <div className="space-y-8">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -243,6 +247,7 @@ export default function AudiencesPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            </PageContainer>
         </div>
     );
 }

@@ -28,7 +28,7 @@ export function ZoneDistribution({
                 <div className="flex flex-col items-center justify-center h-64 text-center text-sm text-muted-foreground bg-muted/10 rounded-xl border border-dashed">
                     <MapPin className="h-8 w-8 mb-2 opacity-20" />
                     <p>No zone data available.</p>
-                    <p className="text-[10px] uppercase font-bold tracking-tighter">Assign {terminology.plural.toLowerCase()} to zones to see analytics</p>
+                    <p className="text-[10px] font-medium tracking-tighter">Assign {terminology.plural.toLowerCase()} to zones to see analytics</p>
                 </div>
             </DashboardCard>
         );
@@ -53,7 +53,7 @@ export function ZoneDistribution({
                                 tickLine={false} 
                                 axisLine={false}
                                 width={80}
-                                tick={{ fill: 'hsl(var(--muted-foreground))', fontWeight: 'bold' }}
+                                tick={{ fill: 'hsl(var(--muted-foreground))', fontWeight: 'medium' }}
                             />
                             <Tooltip
                                 cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
@@ -62,14 +62,14 @@ export function ZoneDistribution({
                                         const d = payload[0].payload;
                                         return (
                                             <div className="rounded-2xl border bg-background/80 backdrop-blur-xl p-3 shadow-2xl text-[10px] space-y-2">
-                                                <p className="font-black uppercase tracking-widest text-primary">{d.name}</p>
+                                                <p className="font-medium tracking-wider text-primary">{d.name}</p>
                                                 <div className="flex items-center justify-between gap-4">
-                                                    <span className="text-muted-foreground flex items-center gap-1.5 font-bold uppercase tracking-tighter"><MapPin className="h-2 w-2" /> {terminology.plural}:</span>
-                                                    <span className="font-black">{d.schoolCount}</span>
+                                                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium tracking-tighter"><MapPin className="h-2 w-2" /> {terminology.plural}:</span>
+                                                    <span className="font-semibold">{d.schoolCount}</span>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-4">
-                                                    <span className="text-muted-foreground flex items-center gap-1.5 font-bold uppercase tracking-tighter"><Users className="h-2 w-2" /> Students:</span>
-                                                    <span className="font-black">{d.studentCount.toLocaleString()}</span>
+                                                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium tracking-tighter"><Users className="h-2 w-2" /> Students:</span>
+                                                    <span className="font-semibold">{d.studentCount.toLocaleString()}</span>
                                                 </div>
                                             </div>
                                         );
@@ -90,14 +90,14 @@ export function ZoneDistribution({
                     {data.slice(0, 4).map((zone, idx) => (
                         <div key={idx} className="p-4 rounded-3xl bg-muted/10 border border-transparent hover:border-primary/10 hover:bg-white transition-all group">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 truncate max-w-[120px]">{zone.name}</span>
-                                <Badge className="bg-primary/10 text-primary border-none text-[8px] h-4 px-1.5 font-bold">
+                                <span className="text-[10px] font-medium tracking-wider text-muted-foreground/60 truncate max-w-[120px]">{zone.name}</span>
+                                <Badge className="bg-primary/10 text-primary border-none text-[8px] h-4 px-1.5 font-medium">
                                     {zone.schoolCount} {zone.schoolCount === 1 ? terminology.singular : terminology.plural}
                                 </Badge>
                             </div>
                             <div className="flex items-end justify-between">
-                                <span className="text-xl font-black tracking-tight tabular-nums">{zone.studentCount.toLocaleString()}</span>
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-40 mb-1">Students</span>
+                                <span className="text-xl font-semibold tracking-tight tabular-nums">{zone.studentCount.toLocaleString()}</span>
+                                <span className="text-[9px] font-medium text-muted-foreground opacity-40 mb-1">Students</span>
                             </div>
                         </div>
                     ))}

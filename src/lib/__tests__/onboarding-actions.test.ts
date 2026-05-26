@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { adminDb } from '../firebase-admin';
-import { validateJoinCodeAction, submitOnboardingProfileAction } from '../../app/actions/onboarding-actions';
+import { validateJoinCodeAction, submitOnboardingProfileAction, enforceSuperAdminProfileAction } from '../../app/actions/onboarding-actions';
 
 // Mock adminDb
 vi.mock('../firebase-admin', () => ({
@@ -179,6 +179,87 @@ describe('submitOnboardingProfileAction', () => {
         profileCompleted: true,
         isAuthorized: false,
         approvalStatus: 'pending'
+      }),
+      { merge: true }
+    );
+  });
+});
+
+describe('enforceSuperAdminProfileAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return isSuperAdmin false if email is not in config', async () => {
+    const mockConfigSnapshot = {
+      exists: true,
+      data: () => ({ emails: ['super@smartsapp.com'] })
+    };
+
+    const mockCollection = {
+      doc: vi.fn().mockReturnValue({
+        get: vi.fn().mockResolvedValue(mockConfigSnapshot)
+      })
+    };
+
+    (adminDb.collection as any).mockImplementation((name) => {
+      if (name === 'system_config') return mockCollection;
+      return {};
+    });
+
+    const result = await enforceSuperAdminProfileAction('user_123', 'other@smartsapp.com', 'Other User');
+
+    expect(result.success).toBe(true);
+    expect(result.isSuperAdmin).toBe(false);
+  });
+
+  it('should upgrade and save user profile if email matches super admin config', async () => {
+    const mockConfigSnapshot = {
+      exists: true,
+      data: () => ({ emails: ['super@smartsapp.com'] })
+    };
+
+    const mockUserDoc = {
+      exists: true,
+      data: () => ({ name: 'Old Name', email: 'super@smartsapp.com' })
+    };
+
+    const mockUserDocRef = {
+      get: vi.fn().mockResolvedValue(mockUserDoc),
+      set: vi.fn().mockResolvedValue(undefined)
+    };
+
+    (adminDb.collection as any).mockImplementation((name) => {
+      if (name === 'system_config') {
+        return {
+          doc: vi.fn().mockReturnValue({
+            get: vi.fn().mockResolvedValue(mockConfigSnapshot)
+          })
+        };
+      }
+      if (name === 'users') {
+        return {
+          doc: vi.fn().mockReturnValue(mockUserDocRef)
+        };
+      }
+      return {};
+    });
+
+    const result = await enforceSuperAdminProfileAction('user_123', 'super@smartsapp.com', 'New Name');
+
+    expect(result.success).toBe(true);
+    expect(result.isSuperAdmin).toBe(true);
+    expect(mockUserDocRef.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'user_123',
+        name: 'New Name',
+        email: 'super@smartsapp.com',
+        isAuthorized: true,
+        profileCompleted: true,
+        approvalStatus: 'approved',
+        organizationId: 'smartsapp-hq',
+        roles: ['administrator'],
+        permissions: expect.arrayContaining(['system_admin'])
       }),
       { merge: true }
     );

@@ -623,65 +623,64 @@ export async function updateEntityAction(
     }
 
     // 4. Update Workspace Entity (Operational)
-    const workspaceEntityId = `${workspaceId}_${entityId}`;
-    const weRef = adminDb.collection('workspace_entities').doc(workspaceEntityId);
-    const weSnap = await weRef.get();
-    
-    if (weSnap.exists) {
+    const weQuery = await adminDb.collection('workspace_entities')
+      .where('entityId', '==', entityId)
+      .get();
+      
+    if (!weQuery.empty) {
+      for (const doc of weQuery.docs) {
+        const weData = doc.data();
+        const isCurrentWorkspace = weData.workspaceId === workspaceId;
+        
         const weUpdate: any = {
-            displayName: displayName,
-            updatedAt: timestamp,
+          displayName: displayName,
+          updatedAt: timestamp,
         };
         
-        if (data.assignedTo !== undefined) weUpdate.assignedTo = data.assignedTo;
-        if (data.status) weUpdate.status = data.status.toLowerCase();
-        if (data.workspaceTags) weUpdate.workspaceTags = data.workspaceTags;
-        
-        // FER-01: Sync entityContacts and denormalized fields
+        // Entity-level fields (always sync to all workspaces)
         if (entityContacts) {
-            const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts });
-            updatedPrimaryEmail = primaryEmail;
-            weUpdate.primaryContactName = primaryContactName;
-            weUpdate.primaryEmail = primaryEmail;
-            weUpdate.primaryPhone = primaryPhone;
-            weUpdate.entityContacts = entityContacts;
+          const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts });
+          updatedPrimaryEmail = primaryEmail;
+          weUpdate.primaryContactName = primaryContactName;
+          weUpdate.primaryEmail = primaryEmail;
+          weUpdate.primaryPhone = primaryPhone;
+          weUpdate.entityContacts = entityContacts;
         } else {
-            if (data.primaryEmail !== undefined) {
-                weUpdate.primaryEmail = data.primaryEmail;
-                updatedPrimaryEmail = data.primaryEmail;
-            }
-            if (data.primaryPhone !== undefined) weUpdate.primaryPhone = data.primaryPhone;
+          if (data.primaryEmail !== undefined) {
+            weUpdate.primaryEmail = data.primaryEmail;
+            updatedPrimaryEmail = data.primaryEmail;
+          }
+          if (data.primaryPhone !== undefined) weUpdate.primaryPhone = data.primaryPhone;
         }
-
+        
         if (data.modules !== undefined) {
-            weUpdate.interests = data.modules;
+          weUpdate.interests = data.modules;
         }
-
         if (data.currentNeeds !== undefined) weUpdate.currentNeeds = data.currentNeeds;
         if (data.currentChallenges !== undefined) weUpdate.currentChallenges = data.currentChallenges;
         if (data.interestsText !== undefined) weUpdate.interestsText = data.interestsText;
-
-        // Sync location fields to workspace_entities for filtering
+        
         if (data.location !== undefined) {
-            weUpdate.location = data.location || null;
-            weUpdate.locationString = data.location?.locationString || '';
-            weUpdate.locationCountryId = data.location?.country?.id || null;
-            weUpdate.locationRegionId = data.location?.region?.id || null;
-            weUpdate.locationDistrictId = data.location?.district?.id || null;
-            weUpdate.zone = data.location?.zone || null;
+          weUpdate.location = data.location || null;
+          weUpdate.locationString = data.location?.locationString || '';
+          weUpdate.locationCountryId = data.location?.country?.id || null;
+          weUpdate.locationRegionId = data.location?.region?.id || null;
+          weUpdate.locationDistrictId = data.location?.district?.id || null;
+          weUpdate.zone = data.location?.zone || null;
         }
         
-        await weRef.update(weUpdate);
+        // Workspace-level fields (only update if matches current workspaceId)
+        if (isCurrentWorkspace) {
+          if (data.assignedTo !== undefined) weUpdate.assignedTo = data.assignedTo;
+          if (data.status) weUpdate.status = data.status.toLowerCase();
+          if (data.workspaceTags) weUpdate.workspaceTags = data.workspaceTags;
+          if (data.lifecycleStatus) weUpdate.lifecycleStatus = data.lifecycleStatus;
+        }
+        
+        await doc.ref.update(weUpdate);
+      }
     } else {
-        console.warn(`Workspace entity ${workspaceEntityId} not found during update.`);
-    }
-
-    // 5. Update lifecycle status if provided in workspace_entities
-    if (data.lifecycleStatus && weSnap.exists) {
-        await weRef.update({
-            lifecycleStatus: data.lifecycleStatus,
-            updatedAt: timestamp
-        });
+      console.warn(`No workspace entities found for entity ${entityId} during update.`);
     }
 
     // 6. Log Activity

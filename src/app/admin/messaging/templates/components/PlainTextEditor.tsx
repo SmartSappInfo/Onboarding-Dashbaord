@@ -1,11 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import type { VariableDefinition } from '@/lib/types';
+import type { VariableDefinition, TemplateVariable } from '@/lib/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { AlertTriangle } from 'lucide-react';
+import { useSlashAutocomplete } from '@/hooks/use-slash-autocomplete';
 
 interface PlainTextEditorProps {
     value: string;
@@ -14,6 +15,8 @@ interface PlainTextEditorProps {
     channel: 'email' | 'sms';
     maxLength?: number;
     placeholder?: string;
+    registerInsertCallback?: (cb: ((key: string) => void) | null) => void;
+    contextLabels?: Record<string, string>;
 }
 
 /**
@@ -31,9 +34,13 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
     variables,
     channel,
     maxLength,
-    placeholder = 'Write your message…'
+    placeholder = 'Write your message…',
+    registerInsertCallback,
+    contextLabels
 }: PlainTextEditorProps) {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
 
     const insertVariable = React.useCallback((key: string) => {
         const textarea = textareaRef.current;
@@ -56,11 +63,75 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
         });
     }, [value, onChange]);
 
+    React.useEffect(() => {
+        if (registerInsertCallback) {
+            registerInsertCallback(insertVariable);
+        }
+        return () => {
+            if (registerInsertCallback) registerInsertCallback(null);
+        };
+    }, [insertVariable, registerInsertCallback]);
+
     // O(1) lookup set for allowed variable keys — rebuilt only when variables change
     const allowedKeySet = React.useMemo(
         () => new Set(variables.map(v => v.key)),
         [variables]
     );
+
+    // Map VariableDefinition to TemplateVariable format for useSlashAutocomplete
+    const templateVars = React.useMemo<TemplateVariable[]>(() => {
+        return variables.map(v => {
+            let ctx = v.category;
+            if (v.id.startsWith('survey_')) {
+                const parts = v.id.split('_');
+                ctx = `survey_${parts[1]}`;
+            } else if (v.id.startsWith('pdf_')) {
+                const parts = v.id.split('_');
+                ctx = `pdf_${parts[1]}`;
+            }
+
+            return {
+                id: v.id || v.key,
+                name: v.key,
+                label: v.label,
+                description: `${v.label} (Source: ${v.source || 'system'})`,
+                dataType: (v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'string') as any,
+                context: ctx as any,
+                exampleValue: v.constantValue || `{{${v.key}}}`,
+                isDynamic: v.source !== 'system',
+                isComputed: false
+            };
+        });
+    }, [variables]);
+
+    const {
+        showAutocomplete,
+        autocompleteCoords,
+        autocompleteIndex,
+        filteredVars,
+        handleKeyDown,
+        handleInputChange,
+        handleSelectChange,
+        selectAndInsert,
+    } = useSlashAutocomplete({
+        variables: templateVars,
+        value,
+        onChange,
+    });
+
+    // Auto-scroll selected autocomplete item into view
+    React.useEffect(() => {
+        if (!dropdownRef.current) return;
+        const activeEl = dropdownRef.current.querySelector('[data-active="true"]');
+        if (activeEl) {
+            activeEl.scrollIntoView({ block: 'nearest' });
+        }
+    }, [autocompleteIndex, showAutocomplete]);
+
+    const handleTextAreaChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onChange(e.target.value);
+        handleInputChange(e);
+    }, [onChange, handleInputChange]);
 
     // Live Token Syntax Validation:
     // Single-pass regex extracts all {{token}} instances, then validates against
@@ -94,18 +165,73 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                 <Textarea
                     ref={textareaRef}
                     value={value}
-                    onChange={e => onChange(e.target.value)}
+                    onChange={handleTextAreaChange}
+                    onKeyDown={handleKeyDown}
+                    onSelect={handleSelectChange}
                     placeholder={placeholder}
                     aria-label={channel === 'sms' ? 'SMS message body' : 'Email body content'}
                     className={cn(
                         'min-h-[300px] rounded-2xl bg-muted/20 border-none shadow-inner p-6',
                         'text-base leading-relaxed font-medium',
-                        'focus-visible:ring-2 focus-visible:ring-primary/30',
+                        'focus-visible:ring-2 focus-visible:ring-blue-500/20',
                         'transition-shadow duration-200',
                         isOverLimit && 'ring-2 ring-destructive/50',
                         invalidTokens.length > 0 && 'ring-2 ring-amber-500/40'
                     )}
                 />
+
+                {/* Floating Autocomplete Dropdown Popover */}
+                {showAutocomplete && filteredVars.length > 0 && (
+                    <div
+                        ref={dropdownRef}
+                        style={{
+                            position: 'absolute',
+                            top: autocompleteCoords.top,
+                            left: autocompleteCoords.left,
+                            zIndex: 1000,
+                        }}
+                        className="w-64 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
+                    >
+                        {filteredVars.map((v, idx) => {
+                            const labelText = contextLabels && contextLabels[v.context]
+                                ? contextLabels[v.context]
+                                : String(v.context);
+                            
+                            const isSelected = idx === autocompleteIndex;
+                            
+                            return (
+                                <button
+                                    key={v.id}
+                                    type="button"
+                                    data-active={isSelected ? 'true' : 'false'}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        if (textareaRef.current) {
+                                            selectAndInsert(v.name, textareaRef.current);
+                                        }
+                                    }}
+                                    onTouchStart={(e) => {
+                                        e.preventDefault();
+                                        if (textareaRef.current) {
+                                            selectAndInsert(v.name, textareaRef.current);
+                                        }
+                                    }}
+                                    className={cn(
+                                        "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none",
+                                        isSelected
+                                            ? "bg-primary text-primary-foreground"
+                                            : "text-foreground hover:bg-muted"
+                                    )}
+                                >
+                                    <span className="truncate w-full">{v.label}</span>
+                                    <span className={cn("text-[9px] font-mono truncate w-full", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                                        {`{{${v.name}}}`} • {labelText}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* Live Token Syntax Warning Banner */}
@@ -169,35 +295,7 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                 </div>
             </div>
 
-            {/* Variable quick-insert row */}
-            {variables.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-border/30">
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider px-1">
-                        Quick Insert Variables
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                        {variables.slice(0, 20).map(v => (
-                            <button
-                                key={v.id}
-                                type="button"
-                                onClick={() => insertVariable(v.key)}
-                                aria-label={`Insert variable ${v.label}`}
-                                className={cn(
-                                    'px-2.5 py-1 rounded-lg text-[9px] font-bold',
-                                    'bg-primary/5 text-primary border border-primary/10',
-                                    'hover:bg-primary/10 hover:border-primary/20',
-                                    'focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:outline-none',
-                                    'transition-colors duration-150'
-                                )}
-                            >
-                                {'{{'}
-                                {v.key}
-                                {'}}'}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
+            {/* Variable insertion via VariablePicker removed as we now use Slash commands autocomplete */}
         </div>
     );
 });

@@ -474,8 +474,14 @@ export async function seedContactTypeTemplates(firestore: Firestore): Promise<nu
     return count;
 }
 
+
+// =============================================================================
+// FORM BUILDER & TEMPLATE SEEDING SECTION
+// =============================================================================
+
 export async function seedFormTemplates(firestore: Firestore, workspaceId: string, orgId: string): Promise<number> {
     if (!workspaceId) throw new Error("Workspace ID is required to seed forms.");
+    if (!orgId) throw new Error("Please select an active organization before seeding.");
 
     const batch = writeBatch(firestore);
     const timestamp = new Date().toISOString();
@@ -513,6 +519,7 @@ export async function seedFormTemplates(firestore: Firestore, workspaceId: strin
 
     // Template 1: Priority Lead Capture (Bound Form)
     // Needs: Contact Name, Email, Phone
+    fieldOrder = 0;
     const leadFields = [
         createInstance('contact_name', 'Full Name', true, 'full'),
         createInstance('contact_email', 'Business Email', true, 'half'),
@@ -524,7 +531,7 @@ export async function seedFormTemplates(firestore: Firestore, workspaceId: strin
         formsToSeed.push({
             id: `seed_lead_capture_${workspaceId}`,
             workspaceId,
-            organizationId: orgId || DEFAULT_ORG_ID,
+            organizationId: orgId,
             internalName: 'Priority Request',
             title: 'Priority Request form',
             slug: `priority-request-${workspaceId.substring(0, 6)}`,
@@ -554,12 +561,14 @@ export async function seedFormTemplates(firestore: Firestore, workspaceId: strin
             },
             status: 'draft',
             submissionCount: 0,
+            version: 1,
             createdAt: timestamp,
             updatedAt: timestamp
         });
     }
 
     // Template 2: General Inquiry / Contact Us
+    fieldOrder = 0;
     const contactFields = [
         createInstance('contact_name', 'Name', true, 'full'),
         createInstance('contact_email', 'Email Address', true, 'full'),
@@ -569,7 +578,7 @@ export async function seedFormTemplates(firestore: Firestore, workspaceId: strin
         formsToSeed.push({
             id: `seed_contact_us_${workspaceId}`,
             workspaceId,
-            organizationId: orgId || DEFAULT_ORG_ID,
+            organizationId: orgId,
             internalName: 'Contact Us',
             title: 'Contact Us',
             slug: `contact-us-${workspaceId.substring(0, 6)}`,
@@ -597,6 +606,247 @@ export async function seedFormTemplates(firestore: Firestore, workspaceId: strin
             },
             status: 'draft',
             submissionCount: 0,
+            version: 1,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    // Template 3: School Onboarding
+    fieldOrder = 0;
+    const schoolOnboardingFields = [
+        createInstance('school_name', 'School / Institution Name', true, 'full'),
+        createInstance('contact_name', 'Primary Administrator Name', true, 'half'),
+        createInstance('contact_email', 'Administrator Email Address', true, 'half'),
+        createInstance('contact_phone', 'Direct Contact Number', false, 'half'),
+        createInstance('nominal_roll', 'Estimated Student Count', false, 'half')
+    ].filter(Boolean);
+
+    if (schoolOnboardingFields.length > 0) {
+        formsToSeed.push({
+            id: `seed_school_onboarding_${workspaceId}`,
+            workspaceId,
+            organizationId: orgId,
+            internalName: 'School Onboarding',
+            title: 'School Onboarding',
+            slug: `school-onboarding-${workspaceId.substring(0, 6)}`,
+            description: 'Onboarding registration form for schools and institutions.',
+            formType: 'bound',
+            contactScope: 'institution',
+            fields: schoolOnboardingFields,
+            theme: {
+                preset: 'professional',
+                cardWidth: 'lg',
+                inputStyle: 'outline',
+                labelPlacement: 'top',
+                accentColor: '#4f46e5', // Indigo
+                ctaLabel: 'Submit Registration',
+                ctaStyle: 'solid',
+                ctaWidth: 'full',
+                ctaAlignment: 'center',
+                backgroundStyle: 'solid'
+            },
+            successBehavior: { type: 'message', value: 'School onboarding details submitted successfully. Welcome aboard!' },
+            actions: {
+                tags: ['Onboarding', 'School'],
+                automations: [],
+                notifications: { internalUserIds: [], sendConfirmationEmail: false },
+                webhooks: [],
+                entityHandling: 'create_or_update'
+            },
+            status: 'draft',
+            submissionCount: 0,
+            version: 1,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    // Template 4: Admissions Inquiry
+    fieldOrder = 0;
+    const admissionsInquiryFields = [
+        createInstance('contact_name', 'Parent / Guardian Full Name', true, 'full'),
+        createInstance('contact_email', 'Email Address', true, 'half'),
+        createInstance('contact_phone', 'Phone Number', true, 'half'),
+        createInstance('school_name', 'Interested School / Campus', false, 'full')
+    ].filter(Boolean);
+
+    if (admissionsInquiryFields.length > 0) {
+        formsToSeed.push({
+            id: `seed_admissions_inquiry_${workspaceId}`,
+            workspaceId,
+            organizationId: orgId,
+            internalName: 'Admissions Inquiry',
+            title: 'Admissions Inquiry',
+            slug: `admissions-inquiry-${workspaceId.substring(0, 6)}`,
+            description: 'Capture prospective student details and admissions inquiries.',
+            formType: 'bound',
+            contactScope: 'person',
+            fields: admissionsInquiryFields,
+            theme: {
+                preset: 'minimal',
+                cardWidth: 'md',
+                inputStyle: 'flushed',
+                labelPlacement: 'floating',
+                accentColor: '#0d9488', // Teal
+                ctaLabel: 'Submit Inquiry',
+                ctaStyle: 'solid',
+                ctaWidth: 'full',
+                ctaAlignment: 'center',
+                backgroundStyle: 'glass'
+            },
+            successBehavior: { type: 'message', value: 'Thank you for your inquiry. Our admissions office will contact you shortly.' },
+            actions: {
+                tags: ['Inquiry', 'Admissions'],
+                automations: [],
+                notifications: { internalUserIds: [], sendConfirmationEmail: false },
+                webhooks: [],
+                entityHandling: 'create_or_update'
+            },
+            status: 'draft',
+            submissionCount: 0,
+            version: 1,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    // Template 5: Parent Registration
+    fieldOrder = 0;
+    const parentRegFields = [
+        createInstance('contact_name', 'Parent Full Name', true, 'full'),
+        createInstance('contact_email', 'Email Address', true, 'half'),
+        createInstance('contact_phone', 'Primary Phone Number', true, 'half')
+    ].filter(Boolean);
+
+    if (parentRegFields.length > 0) {
+        formsToSeed.push({
+            id: `seed_parent_registration_${workspaceId}`,
+            workspaceId,
+            organizationId: orgId,
+            internalName: 'Parent Registration',
+            title: 'Parent Registration',
+            slug: `parent-registration-${workspaceId.substring(0, 6)}`,
+            description: 'Register parents and contact information for the institution.',
+            formType: 'bound',
+            contactScope: 'family',
+            fields: parentRegFields,
+            theme: {
+                preset: 'card',
+                cardWidth: 'md',
+                inputStyle: 'outline',
+                labelPlacement: 'top',
+                accentColor: '#2563eb', // Blue
+                ctaLabel: 'Register Now',
+                ctaStyle: 'solid',
+                ctaWidth: 'full',
+                ctaAlignment: 'center',
+                backgroundStyle: 'solid'
+            },
+            successBehavior: { type: 'message', value: 'Parent registration complete. Check your email for next steps.' },
+            actions: {
+                tags: ['Parent', 'Registration'],
+                automations: [],
+                notifications: { internalUserIds: [], sendConfirmationEmail: false },
+                webhooks: [],
+                entityHandling: 'create_or_update'
+            },
+            status: 'draft',
+            submissionCount: 0,
+            version: 1,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    // Template 6: Event Registration
+    fieldOrder = 0;
+    const eventRegFields = [
+        createInstance('contact_name', 'Attendee Full Name', true, 'full'),
+        createInstance('contact_email', 'Email Address', true, 'half'),
+        createInstance('contact_phone', 'Mobile Number', false, 'half')
+    ].filter(Boolean);
+
+    if (eventRegFields.length > 0) {
+        formsToSeed.push({
+            id: `seed_event_registration_${workspaceId}`,
+            workspaceId,
+            organizationId: orgId,
+            internalName: 'Event Registration',
+            title: 'Event Registration',
+            slug: `event-registration-${workspaceId.substring(0, 6)}`,
+            description: 'Sign up attendees for events and open houses.',
+            formType: 'global',
+            fields: eventRegFields,
+            theme: {
+                preset: 'card',
+                cardWidth: 'sm',
+                inputStyle: 'filled',
+                labelPlacement: 'top',
+                accentColor: '#db2777', // Pink
+                ctaLabel: 'Confirm Attendance',
+                ctaStyle: 'solid',
+                ctaWidth: 'full',
+                ctaAlignment: 'center',
+                backgroundStyle: 'glass'
+            },
+            successBehavior: { type: 'message', value: 'Registration confirmed. We look forward to seeing you at the event!' },
+            actions: {
+                tags: ['Event Attendee'],
+                automations: [],
+                notifications: { internalUserIds: [], sendConfirmationEmail: false },
+                webhooks: []
+            },
+            status: 'draft',
+            submissionCount: 0,
+            version: 1,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    // Template 7: Waitlist Signup
+    fieldOrder = 0;
+    const waitlistFields = [
+        createInstance('contact_name', 'Parent Full Name', true, 'full'),
+        createInstance('contact_email', 'Email Address', true, 'half'),
+        createInstance('contact_phone', 'Phone Number', true, 'half'),
+        createInstance('school_name', 'Desired School / Campus', false, 'full')
+    ].filter(Boolean);
+
+    if (waitlistFields.length > 0) {
+        formsToSeed.push({
+            id: `seed_waitlist_signup_${workspaceId}`,
+            workspaceId,
+            organizationId: orgId,
+            internalName: 'Waitlist Signup',
+            title: 'Join the Waitlist',
+            slug: `waitlist-signup-${workspaceId.substring(0, 6)}`,
+            description: 'Allow parents to register on waitlists for future openings.',
+            formType: 'global',
+            fields: waitlistFields,
+            theme: {
+                preset: 'embedded',
+                cardWidth: 'md',
+                inputStyle: 'flushed',
+                labelPlacement: 'floating',
+                accentColor: '#ca8a04', // Yellow/Gold
+                ctaLabel: 'Join Waitlist',
+                ctaStyle: 'solid',
+                ctaWidth: 'full',
+                ctaAlignment: 'center',
+                backgroundStyle: 'transparent'
+            },
+            successBehavior: { type: 'message', value: 'You have been added to our waitlist. We will notify you when a spot opens.' },
+            actions: {
+                tags: ['Waitlist'],
+                automations: [],
+                notifications: { internalUserIds: [], sendConfirmationEmail: false },
+                webhooks: []
+            },
+            status: 'draft',
+            submissionCount: 0,
+            version: 1,
             createdAt: timestamp,
             updatedAt: timestamp
         });

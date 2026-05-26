@@ -9,7 +9,8 @@ import {
     Loader2, 
     Zap,
     PenLine,
-    AlertTriangle
+    AlertTriangle,
+    ArrowRight
 } from 'lucide-react';
 import { 
     Select, 
@@ -27,6 +28,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { resolveVariables } from '@/lib/messaging-utils';
 import type { MessageTemplate, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
+import { useTheme } from 'next-themes';
 
 interface SimulationStudioProps {
     template: MessageTemplate;
@@ -40,7 +42,8 @@ interface SimulationStudioProps {
     meetings?: Meeting[];
     surveys?: Survey[];
     pdfs?: PDFForm[];
-    resolvedPreview: (tmpl: MessageTemplate, vars: Record<string, any>) => string;
+    resolvedPreview: (tmpl: MessageTemplate, vars: Record<string, any>, isDark?: boolean) => string;
+    onNextStep?: () => void;
 }
 
 /**
@@ -73,14 +76,14 @@ const SimulationInputPanel = React.memo(function SimulationInputPanel({
         <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                    <PenLine className="h-3 w-3 text-primary" />
-                    <span className="text-[9px] font-bold text-primary uppercase tracking-wider">
+                    <PenLine className="h-3 w-3 text-blue-600" />
+                    <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">
                         Live Mock Values
                     </span>
                 </div>
                 <Badge
                     variant="outline"
-                    className="bg-primary/5 text-primary border-primary/20 text-[8px] font-semibold uppercase h-5"
+                    className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-semibold uppercase h-5"
                 >
                     {detectedVars.length} vars
                 </Badge>
@@ -90,14 +93,14 @@ const SimulationInputPanel = React.memo(function SimulationInputPanel({
                 {detectedVars.map(varKey => (
                     <div key={varKey} className="space-y-1">
                         <Label className="text-[9px] font-semibold text-muted-foreground ml-1 flex items-center gap-1.5">
-                            <div className="w-1 h-1 rounded-full bg-primary shrink-0" />
+                            <div className="w-1 h-1 rounded-full bg-blue-600 shrink-0" />
                             {varKey.replace(/_/g, ' ')}
                         </Label>
                         <Input
                             value={mockValues[varKey] || ''}
                             onChange={e => onMockChange(varKey, e.target.value)}
                             placeholder={`e.g. Sample ${varKey.replace(/_/g, ' ')}`}
-                            className="h-8 rounded-lg bg-card border border-primary/5 shadow-sm font-bold text-[11px] px-3"
+                            className="h-8 rounded-lg bg-card border border-blue-500/5 shadow-sm font-bold text-[11px] px-3"
                         />
                     </div>
                 ))}
@@ -118,8 +121,11 @@ export function SimulationStudio({
     meetings,
     surveys,
     pdfs,
-    resolvedPreview
+    resolvedPreview,
+    onNextStep
 }: SimulationStudioProps) {
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
     const [previewDevice, setPreviewDevice] = React.useState<'desktop' | 'mobile'>('desktop');
     const [mockValues, setMockValues] = React.useState<Record<string, string>>({});
 
@@ -143,8 +149,8 @@ export function SimulationStudio({
 
     // SMS segment cost analysis for substituted content
     const resolvedText = React.useMemo(
-        () => resolvedPreview(template, mergedVars),
-        [template, mergedVars, resolvedPreview]
+        () => resolvedPreview(template, mergedVars, isDark),
+        [template, mergedVars, resolvedPreview, isDark]
     );
 
     const smsSegmentInfo = React.useMemo(() => {
@@ -160,8 +166,8 @@ export function SimulationStudio({
             <div className="p-6 border-b bg-background flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 shadow-sm z-10">
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl">
-                            <MonitorPlay className="h-5 w-5 text-primary" />
+                        <div className="p-2 bg-blue-50 rounded-xl">
+                            <MonitorPlay className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
                             <h3 className="text-sm font-semibold tracking-tight">Simulation Studio</h3>
@@ -198,13 +204,23 @@ export function SimulationStudio({
                         )}
                     </div>
                 </div>
-                <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
-                    <Button variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-semibold text-[10px] " onClick={() => setPreviewDevice('desktop')}>
-                        <Monitor className="h-3.5 w-3.5" /> Desktop
-                    </Button>
-                    <Button variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-semibold text-[10px] " onClick={() => setPreviewDevice('mobile')}>
-                        <PhoneIcon className="h-3.5 w-3.5" /> Mobile
-                    </Button>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
+                        <Button variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-semibold text-[10px] " onClick={() => setPreviewDevice('desktop')}>
+                            <Monitor className="h-3.5 w-3.5" /> Desktop
+                        </Button>
+                        <Button variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-semibold text-[10px] " onClick={() => setPreviewDevice('mobile')}>
+                            <PhoneIcon className="h-3.5 w-3.5" /> Mobile
+                        </Button>
+                    </div>
+                    {onNextStep && (
+                        <Button 
+                            onClick={onNextStep} 
+                            className="h-8 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white text-[10px] px-4 gap-1.5 active:scale-95 transition-all shadow-md shrink-0"
+                        >
+                            Next: Publish <ArrowRight className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
                 </div>
             </div>
             
@@ -227,30 +243,30 @@ export function SimulationStudio({
                 {/* Right area: Device preview */}
                 <div className="flex-1 overflow-auto p-8 flex justify-center">
                     <div className={cn(
-                        "transition-all duration-700 bg-card shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative",
+                        "transition-all duration-700 bg-card shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white dark:border-slate-800 relative",
                         previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl",
                         template.channel === 'sms' && "p-12 flex flex-col justify-center items-center"
                     )}>
                         {isSimLoading && (
                             <div className="absolute inset-0 z-50 bg-card/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
-                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                                <p className="text-[10px] font-semibold tracking-[0.3em] text-primary">Synchronizing Data Hub...</p>
+                                <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+                                <p className="text-[10px] font-semibold tracking-[0.3em] text-blue-600">Synchronizing Data Hub...</p>
                             </div>
                         )}
                         
                         {template.channel === 'sms' ? (
                             <div className="w-full max-w-sm space-y-10">
                                 <div className="flex items-center justify-between opacity-20">
-                                    <Zap className="text-primary h-6 w-6" />
-                                    <span className="text-[10px] font-semibold text-primary tracking-[0.3em]">SMS Uplink Simulation</span>
+                                    <Zap className="text-blue-600 h-6 w-6" />
+                                    <span className="text-[10px] font-semibold text-blue-600 tracking-[0.3em]">SMS Uplink Simulation</span>
                                 </div>
-                                <div className="p-8 bg-card border border-slate-200 rounded-[2rem] relative shadow-xl">
-                                    <div className="absolute -left-3 top-10 w-6 h-6 bg-card border-l border-b border-slate-200 rotate-45 rounded-sm" />
-                                    <p className="text-lg text-slate-900 font-bold whitespace-pre-wrap leading-relaxed">
+                                <div className="p-8 bg-card border border-slate-200 dark:border-slate-800 rounded-[2rem] relative shadow-xl">
+                                    <div className="absolute -left-3 top-10 w-6 h-6 bg-card border-l border-b border-slate-200 dark:border-slate-800 rotate-45 rounded-sm" />
+                                    <p className="text-lg text-slate-900 dark:text-slate-100 font-bold whitespace-pre-wrap leading-relaxed">
                                         {resolvedText}
                                     </p>
                                 </div>
-                                <div className="pt-8 border-t border-slate-100 text-center space-y-2">
+                                <div className="pt-8 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
                                     <span className={cn(
                                         "text-[9px] font-semibold",
                                         smsSegmentInfo?.isMultiSegment

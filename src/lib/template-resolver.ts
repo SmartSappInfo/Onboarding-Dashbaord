@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, TemplateCategory, VariableContext } from './types';
+import type { MessageTemplate, TemplateCategory, VariableContext, MessageChannel } from './types';
 import { renderTemplate } from './template-utils';
 import { MESSAGING_TRIGGERS } from './messaging-triggers';
 
@@ -18,6 +18,7 @@ export interface VariableResolutionContext {
   responseId?: string;
   submissionId?: string;
   workspaceId?: string;
+  userId?: string;
   /** Extra variables that override or supplement resolved values */
   extraVars?: Record<string, any>;
 }
@@ -36,17 +37,22 @@ export async function resolveTemplateForOrg(
   category: TemplateCategory,
   type: string,
   orgId: string,
+  channel?: MessageChannel,
 ): Promise<MessageTemplate> {
   // 1. Check for an active org-level override
-  const orgSnap = await adminDb
+  let orgQuery = adminDb
     .collection('message_templates')
     .where('scope', '==', 'organization')
     .where('organizationId', '==', orgId)
     .where('category', '==', category)
     .where('templateType', '==', type)
-    .where('isActive', '==', true)
-    .limit(1)
-    .get();
+    .where('isActive', '==', true);
+
+  if (channel) {
+    orgQuery = orgQuery.where('channel', '==', channel);
+  }
+
+  const orgSnap = await orgQuery.limit(1).get();
 
   if (!orgSnap.empty) {
     const doc = orgSnap.docs[0];
@@ -54,21 +60,25 @@ export async function resolveTemplateForOrg(
   }
 
   // 2. Fall back to the global template
-  const globalSnap = await adminDb
+  let globalQuery = adminDb
     .collection('message_templates')
     .where('scope', '==', 'global')
     .where('category', '==', category)
     .where('templateType', '==', type)
-    .where('isActive', '==', true)
-    .limit(1)
-    .get();
+    .where('isActive', '==', true);
+
+  if (channel) {
+    globalQuery = globalQuery.where('channel', '==', channel);
+  }
+
+  const globalSnap = await globalQuery.limit(1).get();
 
   if (!globalSnap.empty) {
     const doc = globalSnap.docs[0];
     return { id: doc.id, ...doc.data() } as MessageTemplate;
   }
 
-  throw new Error(`No template found for ${category}/${type}`);
+  throw new Error(`No template found for ${category}/${type}${channel ? ` (${channel})` : ''}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -82,12 +92,13 @@ export async function resolveTemplateForOrg(
 export async function resolveActiveTemplate(
   triggerKey: string,
   orgId: string,
+  channel?: MessageChannel,
 ): Promise<MessageTemplate> {
   const trigger = MESSAGING_TRIGGERS.find(t => t.id === triggerKey);
   if (!trigger) {
     throw new Error(`Unknown trigger: ${triggerKey}`);
   }
-  return resolveTemplateForOrg(trigger.category, triggerKey, orgId);
+  return resolveTemplateForOrg(trigger.category, triggerKey, orgId, channel);
 }
 
 // ---------------------------------------------------------------------------
@@ -312,19 +323,58 @@ export async function buildVariableMap(
     if (snap.exists) {
       const ws = snap.data()!;
       vars['workspace_name'] = ws.name ?? '';
-      // Fetch org name if available
+      // Fetch org details if available
       if (ws.organizationId) {
         const orgSnap = await adminDb.collection('organizations').doc(ws.organizationId).get();
         if (orgSnap.exists) {
-          vars['organization_name'] = orgSnap.data()!.name ?? '';
+          const orgData = orgSnap.data()!;
+          vars['organization_name'] = orgData.name ?? '';
+          vars['org_name'] = orgData.name ?? '';
+          vars['org_logo_url'] = orgData.logoUrl ?? '';
+          vars['org_email'] = orgData.email ?? '';
+          vars['org_phone'] = orgData.phone ?? '';
+          vars['org_address'] = orgData.address ?? '';
+          vars['org_website'] = orgData.website ?? '';
+          vars['unsubscribe_copy'] = orgData.unsubscribeCopy ?? 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.';
+          vars['brand_primary_color'] = orgData.brandPrimaryColor ?? '#3B5FFF';
+          vars['brand_secondary_color'] = orgData.brandSecondaryColor ?? '#8B5CF6';
+          vars['brand_font_family'] = orgData.brandFontFamily ?? 'Figtree';
         }
       }
+    }
+  }
+
+  // User context
+  if ((context === 'users' || context === 'common') && resolutionCtx.userId) {
+    const snap = await adminDb.collection('users').doc(resolutionCtx.userId).get();
+    if (snap.exists) {
+      const user = snap.data()!;
+      vars['user_name'] = user.name ?? user.fullName ?? user.displayName ?? '';
+      vars['user_email'] = user.email ?? '';
+      vars['user_phone'] = user.phone ?? '';
     }
   }
 
   // Extra vars override everything
   if (resolutionCtx.extraVars) {
     Object.assign(vars, resolutionCtx.extraVars);
+  }
+
+  // Double-bind snake_case and camelCase variables for backwards compatibility
+  const boundKeys = Object.keys(vars);
+  for (const key of boundKeys) {
+    const val = vars[key];
+    if (key.includes('_')) {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      if (vars[camelKey] === undefined) {
+        vars[camelKey] = val;
+      }
+    } else {
+      const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      if (vars[snakeKey] === undefined) {
+        vars[snakeKey] = val;
+      }
+    }
   }
 
   return vars;
@@ -343,8 +393,9 @@ export async function resolveAndRender(
   type: string,
   orgId: string,
   resolutionCtx: VariableResolutionContext,
+  channel?: MessageChannel,
 ): Promise<{ subject?: string; body: string }> {
-  const template = await resolveTemplateForOrg(category, type, orgId);
+  const template = await resolveTemplateForOrg(category, type, orgId, channel);
   const vars = await buildVariableMap(template.variableContext, resolutionCtx);
 
   return {

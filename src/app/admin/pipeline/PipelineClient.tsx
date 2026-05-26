@@ -44,6 +44,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { savePipelineAction } from '@/lib/pipeline-actions';
 import { useTerminology } from '@/hooks/use-terminology';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 export default function PipelineClient() {
   const firestore = useFirestore();
@@ -144,6 +145,7 @@ export default function PipelineClient() {
   const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all';
 
   return (
+    <PageContainerFluid>
     <div className="flex h-full flex-col overflow-hidden w-full">
         <header className="shrink-0 bg-transparent z-30">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
@@ -249,5 +251,6 @@ export default function PipelineClient() {
         </div>
         <CreateDealModal open={isCreateDealOpen} onOpenChange={setIsCreateDealOpen} initialPipelineId={currentPipelineId || undefined} />
     </div>
+    </PageContainerFluid>
   );
 }

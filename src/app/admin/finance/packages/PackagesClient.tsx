@@ -41,6 +41,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Separator } from '@/components/ui/separator';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 /**
  * @fileOverview Pricing Tiers Hub.
@@ -124,7 +125,7 @@ export default function PackagesClient() {
     };
 
     return (
-        <div className="h-full overflow-y-auto w-full">
+        <PageContainerFluid>
             <div className="space-y-8 pb-32 w-full">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex flex-col items-start">
@@ -295,6 +296,6 @@ export default function PackagesClient() {
                     </form>
                 </DialogContent>
             </Dialog>
-        </div>
+        </PageContainerFluid>
     );
 }

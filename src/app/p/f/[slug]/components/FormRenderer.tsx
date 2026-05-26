@@ -64,13 +64,21 @@ export default function FormRenderer({
 
   const schema = z.object(schemaObject);
 
-  // 2. Initialize Form
+  // 2. Initialize Form with Default Values
+  const defaultValues: Record<string, any> = {};
+  resolvedFields.forEach((field) => {
+    if (field.defaultValueOverride !== undefined) {
+      defaultValues[field.fieldDefinition.variableName] = field.defaultValueOverride;
+    }
+  });
+
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
+    defaultValues,
   });
 
   // 3. Handle Submit
@@ -137,6 +145,17 @@ export default function FormRenderer({
           <div className="grid grid-cols-1 gap-y-6">
             {resolvedFields.map((field) => {
               const type = field.fieldDefinition.type;
+
+              if (field.hidden) {
+                return (
+                  <input
+                    key={field.id}
+                    type="hidden"
+                    {...register(field.fieldDefinition.variableName)}
+                  />
+                );
+              }
+
               return (
                 <div key={field.id} className="space-y-2">
                   <Label 
@@ -176,6 +195,12 @@ export default function FormRenderer({
                         errors[field.fieldDefinition.variableName] && "border-rose-500 focus:ring-rose-200"
                       )}
                     />
+                  )}
+
+                  {(field.helpTextOverride || field.fieldDefinition.helpText) && (
+                    <p className="text-xs text-slate-500 mt-1 ml-1 leading-normal">
+                      {field.helpTextOverride || field.fieldDefinition.helpText}
+                    </p>
                   )}
                   
                   {errors[field.fieldDefinition.variableName] && (

@@ -21,6 +21,7 @@ import {
     Clock, Smartphone, Layout
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageContainer } from '@/components/ui/page-container';
 
 const CHART_COLORS = {
     sent: '#10b981',    // Emerald 500
@@ -120,7 +121,8 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
     };
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6 pb-20 px-4 md:px-0">
+        <PageContainer maxWidth="5xl" className="pb-20">
+            <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
@@ -405,7 +407,8 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                     </div>
                 </CardContent>
             </Card>
-        </div>
+            </div>
+        </PageContainer>
     );
 }
 

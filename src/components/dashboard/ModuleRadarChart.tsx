@@ -33,8 +33,8 @@ export function ModuleRadarChart({
       return (
         <DashboardCard title="Module usage" terminology={terminology}>
           <div className="h-[250px] flex items-center justify-center">
-              <p className="text-[10px] font-bold text-muted-foreground text-center uppercase tracking-widest opacity-40 italic">
-                {!data ? 'Awaiting metrics...' : 'Insufficent module data'}
+              <p className="text-[10px] font-medium text-muted-foreground text-center tracking-wider opacity-40 italic">
+                {!data ? 'Awaiting Metrics...' : 'Insufficient Module Data'}
               </p>
           </div>
         </DashboardCard>
@@ -55,15 +55,15 @@ export function ModuleRadarChart({
                 const d = payload[0].payload
                 return (
                   <div className="rounded-2xl border bg-background/80 backdrop-blur-xl p-3 shadow-2xl text-[10px] space-y-1">
-                    <p className="font-black uppercase tracking-widest text-primary">{d.name}</p>
-                    <p className="text-muted-foreground font-bold">{d.count} {d.count === 1 ? terminology.singular : terminology.plural} Active</p>
+                    <p className="font-medium tracking-wider text-primary">{d.name}</p>
+                    <p className="text-muted-foreground font-medium">{d.count} {d.count === 1 ? terminology.singular : terminology.plural} Active</p>
                   </div>
                 )
               }
               return null;
             }}
           />
-          <PolarAngleAxis dataKey="abbreviation" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+          <PolarAngleAxis dataKey="abbreviation" tick={{ fontSize: 10, fontWeight: 'medium' }} />
           <PolarGrid strokeDasharray="3 3" strokeOpacity={0.1} />
           <defs>
             <filter

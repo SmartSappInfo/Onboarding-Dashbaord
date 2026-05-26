@@ -23,6 +23,7 @@ import {
     FileText, MousePointer2, Wand2, ArrowRight, Lock, AlertTriangle, Zap
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import {
     Dialog,
     DialogContent,
@@ -181,7 +182,8 @@ export default function MessageLogsPage() {
 
     return (
         <div className="h-full overflow-y-auto text-left">
- <div className="grid gap-6">
+            <PageContainerFluid>
+                <div className="grid gap-6">
  <div className="flex justify-end gap-3">
                     <Button 
                         variant="outline" 
@@ -469,6 +471,7 @@ export default function MessageLogsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            </PageContainerFluid>
         </div>
     );
 }

@@ -14,6 +14,7 @@ export interface DirectoryFilterState {
   lifecycle: string[];
   dateRange: string;
   interests?: string[];
+  contactRoles?: string[];
 }
 
 export const DEFAULT_FILTERS: DirectoryFilterState = {
@@ -24,6 +25,7 @@ export const DEFAULT_FILTERS: DirectoryFilterState = {
   lifecycle: [],
   dateRange: 'all',
   interests: [],
+  contactRoles: [],
 };
 
 // ─── Date Range Boundary Helpers ───────────────────────────────────
@@ -155,6 +157,25 @@ export function useEntityFilters({
         if (!hasMatch) return false;
       }
 
+      // 9. Contact Roles Filter
+      if (filterState.contactRoles && filterState.contactRoles.length > 0) {
+        const sourceContacts = entity.entityContacts || (entity as any).contacts || [];
+        if (sourceContacts.length === 0) {
+          const hasPrimarySelected = filterState.contactRoles.includes('primary');
+          if (!hasPrimarySelected) return false;
+        } else {
+          const hasMatchingContact = sourceContacts.some((c: any) => {
+            return filterState.contactRoles!.some(role => {
+              if (role === 'primary') return !!c.isPrimary;
+              if (role === 'signatories' || role === 'signatory') return !!c.isSignatory;
+              const cleanRole = role.startsWith('role:') ? role.substring(5) : role;
+              return c.typeKey === cleanRole;
+            });
+          });
+          if (!hasMatchingContact) return false;
+        }
+      }
+
       return true;
     });
   }, [entities, filterState, assignedUserId, tagFilteredIds]);
@@ -169,6 +190,7 @@ export function useEntityFilters({
     if (filterState.lifecycle.length > 0) count++;
     if (filterState.dateRange !== 'all') count++;
     if (filterState.interests && filterState.interests.length > 0) count++;
+    if (filterState.contactRoles && filterState.contactRoles.length > 0) count++;
     return count;
   }, [filterState]);
 
@@ -245,6 +267,20 @@ export function useEntityFilters({
         label: 'Interests',
         value: `${filterState.interests.length} selected`,
         onClear: () => ({ ...filterState, interests: [] }),
+      });
+    }
+
+    if (filterState.contactRoles && filterState.contactRoles.length > 0) {
+      capsules.push({
+        id: 'contactRoles',
+        label: 'Roles',
+        value: filterState.contactRoles.map(role => {
+          if (role === 'primary') return 'Primary';
+          if (role === 'signatories') return 'Signatory';
+          if (role.startsWith('role:')) return role.substring(5).charAt(0).toUpperCase() + role.substring(5).slice(1);
+          return role;
+        }).join(', '),
+        onClear: () => ({ ...filterState, contactRoles: [] }),
       });
     }
 

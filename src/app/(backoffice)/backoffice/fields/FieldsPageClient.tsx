@@ -2,12 +2,13 @@
 
 import * as React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, FolderKanban, Users, Network } from 'lucide-react';
+import { Database, FolderKanban, Users, Network, Briefcase } from 'lucide-react';
 
 import NativeFieldRegistry from './components/NativeFieldRegistry';
 import FieldPackEditor from './components/FieldPackEditor';
 import ContactTypeDefaults from './components/ContactTypeDefaults';
 import GroupRegistryInspection from './components/GroupRegistryInspection';
+import IndustryFieldsEditor from './components/IndustryFieldsEditor';
 
 import type { PlatformFieldDefinition, PlatformFieldPack } from '@/lib/backoffice/backoffice-types';
 import type { ContactTypeEntry } from '@/lib/types';
@@ -63,6 +64,12 @@ export default function FieldsPageClient({
           >
             <Users className="h-3.5 w-3.5 mr-2" /> Contact Types
           </TabsTrigger>
+          <TabsTrigger
+            value="industry"
+            className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none"
+          >
+            <Briefcase className="h-3.5 w-3.5 mr-2" /> Industry Fields
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="registry" className="mt-4">
@@ -79,6 +86,10 @@ export default function FieldsPageClient({
         
         <TabsContent value="contact-types" className="mt-4">
            <ContactTypeDefaults initialData={initialContactTypes} />
+        </TabsContent>
+
+        <TabsContent value="industry" className="mt-4">
+           <IndustryFieldsEditor />
         </TabsContent>
       </Tabs>
     </div>

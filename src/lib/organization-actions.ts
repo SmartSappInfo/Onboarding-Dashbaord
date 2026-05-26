@@ -22,11 +22,17 @@ export async function saveOrganizationAction(
         const timestamp = new Date().toISOString();
         const slug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
+        // Ensure departments defaults to ['General'] if not provided or empty
+        const departments = data.departments && data.departments.length > 0 
+            ? data.departments 
+            : ['General'];
+
         if (organizationId) {
             // Update existing organization
             await adminDb.collection('organizations').doc(organizationId).update({
                 ...data,
                 slug,
+                departments,
                 updatedAt: timestamp,
                 updatedBy: userId
             });
@@ -49,6 +55,7 @@ export async function saveOrganizationAction(
                 ...data,
                 id: slug,
                 slug,
+                departments,
                 status: data.status || 'active',
                 createdAt: timestamp,
                 updatedAt: timestamp,

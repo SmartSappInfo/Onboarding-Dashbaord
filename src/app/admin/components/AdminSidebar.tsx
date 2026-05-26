@@ -209,8 +209,8 @@ export function AdminSidebar() {
       
       <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none hover:scrollbar-thin scrollbar-thumb-muted-foreground/20">
         {renderNavGroup("Operations", coreNavItems, true)}
-        {renderNavGroup("Finance Hub", financeNavItems, true)}
         {renderNavGroup("Studios", studioNavItems, false)}
+        {renderNavGroup("Finance Hub", financeNavItems, true)}
         <div className="mt-auto pt-4 mb-2">
             {renderNavGroup("Management", systemNavItems, false)}
         </div>
