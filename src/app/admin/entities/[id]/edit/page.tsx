@@ -42,6 +42,7 @@ import { updateEntityAction } from '@/lib/entity-actions';
 import { useTerminology } from '@/hooks/use-terminology';
 import EntityNotesTab from '../../components/EntityNotesTab';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 
 const entityEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -118,6 +119,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const { activeOrganizationId, activeOrganization } = useTenant();
   const { singular, updateStatus, termStatus } = useTerminology();
+  const { restrictToAssigned, canViewEntity } = useWorkspaceVisibility();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
   const [locationValue, setLocationValue] = React.useState<LocationValue>({});
@@ -400,10 +402,20 @@ function EditEntityForm({ entityId }: EditFormProps) {
 
   if (isGlobalLoading) {
     return (
- <div className="space-y-8">
- <Skeleton className="h-64 w-full rounded-2xl" />
- <Skeleton className="h-96 w-full rounded-2xl" />
-        </div>
+      <div className="space-y-8">
+        <Skeleton className="h-64 w-full rounded-2xl" />
+        <Skeleton className="h-96 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (!entityData || !weData || !canViewEntity(weData)) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <h2 className="text-xl font-bold">Unauthorized Access</h2>
+        <p className="text-sm text-muted-foreground">You do not have permission to edit this entity.</p>
+        <Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button>
+      </div>
     );
   }
 
@@ -676,6 +688,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
                         value={field.value} 
                         onValueChange={field.onChange}
                         error={!!fieldState.error}
+                        disabled={restrictToAssigned}
                       />
                     </FormControl>
                     <FormMessage />

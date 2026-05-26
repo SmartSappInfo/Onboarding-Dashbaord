@@ -60,25 +60,60 @@ export class IngestionDeduplicator {
 
     // 2. Merge contacts
     let contacts: any[] = [];
-    if (strategy === 'KEEP_AND_MERGE') {
+    if (strategy === 'KEEP_AND_MERGE' || strategy === 'REPLACE_AND_MERGE') {
         const existingContacts = (existingEntity.entityContacts || []).map((c: any) => ({ ...c }));
-        const incomingContacts = (incomingData.entityContacts || []).map((c: any, index: number) => ({
-            ...c,
-            id: c.id || `ec_${Math.random().toString(36).substr(2, 9)}`,
-            isPrimary: false,
-            isSignatory: false,
-            order: existingContacts.length + index
-        }));
-        contacts = [...existingContacts, ...incomingContacts];
-    } else if (strategy === 'REPLACE_AND_MERGE') {
-        const incomingContacts = (incomingData.entityContacts || []).map((c: any) => ({ ...c }));
-        const demotedExisting = (existingEntity.entityContacts || []).map((c: any, index: number) => ({
-            ...c,
-            isPrimary: false,
-            isSignatory: false,
-            order: incomingContacts.length + index
-        }));
-        contacts = [...incomingContacts, ...demotedExisting];
+        const incomingContactsRaw = (incomingData.entityContacts || []).map((c: any) => ({ ...c }));
+
+        // Deduplication fail-safe: filter incoming contact details based on existing contacts
+        const processedIncoming = incomingContactsRaw.map((incomingContact: any) => {
+            const resultContact = { ...incomingContact };
+            const normEmail = IngestionDeduplicator.normalizeForMatch(incomingContact.email);
+            const normPhone = IngestionDeduplicator.normalizeForMatch(incomingContact.phone);
+
+            let hasDuplicateEmail = false;
+            let hasDuplicatePhone = false;
+
+            for (const ec of existingContacts) {
+                if (normEmail && IngestionDeduplicator.normalizeForMatch(ec.email) === normEmail) {
+                    hasDuplicateEmail = true;
+                }
+                if (normPhone && IngestionDeduplicator.normalizeForMatch(ec.phone) === normPhone) {
+                    hasDuplicatePhone = true;
+                }
+            }
+
+            // If duplicate email exists in other records, skip saving the email (delete it)
+            if (hasDuplicateEmail) {
+                delete resultContact.email;
+            }
+            // If duplicate phone exists in other records, skip saving the phone (delete it)
+            if (hasDuplicatePhone) {
+                delete resultContact.phone;
+            }
+
+            return resultContact;
+        }).filter((c: any) => c.name || c.email || c.phone); // ensure contact isn't completely empty
+
+        if (strategy === 'KEEP_AND_MERGE') {
+            const mappedIncoming = processedIncoming.map((c: any, index: number) => ({
+                ...c,
+                id: c.id || `ec_${Math.random().toString(36).substr(2, 9)}`,
+                isPrimary: false,
+                isSignatory: false,
+                order: existingContacts.length + index
+            }));
+            contacts = [...existingContacts, ...mappedIncoming];
+        } else {
+            // REPLACE_AND_MERGE
+            const mappedIncoming = processedIncoming.map((c: any) => ({ ...c }));
+            const demotedExisting = existingContacts.map((c: any, index: number) => ({
+                ...c,
+                isPrimary: false,
+                isSignatory: false,
+                order: mappedIncoming.length + index
+            }));
+            contacts = [...mappedIncoming, ...demotedExisting];
+        }
     } else {
         contacts = [...(existingEntity.entityContacts || [])];
         const incomingContacts = incomingData.entityContacts || [];

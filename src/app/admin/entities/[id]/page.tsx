@@ -74,6 +74,7 @@ import ManageWorkspacesModal from '../components/ManageWorkspacesModal';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
+import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
@@ -110,6 +111,7 @@ export default function EntityDetailPage() {
     const { activeWorkspaceId } = useWorkspace();
     const { accessibleWorkspaces } = useTenant();
     const { industry } = useIndustry();
+    const { canViewEntity } = useWorkspaceVisibility();
 
     // Workspace name lookup map (from tenant context — already loaded)
     const workspaceNameMap = React.useMemo(
@@ -229,8 +231,10 @@ export default function EntityDetailPage() {
     useSetBreadcrumb(entityData?.name || weData?.displayName);
 
  if (isLoadingEntity || isLoadingWE) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-2xl"/><Skeleton className="h-96 w-full rounded-2xl"/></div>;
- if (!entityData || !weData) {
-    const errorMessage = getIndustryErrorMessage('entity_not_found', industry);
+ if (!entityData || !weData || !canViewEntity(weData)) {
+    const errorMessage = !entityData || !weData 
+        ? getIndustryErrorMessage('entity_not_found', industry)
+        : 'You do not have permission to view this entity.';
     return (
         <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
             <h2 className="text-xl font-bold">{errorMessage}</h2>

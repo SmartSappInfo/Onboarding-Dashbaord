@@ -76,6 +76,65 @@ const getFieldIcon = (key: string) => {
     return <Info size={11} />;
 };
 
+const getCSVColumnHeader = (key: string, mapping: Record<string, string>, payload: any) => {
+    let mapKey = key;
+    if (key === 'entityName') mapKey = 'name';
+    else if (key === 'contactName') mapKey = 'contact_0_name';
+    else if (key === 'contactEmail') mapKey = mapping['contact_0_email'] ? 'contact_0_email' : 'primaryEmail';
+    else if (key === 'contactPhone') mapKey = mapping['contact_0_phone'] ? 'contact_0_phone' : 'primaryPhone';
+    else if (key === 'contactRole') mapKey = 'contact_0_role';
+    
+    const col = mapping[mapKey];
+    if (col && col !== 'none' && !col.includes('{{')) {
+        return col;
+    }
+    
+    if (key === 'entityName') {
+        if ('Name' in payload) return 'Name';
+        if ('Institution Name' in payload) return 'Institution Name';
+        if ('Entity Name' in payload) return 'Entity Name';
+    }
+    if (key === 'contactName' && 'Contact Name' in payload) return 'Contact Name';
+    if (key === 'contactEmail') {
+        if ('Email' in payload) return 'Email';
+        if ('email' in payload) return 'email';
+    }
+    if (key === 'contactPhone') {
+        if ('Phone' in payload) return 'Phone';
+        if ('phone' in payload) return 'phone';
+    }
+    if (key === 'contactRole') {
+        if ('Role' in payload) return 'Role';
+        if ('role' in payload) return 'role';
+    }
+    if (key === 'locationRegion') {
+        if ('Region' in payload) return 'Region';
+        if ('region' in payload) return 'region';
+    }
+    if (key === 'locationDistrict') {
+        if ('District' in payload) return 'District';
+        if ('district' in payload) return 'district';
+    }
+    if (key === 'zone') {
+        if ('Zone' in payload) return 'Zone';
+        if ('zone' in payload) return 'zone';
+    }
+    if (key === 'locationString') {
+        if ('Address' in payload) return 'Address';
+        if ('address' in payload) return 'address';
+        if ('Address Detail' in payload) return 'Address Detail';
+    }
+    if (key === 'assignedTo') {
+        if ('AssignedTo' in payload) return 'AssignedTo';
+        if ('Assigned Representative' in payload) return 'Assigned Representative';
+    }
+    if (key === 'package') {
+        if ('Package' in payload) return 'Package';
+        if ('package' in payload) return 'package';
+    }
+    return col || key;
+};
+
 /** Extract the key fields from the raw incoming payload using import mapping and default values */
 const extractIncomingFields = (payload: any, mapping: Record<string, string>, defaultValues: Record<string, string> = {}, userMap?: Record<string, string>) => {
     const get = (key: string) => {
@@ -263,6 +322,10 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
     const [exitingRowIds, setExitingRowIds] = useState<Set<string>>(new Set());
     const [verifyingEmails, setVerifyingEmails] = useState<Record<string, boolean>>({});
 
+    // Track active AbortControllers to cancel them when duplicates resolution starts
+    const activeControllersRef = React.useRef<globalThis.Map<string, AbortController>>(new globalThis.Map());
+    const isSuspendedRef = React.useRef<boolean>(false);
+
     const toggleRowExpanded = (rowId: string) => {
         setExpandedRowIds(prev => 
             prev.includes(rowId) ? prev.filter(id => id !== rowId) : [...prev, rowId]
@@ -270,81 +333,48 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
     };
     const [verifiedResults, setVerifiedResults] = useState<Record<string, any>>({});
 
-    const handleVerifyEmail = async (email: string) => {
-        if (!email || verifyingEmails[email]) return;
+    const handleVerifyEmail = async (email: string, silent: boolean = false) => {
+        if (!email || verifyingEmails[email] || isSuspendedRef.current) return;
+
+        const controller = new AbortController();
+        activeControllersRef.current.set(email, controller);
+
         setVerifyingEmails(prev => ({ ...prev, [email]: true }));
         try {
             const response = await fetch('/api/verify-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email.trim() }),
+                signal: controller.signal,
             });
             if (response.ok) {
                 const data = await response.json();
                 setVerifiedResults(prev => ({ ...prev, [email]: data }));
-                toast({
-                    title: 'Email Verified',
-                    description: `Status: ${data.status === 'verified' ? 'Verified Valid' : data.status === 'likely_valid' ? 'Likely Valid' : data.status === 'risky' ? 'Risky' : 'Invalid'} (Score: ${data.score})`,
-                });
+                if (!silent) {
+                    toast({
+                        title: 'Email Verified',
+                        description: `Status: ${data.status === 'verified' ? 'Verified Valid' : data.status === 'likely_valid' ? 'Likely Valid' : data.status === 'risky' ? 'Risky' : 'Invalid'} (Score: ${data.score})`,
+                    });
+                }
             } else {
                 const err = await response.json();
                 throw new Error(err.error || 'Failed to verify email');
             }
         } catch (e: any) {
+            if (e.name === 'AbortError') {
+                console.log(`Email verification for ${email} was aborted.`);
+                return;
+            }
             toast({
                 variant: 'destructive',
                 title: 'Verification Failed',
                 description: e.message,
             });
         } finally {
+            activeControllersRef.current.delete(email);
             setVerifyingEmails(prev => ({ ...prev, [email]: false }));
         }
     };
-
-    const [bulkStrategy, setBulkStrategy] = useState<DuplicateStrategy>('SKIP');
-    const [isResolving, setIsResolving] = useState(false);
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const [isCreatingTag, setIsCreatingTag] = useState(false);
-    const [resolutions, setResolutions] = useState<Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any }>>(() => {
-        const initial: Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any }> = {};
-        duplicateRows.filter(r => !r.resolved).forEach(row => {
-            initial[row.id] = { strategy: 'SKIP', tagIds: [] };
-        });
-        return initial;
-    });
-    const [editingRow, setEditingRow] = useState<DuplicateRow | null>(null);
-    const [editedPayload, setEditedPayload] = useState<any>(null);
-
-    React.useEffect(() => {
-        if (editingRow) {
-            setEditedPayload(resolutions[editingRow.id]?.customPayload || { ...editingRow.rawPayload });
-        } else {
-            setEditedPayload(null);
-        }
-    }, [editingRow]);
-
-    // Initialize newly-appearing duplicate rows with default SKIP strategy
-    React.useEffect(() => {
-        setResolutions(prev => {
-            const next = { ...prev };
-            let changed = false;
-            duplicateRows.filter(r => !r.resolved).forEach(row => {
-                if (!next[row.id]) {
-                    next[row.id] = { strategy: 'SKIP', tagIds: [] };
-                    changed = true;
-                }
-            });
-            return changed ? next : prev;
-        });
-    }, [duplicateRows]);
-
-    // Fetch tags for the tag selector
-    const tagsQuery = useMemoFirebase(() => 
-        firestore && activeWorkspace?.id 
-            ? query(collection(firestore, 'tags'), where('workspaceId', '==', activeWorkspace.id), orderBy('name'))
-            : null,
-    [firestore, activeWorkspace?.id]);
-    const { data: tagsList } = useCollection<any>(tagsQuery);
 
     // Fetch users for resolving assignedTo IDs to names
     const usersQuery = useMemoFirebase(() => 
@@ -361,6 +391,136 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
         }
         return map;
     }, [usersList]);
+
+    const [bulkStrategy, setBulkStrategy] = useState<DuplicateStrategy>('SKIP');
+    const [isResolving, setIsResolving] = useState(false);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [isCreatingTag, setIsCreatingTag] = useState(false);
+    const [resolutions, setResolutions] = useState<Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any }>>(() => {
+        const initial: Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any }> = {};
+        duplicateRows.filter(r => !r.resolved).forEach(row => {
+            // Determine if emails or phone numbers differ
+            const payload = row.rawPayload || {};
+            const mapping = importLog?._importConfig?.mapping || {};
+            const defaultValues = importLog?._importConfig?.defaultValues || {};
+            const inc = extractIncomingFields(payload, mapping, defaultValues, userMap);
+            const existingContact = getPrimaryContact(row.existingEntityData?.entityContacts || []);
+
+            const inEmail = inc.contactEmail;
+            const exEmail = existingContact?.email || '';
+            const inPhone = inc.contactPhone;
+            const exPhone = existingContact?.phone || '';
+
+            const emailsDiffer = inEmail && exEmail && inEmail.toLowerCase().trim() !== exEmail.toLowerCase().trim();
+            const phonesDiffer = inPhone && exPhone && inPhone.toLowerCase().trim() !== exPhone.toLowerCase().trim();
+
+            const strategy = (emailsDiffer || phonesDiffer) ? 'KEEP_AND_MERGE' : 'SKIP';
+            initial[row.id] = { strategy, tagIds: [] };
+        });
+        return initial;
+    });
+    const [editingCell, setEditingCell] = useState<{ rowId: string; fieldKey: string } | null>(null);
+    const [editValue, setEditValue] = useState<string>('');
+
+    const handleSaveCell = (rowId: string, fieldKey: string) => {
+        const row = duplicateRows.find(r => r.id === rowId);
+        if (!row) return;
+
+        const mapping = importLog?._importConfig?.mapping || {};
+        const colHeader = getCSVColumnHeader(fieldKey, mapping, row.rawPayload);
+
+        let cleaned = editValue.trim();
+        if (fieldKey === 'contactEmail') {
+            cleaned = cleaned.toLowerCase();
+        } else if (fieldKey === 'contactPhone') {
+            cleaned = cleaned.replace(/\s+/g, '');
+        }
+
+        setResolutions(prev => {
+            const currentRes = prev[rowId] || { strategy: 'SKIP', tagIds: [] };
+            const customPayload = { ...(currentRes.customPayload || row.rawPayload) };
+            customPayload[colHeader] = cleaned;
+
+            return {
+                ...prev,
+                [rowId]: {
+                    ...currentRes,
+                    customPayload
+                }
+            };
+        });
+
+        if (fieldKey === 'contactEmail' && cleaned) {
+            handleVerifyEmail(cleaned, true);
+        }
+
+        setEditingCell(null);
+        toast({ title: 'Field updated locally', description: `Updated ${getFieldLabel(fieldKey)} to "${cleaned}".` });
+    };
+
+    // Track which emails have already been auto-verified in the background to avoid duplicates
+    const [autoVerifiedEmails, setAutoVerifiedEmails] = useState<Set<string>>(new Set());
+
+    // Initialize newly-appearing duplicate rows and trigger background email check if values differ
+    React.useEffect(() => {
+        setResolutions(prev => {
+            const next = { ...prev };
+            let changed = false;
+            duplicateRows.filter(r => !r.resolved).forEach(row => {
+                if (!next[row.id]) {
+                    const payload = row.rawPayload || {};
+                    const mapping = importLog?._importConfig?.mapping || {};
+                    const defaultValues = importLog?._importConfig?.defaultValues || {};
+                    const inc = extractIncomingFields(payload, mapping, defaultValues, userMap);
+                    const existingContact = getPrimaryContact(row.existingEntityData?.entityContacts || []);
+
+                    const inEmail = inc.contactEmail;
+                    const exEmail = existingContact?.email || '';
+                    const inPhone = inc.contactPhone;
+                    const exPhone = existingContact?.phone || '';
+
+                    const emailsDiffer = inEmail && exEmail && inEmail.toLowerCase().trim() !== exEmail.toLowerCase().trim();
+                    const phonesDiffer = inPhone && exPhone && inPhone.toLowerCase().trim() !== exPhone.toLowerCase().trim();
+
+                    const strategy = (emailsDiffer || phonesDiffer) ? 'KEEP_AND_MERGE' : 'SKIP';
+                    next[row.id] = { strategy, tagIds: [] };
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
+        });
+
+        // Trigger background email verification when emails differ
+        duplicateRows.filter(r => !r.resolved).forEach(row => {
+            const payload = row.rawPayload || {};
+            const mapping = importLog?._importConfig?.mapping || {};
+            const defaultValues = importLog?._importConfig?.defaultValues || {};
+            const inc = extractIncomingFields(payload, mapping, defaultValues, userMap);
+            const existingContact = getPrimaryContact(row.existingEntityData?.entityContacts || []);
+
+            const inEmail = inc.contactEmail;
+            const exEmail = existingContact?.email || '';
+
+            if (inEmail && exEmail && inEmail.toLowerCase().trim() !== exEmail.toLowerCase().trim()) {
+                if (!autoVerifiedEmails.has(inEmail)) {
+                    setAutoVerifiedEmails(prev => new Set([...prev, inEmail]));
+                    handleVerifyEmail(inEmail, true);
+                }
+                if (!autoVerifiedEmails.has(exEmail)) {
+                    setAutoVerifiedEmails(prev => new Set([...prev, exEmail]));
+                    handleVerifyEmail(exEmail, true);
+                }
+            }
+        });
+    }, [duplicateRows, importLog, userMap]);
+
+    // Fetch tags for the tag selector
+    const tagsQuery = useMemoFirebase(() => 
+        firestore && activeWorkspace?.id 
+            ? query(collection(firestore, 'tags'), where('workspaceId', '==', activeWorkspace.id), orderBy('name'))
+            : null,
+    [firestore, activeWorkspace?.id]);
+    const { data: tagsList } = useCollection<any>(tagsQuery);
 
     const requiresTags = (strategy: DuplicateStrategy) => 
         ['ADD_TAG_ONLY', 'UPDATE_MISSING_FIELDS_AND_TAG', 'UPDATE_FIELDS_AND_TAG', 'KEEP_AND_MERGE', 'REPLACE_AND_MERGE'].includes(strategy);
@@ -381,6 +541,11 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
     };
 
     const handleResolve = useCallback(async (resolutionsToExecute: { duplicateRowId: string; strategy: DuplicateStrategy; tagIds?: string[]; customPayload?: any }[]) => {
+        // Suspend all active and future email verifications
+        isSuspendedRef.current = true;
+        activeControllersRef.current.forEach(c => c.abort());
+        activeControllersRef.current.clear();
+
         setIsResolving(true);
         try {
             await resolveDuplicatesAction(importLogId, resolutionsToExecute);
@@ -587,7 +752,6 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                             <SelectItem value="KEEP_AND_MERGE">Keep & Merge Contacts</SelectItem>
                             <SelectItem value="REPLACE_AND_MERGE">Replace & Merge Contacts</SelectItem>
                             <SelectItem value="TRIGGER_AUTOMATION">Trigger Automation</SelectItem>
-                            <SelectItem value="MANUAL_CORRECTION">Manual Edit</SelectItem>
                             <SelectItem value="CREATE_NEW">Create New Entity</SelectItem>
                         </SelectContent>
                     </Select>
@@ -687,13 +851,13 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                     {pendingRows.map(row => (
                         <Card key={row.id} className={`overflow-hidden transition-all duration-300 ease-out ${exitingRowIds.has(row.id) ? 'opacity-0 scale-[0.97] -translate-y-1 pointer-events-none' : 'opacity-100 scale-100'} ${selectedIds.includes(row.id) ? 'border-primary shadow-sm shadow-primary/10' : 'border-border/50'}`}>
                             <div className="flex">
-                                {/* Checkbox Column */}
-                                <div className="p-4 border-r border-border/50 bg-slate-50/50 dark:bg-slate-900/20 flex flex-col items-center">
-                                    <Checkbox checked={selectedIds.includes(row.id)} onCheckedChange={() => toggleRow(row.id)} />
-                                    <div className="mt-4 text-xs font-black text-slate-400 rotate-[-90deg] uppercase tracking-widest whitespace-nowrap">
-                                        Row {row.rowIdx + 1}
-                                    </div>
-                                </div>
+                                 {/* Checkbox Column */}
+                                 <div className="p-4 w-14 border-r border-border/50 bg-slate-50/50 dark:bg-slate-900/20 flex flex-col items-center gap-6 justify-start shrink-0">
+                                     <Checkbox checked={selectedIds.includes(row.id)} onCheckedChange={() => toggleRow(row.id)} />
+                                     <div className="text-[10px] font-black text-slate-400 rotate-[-90deg] uppercase tracking-widest whitespace-nowrap select-none mt-6">
+                                         Row {row.rowIdx + 1}
+                                     </div>
+                                 </div>
 
                                 {/* Content */}
                                 <CardContent className="flex-1 p-6 flex flex-col gap-4">
@@ -737,9 +901,6 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                                 customPayload: prev[row.id]?.customPayload || row.rawPayload
                                                             }
                                                         }));
-                                                        if (v === 'MANUAL_CORRECTION') {
-                                                            setEditingRow(row);
-                                                        }
                                                     }}
                                                 >
                                                     <SelectTrigger className="w-[180px] h-8 text-xs bg-slate-100 border-0 dark:bg-slate-800">
@@ -753,22 +914,9 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                         <SelectItem value="KEEP_AND_MERGE">Keep & Merge</SelectItem>
                                                         <SelectItem value="REPLACE_AND_MERGE">Replace & Merge</SelectItem>
                                                         <SelectItem value="TRIGGER_AUTOMATION">Automation</SelectItem>
-                                                        <SelectItem value="MANUAL_CORRECTION">Manual Edit</SelectItem>
                                                         <SelectItem value="CREATE_NEW">Create New</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-
-                                                {resolutions[row.id]?.strategy === 'MANUAL_CORRECTION' && (
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant="outline" 
-                                                        className="h-8 px-2 border-primary/20 hover:bg-primary/5 text-primary"
-                                                        onClick={() => setEditingRow(row)}
-                                                        title="Edit Payload Fields"
-                                                    >
-                                                        <Edit2 size={14} />
-                                                    </Button>
-                                                )}
 
                                                 <Button
                                                     size="sm"
@@ -987,15 +1135,63 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                             <div className="rounded-xl border border-border/60 overflow-hidden">
                                                 {/* Column headers */}
                                                 <div className="grid grid-cols-[1fr_28px_1fr] bg-slate-50 dark:bg-slate-900/60 border-b border-border/50">
-                                                    <div className="px-4 py-2 flex items-center gap-1.5">
-                                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Incoming</span>
-                                                        {resolutions[row.id]?.customPayload && (
-                                                            <Badge className="bg-amber-100 text-amber-700 text-[8px] hover:bg-amber-100 px-1 py-0 h-3.5 border-none">Edited</Badge>
-                                                        )}
+                                                    <div className="px-4 py-2 flex items-center justify-between gap-1.5">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Incoming</span>
+                                                            {resolutions[row.id]?.customPayload && (
+                                                                <Badge className="bg-amber-100 text-amber-700 text-[8px] hover:bg-amber-100 px-1 py-0 h-3.5 border-none">Edited</Badge>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <Checkbox
+                                                                id={`header-inc-${row.id}`}
+                                                                checked={resolutions[row.id]?.strategy === 'UPDATE_FIELDS_AND_TAG' || resolutions[row.id]?.strategy === 'KEEP_AND_MERGE'}
+                                                                onCheckedChange={(checked) => {
+                                                                    const current = resolutions[row.id]?.strategy || 'SKIP';
+                                                                    let nextStrat: DuplicateStrategy = 'SKIP';
+                                                                    if (checked) {
+                                                                        nextStrat = (current === 'SKIP' || current === 'ADD_TAG_ONLY' || current === 'TRIGGER_AUTOMATION') ? 'UPDATE_FIELDS_AND_TAG' : 'KEEP_AND_MERGE';
+                                                                    } else {
+                                                                        nextStrat = current === 'KEEP_AND_MERGE' ? 'SKIP' : 'SKIP';
+                                                                    }
+                                                                    setResolutions(prev => ({
+                                                                        ...prev,
+                                                                        [row.id]: {
+                                                                            ...prev[row.id],
+                                                                            strategy: nextStrat
+                                                                        }
+                                                                    }));
+                                                                }}
+                                                            />
+                                                            <label htmlFor={`header-inc-${row.id}`} className="text-[9px] font-bold text-muted-foreground select-none cursor-pointer">Keep Incoming</label>
+                                                        </div>
                                                     </div>
                                                     <div />
-                                                    <div className="px-4 py-2">
+                                                    <div className="px-4 py-2 flex items-center justify-between">
                                                         <span className="text-[9px] font-black uppercase tracking-widest text-blue-500">Existing Record</span>
+                                                        <div className="flex items-center gap-1">
+                                                            <Checkbox
+                                                                id={`header-ex-${row.id}`}
+                                                                checked={resolutions[row.id]?.strategy === 'SKIP' || resolutions[row.id]?.strategy === 'KEEP_AND_MERGE'}
+                                                                onCheckedChange={(checked) => {
+                                                                    const current = resolutions[row.id]?.strategy || 'SKIP';
+                                                                    let nextStrat: DuplicateStrategy = 'SKIP';
+                                                                    if (checked) {
+                                                                        nextStrat = (current === 'UPDATE_FIELDS_AND_TAG' || current === 'UPDATE_MISSING_FIELDS_AND_TAG') ? 'KEEP_AND_MERGE' : 'SKIP';
+                                                                    } else {
+                                                                        nextStrat = current === 'KEEP_AND_MERGE' ? 'UPDATE_FIELDS_AND_TAG' : 'UPDATE_FIELDS_AND_TAG';
+                                                                    }
+                                                                    setResolutions(prev => ({
+                                                                        ...prev,
+                                                                        [row.id]: {
+                                                                            ...prev[row.id],
+                                                                            strategy: nextStrat
+                                                                        }
+                                                                    }));
+                                                                }}
+                                                            />
+                                                            <label htmlFor={`header-ex-${row.id}`} className="text-[9px] font-bold text-muted-foreground select-none cursor-pointer">Keep Existing</label>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 {/* Field rows */}
@@ -1004,6 +1200,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                     const exVal = ext[key];
                                                     const conflict = isConflict(inVal, exVal);
                                                     const missing = !exVal && inVal;
+
                                                     return (
                                                         <div
                                                             key={key}
@@ -1012,30 +1209,90 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                             } ${conflict ? 'bg-red-50/40 dark:bg-red-950/10' : ''}`}
                                                         >
                                                             {/* Incoming value */}
-                                                            <div className={`px-4 py-2.5 ${
-                                                                conflict ? 'border-l-2 border-red-400' : missing ? 'border-l-2 border-amber-300' : 'border-l-2 border-transparent'
-                                                            }`}>
-                                                                <div className="flex items-center gap-1 mb-0.5">
-                                                                    <span className="text-muted-foreground/50">{icon}</span>
-                                                                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">{label}</span>
-                                                                </div>
-                                                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                                                    <p className={`text-xs font-medium leading-snug ${
-                                                                        conflict ? 'text-red-600 dark:text-red-400' :
-                                                                        inVal ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 italic'
+                                                            {(() => {
+                                                                const colHeader = getCSVColumnHeader(key, mapping, row.rawPayload);
+                                                                const originalVal = row.rawPayload[colHeader] !== undefined ? String(row.rawPayload[colHeader]) : '';
+                                                                const customPayload = resolutions[row.id]?.customPayload;
+                                                                const hasBeenEdited = customPayload && customPayload[colHeader] !== undefined && String(customPayload[colHeader]) !== originalVal;
+                                                                const isCellEditing = editingCell?.rowId === row.id && editingCell?.fieldKey === key;
+
+                                                                return (
+                                                                    <div className={`px-4 py-2.5 relative ${
+                                                                        conflict ? 'border-l-2 border-red-400' : missing ? 'border-l-2 border-amber-300' : 'border-l-2 border-transparent'
                                                                     }`}>
-                                                                        {inVal || '—'}
-                                                                    </p>
-                                                                    {inVal && key === 'contactEmail' && (
-                                                                        <EmailVerificationBadge
-                                                                            email={inVal}
-                                                                            onVerify={() => handleVerifyEmail(inVal)}
-                                                                            isVerifying={!!verifyingEmails[inVal]}
-                                                                            result={verifiedResults[inVal]}
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                                                        <div className="flex items-center justify-between mb-0.5">
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className="text-muted-foreground/50">{icon}</span>
+                                                                                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">{label}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        {isCellEditing ? (
+                                                                            <div className="flex items-center gap-1.5 mt-1 w-full">
+                                                                                <Input 
+                                                                                    value={editValue}
+                                                                                    onChange={(e) => setEditValue(e.target.value)}
+                                                                                    onKeyDown={(e) => {
+                                                                                        if (e.key === 'Enter') handleSaveCell(row.id, key);
+                                                                                        if (e.key === 'Escape') setEditingCell(null);
+                                                                                    }}
+                                                                                    className="h-7 text-xs px-2 py-1 w-full focus-visible:ring-primary/20 bg-background"
+                                                                                    autoFocus
+                                                                                />
+                                                                                <Button 
+                                                                                    size="icon" 
+                                                                                    variant="ghost" 
+                                                                                    className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
+                                                                                    onClick={() => handleSaveCell(row.id, key)}
+                                                                                >
+                                                                                    <CheckCircle2 size={12} />
+                                                                                </Button>
+                                                                                <Button 
+                                                                                    size="icon" 
+                                                                                    variant="ghost" 
+                                                                                    className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                                                                                    onClick={() => setEditingCell(null)}
+                                                                                >
+                                                                                    <span className="font-bold text-xs">✕</span>
+                                                                                </Button>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="flex items-center justify-between w-full group/cell mt-1 min-h-[24px]">
+                                                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                                                    <p className={`text-xs font-medium leading-snug ${
+                                                                                        conflict ? 'text-red-600 dark:text-red-400' :
+                                                                                        inVal ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 italic'
+                                                                                    }`}>
+                                                                                        {inVal || '—'}
+                                                                                    </p>
+                                                                                    {inVal && key === 'contactEmail' && (
+                                                                                        <EmailVerificationBadge
+                                                                                            email={inVal}
+                                                                                            onVerify={() => handleVerifyEmail(inVal)}
+                                                                                            isVerifying={!!verifyingEmails[inVal]}
+                                                                                            result={verifiedResults[inVal]}
+                                                                                        />
+                                                                                    )}
+                                                                                    {hasBeenEdited && (
+                                                                                        <Badge className="bg-amber-100 text-amber-700 text-[8px] hover:bg-amber-100 px-1 py-0 h-3.5 border-none">Edited</Badge>
+                                                                                    )}
+                                                                                </div>
+                                                                                <Button
+                                                                                    size="icon"
+                                                                                    variant="ghost"
+                                                                                    className="h-6 w-6 text-muted-foreground hover:text-primary opacity-0 group-hover/cell:opacity-100 transition-opacity duration-150 rounded-md shrink-0"
+                                                                                    onClick={() => {
+                                                                                        setEditingCell({ rowId: row.id, fieldKey: key });
+                                                                                        setEditValue(inVal || '');
+                                                                                    }}
+                                                                                    title="Edit Value"
+                                                                                >
+                                                                                    <Edit2 size={11} />
+                                                                                </Button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                             {/* Arrow / conflict badge */}
                                                             <div className="flex items-center justify-center">
                                                                 {conflict ? (
@@ -1047,37 +1304,36 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                                 )}
                                                             </div>
                                                             {/* Existing value */}
-                                                            <div className="px-4 py-2.5">
-                                                                <div className="flex items-center gap-1 mb-0.5">
-                                                                    <span className="text-muted-foreground/50">{icon}</span>
-                                                                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">{label}</span>
-                                                                </div>
-                                                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                                                    <p className={`text-xs font-medium leading-snug ${
-                                                                        conflict ? 'text-slate-800 dark:text-slate-200 font-semibold' :
-                                                                        exVal ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 italic'
-                                                                    }`}>
-                                                                        {exVal || (row.existingEntityData ? '—' : <span className="text-slate-400 italic text-[10px]">Loading…</span>)}
-                                                                    </p>
-                                                                    {exVal && key === 'contactEmail' && (
-                                                                        <EmailVerificationBadge
-                                                                            email={exVal}
-                                                                            onVerify={() => handleVerifyEmail(exVal)}
-                                                                            isVerifying={!!verifyingEmails[exVal]}
-                                                                            result={verifiedResults[exVal]}
-                                                                        />
-                                                                    )}
+                                                            <div className="px-4 py-2.5 flex flex-col justify-between">
+                                                                <div>
+                                                                    <div className="flex items-center justify-between mb-0.5">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-muted-foreground/50">{icon}</span>
+                                                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">{label}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                                                        <p className={`text-xs font-medium leading-snug ${
+                                                                            conflict ? 'text-slate-800 dark:text-slate-200 font-semibold' :
+                                                                            exVal ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 italic'
+                                                                        }`}>
+                                                                            {exVal || (row.existingEntityData ? '—' : <span className="text-slate-400 italic text-[10px]">Loading…</span>)}
+                                                                        </p>
+                                                                        {exVal && key === 'contactEmail' && (
+                                                                            <EmailVerificationBadge
+                                                                                email={exVal}
+                                                                                onVerify={() => handleVerifyEmail(exVal)}
+                                                                                isVerifying={!!verifyingEmails[exVal]}
+                                                                                result={verifiedResults[exVal]}
+                                                                            />
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     );
                                                 })}
-                                                {/* Footer hint */}
-                                                {resolutions[row.id]?.strategy === 'MANUAL_CORRECTION' && (
-                                                    <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900/30">
-                                                        <p className="text-[10px] text-emerald-600 font-semibold">✓ Will create as a new distinct entity</p>
-                                                    </div>
-                                                )}
+
                                             </div>
                                         );
                                     })()}
@@ -1088,71 +1344,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                 </div>
             </ScrollArea>
 
-            {/* Manual Edit Dialog */}
-            <Dialog open={!!editingRow} onOpenChange={(open) => !open && setEditingRow(null)}>
-                <DialogContent className="sm:max-w-[550px] max-h-[85vh] flex flex-col p-6">
-                    <DialogHeader className="shrink-0 pb-4 border-b">
-                        <DialogTitle>Manual Edit: Row {editingRow ? editingRow.rowIdx + 1 : ''}</DialogTitle>
-                        <DialogDescription>
-                            Modify incoming CSV field values to prevent database conflicts and create a distinct entity.
-                        </DialogDescription>
-                    </DialogHeader>
 
-                    {editingRow && editedPayload && (
-                        <ScrollArea className="flex-1 my-4 pr-2">
-                            <div className="space-y-4">
-                                {Object.entries(importLog?._importConfig?.mapping || {})
-                                    .filter(([_, val]) => val && val !== 'none')
-                                    .map(([key, csvHeader]) => {
-                                        const headerStr = String(csvHeader);
-                                        return (
-                                            <div key={key} className="space-y-2">
-                                                <Label htmlFor={key} className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                                    {getFieldLabel(key)} <span className="text-slate-400 font-normal">({headerStr})</span>
-                                                </Label>
-                                                <Input
-                                                    id={key}
-                                                    value={editedPayload[headerStr] || ''}
-                                                    onChange={(e) => {
-                                                        setEditedPayload((prev: any) => ({
-                                                            ...prev,
-                                                            [headerStr]: e.target.value
-                                                        }));
-                                                    }}
-                                                    className="w-full focus-visible:ring-primary/20"
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                            </div>
-                        </ScrollArea>
-                    )}
-
-                    <DialogFooter className="shrink-0 pt-4 border-t gap-2 sm:gap-0">
-                        <Button variant="outline" onClick={() => setEditingRow(null)}>
-                            Cancel
-                        </Button>
-                        <Button 
-                            onClick={() => {
-                                if (editingRow && editedPayload) {
-                                    setResolutions(prev => ({
-                                        ...prev,
-                                        [editingRow.id]: {
-                                            strategy: 'MANUAL_CORRECTION',
-                                            tagIds: prev[editingRow.id]?.tagIds || [],
-                                            customPayload: editedPayload
-                                        }
-                                    }));
-                                    setEditingRow(null);
-                                    toast({ title: 'Manual changes saved', description: 'Click Execute or Execute All to commit this correction.' });
-                                }
-                            }}
-                        >
-                            Save Manual Correction
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

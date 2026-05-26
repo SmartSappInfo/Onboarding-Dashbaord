@@ -39,6 +39,7 @@ interface BulkActionDockProps {
   onArchive: () => void;
   onDelete: () => void;
   className?: string;
+  hideAssign?: boolean;
 }
 
 export function BulkActionDock({
@@ -53,6 +54,7 @@ export function BulkActionDock({
   onArchive,
   onDelete,
   className,
+  hideAssign = false,
 }: BulkActionDockProps) {
   const { singular, plural } = useTerminology();
   const [isVisible, setIsVisible] = React.useState(false);
@@ -117,15 +119,17 @@ export function BulkActionDock({
           </Button>
 
           {/* Assign Owner */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onAssign}
-            className="h-9 w-9 sm:w-auto px-0 sm:px-3 rounded-xl text-slate-300 hover:text-sky-400 hover:bg-sky-500/10 transition-colors font-bold text-xs gap-2"
-          >
-            <UserPlus className="h-4 w-4" />
-            <span className="hidden sm:inline">Assign Owner</span>
-          </Button>
+          {!hideAssign && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onAssign}
+              className="h-9 w-9 sm:w-auto px-0 sm:px-3 rounded-xl text-slate-300 hover:text-sky-400 hover:bg-sky-500/10 transition-colors font-bold text-xs gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">Assign Owner</span>
+            </Button>
+          )}
 
           {/* More Actions Dropdown Menu */}
           <DropdownMenu modal={false}>

@@ -97,8 +97,10 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
         activeWorkspace,
         setActiveOrganization, 
         setActiveWorkspace, 
+        switchOrganizationAndWorkspace,
         availableOrganizations, 
         accessibleWorkspaces,
+        allAccessibleWorkspaces,
         isSuperAdmin,
         getPermissionsSchemaForWorkspace,
         isLoading 
@@ -172,7 +174,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
         const org = availableOrganizations.find(o => o.id === orgId);
         if (!org) return;
 
-        const orgWorkspaces = accessibleWorkspaces.filter(w => w.organizationId === orgId);
+        const orgWorkspaces = allAccessibleWorkspaces.filter(w => w.organizationId === orgId);
         
         if (orgWorkspaces.length > 0) {
             const targetWorkspaceId = org.defaultWorkspaceId && orgWorkspaces.find(w => w.id === org.defaultWorkspaceId)
@@ -299,7 +301,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                         {isSuperAdmin ? (
                             // Super Admin: Show all organizations with workspace sub-menus
                             availableOrganizations.map(org => {
-                                const orgWorkspaces = accessibleWorkspaces.filter(w => w.organizationId === org.id);
+                                const orgWorkspaces = allAccessibleWorkspaces.filter(w => w.organizationId === org.id);
                                 const isActiveOrg = activeOrganizationId === org.id;
 
                                 return (
@@ -350,7 +352,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
  <p className="text-xs text-muted-foreground">No workspaces available</p>
                                                 </div>
                                             ) : (
- <ScrollArea className="max-h-[300px]">
+                                                <div className="max-h-[300px] overflow-y-auto overflow-x-hidden no-scrollbar pr-1">
                                                     {orgWorkspaces.map(w => {
                                                         const isActive = activeWorkspaceId === w.id && isActiveOrg;
                                                         const isDefault = org.defaultWorkspaceId === w.id;
@@ -363,30 +365,30 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                                 onClick={() => {
                                                                     handleWorkspaceSwitch(w.id, isActiveOrg ? undefined : org.id);
                                                                 }}
- className={cn(
+                                                                className={cn(
                                                                     "rounded-lg p-3 gap-3 mb-1 transition-all",
                                                                     isActive && "bg-primary text-white shadow-md"
                                                                 )}
                                                                 style={isActive ? { backgroundColor: w.color } : {}}
                                                             >
- <div className={cn(
+                                                                <div className={cn(
                                                                     "p-1.5 rounded-lg shrink-0",
                                                                     isActive ? "bg-card/20 text-white" : "bg-muted text-muted-foreground"
                                                                 )}>
- <WScopeIcon className="h-4 w-4" />
+                                                                    <WScopeIcon className="h-4 w-4" />
                                                                 </div>
- <div className="flex-1 min-w-0">
- <div className="flex items-center gap-2">
- <div className="flex items-center gap-1.5 min-w-0">
- <p className="font-semibold text-xs truncate">{w.name}</p>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                                                                            <p className="font-semibold text-xs whitespace-normal break-words">{w.name}</p>
                                                                             {isDefault && (
- <div className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] shrink-0" title="Default Workspace" />
+                                                                                <div className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] shrink-0" title="Default Workspace" />
                                                                             )}
                                                                         </div>
                                                                         {wScopeLabel && (
                                                                             <Badge 
                                                                                 variant={isActive ? "secondary" : "outline"}
- className={cn(
+                                                                                className={cn(
                                                                                     "text-[8px] font-bold uppercase px-1 h-3.5",
                                                                                     isActive && "bg-card/20 text-white border-white/30"
                                                                                 )}
@@ -396,27 +398,37 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                                         )}
                                                                     </div>
                                                                     {w.description && (
- <p className={cn(
-                                                                            "text-[9px] font-medium truncate mt-0.5",
+                                                                        <p className={cn(
+                                                                            "text-[9px] font-medium whitespace-normal break-words mt-0.5",
                                                                             isActive ? "text-white/70" : "text-muted-foreground"
                                                                         )}>
                                                                             {w.description}
                                                                         </p>
                                                                     )}
                                                                 </div>
- {isActive && <Check className="h-4 w-4 ml-auto" />}
+                                                                {isActive && <Check className="h-4 w-4 ml-auto" />}
                                                             </DropdownMenuItem>
                                                         );
                                                     })}
-                                                </ScrollArea>
+                                                </div>
                                             )}
 
  <DropdownMenuSeparator className="my-2" />
                                             
                                             <DropdownMenuItem 
                                                 onClick={() => {
-                                                    setActiveOrganization(org.id);
-                                                    router.push('/admin/settings');
+                                                    const orgWorkspaces = allAccessibleWorkspaces.filter(w => w.organizationId === org.id);
+                                                    const targetW = org.id === activeOrganizationId 
+                                                        ? orgWorkspaces.find(w => w.id === activeWorkspaceId) || orgWorkspaces[0]
+                                                        : orgWorkspaces.find(w => w.id === org.defaultWorkspaceId) || orgWorkspaces[0];
+                                                    
+                                                    if (targetW) {
+                                                        switchOrganizationAndWorkspace(org.id, targetW.id);
+                                                        router.push(`/admin/settings?track=${targetW.id}&workspaceId=${targetW.id}`);
+                                                    } else {
+                                                        setActiveOrganization(org.id);
+                                                        router.push('/admin/settings');
+                                                    }
                                                 }}
  className="rounded-lg p-2 gap-3 cursor-pointer text-primary hover:bg-primary/5"
                                             >

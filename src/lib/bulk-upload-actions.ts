@@ -175,6 +175,8 @@ export async function ingestBatchAction(
     const { stats: cleaningStats } = cleanBatch(rows, mapping, defaultCountryCode, enableTitleCase);
     console.log('[BULK] Data cleaning stats:', cleaningStats);
 
+    const cleanGlobalTagIds = (globalTagIds || []).filter(id => id && id.trim() !== '');
+
     // 3. Create import log with 'queued' status and persisted import config
     const importLogId = `implog_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const importLogRef = adminDb.collection('import_logs').doc(importLogId);
@@ -191,7 +193,7 @@ export async function ingestBatchAction(
         successCount: 0,
         failedCount: 0,
         duplicateCount: 0,
-        selectedTags: globalTagIds,
+        selectedTags: cleanGlobalTagIds,
         automationId: automationId || null,
         startedAt: FieldValue.serverTimestamp(),
         rawFieldsCleared: false,
@@ -200,7 +202,7 @@ export async function ingestBatchAction(
             mapping,
             autoCreateTags,
             defaultValues,
-            globalTagIds,
+            globalTagIds: cleanGlobalTagIds,
             automationId: automationId || null,
             manualTagNames,
             workspaceIndustry,
@@ -309,6 +311,30 @@ export async function processImportChunkBackground(importLogId: string): Promise
     // Fetch resolution context once per chunk (zones, tags, users, etc.)
     const context = await getResolutionContext(importLog.workspaceId);
 
+    // Resolve restricted status for uploading user
+    let isRestricted = false;
+    let uploaderUser: any = null;
+    try {
+        const [userSnap, wsSnap] = await Promise.all([
+            adminDb.collection('users').doc(importLog.userId).get(),
+            adminDb.collection('workspaces').doc(importLog.workspaceId).get()
+        ]);
+        if (userSnap.exists && wsSnap.exists) {
+            const userData = userSnap.data() as any;
+            const wsData = wsSnap.data() as any;
+            const isSuperAdmin = userData?.permissions?.includes('system_admin') || false;
+            const restrictVisibility = wsData?.restrictVisibilityToAssigned !== false;
+            isRestricted = restrictVisibility && !isSuperAdmin;
+            uploaderUser = {
+                id: importLog.userId,
+                name: userData.name || 'Uploader',
+                email: userData.email || null
+            };
+        }
+    } catch (err) {
+        console.error('[BULK-BG] Failed to resolve restricted status:', err);
+    }
+
     // Targeted duplicate-detection: extract emails from this chunk only
     const emailKey = mapping['contact_0_email'] || mapping['primaryEmail'];
     const chunkEmails = pendingSnap.docs
@@ -373,7 +399,8 @@ export async function processImportChunkBackground(importLogId: string): Promise
                 workspaceIndustry, importLog.workspaceId, importLog.organizationId,
                 importLog.userId, importLog.filename, autoCreateTags,
                 defaultValues, globalTagIds, automationId ?? undefined, manualTagNames,
-                defaultCountryCode, enableTitleCase
+                defaultCountryCode, enableTitleCase,
+                isRestricted, uploaderUser
             );
 
             const normalisedEmail = extracted.workspaceEntityDoc.primaryEmail?.toLowerCase().trim();
@@ -534,13 +561,18 @@ function resolveMappedValue(
     mapping: Record<string, string>,
     defaultValues: Record<string, string> = {}
 ): string {
-    const col = mapping[key];
-    if (!col) return defaultValues[key] || '';
+    let lookupKey = key;
+    if (key === 'contactName') lookupKey = 'contact_0_name';
+    else if (key === 'contactPhone') lookupKey = 'contact_0_phone';
+    else if (key === 'contactEmail') lookupKey = 'contact_0_email';
+
+    const col = mapping[lookupKey];
+    if (!col) return defaultValues[lookupKey] || '';
     if (col.includes('{{')) {
-        return String(evaluateFormula(col, payload) || defaultValues[key] || '');
+        return String(evaluateFormula(col, payload) || defaultValues[lookupKey] || '');
     }
     const val = (payload[col] !== undefined && payload[col] !== null) ? String(payload[col]).trim() : '';
-    return val || defaultValues[key] || '';
+    return val || defaultValues[lookupKey] || '';
 }
 
 // ─── Per-Row Processing (Internal) ───────────────────────────────────────────
@@ -562,7 +594,9 @@ async function processRow(
     automationId?: string,
     manualTagNames: string[] = [],
     defaultCountryCode: string = 'GH',
-    enableTitleCase: boolean = false
+    enableTitleCase: boolean = false,
+    isRestricted: boolean = false,
+    uploaderUser: any = null
 ): Promise<any> {
     const getValue = (key: string) => {
         const rawVal = resolveMappedValue(key, row, mapping, defaultValues);
@@ -600,7 +634,10 @@ async function processRow(
         locationString: String(getValue('locationString') || '')
     };
 
-    const selectedUser = fuzzyMatch(context.users, String(getValue('assignedTo') || ''));
+    let selectedUser = fuzzyMatch(context.users, String(getValue('assignedTo') || ''));
+    if (isRestricted && uploaderUser) {
+        selectedUser = uploaderUser;
+    }
     const selectedPackage = fuzzyMatch(context.packages as any, String(getValue('package') || getValue('subscriptionPackageName') || '')) as any;
 
     const rawModulesStr = getValue('modules');
@@ -833,7 +870,9 @@ async function processRow(
         entityId,
         entityType,
         status: 'active',
-        assignedTo: selectedUser?.id || null,
+        assignedTo: selectedUser 
+            ? { userId: selectedUser.id, name: selectedUser.name, email: selectedUser.email || null }
+            : { userId: null, name: 'Unassigned', email: null },
         workspaceTags: tagIds,
         addedAt: timestamp,
         updatedAt: timestamp,
@@ -910,11 +949,11 @@ export async function getImportsLogsListAction(workspaceId: string, limitCount =
 }
 
 /**
- * Sweeps and deletes detailed failed rows for any import logs older than 72 hours.
+ * Sweeps and deletes detailed failed rows for any import logs older than 14 days (336 hours).
  * Only deletes the heavy payloads, keeping the core analytics document.
  */
 export async function purgeExpiredFailedImportsAction(workspaceId: string) {
-    const ttlThreshold = new Date(Date.now() - 72 * 60 * 60 * 1000);
+    const ttlThreshold = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
     
     // We sort on the primary field. Missing index risk is low if we filter by rawFieldsCleared.
     const expiredSnap = await adminDb.collection('import_logs')
@@ -1258,7 +1297,7 @@ export async function resolveDuplicatesAction(
                         const existingEntity = { id: existingSnap.id, ...existingSnap.data() };
 
                         // 1. Process the raw row payload to get a clean structured workspaceEntityDoc
-                        const payload = dupData?.rawPayload || {};
+                        const payload = customPayload || dupData?.rawPayload || {};
                         let rawName = resolveMappedValue('name', payload, mapping, defaultValues);
                         if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
                             const contactName = resolveMappedValue('contact_0_name', payload, mapping, defaultValues);

@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -13,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
-import { FileUp, Search, RefreshCw, AlertCircle, CheckCircle2, ChevronRight, HardDrive } from 'lucide-react';
+import { FileUp, Search, RefreshCw, AlertCircle, CheckCircle2, ChevronRight, HardDrive, ArrowLeft, Edit2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { purgeExpiredFailedImportsAction, getFailedRowsAction, updateFailedRowAction, ingestBatchAction, getDuplicateRowsAction, cancelBulkUploadAction, resumeBulkUploadAction, resolveFailedRowAction } from '@/lib/bulk-upload-actions';
@@ -24,12 +25,17 @@ export default function ImportsLogClient() {
     const { activeWorkspace } = useWorkspace();
     const { user } = useUser();
     const { toast } = useToast();
+    const searchParams = useSearchParams();
+
+    const backUrl = `/admin/entities?${searchParams.toString()}`;
 
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+    const [summaryLogId, setSummaryLogId] = useState<string | null>(null);
     const [failedRows, setFailedRows] = useState<any[]>([]);
     const [isLoadingFailed, setIsLoadingFailed] = useState(false);
     const [retryingRow, setRetryingRow] = useState<string | null>(null);
-    const [editingRow, setEditingRow] = useState<any>(null);
+    const [editingCell, setEditingCell] = useState<{ rowId: string; fieldKey: string } | null>(null);
+    const [editValue, setEditValue] = useState<string>('');
     const [duplicateRows, setDuplicateRows] = useState<any[]>([]);
     const [isLoadingDuplicates, setIsLoadingDuplicates] = useState(false);
     const [activeTab, setActiveTab] = useState('failed');
@@ -106,13 +112,14 @@ export default function ImportsLogClient() {
         }
     };
 
-    const handleSaveRow = async () => {
-        if (!editingRow || !selectedLogId) return;
+    const handleSaveFailedCell = async (row: any, fieldKey: string) => {
+        if (!selectedLogId) return;
         try {
-            await updateFailedRowAction(selectedLogId, editingRow.id, editingRow.rawPayload);
-            setFailedRows(prev => prev.map(r => r.id === editingRow.id ? editingRow : r));
-            setEditingRow(null);
-            toast({ title: 'Row updated' });
+            const updatedPayload = { ...row.rawPayload, [fieldKey]: editValue.trim() };
+            await updateFailedRowAction(selectedLogId, row.id, updatedPayload);
+            setFailedRows(prev => prev.map(r => r.id === row.id ? { ...r, rawPayload: updatedPayload } : r));
+            setEditingCell(null);
+            toast({ title: 'Field updated' });
         } catch (error) {
             toast({ variant: 'destructive', title: 'Update failed' });
         }
@@ -151,8 +158,17 @@ export default function ImportsLogClient() {
         }
     };
 
+    const summaryLog = logs?.find((l: any) => l.id === summaryLogId);
+
     return (
         <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
+            <Link 
+                href={backUrl} 
+                className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 w-fit mb-2"
+            >
+                <ArrowLeft size={16} />
+                Back to Directory
+            </Link>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Imports Log</h1>
@@ -201,6 +217,10 @@ export default function ImportsLogClient() {
                                     const total = log.totalCount || 1;
                                     const percent = Math.min(100, Math.round((processed / total) * 100));
                                     
+                                    const totalDuplicates = log.duplicateCount || 0;
+                                    const resolvedDuplicates = log.resolvedDuplicateCount || 0;
+                                    const pendingDuplicates = Math.max(0, totalDuplicates - resolvedDuplicates);
+                                    
                                     return (
                                         <TableRow key={log.id}>
                                             <TableCell>
@@ -238,38 +258,68 @@ export default function ImportsLogClient() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex items-center gap-3 text-xs">
+                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
                                                     <span className="text-emerald-600 flex items-center gap-1" title="Imported"><CheckCircle2 size={12}/> {log.successCount || 0}</span>
                                                     <span className="text-red-500 flex items-center gap-1" title="Failed">
                                                         <AlertCircle size={12}/> {log.failedCount || 0}
                                                         {log.failedCount > 0 && <span className="text-[9px] uppercase tracking-wide font-semibold">err</span>}
                                                     </span>
-                                                    <span className="text-amber-500 flex items-center gap-1" title="Duplicates">
-                                                        <RefreshCw size={12}/> {log.duplicateCount || 0}
-                                                        {log.duplicateCount > 0 && <span className="text-[9px] uppercase tracking-wide font-semibold">dup</span>}
-                                                    </span>
+                                                    {totalDuplicates > 0 && (
+                                                        <>
+                                                            {pendingDuplicates > 0 && (
+                                                                <span className="text-amber-500 flex items-center gap-1" title={`${pendingDuplicates} Pending Duplicates`}>
+                                                                    <RefreshCw size={12}/> {pendingDuplicates}
+                                                                    <span className="text-[9px] uppercase tracking-wide font-semibold">pending</span>
+                                                                </span>
+                                                            )}
+                                                            {resolvedDuplicates > 0 && (
+                                                                <span className="text-teal-600 flex items-center gap-1" title={`${resolvedDuplicates} Resolved Duplicates`}>
+                                                                    <CheckCircle2 size={12}/> {resolvedDuplicates}
+                                                                    <span className="text-[9px] uppercase tracking-wide font-semibold text-teal-600/70">resolved</span>
+                                                                </span>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {['queued', 'processing'].includes(log.status) && (
-                                                        <Button variant="ghost" size="sm" onClick={() => handleCancel(log.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                                        <Button variant="ghost" size="sm" onClick={() => handleCancel(log.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl font-semibold">
                                                             Cancel
                                                         </Button>
                                                     )}
                                                     {['failed', 'cancelled'].includes(log.status) && (
-                                                        <Button variant="outline" size="sm" onClick={() => handleResume(log.id)}>
+                                                        <Button variant="outline" size="sm" onClick={() => handleResume(log.id)} className="rounded-xl font-semibold hover:bg-primary/5">
                                                             Resume
                                                         </Button>
                                                     )}
-                                                    {(log.failedCount > 0 || log.duplicateCount > 0) && !log.rawFieldsCleared && (
-                                                        <Button variant="outline" size="sm" onClick={() => handleViewPortal(log.id, log.failedCount > 0 ? 'failed' : 'duplicates')}>
-                                                            Resolve
-                                                        </Button>
+                                                    {!['queued', 'processing'].includes(log.status) && (
+                                                        <>
+                                                            {(log.failedCount > 0 || pendingDuplicates > 0) && !log.rawFieldsCleared ? (
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm" 
+                                                                    onClick={() => handleViewPortal(log.id, log.failedCount > 0 ? 'failed' : 'duplicates')}
+                                                                    className="rounded-xl font-semibold hover:bg-primary/5"
+                                                                >
+                                                                    Resolve
+                                                                </Button>
+                                                            ) : (
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm" 
+                                                                    onClick={() => setSummaryLogId(log.id)}
+                                                                    className="rounded-xl font-semibold hover:bg-emerald-50 hover:text-emerald-700 border-emerald-200/50 hover:border-emerald-300"
+                                                                >
+                                                                    Summary
+                                                                </Button>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
-                                                {log.rawFieldsCleared && (
-                                                    <span className="text-xs text-muted-foreground italic">Payloads expired</span>
+                                                {log.rawFieldsCleared && (log.failedCount > 0 || pendingDuplicates > 0) && (
+                                                    <span className="text-xs text-muted-foreground italic block mt-1">Payloads expired</span>
                                                 )}
                                             </TableCell>
                                         </TableRow>
@@ -336,12 +386,59 @@ export default function ImportsLogClient() {
                                                                 {retryingRow === row.id ? 'Retrying...' : 'Retry'}
                                                             </Button>
                                                         </div>
-                                                        <CardDescription className="text-xs text-red-500 mt-1">{row.error}</CardDescription>
+                                                <CardDescription className="text-xs text-red-500 mt-1">{row.error}</CardDescription>
                                                     </CardHeader>
                                                     <CardContent className="p-4 pt-0">
-                                                        <div className="bg-slate-50 p-3 rounded-lg border text-xs font-mono break-all mt-2 cursor-pointer hover:bg-slate-100" onClick={() => setEditingRow(row)}>
-                                                            {JSON.stringify(row.rawPayload)}
-                                                            <div className="text-[10px] text-muted-foreground mt-2 text-right">Click to edit raw JSON payload</div>
+                                                        <div className="rounded-lg border bg-slate-50/50 mt-2 overflow-hidden">
+                                                            {Object.entries(row.rawPayload || {}).map(([fieldKey, fieldVal]) => {
+                                                                const isCellEditing = editingCell?.rowId === row.id && editingCell?.fieldKey === fieldKey;
+                                                                const displayVal = fieldVal !== null && fieldVal !== undefined ? String(fieldVal) : '';
+                                                                return (
+                                                                    <div key={fieldKey} className="flex items-center border-b border-border/30 last:border-b-0 group/cell">
+                                                                        <div className="px-3 py-2 w-[140px] shrink-0 bg-slate-100/60 border-r border-border/30">
+                                                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{fieldKey}</span>
+                                                                        </div>
+                                                                        <div className="flex-1 px-3 py-2 flex items-center justify-between gap-2 min-h-[36px]">
+                                                                            {isCellEditing ? (
+                                                                                <div className="flex items-center gap-1.5 w-full">
+                                                                                    <Input
+                                                                                        value={editValue}
+                                                                                        onChange={(e) => setEditValue(e.target.value)}
+                                                                                        onKeyDown={(e) => {
+                                                                                            if (e.key === 'Enter') handleSaveFailedCell(row, fieldKey);
+                                                                                            if (e.key === 'Escape') setEditingCell(null);
+                                                                                        }}
+                                                                                        className="h-7 text-xs px-2 py-1 w-full focus-visible:ring-primary/20 bg-background"
+                                                                                        autoFocus
+                                                                                    />
+                                                                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0" onClick={() => handleSaveFailedCell(row, fieldKey)}>
+                                                                                        <CheckCircle2 size={12} />
+                                                                                    </Button>
+                                                                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0" onClick={() => setEditingCell(null)}>
+                                                                                        <span className="font-bold text-xs">✕</span>
+                                                                                    </Button>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <span className="text-xs font-medium text-slate-700 break-all">{displayVal || <span className="text-slate-400 italic">—</span>}</span>
+                                                                                    <Button
+                                                                                        size="icon"
+                                                                                        variant="ghost"
+                                                                                        className="h-6 w-6 text-muted-foreground hover:text-primary opacity-0 group-hover/cell:opacity-100 transition-opacity duration-150 rounded-md shrink-0"
+                                                                                        onClick={() => {
+                                                                                            setEditingCell({ rowId: row.id, fieldKey });
+                                                                                            setEditValue(displayVal);
+                                                                                        }}
+                                                                                        title="Edit Value"
+                                                                                    >
+                                                                                        <Edit2 size={11} />
+                                                                                    </Button>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -371,27 +468,108 @@ export default function ImportsLogClient() {
                 </DialogContent>
             </Dialog>
 
-            {/* Edit Raw Payload Dialog */}
-            <Dialog open={!!editingRow} onOpenChange={(open) => !open && setEditingRow(null)}>
-                <DialogContent className="sm:max-w-[600px] h-[50vh] flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle>Edit Raw Payload</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4 h-full flex flex-col gap-4 overflow-hidden">
-                        <textarea 
-                            className="w-full flex-1 p-4 font-mono text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
-                            value={editingRow ? JSON.stringify(editingRow.rawPayload, null, 2) : ''}
-                            onChange={(e) => {
-                                try {
-                                    const parsed = JSON.parse(e.target.value);
-                                    setEditingRow({ ...editingRow, rawPayload: parsed });
-                                } catch (err) {
-                                    // Let them type invalid JSON temporarily
-                                }
-                            }}
-                        />
-                        <Button onClick={handleSaveRow} className="shrink-0">Save Changes</Button>
-                    </div>
+
+
+            {/* Summary Dialog */}
+            <Dialog open={!!summaryLogId} onOpenChange={(open) => !open && setSummaryLogId(null)}>
+                <DialogContent className="sm:max-w-[480px] rounded-2xl border-none shadow-lg bg-card p-6 overflow-hidden">
+                    {summaryLog && (
+                        <div className="space-y-6">
+                            <DialogHeader className="space-y-2 text-left">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
+                                        <CheckCircle2 className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <DialogTitle className="text-xl font-bold tracking-tight">Import Summary</DialogTitle>
+                                        <DialogDescription className="text-xs text-muted-foreground">
+                                            Detailed execution summary for this bulk import.
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                            </DialogHeader>
+
+                            <div className="bg-muted/30 rounded-xl p-4 space-y-3 border border-muted-foreground/10">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Filename</span>
+                                    <span className="font-semibold truncate max-w-[240px]" title={summaryLog.filename}>
+                                        {summaryLog.filename}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Entity Type</span>
+                                    <Badge variant="secondary" className="capitalize text-xs font-semibold px-2 py-0.5">
+                                        {summaryLog.entityType}
+                                    </Badge>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Status</span>
+                                    <Badge className="bg-emerald-50 text-emerald-700 border-none shadow-sm capitalize text-xs font-semibold">
+                                        {summaryLog.status}
+                                    </Badge>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Imported</span>
+                                    <span className="text-xs font-mono text-muted-foreground">
+                                        {summaryLog.startedAt?.toDate ? summaryLog.startedAt.toDate().toLocaleString(undefined, {
+                                            dateStyle: 'medium',
+                                            timeStyle: 'short'
+                                        }) : 'Just now'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl bg-slate-50/50 border border-slate-100 flex flex-col justify-between h-20">
+                                    <span className="text-xs font-medium text-muted-foreground">Total Records</span>
+                                    <span className="text-2xl font-bold tracking-tight">{summaryLog.totalCount || 0}</span>
+                                </div>
+                                <div className="p-4 rounded-xl bg-emerald-50/20 border border-emerald-50 flex flex-col justify-between h-20">
+                                    <span className="text-xs font-medium text-emerald-600">Successfully Imported</span>
+                                    <span className="text-2xl font-bold tracking-tight text-emerald-700">{summaryLog.successCount || 0}</span>
+                                </div>
+                            </div>
+
+                            {/* Conflict Resolution Details (If any duplicates or errors occurred) */}
+                            {(summaryLog.duplicateCount > 0 || summaryLog.failedCount > 0 || summaryLog.resolvedDuplicateCount > 0) && (
+                                <div className="space-y-3 pt-2">
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Resolution History</h4>
+                                    <div className="space-y-3 rounded-xl border p-4 bg-card">
+                                        {summaryLog.duplicateCount > 0 && (
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-xs font-medium">
+                                                    <span className="text-muted-foreground flex items-center gap-1">
+                                                        <RefreshCw size={12} className="text-amber-500" />
+                                                        Duplicates Resolved
+                                                    </span>
+                                                    <span>
+                                                        {summaryLog.resolvedDuplicateCount || 0} / {summaryLog.duplicateCount}
+                                                    </span>
+                                                </div>
+                                                <Progress 
+                                                    value={((summaryLog.resolvedDuplicateCount || 0) / summaryLog.duplicateCount) * 100} 
+                                                    className="h-1.5" 
+                                                />
+                                            </div>
+                                        )}
+
+                                        {summaryLog.failedCount === 0 && (
+                                            <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100">
+                                                <CheckCircle2 size={14} className="shrink-0" />
+                                                <span>All validation errors have been completely resolved.</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-3 pt-2">
+                                <Button onClick={() => setSummaryLogId(null)} className="w-full sm:w-auto rounded-xl">
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
 

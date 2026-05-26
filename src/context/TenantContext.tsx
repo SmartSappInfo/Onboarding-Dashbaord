@@ -20,8 +20,10 @@ type TenantContextType = {
   activeWorkspace?: Workspace;
   setActiveOrganization: (orgId: string) => void;
   setActiveWorkspace: (workspaceId: string) => void;
+  switchOrganizationAndWorkspace: (orgId: string, workspaceId: string) => void;
   availableOrganizations: Organization[];
   accessibleWorkspaces: Workspace[];
+  allAccessibleWorkspaces: Workspace[];
   allowedWorkspaces: Workspace[]; // Alias for backward compatibility
   isSuperAdmin: boolean;
   hasPermission: (perm: AppPermissionId) => boolean;
@@ -86,15 +88,23 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   const isOrgsLoading = isSuperAdmin ? isAllOrgsLoading : isSingleOrgLoading;
 
-  // 3. Fetch all Workspaces belonging to the active Organization (Bypassed if unauthorized)
+  // 3. Fetch Workspaces belonging to organization context (Fetched globally for superadmins)
   const workspacesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeOrganizationId || !user || !profile || !profile.isAuthorized) return null;
+    if (!firestore || !user || !profile || !profile.isAuthorized) return null;
+    
+    if (isSuperAdmin) {
+      return query(
+          collection(firestore, 'workspaces'), 
+          orderBy('name', 'asc')
+      );
+    }
+    
     return query(
         collection(firestore, 'workspaces'), 
         where('organizationId', '==', activeOrganizationId),
         orderBy('name', 'asc')
     );
-  }, [firestore, activeOrganizationId, user, profile]);
+  }, [firestore, activeOrganizationId, user, profile, isSuperAdmin]);
   const { data: orgWorkspaces, isLoading: isWorkspacesLoading } = useCollection<Workspace>(workspacesQuery);
 
   // 4. Initial Context Synchronization
@@ -149,6 +159,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return orgFiltered.filter(w => profile.workspaceIds?.includes(w.id));
   }, [orgWorkspaces, profile, isSuperAdmin, activeOrganizationId]);
 
+  const allAccessibleWorkspaces = React.useMemo(() => {
+    if (!orgWorkspaces || !profile) return [];
+    if (isSuperAdmin) return orgWorkspaces;
+    return orgWorkspaces.filter(w => profile.workspaceIds?.includes(w.id));
+  }, [orgWorkspaces, profile, isSuperAdmin]);
+
   // 6. Final Workspace Correction & URL Sync
   React.useEffect(() => {
     // Only perform fallback/correction once workspaces have finished loading.
@@ -200,6 +216,15 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     router.replace(`${pathname}?${params.toString()}`);
   }, [pathname, router, searchParams]);
 
+  const switchOrganizationAndWorkspace = React.useCallback((orgId: string, workspaceId: string) => {
+    if (isSuperAdmin) {
+      setActiveOrganizationIdState(orgId);
+      localStorage.setItem('activeOrganizationId', orgId);
+    }
+    setActiveWorkspaceIdState(workspaceId);
+    localStorage.setItem('activeWorkspaceId', workspaceId);
+  }, [isSuperAdmin]);
+
   const activeOrganization = React.useMemo(() => 
     organizations?.find(o => o.id === activeOrganizationId),
   [organizations, activeOrganizationId]);
@@ -224,8 +249,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     activeWorkspace,
     setActiveOrganization,
     setActiveWorkspace,
+    switchOrganizationAndWorkspace,
     availableOrganizations: organizations || [],
     accessibleWorkspaces,
+    allAccessibleWorkspaces,
     allowedWorkspaces: accessibleWorkspaces,
     isSuperAdmin,
     hasPermission,
@@ -234,7 +261,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     isLoading: !isInitialized || isUserLoading || isProfileLoading || isOrgsLoading || isWorkspacesLoading
   }), [
     activeOrganizationId, activeOrganization, activeWorkspaceId, activeWorkspace, 
-    setActiveOrganization, setActiveWorkspace, organizations, accessibleWorkspaces, 
+    setActiveOrganization, setActiveWorkspace, switchOrganizationAndWorkspace, organizations, accessibleWorkspaces, allAccessibleWorkspaces, 
     isSuperAdmin, hasPermission, effectivePermissionsSchema, getPermissionsSchemaForWorkspace,
     isInitialized, isUserLoading, isProfileLoading, isOrgsLoading, isWorkspacesLoading
   ]);
@@ -256,8 +283,10 @@ export function useTenant() {
       activeWorkspaceId: '',
       setActiveOrganization: () => {},
       setActiveWorkspace: () => {},
+      switchOrganizationAndWorkspace: () => {},
       availableOrganizations: [],
       accessibleWorkspaces: [],
+      allAccessibleWorkspaces: [],
       allowedWorkspaces: [],
       isSuperAdmin: true, // Superadmin controls inside shared tools should run freely in backoffice
       hasPermission: () => true, // Bypass local tenant restrictions in the global control plane

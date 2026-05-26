@@ -97,7 +97,7 @@ export default function WorkspaceSwitcher() {
                     
  <DropdownMenuSeparator className="mb-2" />
 
- <div className="max-h-[300px] overflow-y-auto no-scrollbar">
+ <div className="max-h-[300px] overflow-y-auto overflow-x-hidden no-scrollbar pr-1">
                         {accessibleWorkspaces.map(w => {
                             const scopeLabel = getScopeLabel(w.contactScope);
                             
@@ -118,8 +118,8 @@ export default function WorkspaceSwitcher() {
                                         {w.id === 'prospect' ? <Target size={16} /> : <Zap size={16} />}
                                     </div>
  <div className="flex-1 min-w-0">
- <div className="flex items-center gap-2">
- <p className="font-semibold text-xs truncate">{w.name}</p>
+ <div className="flex items-center gap-2 flex-wrap">
+ <p className="font-semibold text-xs whitespace-normal break-words">{w.name}</p>
                                             {scopeLabel && (
  <span className={cn(
                                                     "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
@@ -132,7 +132,7 @@ export default function WorkspaceSwitcher() {
                                             )}
                                         </div>
  <p className={cn(
-                                            "text-[9px] font-bold uppercase tracking-tighter opacity-60", 
+                                            "text-[9px] font-bold uppercase tracking-tighter opacity-60 whitespace-normal break-words mt-0.5", 
                                             activeWorkspaceId === w.id ? "text-white" : "text-muted-foreground"
                                         )}>
                                             {w.description || 'Institutional track'}
@@ -147,7 +147,7 @@ export default function WorkspaceSwitcher() {
  <DropdownMenuSeparator className="my-2" />
                     
  <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3 cursor-pointer text-primary hover:bg-primary/5">
-                        <Link href="/admin/settings">
+                        <Link href={activeWorkspaceId ? `/admin/settings?track=${activeWorkspaceId}&workspaceId=${activeWorkspaceId}` : "/admin/settings"}>
  <div className="p-1.5 bg-primary/10 rounded-lg"><PlusCircle size={14} /></div>
  <span className="font-bold text-[10px] ">Manage Workspaces</span>
                         </Link>

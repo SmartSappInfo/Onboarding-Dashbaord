@@ -26,9 +26,15 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Layout, Camera, AlertTriangle, Share2, Globe, Hash, Network, Phone as PhoneIcon } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Layout, Camera, AlertTriangle, Share2, Globe, Hash, Network, Phone as PhoneIcon, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy } from 'firebase/firestore';
+import dynamic from 'next/dynamic';
+
+const AiArchitectDialog = dynamic(
+  () => import('../components/AiArchitectDialog').then((mod) => mod.AiArchitectDialog),
+  { ssr: false }
+);
 
 import { Button } from '@/components/ui/button';
 import {
@@ -61,6 +67,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { LocationCascade } from '@/components/location/LocationCascade';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // Deal opportunity integration
@@ -169,10 +176,26 @@ export default function NewEntityPage() {
   const { activeWorkspace, activeWorkspaceId, allowedWorkspaces } = useWorkspace();
   const { activeOrganizationId } = useTenant();
   const { singular, termStatus } = useTerminology();
+  const { restrictToAssigned } = useWorkspaceVisibility();
 
   const [duplicateWarning, setDuplicateWarning] = React.useState<any[] | null>(null);
   const [pendingFormData, setPendingFormData] = React.useState<any>(null);
   const [isForceSubmitting, setIsForceSubmitting] = React.useState(false);
+  const [isAiOpen, setIsAiOpen] = React.useState(false);
+  const [pendingAiData, setPendingAiData] = React.useState<any>(null);
+  const [isOverwriteAlertOpen, setIsOverwriteAlertOpen] = React.useState(false);
+
+  const zonesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'zones'), orderBy('name', 'asc'));
+  }, [firestore]);
+  const { data: zones } = useCollection<any>(zonesQuery);
+
+  const modulesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'modules'), orderBy('order', 'asc'));
+  }, [firestore]);
+  const { data: modules } = useCollection<any>(modulesQuery);
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !activeOrganizationId) return null;
@@ -353,6 +376,96 @@ export default function NewEntityPage() {
       }
   }, [user, methods]);
 
+  const applyAiData = React.useCallback((result: any) => {
+    if (!result) return;
+    React.startTransition(() => {
+      if (result.name) methods.setValue('name', result.name, { shouldDirty: true, shouldValidate: true });
+      if (result.initials) methods.setValue('initials', result.initials, { shouldDirty: true });
+      if (result.slogan) methods.setValue('slogan', result.slogan, { shouldDirty: true });
+      if (typeof result.capacity !== 'undefined') methods.setValue('capacity', result.capacity, { shouldDirty: true });
+      
+      // Online Presence
+      if (result.onlinePresence) {
+        const op = result.onlinePresence;
+        if (op.website) methods.setValue('op_website', op.website, { shouldDirty: true });
+        if (op.digitalAddress) methods.setValue('op_digitalAddress', op.digitalAddress, { shouldDirty: true });
+        if (op.googleMapLocation) methods.setValue('op_googleMapLocation', op.googleMapLocation, { shouldDirty: true });
+        if (op.facebook) methods.setValue('op_facebook', op.facebook, { shouldDirty: true });
+        if (op.whatsapp) methods.setValue('op_whatsapp', op.whatsapp, { shouldDirty: true });
+        if (op.linkedin) methods.setValue('op_linkedin', op.linkedin, { shouldDirty: true });
+        if (op.instagram) methods.setValue('op_instagram', op.instagram, { shouldDirty: true });
+        if (op.tiktok) methods.setValue('op_tiktok', op.tiktok, { shouldDirty: true });
+        if (op.youtube) methods.setValue('op_youtube', op.youtube, { shouldDirty: true });
+        if (op.x) methods.setValue('op_x', op.x, { shouldDirty: true });
+      }
+
+      // Address & Location String
+      if (result.address) {
+        methods.setValue('locationString', result.address, { shouldDirty: true });
+      }
+
+      // Administrative Stakeholders mapping
+      if (result.contacts && Array.isArray(result.contacts) && result.contacts.length > 0) {
+        const mappedContacts = result.contacts.map((c: any, index: number) => ({
+          name: c.name || '',
+          email: c.email || '',
+          phone: c.phone || '',
+          typeKey: index === 0 ? 'administrator' : 'contact',
+          typeLabel: index === 0 ? 'Administrator' : 'Contact',
+          isSignatory: index === 0,
+          isPrimary: index === 0,
+        }));
+        methods.setValue('entityContacts', mappedContacts, { shouldDirty: true });
+      }
+
+      // Fuzzy matching for Geographic Zone
+      if (result.location && result.location.zone && zones) {
+        const zoneName = result.location.zone.toLowerCase();
+        const matchedZone = zones.find((z: any) => 
+          z.name.toLowerCase().includes(zoneName) || zoneName.includes(z.name.toLowerCase())
+        );
+        if (matchedZone) {
+          methods.setValue('zone', { id: matchedZone.id, name: matchedZone.name }, { shouldDirty: true });
+        }
+      }
+
+      // Fuzzy matching for Modules (Interests)
+      if (result.suggestedModuleNames && Array.isArray(result.suggestedModuleNames) && modules) {
+        const matchedModules: any[] = [];
+        result.suggestedModuleNames.forEach((sName: string) => {
+          const sNameLower = sName.toLowerCase();
+          const match = modules.find((m: any) => 
+            m.name.toLowerCase().includes(sNameLower) || sNameLower.includes(m.name.toLowerCase())
+          );
+          if (match) {
+            matchedModules.push({
+              id: match.id,
+              name: match.name,
+              abbreviation: match.abbreviation || '',
+              color: match.color || '#000000',
+            });
+          }
+        });
+        if (matchedModules.length > 0) {
+          methods.setValue('modules', matchedModules, { shouldDirty: true });
+        }
+      }
+    });
+  }, [methods, zones, modules]);
+
+  const handleAiDataExtracted = React.useCallback((result: any) => {
+    if (!result) return;
+    
+    // Check if form is dirty
+    const isDirty = Object.keys(methods.formState.dirtyFields).length > 0;
+    if (isDirty) {
+      setPendingAiData(result);
+      setIsOverwriteAlertOpen(true);
+    } else {
+      applyAiData(result);
+    }
+  }, [methods.formState.dirtyFields, applyAiData]);
+
   const handleDiscountChange = (val: number) => {
     const pkg = packages?.find(p => p.id === watchPackageId);
     if (!pkg) return;
@@ -373,7 +486,8 @@ export default function NewEntityPage() {
     if (forceCreate) setIsForceSubmitting(true);
 
     const contactScope = activeWorkspace?.contactScope || 'institution';
-    const selectedManager = users.find(u => u.id === data.assignedToId);
+    const finalAssignedToId = restrictToAssigned ? (user?.uid || 'unassigned') : data.assignedToId;
+    const selectedManager = users.find(u => u.id === finalAssignedToId);
     const assignedTo = selectedManager 
         ? { userId: selectedManager.id, name: selectedManager.name, email: selectedManager.email }
         : { userId: null, name: 'Unassigned', email: null };
@@ -520,14 +634,28 @@ export default function NewEntityPage() {
   return (
     <div className="h-full overflow-y-auto text-left">
       <div className="space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border/50">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Create New {singular}</h1>
+            <p className="text-sm text-muted-foreground mt-1">Set up metadata, financial configuration, and administrative stakeholders manually or with AI.</p>
+          </div>
+          <Button
+            type="button"
+            onClick={() => setIsAiOpen(true)}
+            className="bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 hover:from-violet-700 hover:to-blue-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 px-5 py-6 gap-2"
+          >
+            <Sparkles className="h-5 w-5 animate-pulse text-white" />
+            AI Architect Fill
+          </Button>
+        </div>
+
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24 text-left">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
               <div className="lg:col-span-2 space-y-8 text-left">
-                {/* Hub Authorization Card */}
- <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
-  <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
- <div className="flex items-center gap-2 text-left">
+                <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+                  <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
+                    <div className="flex items-center gap-2 text-left">
  <Layout className="h-4 w-4 text-primary" />
  <CardTitle className="text-sm font-semibold tracking-tight">Hub Authorization</CardTitle>
  </div>
@@ -783,6 +911,7 @@ export default function NewEntityPage() {
                                         value={field.value} 
                                         onValueChange={field.onChange}
                                         error={!!fieldState.error}
+                                        disabled={restrictToAssigned}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -1129,9 +1258,48 @@ export default function NewEntityPage() {
                  Ignore & Create
                </AlertDialogAction>
              </AlertDialogFooter>
-           </AlertDialogContent>
-         </AlertDialog>
-       </div>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AiArchitectDialog
+            isOpen={isAiOpen}
+            onClose={() => setIsAiOpen(false)}
+            onDataExtracted={handleAiDataExtracted}
+          />
+
+          <AlertDialog open={isOverwriteAlertOpen} onOpenChange={setIsOverwriteAlertOpen}>
+            <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+                  <AlertTriangle className="h-5 w-5" /> Overwrite Form Data?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-3">
+                  <p>
+                    You have already entered some data in the form. Extracting data via the AI Architect will overwrite existing fields.
+                  </p>
+                  <p className="text-xs font-medium">
+                    Are you sure you want to proceed and overwrite the current form inputs?
+                  </p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-xl border-border">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-md"
+                  onClick={() => {
+                    setIsOverwriteAlertOpen(false);
+                    if (pendingAiData) {
+                      applyAiData(pendingAiData);
+                      setPendingAiData(null);
+                    }
+                  }}
+                >
+                  Overwrite
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
      </div>
   );
 }

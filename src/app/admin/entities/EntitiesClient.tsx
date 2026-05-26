@@ -1,8 +1,8 @@
 'use client';
-import { useState, useMemo, useEffect, useCallback, useTransition } from 'react';
+import { useState, useMemo, useEffect, useCallback, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { collection, doc, deleteDoc, query, where, orderBy, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, query, where, orderBy, updateDoc, getDoc, getDocs } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser, useDoc } from '@/firebase';
 import type { WorkspaceEntity, Entity, Zone, Tag, TagCategory, Module } from '@/lib/types';
 import { TagSelector } from '@/components/tags/TagSelector';
@@ -80,6 +80,7 @@ import { useIndustry } from '@/context/IndustryContext';
 import { EmailHygieneHoverCard, EmailHygieneHoverCardContent } from '../components/EmailHygieneHoverCard';
 import { BulkScanProgress } from '../components/BulkScanProgress';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 
 // Pagination & Selection Matrix Imports
 import { useEntitySelection } from './hooks/useEntitySelection';
@@ -114,6 +115,7 @@ export default function EntitiesClient() {
   const { user: currentUser } = useUser();
   const { activeWorkspaceId } = useWorkspace();
   const { industry } = useIndustry();
+  const { restrictToAssigned } = useWorkspaceVisibility();
   const { 
     singular, 
     plural, 
@@ -247,6 +249,7 @@ export default function EntitiesClient() {
       logic: (['AND', 'OR', 'NOT'].includes(searchParams.get('logic') || '') ? searchParams.get('logic') as TagFilterState['logic'] : 'OR'),
       categoryFilter: (searchParams.get('category') as TagCategory) ?? undefined,
     },
+    contactHealths: searchParams.get('health')?.split(',').filter(Boolean) || [],
   }));
 
   // Convenience accessors for backward-compatible bindings
@@ -264,7 +267,16 @@ export default function EntitiesClient() {
   const setLifecycleFilter = useCallback((v: string[]) => setFilterState(prev => ({ ...prev, lifecycle: v })), []);
   const setDateAddedFilter = useCallback((v: string) => setFilterState(prev => ({ ...prev, dateRange: v })), []);
   const setInterestFilter = useCallback((v: string[]) => setFilterState(prev => ({ ...prev, interests: v })), []);
-  const clearAllFilters = useCallback(() => setFilterState(DEFAULT_FILTERS), []);
+  
+  const clearAllFilters = useCallback(() => {
+    setFilterState(DEFAULT_FILTERS);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('tags');
+    params.delete('logic');
+    params.delete('category');
+    params.delete('health');
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   // Save Audience Dialog state
   const [isSaveAudienceOpen, setIsSaveAudienceOpen] = useState(false);
@@ -416,6 +428,21 @@ export default function EntitiesClient() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
+  const updateHealthUrlParams = useCallback((healths: string[]) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (healths.length > 0) {
+      params.set('health', healths.join(','));
+    } else {
+      params.delete('health');
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const handleHealthFilterChange = useCallback((val: string[]) => {
+    setFilterState(prev => ({ ...prev, contactHealths: val }));
+    updateHealthUrlParams(val);
+  }, [updateHealthUrlParams]);
+
   // Run server-side tag filter query when tagFilterState changes
   useEffect(() => {
     if (!activeWorkspaceId || tagFilterState.tagIds.length === 0) {
@@ -513,6 +540,93 @@ export default function EntitiesClient() {
     });
   }, [tagFilterState, handleTagFilterChange]);
 
+  const [emailVerificationCache, setEmailVerificationCache] = useState<Record<string, { status: string; score: number }>>({});
+  const fetchedEmailsRef = useRef<Set<string>>(new Set());
+
+  // Get all unique emails from the entities
+  const allEmails = useMemo(() => {
+    if (!entities) return [];
+    const emails = new Set<string>();
+    entities.forEach(entity => {
+      const contacts = entity.entityContacts || [];
+      contacts.forEach(c => {
+        if (c.email) {
+          emails.add(c.email.toLowerCase().trim());
+        }
+      });
+    });
+    return Array.from(emails);
+  }, [entities]);
+
+  // Batch fetch email verification cache from Firestore
+  useEffect(() => {
+    if (!firestore || allEmails.length === 0) return;
+
+    let active = true;
+    
+    // Only query emails we don't have in cache yet to save reads
+    const emailsToFetch = allEmails.filter(email => !fetchedEmailsRef.current.has(email));
+    if (emailsToFetch.length === 0) return;
+
+    // Mark as fetched immediately to avoid double fetching
+    emailsToFetch.forEach(email => fetchedEmailsRef.current.add(email));
+
+    const fetchCache = async () => {
+      const newCacheData: Record<string, { status: string; score: number }> = {};
+      const chunks: string[][] = [];
+      for (let i = 0; i < emailsToFetch.length; i += 30) {
+        chunks.push(emailsToFetch.slice(i, i + 30));
+      }
+
+      try {
+        await Promise.all(chunks.map(async (chunk) => {
+          const hashes = chunk.map(email => btoa(email.toLowerCase().trim()));
+          const q = query(collection(firestore, 'verification_cache'), where('__name__', 'in', hashes));
+          const snap = await getDocs(q);
+          
+          snap.forEach(doc => {
+            const data = doc.data();
+            try {
+              const email = atob(doc.id).toLowerCase().trim();
+              newCacheData[email] = {
+                status: data.status || 'unchecked',
+                score: data.score || 0
+              };
+            } catch (e) {
+              console.warn('Failed to decode email hash:', doc.id);
+            }
+          });
+        }));
+
+        if (active && Object.keys(newCacheData).length > 0) {
+          setEmailVerificationCache(prev => ({
+            ...prev,
+            ...newCacheData
+          }));
+        }
+      } catch (err) {
+        console.error('Error fetching verification cache:', err);
+        if (active) {
+          emailsToFetch.forEach(email => fetchedEmailsRef.current.delete(email));
+        }
+      }
+    };
+
+    fetchCache();
+    
+    return () => {
+      active = false;
+    };
+  }, [firestore, allEmails]);
+
+  const contactHealthOptions = [
+    { value: 'verified', label: 'Verified' },
+    { value: 'likely_valid', label: 'Likely Valid' },
+    { value: 'risky', label: 'Risky' },
+    { value: 'invalid', label: 'Invalid' },
+    { value: 'unchecked', label: 'Unchecked' },
+  ];
+
   const isLoading = isLoadingEntities || isLoadingFilter || isTagFiltering;
 
   // Decoupled single-pass filtering engine (useEntityFilters hook)
@@ -521,6 +635,7 @@ export default function EntitiesClient() {
     filterState,
     assignedUserId,
     tagFilteredIds,
+    emailVerificationCache,
   });
 
   // Extract unique lifecycle stages from RAW unfiltered entities (prevents options disappearing)
@@ -714,64 +829,25 @@ export default function EntitiesClient() {
         });
       }
     });
-  };
-
-    return (
+  };    return (
         <TooltipProvider>
             <PageContainerFluid>
-            <div className="space-y-8 pb-32 w-full">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                        <div className="flex flex-col items-start">
-                            <h1 className="text-4xl font-black tracking-tight text-foreground">
+                <div className="space-y-8 pb-32 w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                 {plural} Hub
                             </h1>
-                            <p className="text-muted-foreground font-medium text-sm mt-1.5">
+                            <p className="text-sm text-muted-foreground mt-1">
                                 Manage and monitor your {plural} records
                             </p>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-2">
                             {selectedCount > 0 && (
-                              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-black uppercase tracking-widest animate-pulse select-none">
+                              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-black uppercase tracking-widest animate-pulse select-none mr-2">
                                 {selectedCount} Active
                               </div>
                             )}
-                        </div>
-                    </div>
-
-                    {/* Unified Action Bar */}
-                    <div className="flex flex-col md:flex-row items-center gap-3 bg-white dark:bg-slate-900/50 p-2.5 rounded-2xl border shadow-sm ring-1 ring-border">
-                        <div className="relative flex-1 group w-full">
-                            <Input 
-                                placeholder={`Search ${plural.toLowerCase()}...`} 
-                                value={searchTerm} 
-                                onChange={(e) => setSearchTerm(e.target.value)} 
-                                className="h-11 bg-muted/30 border-none shadow-none text-foreground placeholder:text-slate-500 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/20 pl-11" 
-                            />
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
-                                <Building2 size={18} />
-                            </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 w-full md:w-auto">
-                            <Button 
-                                variant={isFilterPanelOpen ? "secondary" : "outline"}
-                                onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-                                className={cn(
-                                    "h-11 px-4 rounded-xl font-bold gap-2 transition-all border-border/50",
-                                    isFilterPanelOpen && "ring-2 ring-primary/20 border-primary/30"
-                                )}
-                            >
-                                <ListFilter size={18} className={cn(isFilterPanelOpen && "text-primary")} />
-                                Filters
-                                {activeFiltersCount > 0 ? (
-                                    <Badge className={cn(
-                                        "ml-0.5 h-5 min-w-[20px] px-1.5 bg-primary text-white border-none text-[10px] font-black tabular-nums rounded-full",
-                                        !isFilterPanelOpen && "animate-pulse"
-                                    )}>
-                                        {activeFiltersCount}
-                                    </Badge>
-                                ) : null}
-                            </Button>
 
                             {canCreate && (
                                 <RainbowButton asChild className="h-11 px-5 gap-2 font-bold text-[10px] shadow-xl transition-all active:scale-95 text-white">
@@ -815,13 +891,50 @@ export default function EntitiesClient() {
                                                 <div className="p-2 rounded-md bg-emerald-500/10 text-emerald-600"><ClipboardList size={16} /></div>
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-sm">View Imports Log</span>
-                                                    <span className="text-[10px] text-muted-foreground">Track \u0026 resolve duplicates</span>
+                                                    <span className="text-[10px] text-muted-foreground">Track & resolve duplicates</span>
                                                 </div>
                                             </Link>
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Unified Action Bar */}
+                    <div className="flex flex-col md:flex-row items-center gap-3 bg-white dark:bg-slate-900/50 p-2.5 rounded-2xl border shadow-sm ring-1 ring-border">
+                        <div className="relative flex-1 group w-full">
+                            <Input 
+                                placeholder={`Search ${plural.toLowerCase()}...`} 
+                                value={searchTerm} 
+                                onChange={(e) => setSearchTerm(e.target.value)} 
+                                className="h-11 bg-muted/30 border-none shadow-none text-foreground placeholder:text-slate-500 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/20 pl-11" 
+                            />
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
+                                <Building2 size={18} />
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                            <Button 
+                                variant={isFilterPanelOpen ? "secondary" : "outline"}
+                                onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+                                className={cn(
+                                    "h-11 px-4 rounded-xl font-bold gap-2 transition-all border-border/50 w-full md:w-auto justify-center",
+                                    isFilterPanelOpen && "ring-2 ring-primary/20 border-primary/30"
+                                )}
+                            >
+                                <ListFilter size={18} className={cn(isFilterPanelOpen && "text-primary")} />
+                                Filters
+                                {activeFiltersCount > 0 ? (
+                                    <Badge className={cn(
+                                        "ml-0.5 h-5 min-w-[20px] px-1.5 bg-primary text-white border-none text-[10px] font-black tabular-nums rounded-full",
+                                        !isFilterPanelOpen && "animate-pulse"
+                                    )}>
+                                        {activeFiltersCount}
+                                    </Badge>
+                                ) : null}
+                            </Button>
                         </div>
                     </div>
 
@@ -890,7 +1003,7 @@ export default function EntitiesClient() {
                                 </div>
 
                                 {/* Row 2: Status + Country + Region + District + Date Added + Interests + Contact Roles — inline dropdowns */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
                                     {/* Status */}
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between h-5">
@@ -1021,6 +1134,25 @@ export default function EntitiesClient() {
                                             value={filterState.contactRoles || []}
                                             onChange={(val) => setFilterState(prev => ({ ...prev, contactRoles: val }))}
                                             placeholder="Select roles..."
+                                            className="h-9 min-h-9 py-0.5 px-2 text-[10px] font-bold bg-background/50 border-border shadow-sm rounded-xl"
+                                        />
+                                    </div>
+
+                                    {/* Contact Health — multi select */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <ShieldCheck className="h-2.5 w-2.5" /> Contact Health
+                                            </label>
+                                            {filterState.contactHealths && filterState.contactHealths.length > 0 && (
+                                                <button type="button" onClick={() => handleHealthFilterChange([])} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
+                                        <MultiSelect
+                                            options={contactHealthOptions}
+                                            value={filterState.contactHealths || []}
+                                            onChange={handleHealthFilterChange}
+                                            placeholder="Select health..."
                                             className="h-9 min-h-9 py-0.5 px-2 text-[10px] font-bold bg-background/50 border-border shadow-sm rounded-xl"
                                         />
                                     </div>
@@ -1250,21 +1382,29 @@ export default function EntitiesClient() {
                                                 <Badge className="text-[10px] font-bold uppercase border-none h-6 bg-primary/10 text-primary">{entity.lifecycleStatus || 'Welcome'}</Badge>
                                             </TableCell>
                                             <TableCell>
-                                                <CompactContactList entityId={entity.entityId} onManualRecheck={handleManualRecheck} activeContactRoles={filterState.contactRoles} />
+                                                <CompactContactList 
+                                                    entityId={entity.entityId} 
+                                                    onManualRecheck={handleManualRecheck} 
+                                                    activeContactRoles={filterState.contactRoles} 
+                                                    activeContactHealths={filterState.contactHealths}
+                                                    emailVerificationCache={emailVerificationCache}
+                                                />
                                             </TableCell>
                                             <TableCell className="text-xs font-medium text-muted-foreground">
                                                 {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
                                                 <div className="flex items-center justify-end gap-1 transition-opacity">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningEntity(entity)}>
-                                                                <UserPlus className="h-4 w-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>Assign User</TooltipContent>
-                                                    </Tooltip>
+                                                    {!restrictToAssigned && (
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningEntity(entity)}>
+                                                                    <UserPlus className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Assign User</TooltipContent>
+                                                        </Tooltip>
+                                                    )}
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <Button
@@ -1515,6 +1655,7 @@ export default function EntitiesClient() {
               onInviteMeetings={() => setIsBulkMeetingOpen(true)}
               onArchive={() => setIsBulkArchiveOpen(true)}
               onDelete={() => setIsBulkDeleteOpen(true)}
+              hideAssign={restrictToAssigned}
             />
 
             {managingWorkspacesEntity && (
@@ -1620,23 +1761,45 @@ function PrimaryContactName({ entityId, fallback }: { entityId: string, fallback
     return <span className="tracking-tight">{name}</span>;
 }
 
-function CompactContactList({ entityId, onManualRecheck, activeContactRoles }: { entityId: string, onManualRecheck: (email: string) => void, activeContactRoles?: string[] }) {
+function CompactContactList({ 
+    entityId, 
+    onManualRecheck, 
+    activeContactRoles,
+    activeContactHealths,
+    emailVerificationCache
+}: { 
+    entityId: string, 
+    onManualRecheck: (email: string) => void, 
+    activeContactRoles?: string[],
+    activeContactHealths?: string[],
+    emailVerificationCache?: Record<string, { status: string; score: number }>
+}) {
     const firestore = useFirestore();
     const docRef = useMemoFirebase(() => firestore ? doc(firestore, 'entities', entityId) : null, [firestore, entityId]);
     const { data: baseEntity } = useDoc<Entity>(docRef);
 
     const allContacts = baseEntity?.entityContacts || [];
 
-    // When a role filter is active, show only matching contacts
+    // When a role or health filter is active, show only matching contacts
     const contacts = useMemo(() => {
-        if (!activeContactRoles || activeContactRoles.length === 0) return allContacts;
-        return allContacts.filter(c => matchesContactRoles(c, activeContactRoles));
-    }, [allContacts, activeContactRoles]);
+        let filtered = allContacts;
+        if (activeContactRoles && activeContactRoles.length > 0) {
+            filtered = filtered.filter(c => matchesContactRoles(c, activeContactRoles));
+        }
+        if (activeContactHealths && activeContactHealths.length > 0 && emailVerificationCache) {
+            filtered = filtered.filter(c => {
+                const email = c.email?.toLowerCase().trim() || '';
+                const status = email ? (emailVerificationCache[email]?.status || 'unchecked') : 'unchecked';
+                return activeContactHealths.includes(status);
+            });
+        }
+        return filtered;
+    }, [allContacts, activeContactRoles, activeContactHealths, emailVerificationCache]);
 
-    const isRoleFiltered = activeContactRoles && activeContactRoles.length > 0;
+    const isFiltered = (activeContactRoles && activeContactRoles.length > 0) || (activeContactHealths && activeContactHealths.length > 0);
 
     if (contacts.length === 0) {
-        return <span className="text-[10px] italic opacity-40">{isRoleFiltered ? 'No match' : 'No Contacts'}</span>;
+        return <span className="text-[10px] italic opacity-40">{isFiltered ? 'No match' : 'No Contacts'}</span>;
     }
 
     return (
@@ -1649,7 +1812,7 @@ function CompactContactList({ entityId, onManualRecheck, activeContactRoles }: {
                     +{contacts.length - 4}
                 </div>
             )}
-            {isRoleFiltered && allContacts.length > contacts.length && (
+            {isFiltered && allContacts.length > contacts.length && (
                 <div className="ml-1 flex items-center">
                     <span className="text-[8px] text-muted-foreground/60 italic">{contacts.length}/{allContacts.length}</span>
                 </div>

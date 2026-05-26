@@ -255,6 +255,13 @@ export function cleanRow(
   defaultCountryCode: string = 'GH',
   enableTitleCase: boolean = false
 ): { row: Record<string, any>; stats: CleaningStats } {
+  // Remove empty keys to prevent Firestore payload errors
+  for (const key of Object.keys(row)) {
+    if (!key || key.trim() === '') {
+      delete row[key];
+    }
+  }
+
   const stats: CleaningStats = {
     trimmed: 0,
     titleCased: 0,

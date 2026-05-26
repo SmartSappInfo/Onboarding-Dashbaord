@@ -4,6 +4,7 @@ import * as React from 'react';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
+import { useSearchParams } from 'next/navigation';
 import type { Workspace, WorkspaceStatus, IndustryVertical, ContactIdentifierPolicy, EntityDefaults } from '@/lib/types';
 import { 
     Zap, 
@@ -33,6 +34,8 @@ import {
     Mail,
     Smartphone,
     MailCheck,
+    Shield,
+    Eye,
     Trash2 as TrashIcon
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -81,6 +84,10 @@ export default function WorkspaceEditor() {
     const { user } = useUser();
     const { activeOrganizationId, activeOrganization } = useTenant();
     
+    const searchParams = useSearchParams();
+    const targetWorkspaceId = searchParams.get('workspaceId');
+    const hasAutoOpenedRef = React.useRef<string | null>(null);
+    
     const [isEditing, setIsEditing] = React.useState(false);
     const [activeWorkspace, setActiveWorkspace] = React.useState<Workspace | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
@@ -97,6 +104,7 @@ export default function WorkspaceEditor() {
     const [industryFilter, setIndustryFilter] = React.useState<IndustryVertical | 'all'>('all');
     const [contactPolicySetting, setContactPolicySetting] = React.useState<ContactIdentifierPolicy>('phone_or_email');
     const [entityDefaults, setEntityDefaults] = React.useState<EntityDefaults>({});
+    const [restrictVisibilityToAssigned, setRestrictVisibilityToAssigned] = React.useState(true);
     const [newDefaultKey, setNewDefaultKey] = React.useState('');
     const [newDefaultValue, setNewDefaultValue] = React.useState('');
 
@@ -145,6 +153,7 @@ export default function WorkspaceEditor() {
             setIndustry(w.industry || 'SaaS');
             setContactPolicySetting(w.contactPolicy || 'phone_or_email');
             setEntityDefaults(w.entityDefaults || {});
+            setRestrictVisibilityToAssigned(w.restrictVisibilityToAssigned !== false);
         } else {
             setActiveWorkspace(null);
             setName('');
@@ -161,9 +170,20 @@ export default function WorkspaceEditor() {
             setIndustry('SaaS');
             setContactPolicySetting('phone_or_email');
             setEntityDefaults({});
+            setRestrictVisibilityToAssigned(true);
         }
         setIsEditing(true);
     };
+
+    React.useEffect(() => {
+        if (workspaces && targetWorkspaceId && hasAutoOpenedRef.current !== targetWorkspaceId) {
+            const found = workspaces.find(w => w.id === targetWorkspaceId);
+            if (found) {
+                hasAutoOpenedRef.current = targetWorkspaceId;
+                handleOpenEdit(found);
+            }
+        }
+    }, [workspaces, targetWorkspaceId]);
 
     const handleAddStatus = () => {
         setStatuses(prev => [...prev, { value: 'New Status', label: 'New Status', color: '#64748b' }]);
@@ -216,6 +236,7 @@ export default function WorkspaceEditor() {
                 industryScopeLocked: false, // Will be locked after first entity link
                 contactPolicy: contactPolicySetting,
                 entityDefaults: entityDefaults,
+                restrictVisibilityToAssigned: restrictVisibilityToAssigned,
             },
             user.uid
         );
@@ -910,7 +931,85 @@ export default function WorkspaceEditor() {
                                         </div>
                                     </div>
 
- <Separator className="opacity-50" />
+                                    <Separator className="opacity-50" />
+
+                                    {/* ENTITY VISIBILITY BOUNDARIES */}
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <Shield className="h-4 w-4 text-primary" />
+                                            <h4 className="text-xs font-semibold">Entity Visibility Scope</h4>
+                                        </div>
+
+                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
+                                            Determine whether users in this workspace can see all entities or only the ones explicitly assigned to them. By default, users see only their assigned entities.
+                                        </p>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setRestrictVisibilityToAssigned(true)}
+                                                className={cn(
+                                                    "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md",
+                                                    restrictVisibilityToAssigned
+                                                        ? "bg-primary/5 border-primary shadow-sm"
+                                                        : "bg-background border-border hover:border-primary/30"
+                                                )}
+                                            >
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className={cn(
+                                                            "p-1.5 rounded-lg transition-colors",
+                                                            restrictVisibilityToAssigned ? "bg-primary/10" : "bg-muted"
+                                                        )}>
+                                                            <Lock className="h-4 w-4" style={{ color: restrictVisibilityToAssigned ? 'var(--primary)' : 'var(--muted-foreground)' }} />
+                                                        </div>
+                                                        {restrictVisibilityToAssigned && (
+                                                            <Check className="h-4 w-4 text-primary" />
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <h5 className="text-xs font-semibold text-foreground">Assigned Only (Default)</h5>
+                                                        <p className="text-[8px] font-medium text-muted-foreground leading-relaxed">
+                                                            Users can only view and interact with entities specifically assigned to them.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setRestrictVisibilityToAssigned(false)}
+                                                className={cn(
+                                                    "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md",
+                                                    !restrictVisibilityToAssigned
+                                                        ? "bg-primary/5 border-primary shadow-sm"
+                                                        : "bg-background border-border hover:border-primary/30"
+                                                )}
+                                            >
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className={cn(
+                                                            "p-1.5 rounded-lg transition-colors",
+                                                            !restrictVisibilityToAssigned ? "bg-primary/10" : "bg-muted"
+                                                        )}>
+                                                            <Eye className="h-4 w-4" style={{ color: !restrictVisibilityToAssigned ? 'var(--primary)' : 'var(--muted-foreground)' }} />
+                                                        </div>
+                                                        {!restrictVisibilityToAssigned && (
+                                                            <Check className="h-4 w-4 text-primary" />
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <h5 className="text-xs font-semibold text-foreground">All Entities</h5>
+                                                        <p className="text-[8px] font-medium text-muted-foreground leading-relaxed">
+                                                            Users can view and interact with all entities in the workspace.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <Separator className="opacity-50" />
 
                                     {/* ENTITY DEFAULTS EDITOR */}
                                     <div className="space-y-4">

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,21 +35,30 @@ import {
     Search,
     TrendingUp,
     ShieldAlert,
-    AlertTriangle
+    AlertTriangle,
+    ChevronDown
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select';
+import { 
+    DropdownMenu, 
+    DropdownMenuTrigger, 
+    DropdownMenuContent, 
+    DropdownMenuItem 
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc, arrayUnion, addDoc } from 'firebase/firestore';
 import { LeadSourceSelect } from '@/components/LeadSourceSelect';
 import { ingestBatchAction } from '@/lib/bulk-upload-actions';
+import { evaluateFormula } from '@/lib/formula-parser';
 import type { DuplicateStrategy, DealImportConfig } from '@/lib/import-types';
 import { cn } from '@/lib/utils';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { normalizePhoneNumber } from '@/lib/phone-utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
@@ -765,6 +775,51 @@ export default function BulkUploadClient() {
     const [autoCreateTags, setAutoCreateTags] = React.useState(false);
     const [enableTitleCase, setEnableTitleCase] = React.useState(false);
     const [lastImportLogId, setLastImportLogId] = React.useState<string | null>(null);
+    const [dragActive, setDragActive] = React.useState(false);
+
+    const handleDrag = React.useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(true);
+        } else if (e.type === "dragleave") {
+            setDragActive(false);
+        }
+    }, []);
+
+    const handleDrop = React.useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            processDroppedFile(e.dataTransfer.files[0]);
+        }
+    }, []);
+
+    const processDroppedFile = (file: File) => {
+        setFileName(file.name);
+        const extension = file.name.split('.').pop()?.toLowerCase();
+
+        const processResults = (data: any[]) => {
+            if (data.length > 0) {
+                const h = Object.keys(data[0] as object).filter(k => k && k.trim() !== "");
+                setHeaders(h);
+                setRawData(data);
+                autoMapHeaders(h);
+            }
+        };
+
+        if (extension === 'csv') {
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: (res) => processResults(res.data) });
+        } else if (extension === 'xlsx' || extension === 'xls') {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const wb = XLSX.read(evt.target?.result as string, { type: 'binary' });
+                processResults(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false }));
+            };
+            reader.readAsBinaryString(file);
+        }
+    };
     
     // Subscribe to the real-time import log document
     const importLogRef = useMemoFirebase(() => {
@@ -954,7 +1009,7 @@ export default function BulkUploadClient() {
 
         const processResults = (data: any[]) => {
             if (data.length > 0) {
-                const h = Object.keys(data[0] as object);
+                const h = Object.keys(data[0] as object).filter(k => k && k.trim() !== "");
                 setHeaders(h);
                 
                 // Keep ALL rows including the sample row — don't filter out template data
@@ -971,7 +1026,7 @@ export default function BulkUploadClient() {
             const reader = new FileReader();
             reader.onload = (evt) => {
                 const wb = XLSX.read(evt.target?.result as string, { type: 'binary' });
-                processResults(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+                processResults(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false }));
             };
             reader.readAsBinaryString(file);
         }
@@ -1116,6 +1171,52 @@ export default function BulkUploadClient() {
             ? 4
             : flowSteps.findIndex(s => s.id === currentStep);
 
+    const stepperMarkup = (
+        <div className="w-full">
+            <div className="relative mx-auto max-w-2xl px-4 py-6">
+                {/* Track line (behind bubbles) - Grid based alignment */}
+                <div className="absolute top-[48px] left-[10%] right-[10%] h-[1px] bg-primary/20 hidden sm:block" />
+                <div
+                    className="absolute top-[48px] left-[10%] h-[1px] bg-primary transition-all duration-700 ease-in-out hidden sm:block"
+                    style={{ width: `${(Math.max(0, activeIdx) / (flowSteps.length - 1)) * 80}%` }}
+                />
+                {/* Steps Grid */}
+                <div className="relative grid grid-cols-5 gap-0">
+                    {flowSteps.map((step, idx) => {
+                        const StepIcon = step.icon;
+                        const isPast    = idx < activeIdx;
+                        const isCurrent = idx === activeIdx;
+                        return (
+                            <div key={step.id} className="flex flex-col items-center gap-3">
+                                <div className={cn(
+                                    "relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm",
+                                    isPast
+                                        ? "bg-primary text-white shadow-primary/20"
+                                        : isCurrent
+                                            ? "bg-white dark:bg-slate-900 text-primary border-2 border-primary/20 shadow-xl scale-110"
+                                            : "bg-white/50 dark:bg-slate-900/50 text-muted-foreground border border-border"
+                                )}>
+                                    {isPast
+                                        ? <Check size={20} strokeWidth={3} />
+                                        : <StepIcon size={20} />}
+                                    {isCurrent && (
+                                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary border-2 border-white dark:border-slate-900 shadow-sm" />
+                                    )}
+                                </div>
+                                <span className={cn(
+                                    "text-[10px] font-bold uppercase tracking-widest transition-colors text-center leading-none hidden sm:block",
+                                    isCurrent ? "text-primary" : "text-muted-foreground/60"
+                                )}>
+                                    {step.label}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="min-h-full py-4 space-y-6 relative">
             {/* Background Ambient Glow - Standard for QR Studio modules */}
@@ -1123,54 +1224,20 @@ export default function BulkUploadClient() {
 
             <div className="max-w-5xl mx-auto w-full px-4 pb-20 space-y-6">
 
-                {/* ── Premium Stepper (Floating) ───────────────────────────── */}
-                <div className="w-full">
-                    <div className="relative mx-auto max-w-2xl px-4 py-6">
-                        {/* Track line (behind bubbles) - Grid based alignment */}
-                        <div className="absolute top-[48px] left-[10%] right-[10%] h-[1px] bg-primary/20 hidden sm:block" />
-                        <div
-                            className="absolute top-[48px] left-[10%] h-[1px] bg-primary transition-all duration-700 ease-in-out hidden sm:block"
-                            style={{ width: `${(Math.max(0, activeIdx) / (flowSteps.length - 1)) * 80}%` }}
-                        />
-                        {/* Steps Grid */}
-                        <div className="relative grid grid-cols-5 gap-0">
-                            {flowSteps.map((step, idx) => {
-                                const StepIcon = step.icon;
-                                const isPast    = idx < activeIdx;
-                                const isCurrent = idx === activeIdx;
-                                return (
-                                    <div key={step.id} className="flex flex-col items-center gap-3">
-                                        <div className={cn(
-                                            "relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm",
-                                            isPast
-                                                ? "bg-primary text-white shadow-primary/20"
-                                                : isCurrent
-                                                    ? "bg-white dark:bg-slate-900 text-primary border-2 border-primary/20 shadow-xl scale-110"
-                                                    : "bg-white/50 dark:bg-slate-900/50 text-muted-foreground border border-border"
-                                        )}>
-                                            {isPast
-                                                ? <Check size={20} strokeWidth={3} />
-                                                : <StepIcon size={20} />}
-                                            {isCurrent && (
-                                                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary border-2 border-white dark:border-slate-900 shadow-sm" />
-                                            )}
-                                        </div>
-                                        <span className={cn(
-                                            "text-[10px] font-bold uppercase tracking-widest transition-colors text-center leading-none hidden sm:block",
-                                            isCurrent ? "text-primary" : "text-muted-foreground/60"
-                                        )}>
-                                            {step.label}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-
                 <AnimatePresence mode="wait">
                     {currentStep === 'UPLOAD' && (
                         <motion.div key="upload" {...stepTransition} className="space-y-6">
+                            {/* Back to Entities Link */}
+                            <div>
+                                <Link 
+                                    href="/admin/entities" 
+                                    className="inline-flex items-center text-sm font-semibold text-muted-foreground hover:text-primary transition-colors gap-1.5"
+                                >
+                                    <ArrowLeft size={14} />
+                                    Back to {terms.plural || 'Entities'}
+                                </Link>
+                            </div>
+
                             {/* Header - QR Studio Style */}
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
@@ -1180,34 +1247,65 @@ export default function BulkUploadClient() {
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Button 
-                                        variant="outline" 
-                                        onClick={() => handleDownloadTemplate('simple')} 
-                                        className="rounded-xl h-11 px-4 font-semibold text-sm border-border bg-card"
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="rounded-xl h-11 px-4 font-semibold text-sm border-border bg-card text-muted-foreground hover:text-foreground"
                                     >
-                                        <Download size={16} className="mr-2 text-primary" /> 
-                                        Simple Template
+                                        <Link href="/admin/entities/imports">
+                                            <ClipboardList size={16} className="mr-2 text-primary" />
+                                            View Imports Log
+                                        </Link>
                                     </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        onClick={() => handleDownloadTemplate('advanced')} 
-                                        className="rounded-xl h-11 px-4 font-semibold text-sm border-border bg-card text-violet-600 dark:text-violet-400"
-                                    >
-                                        <Download size={16} className="mr-2" /> 
-                                        Advanced Template
-                                    </Button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button 
+                                                variant="outline" 
+                                                className="rounded-xl h-11 px-4 font-semibold text-sm border-border bg-card gap-2"
+                                            >
+                                                <Download size={16} className="text-primary" /> 
+                                                Download Template
+                                                <ChevronDown size={14} className="opacity-50" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="rounded-xl border-border bg-card/95 backdrop-blur-md">
+                                            <DropdownMenuItem 
+                                                onClick={() => handleDownloadTemplate('simple')}
+                                                className="cursor-pointer font-medium text-sm rounded-lg"
+                                            >
+                                                <Download size={14} className="mr-2 text-primary" />
+                                                Simple Template
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                onClick={() => handleDownloadTemplate('advanced')}
+                                                className="cursor-pointer font-medium text-sm rounded-lg text-violet-600 dark:text-violet-400 focus:text-violet-600 dark:focus:text-violet-400"
+                                            >
+                                                <Download size={14} className="mr-2" />
+                                                Advanced Template
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
                             </div>
+
+                            {stepperMarkup}
 
                             {/* Drop Zone - QR Studio batch-import aesthetic */}
                             <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
                                 <CardContent className="p-8 sm:p-12">
-                                    <label htmlFor="bulk-file" className="w-full block cursor-pointer group">
+                                    <label 
+                                        htmlFor="bulk-file" 
+                                        className="w-full block cursor-pointer group"
+                                        onDragEnter={handleDrag}
+                                        onDragLeave={handleDrag}
+                                        onDragOver={handleDrag}
+                                        onDrop={handleDrop}
+                                    >
                                         <div className={cn(
                                             "border-2 border-dashed rounded-2xl p-10 sm:p-12 text-center",
                                             "flex flex-col items-center justify-center gap-4",
                                             "transition-all duration-300",
-                                            "border-border/50 bg-muted/20",
+                                            dragActive ? "border-primary bg-primary/[0.05]" : "border-border/50 bg-muted/20",
                                             "hover:border-primary/50 hover:bg-primary/[0.03]"
                                         )}>
                                             <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:shadow-primary/20 group-hover:shadow-lg transition-all duration-300">
@@ -1248,6 +1346,8 @@ export default function BulkUploadClient() {
                                     </Badge>
                                 </div>
                             </div>
+
+                            {stepperMarkup}
 
                             <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
                                 <CardHeader className="border-b p-8 flex flex-row items-center justify-between space-y-0">
@@ -1328,7 +1428,7 @@ export default function BulkUploadClient() {
                                                                     </SelectTrigger>
                                                                     <SelectContent className="max-h-[300px]">
                                                                         <SelectItem value="none">-- Unmapped --</SelectItem>
-                                                                        {headers.map(h => {
+                                                                        {headers.filter(h => h && h.trim() !== "").map(h => {
                                                                             const mappedTo = Object.entries(mapping).find(([k, v]) => v === h && k.startsWith('contact_'))?.[0];
                                                                             const isUsed = mappedTo && mappedTo !== fieldKey;
                                                                             return (
@@ -1641,6 +1741,9 @@ export default function BulkUploadClient() {
                                     <ArrowLeft size={16} className="mr-2" /> Back to Mapping
                                 </Button>
                             </div>
+
+                            {stepperMarkup}
+
                             <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
                                 <CardHeader className="border-b p-8 flex flex-row items-center justify-between space-y-0">
                                     <div className="flex items-center gap-4">
@@ -1891,6 +1994,9 @@ export default function BulkUploadClient() {
                                     </Badge>
                                 </div>
                             </div>
+
+                            {stepperMarkup}
+
                             <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
                                 <CardHeader className="border-b p-8 flex flex-row items-center justify-between space-y-0">
                                     <div className="flex items-center gap-4">
@@ -1918,11 +2024,23 @@ export default function BulkUploadClient() {
                                                 {rawData.slice(0, 5).map((row, i) => (
                                                     <TableRow key={i} className="hover:bg-primary/5 transition-colors">
                                                         <TableCell className="pl-6 font-semibold text-xs text-muted-foreground">{i + 1}</TableCell>
-                                                        {TARGET_FIELDS.filter(f => mapping[f.key] && mapping[f.key] !== 'none').map(f => (
-                                                            <TableCell key={f.key} className="text-xs font-medium max-w-[200px] truncate">
-                                                                {String(row[mapping[f.key]] || '—')}
-                                                            </TableCell>
-                                                        ))}
+                                                        {TARGET_FIELDS.filter(f => mapping[f.key] && mapping[f.key] !== 'none').map(f => {
+                                                            const colVal = mapping[f.key];
+                                                            const isFormula = colVal.includes('{{');
+                                                            let displayVal = isFormula
+                                                                ? evaluateFormula(colVal, row)
+                                                                : row[colVal];
+                                                            if (displayVal && f.key.includes('phone')) {
+                                                                const defaultCountry = 'GH';
+                                                                const parsed = normalizePhoneNumber(String(displayVal), defaultCountry);
+                                                                displayVal = parsed.e164 || displayVal;
+                                                            }
+                                                            return (
+                                                                <TableCell key={f.key} className="text-xs font-medium max-w-[200px] truncate">
+                                                                    {String(displayVal || '—')}
+                                                                </TableCell>
+                                                            );
+                                                        })}
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
@@ -2123,7 +2241,14 @@ export default function BulkUploadClient() {
                                             {failedRowIndices.map(idx => (
                                                 <TableRow key={idx} className="group hover:bg-rose-50/30 transition-colors">
                                                     <TableCell className="pl-8 font-semibold text-xs">#{idx + 1}</TableCell>
-                                                    <TableCell className="font-bold text-xs">{rawData[idx][mapping['name']] || 'Untitled'}</TableCell>
+                                                    <TableCell className="font-bold text-xs">
+                                                        {(() => {
+                                                            const nameColVal = mapping['name'] || mapping['contact_0_name'];
+                                                            if (!nameColVal || nameColVal === 'none') return 'Untitled';
+                                                            const isFormula = nameColVal?.includes('{{');
+                                                            return (isFormula ? evaluateFormula(nameColVal, rawData[idx]) : rawData[idx][nameColVal]) || 'Untitled';
+                                                        })()}
+                                                    </TableCell>
                                                     <TableCell>
                                                         <Badge variant="outline" className="bg-rose-500/10 text-rose-500 border-none text-[10px]">
                                                             {executionResults.find(r => r.row === idx)?.error || 'Logic Error'}

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/firebase';
+import { useTenant } from './TenantContext';
 
 const STORAGE_KEY = 'globalAssignedUserId';
 
@@ -19,13 +20,24 @@ export function GlobalFilterProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isUserLoading } = useUser();
+  const { activeWorkspace, isSuperAdmin, isLoading: isTenantLoading } = useTenant();
   
   const [assignedUserId, setAssignedUserIdState] = React.useState<string | null>(null);
   const [isInitialized, setIsInitialized] = React.useState(false);
 
+  // Determine if this user is restricted to assigned entities only in the current workspace
+  const isRestricted = React.useMemo(() => {
+    // Defaults to true (restricted) if not explicitly set to false
+    return activeWorkspace?.restrictVisibilityToAssigned !== false && !isSuperAdmin;
+  }, [activeWorkspace, isSuperAdmin]);
+
+  // Compute the effective assigned user ID used for queries and filters
+  const effectiveAssignedUserId = React.useMemo(() => {
+    return isRestricted ? (user?.uid || null) : assignedUserId;
+  }, [isRestricted, user, assignedUserId]);
+
   // 1. Initialize state once from URL, sessionStorage, or user default.
   React.useEffect(() => {
-    // This effect should only run once after the user has been loaded.
     if (isUserLoading || isInitialized) {
       return;
     }
@@ -52,9 +64,11 @@ export function GlobalFilterProvider({ children }: { children: React.ReactNode }
   // 2. This function is exposed to the app to change the filter.
   // It updates the state and persists the choice to sessionStorage for cross-page navigation.
   const setAssignedUserId = React.useCallback((userId: string | null) => {
+    // If restricted, do not allow changing the assigned filter state
+    if (isRestricted) return;
     setAssignedUserIdState(userId);
     sessionStorage.setItem(STORAGE_KEY, userId === null ? 'all' : userId);
-  }, []);
+  }, [isRestricted]);
   
   const searchParamsString = searchParams.toString();
   // 3. This effect syncs the state to the URL's query parameters.
@@ -63,21 +77,21 @@ export function GlobalFilterProvider({ children }: { children: React.ReactNode }
     if (!isInitialized) return;
 
     const currentParams = new URLSearchParams(searchParamsString);
-    const valueInState = assignedUserId === null ? 'all' : assignedUserId;
+    const valueInState = effectiveAssignedUserId === null ? 'all' : effectiveAssignedUserId;
 
     // Only update the URL if it's out of sync with the state.
     if (currentParams.get('assignedTo') !== valueInState) {
         currentParams.set('assignedTo', valueInState);
         router.replace(`${pathname}?${currentParams.toString()}`);
     }
-  }, [assignedUserId, pathname, isInitialized, searchParamsString, router]);
+  }, [effectiveAssignedUserId, pathname, isInitialized, searchParamsString, router]);
 
 
   const value = React.useMemo(() => ({
-    assignedUserId,
+    assignedUserId: effectiveAssignedUserId,
     setAssignedUserId,
-    isLoading: !isInitialized || isUserLoading,
-  }), [assignedUserId, setAssignedUserId, isInitialized, isUserLoading]);
+    isLoading: !isInitialized || isUserLoading || isTenantLoading,
+  }), [effectiveAssignedUserId, setAssignedUserId, isInitialized, isUserLoading, isTenantLoading]);
 
   return (
     <GlobalFilterContext.Provider value={value}>

@@ -444,79 +444,7 @@ export function TagSelector({
     </>
   );
 
-  const CreateTagForm = () => (
-    <div className="space-y-3">
-      <div className="space-y-1.5">
-        <Label htmlFor="new-tag-name" className="text-[10px] font-black uppercase tracking-widest">
-          Name <span aria-hidden="true">*</span>
-          <span className="sr-only">(required)</span>
-        </Label>
-        <Input
-          id="new-tag-name"
-          value={newTagName}
-          onChange={e => setNewTagName(e.target.value)}
-          placeholder="Tag name…"
-          className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary"
-          maxLength={50}
-          aria-required="true"
-          aria-describedby="new-tag-name-hint"
-          onKeyDown={e => { if (e.key === 'Enter' && newTagName.trim()) handleCreateAndApply(); }}
-        />
-        <p id="new-tag-name-hint" className="text-[10px] text-muted-foreground">{newTagName.length}/50 characters</p>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="new-tag-desc" className="text-[10px] font-black uppercase tracking-widest">Description</Label>
-        <Textarea
-          id="new-tag-desc"
-          value={newTagDescription}
-          onChange={e => setNewTagDescription(e.target.value)}
-          placeholder="Optional…"
-          className="rounded-xl resize-none focus-visible:ring-2 focus-visible:ring-primary"
-          rows={2}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="new-tag-category" className="text-[10px] font-black uppercase tracking-widest">Category</Label>
-          <Select value={newTagCategory} onValueChange={v => setNewTagCategory(v as TagCategory)}>
-            <SelectTrigger id="new-tag-category" className="rounded-xl h-9 text-xs focus:ring-2 focus:ring-primary">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              {TAG_CATEGORIES.map(c => (
-                <SelectItem key={c.value} value={c.value} className="text-xs">{c.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-[10px] font-black uppercase tracking-widest">Color</Label>
-          <div className="flex flex-wrap gap-1.5 p-1.5 border rounded-xl" role="radiogroup" aria-label="Tag color">
-            {TAG_COLORS.map(color => (
-              <button
-                key={color}
-                type="button"
-                role="radio"
-                aria-checked={newTagColor === color}
-                aria-label={`Color ${color}`}
-                onClick={() => setNewTagColor(color)}
-                className={cn(
-                  'h-5 w-5 rounded-full transition-transform hover:scale-110',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
-                  newTagColor === color && 'ring-2 ring-offset-1'
-                )}
-                style={{
-                  backgroundColor: color,
-                  // ring color matches the swatch for clear focus
-                  ['--tw-ring-color' as string]: color,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+
 
   return (
     <TooltipProvider>
@@ -643,7 +571,77 @@ export function TagSelector({
           <DialogHeader>
             <DialogTitle className="font-black uppercase tracking-tight">Create & Apply Tag</DialogTitle>
           </DialogHeader>
-          <CreateTagForm />
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="new-tag-name" className="text-[10px] font-black uppercase tracking-widest">
+                Name <span aria-hidden="true">*</span>
+                <span className="sr-only">(required)</span>
+              </Label>
+              <Input
+                id="new-tag-name"
+                value={newTagName}
+                onChange={e => setNewTagName(e.target.value)}
+                placeholder="Tag name…"
+                className="rounded-xl focus-visible:ring-2 focus-visible:ring-primary"
+                maxLength={50}
+                aria-required="true"
+                aria-describedby="new-tag-name-hint"
+                onKeyDown={e => { if (e.key === 'Enter' && newTagName.trim()) handleCreateAndApply(); }}
+              />
+              <p id="new-tag-name-hint" className="text-[10px] text-muted-foreground">{newTagName.length}/50 characters</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-tag-desc" className="text-[10px] font-black uppercase tracking-widest">Description</Label>
+              <Textarea
+                id="new-tag-desc"
+                value={newTagDescription}
+                onChange={e => setNewTagDescription(e.target.value)}
+                placeholder="Optional…"
+                className="rounded-xl resize-none focus-visible:ring-2 focus-visible:ring-primary"
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="new-tag-category" className="text-[10px] font-black uppercase tracking-widest">Category</Label>
+                <Select value={newTagCategory} onValueChange={v => setNewTagCategory(v as TagCategory)}>
+                  <SelectTrigger id="new-tag-category" className="rounded-xl h-9 text-xs focus:ring-2 focus:ring-primary">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {TAG_CATEGORIES.map(c => (
+                      <SelectItem key={c.value} value={c.value} className="text-xs">{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black uppercase tracking-widest">Color</Label>
+                <div className="flex flex-wrap gap-1.5 p-1.5 border rounded-xl" role="radiogroup" aria-label="Tag color">
+                  {TAG_COLORS.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      role="radio"
+                      aria-checked={newTagColor === color}
+                      aria-label={`Color ${color}`}
+                      onClick={() => setNewTagColor(color)}
+                      className={cn(
+                        'h-5 w-5 rounded-full transition-transform hover:scale-110',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
+                        newTagColor === color && 'ring-2 ring-offset-1'
+                      )}
+                      style={{
+                        backgroundColor: color,
+                        // ring color matches the swatch for clear focus
+                        ['--tw-ring-color' as string]: color,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
           <DialogFooter>
             <Button
               variant="ghost"

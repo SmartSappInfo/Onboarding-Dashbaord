@@ -15,6 +15,7 @@ export interface DirectoryFilterState {
   dateRange: string;
   interests?: string[];
   contactRoles?: string[];
+  contactHealths?: string[];
 }
 
 export const DEFAULT_FILTERS: DirectoryFilterState = {
@@ -26,6 +27,7 @@ export const DEFAULT_FILTERS: DirectoryFilterState = {
   dateRange: 'all',
   interests: [],
   contactRoles: [],
+  contactHealths: [],
 };
 
 // ─── Date Range Boundary Helpers ───────────────────────────────────
@@ -67,6 +69,7 @@ interface UseEntityFiltersParams {
   filterState: DirectoryFilterState;
   assignedUserId?: string | null;
   tagFilteredIds: Set<string> | null;
+  emailVerificationCache?: Record<string, { status: string; score: number }>;
 }
 
 // ─── Core Hook ─────────────────────────────────────────────────────
@@ -75,6 +78,7 @@ export function useEntityFilters({
   filterState,
   assignedUserId,
   tagFilteredIds,
+  emailVerificationCache,
 }: UseEntityFiltersParams) {
 
   // Single-pass high-performance iteration (js-combine-iterations)
@@ -176,9 +180,25 @@ export function useEntityFilters({
         }
       }
 
+      // 10. Contact Health Filter
+      if (filterState.contactHealths && filterState.contactHealths.length > 0) {
+        const sourceContacts = entity.entityContacts || (entity as any).contacts || [];
+        if (sourceContacts.length === 0) {
+          const hasUncheckedSelected = filterState.contactHealths.includes('unchecked');
+          if (!hasUncheckedSelected) return false;
+        } else {
+          const hasMatchingContact = sourceContacts.some((c: any) => {
+            const email = c.email?.toLowerCase().trim() || '';
+            const status = email && emailVerificationCache ? (emailVerificationCache[email]?.status || 'unchecked') : 'unchecked';
+            return filterState.contactHealths!.includes(status);
+          });
+          if (!hasMatchingContact) return false;
+        }
+      }
+
       return true;
     });
-  }, [entities, filterState, assignedUserId, tagFilteredIds]);
+  }, [entities, filterState, assignedUserId, tagFilteredIds, emailVerificationCache]);
 
   // Derived active filter count (rerender-derived-state-no-effect)
   const activeFiltersCount = useMemo(() => {
@@ -191,6 +211,7 @@ export function useEntityFilters({
     if (filterState.dateRange !== 'all') count++;
     if (filterState.interests && filterState.interests.length > 0) count++;
     if (filterState.contactRoles && filterState.contactRoles.length > 0) count++;
+    if (filterState.contactHealths && filterState.contactHealths.length > 0) count++;
     return count;
   }, [filterState]);
 
@@ -281,6 +302,18 @@ export function useEntityFilters({
           return role;
         }).join(', '),
         onClear: () => ({ ...filterState, contactRoles: [] }),
+      });
+    }
+
+    if (filterState.contactHealths && filterState.contactHealths.length > 0) {
+      capsules.push({
+        id: 'contactHealths',
+        label: 'Health',
+        value: filterState.contactHealths.map(h => {
+          if (h === 'likely_valid') return 'Likely Valid';
+          return h.charAt(0).toUpperCase() + h.slice(1);
+        }).join(', '),
+        onClear: () => ({ ...filterState, contactHealths: [] }),
       });
     }
 

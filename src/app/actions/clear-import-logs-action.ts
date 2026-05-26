@@ -27,9 +27,17 @@ export async function clearAllImportLogsAction(userId: string): Promise<{
         let batch = adminDb.batch();
         let batchWriteCount = 0;
 
+        const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
         for (const doc of logsSnap.docs) {
             const docId = doc.id;
             const docData = doc.data();
+
+            // Only delete logs older than 14 days based on startedAt
+            const startedAtDate = docData.startedAt?.toDate?.() || new Date(docData.startedAt);
+            if (startedAtDate >= fourteenDaysAgo) {
+                continue;
+            }
 
             // Define the three subcollections associated with each import log
             const subcollections = ['pending_rows', 'failed_rows', 'duplicate_rows'];
@@ -74,7 +82,7 @@ export async function clearAllImportLogsAction(userId: string): Promise<{
             await logActivity({
                 type: 'import_logs_cleared',
                 userId: userId,
-                description: `Purged all ${deletedLogsCount} bulk import logs and ${deletedSubdocsCount} associated validation/duplicate rows.`,
+                description: `Purged ${deletedLogsCount} bulk import logs and ${deletedSubdocsCount} associated validation/duplicate rows older than 14 days.`,
                 workspaceId: 'system',
                 organizationId: 'system-governance',
             } as any);

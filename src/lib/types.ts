@@ -352,6 +352,8 @@ export interface Workspace {
   statuses: WorkspaceStatus[];
   contactScope?: ContactScope; // Declares the contact type this workspace manages
   capabilities?: WorkspaceCapabilities; // Feature flags for workspace modules
+  /** Determines if users see only their assigned entities in this workspace (governance) */
+  restrictVisibilityToAssigned?: boolean;
   /** Features enabled for this workspace. Can only enable features that are enabled at org level. */
   enabledFeatures?: FeatureToggleMap;
   terminology?: {

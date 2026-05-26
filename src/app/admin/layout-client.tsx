@@ -248,13 +248,13 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 export default function AdminLayoutClient({ children }: { children: ReactNode }) {
   return (
       <NavigationProvider>
-        <GlobalFilterProvider>
-          <TenantProvider>
+        <TenantProvider>
+          <GlobalFilterProvider>
             <IndustryProvider>
               <AdminLayoutContent>{children}</AdminLayoutContent>
             </IndustryProvider>
-          </TenantProvider>
-        </GlobalFilterProvider>
+          </GlobalFilterProvider>
+        </TenantProvider>
       </NavigationProvider>
   );
 }
