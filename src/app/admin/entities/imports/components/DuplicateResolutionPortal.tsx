@@ -13,6 +13,8 @@ import { resolveDuplicatesAction } from '@/lib/bulk-upload-actions';
 import { createTagAction } from '@/lib/tag-actions';
 import { resolveFieldStorageBucket } from '@/lib/field-storage-utils';
 import { useToast } from '@/hooks/use-toast';
+import { evaluateFormula } from '@/lib/formula-parser';
+import { cleanValueByKey } from '@/lib/import-data-cleaner';
 import type { DuplicateStrategy } from '@/lib/import-types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -78,8 +80,15 @@ const getFieldIcon = (key: string) => {
 const extractIncomingFields = (payload: any, mapping: Record<string, string>, defaultValues: Record<string, string> = {}, userMap?: Record<string, string>) => {
     const get = (key: string) => {
         const col = mapping[key];
-        const val = (col && payload[col]) ? String(payload[col]).trim() : '';
-        return val || defaultValues[key] || '';
+        if (!col) return defaultValues[key] || '';
+        let val = '';
+        if (col.includes('{{')) {
+            val = String(evaluateFormula(col, payload) || '');
+        } else {
+            val = (payload[col] !== undefined && payload[col] !== null) ? String(payload[col]).trim() : '';
+        }
+        val = val || defaultValues[key] || '';
+        return cleanValueByKey(key, val);
     };
 
     const assignedVal = get('assignedTo') || payload.AssignedTo || payload['Assigned Representative'] || defaultValues['assignedTo'] || '';

@@ -371,3 +371,49 @@ export function cleanBatch(
 
   return { rows, stats: aggregate };
 }
+
+/**
+ * Cleans a single value based on its target variable key.
+ */
+export function cleanValueByKey(
+  key: string,
+  value: string,
+  defaultCountryCode: string = 'GH',
+  enableTitleCase: boolean = false
+): string {
+  if (value === null || value === undefined) return '';
+  let cleaned = String(value);
+
+  // 1. Whitespace & Encoding
+  cleaned = cleanWhitespace(cleaned);
+  cleaned = fixEncoding(cleaned);
+
+  // 2. Classify
+  const category = classifyField(key);
+
+  // 3. Category-specific transforms
+  switch (category) {
+    case 'name':
+      cleaned = toTitleCase(cleaned);
+      break;
+    case 'phone':
+      cleaned = cleanPhone(cleaned, defaultCountryCode);
+      break;
+    case 'email':
+      cleaned = cleanEmail(cleaned);
+      break;
+    case 'date':
+      cleaned = cleanDate(cleaned);
+      break;
+    case 'numeric':
+      cleaned = cleanNumericText(cleaned);
+      break;
+    case 'text':
+      if (enableTitleCase) {
+        cleaned = toTitleCase(cleaned);
+      }
+      break;
+  }
+
+  return cleaned;
+}

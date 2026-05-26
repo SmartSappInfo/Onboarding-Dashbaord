@@ -544,7 +544,8 @@ export default function EditMeetingPage() {
 
   if (isLoadingMeeting || isLoadingEntities || !hasInitialized) {
     return (
- <div className="h-full overflow-y-auto  space-y-8 bg-background">
+ <div className="h-full w-full overflow-y-auto bg-background">
+ <div className="w-full p-8 space-y-8">
  <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
  <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
  <CardContent className="space-y-8">
@@ -554,30 +555,50 @@ export default function EditMeetingPage() {
                 </CardContent>
             </Card>
         </div>
+        </div>
     );
   }
 
   return (
- <div className="contents">
- <div className="w-full space-y-8 pb-24 text-left">
+ <div className="h-full w-full overflow-y-auto bg-background">
+ <div className="w-full p-8 space-y-8 pb-24 text-left">
         
         {/* Header */}
- <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-            <div>
- <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none mb-1 text-left">Edit Session</h1>
- <p className="text-[10px] font-bold text-muted-foreground text-left">Meeting & Webinar Configuration</p>
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+                <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0">
+                    <Link href={`/admin/meetings/${meetingId}`}>
+                        <ChevronLeft className="h-5 w-5" />
+                    </Link>
+                </Button>
+                <div className="flex flex-col justify-center">
+                    <h1 className="text-2xl font-black tracking-tight text-foreground leading-none">Edit Session</h1>
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1">{meeting?.entityName || 'Session Configuration'}</p>
+                </div>
             </div>
- <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
                 {publicUrl && (
- <Button asChild variant="outline" size="sm" className="h-9 px-4 rounded-full font-bold gap-2 text-[10px] bg-background">
+                    <Button asChild variant="outline" size="sm" className="h-9 px-4 rounded-full font-bold gap-2 text-[10px] bg-background">
                         <Link href={publicUrl} target="_blank">
- <ExternalLink className="h-3.5 w-3.5" /> View Public Page
+                            <ExternalLink className="h-3.5 w-3.5" /> Preview
                         </Link>
                     </Button>
                 )}
- <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm w-fit">
- <Settings2 className="h-3 w-3" /> Wizard Mode
-                </div>
+                {currentStep > 0 && (
+                    <Button type="button" variant="outline" onClick={handlePrev} className="rounded-xl font-bold gap-2 h-10 px-5">
+                        <ChevronLeft className="h-4 w-4" /> Back
+                    </Button>
+                )}
+                {currentStep < WIZARD_STEPS.length - 1 ? (
+                    <Button key="btn-next-header" type="button" onClick={handleNext} className="rounded-xl font-bold gap-2 h-10 px-5">
+                        Next Step <ChevronRight className="h-4 w-4" />
+                    </Button>
+                ) : (
+                    <Button key="btn-save-header" type="button" onClick={() => form.handleSubmit(onSubmit)()} disabled={form.formState.isSubmitting} className="rounded-xl font-bold gap-2 h-10 px-5 shadow-lg">
+                        {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                        Publish & Save
+                    </Button>
+                )}
             </div>
         </div>
 
@@ -1553,29 +1574,7 @@ export default function EditMeetingPage() {
                     </div>
                 </div>
 
-            {/* ──────── Wizard Navigation ──────── */}
-            <div className="flex items-center justify-between pt-4 border-t">
-                <Button type="button" variant="outline" onClick={handlePrev} disabled={currentStep === 0} className="rounded-xl font-bold gap-2 h-12 px-6">
-                    <ChevronLeft className="h-4 w-4" /> Previous
-                </Button>
-
-                <div className="hidden sm:flex items-center gap-1.5">
-                    {WIZARD_STEPS.map((_, index) => (
-                        <div key={index} className={cn("h-1.5 rounded-full transition-all duration-300", index === currentStep ? "w-8 bg-primary" : "w-1.5 bg-muted-foreground/20")} />
-                    ))}
-                </div>
-
-                {currentStep < WIZARD_STEPS.length - 1 ? (
-                    <Button key="btn-next" type="button" onClick={handleNext} className="rounded-xl font-bold gap-2 h-12 px-6">
-                        Next Step <ChevronRight className="h-4 w-4" />
-                    </Button>
-                ) : (
-                    <Button key="btn-save" type="submit" disabled={form.formState.isSubmitting} className="rounded-xl font-bold gap-2 h-12 px-6 shadow-lg">
-                        {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-                        Publish & Save
-                    </Button>
-                )}
-            </div>
+            {/* Navigation is in the header */}
 
           </form>
         </FormProvider>

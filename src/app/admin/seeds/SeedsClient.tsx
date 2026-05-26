@@ -4,11 +4,12 @@ import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Zap, Loader2, ShieldCheck, Mail, CalendarDays, Database, Trash2 } from 'lucide-react';
+import { Zap, Loader2, ShieldCheck, Mail, CalendarDays, Database, Trash2, CalendarPlus } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { seedNativeFieldsAction } from '@/lib/fields-actions';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
+import { seedMeetingInvitationTemplatesAction } from '@/app/actions/seed-meeting-invitation-templates-action';
 import { useTenant } from '@/context/TenantContext';
 import { runMeetingsFerAction } from '@/app/actions/run-meetings-fer-action';
 import { clearAllImportLogsAction } from '@/app/actions/clear-import-logs-action';
@@ -19,6 +20,7 @@ export default function SeedsClient() {
     const { activeWorkspaceId, activeOrganizationId } = useTenant();
     const [isSeeding, setIsSeeding] = React.useState(false);
     const [isSeedingTemplates, setIsSeedingTemplates] = React.useState(false);
+    const [isSeedingMeetingTemplates, setIsSeedingMeetingTemplates] = React.useState(false);
     const [isSeedingMeetings, setIsSeedingMeetings] = React.useState(false);
     const [isClearingLogs, setIsClearingLogs] = React.useState(false);
 
@@ -123,6 +125,37 @@ export default function SeedsClient() {
         setIsSeedingTemplates(false);
     };
 
+    const handleSeedMeetingInvitationTemplates = async () => {
+        setIsSeedingMeetingTemplates(true);
+        try {
+            const result = await seedMeetingInvitationTemplatesAction();
+            if (result.created > 0) {
+                toast({
+                    title: 'Meeting Invitation Templates Seeded',
+                    description: `Successfully initialized ${result.created} meeting invitation template(s) (Email & SMS).`,
+                });
+            } else if (result.failed > 0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Seeding Failed',
+                    description: result.errors?.[0]?.error || 'Failed to seed meeting invitation templates.',
+                });
+            } else {
+                toast({
+                    title: 'Templates Synchronized',
+                    description: 'Meeting invitation templates are already up-to-date.',
+                });
+            }
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Execution Error',
+                description: error.message || 'An error occurred during meeting invitation template seeding.',
+            });
+        }
+        setIsSeedingMeetingTemplates(false);
+    };
+
     return (
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-12 pb-32 w-full max-w-4xl">
@@ -211,6 +244,46 @@ export default function SeedsClient() {
                                         <Mail className="h-4 w-4 mr-2" />
                                     )}
                                     {isSeedingTemplates ? 'Seeding...' : 'Seed Blueprints'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Meeting Invitation Templates Card */}
+                    <Card className="border-teal-100 bg-teal-50/30 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <CalendarPlus className="h-24 w-24 text-teal-600" />
+                        </div>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-teal-600">Meeting Communications</span>
+                            </div>
+                            <CardTitle className="text-xl text-teal-950">Meeting Invitation Templates</CardTitle>
+                            <CardDescription className="max-w-2xl text-teal-900/70">
+                                Seed the default meeting invitation templates used for bulk invitation dispatches 
+                                from the Meeting Invitations page. Initializes both Email and SMS templates following 
+                                the three-axis messaging criteria (Inform → Motivate → Direct).
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                                <div className="flex flex-wrap gap-2">
+                                    <Badge variant="outline" className="bg-white/50 border-teal-200 text-teal-700">Email Template</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-teal-200 text-teal-700">SMS Template</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-teal-200 text-teal-700">Three-Axis Messaging</Badge>
+                                </div>
+                                <Button 
+                                    onClick={handleSeedMeetingInvitationTemplates} 
+                                    disabled={isSeedingMeetingTemplates}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-200 border-none min-w-[160px]"
+                                >
+                                    {isSeedingMeetingTemplates ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <CalendarPlus className="h-4 w-4 mr-2" />
+                                    )}
+                                    {isSeedingMeetingTemplates ? 'Seeding...' : 'Seed Invitation Templates'}
                                 </Button>
                             </div>
                         </CardContent>

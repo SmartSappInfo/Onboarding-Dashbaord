@@ -1,203 +1,51 @@
 'use server';
 
-import { adminDb } from './firebase-admin';
-import { revalidatePath } from 'next/cache';
 import type { Automation } from './types';
+import {
+  removeAutomation,
+  saveAutomation,
+  seedDefaultDealAutomation,
+  setAutomationStatus,
+} from './automations/service';
+import { testAutomationFlow } from './automations/test-flow';
+import type { TestAutomationFlowInput } from './automations/test-flow';
 
 /**
- * @fileOverview Server-side actions for the Automation Engine.
+ * Thin server-action boundary — business logic lives in `automations/service.ts`.
  */
-
-/**
- * Persists an automation blueprint to Firestore.
- * Handles both new creation and updates.
- * Task 15.3: Validates that referenced templates exist and are approved.
- */
-export async function saveAutomationAction(id: string | null, data: Partial<Automation>, userId: string) {
-    try {
-        // Task 15.3: Validate templates before saving
-        await validateAutomationTemplates(data);
-
-        const timestamp = new Date().toISOString();
-        const payload = {
-            ...data,
-            updatedAt: timestamp,
-            createdBy: userId
-        };
-
-        if (id) {
-            await adminDb.collection('automations').doc(id).update(payload);
-            revalidatePath('/admin/automations');
-            return { success: true, id };
-        } else {
-            // Ensure workspaceIds exists for new creations (array format)
-            const docRef = await adminDb.collection('automations').add({
-                ...payload,
-                workspaceIds: data.workspaceIds || ['onboarding'],
-                createdAt: timestamp,
-                isActive: false
-            });
-            revalidatePath('/admin/automations');
-            return { success: true, id: docRef.id };
-        }
-    } catch (e: any) {
-        console.error(">>> [AUTO:SAVE] FAILED:", e.message);
-        return { success: false, error: e.message };
-    }
+export async function saveAutomationAction(
+  id: string | null,
+  data: Partial<Automation>,
+  userId: string
+) {
+  return saveAutomation(id, data, userId);
 }
 
-/**
- * Task 15.3: Validates that all templates referenced in automation actions exist and are approved.
- */
-async function validateAutomationTemplates(automation: Partial<Automation>): Promise<void> {
-    if (!automation.nodes) return;
-
-    const actionNodes = automation.nodes.filter((node: any) => node.type === 'actionNode');
-    
-    for (const node of actionNodes) {
-        const actionType = node.data?.actionType;
-        const config = node.data?.config || {};
-
-        if (actionType === 'SEND_MESSAGE') {
-            // Validate legacy templateId if present
-            if (config.templateId) {
-                const templateSnap = await adminDb
-                    .collection('message_templates')
-                    .doc(config.templateId)
-                    .get();
-
-                if (!templateSnap.exists) {
-                    throw new Error(`Template ${config.templateId} not found in node "${node.data?.label || node.id}"`);
-                }
-
-                const template = templateSnap.data();
-                if (template?.status !== 'active') {
-                    throw new Error(`Template "${template?.name || config.templateId}" is not active (status: ${template?.status}) in node "${node.data?.label || node.id}"`);
-                }
-            }
-
-            // Validate category/type if present
-            if (config.templateCategory && config.templateType) {
-                // Check if at least one approved template exists for this category/type
-                const templatesSnap = await adminDb
-                    .collection('message_templates')
-                    .where('category', '==', config.templateCategory)
-                    .where('templateType', '==', config.templateType)
-                    .where('status', '==', 'active')
-                    .limit(1)
-                    .get();
-
-                if (templatesSnap.empty) {
-                    throw new Error(`No active template found for category "${config.templateCategory}" and type "${config.templateType}" in node "${node.data?.label || node.id}"`);
-                }
-            }
-
-            // Ensure at least one template reference method is provided
-            if (!config.templateId && (!config.templateCategory || !config.templateType)) {
-                throw new Error(`Send message action in node "${node.data?.label || node.id}" must specify either templateId or both templateCategory and templateType`);
-            }
-        }
-    }
+export async function deleteAutomationAction(id: string, userId: string) {
+  return removeAutomation(id, userId);
 }
 
-/**
- * Purges an automation blueprint and its history from the registry.
- */
-export async function deleteAutomationAction(id: string) {
-    try {
-        await adminDb.collection('automations').doc(id).delete();
-        revalidatePath('/admin/automations');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
-    }
+export async function toggleAutomationStatusAction(id: string, active: boolean, userId: string) {
+  return setAutomationStatus(id, active, userId);
 }
 
-/**
- * Toggles the operational status of an automation flow.
- */
-export async function toggleAutomationStatusAction(id: string, active: boolean) {
-    try {
-        await adminDb.collection('automations').doc(id).update({ isActive: active });
-        revalidatePath('/admin/automations');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
-    }
+export async function seedDefaultAutomationsAction(
+  workspaceId: string,
+  organizationId: string,
+  userId: string
+) {
+  return seedDefaultDealAutomation(workspaceId, organizationId, userId);
 }
 
-/**
- * Seeds a default automation for a workspace that auto-creates a Deal when an Entity is created.
- */
-export async function seedDefaultAutomationsAction(workspaceId: string, organizationId: string, userId: string) {
-    try {
-        const timestamp = new Date().toISOString();
-        
-        // Check if one already exists
-        const existingSnap = await adminDb.collection('automations')
-            .where('workspaceIds', 'array-contains', workspaceId)
-            .where('trigger', '==', 'ENTITY_CREATED')
-            .get();
-            
-        const exists = existingSnap.docs.some(doc => {
-            const data = doc.data();
-            return data.nodes?.some((n: any) => n.data?.actionType === 'CREATE_DEAL');
-        });
-        
-        if (exists) {
-            return { success: true, message: 'Default Deal Automation already exists.' };
-        }
+export async function testAutomationFlowAction(
+  automationId: string,
+  userId: string,
+  input: TestAutomationFlowInput
+) {
+  return testAutomationFlow(automationId, userId, input);
+}
 
-        const newAutomation = {
-            name: 'Auto-Create Initial Deal',
-            description: 'Automatically creates a deal in the default pipeline when a new entity is created.',
-            trigger: 'ENTITY_CREATED',
-            workspaceIds: [workspaceId],
-            organizationId,
-            isActive: true,
-            createdBy: userId,
-            createdAt: timestamp,
-            updatedAt: timestamp,
-            nodes: [
-                {
-                    id: 'node_trigger',
-                    type: 'triggerNode',
-                    position: { x: 250, y: 100 },
-                    data: {
-                        label: 'Entity Created',
-                        icon: 'Zap',
-                        triggerType: 'ENTITY_CREATED'
-                    }
-                },
-                {
-                    id: 'node_action_deal',
-                    type: 'actionNode',
-                    position: { x: 250, y: 300 },
-                    data: {
-                        label: 'Create Initial Deal',
-                        actionType: 'CREATE_DEAL',
-                        config: {
-                            assignmentStrategy: 'direct'
-                        }
-                    }
-                }
-            ],
-            edges: [
-                {
-                    id: 'edge_trigger_to_deal',
-                    source: 'node_trigger',
-                    target: 'node_action_deal',
-                    sourceHandle: 'true',
-                    targetHandle: null
-                }
-            ]
-        };
-
-        const docRef = await adminDb.collection('automations').add(newAutomation);
-        revalidatePath('/admin/automations');
-        return { success: true, id: docRef.id };
-    } catch (e: any) {
-        console.error(">>> [AUTO:SEED] FAILED:", e.message);
-        return { success: false, error: e.message };
-    }
+export async function pulseAutomationEngineAction() {
+  const { processScheduledJobsAction } = await import('./automations/processor');
+  return processScheduledJobsAction();
 }

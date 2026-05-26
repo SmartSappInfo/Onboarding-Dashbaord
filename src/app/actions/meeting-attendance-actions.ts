@@ -34,10 +34,30 @@ export async function logMeetingAttendance(
       .collection('registrants')
       .doc(registrantId);
 
+    const registrantSnap = await registrantRef.get();
+    const registrantData = registrantSnap.data();
+
     await registrantRef.update({
       status: 'attended',
       attendedAt: now,
     });
+
+    const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
+    const meeting = meetingSnap.data();
+    const workspaceId = meeting?.workspaceIds?.[0] || '';
+    if (workspaceId) {
+      const { emitMeetingRegistrantActivity } = await import('@/lib/meeting-automation-events');
+      void emitMeetingRegistrantActivity({
+        type: 'meeting_registrant_attended',
+        organizationId: meeting?.organizationId || 'default',
+        workspaceId,
+        meetingId,
+        registrantId,
+        entityId: metadata.entityId || registrantData?.entityId,
+        registrantName: metadata.registrantName,
+        meetingTypeId: meeting?.type?.id,
+      });
+    }
 
     // 2. Create an attendee record for reporting
     await adminDb.collection('attendees').add({
@@ -131,10 +151,30 @@ export async function toggleRegistrantAttendance(
       .collection('registrants')
       .doc(registrantId);
 
+    const registrantSnap = await registrantRef.get();
+    const registrantData = registrantSnap.data();
+    const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
+    const meeting = meetingSnap.data();
+    const workspaceId = meeting?.workspaceIds?.[0] || '';
+
     await registrantRef.update({
-      status: attended ? 'attended' : 'registered',
+      status: attended ? 'attended' : 'no_show',
       attendedAt: attended ? new Date().toISOString() : null,
     });
+
+    if (workspaceId) {
+      const { emitMeetingRegistrantActivity } = await import('@/lib/meeting-automation-events');
+      void emitMeetingRegistrantActivity({
+        type: attended ? 'meeting_registrant_attended' : 'meeting_registrant_no_show',
+        organizationId: meeting?.organizationId || 'default',
+        workspaceId,
+        meetingId,
+        registrantId,
+        entityId: registrantData?.entityId,
+        registrantName: registrantData?.name,
+        meetingTypeId: meeting?.type?.id,
+      });
+    }
 
     return { success: true };
   } catch (error: any) {

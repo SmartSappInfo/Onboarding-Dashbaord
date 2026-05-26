@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanRow, cleanBatch, toTitleCase } from '../import-data-cleaner';
+import { cleanRow, cleanBatch, toTitleCase, cleanValueByKey } from '../import-data-cleaner';
 
 describe('Import Data Cleaner - Title Case Transformation', () => {
   describe('toTitleCase utility', () => {
@@ -74,6 +74,31 @@ describe('Import Data Cleaner - Title Case Transformation', () => {
       expect(cleaned[0]['Address']).toBe('Street One');
       expect(cleaned[1]['Entity Name']).toBe('School B');
       expect(cleaned[1]['Address']).toBe('Street Two');
+    });
+  });
+
+  describe('cleanValueByKey', () => {
+    it('should clean name fields with Title Case', () => {
+      expect(cleanValueByKey('name', 'ACCRA GIRLS SHS')).toBe('Accra Girls SHS');
+      expect(cleanValueByKey('contact_0_name', 'focal person')).toBe('Focal Person');
+    });
+
+    it('should clean phone fields with normalization', () => {
+      // Strips spaces and dashes, normalizes to E.164 if valid GH number
+      expect(cleanValueByKey('contact_0_phone', '024 123 4567')).toBe('+233241234567');
+      expect(cleanValueByKey('primaryPhone', '  +233 24-123-4567 ')).toBe('+233241234567');
+    });
+
+    it('should clean email fields with lowercase and trim', () => {
+      expect(cleanValueByKey('contact_0_email', ' <JOHN@example.com> ')).toBe('john@example.com');
+    });
+
+    it('should clean date fields to ISO format', () => {
+      expect(cleanValueByKey('dateofbirth', '25/12/1990')).toBe('1990-12-25');
+    });
+
+    it('should clean numeric fields', () => {
+      expect(cleanValueByKey('subscriptionRate', ' $1,250.50 ')).toBe('1250.50');
     });
   });
 });

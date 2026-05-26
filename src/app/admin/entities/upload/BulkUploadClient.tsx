@@ -798,6 +798,50 @@ export default function BulkUploadClient() {
             return next;
         });
     }, []);
+
+    const [selectedFormulaField, setSelectedFormulaField] = React.useState<string>('');
+    const [formulaInputValue, setFormulaInputValue] = React.useState<string>('');
+    const formulaInputRef = React.useRef<HTMLInputElement | null>(null);
+
+    const handleAddFormulaMapping = React.useCallback(() => {
+        if (!selectedFormulaField || !formulaInputValue.trim()) return;
+        setMapping(prev => {
+            const next = { ...prev };
+            next[selectedFormulaField] = formulaInputValue.trim();
+            return next;
+        });
+        setFormulaInputValue('');
+        setSelectedFormulaField('');
+    }, [selectedFormulaField, formulaInputValue]);
+
+    const handleDeleteFormulaMapping = React.useCallback((fieldKey: string) => {
+        setMapping(prev => {
+            const next = { ...prev };
+            delete next[fieldKey];
+            return next;
+        });
+    }, []);
+
+    const insertColumnPlaceholder = React.useCallback((header: string) => {
+        const input = formulaInputRef.current;
+        if (!input) {
+            setFormulaInputValue(prev => prev + `{{${header}}}`);
+            return;
+        }
+        const start = input.selectionStart ?? formulaInputValue.length;
+        const end = input.selectionEnd ?? formulaInputValue.length;
+        const text = formulaInputValue;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+        const newValue = before + `{{${header}}}` + after;
+        setFormulaInputValue(newValue);
+        const newCursorPos = start + header.length + 4;
+        setTimeout(() => {
+            input.focus();
+            input.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+    }, [formulaInputValue]);
+
     const [selectedGlobalTags, setSelectedGlobalTags] = React.useState<string[]>([]);
     const [selectedAutomationId, setSelectedAutomationId] = React.useState<string | null>(null);
 
@@ -1366,6 +1410,127 @@ export default function BulkUploadClient() {
                                                 );
                                             })}
                                         </div>
+                                    </div>
+
+                                    {/* Formula-based Mappings */}
+                                    <div className="pt-8 border-t border-border/50 space-y-6">
+                                        <div>
+                                            <p className="text-lg font-bold flex items-center gap-2">
+                                                <Zap className="h-5 w-5 text-indigo-500 animate-pulse" />
+                                                Formula-based Mappings
+                                            </p>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                                Combine multiple columns (e.g. <code>{"{{First Name}} {{Last Name}}"}</code>) or execute calculations (e.g. <code>{"={{Price}} * {{Qty}}"}</code>).
+                                            </p>
+                                        </div>
+
+                                        <div className="p-6 rounded-2xl border border-indigo-100 bg-indigo-500/[0.02] dark:border-indigo-950 dark:bg-indigo-950/[0.02] space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                                <div className="md:col-span-4 space-y-1.5">
+                                                    <Label className="text-xs font-semibold text-indigo-900 dark:text-indigo-300">Target Field</Label>
+                                                    <Select 
+                                                        value={selectedFormulaField} 
+                                                        onValueChange={setSelectedFormulaField}
+                                                    >
+                                                        <SelectTrigger className="h-10 bg-background border-indigo-200 text-indigo-950 dark:border-indigo-900 font-semibold shadow-sm rounded-xl">
+                                                            <SelectValue placeholder="Select target field..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="max-h-[300px] rounded-xl">
+                                                            {allMappableFields.map(f => {
+                                                                const formulaVal = mapping[f.key];
+                                                                const isFormulaMapped = formulaVal && formulaVal.includes('{{');
+                                                                return (
+                                                                    <SelectItem key={f.key} value={f.key} className={cn("font-semibold", isFormulaMapped && "opacity-60 text-muted-foreground")}>
+                                                                        {f.label} {isFormulaMapped ? '(Formula Mapped)' : ''}
+                                                                    </SelectItem>
+                                                                );
+                                                            })}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                <div className="md:col-span-6 space-y-1.5">
+                                                    <Label className="text-xs font-semibold text-indigo-900 dark:text-indigo-300">Formula Expression</Label>
+                                                    <div className="relative">
+                                                        <input
+                                                            ref={formulaInputRef}
+                                                            type="text"
+                                                            value={formulaInputValue}
+                                                            onChange={(e) => setFormulaInputValue(e.target.value)}
+                                                            placeholder="e.g. {{First Name}} {{Last Name}} or ={{Price}} * {{Qty}}"
+                                                            className="flex h-10 w-full rounded-xl border border-indigo-200 bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-medium"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="md:col-span-2">
+                                                    <Button 
+                                                        onClick={handleAddFormulaMapping}
+                                                        disabled={!selectedFormulaField || !formulaInputValue.trim()}
+                                                        className="w-full h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-1.5"
+                                                    >
+                                                        <Plus size={14} /> Add Formula
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {/* Column badges insertion assistant */}
+                                            {headers.length > 0 && (
+                                                <div className="space-y-1.5 pt-2">
+                                                    <span className="text-[10px] font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-wider block">Available CSV Column Placeholders</span>
+                                                    <div className="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto p-1.5 border border-indigo-100/50 rounded-xl bg-background/50">
+                                                        {headers.map(h => (
+                                                            <button
+                                                                key={h}
+                                                                type="button"
+                                                                onClick={() => insertColumnPlaceholder(h)}
+                                                                className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-300 transition-all border border-indigo-100/30"
+                                                            >
+                                                                +{h}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Formula Mappings List */}
+                                        {Object.entries(mapping).filter(([_, val]) => typeof val === 'string' && val.includes('{{')).length > 0 && (
+                                            <div className="space-y-3">
+                                                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest block">Active Formulas</span>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {Object.entries(mapping)
+                                                        .filter(([_, val]) => typeof val === 'string' && val.includes('{{'))
+                                                        .map(([key, val]) => {
+                                                            const field = allMappableFields.find(f => f.key === key);
+                                                            const isMath = val.trim().startsWith('=');
+                                                            return (
+                                                                <div key={key} className="flex items-center justify-between p-4 rounded-xl border border-border/80 bg-background shadow-inner">
+                                                                    <div className="space-y-1">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-xs font-bold text-foreground">{field?.label || key}</span>
+                                                                            <Badge className={cn("text-[9px] font-bold px-1.5 py-0.5", isMath ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800")}>
+                                                                                {isMath ? 'Math' : 'Text'}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <code className="text-xs font-mono text-muted-foreground block bg-muted/50 px-2 py-0.5 rounded border border-border/40 truncate max-w-[280px]">
+                                                                            {val}
+                                                                        </code>
+                                                                    </div>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleDeleteFormulaMapping(key)}
+                                                                        className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                                                                    >
+                                                                        <Trash2 size={15} />
+                                                                    </Button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Default Values Controls */}

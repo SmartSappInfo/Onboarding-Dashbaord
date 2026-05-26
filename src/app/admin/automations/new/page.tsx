@@ -26,14 +26,14 @@ export default function NewAutomationPage() {
         const init = async () => {
             const res = await saveAutomationAction(null, {
                 name: 'Untitled Workflow',
-                trigger: 'SCHOOL_CREATED',
+                trigger: 'ENTITY_CREATED',
                 workspaceIds: [activeWorkspaceId], 
                 nodes: [
                     {
                         id: 'trigger',
                         type: 'triggerNode',
                         position: { x: 250, y: 100 },
-                        data: { label: `${singular} Created`, trigger: 'SCHOOL_CREATED' }
+                        data: { label: `${singular} Created`, trigger: 'ENTITY_CREATED' }
                     }
                 ],
                 edges: []

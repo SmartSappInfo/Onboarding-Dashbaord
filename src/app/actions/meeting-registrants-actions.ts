@@ -137,6 +137,21 @@ export async function adminRegisterParticipantAction(
 
     const docRef = await registrantsRef.add(registrantData);
 
+    const workspaceId = meeting.workspaceIds?.[0] || '';
+    if (workspaceId) {
+      const { emitMeetingRegistrantActivity } = await import('@/lib/meeting-automation-events');
+      void emitMeetingRegistrantActivity({
+        type: 'meeting_registrant_added',
+        organizationId: meeting.organizationId || 'default',
+        workspaceId,
+        meetingId,
+        registrantId: docRef.id,
+        registrantName: formData.name,
+        registrantEmail: userEmail,
+        meetingTypeId: meeting.type?.id,
+      });
+    }
+
     return { success: true, registrantId: docRef.id };
   } catch (error: any) {
     console.error('[adminRegisterParticipantAction]', error);
@@ -147,7 +162,7 @@ export async function adminRegisterParticipantAction(
 export async function sendMeetingInvitationsAction(
   meetingId: string,
   workspaceId: string,
-  recipients: { entityId: string; name: string; email?: string; phone?: string }[],
+  recipients: { entityId: string; name: string; email?: string; phone?: string; entityName?: string }[],
   channels: ('email' | 'sms')[],
   emailTemplateId?: string,
   smsTemplateId?: string,
@@ -184,6 +199,11 @@ export async function sendMeetingInvitationsAction(
           registrantId = existingDoc.id;
           token = existingDoc.data().token;
           personalizedMeetingUrl = existingDoc.data().personalizedMeetingUrl;
+          
+          // Keep entityName updated if missing
+          if (!existingDoc.data().entityName && rec.entityName) {
+            await existingDoc.ref.update({ entityName: rec.entityName });
+          }
         } else {
           token = generateRegistrantToken();
           personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
@@ -192,6 +212,7 @@ export async function sendMeetingInvitationsAction(
             meetingId,
             workspaceIds: meeting.workspaceIds || [workspaceId],
             entityId: rec.entityId,
+            entityName: rec.entityName || '',
             token,
             status: 'pending',
             name: rec.name,

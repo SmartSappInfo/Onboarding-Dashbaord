@@ -49,7 +49,7 @@ export async function savePerspectiveAction(id: string | null, data: Partial<Per
                 organizationId: 'default',
                 userId,
                 workspaceId: 'system',
-                type: 'school_created', // Reuse generic type
+                type: 'workspace_created' as any,
                 source: 'user_action',
                 description: `architected new perspective: "${data.name}"`
             });

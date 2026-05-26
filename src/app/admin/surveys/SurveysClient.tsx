@@ -375,7 +375,6 @@ export default function SurveysClient() {
     return (
         <TooltipProvider>
             <PageContainer>
-            <div className="h-full overflow-y-auto w-full">
                 <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div>
@@ -509,7 +508,7 @@ export default function SurveysClient() {
             </Table>
             </Card>
             </div>
-        </div>
+
       <AlertDialog open={!!surveyToDelete} onOpenChange={(open) => !open && setSurveyToDelete(null)}>
         <AlertDialogContent className="rounded-2xl border-border shadow-lg">
           <AlertDialogHeader>

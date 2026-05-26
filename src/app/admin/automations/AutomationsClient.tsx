@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Automation, AutomationRun } from '@/lib/types';
 import { 
     Zap, 
@@ -34,8 +34,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, differenceInSeconds, parseISO } from 'date-fns';
-import { deleteAutomationAction, toggleAutomationStatusAction } from '@/lib/automation-actions';
-import { processScheduledJobsAction } from '@/lib/automation-processor';
+import { deleteAutomationAction, toggleAutomationStatusAction, pulseAutomationEngineAction } from '@/lib/automation-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -59,6 +58,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
  */
 export default function AutomationsClient() {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
     const { activeWorkspaceId } = useWorkspace();
     const { singular, plural } = useTerminology();
@@ -102,20 +102,30 @@ export default function AutomationsClient() {
     }, [automations, searchTerm]);
 
     const handleToggleStatus = async (id: string, current: boolean) => {
-        const res = await toggleAutomationStatusAction(id, !current);
-        if (res.success) toast({ title: !current ? 'Workflow Activated' : 'Workflow Paused' });
+        if (!user?.uid) return;
+        const res = await toggleAutomationStatusAction(id, !current, user.uid);
+        if (res.success) {
+            toast({ title: !current ? 'Workflow Activated' : 'Workflow Paused' });
+        } else {
+            toast({ variant: 'destructive', title: 'Action failed', description: res.error });
+        }
     };
 
     const handleDelete = async (id: string) => {
+        if (!user?.uid) return;
         if (!confirm('Permanently purge this automation architecture?')) return;
-        const res = await deleteAutomationAction(id);
-        if (res.success) toast({ title: 'Automation Deleted' });
+        const res = await deleteAutomationAction(id, user.uid);
+        if (res.success) {
+            toast({ title: 'Automation Deleted' });
+        } else {
+            toast({ variant: 'destructive', title: 'Delete failed', description: res.error });
+        }
     };
 
     const handlePulseEngine = async () => {
         setIsPulsing(true);
         try {
-            const res = await processScheduledJobsAction();
+            const res = await pulseAutomationEngineAction();
             if (res.success) {
                 toast({ 
                     title: 'Engine Pulse Complete', 
@@ -204,7 +214,7 @@ export default function AutomationsClient() {
                                         </div>
  <div className="mt-4">
  <CardTitle className="text-lg font-semibold tracking-tight truncate">{auth.name}</CardTitle>
- <CardDescription className="text-[10px] font-bold mt-1 opacity-60 text-left">Trigger: {auth.trigger.replace('SCHOOL', singular.toUpperCase()).replace('_', ' ')}</CardDescription>
+ <CardDescription className="text-[10px] font-bold mt-1 opacity-60 text-left">Trigger: {auth.trigger.replace(/_/g, ' ')}</CardDescription>
                                         </div>
                                         {/* Workspace scope display (Requirement 10.5) */}
  <div className="mt-3 pt-3 border-t border-border/30">
@@ -367,6 +377,34 @@ export default function AutomationsClient() {
  <pre className="text-xs font-mono font-bold text-rose-400 whitespace-pre-wrap leading-relaxed">{selectedRun.error}</pre>
                                     </CardContent>
                                 </Card>
+                            )}
+
+                            {/* Entity context (P2-7) */}
+                            {selectedRun?.triggerData && (
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
+                                        <p className="text-[9px] font-semibold text-muted-foreground uppercase mb-1">Entity ID</p>
+                                        <p className="text-xs font-mono font-bold truncate">
+                                            {String(selectedRun.triggerData.entityId || '—')}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
+                                        <p className="text-[9px] font-semibold text-muted-foreground uppercase mb-1">Entity type</p>
+                                        <p className="text-xs font-bold truncate">
+                                            {String(selectedRun.triggerData.entityType || '—')}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
+                                        <p className="text-[9px] font-semibold text-muted-foreground uppercase mb-1">Display name</p>
+                                        <p className="text-xs font-bold truncate">
+                                            {String(
+                                                selectedRun.triggerData.entityName ||
+                                                    selectedRun.triggerData.displayName ||
+                                                    '—'
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
                             )}
 
                             {/* Trigger Context Payload */}

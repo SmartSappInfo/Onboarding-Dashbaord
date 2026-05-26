@@ -36,7 +36,7 @@ export default function ActivitiesClient() {
         { value: 'call', label: 'Phone Calls' },
         { value: 'visit', label: `${singular} Visits` },
         { value: 'email', label: 'Emails' },
-        { value: 'school_created', label: `${singular} Onboarding` },
+        { value: 'entity_created', label: `${singular} Created` },
         { value: 'school_assigned', label: 'Ownership Changes' },
         { value: 'meeting_created', label: 'Meetings Scheduled' },
         { value: 'pipeline_stage_changed', label: 'Workflow Progression' },

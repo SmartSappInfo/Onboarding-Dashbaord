@@ -77,6 +77,58 @@ export async function createTaskAction(taskData: Omit<Task, 'id' | 'createdAt' |
 }
 
 /**
+ * Creates a task from the automation engine (no user permission gate).
+ * Emits `task_created` so TASK_CREATED automations can chain.
+ */
+export async function createTaskFromAutomation(
+    taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>,
+    organizationId: string
+): Promise<string> {
+    const timestamp = new Date().toISOString();
+    let entityName: string | null = taskData.entityName || null;
+    let entityType: EntityType | null = taskData.entityType || null;
+
+    if (taskData.workspaceId && taskData.entityId) {
+        const contact = await resolveContact(taskData.entityId, taskData.workspaceId);
+        if (contact) {
+            entityName = contact.name;
+            entityType = contact.entityType || null;
+        }
+    }
+
+    const finalTaskData = {
+        ...taskData,
+        entityName,
+        entityType,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        status: taskData.status || 'todo',
+        reminders: taskData.reminders || [],
+        reminderSent: false,
+    };
+
+    const docRef = await adminDb.collection('tasks').add(finalTaskData);
+
+    await logActivity({
+        organizationId: organizationId || '',
+        workspaceId: taskData.workspaceId,
+        entityId: taskData.entityId || undefined,
+        entityType: entityType || undefined,
+        userId: null,
+        type: 'task_created',
+        source: 'system',
+        description: `Automation created task: "${taskData.title}"`,
+        metadata: {
+            taskId: docRef.id,
+            category: taskData.category,
+            automationId: taskData.automationId,
+        },
+    });
+
+    return docRef.id;
+}
+
+/**
  * Server action to update a task with entity awareness.
  * 
  * @param taskId - Task document ID

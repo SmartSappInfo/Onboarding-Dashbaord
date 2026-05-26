@@ -2,6 +2,10 @@
 
 import { adminDb } from './firebase-admin';
 import type { MessageCampaign, MessageTask, AutomationTrigger } from './types';
+import {
+  buildCampaignAutomationJobPayload,
+  campaignAutomationJobDocId,
+} from './campaign-automation-jobs';
 
 /**
  * Phase 6 Story 3: Campaign event emission for the automation engine.
@@ -90,23 +94,35 @@ export async function emitCampaignEvents(campaignId: string): Promise<{
         const batch = adminDb.batch();
 
         for (const entityId of chunk) {
-          const jobRef = adminDb.collection('automation_jobs').doc();
-          batch.set(jobRef, {
-            automationId: hook.automationId,
-            runId: '', // Will be created by the automation processor on pickup
-            targetNodeId: '__campaign_trigger__',
-            payload: {
-              entityId,
-              workspaceId: campaign.workspaceId,
-              campaignId,
-              campaignName: campaign.internalName,
-              event: hook.event,
-              channel: campaign.channel,
+          const jobId = campaignAutomationJobDocId(
+            campaignId,
+            hook.event,
+            hook.automationId,
+            entityId
+          );
+          const jobRef = adminDb.collection('automation_jobs').doc(jobId);
+          batch.set(
+            jobRef,
+            {
+              automationId: hook.automationId,
+              runId: '',
+              targetNodeId: '__campaign_trigger__',
+              payload: buildCampaignAutomationJobPayload({
+                entityId,
+                workspaceId: campaign.workspaceId,
+                organizationId: campaign.organizationId || '',
+                campaignId,
+                campaignName: campaign.internalName,
+                event: hook.event,
+                channel: campaign.channel,
+              }),
+              executeAt: executeAt.toISOString(),
+              status: 'pending',
+              source: 'campaign_event',
+              idempotencyKey: jobId,
             },
-            executeAt: executeAt.toISOString(),
-            status: 'pending',
-            source: 'campaign_event',
-          });
+            { merge: true }
+          );
         }
 
         await batch.commit();
@@ -152,31 +168,49 @@ export async function emitSingleCampaignEvent(params: {
     const { runAutomationById } = await import('./automation-processor');
 
     for (const hook of matchingHooks) {
-      const payload = {
+      const payload = buildCampaignAutomationJobPayload({
         entityId,
         workspaceId: campaign.workspaceId,
+        organizationId: campaign.organizationId || '',
         campaignId,
         campaignName: campaign.internalName,
         event: hook.event,
         channel: campaign.channel,
-        organizationId: campaign.organizationId || '',
-      };
+      });
 
       if (!hook.delayMinutes || hook.delayMinutes === 0) {
-        // Immediate execution
-        await runAutomationById(hook.automationId, payload);
+        await runAutomationById(hook.automationId, { ...payload });
+        const { dispatchCampaignBlueprintTriggers } = await import('./campaign-automation-dispatch');
+        await dispatchCampaignBlueprintTriggers({
+          hookEvent: event,
+          payload: { ...payload },
+          excludeAutomationIds: [hook.automationId],
+        });
       } else {
         // Queued execution
         const executeAt = new Date(now.getTime() + hook.delayMinutes * 60_000);
-        await adminDb.collection('automation_jobs').add({
-          automationId: hook.automationId,
-          runId: '',
-          targetNodeId: '__campaign_trigger__',
-          payload,
-          executeAt: executeAt.toISOString(),
-          status: 'pending',
-          source: 'campaign_realtime_event',
-        });
+        const jobId = campaignAutomationJobDocId(
+          campaignId,
+          hook.event,
+          hook.automationId,
+          entityId
+        );
+        await adminDb
+          .collection('automation_jobs')
+          .doc(jobId)
+          .set(
+            {
+              automationId: hook.automationId,
+              runId: '',
+              targetNodeId: '__campaign_trigger__',
+              payload,
+              executeAt: executeAt.toISOString(),
+              status: 'pending',
+              source: 'campaign_realtime_event',
+              idempotencyKey: jobId,
+            },
+            { merge: true }
+          );
       }
       queuedCount++;
     }

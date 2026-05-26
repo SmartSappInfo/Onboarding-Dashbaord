@@ -2,464 +2,289 @@
 
 ## Overview
 
-The Automations module is a sophisticated visual workflow engine that enables automated institutional logic and proactive task orchestration. It provides a node-based visual builder for creating complex workflows triggered by system events, with support for conditional branching, delays, messaging, task creation, and contact updates.
+The Automations module is a visual workflow engine for event-driven CRM logic. It provides a node-based visual builder for creating workflows triggered by system events, with support for conditional branching, delays, messaging, task creation, deal updates, webhook dispatch, and entity updates.
+
+This document is the implementation reference for the completed app behavior.
 
 ## Core Concepts
 
 ### Automation Blueprint
+
 A visual workflow definition consisting of:
-- **Nodes**: Individual steps in the workflow (triggers, actions, conditions, delays)
+
+- **Nodes**: Individual steps in the workflow (trigger, action, condition, delay, tag condition/action)
 - **Edges**: Connections between nodes defining execution flow
 - **Configuration**: Node-specific settings and parameters
-- **Workspace Binding**: Association with one or more workspaces
+- **Workspace Binding**: Association with one or more workspaces via `workspaceIds`
 
 ### Execution Model
-- **Event-Driven**: Automations fire in response to system events
-- **Non-Blocking**: Execution happens asynchronously
-- **Stateful**: Run history and job queue tracked in Firestore
-- **Resumable**: Delayed workflows can pause and resume
+
+- **Event-Driven**: Automations fire in response to platform activities and direct trigger calls
+- **Non-Blocking**: Trigger dispatch uses async background patterns where possible
+- **Stateful**: Run history and delay jobs tracked in Firestore
+- **Resumable**: Delayed workflows pause and resume through heartbeat processing
+
+## Architecture
+
+- **Blueprints:** `automations` collection (`nodes`, `edges`, `trigger`, `workspaceIds[]`)
+- **Runs:** `automation_runs` collection (run ledger per execution)
+- **Jobs:** `automation_jobs` collection (delay jobs + campaign queued jobs)
+- **Event Bus:** `logActivity()` in `src/lib/activity-logger.ts`
+- **Orchestrator:** `triggerAutomationProtocols()` in `src/lib/automations/orchestrator.ts`
+- **Engine:** `executeAutomation()` in `src/lib/automations/executor.ts`, `traverseNodes()` in `src/lib/automations/nodes/traverse.ts`
+- **Barrel:** `@/lib/automation-processor` re-exports the public engine API
+
+## Entity Model (No School Fallback)
+
+Automations are entity-first:
+
+- `entityId` — global entity reference
+- `workspaceId` — operational scope
+- `entityType` — `institution` | `family` | `person`
+
+State mutations route to:
+
+- `entities` for identity/global fields
+- `workspace_entities` for workspace-scoped fields (pipeline, stage, assignee, tags)
+
+Legacy trigger/action names are migrated:
+
+- `SCHOOL_CREATED` → `ENTITY_CREATED`
+- `SCHOOL_STAGE_CHANGED` → `ENTITY_STAGE_CHANGED`
+- `UPDATE_SCHOOL` → `UPDATE_ENTITY`
+
+Migration script: `scripts/migrate-automation-triggers.ts`
 
 ## Automation Triggers
 
-### Available Triggers
+### Entity Lifecycle Triggers
 
-**1. SCHOOL_CREATED**
-- Fires when a new institution is added to the system
-- Payload: schoolId/entityId, schoolName, workspaceId, organizationId
+| Trigger | Source activity |
+|---------|------------------|
+| `ENTITY_CREATED` | `entity_created` |
+| `ENTITY_UPDATED` | `entity_updated` |
+| `ENTITY_ASSIGNED` | `entity_assigned` |
+| `ENTITY_STAGE_CHANGED` | `pipeline_stage_changed` |
+| `ENTITY_LINKED` | `entity_linked_to_workspace` |
+| `ENTITY_UNLINKED` | `entity_unlinked_from_workspace` |
+| `WORKSPACE_ENTITY_UPDATED` | `workspace_entity_updated` |
 
-**2. SCHOOL_STAGE_CHANGED**
-- Fires when an institution moves to a different pipeline stage
-- Payload: schoolId/entityId, oldStageId, newStageId, pipelineId
+### Task / Deal / Engagement Triggers
 
-**3. TASK_COMPLETED**
-- Fires when a CRM task is marked as done
-- Payload: taskId, schoolId/entityId, completedBy, completedAt
+| Trigger | Source activity |
+|---------|------------------|
+| `TASK_CREATED` | `task_created` |
+| `TASK_COMPLETED` | `task_completed` |
+| `DEAL_CREATED` | `deal_created` |
+| `DEAL_STAGE_CHANGED` | `deal_stage_changed` |
+| `DEAL_STATUS_CHANGED` | `deal_status_changed` |
+| `DEAL_VALUE_CHANGED` | `deal_value_changed` |
+| `FORM_SUBMITTED` | `form_submitted` |
+| `SURVEY_SUBMITTED` | `form_submission` |
+| `PDF_SIGNED` | `pdf_form_submitted` |
+| `CAMPAIGN_PAGE_SUBMITTED` | `page_conversion` |
 
-**4. SURVEY_SUBMITTED**
-- Fires when a survey form is submitted
-- Payload: surveyId, responseId, schoolId/entityId, score
+### Meetings / Tags / Campaign / Integration Triggers
 
-**5. PDF_SIGNED**
-- Fires when a contract/PDF form is fully signed
-- Payload: pdfId, submissionId, schoolId/entityId, signedAt
-
-**6. MEETING_CREATED**
-- Fires when a new meeting is scheduled
-- Payload: meetingId, schoolId/entityId, meetingTime, meetingType
-
-**7. TAG_ADDED**
-- Fires when a tag is applied to a contact
-- Payload: contactId, tagId, tagName, workspaceId, appliedBy
-- Supports filtering by tag IDs, contact type, and application method
-
-**8. TAG_REMOVED**
-- Fires when a tag is removed from a contact
-- Payload: contactId, tagId, tagName, workspaceId, appliedBy
-- Supports same filtering as TAG_ADDED
-
-**9. WEBHOOK_RECEIVED**
-- Fires when external data is POSTed to webhook endpoint
-- Payload: Custom JSON from external system
-- Endpoint: `/api/automations/webhook/{automationId}`
+| Trigger | Source activity / source path |
+|---------|-------------------------------|
+| `MEETING_CREATED` | `meeting_created` |
+| `MEETING_REGISTRANT_ADDED` | `meeting_registrant_added` |
+| `MEETING_REGISTRANT_ATTENDED` | `meeting_registrant_attended` |
+| `MEETING_REGISTRANT_NO_SHOW` | `meeting_registrant_no_show` |
+| `TAG_ADDED` | `tag_added` |
+| `TAG_REMOVED` | `tag_removed` |
+| `CAMPAIGN_DELIVERED` | campaign queue / campaign hooks |
+| `CAMPAIGN_FAILED` | campaign queue / campaign hooks |
+| `CAMPAIGN_OPENED` | campaign webhooks/hooks |
+| `CAMPAIGN_CLICKED` | campaign webhooks/hooks |
+| `CAMPAIGN_NOT_DELIVERED` | campaign queue / campaign hooks |
+| `WEBHOOK_RECEIVED` | inbound webhook routes |
 
 ## Node Types
 
-### 1. Trigger Node
-**Purpose**: Entry point for automation workflow
+### Trigger Node
 
-**Configuration**:
-- Trigger type selection
-- Webhook URL display (for WEBHOOK_RECEIVED)
+- Entry point for the workflow
+- Configurable trigger selection
+- For `WEBHOOK_RECEIVED`, exposes ingress URL in inspector
 
-**Visual**: Emerald color scheme, entry indicator
+### Action Node
 
-### 2. Action Node
-**Purpose**: Execute functional logic
+Supported action types:
 
-**Action Types**:
+- `SEND_MESSAGE`
+- `CREATE_TASK`
+- `UPDATE_ENTITY`
+- `ASSIGN_ENTITY`
+- `ADD_NOTE`
+- `CREATE_DEAL`
+- `UPDATE_DEAL_STAGE`
+- `UPDATE_DEAL_VALUE`
+- `UPDATE_DEAL_STATUS`
+- `UPDATE_TASK`
+- `TRIGGER_OUTBOUND_WEBHOOK`
+- `RUN_AUTOMATION`
 
-**SEND_MESSAGE**
-- Send email or SMS via messaging engine
-- Configuration:
-  - Template selection
-  - Sender profile
-  - Recipient type (manager, signatory, respondent, fixed)
-  - Dynamic recipient with variable support
+### Condition Node
 
-**CREATE_TASK**
-- Generate CRM task automatically
-- Configuration:
-  - Task title (supports variables)
-  - Description
-  - Priority (low, medium, high, urgent)
-  - Category (call, visit, document, training, general)
-  - Due date offset (days from trigger)
-  - Assigned user (auto-resolve or specific)
+Field/operator/value branching with operators:
 
-**UPDATE_SCHOOL**
-- Modify contact record fields
-- Configuration:
-  - Lifecycle status update
-  - Pipeline stage advancement
-  - Custom field updates
+- `equals`
+- `not_equals`
+- `contains`
+- `greater_than`
+- `less_than`
 
-**Visual**: Blue color scheme, action indicator
+### Tag Condition Node
 
-### 3. Condition Node
-**Purpose**: Logical branching based on data evaluation
+Branching by tag logic:
 
-**Configuration**:
-- Field selection (from variable registry)
-- Operator selection:
-  - equals
-  - not_equals
-  - contains
-  - greater_than
-  - less_than
-- Comparison value
+- `has_tag`
+- `has_all_tags`
+- `has_any_tag`
+- `not_has_tag`
 
-**Outputs**: True path (emerald), False path (rose)
+### Tag Action Node
 
-**Visual**: Amber color scheme, dual outputs
+Tag operations:
 
-### 4. Tag Condition Node
-**Purpose**: Branch based on contact tag presence
+- `add_tags`
+- `remove_tags`
 
-**Configuration**:
-- Logic type:
-  - has_tag: Contact has at least one selected tag
-  - has_all_tags: Contact has every selected tag
-  - has_any_tag: Same as has_tag
-  - not_has_tag: Contact has none of the selected tags
-- Tag selection (multi-select)
+Applies to `workspace_entities.workspaceTags` (entity-first model).
 
-**Outputs**: True path (emerald), False path (rose)
+### Delay Node
 
-**Visual**: Violet color scheme, tag indicator
-
-### 5. Tag Action Node
-**Purpose**: Apply or remove tags from contacts
-
-**Configuration**:
-- Action type:
-  - add_tags: Apply selected tags
-  - remove_tags: Remove selected tags
-- Tag selection (multi-select)
-
-**Visual**: Emerald (add) or Rose (remove) color scheme
-
-### 6. Delay Node
-**Purpose**: Introduce temporal wait period
-
-**Configuration**:
-- Duration value (numeric)
-- Time unit (Minutes, Hours, Days)
-
-**Behavior**:
-- Creates job in `automation_jobs` collection
-- Pauses workflow execution
-- Resumes automatically via heartbeat processor
-
-**Visual**: Purple color scheme, hourglass indicator
-
-## Automation Builder
-
-### Visual Canvas
-- **ReactFlow-based**: Drag-and-drop node positioning
-- **Snap-to-grid**: 15x15 pixel grid for alignment
-- **Smooth edges**: Animated connections with arrow markers
-- **Background**: Dotted grid pattern
-- **Controls**: Zoom, pan, fit view
-
-### Node Inspector
-- **Context-sensitive**: Shows configuration for selected node
-- **Real-time updates**: Changes sync immediately
-- **Variable dictionary**: Browse and copy dynamic variables
-- **Validation**: Form validation for required fields
-
-### Toolbar
-- Add nodes (trigger, action, condition, delay, tag nodes)
-- Auto layout (planned)
-- Fullscreen toggle
-- Save/commit logic
+- Queues delay job in `automation_jobs`
+- Pauses current execution path
+- Resumes when heartbeat processes due job
 
 ## Execution Engine
 
-### Trigger Detection
-**Event Bus Integration**:
-- Activity logger maps activities to automation triggers
-- Tag operations fire specialized tag triggers
-- Webhook endpoint accepts external triggers
+### Trigger Detection and Filtering
 
-**Workspace Filtering**:
-- Automations filtered by `workspaceIds` array
-- Only automations bound to trigger workspace execute
-- Prevents cross-workspace contamination
+`triggerAutomationProtocols()`:
 
-### Node Traversal
-**Execution Flow**:
-1. Locate trigger node (entry point)
-2. Follow outgoing edges
-3. Execute node logic
-4. Handle branching (conditions)
-5. Queue delays (pause execution)
-6. Continue recursively
+1. Queries active automations by trigger
+2. Filters by `workspaceIds` containment of payload workspace
+3. Evaluates trigger-node config (tag IDs, stage filters, form/survey IDs, meeting type)
+4. Executes matching automations
 
-**Error Handling**:
-- Node failures logged to run document
-- Execution stops on error
-- Run marked as 'failed' with error message
+### Path Traversal
 
-### Variable Resolution
-**Dynamic Variables**:
-- Syntax: `{{variable_key}}`
-- Resolved from trigger payload
-- Available in action configurations
-- Examples: `{{school_name}}`, `{{contact_email}}`
+`traverseNodes()` performs recursive traversal:
 
-**Variable Registry**:
-- Centralized variable definitions
-- Categorized (general, finance, meetings, tags)
-- Type-aware (string, number, date, boolean, array)
-- Searchable in node inspector
+1. Locate outgoing edges from current node
+2. Handle branch selection for condition/tag condition nodes
+3. Execute action nodes
+4. Queue delay node and stop current linear path
+5. Continue recursion for downstream nodes
 
-### Delay Scheduling
-**Job Queue** (`automation_jobs` collection):
-- Job document created for each delay
-- Contains: automationId, runId, targetNodeId, payload, executeAt, status
-- Status: pending → processing → completed/failed
+### Run Ledger
 
-**Heartbeat Processor**:
-- Scans for pending jobs with `executeAt <= now`
-- Processes up to 20 jobs per pulse
-- Resumes workflow from delay checkpoint
-- Prevents race conditions with status locking
+`executeAutomation()`:
 
-**Invocation**:
-- Manual: "Pulse Engine" button in admin UI
-- Automated: Cron job (recommended 1-minute interval)
-- Function: `processScheduledJobsAction()`
+- Creates `automation_runs` entry with `running`
+- Stores `triggerData`
+- Marks run `completed` or `failed`
+- For delay-resumed runs, finalizes completion when no pending jobs remain
 
-## Run Ledger
+### Delay and Heartbeat Processing
 
-### Automation Runs
-**Run Document** (`automation_runs` collection):
-- automationId: Blueprint reference
-- automationName: Snapshot of name
-- triggerData: Complete payload
-- status: running | completed | failed
-- startedAt: ISO timestamp
-- finishedAt: ISO timestamp (when complete)
-- error: Error message (if failed)
+`processScheduledJobsAction()`:
 
-**Run Lifecycle**:
-1. Created when automation triggers
-2. Status set to 'running'
-3. Nodes execute sequentially
-4. Status updated to 'completed' or 'failed'
-5. Pending jobs prevent premature completion
+- Finds due pending jobs
+- Marks each `processing`
+- Resumes delay jobs via `resumeAutomationRun()`
+- Handles campaign queued jobs via `runAutomationById()`
+- Finalizes job status (`completed` / `failed`)
 
-### Run Inspector
-**Diagnostic Modal**:
-- Execution metadata (start time, duration)
-- Status indicator (success/failure)
-- Error stack trace (if failed)
-- Trigger payload (JSON viewer)
-- Copy payload functionality
-- Link to blueprint editor
+## Variable Resolution
 
-## Multi-Workspace Support
+- Variable syntax: `{{key}}`
+- Resolved against trigger payload and context
+- Common entity keys: `{{entity_name}}`, `{{display_name}}`
+- Messaging variable registry references: `src/lib/template-variable-registry-data.ts`
 
-### Workspace Binding
-**Configuration**:
-- Automations have `workspaceIds` array field
-- Can be bound to one or multiple workspaces
-- Empty array = no constraint (warning shown)
-
-**Filtering**:
-- Trigger detection filters by workspace
-- Only automations with matching workspace execute
-- Payload must include `workspaceId`
-
-**Best Practices**:
-- Always bind automations to specific workspaces
-- Use workspace-specific naming conventions
-- Test automations in isolated workspace first
-- Monitor cross-workspace implications
-
-## Entity Migration Support
-
-### Dual-Write Pattern
-**Contact Resolution**:
-- Automations accept both `schoolId` and `entityId` in payloads
-- Contact adapter resolves identifiers transparently
-- Tasks created with both identifiers (backward compatibility)
-- Updates prefer `entityId` when available
-
-**Migration States**:
-- Legacy: Only `schoolId` in payload
-- Migrated: Both `schoolId` and `entityId` in payload
-- Future: Only `entityId` in payload (planned)
-
-### Adapter Integration
-**Contact Adapter Layer**:
-- `resolveContact()` function handles identifier resolution
-- Returns unified contact object
-- Supports both legacy schools and new entities
-- Maintains backward compatibility
-
-## Tag-Based Automations
-
-### Tag Trigger Configuration
-**TagTriggerConfig**:
-- `tagIds`: Array of tag IDs to watch (empty = any tag)
-- `contactType`: Filter by 'school' or 'prospect'
-- `appliedBy`: Filter by 'manual' or 'automatic'
-
-**Use Cases**:
-- Auto-assign tasks when "hot-lead" tag applied
-- Send welcome email when "new-customer" tag added
-- Escalate when "billing-issue" tag applied
-- Remove from campaign when "unsubscribed" tag added
-
-### Tag Condition Nodes
-**Logic Types**:
-- `has_tag`: Contact has at least one selected tag
-- `has_all_tags`: Contact has every selected tag
-- `has_any_tag`: Alias for has_tag
-- `not_has_tag`: Contact has none of the selected tags
-
-**Branching**:
-- True path: Condition matches
-- False path: Condition doesn't match
-
-### Tag Action Nodes
-**Operations**:
-- `add_tags`: Apply selected tags to contact
-- `remove_tags`: Remove selected tags from contact
-
-**Execution**:
-- Tags applied/removed immediately
-- Changes reflected in contact record
-- Can trigger subsequent TAG_ADDED/TAG_REMOVED automations
-
-## Admin Interface
+## Builder UI and Admin Interface
 
 ### Automation Hub (`/admin/automations`)
 
-**Blueprints Tab**:
-- Grid view of all automations
-- Search/filter functionality
-- Status indicators (active/paused)
-- Workspace scope display
-- Quick actions: Toggle status, Edit, Delete
-
-**Run Ledger Tab**:
-- Real-time execution stream
-- Last 100 runs displayed
-- Status indicators (completed/failed/running)
-- Duration tracking
-- Run inspector modal
-
-**Pulse Engine**:
-- Manual heartbeat trigger
-- Processes pending delayed jobs
-- Shows count of resumed protocols
-- Non-blocking operation
+- Blueprint list with active/paused state
+- Run ledger with status and timing
+- Manual **Pulse Engine** trigger for heartbeat
 
 ### Blueprint Editor (`/admin/automations/[id]/edit`)
 
-**Canvas**:
-- Visual workflow builder
-- Node palette (left sidebar)
-- Node inspector (right sidebar)
-- Auto-save functionality
-- Test flow button (planned)
+- React Flow canvas
+- Grouped trigger catalog in inspector
+- Action config forms by action type
+- Webhook endpoint copier for webhook-triggered automations
 
-**Header**:
-- Automation name display
-- Save/commit button
-- Back navigation
-- Workspace warning (if unbound)
+### New Blueprint Initialization (`/admin/automations/new`)
+
+- Seeds default trigger as `ENTITY_CREATED`
+- Binds to active workspace
 
 ## API Endpoints
 
 ### Webhook Ingress
-**Endpoint**: `POST /api/automations/webhook/{automationId}`
 
-**Request**:
-- Content-Type: application/json
-- Body: Custom JSON payload
+- `POST /api/automations/webhook/[id]`
+- `POST /api/webhooks/inbound/[id]`
 
-**Response**:
-```json
-{
-  "status": "accepted",
-  "receivedAt": "2024-01-01T00:00:00Z",
-  "ingressId": "automation_id"
-}
-```
+### Heartbeat Cron Endpoint
 
-**Validation**:
-- Automation must exist
-- Automation must be active
-- Automation trigger must be WEBHOOK_RECEIVED
-
-**Payload Handling**:
-- JSON keys become dynamic variables
-- Example: `{"customer_name": "John"}` → `{{customer_name}}`
+- `GET /api/cron/automation-heartbeat`
+- Optional `Authorization: Bearer $CRON_SECRET`
 
 ## Integration Points
 
 ### Activity Logger
-**Event Bus**:
-- All activities trigger automation protocols
-- Mapping: activity type → automation trigger
-- Non-blocking (fire and forget)
-- Includes workspace context
 
-**Trigger Mapping**:
-- `school_created` → SCHOOL_CREATED
-- `pipeline_stage_changed` → SCHOOL_STAGE_CHANGED
-- `pdf_form_submitted` → PDF_SIGNED
-- `form_submission` → SURVEY_SUBMITTED
-- `task_completed` → TASK_COMPLETED
-- `meeting_created` → MEETING_CREATED
+- Source of automation events via `triggerMap` in `src/lib/activity-logger.ts`
 
 ### Messaging Engine
-**Integration**:
-- SEND_MESSAGE action uses `sendMessage()` function
-- Template-based messaging
-- Variable substitution
-- Sender profile selection
-- Recipient resolution
 
-### Task System
-**Integration**:
-- CREATE_TASK action uses `createTaskNonBlocking()` function
-- Dual-write pattern (schoolId + entityId)
-- Source field set to 'automation'
-- automationId tracked for audit
+- `SEND_MESSAGE` action uses `sendMessage()`
+- Supports template ID and template category/type resolution patterns
 
-### Tag System
-**Integration**:
-- TAG_ADDED/TAG_REMOVED triggers via `fireTagTrigger()`
-- Tag condition nodes evaluate contact tags
-- Tag action nodes modify contact tags
-- Workspace-scoped tag operations
+### Tasks
+
+- `CREATE_TASK` writes task with `source: 'automation'`
+- `UPDATE_TASK` supports status/assignment/priority updates
+
+### Deals
+
+- Deal actions delegate to `src/lib/automations/actions/deal-automation-actions.ts`
+
+### Tags
+
+- Tag activity emits `tag_added` / `tag_removed`
+- Tag nodes evaluate and mutate workspace entity tags
+
+### Campaign Events (Model A — dual path)
+
+1. **Campaign hooks** — Explicit binding on a campaign runs a specific automation by ID (`runAutomationById` or queued via `automation_jobs` with `targetNodeId: __campaign_trigger__`).
+2. **Blueprint triggers** — After the hook automation runs, `dispatchCampaignBlueprintTriggers` invokes `triggerAutomationProtocols` for all active automations whose top-level `trigger` matches the event (`CAMPAIGN_DELIVERED`, `CAMPAIGN_OPENED`, etc.). The hook-bound automation ID is excluded to avoid duplicate execution when the same flow is both hooked and blueprint-triggered.
+
+- Bulk cohort events: hooks enqueue jobs into `automation_jobs`; heartbeat runs hook + blueprint dispatch.
+- Real-time events (open/click): immediate hook run + blueprint dispatch when `delayMinutes` is zero.
 
 ## Data Model
 
 ### Automation Document
+
 ```typescript
 interface Automation {
   id: string;
-  workspaceIds: string[]; // Multi-workspace binding
+  workspaceIds: string[];
   name: string;
   description?: string;
   trigger: AutomationTrigger;
-  nodes: Node[]; // Visual workflow nodes
-  edges: Edge[]; // Connections between nodes
+  nodes: any[];
+  edges: any[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -468,6 +293,7 @@ interface Automation {
 ```
 
 ### Automation Run Document
+
 ```typescript
 interface AutomationRun {
   id: string;
@@ -478,166 +304,100 @@ interface AutomationRun {
   finishedAt?: string;
   triggerData: Record<string, any>;
   error?: string;
-  schoolId?: string; // Legacy
-  entityId?: string; // New
+  entityId?: string | null;
   entityType?: EntityType;
 }
 ```
 
 ### Automation Job Document
+
 ```typescript
 interface AutomationJob {
   id: string;
   automationId: string;
   runId: string;
-  targetNodeId: string; // Resume point
+  targetNodeId: string;
   payload: Record<string, any>;
-  executeAt: string; // ISO timestamp
+  executeAt: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
 }
 ```
 
-## Testing
+## Permissions and Safety
 
-### Unit Tests
-**File**: `src/lib/__tests__/automations-module-unit.test.ts`
-- Trigger detection with entityId
-- Task creation with dual-write
-- Contact updates using entityId
-- Backward compatibility with schoolId
-
-### Property-Based Tests
-**File**: `src/lib/__tests__/automation-dual-write.property.test.ts`
-- Automation dual-write pattern
-- Entity operations
-- Trigger compatibility
-- 50+ test runs per property
-
-### Integration Tests
-**File**: `src/lib/__tests__/adapter-automation-integration.test.ts`
-- Automation with adapter layer
-- Legacy schools support
-- Migrated entities support
-- Task creation scenarios
-
-## User Permissions
-
-**Required Permissions**:
-- `system_admin` - Full automation management
-- `schools_edit` - Trigger automations on school changes
-- `tasks_manage` - Create tasks via automations
-- `meetings_manage` - Trigger on meeting events
+- Workspace binding prevents cross-workspace execution leakage
+- Trigger payload must include workspace context
+- Automation chaining (`RUN_AUTOMATION`) uses max depth protection
 
 ## Best Practices
 
-### Automation Design
-1. **Keep workflows simple**: Avoid overly complex branching
-2. **Use descriptive names**: Clear naming for nodes and automations
-3. **Test thoroughly**: Use test workspace before production
-4. **Document logic**: Add descriptions to complex automations
-5. **Monitor runs**: Check run ledger regularly for failures
-
-### Workspace Binding
-1. **Always bind to workspaces**: Avoid unbound automations
-2. **Use specific workspaces**: Don't bind to all workspaces unless necessary
-3. **Consider cross-workspace**: Think about shared contacts
-4. **Test in isolation**: Use dedicated test workspace
-
-### Delay Usage
-1. **Set up heartbeat**: Ensure cron job is running
-2. **Use reasonable delays**: Avoid very short delays (< 5 minutes)
-3. **Monitor job queue**: Check for stuck jobs
-4. **Handle failures**: Plan for delay job failures
-
-### Variable Usage
-1. **Use variable dictionary**: Browse available variables
-2. **Test variable resolution**: Verify variables populate correctly
-3. **Handle missing values**: Plan for null/undefined variables
-4. **Use fallbacks**: Provide default values when possible
-
-### Error Handling
-1. **Monitor run ledger**: Check for failed runs
-2. **Review error messages**: Understand failure causes
-3. **Fix and retry**: Update automation and re-trigger
-4. **Log activities**: Ensure proper activity logging
-
-## Performance Considerations
-
-### Execution Efficiency
-- Automations execute asynchronously (non-blocking)
-- Node traversal is recursive but optimized
-- Firestore queries use indexes for workspace filtering
-- Delay jobs processed in batches (20 per pulse)
-
-### Scalability
-- Run history grows over time (consider archival strategy)
-- Job queue should be monitored for backlog
-- Webhook endpoints can handle high volume
-- Variable resolution is cached per run
-
-### Optimization Tips
-1. Minimize node count in workflows
-2. Use conditions to filter early
-3. Batch similar automations
-4. Archive old run history
-5. Monitor Firestore usage
+1. Keep workflows focused and readable
+2. Use explicit trigger filters to reduce accidental fan-out
+3. Ensure heartbeat cron is healthy before relying on delays
+4. Validate templates and webhook IDs before activation
+5. Monitor run failures and retriable job patterns
 
 ## Troubleshooting
 
-### Common Issues
+### Automation not firing
 
-**Automation Not Triggering**:
-- Check automation is active
-- Verify workspace binding matches trigger workspace
-- Confirm trigger type matches event
-- Review activity logger for event firing
+- Check `isActive`
+- Verify workspace match
+- Confirm trigger mapping exists in `activity-logger.ts`
 
-**Delay Not Resuming**:
-- Verify heartbeat processor is running
-- Check job status in `automation_jobs` collection
-- Ensure `executeAt` timestamp is in past
-- Review job processing logs
+### Delay not resuming
 
-**Variable Not Resolving**:
-- Confirm variable key matches payload
-- Check variable syntax: `{{key}}`
-- Verify payload includes expected data
-- Review trigger data in run inspector
+- Verify heartbeat endpoint/cron execution
+- Check `automation_jobs` status and `executeAt`
 
-**Task Not Creating**:
-- Check contact resolution (schoolId/entityId)
-- Verify workspace context
-- Review task creation permissions
-- Check for validation errors
+### Message action failures
 
-**Message Not Sending**:
-- Verify template exists and is active
-- Check recipient resolution
-- Confirm sender profile configured
-- Review messaging engine logs
+- Ensure template exists and is active
+- Confirm recipient resolution inputs in payload
 
-## Future Enhancements
+### Tag action failures
 
-### Planned Features
-- Visual flow testing/simulation
-- Automation templates library
-- Version control for blueprints
-- A/B testing for workflows
-- Advanced analytics dashboard
-- Automation marketplace
-- Conditional delays (wait until condition)
-- Parallel execution paths
-- Sub-automation calls
-- Loop/iteration support
+- Ensure contact resolves to valid `workspaceEntityId`
 
-### Under Consideration
-- Visual debugging tools
-- Automation performance metrics
-- Cost tracking per automation
-- Approval workflows
-- Rollback functionality
-- Automation cloning
-- Import/export blueprints
-- Collaboration features
-- Audit trail enhancements
-- Machine learning integration
+## Testing
+
+Primary automation tests:
+
+- `src/lib/__tests__/automation-workspace-awareness.test.ts`
+- `src/lib/__tests__/unified-tag-automation.test.ts`
+- `src/lib/__tests__/automation-trigger-catalog.test.ts`
+- `src/lib/__tests__/automation-blueprint.test.ts` — save trigger sync (P5-1)
+- `src/lib/__tests__/automation-payload.test.ts` — payload contract (P5-5)
+- `src/lib/__tests__/automation-trigger-config.test.ts` — trigger filters
+- `src/lib/__tests__/automation-condition.test.ts` — condition nodes (P5-2)
+- `src/lib/__tests__/meeting-registrant-automation.test.ts` — meeting → bus (P5-3)
+- `src/lib/__tests__/automation-heartbeat-campaign.test.ts` — campaign jobs (P5-4)
+- `src/lib/__tests__/automation-validation.test.ts` — save-time validation
+- `src/lib/__tests__/campaign-automation-dispatch.test.ts` — Model A dispatch
+
+## Implementation status
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Event bus (`activity-logger`) | Done | `buildAutomationPayload`, `after()` from Next.js |
+| Trigger save sync | Done | `serializeBlueprint` on save |
+| Campaign Model A | Done | Hooks + blueprint `CAMPAIGN_*` orchestrator |
+| Builder inspectors | Done | Trigger, action, condition, delay, tag nodes |
+| Save validation & permissions | Done | `automation-validation`, `automation-permissions` |
+| Cron heartbeat | Done | Cloud Scheduler + `/api/cron/automation-heartbeat` (see [deploy checklist](./automations_deploy_checklist.md)) |
+| Firestore indexes | Done | `trigger+isActive`, `status+executeAt` |
+| Data migration | Ready | Run `scripts/migrate-automation-triggers.ts` (see [deploy checklist](./automations_deploy_checklist.md)) |
+| Builder polish | Done | Test Flow, channel picker, run entity summary |
+| Engine refactor | Done | Split under `src/lib/automations/` (orchestrator, executor, actions, nodes) |
+
+Tracker: [automations_implementation.md](./automations_implementation.md)
+
+### Backend architecture
+
+| Layer | Location | Responsibility |
+|-------|----------|----------------|
+| Server actions | `automation-actions.ts` | Thin boundary for Next.js |
+| Service | `automations/service.ts` | Auth, validation, orchestration |
+| Repository | `automations/repository.ts` | Firestore reads/writes, job claims |
+| Errors | `automations/errors.ts` | Typed errors + safe client messages |
+| Engine | `automations/processor.ts` (+ `automation-processor.ts` barrel) | Runtime execution & heartbeat |

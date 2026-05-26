@@ -6,7 +6,7 @@ import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase
 import type { Meeting, MeetingRegistrant } from '@/lib/types';
 import { format } from 'date-fns';
 import { 
-    Users, ArrowLeft, CheckCircle2, Clock, Download, Mail, Search,
+    Users, ArrowLeft, ChevronLeft, CheckCircle2, Clock, Download, Mail, Search,
     UserCheck, ClipboardCheck, Calendar, AlertCircle, Loader2,
     MoreHorizontal, Check, X, Trash2, Plus, UsersRound, Send,
     SlidersHorizontal
@@ -365,20 +365,24 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
       <div className="space-y-8 text-left pb-24">
           
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <div className="flex items-center gap-3 mb-2">
-                    <Button variant="ghost" size="icon" asChild className="h-8 w-8 -ml-2 text-muted-foreground hover:text-foreground">
-                        <Link href="/admin/meetings"><ArrowLeft className="h-4 w-4" /></Link>
-                    </Button>
-                    <Badge variant="outline" className="font-semibold uppercase text-[10px] bg-background">
-                        {meeting?.type?.name || 'Meeting'}
-                    </Badge>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+                <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0">
+                    <Link href={`/admin/meetings/${meetingId}`}>
+                        <ChevronLeft className="h-5 w-5" />
+                    </Link>
+                </Button>
+                <div>
+                    <div className="flex items-center gap-3 mb-1">
+                        <Badge variant="outline" className="font-semibold uppercase text-[10px] bg-background">
+                            {meeting?.type?.name || 'Meeting'}
+                        </Badge>
+                    </div>
+                    <h1 className="text-3xl font-semibold tracking-tight leading-none">{meeting?.entityName} Registrants</h1>
+                    <p className="text-sm font-medium text-muted-foreground mt-2 flex items-center gap-2">
+                        <Calendar className="h-4 w-4" /> {meeting?.meetingTime ? format(new Date(meeting.meetingTime), 'PPPP') : 'Date TBD'}
+                    </p>
                 </div>
-                <h1 className="text-3xl font-semibold tracking-tight leading-none">{meeting?.entityName} Registrants</h1>
-                <p className="text-sm font-medium text-muted-foreground mt-2 flex items-center gap-2">
-                    <Calendar className="h-4 w-4" /> {meeting?.meetingTime ? format(new Date(meeting.meetingTime), 'PPPP') : 'Date TBD'}
-                </p>
             </div>
             
             <div className="flex items-center gap-3">

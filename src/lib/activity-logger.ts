@@ -1,12 +1,12 @@
 'use server';
 
+import { after } from 'next/server';
 import { adminDb } from './firebase-admin';
-import type { Activity, AutomationTrigger, EntityType } from './types';
+import type { Activity, EntityType } from './types';
 import { triggerAutomationProtocols } from './automation-processor';
 import { resolveContact } from './contact-adapter';
-
-// Polyfill for unstable_after - run async work after response
-const after = (fn: () => Promise<void>) => { fn().catch(console.error); };
+import { buildAutomationPayload } from './automation-payload';
+import { resolveAutomationTrigger } from './automation-trigger-map';
 
 type LogActivityInput = Omit<Activity, 'id' | 'timestamp'>;
 
@@ -59,43 +59,23 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         });
 
         // 4. BROADCAST TO AUTOMATION ENGINE
-        const triggerMap: Record<string, AutomationTrigger> = {
-            'entity_created': 'ENTITY_CREATED',
-            'school_created': 'SCHOOL_CREATED',
-            'pipeline_stage_changed': 'SCHOOL_STAGE_CHANGED',
-            'pdf_form_submitted': 'PDF_SIGNED',
-            'form_submission': 'SURVEY_SUBMITTED',
-            'form_submitted': 'FORM_SUBMITTED',
-            'task_completed': 'TASK_COMPLETED',
-            'meeting_created': 'MEETING_CREATED',
-            'tag_added': 'TAG_ADDED',
-            'tag_removed': 'TAG_REMOVED',
-            'deal_created': 'DEAL_CREATED',
-            'deal_stage_changed': 'DEAL_STAGE_CHANGED',
-            'deal_status_changed': 'DEAL_STATUS_CHANGED',
-            'deal_value_changed': 'DEAL_VALUE_CHANGED'
-        };
-
-        const triggerType = triggerMap[activityData.type];
+        const triggerType = resolveAutomationTrigger(activityData.type);
         if (triggerType) {
             console.log(`>>> [EVENT:BUS] Signal detected: ${triggerType}. Scheduling Logic Processor.`);
-            
-            const payload = {
-                ...finalData,
-                activityId: docRef.id,
+
+            const payload = buildAutomationPayload({
                 organizationId: activityData.organizationId,
+                workspaceId: activityData.workspaceId,
                 entityId: finalData.entityId,
+                entityType: finalData.entityType,
+                action: activityData.type,
+                actorId: activityData.userId ?? null,
+                metadata: activityData.metadata,
+                activityId: docRef.id,
                 entityName: finalData.entityName,
                 entitySlug: finalData.entitySlug,
-                workspaceId: activityData.workspaceId,
-                entityType: finalData.entityType,
                 displayName: finalData.displayName,
-                action: activityData.type,
-                actorId: activityData.userId,
-                timestamp: new Date().toISOString(),
-                // Extra metadata from activity (tagId, appliedBy, etc.)
-                ...(activityData.metadata || {})
-            };
+            });
 
             // Vercel Best Practice: server-after-nonblocking
             // Ensures the main operation is not blocked by automation processing

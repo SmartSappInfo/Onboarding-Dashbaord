@@ -187,23 +187,30 @@ export interface TagFilterQuery {
 }
 
 export type AutomationTrigger =
-  | 'SCHOOL_CREATED'
-  | 'SCHOOL_STAGE_CHANGED'
+  | 'ENTITY_CREATED'
+  | 'ENTITY_UPDATED'
+  | 'ENTITY_ASSIGNED'
+  | 'ENTITY_STAGE_CHANGED'
+  | 'ENTITY_LINKED'
+  | 'ENTITY_UNLINKED'
+  | 'WORKSPACE_ENTITY_UPDATED'
+  | 'TASK_CREATED'
   | 'TASK_COMPLETED'
   | 'SURVEY_SUBMITTED'
   | 'PDF_SIGNED'
+  | 'FORM_SUBMITTED'
   | 'WEBHOOK_RECEIVED'
   | 'MEETING_CREATED'
+  | 'MEETING_REGISTRANT_ADDED'
+  | 'MEETING_REGISTRANT_ATTENDED'
+  | 'MEETING_REGISTRANT_NO_SHOW'
   | 'TAG_ADDED'
   | 'TAG_REMOVED'
   | 'CAMPAIGN_PAGE_SUBMITTED'
-  | 'FORM_SUBMITTED'
-  | 'ENTITY_CREATED'
   | 'DEAL_CREATED'
   | 'DEAL_STAGE_CHANGED'
   | 'DEAL_STATUS_CHANGED'
   | 'DEAL_VALUE_CHANGED'
-  // Phase 6: Campaign engagement triggers
   | 'CAMPAIGN_DELIVERED'
   | 'CAMPAIGN_FAILED'
   | 'CAMPAIGN_OPENED'
@@ -218,8 +225,8 @@ export type AutomationTrigger =
 export interface TagTriggerConfig {
   /** Tag IDs that should fire this trigger. Empty array means any tag. */
   tagIds: string[];
-  /** Restrict trigger to a specific contact type. */
-  contactType?: 'school' | 'prospect';
+  /** Restrict trigger to a specific entity type. */
+  entityType?: EntityType;
   /** Filter by how the tag was applied: 'manual' (by a user) or 'automatic' (by automation). */
   appliedBy?: 'manual' | 'automatic';
 }

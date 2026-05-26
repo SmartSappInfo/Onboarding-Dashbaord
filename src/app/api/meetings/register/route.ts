@@ -128,6 +128,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const docRef = await registrantsRef.add(registrantData);
   const registrantId = docRef.id;
 
+  const workspaceId = meeting.workspaceIds?.[0] || '';
+  if (workspaceId) {
+    void import('@/lib/meeting-automation-events').then(({ emitMeetingRegistrantActivity }) =>
+      emitMeetingRegistrantActivity({
+        type: 'meeting_registrant_added',
+        organizationId: orgId,
+        workspaceId,
+        meetingId,
+        registrantId,
+        registrantName,
+        registrantEmail: userEmail,
+        meetingTypeId: meeting.type?.id,
+      })
+    );
+  }
+
   // ── 6–8. Async side-effects (fire-and-forget) ──────────────────────────
   // All wrapped in void — they MUST NOT block the HTTP response.
 

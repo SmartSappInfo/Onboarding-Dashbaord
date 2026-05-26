@@ -331,7 +331,7 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
 
       // Verify automation was triggered with workspace context
       expect(triggerAutomationProtocols).toHaveBeenCalledWith(
-        'SCHOOL_STAGE_CHANGED',
+        'ENTITY_STAGE_CHANGED',
         expect.objectContaining({
           organizationId: 'org_1',
           workspaceId: 'workspace_1',

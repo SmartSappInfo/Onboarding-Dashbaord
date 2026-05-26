@@ -86,26 +86,21 @@ describe('Unified Tag Automation Flow', () => {
         };
 
         // Create mock document references for batch operations
-        const mockWeDocRef = { path: 'workspace_entities/we_123' };
-        const mockSchoolDocRef = { path: 'schools/ent_789' };
-        const mockProspectDocRef = { path: 'prospects/ent_789' };
+        const mockWeDocRef = {
+            path: 'workspace_entities/we_123',
+            update: vi.fn().mockResolvedValue(undefined),
+            get: vi.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
+        };
 
         // Enhanced mock with doc().get() support and proper doc references
         (adminDb.collection as any).mockImplementation((collectionName: string) => {
-            const mockDoc = {
-                get: vi.fn().mockResolvedValue({
-                    exists: true,
-                    data: () => ({ organizationId: mockOrgId })
-                }),
-                update: vi.fn().mockResolvedValue(undefined)
-            };
-
-            // Return appropriate doc ref based on collection
             const getDocRef = (docId: string) => {
                 if (collectionName === 'workspace_entities') return mockWeDocRef;
-                if (collectionName === 'schools') return mockSchoolDocRef;
-                if (collectionName === 'prospects') return mockProspectDocRef;
-                return { path: `${collectionName}/${docId}` };
+                return {
+                    path: `${collectionName}/${docId}`,
+                    update: vi.fn().mockResolvedValue(undefined),
+                    get: vi.fn().mockResolvedValue({ exists: true, data: () => ({ organizationId: mockOrgId }) }),
+                };
             };
 
             return {
@@ -119,10 +114,7 @@ describe('Unified Tag Automation Flow', () => {
                     id: 'run_1', 
                     update: vi.fn().mockResolvedValue(undefined) 
                 }),
-                doc: vi.fn((docId?: string) => ({
-                    ...mockDoc,
-                    ref: getDocRef(docId || 'default')
-                }))
+                doc: vi.fn((docId?: string) => getDocRef(docId || 'default'))
             };
         });
 
@@ -159,30 +151,9 @@ describe('Unified Tag Automation Flow', () => {
         // Add a small delay to ensure all async operations complete
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // 4. Verify batch operations were called
-        expect(mockBatch.update).toHaveBeenCalled();
-        expect(mockBatch.commit).toHaveBeenCalled();
-        
-        // Verify batch.update was called twice (once for workspace_entities, once for legacy)
-        expect(mockBatch.update).toHaveBeenCalledTimes(2);
-        expect(mockBatch.commit).toHaveBeenCalledTimes(1);
-        
-        // Verify at least one call was for workspace_entities with workspaceTags
-        const calls = mockBatch.update.mock.calls;
-        const workspaceCall = calls.find((call: any) => 
-            call[1]?.workspaceTags !== undefined
-        );
-        expect(workspaceCall).toBeDefined();
-        expect(workspaceCall[1]).toMatchObject({
-            updatedAt: expect.any(String)
-        });
-        
-        // Verify at least one call was for legacy collection with tags
-        const legacyCall = calls.find((call: any) => 
-            call[1]?.tags !== undefined
-        );
-        expect(legacyCall).toBeDefined();
-        expect(legacyCall[1]).toMatchObject({
+        // 4. Verify workspace_entities tag update (entity-only path, no legacy schools/prospects)
+        expect(mockWeDocRef.update).toHaveBeenCalled();
+        expect(mockWeDocRef.update.mock.calls[0][0]).toMatchObject({
             updatedAt: expect.any(String)
         });
     });

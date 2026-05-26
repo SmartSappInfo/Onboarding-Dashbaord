@@ -166,7 +166,7 @@ export default function AiEntityGenerator() {
             entitySlug: slug,
             userId: user.uid,
             workspaceId: workspaceId,
-            type: 'school_created',
+            type: 'entity_created',
             source: 'user_action',
             description: `AI architected new ${data.track} record for "${result.name}"`,
             metadata: { track: data.track, aiExplanation: result.explanation }

@@ -3,19 +3,41 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Zap, Target, Building, CheckSquare, Database, Globe, Play } from 'lucide-react';
+import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, DollarSign, ArrowRightLeft, Users, Link2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 const TRIGGER_ICONS: Record<string, any> = {
-    'SCHOOL_CREATED': Building,
-    'SCHOOL_STAGE_CHANGED': Zap,
-    'TASK_COMPLETED': CheckSquare,
-    'SURVEY_SUBMITTED': Database,
-    'PDF_SIGNED': Target,
-    'WEBHOOK_RECEIVED': Globe,
-    'MEETING_CREATED': Play,
+    ENTITY_CREATED: Building,
+    ENTITY_UPDATED: Building,
+    ENTITY_ASSIGNED: Users,
+    ENTITY_STAGE_CHANGED: Zap,
+    ENTITY_LINKED: Link2,
+    ENTITY_UNLINKED: Link2,
+    WORKSPACE_ENTITY_UPDATED: Building,
+    TASK_CREATED: CheckSquare,
+    TASK_COMPLETED: CheckSquare,
+    SURVEY_SUBMITTED: Database,
+    PDF_SIGNED: Target,
+    FORM_SUBMITTED: Database,
+    WEBHOOK_RECEIVED: Globe,
+    MEETING_CREATED: Play,
+    MEETING_REGISTRANT_ADDED: Users,
+    MEETING_REGISTRANT_ATTENDED: Play,
+    MEETING_REGISTRANT_NO_SHOW: Play,
+    TAG_ADDED: Tag,
+    TAG_REMOVED: Tag,
+    DEAL_CREATED: DollarSign,
+    DEAL_STAGE_CHANGED: ArrowRightLeft,
+    DEAL_STATUS_CHANGED: Zap,
+    DEAL_VALUE_CHANGED: DollarSign,
+    CAMPAIGN_PAGE_SUBMITTED: Globe,
+    CAMPAIGN_DELIVERED: Mail,
+    CAMPAIGN_FAILED: Mail,
+    CAMPAIGN_OPENED: Mail,
+    CAMPAIGN_CLICKED: Mail,
+    CAMPAIGN_NOT_DELIVERED: Mail,
 };
 
 /**

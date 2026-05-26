@@ -25,7 +25,6 @@ import {
     Play, 
     Maximize2,
     Minimize2,
-    Grid3X3,
     Info,
     Layers,
     Wand2,
@@ -172,8 +171,6 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                             <ToolBtn icon={Tag} label="Add Tag Condition" color="text-violet-600 bg-violet-50" onClick={() => addNode('tagConditionNode')} />
                             <ToolBtn icon={TagIcon} label="Add Tag Action" color="text-emerald-600 bg-emerald-50" onClick={() => addNode('tagActionNode')} />
                             <ToolBtn icon={Clock} label="Add Delay" color="text-purple-600 bg-purple-50" onClick={() => addNode('delayNode')} />
- <div className="h-px bg-border/50 mx-2 my-1" />
-                            <ToolBtn icon={Grid3X3} label="Auto Layout" onClick={() => {}} />
                             <ToolBtn 
                                 icon={isFullScreen ? Minimize2 : Maximize2} 
                                 label={isFullScreen ? "Exit Hub" : "Zen View"} 

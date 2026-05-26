@@ -131,7 +131,7 @@ export async function cloneSurvey(surveyId: string, userId: string) {
       organizationId: 'default',
       userId,
       workspaceId: '',
-      type: 'school_updated', // Using existing type for logging
+      type: 'entity_updated',
       source: 'user_action',
       description: `cloned survey "${originalData.title}" as "${newTitle}"`,
       metadata: { originalSurveyId: surveyId, newSurveyId: newSurveyRef.id }
@@ -186,7 +186,7 @@ export async function deleteSurveyAction(surveyId: string, userId: string) {
             organizationId: 'default',
             workspaceId: workspaceId || '',
             userId,
-            type: 'school_updated',
+            type: 'entity_updated',
             source: 'user_action',
             description: `deleted survey protocol: "${surveySnap.data()?.internalName || surveySnap.data()?.title}"`,
             metadata: { surveyId }
@@ -256,7 +256,7 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
             organizationId: 'default',
             userId,
             workspaceId: '',
-            type: 'school_updated',
+            type: 'entity_updated',
             source: 'user_action',
             description: `deleted ${responseIds.length} survey responses`,
             metadata: { surveyId, count: responseIds.length }

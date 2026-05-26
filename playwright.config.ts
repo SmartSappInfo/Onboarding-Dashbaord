@@ -40,10 +40,10 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:9002',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  // webServer: {
+  //   command: 'npm run dev',
+  //   url: 'http://localhost:9002',
+  //   reuseExistingServer: !process.env.CI,
+  //   timeout: 120 * 1000,
+  // },
 });

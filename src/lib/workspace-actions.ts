@@ -125,7 +125,7 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
                 organizationId: 'default',
                 userId,
                 workspaceId: 'system',
-                type: 'school_created',
+                type: 'workspace_created' as any,
                 source: 'user_action',
                 description: `architected new workspace: "${data.name}"`
             });

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import type { Meeting, Attendee, School } from '@/lib/types';
@@ -10,6 +11,7 @@ import {
     Baby,
     Clock,
     ArrowLeft,
+    ChevronLeft,
     Download,
     ShieldCheck,
     TrendingUp,
@@ -164,8 +166,10 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                 {/* Executive Header */}
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
  <div className="flex items-center gap-5">
- <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-12 w-12 rounded-2xl bg-card shadow-sm border border-border/50">
- <ArrowLeft className="h-5 w-5" />
+                        <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0">
+                            <Link href={`/admin/meetings/${meetingId}`}>
+                                <ChevronLeft className="h-5 w-5" />
+                            </Link>
                         </Button>
  <div className="text-left">
  <div className="flex items-center gap-3 mb-1">
@@ -180,8 +184,8 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
  <Settings2 className="mr-2 h-4 w-4" /> Edit Architecture
                         </Button>
                         {meeting.registrationEnabled && (
- <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/registrants`)} className="rounded-xl font-bold h-11 border-violet-500/20 text-violet-600 bg-violet-500/5 shadow-sm">
- <Users className="mr-2 h-4 w-4" /> View Registrants
+                            <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/invitations?tab=registrants`)} className="rounded-xl font-bold h-11 border-violet-500/20 text-violet-600 bg-violet-500/5 shadow-sm">
+                                <Users className="mr-2 h-4 w-4" /> View Registrants
                             </Button>
                         )}
  <Button onClick={handleExport} disabled={isExporting || !attendees?.length} className="rounded-xl font-semibold shadow-xl shadow-primary/20 h-11 px-8 text-[10px] gap-2">

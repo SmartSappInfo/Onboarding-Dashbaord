@@ -38,7 +38,8 @@ import {
   Eye,
   Mail,
   MessageSquare,
-  Loader2
+  Loader2,
+  ChevronLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 import dynamic from 'next/dynamic';
@@ -342,18 +343,25 @@ export default function MeetingDetailPage() {
   const publicUrl = `/meetings/${meeting.type.slug}/${meeting.meetingSlug || meeting.entitySlug}`;
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto p-8 space-y-8">
+    <div className="h-full w-full overflow-y-auto bg-background p-8">
+      <div className="w-full space-y-8">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none mb-1">
-              {meeting.entityName}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {meeting.type.name} • {format(new Date(meeting.meetingTime), 'PPP p')}
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0">
+              <Link href="/admin/meetings">
+                <ChevronLeft className="h-5 w-5" />
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none mb-1">
+                {meeting.entityName}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {meeting.type.name} • {format(new Date(meeting.meetingTime), 'PPP p')}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Button asChild variant="outline" size="sm" className="rounded-full gap-2">
@@ -429,7 +437,7 @@ export default function MeetingDetailPage() {
                     </button>
 
                     <Link
-                      href={`/admin/meetings/${meetingId}/registrants`}
+                      href={`/admin/meetings/${meetingId}/invitations?tab=registrants`}
                       className="inline-flex items-center gap-1.5 text-sm font-bold text-foreground hover:text-primary transition-colors duration-150 hover:underline underline-offset-4"
                     >
                       {registrantsCount}
@@ -493,6 +501,38 @@ export default function MeetingDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
+              <CardHeader className="bg-muted/30 border-b">
+                <CardTitle className="text-sm font-semibold tracking-tight">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-2">
+                <Button asChild variant="outline" size="sm" className="w-full justify-start rounded-xl">
+                  <Link href={`/admin/meetings/${meetingId}/invitations`}>
+                    <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                    Invitations & Registrants
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" className="w-full justify-start rounded-xl">
+                  <Link href={`/admin/meetings/${meetingId}/results`}>
+                    <BarChart3 className="h-4 w-4 mr-2 text-muted-foreground" />
+                    View Intelligence
+                  </Link>
+                </Button>
+                
+                <Separator className="my-4" />
+                
+                <Button 
+                  variant={meeting.status === 'ended' ? "secondary" : "destructive"} 
+                  size="sm" 
+                  className="w-full justify-start font-semibold transition-all rounded-xl shadow-sm"
+                  onClick={handleEndMeeting}
+                  disabled={isEnding || meeting.status === 'ended'}
+                >
+                  <Flag className="h-4 w-4 mr-2" />
+                  {isEnding ? 'Ending...' : meeting.status === 'ended' ? 'Meeting Ended' : 'End Meeting & Follow-ups'}
+                </Button>
+              </CardContent>
+            </Card>
             {meeting.heroImageUrl && (
               <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
                 <img 
@@ -676,44 +716,7 @@ export default function MeetingDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
-              <CardHeader className="bg-muted/30 border-b">
-                <CardTitle className="text-sm font-semibold tracking-tight">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 space-y-2">
-                <Button asChild variant="outline" size="sm" className="w-full justify-start rounded-xl">
-                  <Link href={`/admin/meetings/${meetingId}/invitations`}>
-                    <Send className="h-4 w-4 mr-2 text-muted-foreground" />
-                    Manage Invitations & RSVPs
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="sm" className="w-full justify-start rounded-xl">
-                  <Link href={`/admin/meetings/${meetingId}/registrants`}>
-                    <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                    Manage Registrants
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="sm" className="w-full justify-start rounded-xl">
-                  <Link href={`/admin/meetings/${meetingId}/results`}>
-                    <BarChart3 className="h-4 w-4 mr-2 text-muted-foreground" />
-                    View Intelligence
-                  </Link>
-                </Button>
-                
-                <Separator className="my-4" />
-                
-                <Button 
-                  variant={meeting.status === 'ended' ? "secondary" : "destructive"} 
-                  size="sm" 
-                  className="w-full justify-start font-semibold transition-all rounded-xl shadow-sm"
-                  onClick={handleEndMeeting}
-                  disabled={isEnding || meeting.status === 'ended'}
-                >
-                  <Flag className="h-4 w-4 mr-2" />
-                  {isEnding ? 'Ending...' : meeting.status === 'ended' ? 'Meeting Ended' : 'End Meeting & Follow-ups'}
-                </Button>
-              </CardContent>
-            </Card>
+
           </div>
         </div>
       </div>

@@ -92,7 +92,7 @@ export async function createSurveyFromAiAction({ surveyData, resultPages, worksp
             organizationId: 'default',
             userId,
             workspaceId,
-            type: 'school_updated', // Reusing existing type
+            type: 'entity_updated',
             source: 'ai_design_partner',
             description: `AI Partner composed and saved new survey blueprint: "${newSurvey.title}"`,
             metadata: { surveyId: docRef.id, source: 'ai_composer' }

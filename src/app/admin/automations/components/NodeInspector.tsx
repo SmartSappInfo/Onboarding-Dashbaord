@@ -36,34 +36,96 @@ import { useToast } from '@/hooks/use-toast';
 import { useParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
+import { useTerminology } from '@/hooks/use-terminology';
+import type { AutomationTrigger } from '@/lib/types';
 
 interface NodeInspectorProps {
     node: any;
     onUpdate: (data: any) => void;
 }
 
-const TRIGGER_OPTIONS = [
-    { value: 'SCHOOL_CREATED', label: 'Institutional Signup', icon: Building, desc: 'Fires when a new school joins the hub.' },
-    { value: 'SCHOOL_STAGE_CHANGED', label: 'Workflow Progression', icon: Zap, desc: 'Fires when a hub moves across the Kanban board.' },
-    { value: 'TASK_COMPLETED', label: 'Protocol Resolution', icon: CheckSquare, desc: 'Fires when an admin finishes a CRM task.' },
-    { value: 'SURVEY_SUBMITTED', label: 'Intelligence Submission', icon: Database, desc: 'Fires upon survey form completion.' },
-    { value: 'PDF_SIGNED', label: 'Agreement Execution', icon: Target, desc: 'Fires when a legal PDF is fully signed.' },
-    { value: 'MEETING_CREATED', label: 'Session Initialization', icon: Play, desc: 'Fires when a new meeting is scheduled.' },
-    { value: 'WEBHOOK_RECEIVED', label: 'External Ingress', icon: Globe, desc: 'Fires when data is POSTed to the hub endpoint.' },
-    { value: 'DEAL_CREATED', label: 'Deal Initialized', icon: Target, desc: 'Fires when a new deal is created.' },
-    { value: 'DEAL_STAGE_CHANGED', label: 'Deal Stage Advanced', icon: ArrowRightLeft, desc: 'Fires when a deal progresses to another stage.' },
-    { value: 'DEAL_STATUS_CHANGED', label: 'Deal Status Updated', icon: Zap, desc: 'Fires when a deal is Won, Lost, or Opened.' },
-    { value: 'DEAL_VALUE_CHANGED', label: 'Deal Value Modified', icon: DollarSign, desc: 'Fires when a deal\'s estimated value changes.' }
+const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; label: string; icon: typeof Building; desc: string }[] }[] = [
+    {
+        label: 'Entities',
+        options: [
+            { value: 'ENTITY_CREATED', label: 'Entity Created', icon: Building, desc: 'Fires when a new entity is added to the workspace.' },
+            { value: 'ENTITY_UPDATED', label: 'Entity Updated', icon: Building, desc: 'Fires when entity identity or profile fields change.' },
+            { value: 'ENTITY_ASSIGNED', label: 'Entity Assigned', icon: Building, desc: 'Fires when ownership is assigned.' },
+            { value: 'ENTITY_STAGE_CHANGED', label: 'Pipeline Stage Changed', icon: Zap, desc: 'Fires when an entity moves on the Kanban board.' },
+            { value: 'ENTITY_LINKED', label: 'Entity Linked', icon: Building, desc: 'Fires when an entity is linked to a workspace.' },
+            { value: 'ENTITY_UNLINKED', label: 'Entity Unlinked', icon: Building, desc: 'Fires when an entity is removed from a workspace.' },
+            { value: 'WORKSPACE_ENTITY_UPDATED', label: 'Workspace Entity Updated', icon: Building, desc: 'Fires when workspace-scoped fields change.' },
+        ],
+    },
+    {
+        label: 'Pipeline & Deals',
+        options: [
+            { value: 'DEAL_CREATED', label: 'Deal Created', icon: Target, desc: 'Fires when a new deal is created.' },
+            { value: 'DEAL_STAGE_CHANGED', label: 'Deal Stage Changed', icon: ArrowRightLeft, desc: 'Fires when a deal moves stages.' },
+            { value: 'DEAL_STATUS_CHANGED', label: 'Deal Status Changed', icon: Zap, desc: 'Fires when a deal is won, lost, or reopened.' },
+            { value: 'DEAL_VALUE_CHANGED', label: 'Deal Value Changed', icon: DollarSign, desc: 'Fires when deal value changes.' },
+        ],
+    },
+    {
+        label: 'Engagement',
+        options: [
+            { value: 'FORM_SUBMITTED', label: 'Form Submitted', icon: Database, desc: 'Fires when a workspace form is submitted.' },
+            { value: 'SURVEY_SUBMITTED', label: 'Survey Submitted', icon: Database, desc: 'Fires when a survey is completed.' },
+            { value: 'PDF_SIGNED', label: 'Document Signed', icon: Target, desc: 'Fires when a PDF agreement is fully signed.' },
+            { value: 'CAMPAIGN_PAGE_SUBMITTED', label: 'Campaign Page Conversion', icon: Globe, desc: 'Fires when a landing page form converts.' },
+        ],
+    },
+    {
+        label: 'Meetings',
+        options: [
+            { value: 'MEETING_CREATED', label: 'Meeting Scheduled', icon: Play, desc: 'Fires when a meeting is created.' },
+            { value: 'MEETING_REGISTRANT_ADDED', label: 'Registrant Added', icon: Play, desc: 'Fires when someone registers for a meeting.' },
+            { value: 'MEETING_REGISTRANT_ATTENDED', label: 'Registrant Attended', icon: Play, desc: 'Fires when a registrant joins the session.' },
+            { value: 'MEETING_REGISTRANT_NO_SHOW', label: 'Registrant No-Show', icon: Play, desc: 'Fires when marked as no-show.' },
+        ],
+    },
+    {
+        label: 'Tasks & Tags',
+        options: [
+            { value: 'TASK_CREATED', label: 'Task Created', icon: CheckSquare, desc: 'Fires when a CRM task is created.' },
+            { value: 'TASK_COMPLETED', label: 'Task Completed', icon: CheckSquare, desc: 'Fires when a task is marked done.' },
+            { value: 'TAG_ADDED', label: 'Tag Added', icon: Tag, desc: 'Fires when a tag is applied to an entity.' },
+            { value: 'TAG_REMOVED', label: 'Tag Removed', icon: Tag, desc: 'Fires when a tag is removed.' },
+        ],
+    },
+    {
+        label: 'Campaigns',
+        options: [
+            { value: 'CAMPAIGN_DELIVERED', label: 'Campaign Delivered', icon: Mail, desc: 'Fires per entity when campaign email is delivered.' },
+            { value: 'CAMPAIGN_FAILED', label: 'Campaign Failed', icon: Mail, desc: 'Fires when delivery fails.' },
+            { value: 'CAMPAIGN_NOT_DELIVERED', label: 'Campaign Not Delivered', icon: Mail, desc: 'Fires when message was not delivered.' },
+            { value: 'CAMPAIGN_OPENED', label: 'Campaign Opened', icon: Mail, desc: 'Fires when recipient opens email.' },
+            { value: 'CAMPAIGN_CLICKED', label: 'Campaign Clicked', icon: Mail, desc: 'Fires when recipient clicks a link.' },
+        ],
+    },
+    {
+        label: 'Integrations',
+        options: [
+            { value: 'WEBHOOK_RECEIVED', label: 'Webhook Received', icon: Globe, desc: 'Fires when data is POSTed to this automation endpoint.' },
+        ],
+    },
 ];
+
+const TRIGGER_OPTIONS = TRIGGER_GROUPS.flatMap((g) => g.options);
 
 const ACTION_TYPES = [
     { value: 'SEND_MESSAGE', label: 'Dispatch Message', icon: Mail, desc: 'Send an automated Email or SMS.' },
-    { value: 'CREATE_TASK', label: 'Initialize Task', icon: Clock, desc: 'Add a new mission to the CRM registry.' },
-    { value: 'UPDATE_SCHOOL', label: 'Mutate School Record', icon: Building, desc: 'Automatically advance stages or status.' },
-    { value: 'CREATE_DEAL', label: 'Create New Deal', icon: Target, desc: 'Generate a new active deal in a pipeline.' },
-    { value: 'UPDATE_DEAL_STAGE', label: 'Update Deal Stage', icon: ArrowRightLeft, desc: 'Progress a deal to another stage.' },
-    { value: 'UPDATE_DEAL_VALUE', label: 'Update Deal Value', icon: DollarSign, desc: 'Change estimated financial value.' },
-    { value: 'UPDATE_DEAL_STATUS', label: 'Update Deal Status', icon: Zap, desc: 'Change deal status (Won, Lost, Open).' }
+    { value: 'CREATE_TASK', label: 'Initialize Task', icon: Clock, desc: 'Add a new task to the CRM.' },
+    { value: 'UPDATE_ENTITY', label: 'Update Entity', icon: Building, desc: 'Update pipeline stage, assignee, or status.' },
+    { value: 'ASSIGN_ENTITY', label: 'Assign Entity', icon: Building, desc: 'Set the workspace assignee.' },
+    { value: 'ADD_NOTE', label: 'Add Note', icon: Database, desc: 'Append a note to the entity timeline.' },
+    { value: 'CREATE_DEAL', label: 'Create Deal', icon: Target, desc: 'Create a new deal in a pipeline.' },
+    { value: 'UPDATE_DEAL_STAGE', label: 'Update Deal Stage', icon: ArrowRightLeft, desc: 'Move a deal to another stage.' },
+    { value: 'UPDATE_DEAL_VALUE', label: 'Update Deal Value', icon: DollarSign, desc: 'Change deal value.' },
+    { value: 'UPDATE_DEAL_STATUS', label: 'Update Deal Status', icon: Zap, desc: 'Set deal won, lost, or open.' },
+    { value: 'UPDATE_TASK', label: 'Update Task', icon: CheckSquare, desc: 'Change task status or assignee.' },
+    { value: 'TRIGGER_OUTBOUND_WEBHOOK', label: 'Call Webhook', icon: Globe, desc: 'POST payload to an outbound webhook.' },
+    { value: 'RUN_AUTOMATION', label: 'Run Automation', icon: Zap, desc: 'Chain another automation by ID.' },
 ];
 
 const CONDITION_OPERATORS = [
@@ -77,6 +139,7 @@ const CONDITION_OPERATORS = [
 export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { singular } = useTerminology();
     const params = useParams();
     const automationId = params.id as string;
     const data = node.data || {};
@@ -105,14 +168,28 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
         firestore ? query(collection(firestore, 'tags'), orderBy('name', 'asc')) : null,
     [firestore]);
 
+    const formsQuery = useMemoFirebase(() =>
+        firestore ? query(collection(firestore, 'forms'), orderBy('name', 'asc')) : null,
+    [firestore]);
+
+    const surveysQuery = useMemoFirebase(() =>
+        firestore ? query(collection(firestore, 'surveys'), orderBy('internalName', 'asc')) : null,
+    [firestore]);
+
     const { data: users } = useCollection<UserProfile>(usersQuery);
     const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
     const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
     const { data: allTags } = useCollection<TagType>(tagsQuery);
+    const { data: forms } = useCollection<{ id: string; name?: string; title?: string }>(formsQuery);
+    const { data: surveys } = useCollection<{ id: string; internalName?: string; title?: string }>(surveysQuery);
 
     const updateConfig = (updates: any) => {
         onUpdate({ config: { ...config, ...updates } });
+    };
+
+    const updateTagNodeData = (updates: Record<string, unknown>) => {
+        onUpdate(updates);
     };
 
     const webhookUrl = React.useMemo(() => {
@@ -132,7 +209,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
     const inferredCategory = React.useMemo(() => {
         const trigger = data.trigger;
         if (trigger === 'SURVEY_SUBMITTED') return 'surveys';
-        if (trigger === 'SCHOOL_CREATED' || trigger === 'SCHOOL_STAGE_CHANGED') return 'onboarding';
+        if (trigger === 'ENTITY_CREATED' || trigger === 'ENTITY_STAGE_CHANGED') return 'onboarding';
         if (trigger === 'WEBHOOK_RECEIVED') return 'forms'; // Often used for forms
         return 'onboarding'; // Default to onboarding as it's the largest category
     }, [data.trigger]);
@@ -165,28 +242,38 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                 <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
                                     <Zap className="h-3 w-3" /> Event Protocol Entry
                                 </Label>
-                                <div className="grid grid-cols-1 gap-2.5">
-                                    {TRIGGER_OPTIONS.map(trigger => (
-                                        <button
-                                            key={trigger.value}
-                                            type="button"
-                                            onClick={() => onUpdate({ trigger: trigger.value, label: trigger.label })}
-                                            className={cn(
-                                                "flex items-start gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
-                                                data.trigger === trigger.value ? "border-emerald-500 bg-emerald-500/10 shadow-md" : "border-transparent bg-background hover:bg-card/50"
-                                            )}
-                                        >
-                                            <div className={cn(
-                                                "p-2.5 rounded-xl transition-all shadow-sm shrink-0",
-                                                data.trigger === trigger.value ? "bg-emerald-500 text-white" : "bg-card text-muted-foreground"
-                                            )}>
-                                                <trigger.icon className="h-4 w-4" />
+                                <div className="space-y-6">
+                                    {TRIGGER_GROUPS.map((group) => (
+                                        <div key={group.label} className="space-y-2">
+                                            <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-1">{group.label}</p>
+                                            <div className="grid grid-cols-1 gap-2">
+                                                {group.options.map((trigger) => (
+                                                    <button
+                                                        key={trigger.value}
+                                                        type="button"
+                                                        onClick={() => onUpdate({
+                                                            trigger: trigger.value,
+                                                            label: trigger.value === 'ENTITY_CREATED' ? `${singular} Created` : trigger.label
+                                                        })}
+                                                        className={cn(
+                                                            "flex items-start gap-4 p-3 rounded-2xl border-2 transition-all text-left group",
+                                                            data.trigger === trigger.value ? "border-emerald-500 bg-emerald-500/10 shadow-md" : "border-transparent bg-background hover:bg-card/50"
+                                                        )}
+                                                    >
+                                                        <div className={cn(
+                                                            "p-2 rounded-xl transition-all shadow-sm shrink-0",
+                                                            data.trigger === trigger.value ? "bg-emerald-500 text-white" : "bg-card text-muted-foreground"
+                                                        )}>
+                                                            <trigger.icon className="h-4 w-4" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-semibold text-xs tracking-tight leading-none mb-1">{trigger.label}</p>
+                                                            <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">{trigger.desc}</p>
+                                                        </div>
+                                                    </button>
+                                                ))}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-xs tracking-tight leading-none mb-1">{trigger.label}</p>
-                                                <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">{trigger.desc}</p>
-                                            </div>
-                                        </button>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -265,7 +352,72 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                 </div>
                             )}
 
-                            {data.trigger === 'DEAL_STAGE_CHANGED' && (
+                            {data.trigger === 'FORM_SUBMITTED' && (
+                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-blue-500/5 p-6 rounded-[2rem] border border-blue-500/20 shadow-inner">
+                                    <Label className="text-[10px] font-semibold text-blue-600 flex items-center gap-2">
+                                        <Database className="h-3 w-3" /> Filter by Form
+                                    </Label>
+                                    <Select
+                                        value={config.formId || 'all_forms'}
+                                        onValueChange={(v) => updateConfig({ formId: v === 'all_forms' ? null : v })}
+                                    >
+                                        <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                            <SelectValue placeholder="All forms" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
+                                            <SelectItem value="all_forms" className="rounded-lg p-2 font-semibold">All Forms</SelectItem>
+                                            {(forms || []).map((f) => (
+                                                <SelectItem key={f.id} value={f.id} className="rounded-lg p-2 font-semibold">
+                                                    {f.name || f.title || f.id}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {data.trigger === 'SURVEY_SUBMITTED' && (
+                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-blue-500/5 p-6 rounded-[2rem] border border-blue-500/20 shadow-inner">
+                                    <Label className="text-[10px] font-semibold text-blue-600 flex items-center gap-2">
+                                        <Database className="h-3 w-3" /> Filter by Survey
+                                    </Label>
+                                    <Select
+                                        value={config.surveyId || 'all_surveys'}
+                                        onValueChange={(v) => updateConfig({ surveyId: v === 'all_surveys' ? null : v })}
+                                    >
+                                        <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                            <SelectValue placeholder="All surveys" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
+                                            <SelectItem value="all_surveys" className="rounded-lg p-2 font-semibold">All Surveys</SelectItem>
+                                            {(surveys || []).map((s) => (
+                                                <SelectItem key={s.id} value={s.id} className="rounded-lg p-2 font-semibold">
+                                                    {s.internalName || s.title || s.id}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {(data.trigger === 'MEETING_CREATED' ||
+                                data.trigger === 'MEETING_REGISTRANT_ADDED' ||
+                                data.trigger === 'MEETING_REGISTRANT_ATTENDED' ||
+                                data.trigger === 'MEETING_REGISTRANT_NO_SHOW') && (
+                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-indigo-500/5 p-6 rounded-[2rem] border border-indigo-500/20 shadow-inner">
+                                    <Label className="text-[10px] font-semibold text-indigo-600 flex items-center gap-2">
+                                        <Play className="h-3 w-3" /> Meeting Type ID
+                                    </Label>
+                                    <Input
+                                        value={config.meetingTypeId || ''}
+                                        onChange={(e) => updateConfig({ meetingTypeId: e.target.value || null })}
+                                        placeholder="Leave empty for all meeting types"
+                                        className="h-10 rounded-xl bg-background border-none font-mono text-xs shadow-inner"
+                                    />
+                                </div>
+                            )}
+
+                            {(data.trigger === 'ENTITY_STAGE_CHANGED' || data.trigger === 'DEAL_STAGE_CHANGED') && (
                                 <div className="space-y-6 animate-in slide-in-from-top-2 duration-500 bg-primary/5 p-6 rounded-[2rem] border border-primary/20 shadow-inner">
                                     <div className="space-y-4">
                                         <div className="space-y-2">
@@ -352,10 +504,27 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                 {data.actionType === 'SEND_MESSAGE' && (
                                     <div className="space-y-6">
                                         <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
+                                                <Smartphone className="h-3 w-3" /> Channel
+                                            </Label>
+                                            <Select
+                                                value={config.channel || 'email'}
+                                                onValueChange={(v) => updateConfig({ channel: v })}
+                                            >
+                                                <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-bold px-4">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="email">Email</SelectItem>
+                                                    <SelectItem value="sms">SMS</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Master Template</Label>
                                             <MessagingTemplateSelector 
                                                 category={inferredCategory as any}
-                                                channel="email"
+                                                channel={(config.channel as 'email' | 'sms') || 'email'}
                                                 recipientType={config.recipientType || 'manager'}
                                                 value={config.templateId}
                                                 onValueChange={(v) => updateConfig({ templateId: v })}
@@ -363,6 +532,26 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                 className="h-12 rounded-xl bg-card border shadow-sm font-bold px-4 text-xs"
                                             />
                                         </div>
+                                        {(variables?.length ?? 0) > 0 && (
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Template variables</Label>
+                                                <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-muted/30 border">
+                                                    {variables!.slice(0, 12).map((v) => (
+                                                        <Badge
+                                                            key={v.id}
+                                                            variant="outline"
+                                                            className="text-[9px] font-mono cursor-pointer"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(`{{${v.key}}}`);
+                                                                toast({ title: 'Copied', description: v.key });
+                                                            }}
+                                                        >
+                                                            {`{{${v.key}}}`}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Dynamic Recipient</Label>
                                             <Select value={config.recipientType || 'manager'} onValueChange={(v) => updateConfig({ recipientType: v })}>
@@ -396,7 +585,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Task Definition</Label>
                                             <Input 
-                                                placeholder="e.g. Finalize enrollment for {{school_name}}" 
+                                                placeholder={`e.g. Follow up with {{entity_name}}`} 
                                                 value={config.title || ''} 
                                                 onChange={(e) => updateConfig({ title: e.target.value })} 
                                                 className="h-12 rounded-xl bg-card border shadow-sm font-bold"
@@ -432,7 +621,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assigned Identity</Label>
                                             <Select value={config.assignedTo || 'auto'} onValueChange={(v) => updateConfig({ assignedTo: v })}>
                                                 <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
-                                                    <SelectValue placeholder="Auto-Resolve from School" />
+                                                    <SelectValue placeholder="Auto-Resolve from Entity" />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
                                                     <SelectItem value="auto" className="font-semibold italic text-primary rounded-lg py-2.5">Auto-Resolve (Manager)</SelectItem>
@@ -442,6 +631,119 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                 </SelectContent>
                                             </Select>
                                         </div>
+                                    </div>
+                                )}
+
+                                {data.actionType === 'UPDATE_ENTITY' && (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Pipeline</Label>
+                                            <Select value={config.pipelineId || ''} onValueChange={(val) => updateConfig({ pipelineId: val, stageId: '' })}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                                                    <SelectValue placeholder="Select pipeline..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                                                    {pipelines?.map(p => (
+                                                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Stage</Label>
+                                            <Select value={config.stageId || ''} onValueChange={(val) => updateConfig({ stageId: val })} disabled={!config.pipelineId}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                                                    <SelectValue placeholder="Select stage..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                                                    {stages?.filter(s => s.pipelineId === config.pipelineId).map(s => (
+                                                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assignee</Label>
+                                            <Select value={config.assignedTo || 'auto'} onValueChange={(v) => updateConfig({ assignedTo: v })}>
+                                                <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                                                    <SelectValue placeholder="Auto-Resolve" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
+                                                    <SelectItem value="auto" className="font-semibold italic text-primary rounded-lg py-2.5">Auto-Resolve (Manager)</SelectItem>
+                                                    {users?.map(u => (
+                                                        <SelectItem key={u.id} value={u.id} className="rounded-lg py-2.5">{u.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {data.actionType === 'ASSIGN_ENTITY' && (
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assign To</Label>
+                                        <Select value={config.assignedTo || 'auto'} onValueChange={(v) => updateConfig({ assignedTo: v })}>
+                                            <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl p-2 max-h-[300px] overflow-y-auto">
+                                                <SelectItem value="auto">Auto-Resolve (Manager)</SelectItem>
+                                                {users?.map(u => (
+                                                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+
+                                {data.actionType === 'ADD_NOTE' && (
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Note Content</Label>
+                                        <Input
+                                            placeholder="e.g. Automated follow-up for {{entity_name}}"
+                                            value={config.content || ''}
+                                            onChange={(e) => updateConfig({ content: e.target.value })}
+                                            className="h-12 rounded-xl bg-card border shadow-sm font-bold"
+                                        />
+                                    </div>
+                                )}
+
+                                {data.actionType === 'TRIGGER_OUTBOUND_WEBHOOK' && (
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Webhook ID</Label>
+                                        <Input
+                                            placeholder="Firestore webhook document ID"
+                                            value={config.webhookId || ''}
+                                            onChange={(e) => updateConfig({ webhookId: e.target.value })}
+                                            className="h-12 rounded-xl bg-card border font-mono text-sm"
+                                        />
+                                    </div>
+                                )}
+
+                                {data.actionType === 'UPDATE_TASK' && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Status</Label>
+                                            <Select value={config.status || ''} onValueChange={(v) => updateConfig({ status: v })}>
+                                                <SelectTrigger className="h-10 rounded-xl bg-card font-bold"><SelectValue placeholder="Optional" /></SelectTrigger>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="todo">To Do</SelectItem>
+                                                    <SelectItem value="in_progress">In Progress</SelectItem>
+                                                    <SelectItem value="done">Done</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {data.actionType === 'RUN_AUTOMATION' && (
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Automation ID</Label>
+                                        <Input
+                                            value={config.automationId || ''}
+                                            onChange={(e) => updateConfig({ automationId: e.target.value })}
+                                            className="h-12 rounded-xl bg-card border font-mono text-sm"
+                                        />
                                     </div>
                                 )}
 
@@ -577,6 +879,198 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {node.type === 'conditionNode' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 bg-amber-500/5 p-6 rounded-[2rem] border border-amber-500/20 shadow-inner">
+                            <Label className="text-[10px] font-semibold text-amber-600 flex items-center gap-2">
+                                <ArrowRightLeft className="h-3 w-3" /> Condition Rule
+                            </Label>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Payload Field</Label>
+                                <Input
+                                    value={config.field || ''}
+                                    onChange={(e) => updateConfig({ field: e.target.value })}
+                                    placeholder="e.g. entityType, tagId, status"
+                                    className="h-10 rounded-xl bg-background border-none font-mono text-xs shadow-inner"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Operator</Label>
+                                <Select value={config.operator || ''} onValueChange={(v) => updateConfig({ operator: v })}>
+                                    <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                        <SelectValue placeholder="Select operator..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        {CONDITION_OPERATORS.map((op) => (
+                                            <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Compare Value</Label>
+                                <Input
+                                    value={config.value ?? ''}
+                                    onChange={(e) => updateConfig({ value: e.target.value })}
+                                    placeholder="Value to compare against"
+                                    className="h-10 rounded-xl bg-background border-none shadow-inner"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {node.type === 'delayNode' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 bg-purple-500/5 p-6 rounded-[2rem] border border-purple-500/20 shadow-inner">
+                            <Label className="text-[10px] font-semibold text-purple-600 flex items-center gap-2">
+                                <Timer className="h-3 w-3" /> Wait Duration
+                            </Label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Amount</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        value={config.value ?? 5}
+                                        onChange={(e) => updateConfig({ value: Number(e.target.value) || 1 })}
+                                        className="h-10 rounded-xl bg-background border-none shadow-inner"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Unit</Label>
+                                    <Select
+                                        value={config.unit || 'Minutes'}
+                                        onValueChange={(v) => updateConfig({ unit: v })}
+                                    >
+                                        <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="Minutes">Minutes</SelectItem>
+                                            <SelectItem value="Hours">Hours</SelectItem>
+                                            <SelectItem value="Days">Days</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {node.type === 'tagConditionNode' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 bg-violet-500/5 p-6 rounded-[2rem] border border-violet-500/20 shadow-inner">
+                            <Label className="text-[10px] font-semibold text-violet-600 flex items-center gap-2">
+                                <Tag className="h-3 w-3" /> Tag Logic
+                            </Label>
+                            <Select value={data.logic || ''} onValueChange={(v) => updateTagNodeData({ logic: v })}>
+                                <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                    <SelectValue placeholder="Select logic..." />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="has_tag">Has any of these tags</SelectItem>
+                                    <SelectItem value="has_all_tags">Has all of these tags</SelectItem>
+                                    <SelectItem value="not_has_tag">Does not have these tags</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Tags</Label>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {(data.tagIds || []).map((id: string) => {
+                                        const tag = allTags?.find((t: TagType) => t.id === id);
+                                        return (
+                                            <Badge key={id} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-violet-500/10 text-violet-600 border-none">
+                                                <span className="text-[10px] font-bold">{tag?.name || id}</span>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-4 w-4 rounded-md"
+                                                    onClick={() =>
+                                                        updateTagNodeData({
+                                                            tagIds: (data.tagIds || []).filter((t: string) => t !== id),
+                                                        })
+                                                    }
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </Badge>
+                                        );
+                                    })}
+                                </div>
+                                <Select
+                                    value=""
+                                    onValueChange={(v) => {
+                                        const current = data.tagIds || [];
+                                        if (!current.includes(v)) updateTagNodeData({ tagIds: [...current, v] });
+                                    }}
+                                >
+                                    <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                        <SelectValue placeholder="Add tags..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                                        {(allTags || []).map((tag: TagType) => (
+                                            <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    )}
+
+                    {node.type === 'tagActionNode' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">
+                            <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                                <Tag className="h-3 w-3" /> Tag Action
+                            </Label>
+                            <Select value={data.action || 'add_tags'} onValueChange={(v) => updateTagNodeData({ action: v })}>
+                                <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="add_tags">Add tags</SelectItem>
+                                    <SelectItem value="remove_tags">Remove tags</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Tags</Label>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {(data.tagIds || []).map((id: string) => {
+                                        const tag = allTags?.find((t: TagType) => t.id === id);
+                                        return (
+                                            <Badge key={id} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 border-none">
+                                                <span className="text-[10px] font-bold">{tag?.name || id}</span>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-4 w-4 rounded-md"
+                                                    onClick={() =>
+                                                        updateTagNodeData({
+                                                            tagIds: (data.tagIds || []).filter((t: string) => t !== id),
+                                                        })
+                                                    }
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </Badge>
+                                        );
+                                    })}
+                                </div>
+                                <Select
+                                    value=""
+                                    onValueChange={(v) => {
+                                        const current = data.tagIds || [];
+                                        if (!current.includes(v)) updateTagNodeData({ tagIds: [...current, v] });
+                                    }}
+                                >
+                                    <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                        <SelectValue placeholder="Add tags..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                                        {(allTags || []).map((tag: TagType) => (
+                                            <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     )}

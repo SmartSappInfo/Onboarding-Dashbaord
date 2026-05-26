@@ -10,7 +10,8 @@ import type { EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
 import { normalizeContactType } from './entity-contact-helpers';
 import { resolveFieldStorageBucket } from './field-storage-utils';
-import { cleanBatch, type CleaningStats } from './import-data-cleaner';
+import { cleanBatch, cleanValueByKey, type CleaningStats } from './import-data-cleaner';
+import { evaluateFormula } from './formula-parser';
 import { buildTagDocument } from './tag-schemas';
 import { isDealImportConfig, type DealImportConfig } from './import-types';
 import { buildDealDocument, resolveDealName } from './deal-writer';
@@ -302,6 +303,7 @@ export async function processImportChunkBackground(importLogId: string): Promise
         manualTagNames = [] as string[],
         workspaceIndustry = 'SaaS',
         defaultCountryCode = 'GH',
+        enableTitleCase = false,
     } = cfg;
 
     // Fetch resolution context once per chunk (zones, tags, users, etc.)
@@ -353,19 +355,9 @@ export async function processImportChunkBackground(importLogId: string): Promise
     for (const pendingDoc of pendingSnap.docs) {
         const { rowIdx, rawPayload } = pendingDoc.data();
         try {
-            const nameHeader = mapping['name'];
-            const isMapped = nameHeader && nameHeader !== 'none';
-            let rawName = isMapped ? rawPayload[nameHeader] : undefined;
-            if (rawName === undefined || rawName === null || rawName === '') {
-                rawName = defaultValues?.['name'];
-            }
-
+            let rawName = resolveMappedValue('name', rawPayload, mapping, defaultValues);
             if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
-                const contactHeader = mapping['contact_0_name'];
-                let contactName = (contactHeader && contactHeader !== 'none') ? rawPayload[contactHeader] : undefined;
-                if (contactName === undefined || contactName === null || contactName === '') {
-                    contactName = defaultValues?.['contact_0_name'];
-                }
+                const contactName = resolveMappedValue('contact_0_name', rawPayload, mapping, defaultValues);
                 if (contactName && typeof contactName === 'string' && contactName.trim()) {
                     rawName = contactName.trim();
                 } else {
@@ -373,7 +365,7 @@ export async function processImportChunkBackground(importLogId: string): Promise
                 }
             }
 
-            const name = rawName.trim();
+            const name = cleanValueByKey('name', rawName.trim(), defaultCountryCode, enableTitleCase);
             const normalised = normaliseName(name);
 
             const extracted = await processRow(
@@ -381,7 +373,7 @@ export async function processImportChunkBackground(importLogId: string): Promise
                 workspaceIndustry, importLog.workspaceId, importLog.organizationId,
                 importLog.userId, importLog.filename, autoCreateTags,
                 defaultValues, globalTagIds, automationId ?? undefined, manualTagNames,
-                defaultCountryCode
+                defaultCountryCode, enableTitleCase
             );
 
             const normalisedEmail = extracted.workspaceEntityDoc.primaryEmail?.toLowerCase().trim();
@@ -536,6 +528,23 @@ export async function processImportChunkBackground(importLogId: string): Promise
 
 // ─── Per-Row Processing (Internal) ───────────────────────────────────────────
 
+function resolveMappedValue(
+    key: string,
+    payload: any,
+    mapping: Record<string, string>,
+    defaultValues: Record<string, string> = {}
+): string {
+    const col = mapping[key];
+    if (!col) return defaultValues[key] || '';
+    if (col.includes('{{')) {
+        return String(evaluateFormula(col, payload) || defaultValues[key] || '');
+    }
+    const val = (payload[col] !== undefined && payload[col] !== null) ? String(payload[col]).trim() : '';
+    return val || defaultValues[key] || '';
+}
+
+// ─── Per-Row Processing (Internal) ───────────────────────────────────────────
+
 async function processRow(
     row: any,
     mapping: Record<string, string>,
@@ -552,13 +561,13 @@ async function processRow(
     globalTagIds: string[] = [],
     automationId?: string,
     manualTagNames: string[] = [],
-    defaultCountryCode: string = 'GH'
+    defaultCountryCode: string = 'GH',
+    enableTitleCase: boolean = false
 ): Promise<any> {
     const getValue = (key: string) => {
-        const header = mapping[key];
-        const rawVal = (!header || header === 'none') ? undefined : row[header];
-        if (rawVal === undefined || rawVal === null || rawVal === '') {
-            return defaultValues[key];
+        const rawVal = resolveMappedValue(key, row, mapping, defaultValues);
+        if (rawVal !== undefined && rawVal !== null) {
+            return cleanValueByKey(key, rawVal, defaultCountryCode, enableTitleCase);
         }
         return rawVal;
     };
@@ -1122,6 +1131,7 @@ export async function resolveDuplicatesAction(
         manualTagNames = [] as string[],
         workspaceIndustry = 'SaaS',
         defaultCountryCode = 'GH',
+        enableTitleCase = false,
     } = cfg;
 
     const resolutionTags = globalTagIds.length > 0 ? globalTagIds : cfgGlobalTagIds;
@@ -1201,19 +1211,9 @@ export async function resolveDuplicatesAction(
                 if (strategy === 'MANUAL_CORRECTION' || strategy === 'CREATE_NEW') {
                     const payload = strategy === 'MANUAL_CORRECTION' ? (customPayload || dupData?.rawPayload) : dupData?.rawPayload;
 
-                    const nameHeader = mapping['name'];
-                    const isMapped = nameHeader && nameHeader !== 'none';
-                    let rawName = isMapped ? payload[nameHeader] : undefined;
-                    if (rawName === undefined || rawName === null || rawName === '') {
-                        rawName = defaultValues?.['name'];
-                    }
-
+                    let rawName = resolveMappedValue('name', payload, mapping, defaultValues);
                     if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
-                        const contactHeader = mapping['contact_0_name'];
-                        let contactName = (contactHeader && contactHeader !== 'none') ? payload[contactHeader] : undefined;
-                        if (contactName === undefined || contactName === null || contactName === '') {
-                            contactName = defaultValues?.['contact_0_name'];
-                        }
+                        const contactName = resolveMappedValue('contact_0_name', payload, mapping, defaultValues);
                         if (contactName && typeof contactName === 'string' && contactName.trim()) {
                             rawName = contactName.trim();
                         } else {
@@ -1221,14 +1221,14 @@ export async function resolveDuplicatesAction(
                         }
                     }
 
-                    const name = rawName.trim();
+                    const name = cleanValueByKey('name', rawName.trim(), defaultCountryCode, enableTitleCase);
 
                     const extracted = await processRow(
                         payload, mapping, name, importLog.entityType, context,
                         workspaceIndustry, importLog.workspaceId, importLog.organizationId,
                         importLog.userId, importLog.filename, autoCreateTags,
                         defaultValues, tagIds || effectiveResolutionTags, automationId ?? undefined, manualTagNames,
-                        defaultCountryCode
+                        defaultCountryCode, enableTitleCase
                     );
 
                     transaction.set(adminDb.collection('entities').doc(extracted.entityId), extracted.entityDoc);
@@ -1247,19 +1247,9 @@ export async function resolveDuplicatesAction(
 
                         // 1. Process the raw row payload to get a clean structured workspaceEntityDoc
                         const payload = dupData?.rawPayload || {};
-                        const nameHeader = mapping['name'];
-                        const isMapped = nameHeader && nameHeader !== 'none';
-                        let rawName = isMapped ? payload[nameHeader] : undefined;
-                        if (rawName === undefined || rawName === null || rawName === '') {
-                            rawName = defaultValues?.['name'];
-                        }
-
+                        let rawName = resolveMappedValue('name', payload, mapping, defaultValues);
                         if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
-                            const contactHeader = mapping['contact_0_name'];
-                            let contactName = (contactHeader && contactHeader !== 'none') ? payload[contactHeader] : undefined;
-                            if (contactName === undefined || contactName === null || contactName === '') {
-                                contactName = defaultValues?.['contact_0_name'];
-                            }
+                            const contactName = resolveMappedValue('contact_0_name', payload, mapping, defaultValues);
                             if (contactName && typeof contactName === 'string' && contactName.trim()) {
                                 rawName = contactName.trim();
                             } else {
@@ -1267,14 +1257,14 @@ export async function resolveDuplicatesAction(
                             }
                         }
 
-                        const name = rawName.trim();
+                        const name = cleanValueByKey('name', rawName.trim(), defaultCountryCode, enableTitleCase);
 
                         const extracted = await processRow(
                             payload, mapping, name, importLog.entityType, context,
                             workspaceIndustry, importLog.workspaceId, importLog.organizationId,
                             importLog.userId, importLog.filename, false,
                             defaultValues, finalTagsForReconciliation, automationId ?? undefined, [],
-                            defaultCountryCode
+                            defaultCountryCode, enableTitleCase
                         );
 
                         // 2. Reconcile the existing entity with the newly mapped workspaceEntityDoc

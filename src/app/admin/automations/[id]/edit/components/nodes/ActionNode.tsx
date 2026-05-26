@@ -20,7 +20,9 @@ export function ActionNode({ data, selected }: any) {
         switch(actionType) {
             case 'SEND_MESSAGE': return Mail;
             case 'CREATE_TASK': return Clock;
-            case 'UPDATE_SCHOOL': return Building;
+            case 'UPDATE_ENTITY': return Building;
+            case 'ASSIGN_ENTITY': return Building;
+            case 'TRIGGER_OUTBOUND_WEBHOOK': return Zap;
             default: return Play;
         }
     };

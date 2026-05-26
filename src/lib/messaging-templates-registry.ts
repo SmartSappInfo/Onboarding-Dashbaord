@@ -24,8 +24,23 @@ export const MEETING_VARIABLES = {
 
 export const TEMPLATES: TemplateDef[] = [
   // ══════════════════════════════════════════════════════════════════════════
-  // ── MEETING LIFECYCLE TEMPLATES (22 total: 11 email + 11 SMS) ──────────
+  // ── MEETING LIFECYCLE TEMPLATES (24 total: 12 email + 12 SMS) ──────────
   // ══════════════════════════════════════════════════════════════════════════
+
+  // ── 0. Meeting Invitation (Three-Axis: Inform → Motivate → Direct) ─────
+  {
+    name: 'Meeting Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'You\'re Invited: {{meeting_title}} — {{meeting_date}}',
+    body: `Dear {{contact_name}},\n\nWe would like to invite you to an upcoming session that has been organized for your benefit.\n\n📋 What: {{meeting_title}}\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}} ({{meeting_timezone}})\n📍 Format: {{meeting_type}}\n\nThis session is designed to keep you informed about key developments and provide an opportunity for meaningful engagement. Your participation will make a difference.\n\n🔗 Register Now: [Click Here to Register]({{meeting_link}})\n📆 Add to Calendar: [Add to Calendar]({{calendar_link}})\n\nPlease confirm your attendance at your earliest convenience.\n\nWe look forward to welcoming you.\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_type', 'meeting_link', 'calendar_link', 'organization_name'],
+  },
+  {
+    name: 'Meeting Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, you're invited to {{meeting_title}} on {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Register: {{meeting_link}} — {{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_link', 'organization_name'],
+  },
 
   // ── 1. Registration Acknowledgement ────────────────────────────────────
   {

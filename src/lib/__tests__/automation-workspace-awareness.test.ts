@@ -22,7 +22,7 @@ describe('Automation Engine - Workspace Awareness (Requirement 10)', () => {
         workspaceId: 'workspace-abc',
         entityId: 'entity-456',
         entityType: 'institution' as const,
-        action: 'school_created',
+        action: 'entity_created',
         actorId: 'user-789',
         timestamp: new Date().toISOString(),
       };
@@ -89,7 +89,7 @@ describe('Automation Engine - Workspace Awareness (Requirement 10)', () => {
       // When a tag is added/removed, the workspaceId should come from the workspace_entities record
       const tagTriggerPayload = {
         contactId: workspaceEntity.entityId,
-        contactType: 'school' as const,
+        entityType: 'institution' as const,
         tagId: 'tag-3',
         tagName: 'Hot Lead',
         workspaceId: workspaceEntity.workspaceId, // From workspace_entities
@@ -167,7 +167,7 @@ describe('Automation Engine - Workspace Awareness (Requirement 10)', () => {
         workspaceId: 'workspace-abc',
         entityId: 'entity-456',
         entityType: 'institution' as const,
-        action: 'school_created',
+        action: 'entity_created',
         actorId: 'user-789',
         timestamp: new Date().toISOString(),
       };
@@ -175,7 +175,7 @@ describe('Automation Engine - Workspace Awareness (Requirement 10)', () => {
       const automation = {
         id: 'auto-1',
         name: 'Welcome Workflow',
-        trigger: 'SCHOOL_CREATED',
+        trigger: 'ENTITY_CREATED',
         workspaceIds: ['workspace-abc'],
         isActive: true,
         actions: [
@@ -207,7 +207,7 @@ describe('Automation Engine - Workspace Awareness (Requirement 10)', () => {
         workspaceId: 'workspace-xyz',
         entityId: 'entity-456',
         entityType: 'institution' as const,
-        action: 'school_created',
+        action: 'entity_created',
         actorId: 'user-789',
         timestamp: new Date().toISOString(),
       };
@@ -215,7 +215,7 @@ describe('Automation Engine - Workspace Awareness (Requirement 10)', () => {
       const automation = {
         id: 'auto-1',
         name: 'Welcome Workflow',
-        trigger: 'SCHOOL_CREATED',
+        trigger: 'ENTITY_CREATED',
         workspaceIds: ['workspace-abc'], // Different workspace
         isActive: true,
       };

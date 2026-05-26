@@ -599,21 +599,24 @@ export default function NewMeetingPage() {
 
   if (isLoadingEntities) {
       return (
-        <div className="h-full overflow-y-auto space-y-8">
- <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
- <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
- <CardContent className="space-y-8">
- <Skeleton className="h-12 w-full rounded-xl" />
- <Skeleton className="h-12 w-full rounded-xl" />
- <Skeleton className="h-12 w-full rounded-xl" />
-                </CardContent>
+        <div className="h-full w-full overflow-y-auto bg-background">
+          <div className="w-full p-8 space-y-8">
+            <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
+              <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
+              <CardContent className="space-y-8">
+                <Skeleton className="h-12 w-full rounded-xl" />
+                <Skeleton className="h-12 w-full rounded-xl" />
+                <Skeleton className="h-12 w-full rounded-xl" />
+              </CardContent>
             </Card>
+          </div>
         </div>
     );
   }
 
     return (
-        <div className="w-full space-y-8 pb-24 text-left">
+        <div className="h-full w-full overflow-y-auto bg-background">
+        <div className="w-full p-8 space-y-8 pb-24 text-left">
         
         {/* Header */}
  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
@@ -1600,6 +1603,7 @@ export default function NewMeetingPage() {
 
           </form>
         </FormProvider>
+        </div>
     </div>
   )
 }

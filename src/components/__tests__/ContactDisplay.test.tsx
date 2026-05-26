@@ -183,7 +183,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       const { resolveContact } = await import('@/lib/contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
-      const { container } = render(
+      render(
         <ContactDisplay
           entityId="entity_456"
           workspaceId={mockWorkspaceId}
@@ -194,9 +194,8 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         expect(screen.getByText('Test Institution')).toBeInTheDocument();
       });
 
-      // Check that Building icon is rendered (Lucide icons render as SVG)
-      const svg = container.querySelector('svg');
-      expect(svg).toBeInTheDocument();
+      // Check that the EntityAvatar fallback displays the correct initials
+      expect(screen.getByText('TI')).toBeInTheDocument();
     });
 
     it('should display correct icon for family entity type', async () => {
@@ -215,7 +214,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       const { resolveContact } = await import('@/lib/contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
-      const { container } = render(
+      render(
         <ContactDisplay
           entityId="entity_456"
           workspaceId={mockWorkspaceId}
@@ -226,9 +225,8 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         expect(screen.getByText('Test Family')).toBeInTheDocument();
       });
 
-      // Check that Users icon is rendered
-      const svg = container.querySelector('svg');
-      expect(svg).toBeInTheDocument();
+      // Check that the EntityAvatar fallback displays the correct initials
+      expect(screen.getByText('TF')).toBeInTheDocument();
     });
 
     it('should display correct icon for person entity type', async () => {
@@ -247,7 +245,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       const { resolveContact } = await import('@/lib/contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
-      const { container } = render(
+      render(
         <ContactDisplay
           entityId="entity_456"
           workspaceId={mockWorkspaceId}
@@ -258,9 +256,8 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      // Check that User icon is rendered
-      const svg = container.querySelector('svg');
-      expect(svg).toBeInTheDocument();
+      // Check that the EntityAvatar fallback displays the correct initials
+      expect(screen.getByText('JD')).toBeInTheDocument();
     });
 
     it('should display legacy badge when showLegacyBadge is true for legacy contacts', async () => {

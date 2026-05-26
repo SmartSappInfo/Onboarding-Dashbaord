@@ -188,7 +188,7 @@ export async function generateInvoiceAction(
             organizationId: school.organizationId || 'default',
             userId,
             workspaceId: activeWorkspaceId,
-            type: 'school_updated',
+            type: 'entity_updated',
             source: 'user_action',
             description: `generated draft invoice ${invoiceNumber} for "${school.name}"`
         });
