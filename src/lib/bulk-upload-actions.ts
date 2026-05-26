@@ -1001,7 +1001,7 @@ export async function getDuplicateRowsAction(importLogId: string) {
     const snap = await adminDb.collection('import_logs')
         .doc(importLogId)
         .collection('duplicate_rows')
-        .orderBy('createdAt', 'desc')
+        .where('resolved', '==', false)
         .limit(100)
         .get();
 
@@ -1023,6 +1023,9 @@ export async function getDuplicateRowsAction(importLogId: string) {
         const data = d.data();
         return sanitizeTimestamps({ id: d.id, ...data });
     });
+
+    // Sort client-side by rowIdx ascending (avoids needing a composite index)
+    rows.sort((a: any, b: any) => (a.rowIdx ?? 0) - (b.rowIdx ?? 0));
 
     // Enrich with existing entity data for side-by-side comparison
     const uniqueEntityIds = [...new Set(rows.map((r: any) => r.matchedEntityId).filter(Boolean))];
@@ -1241,9 +1244,18 @@ export async function resolveDuplicatesAction(
 
                     manualCorrectionsCount++;
                 } else if (existingSnap.exists) {
-                    if (strategy !== 'SKIP') {
+                    const finalTagsForReconciliation = tagIds || effectiveResolutionTags;
+
+                    if (strategy === 'SKIP') {
+                        // SKIP: Don't update any fields, but still append the import's tags
+                        if (finalTagsForReconciliation.length > 0) {
+                            transaction.update(existingEntityRef, {
+                                workspaceTags: FieldValue.arrayUnion(...finalTagsForReconciliation),
+                                updatedAt: FieldValue.serverTimestamp(),
+                            });
+                        }
+                    } else {
                         const existingEntity = { id: existingSnap.id, ...existingSnap.data() };
-                        const finalTagsForReconciliation = tagIds || effectiveResolutionTags;
 
                         // 1. Process the raw row payload to get a clean structured workspaceEntityDoc
                         const payload = dupData?.rawPayload || {};

@@ -545,6 +545,11 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                         <label htmlFor="select-all-duplicates" className="text-sm font-semibold cursor-pointer select-none">
                             {selectedIds.length} of {pendingRows.length} selected
                         </label>
+                        {importLog && (importLog.duplicateCount ?? 0) > pendingRows.length && (
+                            <Badge variant="outline" className="text-[10px] font-semibold bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800">
+                                {Math.max(0, (importLog.duplicateCount ?? 0) - (importLog.resolvedDuplicateCount ?? 0))} total remaining
+                            </Badge>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2 border-l pl-6 border-border/50">
