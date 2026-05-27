@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import dynamic from 'next/dynamic';
 import ReactFlow, { 
     Background, 
     Controls, 
@@ -34,7 +35,8 @@ import {
     X,
     MousePointer2,
     Tag,
-    TagIcon
+    TagIcon,
+    PlusCircle
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +53,8 @@ const nodeTypes = {
     tagActionNode: TagActionNode,
 };
 
+const ElementLibraryModal = dynamic(() => import('./ElementLibraryModal'), { ssr: false });
+
 interface AutomationBuilderProps {
     initialNodes: any[];
     initialEdges: any[];
@@ -66,6 +70,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges || []);
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
+    const [isLibraryOpen, setIsLibraryOpen] = React.useState(false);
 
     const onConnect = React.useCallback(
         (params: Connection) => setEdges((eds) => addEdge({
@@ -138,6 +143,79 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         setSelectedNodeId(id);
     };
 
+    const addLibraryNode = (item: any) => {
+        const nodeType = item.nodeType || item.type;
+        const id = `${nodeType}_${Date.now()}`;
+        const label = item.label || 'New Step';
+
+        let x = 400 + Math.random() * 50;
+        let y = 300 + Math.random() * 50;
+
+        const parentNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null;
+        if (parentNode) {
+            let targetX = parentNode.position.x;
+            let targetY = parentNode.position.y + 140;
+
+            const hasCollision = nodes.some(n => {
+                const dx = n.position.x - targetX;
+                const dy = n.position.y - targetY;
+                return Math.sqrt(dx * dx + dy * dy) < 50;
+            });
+
+            if (hasCollision) {
+                targetX += 220;
+            }
+            x = targetX;
+            y = targetY;
+        }
+
+        const data: any = {
+            label,
+            config: {}
+        };
+
+        if (item.actionType) {
+            data.actionType = item.actionType;
+        }
+        if (item.trigger) {
+            data.trigger = item.trigger;
+        }
+        if (item.actionType === 'SEND_MESSAGE') {
+            data.config.channel = item.channel || 'email';
+        }
+        if (item.config) {
+            data.config = {
+                ...data.config,
+                ...item.config
+            };
+        }
+
+        const newNode: Node = {
+            id,
+            type: nodeType,
+            position: { x, y },
+            data,
+        };
+
+        setNodes(nds => [...nds, newNode]);
+
+        if (parentNode && nodeType !== 'triggerNode') {
+            const newEdge = {
+                id: `edge_${parentNode.id}_to_${id}_${Date.now()}`,
+                source: parentNode.id,
+                target: id,
+                type: 'smoothstep',
+                animated: true,
+                style: { stroke: 'hsl(var(--primary))', strokeWidth: 3 },
+                markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(var(--primary))', width: 20, height: 20 }
+            };
+            setEdges(eds => [...eds, newEdge]);
+        }
+
+        setSelectedNodeId(id);
+        setIsLibraryOpen(false);
+    };
+
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
     return (
@@ -162,9 +240,15 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
             >
                 <Background color="#cbd5e1" gap={30} size={1} />
                 
- <Panel position="top-left" className="m-4 flex flex-col gap-4">
- <Card className="rounded-2xl border-none shadow-2xl p-1.5 flex flex-col gap-1.5 bg-background/95 backdrop-blur-md ring-1 ring-black/5">
+        <Panel position="top-left" className="m-4 flex flex-col gap-4">
+            <Card className="rounded-2xl border-none shadow-2xl p-1.5 flex flex-col gap-1.5 bg-background/95 backdrop-blur-md ring-1 ring-black/5">
                         <TooltipProvider>
+                            <ToolBtn 
+                                icon={PlusCircle} 
+                                label="Open Elements Library" 
+                                color="text-violet-600 bg-violet-50 font-bold border border-violet-100 animate-pulse" 
+                                onClick={() => setIsLibraryOpen(true)} 
+                            />
                             <ToolBtn icon={Zap} label="Add Trigger" color="text-emerald-600 bg-emerald-50" onClick={() => addNode('triggerNode')} />
                             <ToolBtn icon={Play} label="Add Action" color="text-blue-600 bg-blue-50" onClick={() => addNode('actionNode')} />
                             <ToolBtn icon={ArrowRightLeft} label="Add Condition" color="text-amber-600 bg-amber-50" onClick={() => addNode('conditionNode')} />
@@ -180,27 +264,27 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                     </Card>
                 </Panel>
 
- <Panel position="bottom-center" className="mb-8">
- <Card className="rounded-full bg-accent/10 backdrop-blur-md text-foreground px-6 py-3 shadow-2xl flex items-center gap-6 ring-1 ring-border">
- <div className="flex items-center gap-2">
- <Layers className="h-4 w-4 text-primary" />
- <span className="text-[10px] font-semibold ">{nodes.length} Elements</span>
+                 <Panel position="bottom-center" className="mb-4">
+                    <div className="rounded-full bg-background/90 backdrop-blur-sm text-[9px] font-bold text-muted-foreground px-3.5 py-1.5 border border-border/80 shadow-sm flex items-center gap-2.5">
+                        <div className="flex items-center gap-1.5">
+                            <Layers className="h-3 w-3 text-muted-foreground/60" />
+                            <span>{nodes.length} {nodes.length === 1 ? 'Element' : 'Elements'}</span>
                         </div>
- <div className="h-4 w-px bg-border" />
- <div className="flex items-center gap-2">
- <Wand2 className="h-4 w-4 text-emerald-500" />
- <span className="text-[10px] font-bold text-muted-foreground tracking-tighter italic">Architecture Verified</span>
+                        <span className="text-border/80">•</span>
+                        <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-500">
+                            <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>Verified</span>
                         </div>
-                    </Card>
+                    </div>
                 </Panel>
 
  <Controls className="!bg-card !border-none !shadow-2xl !rounded-xl overflow-hidden" showInteractive={false} />
             </ReactFlow>
 
             {/* Sidebar Inspector Context */}
- <div className="absolute top-6 right-6 z-20 w-[380px] pointer-events-none">
- <Card className={cn(
-                    "rounded-2xl border border-border shadow-sm bg-card p-6 pointer-events-auto transition-all duration-500 max-h-[85vh] h-full flex flex-col overflow-hidden",
+            <div className="absolute top-6 right-6 bottom-6 z-20 w-[380px] pointer-events-none flex flex-col">
+                <Card className={cn(
+                    "rounded-2xl border border-border shadow-sm bg-card p-6 pointer-events-auto transition-all duration-500 h-full flex flex-col overflow-hidden",
                     selectedNodeId ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"
                 )}>
  <div className="flex items-center justify-between mb-6 shrink-0">
@@ -237,6 +321,13 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                     </div>
                 </Card>
             </div>
+
+            <ElementLibraryModal 
+                open={isLibraryOpen} 
+                onOpenChange={setIsLibraryOpen} 
+                onSelect={addLibraryNode} 
+                hasParentSelected={!!selectedNodeId} 
+            />
         </div>
     );
 }
