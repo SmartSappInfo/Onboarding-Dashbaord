@@ -28,7 +28,6 @@ import {
     Minimize2,
     Info,
     Layers,
-    Wand2,
     Settings2,
     ArrowRightLeft,
     Clock,
