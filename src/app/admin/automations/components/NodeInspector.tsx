@@ -146,6 +146,8 @@ const CONDITION_OPERATORS = [
     { value: 'contains', label: 'Contains Keyword' },
     { value: 'greater_than', label: 'Greater Than' },
     { value: 'less_than', label: 'Less Than' },
+    { value: 'has_opened', label: 'Has Opened Email' },
+    { value: 'has_clicked', label: 'Has Clicked Link' },
 ];
 
 export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
@@ -1055,15 +1057,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                             <Label className="text-[10px] font-semibold text-amber-600 flex items-center gap-2">
                                 <ArrowRightLeft className="h-3 w-3" /> Condition Rule
                             </Label>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Payload Field</Label>
-                                <Input
-                                    value={config.field || ''}
-                                    onChange={(e) => updateConfig({ field: e.target.value })}
-                                    placeholder="e.g. entityType, tagId, status"
-                                    className="h-10 rounded-xl bg-background border-none font-mono text-xs shadow-inner"
-                                />
-                            </div>
+                            
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Operator</Label>
                                 <Select value={config.operator || ''} onValueChange={(v) => updateConfig({ operator: v })}>
@@ -1077,15 +1071,60 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Compare Value</Label>
-                                <Input
-                                    value={config.value ?? ''}
-                                    onChange={(e) => updateConfig({ value: e.target.value })}
-                                    placeholder="Value to compare against"
-                                    className="h-10 rounded-xl bg-background border-none shadow-inner"
-                                />
-                            </div>
+
+                            {/* Standard Fields (non-email-engagement) */}
+                            {config.operator !== 'has_opened' && config.operator !== 'has_clicked' && (
+                                <>
+                                    <div className="space-y-2 animate-in fade-in duration-300">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Payload Field</Label>
+                                        <Input
+                                            value={config.field || ''}
+                                            onChange={(e) => updateConfig({ field: e.target.value })}
+                                            placeholder="e.g. entityType, tagId, status"
+                                            className="h-10 rounded-xl bg-background border-none font-mono text-xs shadow-inner"
+                                        />
+                                    </div>
+                                    <div className="space-y-2 animate-in fade-in duration-300">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Compare Value</Label>
+                                        <Input
+                                            value={config.value ?? ''}
+                                            onChange={(e) => updateConfig({ value: e.target.value })}
+                                            placeholder="Value to compare against"
+                                            className="h-10 rounded-xl bg-background border-none shadow-inner"
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Email Engagement Operators */}
+                            {(config.operator === 'has_opened' || config.operator === 'has_clicked') && (
+                                <div className="space-y-4 animate-in fade-in duration-300">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Email Template</Label>
+                                        <MessagingTemplateSelector 
+                                            category={"onboarding" as any}
+                                            channel="email"
+                                            recipientType={"manager" as any}
+                                            value={config.emailTemplateId}
+                                            onValueChange={(v) => updateConfig({ emailTemplateId: v })}
+                                            placeholder="Select template..."
+                                            className="h-10 rounded-xl bg-background border-none shadow-inner text-xs px-4"
+                                        />
+                                    </div>
+                                    
+                                    {config.operator === 'has_clicked' && (
+                                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Link URL</Label>
+                                            <Input
+                                                value={config.linkUrl || ''}
+                                                onChange={(e) => updateConfig({ linkUrl: e.target.value })}
+                                                placeholder="e.g. https://yoursite.com/welcome"
+                                                className="h-10 rounded-xl bg-background border-none shadow-inner font-mono text-xs px-4"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 

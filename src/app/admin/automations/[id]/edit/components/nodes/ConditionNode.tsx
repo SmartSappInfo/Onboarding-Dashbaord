@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { HelpCircle, Check, X, ArrowRightLeft } from 'lucide-react';
+import { ArrowRightLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -36,8 +36,8 @@ export function ConditionNode({ data, selected }: any) {
  <div className="p-4 space-y-2">
  <p className="text-xs font-semibold text-foreground leading-tight">{data.label || 'Decision Branch'}</p>
  <div className="flex flex-wrap gap-1.5 pt-1">
-                        <Badge variant="outline" className="text-[7px] font-semibold uppercase px-1.5 h-4 border-amber-100 bg-amber-50 text-amber-600">
-                            {config.operator?.replace('_', ' ') || 'Select Rule'}
+                        <Badge variant="outline" className="text-[7px] font-semibold uppercase px-1.5 h-4 border-amber-100 bg-amber-50 text-amber-600 max-w-[220px] truncate">
+                            {config.operator === 'has_opened' ? 'Has Opened Email' : config.operator === 'has_clicked' ? 'Has Clicked Link' : (config.operator?.replace('_', ' ') || 'Select Rule')}
                         </Badge>
                     </div>
                 </div>

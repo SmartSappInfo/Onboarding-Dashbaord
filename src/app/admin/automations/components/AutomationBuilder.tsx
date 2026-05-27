@@ -151,9 +151,22 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         let y = 300 + Math.random() * 50;
 
         const parentNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null;
+        let sourceHandle = undefined;
+
         if (parentNode) {
             let targetX = parentNode.position.x;
             let targetY = parentNode.position.y + 140;
+
+            if (parentNode.type === 'conditionNode' || parentNode.type === 'tagConditionNode') {
+                const hasTrueEdge = edges.some(e => e.source === parentNode.id && e.sourceHandle === 'true');
+                if (!hasTrueEdge) {
+                    sourceHandle = 'true';
+                    targetX -= 120; // Shift left for True path
+                } else {
+                    sourceHandle = 'false';
+                    targetX += 120; // Shift right for False path
+                }
+            }
 
             const hasCollision = nodes.some(n => {
                 const dx = n.position.x - targetX;
@@ -202,6 +215,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
             const newEdge = {
                 id: `edge_${parentNode.id}_to_${id}_${Date.now()}`,
                 source: parentNode.id,
+                sourceHandle,
                 target: id,
                 type: 'smoothstep',
                 animated: true,
