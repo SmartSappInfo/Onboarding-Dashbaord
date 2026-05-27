@@ -243,9 +243,32 @@ describe('Workspace Access Synchronization', () => {
         doc: vi.fn().mockReturnValue({
           get: vi.fn().mockResolvedValue(mockRoleSnap),
         }),
+        where: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({
+            docs: [
+              {
+                id: roleId,
+                data: () => mockRole,
+              },
+            ],
+          }),
+        }),
+      };
+
+      const mockUserRef = {
+        update: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const mockUserSnap = {
+        exists: true,
+        data: () => ({ id: 'user1', organizationId, roles: [roleId] }),
+        ref: mockUserRef,
       };
 
       const mockUsersCollection = {
+        doc: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue(mockUserSnap),
+        }),
         where: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             get: vi.fn().mockResolvedValue(mockUsersSnap),
@@ -259,17 +282,9 @@ describe('Workspace Access Synchronization', () => {
         throw new Error(`Unexpected collection: ${collectionName}`);
       });
 
-      // Mock syncUserWorkspaceAccess to avoid recursive mocking
-      const syncUserSpy = vi.fn().mockResolvedValue(undefined);
-      vi.doMock('../workspace-access-sync', () => ({
-        syncUserWorkspaceAccess: syncUserSpy,
-      }));
-
       await syncRoleMembersWorkspaceAccess(roleId);
 
-      // Should have called syncUserWorkspaceAccess for each user
-      // Note: In actual implementation, this would call syncUserWorkspaceAccess
-      // For this test, we verify the query was made correctly
+      // Should have queried users by organizationId
       expect(mockUsersCollection.where).toHaveBeenCalledWith('organizationId', '==', organizationId);
     });
 
@@ -315,14 +330,36 @@ describe('Workspace Access Synchronization', () => {
         size: mockUsers.length,
       };
 
+      const mockUserRef = {
+        update: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const mockUserSnap = {
+        exists: true,
+        data: () => ({ id: 'user1', organizationId, roles: [] }),
+        ref: mockUserRef,
+      };
+
       const mockUsersCollection = {
+        doc: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue(mockUserSnap),
+        }),
         where: vi.fn().mockReturnValue({
           get: vi.fn().mockResolvedValue(mockUsersSnap),
         }),
       };
 
+      const mockRolesCollection = {
+        where: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({
+            docs: [],
+          }),
+        }),
+      };
+
       (adminDb.collection as any).mockImplementation((collectionName: string) => {
         if (collectionName === 'users') return mockUsersCollection;
+        if (collectionName === 'roles') return mockRolesCollection;
         throw new Error(`Unexpected collection: ${collectionName}`);
       });
 

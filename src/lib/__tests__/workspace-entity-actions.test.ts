@@ -182,12 +182,10 @@ describe('linkEntityToWorkspaceAction', () => {
       entityType: 'family',
       name: 'Test Family',
       contacts: [],
-      entityType: 'institution',
-    entityContacts: [],
-    globalTags: [],
+      entityContacts: [],
+      globalTags: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
-        entityContacts: [],
     };
 
     const mockWorkspace = {
@@ -524,8 +522,7 @@ describe('updateWorkspaceEntityAction', () => {
     const result = await updateWorkspaceEntityAction({
       workspaceEntityId: 'workspace_entity_1',
       stageId: 'stage_2',
-      entityType: 'institution',
-    workspaceTags: ['tag_1', 'tag_2'],
+      workspaceTags: ['tag_1', 'tag_2'],
       userId: 'user_1',
     });
 
@@ -536,8 +533,7 @@ describe('updateWorkspaceEntityAction', () => {
       expect.objectContaining({
         stageId: 'stage_2',
         currentStageName: 'Contract Review',
-        entityType: 'institution',
-    workspaceTags: ['tag_1', 'tag_2'],
+        workspaceTags: ['tag_1', 'tag_2'],
       })
     );
 
