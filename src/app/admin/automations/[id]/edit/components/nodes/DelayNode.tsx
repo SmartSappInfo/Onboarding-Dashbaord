@@ -15,6 +15,29 @@ import { Badge } from '@/components/ui/badge';
 export function DelayNode({ data, selected }: any) {
     const config = data.config || {};
 
+    const getWaitLabel = () => {
+        const type = config.waitType || 'period';
+        if (type === 'period') {
+            return `${config.value ?? 5} ${config.unit || 'Minutes'}`;
+        }
+        if (type === 'specific_date') {
+            return `Until ${config.specificDate || 'date'} at ${config.specificTime || '09:00'}`;
+        }
+        if (type === 'date_field') {
+            const offset = config.offsetDirection === 'current_date' 
+                ? 'On' 
+                : `${config.offsetDays ?? 1}d ${config.offsetDirection}`;
+            return `${offset} of ${config.dateField || 'field'}`;
+        }
+        if (type === 'conditions_met') {
+            const limitStr = config.hasTimeLimit 
+                ? ` (max ${config.timeLimitValue ?? 30} ${config.timeLimitUnit || 'Days'})` 
+                : '';
+            return `Until rules met${limitStr}`;
+        }
+        return 'Wait Period';
+    };
+
     return (
  <div className={cn(
             "relative transition-all duration-500",
@@ -36,8 +59,8 @@ export function DelayNode({ data, selected }: any) {
  <div className="p-4 space-y-2">
  <p className="text-xs font-semibold text-foreground leading-tight">{data.label || 'Wait Period'}</p>
  <div className="flex items-center gap-2 pt-1">
-                        <Badge variant="outline" className="text-[8px] font-semibold uppercase px-2 h-5 bg-purple-50 text-purple-600 border-purple-100">
-                            {config.value || 0} {config.unit || 'Minutes'}
+                        <Badge variant="outline" className="text-[8px] font-semibold uppercase px-2 h-5 bg-purple-50 text-purple-600 border-purple-100 max-w-[220px] truncate">
+                            {getWaitLabel()}
                         </Badge>
                     </div>
                 </div>

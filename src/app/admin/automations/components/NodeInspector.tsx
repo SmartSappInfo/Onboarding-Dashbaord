@@ -20,7 +20,10 @@ import {
     PlusCircle,
     Tag,
     X,
-    DollarSign
+    DollarSign,
+    ShieldAlert,
+    Activity,
+    Settings2
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -55,6 +58,10 @@ const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; labe
             { value: 'ENTITY_LINKED', label: 'Entity Linked', icon: Building, desc: 'Fires when an entity is linked to a workspace.' },
             { value: 'ENTITY_UNLINKED', label: 'Entity Unlinked', icon: Building, desc: 'Fires when an entity is removed from a workspace.' },
             { value: 'WORKSPACE_ENTITY_UPDATED', label: 'Workspace Entity Updated', icon: Building, desc: 'Fires when workspace-scoped fields change.' },
+            { value: 'ENTITY_FIELD_CHANGED', label: 'Entity Field Changed', icon: Settings2, desc: 'Fires when a specific standard or custom field changes.' },
+            { value: 'DATE_REACHED', label: 'Date Field Reached', icon: Clock, desc: 'Fires on, before, or after a specific date property of an entity.' },
+            { value: 'SCORE_CHANGED', label: 'Health Score Changed', icon: Activity, desc: 'Fires when the overall health or lead score changes/crosses a threshold.' },
+            { value: 'ENTITY_INACTIVE', label: 'Contact Inactivity', icon: Clock, desc: 'Fires when an entity has no tracked activity for a set duration.' },
         ],
     },
     {
@@ -64,6 +71,7 @@ const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; labe
             { value: 'DEAL_STAGE_CHANGED', label: 'Deal Stage Changed', icon: ArrowRightLeft, desc: 'Fires when a deal moves stages.' },
             { value: 'DEAL_STATUS_CHANGED', label: 'Deal Status Changed', icon: Zap, desc: 'Fires when a deal is won, lost, or reopened.' },
             { value: 'DEAL_VALUE_CHANGED', label: 'Deal Value Changed', icon: DollarSign, desc: 'Fires when deal value changes.' },
+            { value: 'DEAL_OWNER_CHANGED', label: 'Deal Owner Changed', icon: Target, desc: 'Fires when deal assignee changes.' },
         ],
     },
     {
@@ -73,6 +81,8 @@ const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; labe
             { value: 'SURVEY_SUBMITTED', label: 'Survey Submitted', icon: Database, desc: 'Fires when a survey is completed.' },
             { value: 'PDF_SIGNED', label: 'Document Signed', icon: Target, desc: 'Fires when a PDF agreement is fully signed.' },
             { value: 'CAMPAIGN_PAGE_SUBMITTED', label: 'Campaign Page Conversion', icon: Globe, desc: 'Fires when a landing page form converts.' },
+            { value: 'WEBPAGE_VISITED', label: 'Webpage Visited', icon: Globe, desc: 'Fires when a contact visits a tracked landing page URL.' },
+            { value: 'EVENT_RECORDED', label: 'Custom Event Recorded', icon: Activity, desc: 'Fires when telemetry or app event logs are received.' },
         ],
     },
     {
@@ -89,6 +99,7 @@ const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; labe
         options: [
             { value: 'TASK_CREATED', label: 'Task Created', icon: CheckSquare, desc: 'Fires when a CRM task is created.' },
             { value: 'TASK_COMPLETED', label: 'Task Completed', icon: CheckSquare, desc: 'Fires when a task is marked done.' },
+            { value: 'TASK_OVERDUE', label: 'Task Overdue', icon: ShieldAlert, desc: 'Fires when a CRM task passes its due date.' },
             { value: 'TAG_ADDED', label: 'Tag Added', icon: Tag, desc: 'Fires when a tag is applied to an entity.' },
             { value: 'TAG_REMOVED', label: 'Tag Removed', icon: Tag, desc: 'Fires when a tag is removed.' },
         ],
@@ -101,6 +112,7 @@ const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; labe
             { value: 'CAMPAIGN_NOT_DELIVERED', label: 'Campaign Not Delivered', icon: Mail, desc: 'Fires when message was not delivered.' },
             { value: 'CAMPAIGN_OPENED', label: 'Campaign Opened', icon: Mail, desc: 'Fires when recipient opens email.' },
             { value: 'CAMPAIGN_CLICKED', label: 'Campaign Clicked', icon: Mail, desc: 'Fires when recipient clicks a link.' },
+            { value: 'EMAIL_BOUNCED', label: 'Email Campaign Bounced', icon: ShieldAlert, desc: 'Fires when email delivery fails or bounces.' },
         ],
     },
     {
@@ -216,7 +228,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
 
     return (
         <div className="flex flex-col h-full text-left min-h-0">
-            <ScrollArea className="flex-1 -mx-4 px-4">
+            <div className="flex-1 overflow-y-auto -mx-4 px-4 scrollbar-thin">
                 <div className="space-y-10 pb-32 pt-2">
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
@@ -464,6 +476,161 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                             </Select>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {data.trigger === 'ENTITY_FIELD_CHANGED' && (
+                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">
+                                    <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                                        <Settings2 className="h-3 w-3" /> Field to Watch
+                                    </Label>
+                                    <Input
+                                        value={config.fieldPath || ''}
+                                        onChange={(e) => updateConfig({ fieldPath: e.target.value })}
+                                        placeholder="e.g. status, industry, or customFields.key"
+                                        className="h-10 rounded-xl bg-background border-none font-mono text-xs shadow-inner"
+                                    />
+                                    <p className="text-[9px] text-muted-foreground font-medium pl-1 leading-relaxed">
+                                        Specifies the entity or custom field pathway to monitor for mutations.
+                                    </p>
+                                </div>
+                            )}
+
+                            {data.trigger === 'DATE_REACHED' && (
+                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                                            <Clock className="h-3 w-3" /> Date Field
+                                        </Label>
+                                        <Input
+                                            value={config.dateField || ''}
+                                            onChange={(e) => updateConfig({ dateField: e.target.value })}
+                                            placeholder="e.g. createdAt, trialEnd, customFields.renewalDate"
+                                            className="h-10 rounded-xl bg-background border-none font-mono text-xs shadow-inner"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                                            Offset Days
+                                        </Label>
+                                        <Input
+                                            type="number"
+                                            value={config.offsetDays ?? 0}
+                                            onChange={(e) => updateConfig({ offsetDays: parseInt(e.target.value, 10) || 0 })}
+                                            placeholder="0"
+                                            className="h-10 rounded-xl bg-background border-none text-xs shadow-inner"
+                                        />
+                                        <p className="text-[8px] text-muted-foreground font-bold pl-1 uppercase">
+                                            Use negative values for days before, positive for days after.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {data.trigger === 'SCORE_CHANGED' && (
+                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                                            <Activity className="h-3 w-3" /> Target Score Type
+                                        </Label>
+                                        <Select
+                                            value={config.scoreType || 'overallScore'}
+                                            onValueChange={(v) => updateConfig({ scoreType: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                <SelectValue placeholder="overallScore" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl border-none shadow-2xl p-2">
+                                                <SelectItem value="overallScore" className="rounded-lg p-2 font-semibold">Overall Health Score</SelectItem>
+                                                <SelectItem value="usageScore" className="rounded-lg p-2 font-semibold">Usage Score</SelectItem>
+                                                <SelectItem value="supportScore" className="rounded-lg p-2 font-semibold">Support Score</SelectItem>
+                                                <SelectItem value="engagementScore" className="rounded-lg p-2 font-semibold">Engagement Score</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                                            Operator
+                                        </Label>
+                                        <Select
+                                            value={config.operator || 'any_change'}
+                                            onValueChange={(v) => updateConfig({ operator: v, threshold: v === 'any_change' ? null : (config.threshold ?? 50) })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                <SelectValue placeholder="Any Change" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl border-none shadow-2xl p-2">
+                                                <SelectItem value="any_change" className="rounded-lg p-2 font-semibold">Any Change</SelectItem>
+                                                <SelectItem value="greater_than" className="rounded-lg p-2 font-semibold">Greater Than (&gt;)</SelectItem>
+                                                <SelectItem value="less_than" className="rounded-lg p-2 font-semibold">Less Than (&lt;)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    {config.operator && config.operator !== 'any_change' && (
+                                        <div className="space-y-2 animate-in slide-in-from-top-1">
+                                            <Label className="text-[10px] font-semibold text-emerald-600">Threshold Value</Label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                max={100}
+                                                value={config.threshold ?? 50}
+                                                onChange={(e) => updateConfig({ threshold: parseInt(e.target.value, 10) || 0 })}
+                                                className="h-10 rounded-xl bg-background border-none text-xs shadow-inner"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {data.trigger === 'ENTITY_INACTIVE' && (
+                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">
+                                    <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                                        <Clock className="h-3 w-3" /> Inactivity Threshold (Days)
+                                    </Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        value={config.inactivityDays ?? 30}
+                                        onChange={(e) => updateConfig({ inactivityDays: parseInt(e.target.value, 10) || 30 })}
+                                        className="h-10 rounded-xl bg-background border-none text-xs shadow-inner"
+                                    />
+                                    <p className="text-[9px] text-muted-foreground font-medium pl-1 leading-relaxed">
+                                        Fires if no activity has been logged on the entity for this number of days.
+                                    </p>
+                                </div>
+                            )}
+
+                            {data.trigger === 'WEBPAGE_VISITED' && (
+                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-blue-500/5 p-6 rounded-[2rem] border border-blue-500/20 shadow-inner">
+                                    <Label className="text-[10px] font-semibold text-blue-600 flex items-center gap-2">
+                                        <Globe className="h-3 w-3" /> Target URL Pattern
+                                    </Label>
+                                    <Input
+                                        value={config.urlPattern || ''}
+                                        onChange={(e) => updateConfig({ urlPattern: e.target.value })}
+                                        placeholder="e.g. /pricing, /welcome, or *"
+                                        className="h-10 rounded-xl bg-background border-none font-mono text-xs shadow-inner"
+                                    />
+                                    <p className="text-[9px] text-muted-foreground font-medium pl-1 leading-relaxed">
+                                        Fires when a tracked visitor hits a URL matching this pattern.
+                                    </p>
+                                </div>
+                            )}
+
+                            {data.trigger === 'EVENT_RECORDED' && (
+                                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">
+                                    <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                                        <Activity className="h-3 w-3" /> Event Name
+                                    </Label>
+                                    <Input
+                                        value={config.eventName || ''}
+                                        onChange={(e) => updateConfig({ eventName: e.target.value })}
+                                        placeholder="e.g. user_onboarded, plan_upgraded"
+                                        className="h-10 rounded-xl bg-background border-none font-mono text-xs shadow-inner"
+                                    />
+                                    <p className="text-[9px] text-muted-foreground font-medium pl-1 leading-relaxed">
+                                        Fires when a custom telemetry log matches this exact name.
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -925,36 +1092,242 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                     {node.type === 'delayNode' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 bg-purple-500/5 p-6 rounded-[2rem] border border-purple-500/20 shadow-inner">
                             <Label className="text-[10px] font-semibold text-purple-600 flex items-center gap-2">
-                                <Timer className="h-3 w-3" /> Wait Duration
+                                <Timer className="h-3 w-3" /> Wait Configuration
                             </Label>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Amount</Label>
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        value={config.value ?? 5}
-                                        onChange={(e) => updateConfig({ value: Number(e.target.value) || 1 })}
-                                        className="h-10 rounded-xl bg-background border-none shadow-inner"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Unit</Label>
-                                    <Select
-                                        value={config.unit || 'Minutes'}
-                                        onValueChange={(v) => updateConfig({ unit: v })}
-                                    >
-                                        <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="Minutes">Minutes</SelectItem>
-                                            <SelectItem value="Hours">Hours</SelectItem>
-                                            <SelectItem value="Days">Days</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Wait Type</Label>
+                                <Select
+                                    value={config.waitType || 'period'}
+                                    onValueChange={(v) => {
+                                        let defaultLabel = 'Wait Period';
+                                        if (v === 'specific_date') defaultLabel = 'Wait Until Specific Date';
+                                        if (v === 'date_field') defaultLabel = 'Wait Until Date Field';
+                                        if (v === 'conditions_met') defaultLabel = 'Wait Until Conditions';
+                                        onUpdate({
+                                            label: defaultLabel,
+                                            config: { ...config, waitType: v }
+                                        });
+                                    }}
+                                >
+                                    <SelectTrigger className="h-11 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="period">A set period of time</SelectItem>
+                                        <SelectItem value="specific_date">Until a specific day and/or time</SelectItem>
+                                        <SelectItem value="date_field">Until a custom date field matches</SelectItem>
+                                        <SelectItem value="conditions_met">Until specific conditions are met</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
+
+                            {/* 1. Set Period of Time */}
+                            {(config.waitType === 'period' || !config.waitType) && (
+                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Amount</Label>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            value={config.value ?? 5}
+                                            onChange={(e) => updateConfig({ value: Number(e.target.value) || 1 })}
+                                            className="h-10 rounded-xl bg-background border-none shadow-inner"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Unit</Label>
+                                        <Select
+                                            value={config.unit || 'Minutes'}
+                                            onValueChange={(v) => updateConfig({ unit: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="Minutes">Minutes</SelectItem>
+                                                <SelectItem value="Hours">Hours</SelectItem>
+                                                <SelectItem value="Days">Days</SelectItem>
+                                                <SelectItem value="Weeks">Weeks</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 2. Until a Specific Day and/or Time */}
+                            {config.waitType === 'specific_date' && (
+                                <div className="space-y-4 pt-2">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Date</Label>
+                                        <Input
+                                            type="date"
+                                            value={config.specificDate || ''}
+                                            onChange={(e) => updateConfig({ specificDate: e.target.value })}
+                                            className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Time</Label>
+                                        <Input
+                                            type="time"
+                                            value={config.specificTime || '09:00'}
+                                            onChange={(e) => updateConfig({ specificTime: e.target.value })}
+                                            className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 3. Until a Custom Date Field Matches */}
+                            {config.waitType === 'date_field' && (
+                                <div className="space-y-4 pt-2">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Date Field</Label>
+                                        <Select
+                                            value={config.dateField || 'onboarding_date'}
+                                            onValueChange={(v) => updateConfig({ dateField: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="onboarding_date">Onboarding Date</SelectItem>
+                                                <SelectItem value="deal_close_date">Deal Close Date</SelectItem>
+                                                <SelectItem value="created_at">Entity Created Date</SelectItem>
+                                                <SelectItem value="webinar_date">Webinar Date (Custom)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">When to Match</Label>
+                                            <Select
+                                                value={config.offsetDirection || 'current_date'}
+                                                onValueChange={(v) => updateConfig({ offsetDirection: v })}
+                                            >
+                                                <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-3">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="current_date">On the Date</SelectItem>
+                                                    <SelectItem value="before">Days Before</SelectItem>
+                                                    <SelectItem value="after">Days After</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {config.offsetDirection !== 'current_date' && (
+                                            <div className="space-y-2 animate-in zoom-in-95 duration-200">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Offset Days</Label>
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    value={config.offsetDays || 1}
+                                                    onChange={(e) => updateConfig({ offsetDays: Number(e.target.value) || 1 })}
+                                                    className="h-10 rounded-xl bg-background border-none shadow-inner"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Time of Day</Label>
+                                        <Input
+                                            type="time"
+                                            value={config.matchTime || '09:00'}
+                                            onChange={(e) => updateConfig({ matchTime: e.target.value })}
+                                            className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 4. Until Specific Conditions are Met */}
+                            {config.waitType === 'conditions_met' && (
+                                <div className="space-y-4 pt-2">
+                                    <div className="p-3.5 rounded-xl border border-dashed border-purple-500/20 bg-background/50 space-y-3">
+                                        <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight uppercase">Condition Rules</p>
+                                        <div className="space-y-2">
+                                            <Label className="text-[9px] font-semibold text-muted-foreground">Field</Label>
+                                            <Input
+                                                value={config.conditionField || ''}
+                                                onChange={(e) => updateConfig({ conditionField: e.target.value })}
+                                                placeholder="e.g. tagId, status"
+                                                className="h-9 rounded-lg bg-background border-none font-mono text-[10px] shadow-inner"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-1">
+                                                <Label className="text-[9px] font-semibold text-muted-foreground">Operator</Label>
+                                                <Select value={config.conditionOperator || ''} onValueChange={(v) => updateConfig({ conditionOperator: v })}>
+                                                    <SelectTrigger className="h-9 rounded-lg bg-background border-none text-[10px] px-2 shadow-inner">
+                                                        <SelectValue placeholder="Operator" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-lg">
+                                                        {CONDITION_OPERATORS.map((op) => (
+                                                            <SelectItem key={op.value} value={op.value} className="text-[10px]">{op.label}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[9px] font-semibold text-muted-foreground">Value</Label>
+                                                <Input
+                                                    value={config.conditionValue || ''}
+                                                    onChange={(e) => updateConfig({ conditionValue: e.target.value })}
+                                                    placeholder="Value"
+                                                    className="h-9 rounded-lg bg-background border-none text-[10px] shadow-inner"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 px-1">
+                                        <input
+                                            type="checkbox"
+                                            id="hasTimeLimit"
+                                            checked={config.hasTimeLimit || false}
+                                            onChange={(e) => updateConfig({ hasTimeLimit: e.target.checked })}
+                                            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                                        />
+                                        <Label htmlFor="hasTimeLimit" className="text-[10px] font-semibold cursor-pointer">Set a maximum wait limit</Label>
+                                    </div>
+
+                                    {config.hasTimeLimit && (
+                                        <div className="grid grid-cols-2 gap-3 pt-1 animate-in slide-in-from-top-2 duration-200">
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Limit Amount</Label>
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    value={config.timeLimitValue || 30}
+                                                    onChange={(e) => updateConfig({ timeLimitValue: Number(e.target.value) || 1 })}
+                                                    className="h-9 rounded-lg bg-background border-none shadow-inner text-xs"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Limit Unit</Label>
+                                                <Select
+                                                    value={config.timeLimitUnit || 'Days'}
+                                                    onValueChange={(v) => updateConfig({ timeLimitUnit: v })}
+                                                >
+                                                    <SelectTrigger className="h-9 rounded-lg bg-background border-none font-bold shadow-inner px-3 text-[10px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-lg">
+                                                        <SelectItem value="Minutes">Minutes</SelectItem>
+                                                        <SelectItem value="Hours">Hours</SelectItem>
+                                                        <SelectItem value="Days">Days</SelectItem>
+                                                        <SelectItem value="Weeks">Weeks</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -1075,7 +1448,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                         </div>
                     )}
                 </div>
-            </ScrollArea>
+            </div>
         </div>
     );
 }
