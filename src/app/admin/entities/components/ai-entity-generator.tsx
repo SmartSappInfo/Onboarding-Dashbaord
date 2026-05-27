@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
@@ -10,59 +10,76 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
     Loader2, 
     Sparkles, 
-    Building, 
-    Zap, 
-    ArrowRight, 
-    X,
-    ShieldCheck,
-    CheckCircle2,
-    Info,
-    Target
+    Info, 
+    AlertCircle
 } from 'lucide-react';
 import { collection, query, orderBy, doc, writeBatch } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTerminology } from '@/hooks/use-terminology';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
 import { logActivity } from '@/lib/activity-logger';
-import { Button as MovingButton } from '@/components/ui/moving-border';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import type { Module, Zone } from '@/lib/types';
+import { 
+    Select, 
+    SelectContent, 
+    SelectGroup, 
+    SelectItem, 
+    SelectLabel, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
+import { AI_PROVIDERS } from '@/components/ai/AiModelSelector';
+import { getDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+
+type ModuleOption = Pick<Module, 'id' | 'name' | 'abbreviation' | 'color'>;
 
 const formSchema = z.object({
   text: z.string().min(50, { message: 'Please provide at least 50 characters of descriptive text.' }),
-  track: z.enum(['onboarding', 'prospect']).default('onboarding'),
+  provider: z.string().default('googleai'),
+  modelId: z.string().default('gemini-3-flash-preview'),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function AiEntityGenerator() {
+interface AiEntityGeneratorProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGeneratorProps) {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeOrganizationId } = useTenant();
-  const { activeWorkspaceId } = useWorkspace();
-  const [isGenerating, setIsGenerating] = React.useState(false);
+  const { activeOrganizationId, activeOrganization } = useTenant();
+  const { activeWorkspace, activeWorkspaceId } = useWorkspace();
+  const terms = useTerminology();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { 
         text: '',
-        track: 'onboarding'
+        provider: 'googleai',
+        modelId: 'gemini-3-flash-preview'
     },
   });
+
+  const contactScope = activeWorkspace?.contactScope || 'institution';
+  const [isGenerating, setIsGenerating] = React.useState(false);
 
   // Fetch contextual mapping data
   const zonesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
@@ -71,36 +88,75 @@ export default function AiEntityGenerator() {
   const { data: zones } = useCollection<Zone>(zonesQuery);
   const { data: modules } = useCollection<Module>(modulesQuery);
 
+  // Fetch user preference on mount to set initial model
+  React.useEffect(() => {
+    if (user && firestore && open) {
+      const userDoc = doc(firestore, 'users', user.uid);
+      getDoc(userDoc).then((docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.preferredAiProvider) {
+            form.setValue('provider', data.preferredAiProvider);
+          }
+          if (data.preferredAiModel) {
+            form.setValue('modelId', data.preferredAiModel);
+          }
+        }
+      });
+    }
+  }, [user, firestore, open, form]);
+
+  const availableProviders = React.useMemo(() => {
+    if (!activeOrganization) return AI_PROVIDERS;
+
+    const mode = activeOrganization.aiKeyMode || 'platform';
+    if (mode === 'platform') return AI_PROVIDERS;
+
+    return AI_PROVIDERS.filter(provider => {
+        if (provider.id === 'googleai') return !!activeOrganization.geminiApiKey;
+        if (provider.id === 'openai') return !!activeOrganization.openaiApiKey;
+        if (provider.id === 'openrouter') return !!activeOrganization.openRouterApiKey;
+        return false;
+    });
+  }, [activeOrganization]);
+
   const onSubmit = async (data: FormData) => {
-    if (!firestore || !user) return;
+    if (!firestore || !user || !activeWorkspaceId) return;
 
     setIsGenerating(true);
     toast({
-        title: 'Architecting School Record...',
+        title: `Architecting ${terms.singular} Record...`,
         description: 'AI is extracting identities and mapping stakeholders.',
     });
 
     try {
-        const result = await extractSchoolData({ text: data.text });
+        const result = await extractSchoolData({
+            text: data.text,
+            organizationId: activeOrganizationId,
+            provider: data.provider,
+            modelId: data.modelId,
+        });
 
         if (!result || !result.name) {
-            throw new Error('AI failed to identify the school name.');
+            throw new Error(`AI failed to identify the ${terms.singular.toLowerCase()} name.`);
         }
 
         // 1. Prepare Smart Mapping
         const slug = result.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         
-        const mappedModules = (result.suggestedModuleNames || []).map(name => {
+        const aiModules = (result.suggestedModuleNames || []).map(name => {
             const match = modules?.find(m => m.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(m.name.toLowerCase()));
             return match ? { id: match.id, name: match.name, abbreviation: match.abbreviation, color: match.color } : null;
-        }).filter(Boolean);
+        }).filter(Boolean) as ModuleOption[];
+
+        const finalModules = aiModules;
 
         // 3. Construct Global Identity Payload (new schema)
         const entityId = doc(collection(firestore, 'entities')).id;
         const globalEntityData = {
             id: entityId,
             name: result.name,
-            entityType: 'institution' as const,
+            entityType: (contactScope === 'person' || contactScope === 'family') ? contactScope : 'institution',
             // Root identity fields (new schema)
             initials: result.initials || result.name.substring(0, 3).toUpperCase(),
             slug,
@@ -110,7 +166,7 @@ export default function AiEntityGenerator() {
                 locationString: result.location || '',
                 zone: zones?.[0] ? { id: zones[0].id, name: zones[0].name } : undefined,
             },
-            interests: mappedModules,
+            interests: finalModules,
             entityContacts: (result.contacts || []).map((p: any, index: number) => {
                 const typeLabel = p.role || 'Contact';
                 const typeKey = typeLabel.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');
@@ -134,7 +190,7 @@ export default function AiEntityGenerator() {
         };
 
         // 4. Construct Workspace Operational Payload
-        const workspaceId = data.track === 'prospect' ? 'prospects' : activeWorkspaceId || 'onboarding';
+        const workspaceId = activeWorkspaceId;
         const workspaceEntityId = `${workspaceId}_${entityId}`;
         const workspaceEntityData = {
             id: workspaceEntityId,
@@ -168,11 +224,12 @@ export default function AiEntityGenerator() {
             workspaceId: workspaceId,
             type: 'entity_created',
             source: 'user_action',
-            description: `AI architected new ${data.track} record for "${result.name}"`,
-            metadata: { track: data.track, aiExplanation: result.explanation }
+            description: `AI architected new record for "${result.name}" in workspace ${workspaceId}`,
+            metadata: { workspaceId, aiExplanation: result.explanation }
         });
 
-        toast({ title: 'Institutional Hub Created', description: `AI has successfully architected ${result.name}.` });
+        toast({ title: `${terms.singular} Hub Created`, description: `AI has successfully architected ${result.name}.` });
+        onOpenChange(false);
         router.push(`/admin/entities/${entityId}`);
 
     } catch (error: any) {
@@ -184,109 +241,156 @@ export default function AiEntityGenerator() {
   };
 
   return (
- <Card className="max-w-3xl mx-auto shadow-2xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-card">
- <CardHeader className="text-center pb-10 pt-12 border-b bg-muted/30 relative">
- <div className="mx-auto bg-primary/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-xl shadow-primary/5">
- <Sparkles className="h-8 w-8 text-primary" />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl rounded-2xl border border-border bg-card p-0 overflow-hidden shadow-2xl">
+        {/* Compact Aligned Dialog Header */}
+        <DialogHeader className="p-6 text-left border-b bg-muted/10 flex flex-row items-center gap-4 shrink-0 rounded-t-2xl relative">
+            <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center shadow-md shadow-primary/5 shrink-0">
+                <Sparkles className="h-6 w-6 text-primary animate-pulse" />
             </div>
- <CardTitle className="text-3xl font-semibold tracking-tight ">AI Institutional Architect</CardTitle>
- <CardDescription className="text-base font-medium max-w-md mx-auto mt-2">Paste school profiles or memos. AI will handle the track classification and data entry.</CardDescription>
-        </CardHeader>
- <CardContent className="p-8 sm:p-12">
+            <div className="min-w-0 pr-8">
+                <DialogTitle className="text-xl font-bold tracking-tight">AI {terms.singular} Architect</DialogTitle>
+                <DialogDescription className="text-xs font-medium mt-1">
+                    Paste {terms.singular.toLowerCase()} profiles or memos. AI will extract identity, contacts, and auto-map modules using the selected AI model.
+                </DialogDescription>
+            </div>
+        </DialogHeader>
+        <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto">
             <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    {/* Track Selector */}
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    {/* AI Model Selector */}
                     <FormField
                         control={form.control}
-                        name="track"
-                        render={({ field }) => (
- <FormItem className="text-left space-y-4">
- <FormLabel className="text-[10px] font-semibold text-primary ml-1">Target Track</FormLabel>
- <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => field.onChange('onboarding')}
- className={cn(
-                                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                                            field.value === 'onboarding' ? "border-primary bg-primary/5 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
-                                        )}
-                                    >
- <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-card text-muted-foreground")}>
- <Building className="h-5 w-5" />
-                                        </div>
- <div className="flex flex-col">
- <span className="font-semibold text-xs ">Onboarding</span>
- <span className="text-[9px] font-bold text-muted-foreground opacity-60">Direct Signup</span>
-                                        </div>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => field.onChange('prospect')}
- className={cn(
-                                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                                            field.value === 'prospect' ? "border-emerald-600 bg-emerald-50 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
-                                        )}
-                                    >
- <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-card text-muted-foreground")}>
- <Target className="h-5 w-5" />
-                                        </div>
- <div className="flex flex-col">
- <span className="font-semibold text-xs ">Prospect</span>
- <span className="text-[9px] font-bold text-muted-foreground opacity-60">Sales Lead</span>
-                                        </div>
-                                    </button>
-                                </div>
-                            </FormItem>
-                        )}
+                        name="modelId"
+                        render={({ field }) => {
+                            const selectedModel = field.value;
+                            const allModels = availableProviders.flatMap(p => p.models);
+                            const found = allModels.find(m => m.id === selectedModel);
+                            const currentProvider = availableProviders.find(p => p.models.some(m => m.id === selectedModel)) || availableProviders[0];
+
+                            const handleModelChange = (val: string) => {
+                                const provider = availableProviders.find(p => p.models.some(m => m.id === val));
+                                if (provider) {
+                                    form.setValue('provider', provider.id);
+                                }
+                                field.onChange(val);
+                            };
+
+                            return (
+                                <FormItem className="text-left space-y-1.5">
+                                    <FormLabel className="text-[10px] font-semibold text-primary ml-1">AI Processing Model</FormLabel>
+                                    <FormControl>
+                                        <Select value={selectedModel} onValueChange={handleModelChange}>
+                                            <SelectTrigger className="w-full h-12 rounded-xl bg-background border border-border shadow-inner focus:ring-1 focus:ring-primary/20 transition-all font-bold group">
+                                                <div className="flex items-center gap-2.5">
+                                                    {currentProvider && (
+                                                        <div className={cn("p-1.5 rounded-lg transition-colors shrink-0", currentProvider.bgColor)}>
+                                                            <currentProvider.icon className={cn("h-4 w-4", currentProvider.color)} />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col items-start min-w-0">
+                                                        <span className="text-sm font-bold text-foreground leading-tight truncate">
+                                                            {found?.name || 'Select Model'}
+                                                        </span>
+                                                        {found?.description && (
+                                                            <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
+                                                                {found.description}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent 
+                                                className="rounded-xl border border-border shadow-2xl p-2 bg-background/95 backdrop-blur-xl"
+                                                style={{ zIndex: 100000 }}
+                                            >
+                                                {availableProviders.map((provider) => (
+                                                    <SelectGroup key={provider.id}>
+                                                        <SelectLabel className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+                                                            <provider.icon className={cn("h-3 w-3", provider.color)} />
+                                                            {provider.name}
+                                                        </SelectLabel>
+                                                        {provider.models.map((model) => (
+                                                            <SelectItem 
+                                                                key={model.id} 
+                                                                value={model.id}
+                                                                className="rounded-xl py-3 px-3 focus:bg-primary/5 cursor-pointer"
+                                                            >
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <span className="font-bold text-sm tracking-tight">{model.name}</span>
+                                                                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{model.description}</span>
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            );
+                        }}
                     />
 
+                    {/* Source Material Textarea */}
                     <FormField
                         control={form.control}
                         name="text"
-                        render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-primary ml-1">Source Material</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                        placeholder="Paste school data here..."
- className="min-h-[250px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-8 text-lg leading-relaxed focus-visible:ring-1 focus-visible:ring-primary/20"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
+                        render={({ field }) => {
+                            const textVal = field.value || '';
+                            const remaining = 50 - textVal.trim().length;
+                            return (
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-semibold text-primary ml-1">Source Material</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder={`Paste ${terms.singular.toLowerCase()} data here...`}
+                                            className="min-h-[200px] rounded-xl bg-background/50 border border-border/80 shadow-inner p-6 text-sm leading-relaxed focus-visible:ring-1 focus-visible:ring-primary/20 resize-none"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                    {textVal.trim() && remaining > 0 && (
+                                        <div className="flex items-center gap-2 text-[10px] font-bold text-amber-600 bg-amber-500/5 p-3.5 rounded-xl border border-amber-500/20 mt-2 animate-in fade-in duration-200">
+                                            <AlertCircle size={14} className="shrink-0" />
+                                            Provide at least {remaining} more characters to enable extraction.
+                                        </div>
+                                    )}
+                                </FormItem>
+                            );
+                        }}
                     />
 
- <div className="flex items-center justify-between pt-8 border-t border-border/50">
+                    <div className="flex items-center justify-between pt-6 border-t border-border/50">
                         <Button
                           type="button"
                           variant="ghost"
-                          onClick={() => router.push('/admin/entities')}
+                          onClick={() => onOpenChange(false)}
                           disabled={isGenerating}
- className="font-semibold text-[10px] h-12 px-8 rounded-xl"
+                          className="font-semibold text-[10px] h-11 px-6 rounded-xl border border-border/80 hover:bg-muted animate-none"
                         >
                             Discard
                         </Button>
-                        <MovingButton 
+                        <RainbowButton 
                             type="submit" 
                             disabled={isGenerating || !form.formState.isValid} 
-                            containerClassName="h-14 px-12 rounded-2xl"
- className="h-full w-full font-semibold text-lg gap-3 bg-slate-900"
+                            className="h-11 px-8 gap-2 font-bold text-xs shadow-xl transition-all active:scale-95 text-white rounded-xl"
                         >
- {isGenerating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
-                            {isGenerating ? 'Architecting...' : 'Initialize Hub with AI'}
-                        </MovingButton>
+                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-primary animate-pulse" />}
+                            {isGenerating ? 'Architecting...' : `Create ${terms.singular}`}
+                        </RainbowButton>
                     </div>
                 </form>
             </Form>
-        </CardContent>
- <CardFooter className="bg-muted/30 p-6 border-t flex items-center gap-3">
- <Info className="h-4 w-4 text-muted-foreground opacity-40 shrink-0" />
- <p className="text-[9px] font-bold text-muted-foreground tracking-[0.1em] text-left">
-                The architect will automatically map regional zones and managers based on your current institutional settings.
+        </div>
+        <div className="bg-muted/30 p-4 border-t flex items-center gap-3">
+            <Info className="h-4 w-4 text-muted-foreground opacity-40 shrink-0" />
+            <p className="text-[9px] font-bold text-muted-foreground tracking-[0.1em] text-left">
+                The architect will automatically map regional zones and managers based on your current {terms.singular.toLowerCase()} settings.
             </p>
-        </CardFooter>
-    </Card>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

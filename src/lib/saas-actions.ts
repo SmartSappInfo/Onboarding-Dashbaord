@@ -30,6 +30,7 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { firestore as db } from '@/firebase/config';
+import { recalculateEntityScore } from './scoring-engine';
 import type {
   Trial,
   Onboarding,
@@ -445,6 +446,13 @@ export async function createSupportTicket(params: CreateSupportTicketParams): Pr
   // Update entity's supportTicketIds array
   await addCollectionReferenceToEntity(entityId, 'supportTicketIds', docRef.id);
 
+  // Recalculate health score asynchronously
+  try {
+    await recalculateEntityScore(entityId, workspaceId, organizationId);
+  } catch (err) {
+    console.error('Failed to trigger score recalculation in createSupportTicket:', err);
+  }
+
   return {
     id: docRef.id,
     ...ticketData,
@@ -493,6 +501,13 @@ export async function updateSupportTicket(
   }
 
   await updateDoc(ticketRef, finalUpdates);
+
+  // Recalculate health score asynchronously
+  try {
+    await recalculateEntityScore(ticket.entityId, ticket.workspaceId, ticket.organizationId);
+  } catch (err) {
+    console.error('Failed to trigger score recalculation in updateSupportTicket:', err);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -623,6 +638,13 @@ export async function recordProductUsage(params: RecordProductUsageParams): Prom
 
   const usageRef = collection(db, 'productUsage');
   const docRef = await addDoc(usageRef, usageData);
+
+  // Recalculate health score asynchronously
+  try {
+    await recalculateEntityScore(entityId, workspaceId, organizationId);
+  } catch (err) {
+    console.error('Failed to trigger score recalculation in recordProductUsage:', err);
+  }
 
   return {
     id: docRef.id,

@@ -26,6 +26,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
+import AiEntityGenerator from './components/ai-entity-generator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -140,6 +141,7 @@ export default function EntitiesClient() {
   const [managingWorkspacesEntity, setManagingWorkspacesEntity] = useState<WorkspaceEntity | null>(null);
   const [isBulkArchiveOpen, setIsBulkArchiveOpen] = useState(false);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+  const [isAiArchitectOpen, setIsAiArchitectOpen] = useState(false);
 
   const [isScanning, setIsScanning] = useState(false);
   const [scanProcessed, setScanProcessed] = useState(0);
@@ -368,6 +370,16 @@ export default function EntitiesClient() {
         description: audienceDesc.trim() || undefined,
         filters,
         filterLogic: 'AND',
+        groups: [{
+          id: `g_${Date.now()}`,
+          relation: 'and',
+          conditions: filters.map((f: any) => ({
+            id: f.id || `c_${Date.now()}`,
+            field: f.field,
+            operator: f.operator,
+            value: f.value
+          }))
+        }],
         createdBy: currentUser.uid,
       });
 
@@ -474,6 +486,18 @@ export default function EntitiesClient() {
   [firestore, activeWorkspaceId]);
 
   const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
+
+  // saved audiences query for client-side filtering
+  const audiencesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'message_audiences'),
+      where('workspaceId', '==', activeWorkspaceId),
+      orderBy('name', 'asc')
+    );
+  }, [firestore, activeWorkspaceId]);
+  
+  const { data: allAudiences } = useCollection<any>(audiencesQuery);
 
   // Extract unique contact roles from RAW entities for dropdown list
   const contactRoleOptions = useMemo(() => {
@@ -636,6 +660,7 @@ export default function EntitiesClient() {
     assignedUserId,
     tagFilteredIds,
     emailVerificationCache,
+    savedAudiences: allAudiences,
   });
 
   // Extract unique lifecycle stages from RAW unfiltered entities (prevents options disappearing)
@@ -850,10 +875,8 @@ export default function EntitiesClient() {
                             )}
 
                             {canCreate && (
-                                <RainbowButton asChild className="h-11 px-5 gap-2 font-bold text-[10px] shadow-xl transition-all active:scale-95 text-white">
-                                    <Link href="/admin/entities/new/ai">
-                                        <Sparkles className="h-4 w-4" /> AI Architect
-                                    </Link>
+                                <RainbowButton onClick={() => setIsAiArchitectOpen(true)} className="h-11 px-5 gap-2 font-bold text-[10px] shadow-xl transition-all active:scale-95 text-white">
+                                    <Sparkles className="h-4 w-4" /> AI Architect
                                 </RainbowButton>
                             )}
 
@@ -1003,7 +1026,32 @@ export default function EntitiesClient() {
                                 </div>
 
                                 {/* Row 2: Status + Country + Region + District + Date Added + Interests + Contact Roles — inline dropdowns */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-3">
+                                    {/* Saved Audience / Segment Dropdown */}
+                                    <div className="space-y-1.5 animate-in fade-in">
+                                        <div className="flex items-center justify-between h-5">
+                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                                                <ListFilter className="h-2.5 w-2.5" /> Segment
+                                            </label>
+                                            {filterState.savedAudienceId && (
+                                                <button type="button" onClick={() => setFilterState(prev => ({ ...prev, savedAudienceId: null }))} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
+                                            )}
+                                        </div>
+                                        <Select value={filterState.savedAudienceId || 'none'} onValueChange={(val) => setFilterState(prev => ({ ...prev, savedAudienceId: val === 'none' ? null : val }))}>
+                                            <SelectTrigger className="h-9 rounded-xl bg-background/50 border-border shadow-sm font-bold text-xs">
+                                                <SelectValue placeholder="All Contacts" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl p-1 w-[200px]">
+                                                <SelectItem value="none">All Contacts</SelectItem>
+                                                {allAudiences?.map((aud: any) => (
+                                                    <SelectItem key={aud.id} value={aud.id}>
+                                                        {aud.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                     {/* Status */}
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between h-5">
@@ -1707,6 +1755,8 @@ export default function EntitiesClient() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <AiEntityGenerator open={isAiArchitectOpen} onOpenChange={setIsAiArchitectOpen} />
 
             </PageContainerFluid>
         </TooltipProvider>

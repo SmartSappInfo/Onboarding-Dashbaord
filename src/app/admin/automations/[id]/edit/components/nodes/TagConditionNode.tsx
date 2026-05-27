@@ -28,7 +28,8 @@ export function TagConditionNode({ data, selected }: any) {
       <Handle
         type="target"
         position={Position.Top}
- className="w-3 h-3 bg-violet-500 border-2 border-white !-top-1.5 shadow-md"
+        className="bg-violet-500 border-2 border-white shadow-lg hover:scale-110 active:scale-95 transition-transform"
+        style={{ width: '20px', height: '20px', top: '-10px' }}
       />
 
       <Card
@@ -78,28 +79,28 @@ export function TagConditionNode({ data, selected }: any) {
       </Card>
 
       {/* True Path */}
- <div className="absolute -bottom-6 left-1/4 flex flex-col items-center">
- <span className="text-[8px] font-semibold text-emerald-600 mb-1">True</span>
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="true"
- className="w-3 h-3 bg-emerald-500 border-2 border-white shadow-md"
-          style={{ left: '25%' }}
-        />
-      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="true"
+        className="bg-emerald-500 border-2 border-white shadow-lg transition-colors hover:bg-emerald-600"
+        style={{ width: '16px', height: '16px', bottom: '-8px', left: '25%' }}
+      />
+      <span className="absolute text-[10px] font-bold text-emerald-600 select-none animate-fade-in" style={{ bottom: '-22px', left: '25%', transform: 'translateX(-180%)' }}>
+        True
+      </span>
 
       {/* False Path */}
- <div className="absolute -bottom-6 right-1/4 flex flex-col items-center">
- <span className="text-[8px] font-semibold text-rose-600 mb-1">False</span>
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="false"
- className="w-3 h-3 bg-rose-500 border-2 border-white shadow-md"
-          style={{ left: '75%' }}
-        />
-      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="false"
+        className="bg-rose-500 border-2 border-white shadow-lg transition-colors hover:bg-rose-600"
+        style={{ width: '16px', height: '16px', bottom: '-8px', left: '75%' }}
+      />
+      <span className="absolute text-[10px] font-bold text-rose-600 select-none animate-fade-in" style={{ bottom: '-22px', left: '75%', transform: 'translateX(80%)' }}>
+        False
+      </span>
     </div>
   );
 }

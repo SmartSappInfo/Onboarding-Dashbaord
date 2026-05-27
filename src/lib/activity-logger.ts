@@ -87,6 +87,18 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                 }
             });
         }
+        
+        // Recalculate score asynchronously on any logged activity
+        if (finalData.entityId && finalData.workspaceId && finalData.organizationId) {
+            after(async () => {
+                try {
+                    const { recalculateEntityScore } = await import('./scoring-engine');
+                    await recalculateEntityScore(finalData.entityId!, finalData.workspaceId!, finalData.organizationId!);
+                } catch (err: any) {
+                    console.error(`>>> [Scoring Engine] Recalculation failed on activity log:`, err.message);
+                }
+            });
+        }
 
     } catch (error) {
         console.error("ActivityLogger: Failed to log activity.", error);

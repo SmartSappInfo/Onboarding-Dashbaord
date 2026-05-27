@@ -23,7 +23,9 @@ import {
     DollarSign,
     ShieldAlert,
     Activity,
-    Settings2
+    Settings2,
+    Trash,
+    Plus
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -39,6 +41,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
+import { ConditionsBuilder } from './ConditionsBuilder';
 import { useTerminology } from '@/hooks/use-terminology';
 import type { AutomationTrigger } from '@/lib/types';
 
@@ -138,16 +141,6 @@ const ACTION_TYPES = [
     { value: 'UPDATE_TASK', label: 'Update Task', icon: CheckSquare, desc: 'Change task status or assignee.' },
     { value: 'TRIGGER_OUTBOUND_WEBHOOK', label: 'Call Webhook', icon: Globe, desc: 'POST payload to an outbound webhook.' },
     { value: 'RUN_AUTOMATION', label: 'Run Automation', icon: Zap, desc: 'Chain another automation by ID.' },
-];
-
-const CONDITION_OPERATORS = [
-    { value: 'equals', label: 'Exactly Equals' },
-    { value: 'not_equals', label: 'Does Not Equal' },
-    { value: 'contains', label: 'Contains Keyword' },
-    { value: 'greater_than', label: 'Greater Than' },
-    { value: 'less_than', label: 'Less Than' },
-    { value: 'has_opened', label: 'Has Opened Email' },
-    { value: 'has_clicked', label: 'Has Clicked Link' },
 ];
 
 export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
@@ -1055,76 +1048,38 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                     {node.type === 'conditionNode' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 bg-amber-500/5 p-6 rounded-[2rem] border border-amber-500/20 shadow-inner">
                             <Label className="text-[10px] font-semibold text-amber-600 flex items-center gap-2">
-                                <ArrowRightLeft className="h-3 w-3" /> Condition Rule
+                                <ArrowRightLeft className="h-3 w-3" /> Condition Branching
                             </Label>
-                            
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Operator</Label>
-                                <Select value={config.operator || ''} onValueChange={(v) => updateConfig({ operator: v })}>
-                                    <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
-                                        <SelectValue placeholder="Select operator..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                        {CONDITION_OPERATORS.map((op) => (
-                                            <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Standard Fields (non-email-engagement) */}
-                            {config.operator !== 'has_opened' && config.operator !== 'has_clicked' && (
-                                <>
-                                    <div className="space-y-2 animate-in fade-in duration-300">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Payload Field</Label>
-                                        <Input
-                                            value={config.field || ''}
-                                            onChange={(e) => updateConfig({ field: e.target.value })}
-                                            placeholder="e.g. entityType, tagId, status"
-                                            className="h-10 rounded-xl bg-background border-none font-mono text-xs shadow-inner"
-                                        />
-                                    </div>
-                                    <div className="space-y-2 animate-in fade-in duration-300">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Compare Value</Label>
-                                        <Input
-                                            value={config.value ?? ''}
-                                            onChange={(e) => updateConfig({ value: e.target.value })}
-                                            placeholder="Value to compare against"
-                                            className="h-10 rounded-xl bg-background border-none shadow-inner"
-                                        />
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Email Engagement Operators */}
-                            {(config.operator === 'has_opened' || config.operator === 'has_clicked') && (
-                                <div className="space-y-4 animate-in fade-in duration-300">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Email Template</Label>
-                                        <MessagingTemplateSelector 
-                                            category={"onboarding" as any}
-                                            channel="email"
-                                            recipientType={"manager" as any}
-                                            value={config.emailTemplateId}
-                                            onValueChange={(v) => updateConfig({ emailTemplateId: v })}
-                                            placeholder="Select template..."
-                                            className="h-10 rounded-xl bg-background border-none shadow-inner text-xs px-4"
-                                        />
-                                    </div>
-                                    
-                                    {config.operator === 'has_clicked' && (
-                                        <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Link URL</Label>
-                                            <Input
-                                                value={config.linkUrl || ''}
-                                                onChange={(e) => updateConfig({ linkUrl: e.target.value })}
-                                                placeholder="e.g. https://yoursite.com/welcome"
-                                                className="h-10 rounded-xl bg-background border-none shadow-inner font-mono text-xs px-4"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            <ConditionsBuilder 
+                                groups={config.groups || (config.conditions && config.conditions.length > 0 ? [{
+                                    id: 'legacy_group',
+                                    relation: config.relation || config.matchType || 'and',
+                                    conditions: config.conditions.map((c: any, idx: number) => ({
+                                        id: c.id || `c_legacy_${idx}`,
+                                        field: c.field || 'tags',
+                                        operator: c.operator || 'any_of',
+                                        value: c.value,
+                                        emailTemplateId: c.emailTemplateId,
+                                        linkUrl: c.linkUrl
+                                    }))
+                                }] : [])} 
+                                relation={config.relation || config.matchType || 'and'} 
+                                onChange={(rel: 'and' | 'or', grps: any[]) => {
+                                    onUpdate({
+                                        config: {
+                                            ...config,
+                                            relation: rel,
+                                            groups: grps,
+                                            // Fallback fields for backwards-compatibility
+                                            conditions: grps[0]?.conditions || [],
+                                            field: grps[0]?.conditions?.[0]?.field || '',
+                                            operator: grps[0]?.conditions?.[0]?.operator || '',
+                                            value: grps[0]?.conditions?.[0]?.value || ''
+                                        }
+                                    });
+                                }}
+                                accentColor="amber"
+                            />
                         </div>
                     )}
 
@@ -1286,42 +1241,38 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                             {/* 4. Until Specific Conditions are Met */}
                             {config.waitType === 'conditions_met' && (
                                 <div className="space-y-4 pt-2">
-                                    <div className="p-3.5 rounded-xl border border-dashed border-purple-500/20 bg-background/50 space-y-3">
-                                        <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight uppercase">Condition Rules</p>
-                                        <div className="space-y-2">
-                                            <Label className="text-[9px] font-semibold text-muted-foreground">Field</Label>
-                                            <Input
-                                                value={config.conditionField || ''}
-                                                onChange={(e) => updateConfig({ conditionField: e.target.value })}
-                                                placeholder="e.g. tagId, status"
-                                                className="h-9 rounded-lg bg-background border-none font-mono text-[10px] shadow-inner"
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="space-y-1">
-                                                <Label className="text-[9px] font-semibold text-muted-foreground">Operator</Label>
-                                                <Select value={config.conditionOperator || ''} onValueChange={(v) => updateConfig({ conditionOperator: v })}>
-                                                    <SelectTrigger className="h-9 rounded-lg bg-background border-none text-[10px] px-2 shadow-inner">
-                                                        <SelectValue placeholder="Operator" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-lg">
-                                                        {CONDITION_OPERATORS.map((op) => (
-                                                            <SelectItem key={op.value} value={op.value} className="text-[10px]">{op.label}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-[9px] font-semibold text-muted-foreground">Value</Label>
-                                                <Input
-                                                    value={config.conditionValue || ''}
-                                                    onChange={(e) => updateConfig({ conditionValue: e.target.value })}
-                                                    placeholder="Value"
-                                                    className="h-9 rounded-lg bg-background border-none text-[10px] shadow-inner"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <ConditionsBuilder 
+                                        groups={config.groups || (config.conditions && config.conditions.length > 0 ? [{
+                                            id: 'legacy_group',
+                                            relation: config.relation || config.matchType || 'and',
+                                            conditions: config.conditions.map((c: any, idx: number) => ({
+                                                id: c.id || `c_legacy_${idx}`,
+                                                field: c.field || 'tags',
+                                                operator: c.operator || 'any_of',
+                                                value: c.value,
+                                                emailTemplateId: c.emailTemplateId,
+                                                linkUrl: c.linkUrl
+                                            }))
+                                        }] : [])} 
+                                        relation={config.relation || config.matchType || 'and'} 
+                                        onChange={(rel: 'and' | 'or', grps: any[]) => {
+                                            onUpdate({
+                                                config: {
+                                                    ...config,
+                                                    relation: rel,
+                                                    groups: grps,
+                                                    // Fallback fields for backwards-compatibility
+                                                    conditions: grps[0]?.conditions || [],
+                                                    conditionField: grps[0]?.conditions?.[0]?.field || '',
+                                                    conditionOperator: grps[0]?.conditions?.[0]?.operator || '',
+                                                    conditionValue: grps[0]?.conditions?.[0]?.value || '',
+                                                    emailTemplateId: grps[0]?.conditions?.[0]?.emailTemplateId,
+                                                    linkUrl: grps[0]?.conditions?.[0]?.linkUrl
+                                                }
+                                            });
+                                        }}
+                                        accentColor="purple"
+                                    />
 
                                     <div className="flex items-center gap-2 px-1">
                                         <input

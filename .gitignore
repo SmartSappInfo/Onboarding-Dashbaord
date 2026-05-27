@@ -57,3 +57,7 @@ firestore-debug.log
 serviceAccountKey.json
 *serviceAccount*.json
 *service-account*.json
+
+# local agent environment
+.superpowers/
+

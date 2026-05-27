@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, DollarSign, ArrowRightLeft, Users, Link2 } from 'lucide-react';
+import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, DollarSign, ArrowRightLeft, Users, Link2, Settings2, Clock, Activity, ShieldAlert } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,15 @@ const TRIGGER_ICONS: Record<string, any> = {
     CAMPAIGN_OPENED: Mail,
     CAMPAIGN_CLICKED: Mail,
     CAMPAIGN_NOT_DELIVERED: Mail,
+    ENTITY_FIELD_CHANGED: Settings2,
+    DATE_REACHED: Clock,
+    TASK_OVERDUE: ShieldAlert,
+    WEBPAGE_VISITED: Globe,
+    EVENT_RECORDED: Activity,
+    EMAIL_BOUNCED: ShieldAlert,
+    SCORE_CHANGED: Activity,
+    DEAL_OWNER_CHANGED: Target,
+    ENTITY_INACTIVE: Clock,
 };
 
 /**
@@ -87,7 +96,12 @@ export function TriggerNode({ data, selected }: any) {
                     </div>
                 </div>
             </Card>
- <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-emerald-500 border-2 border-white !-bottom-1.5 shadow-md" />
+  <Handle 
+    type="source" 
+    position={Position.Bottom} 
+    className="bg-emerald-500 border-2 border-white shadow-lg transition-colors hover:bg-emerald-600" 
+    style={{ width: '16px', height: '16px', bottom: '-8px' }}
+  />
         </div>
     );
 }

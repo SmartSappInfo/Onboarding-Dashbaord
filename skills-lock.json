@@ -164,6 +164,12 @@
       "skillPath": "skills/resend-webhooks/SKILL.md",
       "computedHash": "193b849f4e1b4e6b5ac7b827d3d2db78ca0a546390eed7c4e78332afda79fa48"
     },
+    "sales-activecampaign": {
+      "source": "sales-skills/sales",
+      "sourceType": "github",
+      "skillPath": "skills/sales-activecampaign/SKILL.md",
+      "computedHash": "c36fc9126beaf70a3b3b6b32985e1682d9bdd97dc01bc292477feb87d5e7a12a"
+    },
     "subagent-driven-development": {
       "source": "obra/superpowers",
       "sourceType": "github",

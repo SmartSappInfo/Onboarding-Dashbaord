@@ -28,6 +28,15 @@ export const ACTIVITY_TO_AUTOMATION_TRIGGER: Record<string, AutomationTrigger> =
   deal_status_changed: 'DEAL_STATUS_CHANGED',
   deal_value_changed: 'DEAL_VALUE_CHANGED',
   page_conversion: 'CAMPAIGN_PAGE_SUBMITTED',
+  entity_field_changed: 'ENTITY_FIELD_CHANGED',
+  date_reached: 'DATE_REACHED',
+  task_overdue: 'TASK_OVERDUE',
+  webpage_visited: 'WEBPAGE_VISITED',
+  event_recorded: 'EVENT_RECORDED',
+  email_bounced: 'EMAIL_BOUNCED',
+  score_changed: 'SCORE_CHANGED',
+  deal_owner_changed: 'DEAL_OWNER_CHANGED',
+  entity_inactive: 'ENTITY_INACTIVE',
 };
 
 export function resolveAutomationTrigger(activityType: string): AutomationTrigger | undefined {

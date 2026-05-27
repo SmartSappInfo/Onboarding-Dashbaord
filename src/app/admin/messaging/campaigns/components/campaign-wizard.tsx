@@ -143,6 +143,7 @@ interface WizardState {
     // Phase 4 advanced filters
     filters: AudienceFilter[];
     filterLogic: 'AND' | 'OR';
+    groups?: any[];
     savedAudienceId: string;
     // Phase 6 post-send behavior
     postSendTagRules: PostSendTagRule[];
@@ -205,6 +206,7 @@ function createInitialState(campaign: MessageCampaign | null): WizardState {
             isSending: false,
             filters,
             filterLogic: campaign.audienceDefinition?.filterLogic || 'AND',
+            groups: campaign.audienceDefinition?.groups || [],
             savedAudienceId: campaign.audienceDefinition?.savedAudienceId || '',
             postSendTagRules: campaign.postSendTagRules || [],
             trackLinks: campaign.trackLinks !== false, // default to true
@@ -217,6 +219,7 @@ function createInitialState(campaign: MessageCampaign | null): WizardState {
         excludeTagIds: [], entityIds: [], contactScope: 'primary', senderProfileId: '',
         isScheduled: false, scheduledAt: null, isSaving: false, isSending: false,
         filters: [], filterLogic: 'AND' as const, savedAudienceId: '',
+        groups: [],
         postSendTagRules: [],
         trackLinks: true,
     };
@@ -306,6 +309,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                     workspaceId: activeWorkspaceId,
                     filters: filters as any,
                     filterLogic: state.filterLogic,
+                    groups: state.audienceMode === 'advanced' || state.audienceMode === 'saved' ? state.groups : [],
                     limit: 10,
                     contactScope: state.contactScope,
                     channel: state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined,
@@ -398,6 +402,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 contactScope: state.contactScope,
                 filters: state.filters,
                 filterLogic: state.filterLogic,
+                groups: state.groups || [],
                 savedAudienceId: state.savedAudienceId || undefined,
             };
 
@@ -452,6 +457,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 contactScope: state.contactScope,
                 filters: state.filters,
                 filterLogic: state.filterLogic,
+                groups: state.groups || [],
                 savedAudienceId: state.savedAudienceId || undefined,
             };
 
@@ -884,8 +890,13 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 channel={state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined}
                                 filters={state.filters}
                                 filterLogic={state.filterLogic}
+                                groups={state.groups}
                                 showPreview={false}
-                                onChange={(f, l) => { setField('filters', f); setField('filterLogic', l); }}
+                                onChange={(f, l, g) => { 
+                                    setField('filters', f); 
+                                    setField('filterLogic', l); 
+                                    if (g) setField('groups', g);
+                                }}
                             />
                         ) : null}
 
@@ -901,6 +912,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                         if (aud) {
                                             setField('filters', aud.filters);
                                             setField('filterLogic', aud.filterLogic);
+                                            setField('groups', aud.groups || []);
                                         }
                                     }}>
                                         <SelectTrigger className="h-10 rounded-xl font-bold text-xs bg-card border-border/50">
@@ -918,14 +930,19 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                {state.savedAudienceId && state.filters.length > 0 ? (
+                                {state.savedAudienceId && (state.filters.length > 0 || (state.groups && state.groups.length > 0)) ? (
                                     <FilterBuilder
                                         contactScope={state.contactScope}
                                         channel={state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined}
                                         filters={state.filters}
                                         filterLogic={state.filterLogic}
+                                        groups={state.groups}
                                         showPreview={false}
-                                        onChange={(f, l) => { setField('filters', f); setField('filterLogic', l); }}
+                                        onChange={(f, l, g) => { 
+                                            setField('filters', f); 
+                                            setField('filterLogic', l); 
+                                            if (g) setField('groups', g);
+                                        }}
                                     />
                                 ) : null}
                             </div>

@@ -63,9 +63,11 @@ function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelet
             <div className="flex-1 overflow-hidden relative bg-card flex flex-col items-center justify-center p-1.5">
                 {template.channel === 'email' ? (
                     <div className="w-full h-full relative overflow-hidden bg-muted/10 border rounded-xl shadow-inner flex items-start justify-center">
-                        <div className="relative transform origin-top scale-[0.42] w-[238%] h-[238%] pointer-events-none p-4 shrink-0">
-                            <iframe srcDoc={emailSrcDoc} className="w-full h-full border-none bg-card rounded-[2rem] pointer-events-none shadow-2xl" title="preview" />
-                        </div>
+                        <ResponsiveIframePreview 
+                            srcDoc={emailSrcDoc}
+                            className="pointer-events-none border-none bg-card rounded-2xl shadow-2xl"
+                            title="preview"
+                        />
                     </div>
                 ) : (
                     <div className="w-full h-full bg-card rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-slate-100 dark:border-slate-800/80 shadow-inner">
@@ -521,3 +523,66 @@ export function TemplateGallery({
         </div>
     );
 }
+
+interface ResponsiveIframePreviewProps {
+    srcDoc: string;
+    className?: string;
+    title?: string;
+}
+
+function ResponsiveIframePreview({ 
+    srcDoc, 
+    className, 
+    title = "Preview" 
+}: ResponsiveIframePreviewProps) {
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const [scale, setScale] = React.useState(0.25);
+    const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
+    const [isMeasured, setIsMeasured] = React.useState(false);
+
+    React.useEffect(() => {
+        if (!containerRef.current) return;
+        const container = containerRef.current;
+        
+        const observer = new ResizeObserver((entries) => {
+            if (!entries || entries.length === 0) return;
+            const entry = entries[0];
+            const { width, height } = entry.contentRect;
+            if (width <= 0 || height <= 0) return;
+            
+            const virtualWidth = 800;
+            const newScale = width / virtualWidth;
+            setScale(newScale);
+            setDimensions({ width: virtualWidth, height: height / newScale });
+            setIsMeasured(true);
+        });
+        
+        observer.observe(container);
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div ref={containerRef} className="w-full h-full overflow-hidden relative bg-slate-50 flex items-center justify-center">
+            <iframe 
+                srcDoc={srcDoc}
+                style={{
+                    width: `${dimensions.width}px`,
+                    height: `${dimensions.height}px`,
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'top left',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                }}
+                className={cn(
+                    "pointer-events-none border-none transition-opacity duration-300",
+                    isMeasured ? "opacity-100" : "opacity-0",
+                    className
+                )}
+                title={title}
+                loading="lazy"
+            />
+        </div>
+    );
+}
+

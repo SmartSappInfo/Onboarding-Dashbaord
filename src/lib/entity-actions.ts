@@ -716,9 +716,77 @@ export async function updateEntityAction(
       }
     }
 
+    // Evaluate field changed triggers in background
+    const oldEntityData = entitySnap.exists ? entitySnap.data() : {};
+    try {
+      after(async () => {
+        try {
+          await checkEntityFieldChangedTrigger(entityId, oldEntityData, data, workspaceId, organizationId);
+        } catch (err: any) {
+          console.error('[fieldChangedTrigger] Background evaluation failed:', err.message);
+        }
+      });
+    } catch (err) {
+      // fallback if after() is called outside request context
+      await checkEntityFieldChangedTrigger(entityId, oldEntityData, data, workspaceId, organizationId).catch(() => {});
+    }
+
     return { success: true };
   } catch (e: any) {
     console.error(">>> [ENTITY:UPDATE] Failed:", e.message);
     return { success: false, error: e.message };
+  }
+}
+
+async function checkEntityFieldChangedTrigger(
+  entityId: string,
+  oldData: any,
+  newData: any,
+  workspaceId: string,
+  organizationId: string
+) {
+  try {
+    const automationsRef = adminDb.collection('automations');
+    const snap = await automationsRef
+      .where('trigger', '==', 'ENTITY_FIELD_CHANGED')
+      .where('status', '==', 'active')
+      .get();
+    
+    if (snap.empty) return;
+
+    // Helper to get nested object values
+    const getNestedValue = (obj: any, path: string) => {
+      if (!obj) return undefined;
+      return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+    };
+
+    const { triggerAutomationProtocols } = await import('./automation-processor');
+    const { buildAutomationPayload } = await import('./automation-payload');
+
+    for (const doc of snap.docs) {
+      const automation = doc.data();
+      const fieldPath = automation.config?.fieldPath;
+      if (!fieldPath) continue;
+
+      const oldValue = getNestedValue(oldData, fieldPath);
+      const newValue = getNestedValue(newData, fieldPath);
+
+      if (newValue !== undefined && oldValue !== newValue) {
+        const payload = buildAutomationPayload({
+          organizationId,
+          workspaceId,
+          entityId,
+          action: 'entity_field_changed',
+          metadata: {
+            fieldPath,
+            oldValue,
+            newValue,
+          },
+        });
+        await triggerAutomationProtocols('ENTITY_FIELD_CHANGED', payload);
+      }
+    }
+  } catch (err) {
+    console.error('Error evaluating field changed trigger:', err);
   }
 }

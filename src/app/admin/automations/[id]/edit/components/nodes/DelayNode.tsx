@@ -39,11 +39,13 @@ export function DelayNode({ data, selected }: any) {
     };
 
     return (
- <div className={cn(
-            "relative transition-all duration-500",
-            selected ? "scale-105" : "scale-100"
-        )}>
- <Handle type="target" position={Position.Top} className="w-3 h-3 bg-purple-500 border-2 border-white !-top-1.5 shadow-md" />
+ <div className="relative">
+ <Handle 
+    type="target" 
+    position={Position.Top} 
+    className="bg-purple-500 border-2 border-white shadow-lg transition-colors hover:bg-purple-600" 
+    style={{ width: '16px', height: '16px', top: '-8px' }}
+  />
             
  <Card className={cn(
                 "w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden shadow-sm text-left",
@@ -66,7 +68,12 @@ export function DelayNode({ data, selected }: any) {
                 </div>
             </Card>
             
- <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-purple-500 border-2 border-white !-bottom-1.5 shadow-md" />
+ <Handle 
+    type="source" 
+    position={Position.Bottom} 
+    className="bg-purple-500 border-2 border-white shadow-lg transition-colors hover:bg-purple-600" 
+    style={{ width: '16px', height: '16px', bottom: '-8px' }}
+  />
         </div>
     );
 }

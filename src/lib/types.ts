@@ -215,7 +215,16 @@ export type AutomationTrigger =
   | 'CAMPAIGN_FAILED'
   | 'CAMPAIGN_OPENED'
   | 'CAMPAIGN_CLICKED'
-  | 'CAMPAIGN_NOT_DELIVERED';
+  | 'CAMPAIGN_NOT_DELIVERED'
+  | 'ENTITY_FIELD_CHANGED'
+  | 'DATE_REACHED'
+  | 'TASK_OVERDUE'
+  | 'WEBPAGE_VISITED'
+  | 'EVENT_RECORDED'
+  | 'EMAIL_BOUNCED'
+  | 'SCORE_CHANGED'
+  | 'DEAL_OWNER_CHANGED'
+  | 'ENTITY_INACTIVE';
 
 /**
  * Configuration for tag-based automation triggers (TAG_ADDED / TAG_REMOVED).
@@ -2297,6 +2306,7 @@ export interface AudienceDefinition {
   filters?: AudienceFilter[];
   /** Logic for combining advanced filters */
   filterLogic?: 'AND' | 'OR';
+  groups?: any[];
 }
 
 /**
@@ -2343,6 +2353,7 @@ export interface MessageAudience {
   description?: string;
   filters: AudienceFilter[];
   filterLogic: 'AND' | 'OR';
+  groups?: any[];
   estimatedCount?: number;
   lastEstimatedAt?: string;
   lastUsedAt?: string;

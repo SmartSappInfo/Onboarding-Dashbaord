@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
-import type { WorkspaceEntity } from '@/lib/types';
+import { useMemo, useState, useEffect } from 'react';
+import type { WorkspaceEntity, MessageAudience } from '@/lib/types';
 import type { LocationValue } from '@/components/location/LocationCascade';
 import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';
+import { evaluateConditionNode } from '@/lib/automation-condition';
 
 // ─── Atomic Filter State ───────────────────────────────────────────
 export interface DirectoryFilterState {
@@ -16,6 +17,7 @@ export interface DirectoryFilterState {
   interests?: string[];
   contactRoles?: string[];
   contactHealths?: string[];
+  savedAudienceId?: string | null;
 }
 
 export const DEFAULT_FILTERS: DirectoryFilterState = {
@@ -28,6 +30,7 @@ export const DEFAULT_FILTERS: DirectoryFilterState = {
   interests: [],
   contactRoles: [],
   contactHealths: [],
+  savedAudienceId: null,
 };
 
 // ─── Date Range Boundary Helpers ───────────────────────────────────
@@ -70,6 +73,7 @@ interface UseEntityFiltersParams {
   assignedUserId?: string | null;
   tagFilteredIds: Set<string> | null;
   emailVerificationCache?: Record<string, { status: string; score: number }>;
+  savedAudiences?: MessageAudience[] | null;
 }
 
 // ─── Core Hook ─────────────────────────────────────────────────────
@@ -79,7 +83,79 @@ export function useEntityFilters({
   assignedUserId,
   tagFilteredIds,
   emailVerificationCache,
+  savedAudiences,
 }: UseEntityFiltersParams) {
+
+  const [matchedEntityIds, setMatchedEntityIds] = useState<Set<string> | null>(null);
+
+  const selectedAudience = useMemo(() => {
+    if (!filterState.savedAudienceId || !savedAudiences) return null;
+    return savedAudiences.find(a => a.id === filterState.savedAudienceId) || null;
+  }, [filterState.savedAudienceId, savedAudiences]);
+
+  useEffect(() => {
+    if (!selectedAudience || !entities || entities.length === 0) {
+      setMatchedEntityIds(null);
+      return;
+    }
+
+    const currentAudience = selectedAudience;
+    const currentEntities = entities;
+    let active = true;
+
+    async function runEvaluation() {
+      try {
+        const results = await Promise.all(
+          currentEntities.map(async (entity) => {
+            const payload = {
+              ...entity,
+              id: entity.entityId,
+              tags: entity.workspaceTags || [],
+              tagIds: entity.workspaceTags || [],
+              email: entity.primaryEmail,
+              firstName: entity.primaryContactName?.split(' ')[0] || '',
+              lastName: entity.primaryContactName?.split(' ').slice(1).join(' ') || '',
+              status: entity.status,
+              lifecycleStatus: entity.lifecycleStatus,
+              locationCountryId: entity.locationCountryId,
+              locationRegionId: entity.locationRegionId,
+              locationDistrictId: entity.locationDistrictId,
+            };
+
+            const matched = await evaluateConditionNode(
+              {
+                data: {
+                  config: {
+                    groups: currentAudience.groups || [],
+                    relation: currentAudience.filterLogic || 'AND',
+                  },
+                },
+              },
+              payload,
+              async (id) => savedAudiences?.find((a) => a.id === id)
+            );
+
+            return { id: entity.entityId, matched };
+          })
+        );
+
+        if (!active) return;
+
+        const matchedSet = new Set(
+          results.filter((r) => r.matched).map((r) => r.id)
+        );
+        setMatchedEntityIds(matchedSet);
+      } catch (err) {
+        console.error('Failed to evaluate saved audience:', err);
+      }
+    }
+
+    runEvaluation();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedAudience, entities, savedAudiences]);
 
   // Single-pass high-performance iteration (js-combine-iterations)
   const filteredEntities = useMemo(() => {
@@ -93,6 +169,12 @@ export function useEntityFilters({
     const dateBoundary = getDateBoundary(filterState.dateRange);
 
     return entities.filter(entity => {
+      // Saved Audience filter check
+      if (selectedAudience) {
+        if (!matchedEntityIds || !matchedEntityIds.has(entity.entityId)) {
+          return false;
+        }
+      }
       // 1. Global Assignment Filter
       if (assignedUserId) {
         if (assignedUserId === 'unassigned') {
@@ -198,7 +280,7 @@ export function useEntityFilters({
 
       return true;
     });
-  }, [entities, filterState, assignedUserId, tagFilteredIds, emailVerificationCache]);
+  }, [entities, filterState, assignedUserId, tagFilteredIds, emailVerificationCache, selectedAudience, matchedEntityIds]);
 
   // Derived active filter count (rerender-derived-state-no-effect)
   const activeFiltersCount = useMemo(() => {
@@ -212,12 +294,22 @@ export function useEntityFilters({
     if (filterState.interests && filterState.interests.length > 0) count++;
     if (filterState.contactRoles && filterState.contactRoles.length > 0) count++;
     if (filterState.contactHealths && filterState.contactHealths.length > 0) count++;
+    if (filterState.savedAudienceId) count++;
     return count;
   }, [filterState]);
 
   // Build list of active filter descriptors for rendering capsules
   const activeFilterCapsules = useMemo(() => {
     const capsules: Array<{ id: string; label: string; value: string; onClear: () => DirectoryFilterState }> = [];
+
+    if (filterState.savedAudienceId && selectedAudience) {
+      capsules.push({
+        id: 'savedAudience',
+        label: 'Segment',
+        value: selectedAudience.name,
+        onClear: () => ({ ...filterState, savedAudienceId: null }),
+      });
+    }
 
     if (filterState.search) {
       capsules.push({
@@ -318,7 +410,7 @@ export function useEntityFilters({
     }
 
     return capsules;
-  }, [filterState]);
+  }, [filterState, selectedAudience]);
 
   return {
     filteredEntities,

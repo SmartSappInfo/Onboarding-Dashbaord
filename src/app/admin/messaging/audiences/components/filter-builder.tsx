@@ -7,6 +7,8 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Pipeline, Automation } from '@/lib/types';
 import { previewCampaignAudience } from '@/lib/messaging-actions';
 import type { AudienceFilter, AudienceFilterField, Tag } from '@/lib/types';
+import { ConditionsBuilder } from '@/app/admin/automations/components/ConditionsBuilder';
+import type { ConditionGroup } from '@/lib/automation-condition';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -401,14 +403,15 @@ const FilterRow = React.memo(function FilterRow({
 interface FilterBuilderProps {
     filters: AudienceFilter[];
     filterLogic: 'AND' | 'OR';
-    onChange: (filters: AudienceFilter[], logic: 'AND' | 'OR') => void;
+    groups?: ConditionGroup[];
+    onChange: (filters: AudienceFilter[], logic: 'AND' | 'OR', groups?: ConditionGroup[]) => void;
     className?: string;
     contactScope?: 'primary' | 'signatories' | 'all' | (string & {});
     channel?: 'email' | 'sms';
     showPreview?: boolean;
 }
 
-export function FilterBuilder({ filters, filterLogic, onChange, className, contactScope = 'all', channel, showPreview = true }: FilterBuilderProps) {
+export function FilterBuilder({ filters, filterLogic, groups, onChange, className, contactScope = 'all', channel, showPreview = true }: FilterBuilderProps) {
     const { activeWorkspaceId } = useWorkspace() as any;
     const [isPreviewing, setIsPreviewing] = React.useState(false);
     const [previewResult, setPreviewResult] = React.useState<{
@@ -417,26 +420,6 @@ export function FilterBuilder({ filters, filterLogic, onChange, className, conta
         preview: { id: string; name: string; tags: string[] }[];
     } | null>(null);
     const debounceRef = React.useRef<NodeJS.Timeout | null>(null);
-
-    const addFilter = () => {
-        const newFilter: AudienceFilter = {
-            id: `f_${Date.now()}`,
-            field: 'tags',
-            operator: 'any_of',
-            value: [],
-        };
-        onChange([...filters, newFilter], filterLogic);
-    };
-
-    const updateFilter = (index: number, updated: AudienceFilter) => {
-        const next = [...filters];
-        next[index] = updated;
-        onChange(next, filterLogic);
-    };
-
-    const removeFilter = (index: number) => {
-        onChange(filters.filter((_, i) => i !== index), filterLogic);
-    };
 
     // Debounced preview (800ms — R2 fix)
     const fetchPreview = React.useCallback(() => {
@@ -452,6 +435,7 @@ export function FilterBuilder({ filters, filterLogic, onChange, className, conta
                     workspaceId: activeWorkspaceId,
                     filters: filters as any,
                     filterLogic,
+                    groups: groups,
                     limit: 5,
                     contactScope,
                     channel,
@@ -467,7 +451,7 @@ export function FilterBuilder({ filters, filterLogic, onChange, className, conta
                 setIsPreviewing(false);
             }
         }, 800);
-    }, [activeWorkspaceId, filters, filterLogic, contactScope, channel]);
+    }, [activeWorkspaceId, filters, filterLogic, groups, contactScope, channel]);
 
     React.useEffect(() => {
         fetchPreview();
@@ -504,28 +488,34 @@ export function FilterBuilder({ filters, filterLogic, onChange, className, conta
 
             <Separator className="bg-border/30" />
 
-            {/* Filter rows */}
-            {filters.length > 0 ? (
-                <div className="space-y-3">
-                    {filters.map((filter, i) => (
-                        <FilterRow key={filter.id} filter={filter} index={i} onUpdate={f => updateFilter(i, f)} onRemove={() => removeFilter(i)} />
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-8">
-                    <Filter className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-xs font-semibold text-muted-foreground">No filters yet</p>
-                    <p className="text-[9px] text-muted-foreground/70 font-medium">Add a filter to start building your audience</p>
-                </div>
-            )}
-
-            {/* Add filter button */}
-            <Button type="button" variant="outline" size="sm" onClick={addFilter} className="rounded-xl font-bold text-[10px] gap-1.5 border-dashed border-primary/30 text-primary hover:bg-primary/5">
-                <Plus className="h-3 w-3" /> Add Filter
-            </Button>
+            <div className="bg-background/25 p-4 rounded-[2rem] border border-border/30 shadow-inner">
+                <ConditionsBuilder
+                    groups={groups || (filters && filters.length > 0 ? [{
+                        id: 'legacy_group',
+                        relation: filterLogic.toLowerCase() as 'and' | 'or',
+                        conditions: filters.map((f: any, idx: number) => ({
+                            id: f.id || `c_legacy_${idx}`,
+                            field: f.field,
+                            operator: f.operator,
+                            value: f.value
+                        }))
+                    }] : [])}
+                    relation={filterLogic.toLowerCase() as 'and' | 'or'}
+                    onChange={(rel: 'and' | 'or', nextGroups: ConditionGroup[]) => {
+                        const fallbackFilters = (nextGroups[0]?.conditions || []).map((c: any) => ({
+                            id: c.id,
+                            field: c.field,
+                            operator: c.operator,
+                            value: c.value
+                        }));
+                        onChange(fallbackFilters, rel.toUpperCase() as 'AND' | 'OR', nextGroups);
+                    }}
+                    accentColor="violet"
+                />
+            </div>
 
             {/* Preview sample */}
-            {showPreview && previewResult && previewResult.preview.length > 0 && filters.length > 0 && (
+            {showPreview && previewResult && previewResult.preview.length > 0 && (filters.length > 0 || (groups && groups.length > 0)) && (
                 <>
                     <Separator className="bg-border/30" />
                     <div className="space-y-2">

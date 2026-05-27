@@ -4,11 +4,15 @@
  * Upgraded to support deep discovery of all stakeholders and secondary contact points.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getModel } from '@/ai/genkit';
+import { adminDb } from '@/lib/firebase-admin';
 import { z } from 'genkit';
 
 const ExtractSchoolDataInputSchema = z.object({
   text: z.string().describe('The raw text containing school information.'),
+  organizationId: z.string().optional(),
+  provider: z.string().optional().default('googleai'),
+  modelId: z.string().optional().default('gemini-3-flash-preview'),
 });
 export type ExtractSchoolDataInput = z.infer<typeof ExtractSchoolDataInputSchema>;
 
@@ -29,11 +33,7 @@ const ExtractSchoolDataOutputSchema = z.object({
 });
 export type ExtractSchoolDataOutput = z.infer<typeof ExtractSchoolDataOutputSchema>;
 
-const extractionPrompt = ai.definePrompt({
-  name: 'extractSchoolDataPrompt',
-  input: { schema: ExtractSchoolDataInputSchema },
-  output: { schema: ExtractSchoolDataOutputSchema },
-  prompt: `You are an expert institutional analyst for SmartSapp. Your task is to analyze the provided text and extract structured data for a new school onboarding.
+const PROMPT_TEMPLATE = `You are an expert institutional analyst for SmartSapp. Your task is to analyze the provided text and extract structured data for a new school onboarding.
 
 ### ANALYSIS RULES:
 1. **Precision**: Extract the official name, initials (e.g. GIS for Ghana International School), and slogan exactly as they appear.
@@ -49,8 +49,7 @@ Source Material:
 """
 {{{text}}}
 """
-`,
-});
+`;
 
 const extractSchoolDataFlow = ai.defineFlow(
   {
@@ -59,8 +58,77 @@ const extractSchoolDataFlow = ai.defineFlow(
     outputSchema: ExtractSchoolDataOutputSchema,
   },
   async (input) => {
-    const { output } = await extractionPrompt(input);
-    if (!output) throw new Error("The AI failed to parse the institutional data.");
+    const promptText = PROMPT_TEMPLATE.replace('{{{text}}}', input.text);
+
+    // Bypass genkitx-openai-compatible entirely for OpenRouter due to slash mutation bug
+    if (input.provider === 'openrouter') {
+      let apiKey: string | undefined;
+      let aiKeyMode: 'platform' | 'custom' = 'platform';
+
+      if (input.organizationId) {
+        const orgDoc = await adminDb.collection('organizations').doc(input.organizationId).get();
+        aiKeyMode = orgDoc.data()?.aiKeyMode || 'platform';
+        
+        if (aiKeyMode === 'custom') {
+          apiKey = orgDoc.data()?.openRouterApiKey;
+          if (!apiKey) throw new Error("Organization is configured to use custom AI APIs, but OpenRouter API key is missing. Please add it to your organization settings.");
+        }
+      }
+
+      if (aiKeyMode === 'platform') {
+        apiKey = process.env.OPENROUTER_API_KEY;
+        if (!apiKey) throw new Error("Platform AI API keys are not configured. Please contact the administrator or switch to custom API keys in your organization settings.");
+      }
+
+      const fullPrompt = `${promptText}\n\nYou MUST return raw, strictly well-formed JSON matching the exact schema requirements defined. Do not use markdown wrappers.`;
+      
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: input.modelId || 'gemini-3-flash-preview',
+          response_format: { type: "json_object" },
+          messages: [
+            { role: 'system', content: 'You are an AI generating exactly formatted JSON mapping back to strict schema constraints.' },
+            { role: 'user', content: fullPrompt }
+          ]
+        })
+      });
+
+      if (!response.ok) throw new Error(`OpenRouter API refused generation: ${response.statusText}`);
+      const data = await response.json();
+      const contentString = data.choices?.[0]?.message?.content;
+      if (!contentString) throw new Error("OpenRouter returned an empty payload.");
+
+      try {
+        let parsedJSON = JSON.parse(contentString.replace(/```json/g, '').replace(/```/g, '').trim());
+        return ExtractSchoolDataOutputSchema.parse(parsedJSON);
+      } catch (e: any) {
+        console.error("Failed to parse OpenRouter structured output:", e);
+        throw new Error("OpenRouter returned an invalid JSON schema payload. Generation aborted.");
+      }
+    }
+
+    // --- Native Genkit Path for Gemini and OpenAI ---
+    const resolvedModel = await getModel({
+      organizationId: input.organizationId,
+      provider: input.provider || 'googleai',
+      modelId: input.modelId || 'gemini-3-flash-preview',
+    });
+
+    const generatorAi = resolvedModel.customAi || ai;
+
+    const { output } = await generatorAi.generate({
+      model: resolvedModel.modelString,
+      prompt: promptText,
+      output: { schema: ExtractSchoolDataOutputSchema }
+    });
+
+    if (!output) throw new Error("The AI model failed to generate structured data.");
     return output;
   }
 );

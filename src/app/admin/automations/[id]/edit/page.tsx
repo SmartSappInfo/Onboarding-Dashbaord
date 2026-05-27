@@ -57,6 +57,17 @@ export default function EditAutomationPage() {
 
   const { data: automation, isLoading } = useDoc<Automation>(docRef);
 
+  React.useEffect(() => {
+    if (automation) {
+      setCurrentData((prev) => {
+        const next = { ...prev };
+        if (next.name === undefined) next.name = automation.name;
+        if (next.description === undefined) next.description = automation.description || '';
+        return next;
+      });
+    }
+  }, [automation]);
+
   const testWorkspaceId =
     automation?.workspaceIds?.[0] || activeWorkspaceId || '';
 
@@ -130,22 +141,30 @@ export default function EditAutomationPage() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <header className="h-16 shrink-0 bg-card/80 border-b px-6 flex items-center justify-between z-30 shadow-sm">
-        <div className="flex items-center gap-4 min-w-0">
+        <div className="flex items-center gap-4 min-w-0 flex-1 mr-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.push('/admin/automations')}
-            className="rounded-xl h-10 w-10"
+            className="rounded-xl h-10 w-10 shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="min-w-0 text-left">
-            <h1 className="text-sm font-semibold tracking-tight truncate pr-4">
-              {automation.name}
-            </h1>
-            <p className="text-[9px] font-bold text-muted-foreground leading-none mt-0.5">
-              Editing Workflow Blueprint
-            </p>
+          <div className="min-w-0 flex-1 flex flex-col justify-center max-w-xl">
+            <input
+              type="text"
+              value={currentData.name ?? ''}
+              onChange={(e) => setCurrentData((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="Automation Title"
+              className="text-sm font-semibold tracking-tight text-foreground bg-transparent border-0 border-b border-transparent hover:border-muted-foreground/30 focus:border-primary focus:ring-0 focus:outline-none p-0 pb-0.5 h-6 w-full transition-colors"
+            />
+            <input
+              type="text"
+              value={currentData.description ?? ''}
+              onChange={(e) => setCurrentData((prev) => ({ ...prev, description: e.target.value }))}
+              placeholder="Add a description for this workflow blueprint..."
+              className="text-[10px] font-medium text-muted-foreground bg-transparent border-0 border-b border-transparent hover:border-muted-foreground/30 focus:border-primary focus:ring-0 focus:outline-none p-0 pb-0.5 h-4 w-full transition-colors"
+            />
           </div>
         </div>
 

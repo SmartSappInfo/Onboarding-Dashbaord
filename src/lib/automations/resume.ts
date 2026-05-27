@@ -67,6 +67,13 @@ export async function processScheduledJobsAction(): Promise<{
   logAutomationEvent('info', 'heartbeat_scan_start');
 
   try {
+    try {
+      const { evaluateHeartbeatTriggers } = await import('./heartbeat-triggers');
+      await evaluateHeartbeatTriggers();
+    } catch (triggerErr) {
+      console.error('Failed to evaluate heartbeat automation triggers:', triggerErr);
+    }
+
     const { findDuePendingJobs, claimAutomationJob, finalizeAutomationJob } = await import(
       './repository'
     );

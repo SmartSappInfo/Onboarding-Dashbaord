@@ -4,6 +4,7 @@ import { processActionNode } from '../actions';
 import type { ExecutionContext } from '../execution-types';
 import { handleDelayNode } from './delay';
 import { evaluateTagConditionNode, processTagActionNode } from './tag-nodes';
+import { adminDb } from '../../firebase-admin';
 
 export async function traverseNodes(
   nodeId: string,
@@ -16,7 +17,10 @@ export async function traverseNodes(
   let outgoingEdges = automation.edges.filter((e) => e.source === nodeId);
 
   if (currentNode.type === 'conditionNode') {
-    const isTrue = evaluateConditionNode(currentNode, context.payload);
+    const isTrue = await evaluateConditionNode(currentNode, context.payload, async (audienceId) => {
+      const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
+      return snap.exists ? snap.data() : null;
+    });
     const targetHandle = isTrue ? 'true' : 'false';
     outgoingEdges = outgoingEdges.filter((e) => e.sourceHandle === targetHandle);
   } else if (currentNode.type === 'tagConditionNode') {

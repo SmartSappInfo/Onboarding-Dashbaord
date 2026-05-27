@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { UserProfile } from '@/lib/types';
 
-const AI_PROVIDERS = [
+export const AI_PROVIDERS = [
     {
         id: 'googleai',
         name: 'Google Gemini',

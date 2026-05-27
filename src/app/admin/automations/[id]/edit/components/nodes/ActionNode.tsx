@@ -34,7 +34,12 @@ export function ActionNode({ data, selected }: any) {
             "relative transition-all duration-500",
             selected ? "scale-105" : "scale-100"
         )}>
- <Handle type="target" position={Position.Top} className="w-3 h-3 bg-blue-500 border-2 border-white !-top-1.5 shadow-md" />
+  <Handle 
+    type="target" 
+    position={Position.Top} 
+    className="bg-blue-500 border-2 border-white shadow-lg transition-colors hover:bg-blue-600" 
+    style={{ width: '16px', height: '16px', top: '-8px' }}
+  />
  <Card className={cn(
                 "w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden shadow-sm text-left",
                 selected ? "border-blue-500 shadow-2xl ring-4 ring-blue-500/10" : "border-blue-200"
@@ -75,7 +80,12 @@ export function ActionNode({ data, selected }: any) {
                     )}
                 </div>
             </Card>
- <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-blue-500 border-2 border-white !-bottom-1.5 shadow-md" />
+  <Handle 
+    type="source" 
+    position={Position.Bottom} 
+    className="bg-blue-500 border-2 border-white shadow-lg transition-colors hover:bg-blue-600" 
+    style={{ width: '16px', height: '16px', bottom: '-8px' }}
+  />
         </div>
     );
 }

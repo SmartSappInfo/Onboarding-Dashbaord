@@ -556,11 +556,10 @@ export default function MessageStylesPage() {
                                         <Card key={style.id} className="group relative overflow-hidden border-none ring-1 ring-border hover:ring-primary/20 hover:shadow-xl transition-all duration-500 rounded-[1.5rem] bg-card flex flex-col h-[230px] w-full">
                                             {/* Preview / Iframe Area */}
                                             <div className="relative flex-1 bg-slate-50 overflow-hidden">
-                                                <iframe 
+                                                <ResponsiveIframePreview 
                                                     srcDoc={resolveBrandingInHtml(style.htmlWrapper, orgData).replace('{{content}}', '<div style="height: 100px; background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-family: sans-serif; font-size: 12px; color: #94a3b8; border-radius: 12px; margin: 20px;">[ Content Gateway ]</div>')}
-                                                    className="w-[800px] h-[600px] origin-top-left scale-[0.38] pointer-events-none border-none opacity-85 group-hover:opacity-95 transition-opacity"
+                                                    className="pointer-events-none border-none opacity-85 group-hover:opacity-95 transition-opacity"
                                                     title={`Preview of ${style.name}`}
-                                                    loading="lazy"
                                                 />
                                                 <div className="absolute inset-0 bg-transparent" />
                                                 
@@ -988,3 +987,66 @@ export default function MessageStylesPage() {
         </div>
     );
 }
+
+interface ResponsiveIframePreviewProps {
+    srcDoc: string;
+    className?: string;
+    title?: string;
+}
+
+function ResponsiveIframePreview({ 
+    srcDoc, 
+    className, 
+    title = "Preview" 
+}: ResponsiveIframePreviewProps) {
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const [scale, setScale] = React.useState(0.25);
+    const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
+    const [isMeasured, setIsMeasured] = React.useState(false);
+
+    React.useEffect(() => {
+        if (!containerRef.current) return;
+        const container = containerRef.current;
+        
+        const observer = new ResizeObserver((entries) => {
+            if (!entries || entries.length === 0) return;
+            const entry = entries[0];
+            const { width, height } = entry.contentRect;
+            if (width <= 0 || height <= 0) return;
+            
+            const virtualWidth = 800;
+            const newScale = width / virtualWidth;
+            setScale(newScale);
+            setDimensions({ width: virtualWidth, height: height / newScale });
+            setIsMeasured(true);
+        });
+        
+        observer.observe(container);
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div ref={containerRef} className="w-full h-full overflow-hidden relative bg-slate-50 flex items-center justify-center">
+            <iframe 
+                srcDoc={srcDoc}
+                style={{
+                    width: `${dimensions.width}px`,
+                    height: `${dimensions.height}px`,
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'top left',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                }}
+                className={cn(
+                    "pointer-events-none border-none transition-opacity duration-300",
+                    isMeasured ? "opacity-100" : "opacity-0",
+                    className
+                )}
+                title={title}
+                loading="lazy"
+            />
+        </div>
+    );
+}
+

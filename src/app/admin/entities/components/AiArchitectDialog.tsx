@@ -45,9 +45,12 @@ export function AiArchitectDialog({
       title: 'Architecting Profile...',
       description: 'Parsing contact details, locations, and packages.',
     });
-
     try {
-      const result = await extractSchoolData({ text });
+      const result = await extractSchoolData({ 
+        text,
+        provider: 'googleai',
+        modelId: 'gemini-3-flash-preview'
+      });
       if (!result || !result.name) {
         throw new Error('AI was unable to identify a name for this record.');
       }

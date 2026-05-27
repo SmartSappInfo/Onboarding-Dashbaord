@@ -70,5 +70,33 @@ export function evaluateTriggerConfig(
     return false;
   }
 
+  if (automation.trigger === 'ENTITY_FIELD_CHANGED') {
+    if (config.fieldPath && config.fieldPath !== payload.fieldPath) return false;
+  }
+
+  if (automation.trigger === 'SCORE_CHANGED') {
+    const scoreType = (config.scoreType as string) || 'overallScore';
+    const operator = (config.operator as string) || 'any_change';
+    const threshold = (config.threshold as number) ?? 50;
+
+    const newValue = payload[scoreType] as number | undefined;
+    if (newValue === undefined) return false;
+
+    if (operator === 'greater_than' && !(newValue > threshold)) return false;
+    if (operator === 'less_than' && !(newValue < threshold)) return false;
+  }
+
+  if (automation.trigger === 'WEBPAGE_VISITED') {
+    const urlPattern = config.urlPattern as string | undefined;
+    const visitedUrl = payload.url as string | undefined;
+    if (urlPattern && visitedUrl && !visitedUrl.includes(urlPattern) && urlPattern !== '*') {
+      return false;
+    }
+  }
+
+  if (automation.trigger === 'EVENT_RECORDED') {
+    if (config.eventName && config.eventName !== payload.eventName) return false;
+  }
+
   return true;
 }

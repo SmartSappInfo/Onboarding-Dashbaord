@@ -128,6 +128,19 @@ export async function POST(req: NextRequest) {
             if (entityId) {
                 const { emitSingleCampaignEvent } = await import('@/lib/campaign-events');
                 await emitSingleCampaignEvent({ campaignId, entityId, event: 'campaign_failed' });
+
+                if (type === 'email.bounced') {
+                    const { triggerAutomationProtocols } = await import('@/lib/automation-processor');
+                    const { buildAutomationPayload } = await import('@/lib/automation-payload');
+                    const payload = buildAutomationPayload({
+                        organizationId: jobSnap.data()?.organizationId || '',
+                        workspaceId: jobSnap.data()?.workspaceId || '',
+                        entityId,
+                        action: 'email_bounced',
+                        metadata: { campaignId, emailId }
+                    });
+                    await triggerAutomationProtocols('EMAIL_BOUNCED', payload);
+                }
             }
         }
         break;

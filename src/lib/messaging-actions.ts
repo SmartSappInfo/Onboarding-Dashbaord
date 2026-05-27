@@ -9,6 +9,7 @@ import { resolveContact } from './contact-adapter';
 import { getContactEmail, getContactPhone } from './migration-status-utils';
 import { buildMeetingBaseVariables, buildFacilitatorVariables } from './meeting-variable-helpers';
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
+import { evaluateConditionNode } from './automation-condition';
 
 /**
  * @fileOverview Server-side actions for the Variable Registry.
@@ -442,6 +443,7 @@ export async function resolveTagVariables(
 export async function previewCampaignAudience(params: {
   workspaceId: string;
   filters?: Array<{ id: string; field: string; operator: string; value: any }>;
+  groups?: any[];
   filterLogic?: 'AND' | 'OR';
   limit?: number;
   contactScope?: 'primary' | 'signatories' | 'all' | (string & {});
@@ -537,194 +539,215 @@ export async function previewCampaignAudience(params: {
     }));
 
     // ── Tier 2: JS-filter for conditions Firestore can't handle ───────────
+    if (params.groups && Array.isArray(params.groups) && params.groups.length > 0) {
+      const mockNode = { data: { config: { groups: params.groups, relation: params.filterLogic || 'AND' } } };
+      const resolveAudienceHelper = async (audienceId: string) => {
+        const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
+        return snap.exists ? snap.data() : null;
+      };
 
-    // AND-logic remaining tags
-    if (includeTagFilter?.operator === 'all_of' && includeTagFilter.value.length > 1) {
-      const remaining = includeTagFilter.value.slice(1);
-      results = results.filter(c => remaining.every((t: string) => c.tags.includes(t)));
-    }
-
-    // OR with >10 tags: additional chunks
-    if (includeTagFilter?.operator === 'any_of' && includeTagFilter.value.length > 10) {
-      const additionalTags = includeTagFilter.value.slice(10);
-      // Already have results for first 10; add results for remaining chunks
-      for (let i = 0; i < additionalTags.length; i += 10) {
-        const chunk = additionalTags.slice(i, i + 10);
-        let chunkQuery: FirebaseFirestore.Query = adminDb
-          .collection('workspace_entities')
-          .where('workspaceId', '==', workspaceId)
-          .where('workspaceTags', 'array-contains-any', chunk);
-        const chunkSnap = await chunkQuery.get();
-        const existingIds = new Set(results.map(r => r.id));
-        chunkSnap.docs.forEach(d => {
-          const eid = d.data().entityId || d.id;
-          if (!existingIds.has(eid)) {
-            results.push({ id: eid, name: d.data().displayName || '', tags: d.data().workspaceTags || [], data: d.data() });
-          }
-        });
+      const matched: ContactEntry[] = [];
+      for (const c of results) {
+        const payload = {
+          ...c.data,
+          id: c.id,
+          tags: c.tags,
+          tagIds: c.tags,
+          workspaceTags: c.tags,
+        };
+        const ok = await evaluateConditionNode(mockNode, payload, resolveAudienceHelper);
+        if (ok) matched.push(c);
       }
-    }
-
-    // Exclude tags (JS filter)
-    const excludeTagFilter = tagFilters.find(f => f.operator === 'is_not');
-    if (excludeTagFilter && Array.isArray(excludeTagFilter.value) && excludeTagFilter.value.length > 0) {
-      results = results.filter(c => !excludeTagFilter.value.some((t: string) => c.tags.includes(t)));
-    }
-
-    // Empty/not-empty filters (JS filter)
-    for (const f of emptyFilters) {
-      const fsField = fieldMap[f.field] || f.field;
-      if (f.operator === 'is_empty') {
-        results = results.filter(c => !c.data[fsField]);
-      } else {
-        results = results.filter(c => !!c.data[fsField]);
+      results = matched;
+    } else {
+      // AND-logic remaining tags
+      if (includeTagFilter?.operator === 'all_of' && includeTagFilter.value.length > 1) {
+        const remaining = includeTagFilter.value.slice(1);
+        results = results.filter(c => remaining.every((t: string) => c.tags.includes(t)));
       }
-    }
 
-    // JS Filtering for lifecycleStatus (if operator is any_of or is/is_not)
-    const lifecycleStatusFilters = filters.filter(f => f.field === 'lifecycleStatus');
-    for (const f of lifecycleStatusFilters) {
-      if (f.operator === 'any_of' && Array.isArray(f.value)) {
-        const valSet = new Set(f.value);
-        results = results.filter(c => c.data.lifecycleStatus && valSet.has(c.data.lifecycleStatus));
-      } else if (f.operator === 'is') {
-        results = results.filter(c => c.data.lifecycleStatus === f.value);
-      } else if (f.operator === 'is_not') {
-        results = results.filter(c => c.data.lifecycleStatus !== f.value);
-      }
-    }
-
-    // JS Filtering for interests (any_of)
-    const interestFilters = filters.filter(f => f.field === 'interests');
-    for (const f of interestFilters) {
-      if (f.operator === 'any_of' && Array.isArray(f.value)) {
-        const valSet = new Set(f.value);
-        results = results.filter(c => {
-          const entInterests = c.data.interests;
-          if (!entInterests || !Array.isArray(entInterests)) return false;
-          return entInterests.some((ei: any) => {
-            const identifier = typeof ei === 'string' ? ei : (ei?.id || ei?.name || '');
-            return valSet.has(identifier);
+      // OR with >10 tags: additional chunks
+      if (includeTagFilter?.operator === 'any_of' && includeTagFilter.value.length > 10) {
+        const additionalTags = includeTagFilter.value.slice(10);
+        // Already have results for first 10; add results for remaining chunks
+        for (let i = 0; i < additionalTags.length; i += 10) {
+          const chunk = additionalTags.slice(i, i + 10);
+          let chunkQuery: FirebaseFirestore.Query = adminDb
+            .collection('workspace_entities')
+            .where('workspaceId', '==', workspaceId)
+            .where('workspaceTags', 'array-contains-any', chunk);
+          const chunkSnap = await chunkQuery.get();
+          const existingIds = new Set(results.map(r => r.id));
+          chunkSnap.docs.forEach(d => {
+            const eid = d.data().entityId || d.id;
+            if (!existingIds.has(eid)) {
+              results.push({ id: eid, name: d.data().displayName || '', tags: d.data().workspaceTags || [], data: d.data() });
+            }
           });
-        });
+        }
       }
-    }
 
-    // JS Filtering for contactRoles (any_of)
-    const contactRolesFilters = filters.filter(f => f.field === 'contactRoles');
-    for (const f of contactRolesFilters) {
-      if (f.operator === 'any_of' && Array.isArray(f.value) && f.value.length > 0) {
-        results = results.filter(c => {
-          const sourceContacts = c.data.entityContacts || c.data.contacts || [];
-          if (sourceContacts.length === 0) {
-            return f.value.includes('primary');
-          }
-          return sourceContacts.some((sc: any) => {
-            return f.value.some((role: string) => {
-              if (role === 'primary') return !!sc.isPrimary;
-              if (role === 'signatories' || role === 'signatory') return !!sc.isSignatory;
-              const cleanRole = role.startsWith('role:') ? role.substring(5) : role;
-              return sc.typeKey === cleanRole;
+      // Exclude tags (JS filter)
+      const excludeTagFilter = tagFilters.find(f => f.operator === 'is_not');
+      if (excludeTagFilter && Array.isArray(excludeTagFilter.value) && excludeTagFilter.value.length > 0) {
+        results = results.filter(c => !excludeTagFilter.value.some((t: string) => c.tags.includes(t)));
+      }
+
+      // Empty/not-empty filters (JS filter)
+      for (const f of emptyFilters) {
+        const fsField = fieldMap[f.field] || f.field;
+        if (f.operator === 'is_empty') {
+          results = results.filter(c => !c.data[fsField]);
+        } else {
+          results = results.filter(c => !!c.data[fsField]);
+        }
+      }
+
+      // JS Filtering for lifecycleStatus (if operator is any_of or is/is_not)
+      const lifecycleStatusFilters = filters.filter(f => f.field === 'lifecycleStatus');
+      for (const f of lifecycleStatusFilters) {
+        if (f.operator === 'any_of' && Array.isArray(f.value)) {
+          const valSet = new Set(f.value);
+          results = results.filter(c => c.data.lifecycleStatus && valSet.has(c.data.lifecycleStatus));
+        } else if (f.operator === 'is') {
+          results = results.filter(c => c.data.lifecycleStatus === f.value);
+        } else if (f.operator === 'is_not') {
+          results = results.filter(c => c.data.lifecycleStatus !== f.value);
+        }
+      }
+
+      // JS Filtering for interests (any_of)
+      const interestFilters = filters.filter(f => f.field === 'interests');
+      for (const f of interestFilters) {
+        if (f.operator === 'any_of' && Array.isArray(f.value)) {
+          const valSet = new Set(f.value);
+          results = results.filter(c => {
+            const entInterests = c.data.interests;
+            if (!entInterests || !Array.isArray(entInterests)) return false;
+            return entInterests.some((ei: any) => {
+              const identifier = typeof ei === 'string' ? ei : (ei?.id || ei?.name || '');
+              return valSet.has(identifier);
             });
           });
+        }
+      }
+
+      // JS Filtering for contactRoles (any_of)
+      const contactRolesFilters = filters.filter(f => f.field === 'contactRoles');
+      for (const f of contactRolesFilters) {
+        if (f.operator === 'any_of' && Array.isArray(f.value) && f.value.length > 0) {
+          results = results.filter(c => {
+            const sourceContacts = c.data.entityContacts || c.data.contacts || [];
+            if (sourceContacts.length === 0) {
+              return f.value.includes('primary');
+            }
+            return sourceContacts.some((sc: any) => {
+              return f.value.some((role: string) => {
+                if (role === 'primary') return !!sc.isPrimary;
+                if (role === 'signatories' || role === 'signatory') return !!sc.isSignatory;
+                const cleanRole = role.startsWith('role:') ? role.substring(5) : role;
+                return sc.typeKey === cleanRole;
+              });
+            });
+          });
+        }
+      }
+
+      // ── CRM & Automation Filters (Tier 2 JS Filter via Pre-flight Queries) ─
+
+      const dealPipelineFilters = filters.filter(f => f.field === 'dealPipeline');
+      const dealStageFilters = filters.filter(f => f.field === 'dealStage');
+      const automationIdFilters = filters.filter(f => f.field === 'automationId');
+      const automationStatusFilters = filters.filter(f => f.field === 'automationStatus');
+
+      // 1. Deals Filtering
+      if (dealPipelineFilters.length > 0 || dealStageFilters.length > 0) {
+        let dealQuery = adminDb.collection('deals').where('workspaceId', '==', workspaceId);
+        const dealsSnap = await dealQuery.get(); // Get all workspace deals to evaluate locally (O(1) lookups)
+        
+        const pipelines = dealPipelineFilters.flatMap(f => Array.isArray(f.value) ? f.value : []);
+        const pipelineSet = new Set(pipelines);
+        
+        const stages = dealStageFilters.flatMap(f => Array.isArray(f.value) ? f.value : []);
+        const stageSet = new Set(stages);
+        
+        const validDealEntityIds = new Set<string>();
+        
+        dealsSnap.docs.forEach(doc => {
+          const d = doc.data();
+          let match = true;
+          if (pipelineSet.size > 0 && !pipelineSet.has(d.pipelineId)) match = false;
+          if (stageSet.size > 0 && !stageSet.has(d.stageId)) match = false;
+          if (match && d.entityId) {
+            validDealEntityIds.add(d.entityId);
+          }
         });
-      }
-    }
 
-    // ── CRM & Automation Filters (Tier 2 JS Filter via Pre-flight Queries) ─
-
-    const dealPipelineFilters = filters.filter(f => f.field === 'dealPipeline');
-    const dealStageFilters = filters.filter(f => f.field === 'dealStage');
-    const automationIdFilters = filters.filter(f => f.field === 'automationId');
-    const automationStatusFilters = filters.filter(f => f.field === 'automationStatus');
-
-    // 1. Deals Filtering
-    if (dealPipelineFilters.length > 0 || dealStageFilters.length > 0) {
-      let dealQuery = adminDb.collection('deals').where('workspaceId', '==', workspaceId);
-      const dealsSnap = await dealQuery.get(); // Get all workspace deals to evaluate locally (O(1) lookups)
-      
-      const pipelines = dealPipelineFilters.flatMap(f => Array.isArray(f.value) ? f.value : []);
-      const pipelineSet = new Set(pipelines);
-      
-      const stages = dealStageFilters.flatMap(f => Array.isArray(f.value) ? f.value : []);
-      const stageSet = new Set(stages);
-      
-      const validDealEntityIds = new Set<string>();
-      
-      dealsSnap.docs.forEach(doc => {
-        const d = doc.data();
-        let match = true;
-        if (pipelineSet.size > 0 && !pipelineSet.has(d.pipelineId)) match = false;
-        if (stageSet.size > 0 && !stageSet.has(d.stageId)) match = false;
-        if (match && d.entityId) {
-          validDealEntityIds.add(d.entityId);
+        // Apply Pipeline Filters
+        for (const f of dealPipelineFilters) {
+          if (f.operator === 'any_of') {
+            results = results.filter(r => validDealEntityIds.has(r.id));
+          } else if (f.operator === 'is_not') {
+            results = results.filter(r => !validDealEntityIds.has(r.id));
+          }
         }
-      });
 
-      // Apply Pipeline Filters
-      for (const f of dealPipelineFilters) {
-        if (f.operator === 'any_of') {
-          results = results.filter(r => validDealEntityIds.has(r.id));
-        } else if (f.operator === 'is_not') {
-          results = results.filter(r => !validDealEntityIds.has(r.id));
+        // Apply Stage Filters
+        for (const f of dealStageFilters) {
+          if (f.operator === 'any_of') {
+            results = results.filter(r => validDealEntityIds.has(r.id));
+          } else if (f.operator === 'is_not') {
+            results = results.filter(r => !validDealEntityIds.has(r.id));
+          }
         }
       }
 
-      // Apply Stage Filters
-      for (const f of dealStageFilters) {
-        if (f.operator === 'any_of') {
-          results = results.filter(r => validDealEntityIds.has(r.id));
-        } else if (f.operator === 'is_not') {
-          results = results.filter(r => !validDealEntityIds.has(r.id));
+      // 2. Automations Filtering
+      if (automationIdFilters.length > 0 || automationStatusFilters.length > 0) {
+        // Fetch automations matching the requested IDs or Statuses
+        const automationIds = automationIdFilters.flatMap(f => Array.isArray(f.value) ? f.value : []);
+        const automationIdSet = new Set(automationIds);
+        
+        const statuses = automationStatusFilters.flatMap(f => Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []));
+        const statusSet = new Set(statuses);
+        
+        // Since automation_runs might not have workspaceId, we fetch by automationId if present
+        let runsSnap;
+        if (automationIds.length > 0 && automationIds.length <= 30) {
+           runsSnap = await adminDb.collection('automation_runs').where('automationId', 'in', automationIds).get();
+        } else {
+           // Fallback if >30 IDs or just status filters (might be heavy, consider limiting scope in production)
+           runsSnap = await adminDb.collection('automation_runs').get();
         }
-      }
-    }
 
-    // 2. Automations Filtering
-    if (automationIdFilters.length > 0 || automationStatusFilters.length > 0) {
-      // Fetch automations matching the requested IDs or Statuses
-      const automationIds = automationIdFilters.flatMap(f => Array.isArray(f.value) ? f.value : []);
-      const automationIdSet = new Set(automationIds);
-      
-      const statuses = automationStatusFilters.flatMap(f => Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []));
-      const statusSet = new Set(statuses);
-      
-      // Since automation_runs might not have workspaceId, we fetch by automationId if present
-      let runsSnap;
-      if (automationIds.length > 0 && automationIds.length <= 30) {
-         runsSnap = await adminDb.collection('automation_runs').where('automationId', 'in', automationIds).get();
-      } else {
-         // Fallback if >30 IDs or just status filters (might be heavy, consider limiting scope in production)
-         runsSnap = await adminDb.collection('automation_runs').get();
-      }
+        const validRunEntityIds = new Set<string>();
+        
+        runsSnap.docs.forEach(doc => {
+           const d = doc.data();
+           let match = true;
+           if (automationIdSet.size > 0 && !automationIdSet.has(d.automationId)) match = false;
+           if (statusSet.size > 0 && !statusSet.has(d.status)) match = false;
+           if (match && d.entityId) {
+              validRunEntityIds.add(d.entityId);
+           }
+        });
 
-      const validRunEntityIds = new Set<string>();
-      
-      runsSnap.docs.forEach(doc => {
-         const d = doc.data();
-         let match = true;
-         if (automationIdSet.size > 0 && !automationIdSet.has(d.automationId)) match = false;
-         if (statusSet.size > 0 && !statusSet.has(d.status)) match = false;
-         if (match && d.entityId) {
-            validRunEntityIds.add(d.entityId);
-         }
-      });
-
-      // Apply Automation ID Filters
-      for (const f of automationIdFilters) {
-        if (f.operator === 'any_of') {
-          results = results.filter(r => validRunEntityIds.has(r.id));
-        } else if (f.operator === 'is_not') {
-          results = results.filter(r => !validRunEntityIds.has(r.id));
+        // Apply Automation ID Filters
+        for (const f of automationIdFilters) {
+          if (f.operator === 'any_of') {
+            results = results.filter(r => validRunEntityIds.has(r.id));
+          } else if (f.operator === 'is_not') {
+            results = results.filter(r => !validRunEntityIds.has(r.id));
+          }
         }
-      }
 
-      // Apply Automation Status Filters
-      for (const f of automationStatusFilters) {
-        if (f.operator === 'is' || f.operator === 'any_of' as any) {
-          results = results.filter(r => validRunEntityIds.has(r.id));
-        } else if (f.operator === 'is_not') {
-          results = results.filter(r => !validRunEntityIds.has(r.id));
+        // Apply Automation Status Filters
+        for (const f of automationStatusFilters) {
+          if (f.operator === 'is' || f.operator === 'any_of' as any) {
+            results = results.filter(r => validRunEntityIds.has(r.id));
+          } else if (f.operator === 'is_not') {
+            results = results.filter(r => !validRunEntityIds.has(r.id));
+          }
         }
       }
     }
