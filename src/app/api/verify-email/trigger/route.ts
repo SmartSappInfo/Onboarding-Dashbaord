@@ -4,7 +4,7 @@ import { BulkVerificationService } from '@/lib/bulk-verifier';
 import { ContactHygieneRepository } from '@/lib/hygiene-repository';
 
 const TriggerSchema = z.object({
-  emails: z.array(z.string().email()).min(1).max(200),
+  emails: z.array(z.string()).min(1).max(200),
 });
 
 /**
@@ -29,7 +29,20 @@ export async function POST(req: Request) {
       );
     }
 
-    const { emails } = parsed.data;
+    const emailSchema = z.string().email();
+    const rawEmails = parsed.data.emails;
+    
+    // Gracefully filter out empty or syntactically invalid emails
+    const emails = rawEmails
+      .map((e) => e?.trim())
+      .filter((e) => e && emailSchema.safeParse(e).success);
+
+    if (emails.length === 0) {
+      return NextResponse.json(
+        { queued: false, message: 'No valid emails found in the batch.', skippedCount: rawEmails.length },
+        { status: 200 }
+      );
+    }
 
     // Filter out emails that are currently locked (being verified by another worker)
     const lockChecks = await Promise.all(
