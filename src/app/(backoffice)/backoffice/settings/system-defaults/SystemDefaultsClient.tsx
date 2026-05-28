@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, RefreshCw, Mail, MessageSquare, Sparkles } from 'lucide-react';
+import { Loader2, Save, RefreshCw, Mail, MessageSquare, Sparkles, Upload } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { seedSystemTemplates } from '@/lib/seed-templates';
@@ -195,12 +195,59 @@ export default function SystemDefaultsClient() {
                         </div>
                     </CardContent>
                 </Card>
+                {/* Bulk Upload Completed Template */}
+                <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden">
+                    <CardHeader className="bg-violet-500/5 border-b p-8">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-violet-500/10 text-violet-500 rounded-2xl">
+                                    <Upload className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-xl font-bold">Bulk Upload Complete</CardTitle>
+                                    <CardDescription>Sent when a bulk import finishes processing in the background.</CardDescription>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <Badge variant="secondary">Email</Badge>
+                                <Badge variant="secondary">SMS</Badge>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-8 space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Email Subject</label>
+                            <Input 
+                                value={templates?.bulkUploadCompleted?.subject || ''} 
+                                onChange={(e) => setTemplates({ ...templates, bulkUploadCompleted: { ...templates.bulkUploadCompleted, subject: e.target.value } })}
+                                className="rounded-xl h-11"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Email Body (HTML Supported)</label>
+                            <Textarea 
+                                value={templates?.bulkUploadCompleted?.emailHtml || ''} 
+                                onChange={(e) => setTemplates({ ...templates, bulkUploadCompleted: { ...templates.bulkUploadCompleted, emailHtml: e.target.value } })}
+                                className="rounded-xl min-h-[200px] font-mono text-sm"
+                            />
+                        </div>
+                        <Separator />
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">SMS Message</label>
+                            <Textarea 
+                                value={templates?.bulkUploadCompleted?.smsBody || ''} 
+                                onChange={(e) => setTemplates({ ...templates, bulkUploadCompleted: { ...templates.bulkUploadCompleted, smsBody: e.target.value } })}
+                                className="rounded-xl min-h-[100px]"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Legend */}
                 <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10">
                     <h4 className="text-xs font-bold uppercase tracking-widest text-primary mb-4">Supported Dynamic Variables</h4>
                     <div className="flex flex-wrap gap-2">
-                        {['userName', 'email', 'orgName', 'tempPassword', 'loginLink'].map(v => (
+                        {['userName', 'email', 'orgName', 'tempPassword', 'loginLink', 'filename', 'successCount', 'duplicateCount', 'failedCount', 'totalCount', 'importLogLink'].map(v => (
                             <Badge key={v} variant="outline" className="bg-background font-mono text-[10px]">
                                 {'{{'}{v}{'}}'}
                             </Badge>

@@ -244,7 +244,7 @@ export default function EditPdfPage() {
     <FormProvider {...form}>
  <div className="h-full flex flex-col">
  <div className="flex-1 overflow-y-auto ">
- <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
+ <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl p-8">
                     <Stepper currentStep={step} onStepClick={handleStepChange} />
  <form onSubmit={form.handleSubmit((d) => performSave(d, true))} className="pb-12">
                         <AnimatePresence mode="wait">

@@ -26,6 +26,7 @@ interface DefaultValueRowProps {
     workspaceStatuses: any[];
     parentRegionValue?: string;
     customLeadSources?: string[];
+    appFieldsList?: any[] | null;
 }
 
 export const DefaultValueRow = React.memo(({
@@ -40,11 +41,17 @@ export const DefaultValueRow = React.memo(({
     modulesList,
     workspaceStatuses = [],
     parentRegionValue,
-    customLeadSources
+    customLeadSources,
+    appFieldsList
 }: DefaultValueRowProps) => {
     const firestore = useFirestore();
     const { activeWorkspace } = useWorkspace();
     const { toast } = useToast();
+
+    const customField = React.useMemo(() => {
+        if (!appFieldsList) return null;
+        return appFieldsList.find((f: any) => f.variableName === fieldKey);
+    }, [fieldKey, appFieldsList]);
 
     const regions = regionsList || [];
     const districts = districtsList || [];
@@ -125,6 +132,91 @@ export const DefaultValueRow = React.memo(({
     }, [filteredDistricts, fieldKey, value, parentRegionValue, onValueChange]);
 
     const renderInput = () => {
+        if (customField) {
+            switch (customField.type) {
+                case 'select':
+                case 'dropdown': {
+                    return (
+                        <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
+                            <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
+                                <SelectValue placeholder={customField.placeholder || "Select option..."} />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl bg-background/95 backdrop-blur-md border border-border/40 shadow-lg max-h-[250px]">
+                                {(customField.options || []).map((opt: any) => (
+                                    <SelectItem key={opt.value} value={opt.value} className="font-semibold text-xs py-2">
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    );
+                }
+                case 'multi_select': {
+                    const selectedList = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
+                    const options = (customField.options || []).map((opt: any) => ({
+                        label: opt.label,
+                        value: opt.value,
+                        color: '#3B5FFF'
+                    }));
+
+                    return (
+                        <div className="min-w-0">
+                            <MultiSelect
+                                options={options}
+                                value={selectedList}
+                                onChange={(selectedValues) => {
+                                    onValueChange(fieldKey, selectedValues.join(', '));
+                                }}
+                                placeholder={customField.placeholder || "Select options..."}
+                            />
+                        </div>
+                    );
+                }
+                case 'number':
+                case 'currency': {
+                    return (
+                        <Input 
+                            value={value} 
+                            onChange={e => onValueChange(fieldKey, e.target.value)}
+                            type="number"
+                            placeholder={customField.placeholder || "Enter number..."}
+                            className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                        />
+                    );
+                }
+                case 'date': {
+                    return (
+                        <Input 
+                            value={value} 
+                            onChange={e => onValueChange(fieldKey, e.target.value)}
+                            type="date"
+                            className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                        />
+                    );
+                }
+                case 'datetime': {
+                    return (
+                        <Input 
+                            value={value} 
+                            onChange={e => onValueChange(fieldKey, e.target.value)}
+                            type="datetime-local"
+                            className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                        />
+                    );
+                }
+                default: {
+                    return (
+                        <Input 
+                            value={value} 
+                            onChange={e => onValueChange(fieldKey, e.target.value)}
+                            placeholder={customField.placeholder || "Enter default value..."}
+                            className="h-9 text-xs bg-background rounded-xl border border-border/40 focus:ring-1 focus:ring-primary/20"
+                        />
+                    );
+                }
+            }
+        }
+
         switch (fieldKey) {
             case 'locationRegion': {
                 if (regions.length === 0) {
@@ -405,7 +497,8 @@ export const DefaultValueRow = React.memo(({
         prevProps.packagesList?.length === nextProps.packagesList?.length &&
         prevProps.modulesList?.length === nextProps.modulesList?.length &&
         prevProps.workspaceStatuses?.length === nextProps.workspaceStatuses?.length &&
-        prevProps.customLeadSources?.length === nextProps.customLeadSources?.length
+        prevProps.customLeadSources?.length === nextProps.customLeadSources?.length &&
+        prevProps.appFieldsList?.length === nextProps.appFieldsList?.length
     );
 });
 

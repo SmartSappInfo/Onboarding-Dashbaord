@@ -18,7 +18,7 @@ import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { ingestBatchAction } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
-import type { DuplicateStrategy, DealImportConfig } from '@/lib/import-types';
+import type { DuplicateStrategy, DealImportConfig, NotificationConfig } from '@/lib/import-types';
 
 // Step sub-components
 import { UploadStep } from './components/UploadStep';
@@ -165,6 +165,16 @@ export default function BulkUploadClient() {
     [firestore, activeWorkspace?.id]);
     const { data: automationsList } = useCollection<any>(automationsQuery);
 
+    const appFieldsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspace?.id) return null;
+        return query(
+            collection(firestore, 'app_fields'),
+            where('workspaceId', '==', activeWorkspace.id),
+            where('status', '==', 'active')
+        );
+    }, [firestore, activeWorkspace?.id]);
+    const { data: appFieldsList } = useCollection<any>(appFieldsQuery);
+
     // States
     const [currentStep, setCurrentStep] = React.useState<StepName>('UPLOAD');
     const [fileName, setFileName] = React.useState('');
@@ -185,6 +195,11 @@ export default function BulkUploadClient() {
         suppressAutomations: true,
     });
     const [selectedAutomationId, setSelectedAutomationId] = React.useState<string | null>(null);
+    const [notificationConfig, setNotificationConfig] = React.useState<NotificationConfig>({
+        sendInAppNotification: true,
+        sendEmailNotification: true,
+        sendSmsNotification: false,
+    });
     const [lastImportLogId, setLastImportLogId] = React.useState<string | null>(null);
     const [editingRowIdx, setEditingRowIdx] = React.useState<number | null>(null);
     const [executionResults, setExecutionResults] = React.useState<{ row: number; status: 'success' | 'error'; entityName?: string; error?: string }[]>([]);
@@ -212,12 +227,34 @@ export default function BulkUploadClient() {
     const TARGET_FIELDS = React.useMemo(() => {
         const advanced = ADVANCED_TEMPLATE_FIELDS[contactScope] || ADVANCED_TEMPLATE_FIELDS.institution;
         const merged = [...advanced];
+        
         BASE_TARGET_FIELDS.forEach(bf => {
             if (!merged.find(f => f.key === bf.key)) merged.push(bf);
         });
+
+        // Merge active, non-hidden custom fields compatible with the current contact scope
+        if (appFieldsList) {
+            appFieldsList.forEach((field: any) => {
+                const key = field.variableName;
+                const label = field.label || field.name;
+                const isCompatible = field.compatibilityScope?.includes('common') || 
+                                     field.compatibilityScope?.includes(contactScope);
+                
+                if (key && field.type !== 'hidden' && isCompatible) {
+                    if (!merged.find(f => f.key === key)) {
+                        merged.push({
+                            key: key,
+                            label: label,
+                            required: false
+                        });
+                    }
+                }
+            });
+        }
+
         const mapped = merged.map(f => f.key === 'name' ? { ...f, label: `${terms.singular} Name` } : f);
         return mapped.sort((a, b) => a.key === 'name' ? -1 : b.key === 'name' ? 1 : 0);
-    }, [contactScope, terms.singular]);
+    }, [contactScope, terms.singular, appFieldsList]);
 
     const allMappableFields = React.useMemo(() => {
         const entityFields = TARGET_FIELDS.filter(f => !f.key.startsWith('contact_'));
@@ -315,22 +352,23 @@ export default function BulkUploadClient() {
             const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
             const sanitizedDefaultValues = JSON.parse(JSON.stringify(defaultValues));
 
-            const result = await ingestBatchAction(
-                sanitizedRows,
-                sanitizedMapping,
-                user.uid,
-                fileName,
-                activeWorkspace.id,
-                activeWorkspace.organizationId || 'smartsapp-hq',
-                contactScope,
+            const result = await ingestBatchAction({
+                rows: sanitizedRows,
+                mapping: sanitizedMapping,
+                userId: user.uid,
+                filename: fileName,
+                workspaceId: activeWorkspace.id,
+                organizationId: activeWorkspace.organizationId || 'smartsapp-hq',
+                entityType: contactScope,
                 autoCreateTags,
-                sanitizedDefaultValues,
-                selectedGlobalTags,
-                selectedAutomationId || undefined,
-                [],
+                defaultValues: sanitizedDefaultValues,
+                globalTagIds: selectedGlobalTags,
+                automationId: selectedAutomationId || undefined,
+                manualTagNames: [],
                 enableTitleCase,
-                createDealForImport ? dealImportConfig : undefined
-            );
+                dealConfig: createDealForImport ? dealImportConfig : undefined,
+                notificationConfig
+            });
 
             setLastImportLogId(result.importLogId);
             toast({ 
@@ -454,6 +492,7 @@ export default function BulkUploadClient() {
                             onBack={() => setCurrentStep('UPLOAD')}
                             onNext={() => setCurrentStep('SETTINGS')}
                             stepperMarkup={stepperMarkup}
+                            appFieldsList={appFieldsList}
                         />
                     )}
 
@@ -475,6 +514,8 @@ export default function BulkUploadClient() {
                             selectedAutomationId={selectedAutomationId}
                             setSelectedAutomationId={setSelectedAutomationId}
                             automationsList={automationsList}
+                            notificationConfig={notificationConfig}
+                            setNotificationConfig={setNotificationConfig}
                             onBack={() => setCurrentStep('MAPPING')}
                             onNext={() => setCurrentStep('PREVIEW')}
                             stepperMarkup={stepperMarkup}

@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2 } from 'lucide-react';
+import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, Smartphone } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,10 @@ export function ActionNode({ data, selected }: any) {
             case 'UPDATE_ENTITY': return Building;
             case 'ASSIGN_ENTITY': return Building;
             case 'TRIGGER_OUTBOUND_WEBHOOK': return Zap;
+            case 'SEND_NOTIFICATION_EMAIL': return Mail;
+            case 'SEND_NOTIFICATION_SMS': return Smartphone;
+            case 'SEND_NOTIFICATION_IN_APP': return Bell;
+            case 'SEND_NOTIFICATION_PUSH': return Smartphone;
             default: return Play;
         }
     };

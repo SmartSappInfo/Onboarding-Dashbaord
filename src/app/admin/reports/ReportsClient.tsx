@@ -47,8 +47,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit, where } from 'firebase/firestore';
-import type { WorkspaceEntity, Task, UserProfile, Zone, MessageLog, TaskCategory } from '@/lib/types';
+import { collection, query, where } from 'firebase/firestore';
+import type { WorkspaceEntity, Task, UserProfile, Zone, TaskCategory } from '@/lib/types';
 import { format, subDays, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -96,22 +96,11 @@ export default function ReportsClient() {
         return query(collection(firestore, 'zones'));
     }, [firestore]);
 
-    const logsCol = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'message_logs'), 
-            where('workspaceId', '==', activeWorkspaceId),
-            orderBy('sentAt', 'desc'), 
-            limit(500)
-        );
-    }, [firestore, activeWorkspaceId]);
-
     const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksCol);
     const { data: zones, isLoading: isLoadingZones } = useCollection<Zone>(zonesCol);
-    const { data: logs, isLoading: isLoadingLogs } = useCollection<MessageLog>(logsCol);
 
-    const isLoading = isLoadingEntities || isLoadingTasks || isLoadingZones || isLoadingLogs;
+    const isLoading = isLoadingEntities || isLoadingTasks || isLoadingZones;
 
     // 1. Onboarding Velocity (Last 6 Months)
     const velocityData = React.useMemo(() => {

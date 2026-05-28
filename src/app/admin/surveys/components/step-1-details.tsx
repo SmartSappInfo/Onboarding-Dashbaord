@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight, Image as ImageIcon, Search, Users, User } from 'lucide-react';
+import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight, Image as ImageIcon, Search, Users, User, Globe, Sparkles, Loader2 } from 'lucide-react';
 import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,9 @@ import type { WorkspaceEntity } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { generateKeywordsAction } from '@/app/actions/survey-seo-actions';
 
 interface Step1DetailsProps {
     institutions?: WorkspaceEntity[];
@@ -178,6 +181,25 @@ function EntityPickerField({
 
 export default function Step1Details({ institutions }: Step1DetailsProps) {
     const { control, setValue, watch } = useFormContext();
+    const [isGeneratingKeywords, setIsGeneratingKeywords] = React.useState(false);
+
+    const handleGenerateKeywords = async () => {
+        const title = watch('title');
+        const description = watch('description');
+        if (!title || !description) return;
+
+        setIsGeneratingKeywords(true);
+        try {
+            const res = await generateKeywordsAction(title, description);
+            if (res.success && res.keywords && res.keywords.length > 0) {
+                setValue('seoKeywords', res.keywords.join(', '), { shouldDirty: true });
+            }
+        } catch (error) {
+            console.error('Failed to generate keywords via AI action:', error);
+        } finally {
+            setIsGeneratingKeywords(false);
+        }
+    };
 
     return (
  <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 text-left">
@@ -496,6 +518,228 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                 </div>
                             )}
                         />
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* SEO & Social sharing Card */}
+            <Card className="rounded-2xl border border-border bg-card overflow-hidden">
+                <CardHeader className="bg-muted/10 border-b py-5 px-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl">
+                                <Globe className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-sm font-semibold tracking-tight">SEO & Social Sharing</CardTitle>
+                                <CardDescription className="text-[11px] font-medium text-muted-foreground mt-0.5">
+                                    Configure how this survey appears in search engines and social links.
+                                </CardDescription>
+                            </div>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                    {/* Fallback toggle */}
+                    <div className="flex items-start justify-between p-4 rounded-2xl bg-muted/10 border border-border/30">
+                        <div className="space-y-1 pr-4">
+                            <Label className="text-sm font-bold leading-none">Use Survey Default Details</Label>
+                            <p className="text-[10px] text-muted-foreground font-semibold leading-normal mt-1">
+                                Automatically use the survey title and description as the SEO title and description.
+                            </p>
+                        </div>
+                        <Controller
+                            name="seoUseSurveyFallback"
+                            control={control}
+                            render={({ field }) => (
+                                <Switch
+                                    checked={field.value ?? true}
+                                    onCheckedChange={field.onChange}
+                                />
+                            )}
+                        />
+                    </div>
+
+                    {/* SEO Fields container */}
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold flex items-center gap-1.5">
+                                    SEO Meta Title
+                                    {watch('seoUseSurveyFallback') && (
+                                        <Badge variant="secondary" className="text-[8px] h-3 px-1 py-0 font-bold uppercase">Fallback Active</Badge>
+                                    )}
+                                </Label>
+                                <Controller
+                                    name="seoTitle"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Input
+                                            {...field}
+                                            value={field.value || ''}
+                                            placeholder={watch('title') || 'Type custom title...'}
+                                            disabled={watch('seoUseSurveyFallback') ?? true}
+                                            className="h-11 rounded-xl bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 disabled:opacity-50"
+                                        />
+                                    )}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold flex items-center gap-1.5">
+                                    SEO Keywords
+                                </Label>
+                                <div className="relative flex items-center gap-2">
+                                    <Controller
+                                        name="seoKeywords"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Input
+                                                {...field}
+                                                value={field.value || ''}
+                                                id="seo-keywords-input"
+                                                placeholder="e.g. feedback, technology, school"
+                                                className="h-11 rounded-xl bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 flex-1"
+                                            />
+                                        )}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        disabled={isGeneratingKeywords || !watch('title')}
+                                        onClick={handleGenerateKeywords}
+                                        className="h-11 w-11 rounded-xl border border-border/50 shrink-0 hover:bg-primary/5 hover:text-primary transition-all active:scale-95"
+                                        title="Generate keywords with AI"
+                                    >
+                                        {isGeneratingKeywords ? (
+                                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                        ) : (
+                                            <Sparkles className="h-4 w-4 text-primary" />
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-sm font-semibold flex items-center gap-1.5">
+                                SEO Meta Description
+                                {watch('seoUseSurveyFallback') && (
+                                    <Badge variant="secondary" className="text-[8px] h-3 px-1 py-0 font-bold uppercase">Fallback Active</Badge>
+                                )}
+                            </Label>
+                            <Controller
+                                name="seoDescription"
+                                control={control}
+                                render={({ field }) => (
+                                    <Textarea
+                                        {...field}
+                                        value={field.value || ''}
+                                        placeholder={watch('description') || 'Type custom description...'}
+                                        disabled={watch('seoUseSurveyFallback') ?? true}
+                                        className="min-h-[100px] rounded-xl bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 resize-none disabled:opacity-50"
+                                    />
+                                )}
+                            />
+                        </div>
+                    </div>
+
+                    <Separator className="border-border/30" />
+
+                    {/* Social OG Image settings */}
+                    <div className="space-y-4">
+                        <Label className="text-sm font-bold">Social Image (Open Graph)</Label>
+                        <Controller
+                            name="seoOgImageMode"
+                            control={control}
+                            render={({ field }) => (
+                                <RadioGroup
+                                    onValueChange={field.onChange}
+                                    value={field.value || 'none'}
+                                    className="grid grid-cols-1 md:grid-cols-2 gap-3"
+                                >
+                                    <div
+                                        onClick={() => field.onChange('none')}
+                                        className={cn(
+                                            "flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all duration-200",
+                                            field.value === 'none' || !field.value ? "border-primary bg-primary/[0.01] ring-1 ring-primary/20" : "border-border/50 hover:bg-muted/10"
+                                        )}
+                                    >
+                                        <RadioGroupItem value="none" id="mode-none" className="mt-1" />
+                                        <div className="space-y-1">
+                                            <Label htmlFor="mode-none" className="text-xs font-bold cursor-pointer">None</Label>
+                                            <p className="text-[9px] text-muted-foreground leading-snug">No social image will be set</p>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        onClick={() => field.onChange('survey_banner')}
+                                        className={cn(
+                                            "flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all duration-200",
+                                            field.value === 'survey_banner' ? "border-primary bg-primary/[0.01] ring-1 ring-primary/20" : "border-border/50 hover:bg-muted/10"
+                                        )}
+                                    >
+                                        <RadioGroupItem value="survey_banner" id="mode-survey-banner" className="mt-1" />
+                                        <div className="space-y-1">
+                                            <Label htmlFor="mode-survey-banner" className="text-xs font-bold cursor-pointer">Survey Banner</Label>
+                                            <p className="text-[9px] text-muted-foreground leading-snug">Uses the survey cover/banner image</p>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        onClick={() => field.onChange('entity_logo')}
+                                        className={cn(
+                                            "flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all duration-200",
+                                            field.value === 'entity_logo' ? "border-primary bg-primary/[0.01] ring-1 ring-primary/20" : "border-border/50 hover:bg-muted/10"
+                                        )}
+                                    >
+                                        <RadioGroupItem value="entity_logo" id="mode-entity-logo" className="mt-1" />
+                                        <div className="space-y-1">
+                                            <Label htmlFor="mode-entity-logo" className="text-xs font-bold cursor-pointer">Entity Logo</Label>
+                                            <p className="text-[9px] text-muted-foreground leading-snug">Uses the brand/entity logo as the preview</p>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        onClick={() => field.onChange('custom')}
+                                        className={cn(
+                                            "flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all duration-200",
+                                            field.value === 'custom' ? "border-primary bg-primary/[0.01] ring-1 ring-primary/20" : "border-border/50 hover:bg-muted/10"
+                                        )}
+                                    >
+                                        <RadioGroupItem value="custom" id="mode-custom" className="mt-1" />
+                                        <div className="space-y-1">
+                                            <Label htmlFor="mode-custom" className="text-xs font-bold cursor-pointer">Custom Upload</Label>
+                                            <p className="text-[9px] text-muted-foreground leading-snug">Upload a distinct image for social sharing</p>
+                                        </div>
+                                    </div>
+                                </RadioGroup>
+                            )}
+                        />
+
+                        {/* Custom Media Picker if 'custom' is active */}
+                        {watch('seoOgImageMode') === 'custom' && (
+                            <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <Controller
+                                    name="seoOgImage"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                                Custom Social Image
+                                            </Label>
+                                            <MediaSelect
+                                                value={field.value || ''}
+                                                onChange={field.onChange}
+                                                filterType="image"
+                                                className="rounded-2xl"
+                                            />
+                                        </div>
+                                    )}
+                                />
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

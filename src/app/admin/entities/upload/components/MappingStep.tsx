@@ -33,6 +33,7 @@ interface MappingStepProps {
     onBack: () => void;
     onNext: () => void;
     stepperMarkup?: React.ReactNode;
+    appFieldsList?: any[] | null;
 }
 
 export function MappingStep({
@@ -56,6 +57,7 @@ export function MappingStep({
     onBack,
     onNext,
     stepperMarkup,
+    appFieldsList,
 }: MappingStepProps) {
     const [selectedFormulaField, setSelectedFormulaField] = React.useState<string>('');
     const [formulaInputValue, setFormulaInputValue] = React.useState<string>('');
@@ -184,43 +186,88 @@ export function MappingStep({
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {['name', 'email', 'phone', 'role'].map(prop => {
                                         const fieldKey = `contact_${idx}_${prop}`;
-                                        const currentHeader = mapping[fieldKey] || 'none';
+                                        const rawValue = mapping[fieldKey];
+                                        const hasMapping = rawValue !== undefined;
+                                        const currentHeader = rawValue || 'none';
+                                        // Custom role mode: key exists in mapping, but value is NOT a CSV column header
+                                        const isCustomRoleMode = prop === 'role' && hasMapping && !headers.includes(rawValue ?? '');
                                         return (
                                             <div key={prop} className="space-y-1.5">
                                                 <Label className="text-xs font-semibold capitalize text-violet-800">{prop}</Label>
-                                                <Select 
-                                                    value={currentHeader}
-                                                    onValueChange={(headerVal) => {
-                                                        setMapping(prev => {
-                                                            const next = { ...prev };
-                                                            if (headerVal === 'none') {
-                                                                delete next[fieldKey];
-                                                            } else {
-                                                                Object.keys(next).forEach(k => {
-                                                                    if (next[k] === headerVal && k.startsWith('contact_')) delete next[k];
+                                                {isCustomRoleMode ? (
+                                                    <div className="relative">
+                                                        <Input
+                                                            value={rawValue || ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setMapping(prev => ({ ...prev, [fieldKey]: val }));
+                                                            }}
+                                                            placeholder="e.g. Champion, Admin, Sponsor"
+                                                            autoFocus
+                                                            className="h-10 pr-10 bg-background border-violet-200 text-violet-900 font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-violet-300"
+                                                        />
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="absolute right-1 top-1 h-8 w-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700 animate-none"
+                                                            onClick={() => {
+                                                                setMapping(prev => {
+                                                                    const next = { ...prev };
+                                                                    delete next[fieldKey];
+                                                                    return next;
                                                                 });
-                                                                next[fieldKey] = headerVal;
-                                                            }
-                                                            return next;
-                                                        });
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="h-10 bg-background border-violet-200 text-violet-900 font-semibold shadow-sm">
-                                                        <SelectValue placeholder="-- Unmapped --" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="max-h-[300px]">
-                                                        <SelectItem value="none">-- Unmapped --</SelectItem>
-                                                        {headers.filter(h => h && h.trim() !== "").map(h => {
-                                                            const mappedTo = Object.entries(mapping).find(([k, v]) => v === h && k.startsWith('contact_'))?.[0];
-                                                            const isUsed = mappedTo && mappedTo !== fieldKey;
-                                                            return (
-                                                                <SelectItem key={h} value={h} className={cn("font-semibold", isUsed && "opacity-60 text-muted-foreground")}>
-                                                                    {h} {isUsed ? `(Used)` : ''}
+                                                            }}
+                                                            title="Switch back to column selector"
+                                                        >
+                                                            <Database size={14} />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <Select 
+                                                        value={currentHeader}
+                                                        onValueChange={(headerVal) => {
+                                                            setMapping(prev => {
+                                                                const next = { ...prev };
+                                                                if (headerVal === 'none') {
+                                                                    delete next[fieldKey];
+                                                                } else if (headerVal === '__custom__') {
+                                                                    // Set to empty string to trigger custom input mode
+                                                                    next[fieldKey] = '';
+                                                                } else {
+                                                                    Object.keys(next).forEach(k => {
+                                                                        if (next[k] === headerVal && k.startsWith('contact_')) delete next[k];
+                                                                    });
+                                                                    next[fieldKey] = headerVal;
+                                                                }
+                                                                return next;
+                                                            });
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="h-10 bg-background border-violet-200 text-violet-900 font-semibold shadow-sm">
+                                                            <SelectValue placeholder="-- Unmapped --" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="max-h-[300px]">
+                                                            <SelectItem value="none">-- Unmapped --</SelectItem>
+                                                            {prop === 'role' && (
+                                                                <SelectItem value="__custom__" className="text-violet-700 font-bold text-xs py-2 border-b border-violet-100">
+                                                                    <span className="flex items-center gap-2">
+                                                                        <Plus size={14} />
+                                                                        <span>Enter Custom Role...</span>
+                                                                    </span>
                                                                 </SelectItem>
-                                                            );
-                                                        })}
-                                                    </SelectContent>
-                                                </Select>
+                                                            )}
+                                                            {headers.filter(h => h && h.trim() !== "").map(h => {
+                                                                const mappedTo = Object.entries(mapping).find(([k, v]) => v === h && k.startsWith('contact_'))?.[0];
+                                                                const isUsed = mappedTo && mappedTo !== fieldKey;
+                                                                return (
+                                                                    <SelectItem key={h} value={h} className={cn("font-semibold", isUsed && "opacity-60 text-muted-foreground")}>
+                                                                        {h} {isUsed ? `(Used)` : ''}
+                                                                    </SelectItem>
+                                                                );
+                                                            })}
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -449,6 +496,7 @@ export function MappingStep({
                                                 modulesList={modulesList}
                                                 workspaceStatuses={workspaceStatuses}
                                                 parentRegionValue={defaultValues['locationRegion']}
+                                                appFieldsList={appFieldsList}
                                             />
                                         );
                                     })}

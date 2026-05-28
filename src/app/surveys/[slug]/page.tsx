@@ -56,23 +56,38 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
   }
   
-  const cleanDescription = stripHtml(survey.description);
+  const resolvedTitle = (!survey.seoUseSurveyFallback && survey.seoTitle) ? survey.seoTitle : survey.title;
+  const resolvedDescription = (!survey.seoUseSurveyFallback && survey.seoDescription) ? stripHtml(survey.seoDescription) : stripHtml(survey.description);
+  
+  const resolvedKeywords = survey.seoKeywords 
+    ? survey.seoKeywords.split(',').map((k: string) => k.trim()).filter(Boolean) 
+    : undefined;
+
+  let resolvedOgImage = survey.bannerImageUrl || '';
+  if (survey.seoOgImageMode === 'custom' && survey.seoOgImage) {
+    resolvedOgImage = survey.seoOgImage;
+  } else if (survey.seoOgImageMode === 'entity_logo') {
+    resolvedOgImage = survey.logoUrl || survey.bannerImageUrl || '';
+  }
+
   const previousImages = (await parent).openGraph?.images || [];
+  const images = resolvedOgImage ? [resolvedOgImage] : previousImages;
 
   return {
-    title: survey.title,
-    description: cleanDescription,
+    title: resolvedTitle,
+    description: resolvedDescription,
+    keywords: resolvedKeywords,
     openGraph: {
-      title: survey.title,
-      description: cleanDescription,
-      images: survey.bannerImageUrl ? [survey.bannerImageUrl] : previousImages,
+      title: resolvedTitle,
+      description: resolvedDescription,
+      images: images,
       type: 'website',
     },
     twitter: {
         card: 'summary_large_image',
-        title: survey.title,
-        description: cleanDescription,
-        images: survey.bannerImageUrl ? [survey.bannerImageUrl] : [],
+        title: resolvedTitle,
+        description: resolvedDescription,
+        images: resolvedOgImage ? [resolvedOgImage] : [],
     }
   };
 }

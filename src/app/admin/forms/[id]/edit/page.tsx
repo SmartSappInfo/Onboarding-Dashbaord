@@ -435,7 +435,7 @@ export default function EditFormPage() {
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto py-8 px-4">
+        <div className="max-w-5xl mx-auto py-8 px-4 p-8">
           <Stepper currentStep={step} onStepClick={handleStepChange} />
 
           <AnimatePresence mode="wait">

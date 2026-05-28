@@ -29,6 +29,7 @@ import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { PageContainer } from '@/components/ui/page-container';
 
 // ────────────────────────────────────────────
 // Constants
@@ -578,7 +579,8 @@ export default function FieldsClient() {
   }
 
   return (
-    <div className="space-y-8 pb-32 w-full">
+    <PageContainer>
+      <div className="space-y-8 pb-32 w-full">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
@@ -1126,5 +1128,6 @@ export default function FieldsClient() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </PageContainer>
   );
 }

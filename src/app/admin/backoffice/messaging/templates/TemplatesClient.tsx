@@ -7,6 +7,7 @@ import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from '../../../messaging/templates/components/template-gallery';
 import { TemplateWorkshop } from '../../../messaging/templates/components/template-workshop';
+import { TemplatePreviewModal } from '../../../messaging/templates/components/template-preview-modal';
 import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ export default function TemplatesClient() {
     const [templateToDelete, setTemplateToDelete] = React.useState<MessageTemplate | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [isSeeding, setIsSeeding] = React.useState(false);
+    const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
 
     const editId = searchParams.get('edit');
 
@@ -315,7 +317,7 @@ export default function TemplatesClient() {
                             onEdit={handleEdit}
                             onClone={() => {}}
                             onDelete={setTemplateToDelete as any}
-                            onPreview={handleEdit}
+                            onPreview={setPreviewTemplate}
                             onUpdateStatus={handleUpdateStatus}
                         />
                             </div>
@@ -348,6 +350,14 @@ export default function TemplatesClient() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <TemplatePreviewModal 
+                template={previewTemplate}
+                isOpen={!!previewTemplate}
+                onClose={() => setPreviewTemplate(null)}
+                onEdit={handleEdit}
+                styles={styles || []}
+            />
         </div>
     );
 }

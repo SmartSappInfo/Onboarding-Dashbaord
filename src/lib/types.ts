@@ -658,6 +658,10 @@ export interface UserProfile {
   preferredAiModel?: string;      // e.g., 'gemini-2.0-flash', 'gpt-4o'
   preferredAiProvider?: string;   // e.g., 'googleai', 'openrouter', 'openai'
   
+  // Workspace and Organization Sticky Persistence
+  lastActiveWorkspaceId?: string;
+  lastActiveOrganizationId?: string;
+  
   // Notification Preferences
   notificationPreferences?: NotificationPreferences;
 
@@ -1553,6 +1557,13 @@ export interface Survey {
     learningSignalId: string;
     isFirstPublishComplete: boolean;
   };
+  // SEO & Social Configuration
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string;
+  seoOgImage?: string;
+  seoOgImageMode?: 'survey_banner' | 'entity_logo' | 'custom';
+  seoUseSurveyFallback?: boolean;
 }
 
 export interface SurveyElement {
@@ -1947,14 +1958,14 @@ export interface AutomationEventPayload {
 }
 
 export interface AutomationAction {
-  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK' | 'CREATE_DEAL';
+  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK' | 'CREATE_DEAL' | 'SEND_NOTIFICATION_EMAIL' | 'SEND_NOTIFICATION_SMS' | 'SEND_NOTIFICATION_IN_APP' | 'SEND_NOTIFICATION_PUSH';
   // Legacy template ID (for backward compatibility)
   templateId?: string;
   // New template resolution by category/type (Task 15.2)
   templateCategory?: TemplateCategory;
   templateType?: string;
   senderProfileId?: string;
-  recipientType?: 'fixed' | 'manager' | 'contact';
+  recipientType?: 'fixed' | 'manager' | 'contact' | 'entity' | 'signatory' | 'respondent';
   fixedRecipient?: string;
   contactRole?: string;
   taskTitle?: string;
@@ -1962,6 +1973,15 @@ export interface AutomationAction {
   taskPriority?: TaskPriority;
   taskCategory?: TaskCategory;
   taskDueOffsetDays?: number;
+  // New checkboxes/multi-targeting options
+  recipientTargets?: ('triggering' | 'primary' | 'signatories' | 'roles' | 'all' | 'fixed')[];
+  recipientRoles?: string[];
+  // New notification configurations
+  notificationTargets?: ('assignee' | 'users' | 'custom')[];
+  notificationUserIds?: string[];
+  customRecipient?: string;
+  notificationSubject?: string;
+  notificationBody?: string;
 }
 
 export interface CampaignSession {

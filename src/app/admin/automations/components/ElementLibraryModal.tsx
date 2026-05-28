@@ -27,7 +27,8 @@ import {
   X,
   Lock,
   ChevronRight,
-  Info
+  Info,
+  Bell
 } from 'lucide-react';
 
 interface ElementLibraryModalProps {
@@ -122,6 +123,42 @@ const LIBRARY_ITEMS = [
     icon: Smartphone,
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Send SMS', actionType: 'SEND_MESSAGE', channel: 'sms' }
+  },
+  {
+    id: 'send_notification_email',
+    title: 'Send Notification (Email)',
+    description: 'Send an email notification internally to workspace assignees, selected team members or custom emails.',
+    category: 'sending_options',
+    icon: Mail,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Send Notification (Email)', actionType: 'SEND_NOTIFICATION_EMAIL' }
+  },
+  {
+    id: 'send_notification_sms',
+    title: 'Send Notification (SMS)',
+    description: 'Deliver an administrative SMS text alert to assignees, team members or custom numbers.',
+    category: 'sending_options',
+    icon: Smartphone,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Send Notification (SMS)', actionType: 'SEND_NOTIFICATION_SMS' }
+  },
+  {
+    id: 'send_notification_in_app',
+    title: 'Send Notification (In-App)',
+    description: 'Trigger a real-time, in-app notification badge inside the workspace app portal.',
+    category: 'sending_options',
+    icon: Bell,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Send Notification (In-App)', actionType: 'SEND_NOTIFICATION_IN_APP' }
+  },
+  {
+    id: 'send_notification_push',
+    title: 'Send Notification (Push)',
+    description: 'Send a native push notification to workspace assignees or team members.',
+    category: 'sending_options',
+    icon: Smartphone,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Send Notification (Push)', actionType: 'SEND_NOTIFICATION_PUSH' }
   },
 
   // Conditions & Flow

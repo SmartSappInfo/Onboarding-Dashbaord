@@ -7,6 +7,7 @@ import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
+import { TemplatePreviewModal } from './components/template-preview-modal';
 // import { cloneTemplate } from '@/lib/template-actions'; // TODO: Implement cloneTemplate function
 import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 import {
@@ -63,6 +64,7 @@ export default function MessageTemplatesPage() {
     const [cloningId, setCloningId] = React.useState<string | null>(null);
     const [templateToDelete, setTemplateToDelete] = React.useState<MessageTemplate | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
 
     // Data Subscriptions - GLOBAL + WORKSPACE
     const templatesQuery = useMemoFirebase(() => {
@@ -479,7 +481,7 @@ export default function MessageTemplatesPage() {
                                 onEdit={handleEdit}
                                 onClone={handleClone}
                                 onDelete={setTemplateToDelete}
-                                onPreview={handleEdit}
+                                onPreview={setPreviewTemplate}
                                 onUpdateStatus={handleUpdateStatus}
                             />
                             </div>
@@ -557,6 +559,14 @@ export default function MessageTemplatesPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <TemplatePreviewModal 
+                template={previewTemplate}
+                isOpen={!!previewTemplate}
+                onClose={() => setPreviewTemplate(null)}
+                onEdit={handleEdit}
+                styles={styles || []}
+            />
         </div>
     );
 }

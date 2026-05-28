@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where, updateDoc } from 'firebase/firestore';
 import type { UserProfile, Workspace, Organization, AppPermissionId } from '@/lib/types';
 
 /**
@@ -100,7 +100,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     }
     
     return query(
-        collection(firestore, 'workspaces'), 
+         collection(firestore, 'workspaces'), 
         where('organizationId', '==', activeOrganizationId),
         orderBy('name', 'asc')
     );
@@ -118,6 +118,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
         if (isSuperAdmin && storedOrg && organizations.find(o => o.id === storedOrg)) {
             initialOrgId = storedOrg;
+        } else if (profile.lastActiveOrganizationId && organizations.find(o => o.id === profile.lastActiveOrganizationId)) {
+            initialOrgId = profile.lastActiveOrganizationId;
         } else if (!isSuperAdmin) {
             initialOrgId = profile.organizationId; // Force non-super-admins to their assigned org
         }
@@ -134,11 +136,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         
         let initialWsId = '';
         // Prioritize the URL track param if present to allow link sharing,
-        // otherwise fall back to the previously open workspace from localStorage.
+        // otherwise fall back to the previously open workspace from localStorage or user profile.
         if (urlTrack) {
             initialWsId = urlTrack;
         } else if (storedWs) {
             initialWsId = storedWs;
+        } else if (profile.lastActiveWorkspaceId) {
+            initialWsId = profile.lastActiveWorkspaceId;
         }
 
         setActiveWorkspaceIdState(initialWsId);
@@ -164,6 +168,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     if (isSuperAdmin) return orgWorkspaces;
     return orgWorkspaces.filter(w => profile.workspaceIds?.includes(w.id));
   }, [orgWorkspaces, profile, isSuperAdmin]);
+
+  const activeOrganization = React.useMemo(() => 
+    organizations?.find(o => o.id === activeOrganizationId),
+  [organizations, activeOrganizationId]);
+
+  const activeWorkspace = React.useMemo(() => 
+    orgWorkspaces?.find(w => w.id === activeWorkspaceId),
+  [orgWorkspaces, activeWorkspaceId]);
 
   // 6. Final Workspace Correction & URL Sync
   React.useEffect(() => {
@@ -195,7 +207,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             }
         }
     }
-  }, [isInitialized, accessibleWorkspaces, activeWorkspaceId, pathname, searchParams, router]);
+  }, [isInitialized, accessibleWorkspaces, activeWorkspaceId, pathname, searchParams, router, activeOrganization]);
 
   // Handlers
   const setActiveOrganization = React.useCallback((orgId: string) => {
@@ -205,7 +217,15 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     // When switching Org, we reset Workspace choice
     setActiveWorkspaceIdState('');
     localStorage.removeItem('activeWorkspaceId');
-  }, [isSuperAdmin]);
+
+    // Persist to user profile on change
+    if (firestore && user && profile && profile.lastActiveOrganizationId !== orgId) {
+      updateDoc(doc(firestore, 'users', user.uid), {
+        lastActiveOrganizationId: orgId,
+        lastActiveWorkspaceId: ''
+      }).catch(err => console.error("Failed to save organization persistence: ", err));
+    }
+  }, [isSuperAdmin, firestore, user, profile]);
 
   const setActiveWorkspace = React.useCallback((workspaceId: string) => {
     setActiveWorkspaceIdState(workspaceId);
@@ -214,7 +234,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     const params = new URLSearchParams(searchParams.toString());
     params.set('track', workspaceId);
     router.replace(`${pathname}?${params.toString()}`);
-  }, [pathname, router, searchParams]);
+
+    // Persist to user profile on change
+    if (firestore && user && profile && profile.lastActiveWorkspaceId !== workspaceId) {
+      updateDoc(doc(firestore, 'users', user.uid), {
+        lastActiveWorkspaceId: workspaceId
+      }).catch(err => console.error("Failed to save workspace persistence: ", err));
+    }
+  }, [pathname, router, searchParams, firestore, user, profile]);
 
   const switchOrganizationAndWorkspace = React.useCallback((orgId: string, workspaceId: string) => {
     if (isSuperAdmin) {
@@ -223,15 +250,18 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     }
     setActiveWorkspaceIdState(workspaceId);
     localStorage.setItem('activeWorkspaceId', workspaceId);
-  }, [isSuperAdmin]);
 
-  const activeOrganization = React.useMemo(() => 
-    organizations?.find(o => o.id === activeOrganizationId),
-  [organizations, activeOrganizationId]);
-
-  const activeWorkspace = React.useMemo(() => 
-    orgWorkspaces?.find(w => w.id === activeWorkspaceId),
-  [orgWorkspaces, activeWorkspaceId]);
+    // Persist to user profile on change
+    if (firestore && user && profile && 
+       (profile.lastActiveOrganizationId !== orgId || profile.lastActiveWorkspaceId !== workspaceId)) {
+      const updates: Record<string, any> = { lastActiveWorkspaceId: workspaceId };
+      if (isSuperAdmin) {
+        updates.lastActiveOrganizationId = orgId;
+      }
+      updateDoc(doc(firestore, 'users', user.uid), updates)
+        .catch(err => console.error("Failed to save org/workspace persistence: ", err));
+    }
+  }, [isSuperAdmin, firestore, user, profile]);
 
   const effectivePermissionsSchema = React.useMemo(() => {
     const wsSchema = activeWorkspaceId ? profile?.workspacePermissionsSchemas?.[activeWorkspaceId] : undefined;

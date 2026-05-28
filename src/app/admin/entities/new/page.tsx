@@ -633,7 +633,7 @@ export default function NewEntityPage() {
 
   return (
     <div className="h-full overflow-y-auto text-left">
-      <div className="space-y-8">
+      <div className="space-y-8 p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border/50">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Create New {singular}</h1>

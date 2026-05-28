@@ -11,6 +11,7 @@ import { handleCreateTask, handleUpdateTask } from './task-actions';
 import { handleUpdateEntity, handleAssignEntity, handleAddNote } from './entity-actions';
 import { handleTriggerOutboundWebhook } from './webhook-actions';
 import { handleRunAutomation } from './run-automation';
+import { handleSendNotification } from './notification-actions';
 
 export async function processActionNode(
   node: { data?: { actionType?: string; config?: Record<string, unknown> } },
@@ -25,6 +26,12 @@ export async function processActionNode(
   switch (actionType) {
     case 'SEND_MESSAGE':
       await handleSendMessage(resolvedConfig, context);
+      break;
+    case 'SEND_NOTIFICATION_EMAIL':
+    case 'SEND_NOTIFICATION_SMS':
+    case 'SEND_NOTIFICATION_IN_APP':
+    case 'SEND_NOTIFICATION_PUSH':
+      await handleSendNotification(actionType, resolvedConfig, context);
       break;
     case 'CREATE_TASK':
       await handleCreateTask(resolvedConfig, context);

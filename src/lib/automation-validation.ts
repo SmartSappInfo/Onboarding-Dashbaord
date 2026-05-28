@@ -101,9 +101,37 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
 
     switch (actionType) {
       case 'SEND_MESSAGE':
-        if (!config.templateId && (!config.templateCategory || !config.templateType)) {
+        // Skip template check if recipientTargets is set and doesn't require templates, but keep it for backward compatibility
+        const recTargets = config.recipientTargets as string[] | undefined;
+        if (!config.templateId && (!config.templateCategory || !config.templateType) && (!recTargets || recTargets.length === 0)) {
           throw new AutomationValidationError(
             `Send message in "${label}" must specify templateId or templateCategory + templateType.`
+          );
+        }
+        break;
+      case 'SEND_NOTIFICATION_EMAIL':
+      case 'SEND_NOTIFICATION_SMS':
+      case 'SEND_NOTIFICATION_IN_APP':
+      case 'SEND_NOTIFICATION_PUSH':
+        const targets = config.notificationTargets as string[] | undefined;
+        if (!targets || targets.length === 0) {
+          throw new AutomationValidationError(
+            `Notification action "${label}" requires at least one target destination selected.`
+          );
+        }
+        if (targets.includes('users') && (!config.notificationUserIds || (config.notificationUserIds as string[]).length === 0)) {
+          throw new AutomationValidationError(
+            `Notification action "${label}" has "Selected Team Members" target active but no users are selected.`
+          );
+        }
+        if (targets.includes('custom') && !config.customRecipient) {
+          throw new AutomationValidationError(
+            `Notification action "${label}" has "Custom Destination Address" active but no custom recipient value is set.`
+          );
+        }
+        if (!config.notificationBody) {
+          throw new AutomationValidationError(
+            `Notification action "${label}" requires a message body.`
           );
         }
         break;

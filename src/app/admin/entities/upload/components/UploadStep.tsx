@@ -4,10 +4,11 @@ import * as React from 'react';
 import Link from 'next/link';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, FileText, ArrowLeft, ClipboardList, Download, ChevronDown } from 'lucide-react';
+import { Upload, FileText, ArrowLeft, ClipboardList, Download, ChevronDown, AlertTriangle, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { 
     DropdownMenu, 
     DropdownMenuTrigger, 
@@ -161,6 +162,8 @@ interface UploadStepProps {
     stepperMarkup?: React.ReactNode;
 }
 
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+
 export function UploadStep({
     terms,
     contactScope,
@@ -169,6 +172,7 @@ export function UploadStep({
     stepperMarkup,
 }: UploadStepProps) {
     const [dragActive, setDragActive] = React.useState(false);
+    const [fileSizeError, setFileSizeError] = React.useState<string | null>(null);
 
     const handleDrag = React.useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -181,6 +185,14 @@ export function UploadStep({
     }, []);
 
     const processDroppedFile = (file: File) => {
+        setFileSizeError(null);
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            setFileSizeError(
+                `File is ${(file.size / 1024 / 1024).toFixed(1)} MB. Maximum allowed size is 2 MB. Please reduce the file size and try again.`
+            );
+            return;
+        }
+
         const extension = file.name.split('.').pop()?.toLowerCase();
 
         const processResults = (data: any[]) => {
@@ -313,6 +325,29 @@ export function UploadStep({
 
             {stepperMarkup}
 
+            {fileSizeError && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Alert variant="destructive" className="rounded-2xl border-rose-500/20 bg-rose-500/5 text-rose-600 dark:text-rose-400 relative">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle className="font-bold pl-7">File Size Limit Exceeded</AlertTitle>
+                        <AlertDescription className="pl-7 pr-8 font-medium">
+                            {fileSizeError}
+                        </AlertDescription>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setFileSizeError(null);
+                            }}
+                            className="absolute top-4 right-4 text-rose-500 hover:text-rose-700 transition-colors"
+                        >
+                            <X size={16} />
+                        </button>
+                    </Alert>
+                </div>
+            )}
+
             <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
                 <CardContent className="p-8 sm:p-12">
                     <label 
@@ -338,7 +373,7 @@ export function UploadStep({
                                     Drop your spreadsheet here
                                 </p>
                                 <p className="text-xs text-muted-foreground font-medium">
-                                    Supports <span className="font-bold text-foreground">.csv</span>, <span className="font-bold text-foreground">.xlsx</span>, and <span className="font-bold text-foreground">.xls</span> files
+                                    Supports <span className="font-bold text-foreground">.csv</span>, <span className="font-bold text-foreground">.xlsx</span>, and <span className="font-bold text-foreground">.xls</span> files (Max 2 MB)
                                 </p>
                             </div>
                             <div className="px-5 py-1.5 rounded-full border border-border bg-background text-[10px] font-bold text-muted-foreground group-hover:border-primary/50 group-hover:text-primary transition-all">

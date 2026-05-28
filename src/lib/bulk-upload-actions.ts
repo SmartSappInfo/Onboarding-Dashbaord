@@ -8,12 +8,12 @@ import { IngestionDeduplicator } from './services/IngestionDeduplicator';
 import { after } from 'next/server';
 import type { EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
-import { normalizeContactType } from './entity-contact-helpers';
+import { normalizeContactType, enforceContactConstraints } from './entity-contact-helpers';
 import { resolveFieldStorageBucket } from './field-storage-utils';
 import { cleanBatch, cleanValueByKey, type CleaningStats } from './import-data-cleaner';
 import { evaluateFormula } from './formula-parser';
 import { buildTagDocument } from './tag-schemas';
-import { isDealImportConfig, type DealImportConfig } from './import-types';
+import { isDealImportConfig, type DealImportConfig, type IngestBatchOptions, type NotificationConfig } from './import-types';
 import { buildDealDocument, resolveDealName } from './deal-writer';
 
 /**
@@ -144,21 +144,26 @@ export interface BatchResult {
  * self-schedules via `after()` until the subcollection is drained.
  */
 export async function ingestBatchAction(
-    rows: any[],
-    mapping: Record<string, string>,
-    userId: string,
-    filename: string,
-    workspaceId: string,
-    organizationId: string,
-    entityType: string,
-    autoCreateTags: boolean = false,
-    defaultValues: Record<string, string> = {},
-    globalTagIds: string[] = [],
-    automationId?: string,
-    manualTagNames: string[] = [],
-    enableTitleCase: boolean = false,
-    dealConfig?: DealImportConfig
+    options: IngestBatchOptions
 ): Promise<{ importLogId: string }> {
+    const {
+        rows,
+        mapping,
+        userId,
+        filename,
+        workspaceId,
+        organizationId,
+        entityType,
+        autoCreateTags = false,
+        defaultValues = {},
+        globalTagIds = [],
+        automationId,
+        manualTagNames = [],
+        enableTitleCase = false,
+        dealConfig,
+        notificationConfig
+    } = options;
+
     // 1. Workspace metadata (needed for data cleaning)
     let workspaceIndustry = 'SaaS';
     let defaultCountryCode = 'GH';
@@ -209,6 +214,7 @@ export async function ingestBatchAction(
             defaultCountryCode,
             enableTitleCase,
             dealConfig: dealConfig || null,
+            notificationConfig: notificationConfig || null
         }
     });
 
@@ -277,20 +283,39 @@ export async function processImportChunkBackground(importLogId: string): Promise
 
     // No pending rows → finalize
     if (pendingSnap.empty) {
-        const hasIssues = (importLog.failedCount ?? 0) > 0 || (importLog.duplicateCount ?? 0) > 0;
+        // Re-fetch log to get final, accurate atomic counter values
+        const finalLogSnap = await importLogRef.get();
+        const finalLog = finalLogSnap.exists ? finalLogSnap.data() as any : importLog;
+
+        const hasIssues = (finalLog.failedCount ?? 0) > 0 || (finalLog.duplicateCount ?? 0) > 0;
         await importLogRef.update({
             status: hasIssues ? 'partially_completed' : 'completed',
             completedAt: FieldValue.serverTimestamp(),
         });
         await logActivity({
-            organizationId: importLog.organizationId,
-            workspaceId: importLog.workspaceId,
-            userId: importLog.userId,
+            organizationId: finalLog.organizationId,
+            workspaceId: finalLog.workspaceId,
+            userId: finalLog.userId,
             type: 'contacts_imported',
             source: 'system',
-            description: `Bulk import finished: ${importLog.successCount ?? 0} created, ${importLog.failedCount ?? 0} failed, ${importLog.duplicateCount ?? 0} duplicates.`,
-            metadata: { importLogId, entityType: importLog.entityType },
+            description: `Bulk import finished: ${finalLog.successCount ?? 0} created, ${finalLog.failedCount ?? 0} failed, ${finalLog.duplicateCount ?? 0} duplicates.`,
+            metadata: { importLogId, entityType: finalLog.entityType },
         });
+
+        // Exact-once notification guard
+        if (!finalLog.completionNotificationSent) {
+            await importLogRef.update({ completionNotificationSent: true });
+            try {
+                await sendCompletionNotifications(importLogId, {
+                    ...finalLog,
+                    successCount: finalLog.successCount ?? 0,
+                    failedCount: finalLog.failedCount ?? 0,
+                    duplicateCount: finalLog.duplicateCount ?? 0,
+                });
+            } catch (err) {
+                console.error('[BULK-BG] Completion notification failed (non-fatal):', err);
+            }
+        }
         return;
     }
 
@@ -571,8 +596,17 @@ function resolveMappedValue(
     if (col.includes('{{')) {
         return String(evaluateFormula(col, payload) || defaultValues[lookupKey] || '');
     }
-    const val = (payload[col] !== undefined && payload[col] !== null) ? String(payload[col]).trim() : '';
-    return val || defaultValues[lookupKey] || '';
+    // If the mapped value exists as a column in the payload, use the row's value
+    if (payload[col] !== undefined && payload[col] !== null) {
+        const val = String(payload[col]).trim();
+        return val || defaultValues[lookupKey] || '';
+    }
+    // If the mapped value is NOT a column header, treat it as a literal custom value
+    // (e.g. a custom role like "Champion" typed directly by the user)
+    if (col.trim() !== '') {
+        return col.trim();
+    }
+    return defaultValues[lookupKey] || '';
 }
 
 // ─── Per-Row Processing (Internal) ───────────────────────────────────────────
@@ -928,10 +962,15 @@ export async function ingestSchoolRowAction(
     organizationId: string = 'smartsapp-hq',
     entityType: string = 'institution'
 ) {
-    const result = await ingestBatchAction(
-        [rawData], mapping, userId, filename,
-        workspaceId, organizationId, entityType
-    );
+    const result = await ingestBatchAction({
+        rows: [rawData],
+        mapping,
+        userId,
+        filename,
+        workspaceId,
+        organizationId,
+        entityType
+    });
     // Return early success since it's background processed now.
     return { success: true, entityName: 'Importing in background', importLogId: result.importLogId };
 }
@@ -1152,7 +1191,7 @@ async function reconcileImportLogStatus(
 
 export async function resolveDuplicatesAction(
     importLogId: string, 
-    resolutions: { duplicateRowId: string; strategy: DuplicateStrategy; tagIds?: string[]; customPayload?: any }[],
+    resolutions: { duplicateRowId: string; strategy: DuplicateStrategy; tagIds?: string[]; customPayload?: any; customExistingData?: any }[],
     globalTagIds: string[] = []
 ) {
     const importLogRef = adminDb.collection('import_logs').doc(importLogId);
@@ -1222,6 +1261,7 @@ export async function resolveDuplicatesAction(
             strategy: DuplicateStrategy;
             tagIds?: string[];
             customPayload?: any;
+            customExistingData?: any;
             dupRef: FirebaseFirestore.DocumentReference;
             dupData: any;
             existingEntityRef: FirebaseFirestore.DocumentReference;
@@ -1231,7 +1271,7 @@ export async function resolveDuplicatesAction(
 
         await adminDb.runTransaction(async (transaction) => {
             // Collect all reads first
-            for (const { duplicateRowId, strategy, tagIds, customPayload } of chunk) {
+            for (const { duplicateRowId, strategy, tagIds, customPayload, customExistingData } of chunk) {
                 const dupRef = adminDb.collection('import_logs').doc(importLogId).collection('duplicate_rows').doc(duplicateRowId);
                 const dupSnap = await transaction.get(dupRef);
 
@@ -1243,12 +1283,12 @@ export async function resolveDuplicatesAction(
                 const existingEntityRef = adminDb.collection('workspace_entities').doc(dupData?.matchedEntityId);
                 const existingSnap = await transaction.get(existingEntityRef);
 
-                readResults.push({ duplicateRowId, strategy, tagIds, customPayload, dupRef, dupData, existingEntityRef, existingSnap });
+                readResults.push({ duplicateRowId, strategy, tagIds, customPayload, customExistingData, dupRef, dupData, existingEntityRef, existingSnap });
             }
 
             // ── Phase 2: Process data & perform all writes ───────────────
             for (const item of readResults) {
-                const { strategy, tagIds, customPayload, dupRef, dupData, existingEntityRef, existingSnap } = item;
+                const { strategy, tagIds, customPayload, customExistingData, dupRef, dupData, existingEntityRef, existingSnap } = item;
 
                 if (strategy === 'MANUAL_CORRECTION' || strategy === 'CREATE_NEW') {
                     const payload = strategy === 'MANUAL_CORRECTION' ? (customPayload || dupData?.rawPayload) : dupData?.rawPayload;
@@ -1286,15 +1326,53 @@ export async function resolveDuplicatesAction(
                     const finalTagsForReconciliation = tagIds || effectiveResolutionTags;
 
                     if (strategy === 'SKIP') {
-                        // SKIP: Don't update any fields, but still append the import's tags
-                        if (finalTagsForReconciliation.length > 0) {
-                            transaction.update(existingEntityRef, {
-                                workspaceTags: FieldValue.arrayUnion(...finalTagsForReconciliation),
-                                updatedAt: FieldValue.serverTimestamp(),
-                            });
+                        if (customExistingData) {
+                            const finalTags = finalTagsForReconciliation;
+                            const currentTags = existingSnap.data()?.workspaceTags || [];
+                            const updatedTags = Array.from(new Set([...currentTags, ...finalTags]));
+
+                            let existingEntity = { id: existingSnap.id, ...(existingSnap.data() as any), workspaceTags: updatedTags } as any;
+                            applyCustomExistingData(existingEntity, customExistingData, context);
+
+                            transaction.set(existingEntityRef, existingEntity);
+
+                            if (existingEntity.entityId) {
+                                const mainEntityRef = adminDb.collection('entities').doc(existingEntity.entityId);
+                                const entityUpdate: any = {
+                                    name: existingEntity.name || existingEntity.displayName || '',
+                                    slug: (existingEntity.name || existingEntity.displayName || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+                                    entityContacts: existingEntity.entityContacts || [],
+                                    updatedAt: FieldValue.serverTimestamp(),
+                                };
+                                if (existingEntity.location !== undefined) entityUpdate.location = existingEntity.location;
+                                if (existingEntity.customData !== undefined) entityUpdate.customData = existingEntity.customData;
+                                if (existingEntity.currentNeeds !== undefined) entityUpdate.currentNeeds = existingEntity.currentNeeds;
+                                if (existingEntity.currentChallenges !== undefined) entityUpdate.currentChallenges = existingEntity.currentChallenges;
+                                if (existingEntity.interestsText !== undefined) entityUpdate.interestsText = existingEntity.interestsText;
+                                if (existingEntity.familyData !== undefined) entityUpdate.familyData = existingEntity.familyData;
+                                if (existingEntity.personData !== undefined) entityUpdate.personData = existingEntity.personData;
+                                if (existingEntity.financeData !== undefined) entityUpdate.financeData = existingEntity.financeData;
+                                if (existingEntity.industryData !== undefined) entityUpdate.industryData = existingEntity.industryData;
+                                if (existingEntity.interests !== undefined) entityUpdate.interests = existingEntity.interests;
+                                if (existingEntity.initials !== undefined) entityUpdate.initials = existingEntity.initials;
+
+                                transaction.update(mainEntityRef, entityUpdate);
+                            }
+                        } else {
+                            // SKIP: Don't update any fields, but still append the import's tags
+                            if (finalTagsForReconciliation.length > 0) {
+                                transaction.update(existingEntityRef, {
+                                    workspaceTags: FieldValue.arrayUnion(...finalTagsForReconciliation),
+                                    updatedAt: FieldValue.serverTimestamp(),
+                                });
+                            }
                         }
                     } else {
                         const existingEntity = { id: existingSnap.id, ...existingSnap.data() };
+
+                        if (customExistingData) {
+                            applyCustomExistingData(existingEntity, customExistingData, context);
+                        }
 
                         // 1. Process the raw row payload to get a clean structured workspaceEntityDoc
                         const payload = customPayload || dupData?.rawPayload || {};
@@ -1446,4 +1524,200 @@ export async function resumeBulkUploadAction(importLogId: string): Promise<{ suc
     });
 
     return { success: true };
+}
+
+function applyCustomExistingData(existingEntity: any, customExistingData: any, context: ResolutionContext) {
+    if (customExistingData.entityName !== undefined) {
+        existingEntity.name = customExistingData.entityName;
+        existingEntity.displayName = customExistingData.entityName;
+    }
+
+    // Contact fields update
+    let contacts = [...(existingEntity.entityContacts || [])];
+    let primaryIdx = contacts.findIndex(c => c.isPrimary);
+    if (primaryIdx === -1 && contacts.length > 0) primaryIdx = 0;
+
+    if (primaryIdx !== -1) {
+        contacts[primaryIdx] = { ...contacts[primaryIdx] };
+        if (customExistingData.contactName !== undefined) contacts[primaryIdx].name = customExistingData.contactName;
+        if (customExistingData.contactEmail !== undefined) contacts[primaryIdx].email = customExistingData.contactEmail;
+        if (customExistingData.contactPhone !== undefined) contacts[primaryIdx].phone = customExistingData.contactPhone;
+        if (customExistingData.contactRole !== undefined) {
+            contacts[primaryIdx].typeLabel = customExistingData.contactRole;
+            contacts[primaryIdx].typeKey = normalizeContactType(customExistingData.contactRole);
+        }
+    } else if (customExistingData.contactName || customExistingData.contactEmail || customExistingData.contactPhone) {
+        const newContact = {
+            id: `ec_${Math.random().toString(36).substring(2, 10)}`,
+            name: customExistingData.contactName || existingEntity.name || '',
+            email: customExistingData.contactEmail || '',
+            phone: customExistingData.contactPhone || '',
+            typeLabel: customExistingData.contactRole || 'Primary',
+            typeKey: normalizeContactType(customExistingData.contactRole || 'Primary'),
+            isPrimary: true,
+            isSignatory: false,
+            order: 0
+        };
+        contacts.push(newContact);
+    }
+    existingEntity.entityContacts = enforceContactConstraints(contacts);
+
+    const newPrimary = existingEntity.entityContacts.find((c: any) => c.isPrimary) || existingEntity.entityContacts[0];
+    if (newPrimary) {
+        existingEntity.primaryContactName = newPrimary.name || '';
+        existingEntity.primaryEmail = newPrimary.email || '';
+        existingEntity.primaryPhone = newPrimary.phone || '';
+    }
+
+    // Location fields update
+    if (!existingEntity.location) existingEntity.location = {};
+    if (customExistingData.locationRegion !== undefined) {
+        const selectedRegion = fuzzyMatch(context.regions, customExistingData.locationRegion);
+        existingEntity.location.region = selectedRegion ? { id: selectedRegion.id, name: selectedRegion.name } : null;
+        existingEntity.locationRegion = customExistingData.locationRegion;
+    }
+    if (customExistingData.locationDistrict !== undefined) {
+        const selectedDistrict = fuzzyMatch(context.districts, customExistingData.locationDistrict);
+        existingEntity.location.district = selectedDistrict ? { id: selectedDistrict.id, name: selectedDistrict.name } : null;
+        existingEntity.locationDistrict = customExistingData.locationDistrict;
+    }
+    if (customExistingData.zone !== undefined) {
+        const selectedZone = fuzzyMatch(context.zones, customExistingData.zone);
+        existingEntity.location.zone = selectedZone ? { id: selectedZone.id, name: selectedZone.name } : null;
+        existingEntity.zone = selectedZone ? { id: selectedZone.id, name: selectedZone.name } : null;
+    }
+    if (customExistingData.locationString !== undefined) {
+        existingEntity.location.locationString = customExistingData.locationString;
+        existingEntity.locationString = customExistingData.locationString;
+    }
+
+    // Assigned Representative
+    if (customExistingData.assignedTo !== undefined) {
+        const selectedUser = fuzzyMatch(context.users, customExistingData.assignedTo);
+        existingEntity.assignedTo = selectedUser ? selectedUser.id : customExistingData.assignedTo;
+        existingEntity.assignedRepName = selectedUser ? ((selectedUser as any).name || (selectedUser as any).displayName || '') : '';
+    }
+
+    // Package
+    if (customExistingData.package !== undefined) {
+        existingEntity.package = customExistingData.package;
+        existingEntity.subscriptionPackageName = customExistingData.package;
+        if (!existingEntity.customData) existingEntity.customData = {};
+        existingEntity.customData.subscriptionPackageName = customExistingData.package;
+    }
+
+    // Custom Fields
+    const entityType = existingEntity.entityType || 'institution';
+    const industry = existingEntity.industry;
+    Object.keys(customExistingData).forEach(key => {
+        if (['entityName', 'contactName', 'contactEmail', 'contactPhone', 'contactRole', 'locationRegion', 'locationDistrict', 'zone', 'locationString', 'assignedTo', 'package'].includes(key)) {
+            return;
+        }
+        const val = customExistingData[key];
+        const bucket = resolveFieldStorageBucket(key, entityType as any, industry as any);
+        switch (bucket) {
+            case 'root':
+                if (key === 'interests') {
+                    existingEntity.interests = val.split(',').map((s: string) => s.trim()).filter(Boolean);
+                } else {
+                    existingEntity[key] = val;
+                }
+                break;
+            case 'financeData':
+                if (!existingEntity.financeData) existingEntity.financeData = {};
+                existingEntity.financeData[key] = val;
+                break;
+            case 'industryData':
+                if (!existingEntity.industryData) existingEntity.industryData = {};
+                existingEntity.industryData[key] = val;
+                break;
+            case 'personData':
+                if (!existingEntity.personData) existingEntity.personData = {};
+                existingEntity.personData[key] = val;
+                break;
+            case 'familyData':
+                if (!existingEntity.familyData) existingEntity.familyData = {};
+                existingEntity.familyData[key] = val;
+                break;
+            case 'customData':
+                if (!existingEntity.customData) existingEntity.customData = {};
+                existingEntity.customData[key] = val;
+                break;
+        }
+    });
+    existingEntity.updatedAt = new Date().toISOString();
+}
+
+async function sendCompletionNotifications(
+  importLogId: string,
+  importLog: any
+): Promise<void> {
+  const cfg = importLog._importConfig ?? {};
+  const notifConfig = cfg.notificationConfig as NotificationConfig | undefined;
+  if (!notifConfig) return; // No config → no notifications
+
+  // Fetch user for email/phone
+  const userSnap = await adminDb.collection('users').doc(importLog.userId).get();
+  if (!userSnap.exists) return;
+  const userData = userSnap.data() as any;
+
+  // Fetch template (with hardcoded fallback)
+  const templateSnap = await adminDb.collection('system_settings').doc('templates').get();
+  const templates = templateSnap.exists ? templateSnap.data() : null;
+  const tmpl = templates?.bulkUploadCompleted;
+
+  // Build variable map
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+  const vars: Record<string, string> = {
+    filename: importLog.filename || 'Unknown',
+    successCount: String(importLog.successCount ?? 0),
+    failedCount: String(importLog.failedCount ?? 0),
+    duplicateCount: String(importLog.duplicateCount ?? 0),
+    totalCount: String(importLog.totalCount ?? 0),
+    importLogLink: `${baseUrl}/admin/entities/imports?logId=${importLogId}`,
+    userName: userData.name || userData.displayName || 'User',
+    orgName: 'SmartSapp', // Could fetch from org doc if needed
+  };
+
+  // Simple variable resolver
+  const resolve = (template: string) =>
+    template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
+
+  // 1. In-App Notification (Toast/Bell)
+  if (notifConfig.sendInAppNotification) {
+    await adminDb.collection('in_app_notifications').add({
+      userId: importLog.userId,
+      organizationId: importLog.organizationId,
+      workspaceId: importLog.workspaceId,
+      title: `Import Complete: ${vars.filename}`,
+      body: `${vars.successCount} created, ${vars.duplicateCount} duplicates, ${vars.failedCount} failed.`,
+      category: 'general',
+      actionUrl: vars.importLogLink,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  // 2. Email
+  if (notifConfig.sendEmailNotification && userData.email) {
+    try {
+      const { sendEmail } = await import('./resend-service');
+      const subject = resolve(tmpl?.subject || 'Bulk Upload Complete: {{filename}}');
+      const html = resolve(tmpl?.emailHtml || `<p>Your bulk upload of <b>{{filename}}</b> has finished. {{successCount}} records created.</p>`);
+      await sendEmail({ to: userData.email, subject, html });
+    } catch (err: any) {
+      console.error('[BULK-NOTIF] Email failed:', err.message);
+    }
+  }
+
+  // 3. SMS
+  if (notifConfig.sendSmsNotification && userData.phone) {
+    try {
+      const { sendSms } = await import('./mnotify-service');
+      const body = resolve(tmpl?.smsBody || 'Bulk upload "{{filename}}" done. {{successCount}} created, {{failedCount}} failed.');
+      await sendSms({ recipient: userData.phone, message: body, sender: 'SMARTSAPP' });
+    } catch (err: any) {
+      console.error('[BULK-NOTIF] SMS failed:', err.message);
+    }
+  }
 }

@@ -253,7 +253,7 @@ export default function PdfsClient() {
     return (
         <TooltipProvider>
             <div className="h-full overflow-y-auto w-full">
-                <div className="space-y-8 pb-32 w-full">
+                <div className="space-y-8 pb-32 w-full p-8">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div className="flex flex-col items-start">
                             <h1 className="text-3xl font-bold text-foreground">

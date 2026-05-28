@@ -396,8 +396,8 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
     const [isResolving, setIsResolving] = useState(false);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [isCreatingTag, setIsCreatingTag] = useState(false);
-    const [resolutions, setResolutions] = useState<Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any }>>(() => {
-        const initial: Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any }> = {};
+    const [resolutions, setResolutions] = useState<Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any; customExistingData?: any }>>(() => {
+        const initial: Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any; customExistingData?: any }> = {};
         duplicateRows.filter(r => !r.resolved).forEach(row => {
             // Determine if emails or phone numbers differ
             const payload = row.rawPayload || {};
@@ -419,15 +419,12 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
         });
         return initial;
     });
-    const [editingCell, setEditingCell] = useState<{ rowId: string; fieldKey: string } | null>(null);
+    const [editingCell, setEditingCell] = useState<{ rowId: string; fieldKey: string; isExisting?: boolean } | null>(null);
     const [editValue, setEditValue] = useState<string>('');
 
-    const handleSaveCell = (rowId: string, fieldKey: string) => {
+    const handleSaveCell = (rowId: string, fieldKey: string, isExisting: boolean = false) => {
         const row = duplicateRows.find(r => r.id === rowId);
         if (!row) return;
-
-        const mapping = importLog?._importConfig?.mapping || {};
-        const colHeader = getCSVColumnHeader(fieldKey, mapping, row.rawPayload);
 
         let cleaned = editValue.trim();
         if (fieldKey === 'contactEmail') {
@@ -436,26 +433,45 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
             cleaned = cleaned.replace(/\s+/g, '');
         }
 
-        setResolutions(prev => {
-            const currentRes = prev[rowId] || { strategy: 'SKIP', tagIds: [] };
-            const customPayload = { ...(currentRes.customPayload || row.rawPayload) };
-            customPayload[colHeader] = cleaned;
+        if (isExisting) {
+            setResolutions(prev => {
+                const currentRes = prev[rowId] || { strategy: 'SKIP', tagIds: [] };
+                const customExistingData = { ...(currentRes.customExistingData || {}) };
+                customExistingData[fieldKey] = cleaned;
 
-            return {
-                ...prev,
-                [rowId]: {
-                    ...currentRes,
-                    customPayload
-                }
-            };
-        });
+                return {
+                    ...prev,
+                    [rowId]: {
+                        ...currentRes,
+                        customExistingData
+                    }
+                };
+            });
+        } else {
+            const mapping = importLog?._importConfig?.mapping || {};
+            const colHeader = getCSVColumnHeader(fieldKey, mapping, row.rawPayload);
+
+            setResolutions(prev => {
+                const currentRes = prev[rowId] || { strategy: 'SKIP', tagIds: [] };
+                const customPayload = { ...(currentRes.customPayload || row.rawPayload) };
+                customPayload[colHeader] = cleaned;
+
+                return {
+                    ...prev,
+                    [rowId]: {
+                        ...currentRes,
+                        customPayload
+                    }
+                };
+            });
+        }
 
         if (fieldKey === 'contactEmail' && cleaned) {
             handleVerifyEmail(cleaned, true);
         }
 
         setEditingCell(null);
-        toast({ title: 'Field updated locally', description: `Updated ${getFieldLabel(fieldKey)} to "${cleaned}".` });
+        toast({ title: 'Field updated locally', description: `Updated ${isExisting ? 'Existing' : 'Incoming'} ${getFieldLabel(fieldKey)} to "${cleaned}".` });
     };
 
     // Track which emails have already been auto-verified in the background to avoid duplicates
@@ -540,7 +556,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
-    const handleResolve = useCallback(async (resolutionsToExecute: { duplicateRowId: string; strategy: DuplicateStrategy; tagIds?: string[]; customPayload?: any }[]) => {
+    const handleResolve = useCallback(async (resolutionsToExecute: { duplicateRowId: string; strategy: DuplicateStrategy; tagIds?: string[]; customPayload?: any; customExistingData?: any }[]) => {
         // Suspend all active and future email verifications
         isSuspendedRef.current = true;
         activeControllersRef.current.forEach(c => c.abort());
@@ -585,7 +601,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
         setResolutions(prev => {
             const next = { ...prev };
             selectedIds.forEach(id => {
-                next[id] = { strategy: bulkStrategy, tagIds: [...selectedTags] };
+                next[id] = { ...next[id], strategy: bulkStrategy, tagIds: [...selectedTags] };
             });
             return next;
         });
@@ -596,7 +612,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
         setResolutions(prev => {
             const next = { ...prev };
             pendingRows.forEach(row => {
-                next[row.id] = { strategy: bulkStrategy, tagIds: [...selectedTags] };
+                next[row.id] = { ...next[row.id], strategy: bulkStrategy, tagIds: [...selectedTags] };
             });
             return next;
         });
@@ -658,7 +674,8 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                 duplicateRowId: id, 
                 strategy: resolutions[id]?.strategy, 
                 tagIds: resolutions[id]?.tagIds,
-                customPayload: resolutions[id]?.customPayload
+                customPayload: resolutions[id]?.customPayload,
+                customExistingData: resolutions[id]?.customExistingData
             }))
             .filter(r => r.strategy);
         if (selectedResolutions.length === 0) {
@@ -674,7 +691,8 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                 duplicateRowId: r.id, 
                 strategy: resolutions[r.id]?.strategy, 
                 tagIds: resolutions[r.id]?.tagIds,
-                customPayload: resolutions[r.id]?.customPayload
+                customPayload: resolutions[r.id]?.customPayload,
+                customExistingData: resolutions[r.id]?.customExistingData
             }))
             .filter(r => r.strategy);
         if (allResolutions.length === 0) {
@@ -898,7 +916,8 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                             [row.id]: { 
                                                                 strategy: v as DuplicateStrategy, 
                                                                 tagIds: prev[row.id]?.tagIds || [],
-                                                                customPayload: prev[row.id]?.customPayload || row.rawPayload
+                                                                customPayload: prev[row.id]?.customPayload || row.rawPayload,
+                                                                customExistingData: prev[row.id]?.customExistingData
                                                             }
                                                         }));
                                                     }}
@@ -926,7 +945,8 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                         duplicateRowId: row.id, 
                                                         strategy: resolutions[row.id].strategy, 
                                                         tagIds: resolutions[row.id].tagIds || [],
-                                                        customPayload: resolutions[row.id].customPayload
+                                                        customPayload: resolutions[row.id].customPayload,
+                                                        customExistingData: resolutions[row.id].customExistingData
                                                     }])}
                                                 >
                                                     Execute
@@ -1129,6 +1149,13 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                              }
                                          });
 
+                                         const customExistingData = resolutions[row.id]?.customExistingData;
+                                         if (customExistingData) {
+                                             Object.keys(customExistingData).forEach(k => {
+                                                 ext[k] = customExistingData[k];
+                                             });
+                                         }
+
                                          const isExpanded = expandedRowIds.includes(row.id);
                                          const fields = isExpanded ? [...baseFields, ...dynamicExtraFields] : baseFields;
                                         return (
@@ -1214,7 +1241,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                                 const originalVal = row.rawPayload[colHeader] !== undefined ? String(row.rawPayload[colHeader]) : '';
                                                                 const customPayload = resolutions[row.id]?.customPayload;
                                                                 const hasBeenEdited = customPayload && customPayload[colHeader] !== undefined && String(customPayload[colHeader]) !== originalVal;
-                                                                const isCellEditing = editingCell?.rowId === row.id && editingCell?.fieldKey === key;
+                                                                const isCellEditing = editingCell?.rowId === row.id && editingCell?.fieldKey === key && !editingCell?.isExisting;
 
                                                                 return (
                                                                     <div className={`px-4 py-2.5 relative ${
@@ -1304,32 +1331,89 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                                 )}
                                                             </div>
                                                             {/* Existing value */}
-                                                            <div className="px-4 py-2.5 flex flex-col justify-between">
-                                                                <div>
-                                                                    <div className="flex items-center justify-between mb-0.5">
-                                                                        <div className="flex items-center gap-1">
-                                                                            <span className="text-muted-foreground/50">{icon}</span>
-                                                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">{label}</span>
+                                                            {(() => {
+                                                                const isExistingCellEditing = editingCell?.rowId === row.id && editingCell?.fieldKey === key && editingCell?.isExisting;
+                                                                const hasBeenEditedExisting = resolutions[row.id]?.customExistingData?.[key] !== undefined;
+
+                                                                return (
+                                                                    <div className="px-4 py-2.5 flex flex-col justify-between">
+                                                                        <div>
+                                                                            <div className="flex items-center justify-between mb-0.5">
+                                                                                <div className="flex items-center gap-1">
+                                                                                    <span className="text-muted-foreground/50">{icon}</span>
+                                                                                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">{label}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            {isExistingCellEditing ? (
+                                                                                <div className="flex items-center gap-1.5 mt-1 w-full">
+                                                                                    <Input 
+                                                                                        value={editValue}
+                                                                                        onChange={(e) => setEditValue(e.target.value)}
+                                                                                        onKeyDown={(e) => {
+                                                                                            if (e.key === 'Enter') handleSaveCell(row.id, key, true);
+                                                                                            if (e.key === 'Escape') setEditingCell(null);
+                                                                                        }}
+                                                                                        className="h-7 text-xs px-2 py-1 w-full focus-visible:ring-primary/20 bg-background"
+                                                                                        autoFocus
+                                                                                    />
+                                                                                    <Button 
+                                                                                        size="icon" 
+                                                                                        variant="ghost" 
+                                                                                        className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
+                                                                                        onClick={() => handleSaveCell(row.id, key, true)}
+                                                                                    >
+                                                                                        <CheckCircle2 size={12} />
+                                                                                    </Button>
+                                                                                    <Button 
+                                                                                        size="icon" 
+                                                                                        variant="ghost" 
+                                                                                        className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                                                                                        onClick={() => setEditingCell(null)}
+                                                                                    >
+                                                                                        <span className="font-bold text-xs">✕</span>
+                                                                                    </Button>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="flex items-center justify-between w-full group/cell mt-1 min-h-[24px]">
+                                                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                                                        <p className={`text-xs font-medium leading-snug ${
+                                                                                            conflict ? 'text-slate-800 dark:text-slate-200 font-semibold' :
+                                                                                            exVal ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 italic'
+                                                                                        }`}>
+                                                                                            {exVal || (row.existingEntityData ? '—' : <span className="text-slate-400 italic text-[10px]">Loading…</span>)}
+                                                                                        </p>
+                                                                                        {exVal && key === 'contactEmail' && (
+                                                                                            <EmailVerificationBadge
+                                                                                                email={exVal}
+                                                                                                onVerify={() => handleVerifyEmail(exVal)}
+                                                                                                isVerifying={!!verifyingEmails[exVal]}
+                                                                                                result={verifiedResults[exVal]}
+                                                                                            />
+                                                                                        )}
+                                                                                        {hasBeenEditedExisting && (
+                                                                                            <Badge className="bg-blue-100 text-blue-700 text-[8px] hover:bg-blue-100 px-1 py-0 h-3.5 border-none">Edited</Badge>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    {row.existingEntityData && (
+                                                                                        <Button
+                                                                                            size="icon"
+                                                                                            variant="ghost"
+                                                                                            className="h-6 w-6 text-muted-foreground hover:text-primary opacity-0 group-hover/cell:opacity-100 transition-opacity duration-150 rounded-md shrink-0"
+                                                                                            onClick={() => {
+                                                                                                setEditingCell({ rowId: row.id, fieldKey: key, isExisting: true });
+                                                                                                setEditValue(exVal || '');
+                                                                                            }}
+                                                                                            title="Edit Value"
+                                                                                        >
+                                                                                            <Edit2 size={11} />
+                                                                                        </Button>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                                                        <p className={`text-xs font-medium leading-snug ${
-                                                                            conflict ? 'text-slate-800 dark:text-slate-200 font-semibold' :
-                                                                            exVal ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 italic'
-                                                                        }`}>
-                                                                            {exVal || (row.existingEntityData ? '—' : <span className="text-slate-400 italic text-[10px]">Loading…</span>)}
-                                                                        </p>
-                                                                        {exVal && key === 'contactEmail' && (
-                                                                            <EmailVerificationBadge
-                                                                                email={exVal}
-                                                                                onVerify={() => handleVerifyEmail(exVal)}
-                                                                                isVerifying={!!verifyingEmails[exVal]}
-                                                                                result={verifiedResults[exVal]}
-                                                                            />
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     );
                                                 })}

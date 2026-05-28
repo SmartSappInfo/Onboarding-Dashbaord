@@ -54,6 +54,54 @@ export async function seedSystemTemplates(firestore: any): Promise<number> {
             `,
             smsBody: 'Your {{orgName}} password has been reset. New temp password: {{tempPassword}}. Login at {{loginLink}}'
         },
+        bulkUploadCompleted: {
+            subject: 'Bulk Import Complete: {{filename}}',
+            emailHtml: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <span style="display: inline-block; background-color: #e0e7ff; color: #4f46e5; font-size: 24px; padding: 12px; border-radius: 50%; line-height: 1;">📊</span>
+                        <h2 style="color: #4f46e5; margin-top: 12px; margin-bottom: 4px; font-weight: 800; font-size: 22px;">Bulk Account Import Finished</h2>
+                        <p style="color: #64748b; font-size: 14px; margin: 0;">File: {{filename}}</p>
+                    </div>
+                    
+                    <p style="font-size: 15px; line-height: 1.6; color: #334155; margin-bottom: 24px;">
+                        Hello <strong>{{userName}}</strong>,<br />
+                        Your spreadsheet import has finished processing on <strong>{{orgName}}</strong>. Here is a summary of the execution results:
+                    </p>
+                    
+                    <div style="display: flex; gap: 12px; margin-bottom: 28px; background-color: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #f1f5f9; text-align: center; justify-content: space-around;">
+                        <div style="padding: 8px;">
+                            <div style="font-size: 22px; font-weight: 800; color: #10b981;">{{successCount}}</div>
+                            <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-top: 4px;">Created</div>
+                        </div>
+                        <div style="padding: 8px; border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; width: 100%;">
+                            <div style="font-size: 22px; font-weight: 800; color: #f59e0b;">{{duplicateCount}}</div>
+                            <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-top: 4px;">Duplicates</div>
+                        </div>
+                        <div style="padding: 8px;">
+                            <div style="font-size: 22px; font-weight: 800; color: #ef4444;">{{failedCount}}</div>
+                            <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-top: 4px;">Failed</div>
+                        </div>
+                    </div>
+
+                    <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 24px;">
+                        All imported records are now fully accessible and wired with the configured automation sequences. Any failed records have been logged with detailed diagnostics so you can resolve them easily.
+                    </p>
+
+                    <div style="text-align: center; margin-bottom: 32px;">
+                        <a href="{{importLogLink}}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+                            View Import Details
+                        </a>
+                    </div>
+                    
+                    <hr style="margin: 24px 0; border: none; border-top: 1px solid #e2e8f0;" />
+                    <p style="font-size: 11px; color: #94a3b8; text-align: center; line-height: 1.4;">
+                        This is an automated system notification from your SmartSapp Onboarding portal.
+                    </p>
+                </div>
+            `,
+            smsBody: 'Your bulk upload "{{filename}}" on {{orgName}} is done. ✅ {{successCount}} created, ⚠️ {{duplicateCount}} duplicates, ❌ {{failedCount}} failed. View details: {{importLogLink}}'
+        },
         updatedAt: timestamp,
         updatedBy: 'system_seed'
     }, { merge: true });

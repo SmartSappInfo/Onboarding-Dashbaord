@@ -83,9 +83,15 @@ export function ImportPreviewStep({
                                         {activeMappedFields.map(f => {
                                             const colVal = mapping[f.key];
                                             const isFormula = colVal.includes('{{');
-                                            let displayVal = isFormula
-                                                ? evaluateFormula(colVal, row)
-                                                : row[colVal];
+                                            let displayVal: any;
+                                            if (isFormula) {
+                                                displayVal = evaluateFormula(colVal, row);
+                                            } else if (row[colVal] !== undefined && row[colVal] !== null) {
+                                                displayVal = row[colVal];
+                                            } else {
+                                                // Literal custom value (e.g. a custom role typed by the user)
+                                                displayVal = colVal;
+                                            }
                                             if (displayVal && f.key.includes('phone')) {
                                                 const defaultCountry = 'GH';
                                                 const parsed = normalizePhoneNumber(String(displayVal), defaultCountry);

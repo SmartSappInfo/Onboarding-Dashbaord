@@ -128,21 +128,20 @@ export default function ImportsLogClient() {
     const handleRetry = async (row: any, logInfo: any) => {
         setRetryingRow(row.id);
         try {
-            // Re-run single row through batch action
-            await ingestBatchAction(
-                [row.rawPayload],
-                {}, // mapping should ideally be stored in log or payload, assume payload is pre-mapped for simple retry
-                user?.uid || '',
-                'Retry_' + logInfo.filename,
-                logInfo.workspaceId,
-                logInfo.organizationId,
-                logInfo.entityType,
-                false,
-                {},
-                logInfo.selectedTags || [],
-                logInfo.automationId || undefined,
-                []
-            );
+            await ingestBatchAction({
+                rows: [row.rawPayload],
+                mapping: {}, // mapping should ideally be stored in log or payload, assume payload is pre-mapped for simple retry
+                userId: user?.uid || '',
+                filename: 'Retry_' + logInfo.filename,
+                workspaceId: logInfo.workspaceId,
+                organizationId: logInfo.organizationId,
+                entityType: logInfo.entityType,
+                autoCreateTags: false,
+                defaultValues: {},
+                globalTagIds: logInfo.selectedTags || [],
+                automationId: logInfo.automationId || undefined,
+                manualTagNames: []
+            });
             
             // Resolve the failed row in the original import log document
             await resolveFailedRowAction(selectedLogId!, row.id);

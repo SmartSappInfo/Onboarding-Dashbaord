@@ -1,0 +1,83 @@
+import { useMemo } from 'react';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, where } from 'firebase/firestore';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import type { UserProfile, OnboardingStage, VariableDefinition, Tag as TagType, Pipeline } from '@/lib/types';
+
+export function useWorkspaceScopedQueries() {
+  const firestore = useFirestore();
+  const { activeWorkspaceId } = useWorkspace() as any;
+
+  // Users - global config (authorized users)
+  const usersQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'users'), where('isAuthorized', '==', true), orderBy('name', 'asc')) : null, 
+    [firestore]
+  );
+
+  // Stages - global config
+  const stagesQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, 
+    [firestore]
+  );
+
+  // Pipelines - global config
+  const pipelinesQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'pipelines'), orderBy('name', 'asc')) : null, 
+    [firestore]
+  );
+
+  // Variables - global config
+  const varsQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'messaging_variables')) : null, 
+    [firestore]
+  );
+
+  // Tags - workspace-scoped
+  const tagsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (!activeWorkspaceId) {
+      console.warn('[useWorkspaceScopedQueries] activeWorkspaceId is undefined. Falling back to unscoped tags.');
+      return query(collection(firestore, 'tags'), orderBy('name', 'asc'));
+    }
+    return query(collection(firestore, 'tags'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+  }, [firestore, activeWorkspaceId]);
+
+  // Forms - workspace-scoped (workspaceIds array contains activeWorkspaceId)
+  const formsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (!activeWorkspaceId) {
+      console.warn('[useWorkspaceScopedQueries] activeWorkspaceId is undefined. Falling back to unscoped forms.');
+      return query(collection(firestore, 'forms'), orderBy('name', 'asc'));
+    }
+    return query(collection(firestore, 'forms'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
+  }, [firestore, activeWorkspaceId]);
+
+  // Surveys - workspace-scoped (workspaceIds array contains activeWorkspaceId)
+  const surveysQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (!activeWorkspaceId) {
+      console.warn('[useWorkspaceScopedQueries] activeWorkspaceId is undefined. Falling back to unscoped surveys.');
+      return query(collection(firestore, 'surveys'), orderBy('internalName', 'asc'));
+    }
+    return query(collection(firestore, 'surveys'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('internalName', 'asc'));
+  }, [firestore, activeWorkspaceId]);
+
+  const { data: users } = useCollection<UserProfile>(usersQuery);
+  const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
+  const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
+  const { data: variables } = useCollection<VariableDefinition>(varsQuery);
+  const { data: allTags } = useCollection<TagType>(tagsQuery);
+  const { data: forms } = useCollection<{ id: string; name?: string; title?: string }>(formsQuery);
+  const { data: surveys } = useCollection<{ id: string; internalName?: string; title?: string }>(surveysQuery);
+
+  return {
+    users: users || [],
+    stages: stages || [],
+    pipelines: pipelines || [],
+    variables: variables || [],
+    allTags: allTags || [],
+    forms: forms || [],
+    surveys: surveys || [],
+    activeWorkspaceId,
+  };
+}

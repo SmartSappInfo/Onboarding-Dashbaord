@@ -61,3 +61,28 @@ export function isDealImportConfig(val: unknown): val is DealImportConfig {
   );
 }
 
+export interface NotificationConfig {
+  sendInAppNotification: boolean;
+  sendEmailNotification: boolean;
+  sendSmsNotification: boolean;
+}
+
+export interface IngestBatchOptions {
+  rows: Record<string, any>[];
+  mapping: Record<string, string>;
+  userId: string;
+  filename: string;
+  workspaceId: string;
+  organizationId: string;
+  entityType: string;
+  autoCreateTags?: boolean;
+  defaultValues?: Record<string, string>;
+  globalTagIds?: string[];
+  automationId?: string;
+  manualTagNames?: string[];
+  enableTitleCase?: boolean;
+  dealConfig?: DealImportConfig;
+  notificationConfig?: NotificationConfig;
+}
+
+

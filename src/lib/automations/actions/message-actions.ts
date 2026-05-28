@@ -13,15 +13,89 @@ export async function handleSendMessage(
     );
   }
 
-  let resolvedRecipient = config.recipient as string | undefined;
-  if (context.entityId && !resolvedRecipient) {
-    const contact = await resolveContact(context.entityId, context.workspaceId);
-    const primaryEmail = contact?.entityContacts?.find((ec) => ec.isPrimary)?.email;
-    if (primaryEmail) {
-      resolvedRecipient = primaryEmail;
-    } else if (contact?.contacts?.[0]?.email) {
-      resolvedRecipient = contact.contacts[0].email;
+  const channel = (config.channel as 'email' | 'sms') || 'email';
+  const targets = (config.recipientTargets || []) as string[];
+  const roles = (config.recipientRoles || []) as string[];
+
+  const recipients = new Set<string>();
+
+  if (targets.length > 0) {
+    if (context.entityId) {
+      const contact = await resolveContact(context.entityId, context.workspaceId);
+      const entityContacts = contact?.entityContacts || [];
+
+      // 1. Triggering Contact
+      if (targets.includes('triggering')) {
+        const triggerContactVal = channel === 'sms' 
+          ? (context.payload.phone || context.payload.contactPhone) 
+          : (context.payload.email || context.payload.contactEmail);
+        if (triggerContactVal) {
+          recipients.add(String(triggerContactVal));
+        }
+      }
+
+      // 2. Primary Contact
+      if (targets.includes('primary')) {
+        const primary = entityContacts.find(ec => ec.isPrimary);
+        const primaryVal = channel === 'sms' ? primary?.phone : primary?.email;
+        if (primaryVal) {
+          recipients.add(primaryVal);
+        } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
+          recipients.add(contact.contacts[0].email);
+        }
+      }
+
+      // 3. Signatories
+      if (targets.includes('signatories')) {
+        entityContacts.filter(ec => ec.isSignatory).forEach(ec => {
+          const val = channel === 'sms' ? ec.phone : ec.email;
+          if (val) recipients.add(val);
+        });
+      }
+
+      // 4. Specific Role(s)
+      if (targets.includes('roles') && roles.length > 0) {
+        entityContacts.filter(ec => 
+          ec.typeLabel && roles.some(r => r.toLowerCase() === ec.typeLabel?.toLowerCase() || r.toLowerCase() === ec.typeKey?.toLowerCase())
+        ).forEach(ec => {
+          const val = channel === 'sms' ? ec.phone : ec.email;
+          if (val) recipients.add(val);
+        });
+      }
+
+      // 5. All Contacts
+      if (targets.includes('all')) {
+        entityContacts.forEach(ec => {
+          const val = channel === 'sms' ? ec.phone : ec.email;
+          if (val) recipients.add(val);
+        });
+      }
     }
+
+    // 6. Manual Identity Entry
+    if (targets.includes('fixed') && config.recipient) {
+      recipients.add(String(config.recipient));
+    }
+  } else {
+    // Legacy fallback
+    let resolvedRecipient = config.recipient as string | undefined;
+    if (context.entityId && !resolvedRecipient) {
+      const contact = await resolveContact(context.entityId, context.workspaceId);
+      const primaryEmail = contact?.entityContacts?.find((ec) => ec.isPrimary)?.email;
+      if (primaryEmail) {
+        resolvedRecipient = primaryEmail;
+      } else if (contact?.contacts?.[0]?.email) {
+        resolvedRecipient = contact.contacts[0].email;
+      }
+    }
+    if (resolvedRecipient) {
+      recipients.add(resolvedRecipient);
+    }
+  }
+
+  const recipientList = Array.from(recipients);
+  if (recipientList.length === 0) {
+    throw new Error('Message action could not resolve any recipients to send to.');
   }
 
   const p = context.payload;
@@ -55,39 +129,41 @@ export async function handleSendMessage(
   if (submissionId) sendMessageVars._submissionId = submissionId;
   if (userId) sendMessageVars._userId = userId;
 
-  if (config.templateCategory && config.templateType) {
-    const workspaceSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
-    if (!workspaceSnap.exists) {
-      throw new Error(`Workspace ${context.workspaceId} not found`);
+  for (const recipient of recipientList) {
+    if (config.templateCategory && config.templateType) {
+      const workspaceSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
+      if (!workspaceSnap.exists) {
+        throw new Error(`Workspace ${context.workspaceId} not found`);
+      }
+      const organizationId = workspaceSnap.data()!.organizationId;
+
+      const { resolveAndRender } = await import('../../template-resolver');
+      const rendered = await resolveAndRender(
+        config.templateCategory as Parameters<typeof resolveAndRender>[0],
+        config.templateType as Parameters<typeof resolveAndRender>[1],
+        organizationId,
+        resolutionCtx
+      );
+
+      await sendMessage({
+        templateId: (config.templateId as string) || 'automation-generated',
+        senderProfileId: (config.senderProfileId as string) || 'default',
+        recipient: recipient,
+        variables: sendMessageVars,
+        entityId: context.entityId,
+        workspaceId: context.workspaceId,
+        ...(rendered.subject && { subject: rendered.subject }),
+        body: rendered.body,
+      });
+    } else {
+      await sendMessage({
+        templateId: config.templateId as string,
+        senderProfileId: (config.senderProfileId as string) || 'default',
+        recipient: recipient,
+        variables: sendMessageVars,
+        entityId: context.entityId,
+        workspaceId: context.workspaceId,
+      });
     }
-    const organizationId = workspaceSnap.data()!.organizationId;
-
-    const { resolveAndRender } = await import('../../template-resolver');
-    const rendered = await resolveAndRender(
-      config.templateCategory as Parameters<typeof resolveAndRender>[0],
-      config.templateType as Parameters<typeof resolveAndRender>[1],
-      organizationId,
-      resolutionCtx
-    );
-
-    await sendMessage({
-      templateId: (config.templateId as string) || 'automation-generated',
-      senderProfileId: (config.senderProfileId as string) || 'default',
-      recipient: resolvedRecipient || '',
-      variables: sendMessageVars,
-      entityId: context.entityId,
-      workspaceId: context.workspaceId,
-      ...(rendered.subject && { subject: rendered.subject }),
-      body: rendered.body,
-    });
-  } else {
-    await sendMessage({
-      templateId: config.templateId as string,
-      senderProfileId: (config.senderProfileId as string) || 'default',
-      recipient: resolvedRecipient || '',
-      variables: sendMessageVars,
-      entityId: context.entityId,
-      workspaceId: context.workspaceId,
-    });
   }
 }

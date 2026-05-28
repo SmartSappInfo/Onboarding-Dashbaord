@@ -369,6 +369,71 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
   );
 }
 
+interface OptionInputProps {
+  value: string;
+  name?: string;
+  placeholder: string;
+  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onChange: (val: string) => void;
+  onPasteAppend: (lines: string[]) => void;
+}
+
+function OptionInput({
+  value,
+  name,
+  placeholder,
+  onKeyDown,
+  onChange,
+  onPasteAppend,
+}: OptionInputProps) {
+  const [localVal, setLocalVal] = React.useState(value || '');
+
+  React.useEffect(() => {
+    setLocalVal(value || '');
+  }, [value]);
+
+  const handleBlur = () => {
+    if (localVal !== value) {
+      onChange(localVal);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      onChange(localVal);
+      onKeyDown(e);
+    } else {
+      onKeyDown(e);
+    }
+  };
+
+  return (
+    <Input
+      name={name}
+      value={localVal}
+      onChange={(e) => setLocalVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      placeholder={placeholder}
+      className="bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+      onPaste={(e) => {
+        const pastedText = e.clipboardData.getData('Text');
+        if (pastedText && pastedText.includes('\n')) {
+          e.preventDefault();
+          const lines = pastedText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+          if (lines.length > 0) {
+            setLocalVal(lines[0]);
+            onChange(lines[0]);
+            if (lines.length > 1) {
+              onPasteAppend(lines.slice(1));
+            }
+          }
+        }
+      }}
+    />
+  );
+}
+
 function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   const { control, watch, setValue, getValues } = useFormContext();
   const { fields, append, remove } = useFieldArray({
@@ -415,11 +480,32 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   };
 
   const handleRemoveOption = (index: number) => {
+    const optionVal = getValues(`elements.${questionIndex}.options.${index}`);
+    const questionId = getValues(`elements.${questionIndex}.id`);
     remove(index);
+
     if (enableScoring) {
         const currentScores = getValues(`elements.${questionIndex}.optionScores`) || [];
         const newScores = currentScores.filter((_:any, i:number) => i !== index);
         setValue(`elements.${questionIndex}.optionScores`, newScores, { shouldDirty: true });
+    }
+
+    if (questionId && optionVal) {
+      const allElements = getValues('elements') || [];
+      const { syncElementsOnOptionChange } = require('@/lib/survey-logic-utils');
+      const updatedElements = syncElementsOnOptionChange(allElements, questionId, optionVal, null);
+      setValue('elements', updatedElements, { shouldDirty: true });
+    }
+  };
+
+  const handleOptionTextChange = (index: number, newVal: string, oldVal: string, onChange: (v: string) => void) => {
+    onChange(newVal);
+    const questionId = getValues(`elements.${questionIndex}.id`);
+    if (questionId && oldVal && oldVal !== newVal) {
+      const allElements = getValues('elements') || [];
+      const { syncElementsOnOptionChange } = require('@/lib/survey-logic-utils');
+      const updatedElements = syncElementsOnOptionChange(allElements, questionId, oldVal, newVal);
+      setValue('elements', updatedElements, { shouldDirty: true });
     }
   };
 
@@ -446,28 +532,20 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         }
                     }}
                 />
- <div className="flex-1 space-y-1">
+  <div className="flex-1 space-y-1">
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
                     render={({ field }) => (
-                      <Input 
-                        {...field} 
-                        value={field.value ?? ''} 
-                        placeholder={`Option ${index + 1}`} 
- className="bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
+                      <OptionInput 
+                        name={field.name}
+                        value={field.value ?? ''}
+                        placeholder={`Option ${index + 1}`}
                         onKeyDown={handleOptionKeyDown}
-                        onPaste={(e) => {
-                          const pastedText = e.clipboardData.getData('Text');
-                          if (pastedText && pastedText.includes('\n')) {
-                            e.preventDefault();
-                            const lines = pastedText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-                            if (lines.length > 0) {
-                              field.onChange(lines[0]);
-                              for (let i = 1; i < lines.length; i++) {
-                                append(lines[i]);
-                              }
-                            }
+                        onChange={(newVal) => handleOptionTextChange(index, newVal, field.value, field.onChange)}
+                        onPasteAppend={(lines) => {
+                          for (const line of lines) {
+                            append(line);
                           }
                         }}
                       />
@@ -528,28 +606,20 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     }
                   }}
                 />
- <div className="flex-1">
+  <div className="flex-1">
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
                     render={({ field }) => (
-                      <Input 
-                        {...field} 
-                        value={field.value ?? ''} 
-                        placeholder={`Option ${index + 1}`} 
- className="bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
+                      <OptionInput 
+                        name={field.name}
+                        value={field.value ?? ''}
+                        placeholder={`Option ${index + 1}`}
                         onKeyDown={handleOptionKeyDown}
-                        onPaste={(e) => {
-                          const pastedText = e.clipboardData.getData('Text');
-                          if (pastedText && pastedText.includes('\n')) {
-                            e.preventDefault();
-                            const lines = pastedText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-                            if (lines.length > 0) {
-                              field.onChange(lines[0]);
-                              for (let i = 1; i < lines.length; i++) {
-                                append(lines[i]);
-                              }
-                            }
+                        onChange={(newVal) => handleOptionTextChange(index, newVal, field.value, field.onChange)}
+                        onPasteAppend={(lines) => {
+                          for (const line of lines) {
+                            append(line);
                           }
                         }}
                       />
@@ -759,24 +829,27 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                         const options = sourceQuestion?.type === 'yes-no' ? ['Yes', 'No'] : (sourceQuestion?.options || []);
 
                         if (isChoiceType) {
-                          return (
-                            <Controller
-                              name={`elements.${elementIndex}.rules.${index}.targetValue`}
-                              control={control}
-                              render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value || ''}>
-                                  <SelectTrigger className="bg-background border-border/50 ring-1 ring-border w-full sm:flex-1 h-10">
-                                    <SelectValue placeholder="Select option..." />
-                                  </SelectTrigger>
-                                  <SelectContent className="z-[100]" position="popper" sideOffset={5}>
-                                    {options.map((opt: string, i: number) => (
-                                      <SelectItem key={i} value={opt}>{opt}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            />
-                          );
+                          const isEqualityOperator = ['isEqualTo', 'isNotEqualTo'].includes(operator);
+                          if (isEqualityOperator) {
+                            return (
+                              <Controller
+                                name={`elements.${elementIndex}.rules.${index}.targetValue`}
+                                control={control}
+                                render={({ field }) => (
+                                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                                    <SelectTrigger className="bg-background border-border/50 ring-1 ring-border w-full sm:flex-1 h-10">
+                                      <SelectValue placeholder="Select option..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="z-[100]" position="popper" sideOffset={5}>
+                                      {options.map((opt: string, i: number) => (
+                                        <SelectItem key={i} value={opt}>{opt}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
+                            );
+                          }
                         }
 
                         if (sourceQuestion?.type === 'number') {

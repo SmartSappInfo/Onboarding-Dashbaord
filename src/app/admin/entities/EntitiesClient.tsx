@@ -9,10 +9,11 @@ import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { BulkTagOperations } from '@/components/tags/BulkTagOperations';
 import { TagFilter } from '@/components/tags/TagFilter';
-import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';
-import { useEntityFilters, DEFAULT_FILTERS, type DirectoryFilterState } from './hooks/useEntityFilters';
+import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';import { useEntityFilters, DEFAULT_FILTERS, type DirectoryFilterState } from './hooks/useEntityFilters';
 import { InterestFilterSelect } from './components/InterestFilterSelect';
 import { getContactsByTagsAction } from '@/lib/tag-actions';
+import { usePaginatedEntities } from './hooks/usePaginatedEntities';
+
 import { 
   deleteEntityPermanentlyAction, 
   bulkArchiveEntitiesAction, 
@@ -480,12 +481,20 @@ export default function EntitiesClient() {
     updateUrlParams(filter);
   }, [updateUrlParams]);
 
-  // STRICT ENTITY QUERY: Use workspace_entities collection exclusively
-  const entitiesCol = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId)) : null, 
-  [firestore, activeWorkspaceId]);
-
-  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
+  // STRICT PAGINATED QUERY: Fetches entities page-by-page from Firestore
+  const { 
+    entities, 
+    isLoading: isLoadingEntities,
+    totalCount: totalEntitiesCount
+  } = usePaginatedEntities({
+    firestore,
+    activeWorkspaceId,
+    currentPage,
+    pageSize,
+    filterState,
+    assignedUserId,
+    tagFilteredIds,
+  });
 
   // saved audiences query for client-side filtering
   const audiencesQuery = useMemoFirebase(() => {
@@ -720,6 +729,8 @@ export default function EntitiesClient() {
     currentPage,
     pageSize,
     onPageReset: () => setCurrentPage(1),
+    serverPaginated: true,
+    totalCount: totalEntitiesCount || 0,
   });
 
   const handleDeleteEntity = () => {

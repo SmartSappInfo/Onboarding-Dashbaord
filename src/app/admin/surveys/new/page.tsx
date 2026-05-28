@@ -97,6 +97,12 @@ const formSchema = z.object({
   entityName: z.string().optional().nullable(),
   workspaceIds: z.array(z.string()).min(1, 'At least one workspace required.'),
   allowResubmission: z.boolean().default(false),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  seoKeywords: z.string().optional(),
+  seoOgImage: z.string().url().optional().or(z.literal('')),
+  seoOgImageMode: z.enum(['survey_banner', 'entity_logo', 'custom']).default('survey_banner'),
+  seoUseSurveyFallback: z.boolean().default(true),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -216,6 +222,12 @@ export default function NewSurveyPage() {
             externalAlertChannel: 'both',
             externalAlertContactTypes: [],
             useEntityLogo: false,
+            seoTitle: '',
+            seoDescription: '',
+            seoKeywords: '',
+            seoOgImage: '',
+            seoOgImageMode: 'survey_banner',
+            seoUseSurveyFallback: true,
         },
     });
 
@@ -955,7 +967,7 @@ export default function NewSurveyPage() {
                 </header>
 
  <div className="flex-1 overflow-y-auto ">
- <div className="">
+ <div className="p-6">
                         <Stepper currentStep={step} onStepClick={handleStepChange} />
 
                         <AnimatePresence mode="wait">

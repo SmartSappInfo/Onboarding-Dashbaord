@@ -128,6 +128,12 @@ const formSchema = z.object({
     learningSignalId: z.string().optional(),
     isFirstPublishComplete: z.boolean().default(false),
   }).optional(),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  seoKeywords: z.string().optional(),
+  seoOgImage: z.string().url().optional().or(z.literal('')),
+  seoOgImageMode: z.enum(['survey_banner', 'entity_logo', 'custom']).default('survey_banner'),
+  seoUseSurveyFallback: z.boolean().default(true),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -262,6 +268,8 @@ export default function EditSurveyPage() {
                 showIntroAsPage: survey.showIntroAsPage ?? survey.showCoverPage ?? true,
                 stepperVariant: survey.stepperVariant || 'full',
                 showBranding: survey.showBranding ?? true,
+                seoOgImageMode: survey.seoOgImageMode || 'survey_banner',
+                seoUseSurveyFallback: survey.seoUseSurveyFallback ?? true,
             };
 
             reset(initialData as any);
@@ -429,7 +437,7 @@ export default function EditSurveyPage() {
         <FormProvider {...form}>
  <div className="h-full flex flex-col">
  <div className="flex-1 overflow-y-auto ">
- <div className="">
+ <div className="p-8">
                         <Stepper currentStep={step} onStepClick={handleStepChange} />
 
                         <AnimatePresence mode="wait">

@@ -8,6 +8,8 @@ interface UseEntitySelectionProps {
   currentPage: number;
   pageSize: number;
   onPageReset?: () => void;
+  serverPaginated?: boolean;
+  totalCount?: number;
 }
 
 export function useEntitySelection({
@@ -15,19 +17,25 @@ export function useEntitySelection({
   currentPage,
   pageSize,
   onPageReset,
+  serverPaginated = false,
+  totalCount = 0,
 }: UseEntitySelectionProps) {
   const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
 
   // Calculate paginated subset
   const paginatedEntities = useMemo(() => {
+    if (serverPaginated) return entities;
     const start = (currentPage - 1) * pageSize;
     return entities.slice(start, start + pageSize);
-  }, [entities, currentPage, pageSize]);
+  }, [entities, currentPage, pageSize, serverPaginated]);
 
   // Total pages count
   const totalPages = useMemo(() => {
+    if (serverPaginated) {
+      return Math.ceil(totalCount / pageSize) || 1;
+    }
     return Math.ceil(entities.length / pageSize) || 1;
-  }, [entities, pageSize]);
+  }, [entities, pageSize, serverPaginated, totalCount]);
 
   // Clear selection helper
   const clearSelection = useCallback(() => {

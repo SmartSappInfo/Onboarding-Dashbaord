@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Settings2, TrendingUp, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Settings2, TrendingUp, ShieldAlert, AlertTriangle, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { cn } from '@/lib/utils';
-import type { DealImportConfig } from '@/lib/import-types';
+import type { DealImportConfig, NotificationConfig } from '@/lib/import-types';
 
 const STAGE_COLOR_MAP: Record<string, string> = {
     lead: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
@@ -43,6 +43,8 @@ interface DefaultSettingsStepProps {
     selectedAutomationId: string | null;
     setSelectedAutomationId: (val: string | null) => void;
     automationsList: any[] | null | undefined;
+    notificationConfig: NotificationConfig;
+    setNotificationConfig: React.Dispatch<React.SetStateAction<NotificationConfig>>;
     onBack: () => void;
     onNext: () => void;
     stepperMarkup?: React.ReactNode;
@@ -64,6 +66,8 @@ export function DefaultSettingsStep({
     selectedAutomationId,
     setSelectedAutomationId,
     automationsList,
+    notificationConfig,
+    setNotificationConfig,
     onBack,
     onNext,
     stepperMarkup,
@@ -316,6 +320,63 @@ export function DefaultSettingsStep({
                         <p className="text-[10px] font-bold text-muted-foreground mt-2">
                             Note: The default &quot;Record Created&quot; automations may still run based on your workspace settings.
                         </p>
+                    </div>
+
+                    {/* Completion Alerts Section */}
+                    <div className="space-y-4 pt-8 border-t">
+                        <div>
+                            <h3 className="text-lg font-bold flex items-center gap-2 text-foreground">
+                                <Bell className="h-5 w-5 text-violet-500" />
+                                Completion Alerts
+                            </h3>
+                            <p className="text-sm text-muted-foreground">Select how you want to be notified when the background import processes completely.</p>
+                        </div>
+
+                        <div className="w-full p-6 rounded-2xl bg-violet-500/5 dark:bg-violet-950/10 border border-violet-500/10 dark:border-violet-500/20 flex flex-col gap-6 relative shadow-sm">
+                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-500/20 via-fuchsia-500/40 to-violet-500/20 rounded-t-xl" />
+                            
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-semibold text-sm">In-App Notification (Toast & Bell)</p>
+                                    <p className="text-xs text-muted-foreground">Show in-app toast and alert bell once import processing finishes.</p>
+                                </div>
+                                <Switch 
+                                    checked={notificationConfig.sendInAppNotification} 
+                                    onCheckedChange={(checked) => setNotificationConfig(prev => ({ ...prev, sendInAppNotification: checked }))} 
+                                />
+                            </div>
+
+                            <div className="border-t border-violet-500/10 dark:border-violet-500/20 my-1" />
+
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-semibold text-sm">Email Alert</p>
+                                    <p className="text-xs text-muted-foreground">Send a summary email to your account email address upon completion.</p>
+                                </div>
+                                <Switch 
+                                    checked={notificationConfig.sendEmailNotification} 
+                                    onCheckedChange={(checked) => setNotificationConfig(prev => ({ ...prev, sendEmailNotification: checked }))} 
+                                />
+                            </div>
+
+                            <div className="border-t border-violet-500/10 dark:border-violet-500/20 my-1" />
+
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-semibold text-sm">SMS Alert</p>
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                                        <span>Send a brief text message summary to your registered phone number.</span>
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 dark:bg-amber-500/20">
+                                            Credits consumed
+                                        </span>
+                                    </p>
+                                </div>
+                                <Switch 
+                                    checked={notificationConfig.sendSmsNotification} 
+                                    onCheckedChange={(checked) => setNotificationConfig(prev => ({ ...prev, sendSmsNotification: checked }))} 
+                                />
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
                 <CardFooter className="bg-primary/5 p-8 border-t">
