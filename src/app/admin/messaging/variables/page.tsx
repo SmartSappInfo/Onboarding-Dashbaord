@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowRight, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageContainerNarrow } from '@/components/ui/page-container';
 
 export default function VariablesPage() {
   const router = useRouter();
@@ -26,7 +27,8 @@ export default function VariablesPage() {
   }, [router]);
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh] px-4 py-12">
+    <PageContainerNarrow>
+      <div className="flex items-center justify-center min-h-[60vh] px-4 py-12">
       <Card className="w-full max-w-lg border border-yellow-500/20 shadow-xl bg-gradient-to-b from-card to-background relative overflow-hidden backdrop-blur-md">
         {/* Top glowing ambient border */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600" />
@@ -91,5 +93,6 @@ export default function VariablesPage() {
         </CardFooter>
       </Card>
     </div>
+    </PageContainerNarrow>
   );
 }

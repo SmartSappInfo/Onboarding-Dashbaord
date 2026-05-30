@@ -2,79 +2,92 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Tag } from 'lucide-react';
+import { Tag, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-
-const LOGIC_LABELS: Record<string, string> = {
-  has_tag: 'Has Tag',
-  has_all_tags: 'Has All Tags',
-  has_any_tag: 'Has Any Tag',
-  not_has_tag: 'Not Has Tag',
-};
+import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
+import { useParams } from 'next/navigation';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 /**
  * TagConditionNode — visual node for the automation canvas.
  * Evaluates tag-based conditions during flow execution.
  * Requirements: FR4.2.1, FR4.2.2
  */
-export function TagConditionNode({ data, selected }: any) {
+export function TagConditionNode({ id, data, selected }: any) {
   const logic: string = data.logic || '';
   const tagIds: string[] = data.tagIds || [];
+  const params = useParams();
+  const automationId = params?.id as string;
+  const firestore = useFirestore();
+
+  const jobsQuery = useMemoFirebase(() => {
+    if (!firestore || !automationId || !id) return null;
+    return query(
+      collection(firestore, 'automation_jobs'),
+      where('automationId', '==', automationId),
+      where('targetNodeId', '==', id),
+      where('status', '==', 'pending')
+    );
+  }, [firestore, automationId, id]);
+
+  const { data: jobs } = useCollection<any>(jobsQuery);
+  const waitingCount = jobs?.length || 0;
+
+  const { allTags } = useWorkspaceScopedQueries();
+
+  const getTagConditionDescription = () => {
+    const watchedTags = tagIds.map((tid: string) => {
+      const tag = allTags?.find((t: any) => t.id === tid);
+      return tag ? tag.name : tid;
+    });
+    const logicLabel = logic === 'has_tag' ? 'Has tag' : (logic === 'has_all_tags' ? 'Has all tags' : (logic === 'not_has_tag' ? 'Does not have tag' : 'Check tags'));
+    const suffix = tagIds.length > 1 ? 's' : '';
+    return watchedTags.length > 0 
+      ? `${logicLabel}${suffix}: ${watchedTags.join(', ')}` 
+      : 'Check contact tags';
+  };
 
   return (
- <div className={cn('relative transition-all duration-500', selected ? 'scale-105' : 'scale-100')}>
+    <div className={cn('relative transition-all duration-300', selected ? 'scale-[1.02]' : 'scale-100')}>
       <Handle
         type="target"
         position={Position.Top}
         className="bg-violet-500 border-2 border-white shadow-lg hover:scale-110 active:scale-95 transition-transform"
-        style={{ width: '20px', height: '20px', top: '-10px' }}
+        style={{ width: '11px', height: '11px', top: '-5.5px' }}
       />
 
       <Card
- className={cn(
-          'w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden shadow-sm text-left',
+        className={cn(
+          'w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center',
           selected
-            ? 'border-violet-500 shadow-2xl ring-4 ring-violet-500/10'
+            ? 'border-violet-500 shadow-md ring-2 ring-violet-500/20'
             : 'border-violet-200'
         )}
       >
- <div className="bg-violet-500 p-3 flex items-center justify-between border-b border-violet-600/20">
- <div className="flex items-center gap-2 text-white">
- <Tag className="h-4 w-4" />
- <span className="text-[10px] font-semibold ">Tag Condition</span>
-          </div>
- <div className="h-1.5 w-1.5 rounded-full bg-card opacity-40" />
+        {/* Left Colored Accent Block */}
+        <div className="w-12 h-full bg-violet-500 flex items-center justify-center flex-shrink-0 animate-fade-in text-white">
+          <Tag className="h-4 w-4" />
         </div>
-
- <div className="p-4 space-y-2">
- <p className="text-xs font-semibold text-foreground leading-tight">
-            {data.label || 'Tag Condition'}
-          </p>
- <div className="flex flex-wrap gap-1.5 pt-1">
-            {logic ? (
-              <Badge
-                variant="outline"
- className="text-[7px] font-semibold px-1.5 h-4 border-violet-100 bg-violet-50 text-violet-600"
-              >
-                {LOGIC_LABELS[logic] ?? logic.replace(/_/g, ' ')}
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
- className="text-[7px] font-semibold px-1.5 h-4 bg-background0 border-none text-muted-foreground"
-              >
-                Select Logic
-              </Badge>
-            )}
-            <Badge
-              variant="outline"
- className="text-[7px] font-semibold px-1.5 h-4 bg-background0 border-none"
-            >
-              {tagIds.length} tag{tagIds.length !== 1 ? 's' : ''}
-            </Badge>
+        
+        {/* Right Content Area */}
+        <div className="flex-1 min-w-0 h-full pl-3 pr-2 flex items-center justify-between text-left">
+          <div className="flex flex-col justify-center min-w-0 pr-1">
+            <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none mb-1 truncate">
+              Tag Split
+            </span>
+            <p className="text-xs font-semibold text-foreground leading-tight truncate">
+              {getTagConditionDescription()}
+            </p>
           </div>
+          <Badge
+            variant="outline"
+            className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-violet-100 bg-violet-50 text-violet-700 truncate max-w-[85px] h-5 flex-shrink-0 flex items-center justify-center"
+          >
+            {waitingCount} {waitingCount === 1 ? 'Contact' : 'Contacts'}
+          </Badge>
         </div>
       </Card>
 
@@ -83,10 +96,21 @@ export function TagConditionNode({ data, selected }: any) {
         type="source"
         position={Position.Bottom}
         id="true"
-        className="bg-emerald-500 border-2 border-white shadow-lg transition-colors hover:bg-emerald-600"
-        style={{ width: '16px', height: '16px', bottom: '-8px', left: '25%' }}
-      />
-      <span className="absolute text-[10px] font-bold text-emerald-600 select-none animate-fade-in" style={{ bottom: '-22px', left: '25%', transform: 'translateX(-180%)' }}>
+        className={cn(
+          "border-2 border-white shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer",
+          data.isTrueConnected ? "bg-emerald-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
+        )}
+        style={{ width: '15px', height: '15px', bottom: '-7.5px', left: '25%' }}
+        onClick={(e) => {
+          if (!data.isTrueConnected && data.onAddStep) {
+            e.stopPropagation();
+            data.onAddStep(id, 'true');
+          }
+        }}
+      >
+        {!data.isTrueConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
+      </Handle>
+      <span className="absolute text-[9px] font-bold text-emerald-600 select-none animate-fade-in" style={{ bottom: '-20px', left: '25%', transform: 'translateX(-150%)' }}>
         True
       </span>
 
@@ -95,10 +119,21 @@ export function TagConditionNode({ data, selected }: any) {
         type="source"
         position={Position.Bottom}
         id="false"
-        className="bg-rose-500 border-2 border-white shadow-lg transition-colors hover:bg-rose-600"
-        style={{ width: '16px', height: '16px', bottom: '-8px', left: '75%' }}
-      />
-      <span className="absolute text-[10px] font-bold text-rose-600 select-none animate-fade-in" style={{ bottom: '-22px', left: '75%', transform: 'translateX(80%)' }}>
+        className={cn(
+          "border-2 border-white shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer",
+          data.isFalseConnected ? "bg-rose-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
+        )}
+        style={{ width: '15px', height: '15px', bottom: '-7.5px', left: '75%' }}
+        onClick={(e) => {
+          if (!data.isFalseConnected && data.onAddStep) {
+            e.stopPropagation();
+            data.onAddStep(id, 'false');
+          }
+        }}
+      >
+        {!data.isFalseConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
+      </Handle>
+      <span className="absolute text-[9px] font-bold text-rose-600 select-none animate-fade-in" style={{ bottom: '-20px', left: '75%', transform: 'translateX(50%)' }}>
         False
       </span>
     </div>

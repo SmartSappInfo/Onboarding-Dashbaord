@@ -11,11 +11,27 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { MessageTemplate, TemplateCategory, RecipientType, MessageChannel } from '@/lib/types';
 
 interface FilterOptions {
-    category: TemplateCategory;
-    recipientType: RecipientType;
-    channel: MessageChannel;
+    category: TemplateCategory | 'all';
+    recipientType: RecipientType | 'all';
+    channel: MessageChannel | 'all';
     workspaceId?: string;
     organizationId?: string;
+}
+
+function standardizeCategory(cat: string | undefined): string {
+    if (!cat) return 'general';
+    const c = cat.toLowerCase().trim();
+    if (c === 'survey' || c === 'surveys') return 'surveys';
+    if (c === 'meeting' || c === 'meetings') return 'meetings';
+    if (c === 'form' || c === 'forms') return 'forms';
+    if (c === 'agreement' || c === 'agreements') return 'agreements';
+    if (c === 'campaign' || c === 'campaigns') return 'campaigns';
+    if (c === 'reminder' || c === 'reminders') return 'reminders';
+    if (c === 'task' || c === 'tasks') return 'tasks';
+    if (c === 'automation' || c === 'automations') return 'automations';
+    if (c === 'qr_codes' || c === 'qr codes' || c === 'qr_code') return 'qr_codes';
+    if (c === 'user' || c === 'users') return 'users';
+    return c;
 }
 
 /**
@@ -26,61 +42,71 @@ export async function getFilteredTemplatesAction(filters: FilterOptions): Promis
     const { category, recipientType, channel, workspaceId, organizationId } = filters;
 
     try {
-        // Run both global template search and organization overrides concurrently to reduce latency
-        const [globalSnap, overrideSnap] = await Promise.all([
-            adminDb.collection('message_templates')
-                .where('scope', '==', 'global')
-                .where('category', '==', category)
-                .where('recipientType', '==', recipientType)
-                .where('channel', '==', channel)
-                .where('status', '==', 'active')
-                .get(),
-            workspaceId || organizationId
-                ? adminDb.collection('message_templates')
-                    .where('category', '==', category)
-                    .where('recipientType', '==', recipientType)
-                    .where('channel', '==', channel)
-                    .where('status', '==', 'active')
-                    .get()
-                : Promise.resolve(null)
-        ]);
-
-        const globalTemplates = globalSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MessageTemplate));
-
-        // 2. Fetch relevant Organization/Workspace Overrides
-        let overrides: MessageTemplate[] = [];
-        if (overrideSnap) {
-            overrides = overrideSnap.docs
-                .map(doc => ({ id: doc.id, ...doc.data() } as MessageTemplate))
-                .filter(t => t.scope === 'organization' && (
-                    (organizationId && t.organizationId === organizationId) || 
-                    (workspaceId && t.workspaceIds?.includes(workspaceId))
-                ));
+        let queryRef: any = adminDb.collection('message_templates');
+        
+        // Fetch strictly by channel if specified and not 'all'
+        if (channel && channel !== 'all') {
+            queryRef = queryRef.where('channel', '==', channel);
         }
 
-        // 3. Deduplicate (Org Overrides take precedence over Global Blueprints)
-        // We use 'templateType' as the unique key for variants (e.g., 'forms_respondent_standard')
-        const resultTemplates: MessageTemplate[] = [];
-        const seenTypes = new Set<string>();
+        const snap = await queryRef.get();
+        let templates: MessageTemplate[] = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as MessageTemplate));
 
-        // First, add overrides
-        for (const tmpl of overrides) {
+        console.log(`[getFilteredTemplatesAction] Fetched ${templates.length} templates for channel: ${channel}`);
+
+        // Filter out archived ones
+        templates = templates.filter(t => t.status !== 'archived' && t.isActive !== false);
+
+        // Filter for External Client focused templates only
+        // Keep: target === 'external_client', recipientType in (respondent, entity, external_alert, all)
+        // Exclude: target === 'internal_team', recipientType in (internal_alert, assignee)
+        templates = templates.filter(t => {
+            // Explicitly internal — exclude
+            if (t.target === 'internal_team') return false;
+            if (t.recipientType === 'internal_alert' || t.recipientType === 'assignee') return false;
+
+            // Explicitly external, or no target/recipientType set (include by default)
+            return true;
+        });
+
+        // Deduplicate templates by their templateType or id to ensure no duplicates
+        const seenTypes = new Set<string>();
+        const resultTemplates: MessageTemplate[] = [];
+
+        // Prioritize organization-specific templates if they match workspaceId or organizationId
+        const orgTemplates = templates.filter(t => 
+            t.scope === 'organization' && (
+                (organizationId && t.organizationId === organizationId) || 
+                (workspaceId && t.workspaceIds?.includes(workspaceId))
+            )
+        );
+
+        for (const tmpl of orgTemplates) {
             if (tmpl.templateType) {
                 seenTypes.add(tmpl.templateType);
             }
             resultTemplates.push(tmpl);
         }
 
-        // Then, add global templates if no override exists for that type
-        for (const tmpl of globalTemplates) {
+        // Add remaining global or other organization templates
+        for (const tmpl of templates) {
             if (tmpl.templateType && seenTypes.has(tmpl.templateType)) {
+                continue;
+            }
+            if (resultTemplates.some(t => t.id === tmpl.id)) {
                 continue;
             }
             resultTemplates.push(tmpl);
         }
 
-        // Sort by name for consistent UI
-        return resultTemplates.sort((a, b) => a.name.localeCompare(b.name));
+        // Standardize category property on returned templates
+        const standardized = resultTemplates.map(t => ({
+            ...t,
+            category: standardizeCategory(t.category) as any
+        }));
+
+        console.log(`[getFilteredTemplatesAction] Returning ${standardized.length} external client focused templates.`);
+        return standardized;
 
     } catch (error) {
         console.error('Error fetching filtered templates:', error);

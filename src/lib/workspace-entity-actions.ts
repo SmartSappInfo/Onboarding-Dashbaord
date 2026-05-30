@@ -11,6 +11,7 @@ import {
 } from './entity-audit';
 import type { Entity, Workspace, WorkspaceEntity, EntityType } from './types';
 import { extractPrimaryContactFields } from './entity-contact-helpers';
+import { filterAndSortEntities, type FilterStateInput } from './utils/entity-filter-util';
 
 /**
  * @fileOverview Server actions for workspace-entity relationship management.
@@ -820,5 +821,76 @@ export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
   } catch (e: any) {
     console.error('>>> [WORKSPACE_ENTITY:BULK_DELETE] Failed:', e.message);
     return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Server-side helper to filter and sort all workspace entities and return matching document IDs.
+ */
+export async function getFilteredEntityIdsAction(
+  workspaceId: string,
+  filterState: FilterStateInput,
+  assignedUserId: string | null | undefined,
+  tagFilteredIdsArray: string[] | null | undefined,
+  sortConfig: { key: string; direction: 'asc' | 'desc' } | null
+): Promise<{ success: boolean; data?: string[]; error?: string }> {
+  try {
+    let q = adminDb.collection('workspace_entities')
+      .where('workspaceId', '==', workspaceId);
+
+    // Apply basic status filter in query to reduce Firestore document reads
+    if (filterState.status && filterState.status !== 'all') {
+      q = q.where('status', '==', filterState.status);
+    }
+    
+    // Apply basic assignee filter in query if set and is not "unassigned"
+    if (assignedUserId && assignedUserId !== 'unassigned') {
+      q = q.where('assignedTo.userId', '==', assignedUserId);
+    }
+
+    // Select only fields needed for matching, filtering, and sorting to optimize bandwidth
+    const snap = await q.select(
+      'entityId',
+      'displayName',
+      'primaryContactName',
+      'primaryEmail',
+      'primaryPhone',
+      'status',
+      'locationCountryId',
+      'locationRegionId',
+      'locationDistrictId',
+      'workspaceTags',
+      'lifecycleStatus',
+      'addedAt',
+      'interests',
+      'assignedTo',
+      'entityContacts'
+    ).get();
+
+    const entities = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    const tagFilteredIds = tagFilteredIdsArray ? new Set(tagFilteredIdsArray) : null;
+
+    // Perform full-text search, multi-tag matching, cascading locations, and other complex logic in-memory
+    const filtered = filterAndSortEntities(
+      entities,
+      filterState,
+      assignedUserId,
+      tagFilteredIds,
+      undefined, // Cache matches are checked via emailVerificationCache
+      null, // Saved audience matched IDs are evaluated client-side
+      sortConfig
+    );
+
+    return {
+      success: true,
+      data: filtered.map(e => e.id)
+    };
+  } catch (err: any) {
+    console.error('>>> [WORKSPACE_ENTITY:GET_FILTERED_IDS] Failed:', err.message);
+    return { success: false, error: err.message };
   }
 }

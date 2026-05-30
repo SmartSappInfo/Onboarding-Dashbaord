@@ -21,6 +21,8 @@ export const getMeetingSystemVariables = (): VariableDefinition[] => [
     { id: 'mv_reg_count', key: 'registrant_count', label: 'Registrant Count', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'number' },
     { id: 'mv_att_count', key: 'attendee_count', label: 'Attendee Count', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'number' },
     { id: 'mv_noshow', key: 'no_show_count', label: 'No-Show Count', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'number' },
+    { id: 'mv_one_click', key: 'meeting_registrant_one_click_link', label: 'One-Click RSVP Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'url' },
+    { id: 'mv_join_link', key: 'registrant_join_link', label: 'Registrant Join Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'url' },
 ];
 
 /**
@@ -34,11 +36,22 @@ export const getSurveySystemVariables = (): VariableDefinition[] => [
 ];
 
 /**
+ * Returns standard system variables for common global contexts.
+ */
+export const getCommonSystemVariables = (): VariableDefinition[] => [
+    { id: 'cv_org_name', key: 'organization_name', label: 'Organization Name', entity: 'Common', source: 'static', category: 'common', path: 'org.name', type: 'string' },
+    { id: 'cv_ws_name', key: 'workspace_name', label: 'Workspace Name', entity: 'Common', source: 'static', category: 'common', path: 'workspace.name', type: 'string' },
+    { id: 'cv_ent_name', key: 'entity_name', label: 'Entity Name', entity: 'Common', source: 'static', category: 'common', path: 'computed', type: 'string' },
+    { id: 'cv_year', key: 'current_year', label: 'Current Year', entity: 'Common', source: 'static', category: 'common', path: 'computed', type: 'string' },
+];
+
+/**
  * Gets all globally applicable system variables that do not come from Firestore.
  */
 export const getAllSystemVariables = (): VariableDefinition[] => {
     return [
         ...getMeetingSystemVariables(),
         ...getSurveySystemVariables(),
+        ...getCommonSystemVariables(),
     ];
 };

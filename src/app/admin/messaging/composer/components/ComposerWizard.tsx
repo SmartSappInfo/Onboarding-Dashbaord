@@ -778,139 +778,16 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                         <Controller name="templateId" control={control} render={({ field }) => (
                                             <MessagingTemplateSelector 
                                                 category={composerContext?.category || 'general'}
-                                                recipientType="entity" // Default for composer
+                                                recipientType="entity"
                                                 channel={watchedChannel}
                                                 value={field.value}
                                                 onValueChange={field.onChange}
                                                 onSelect={setSelectedTemplate}
                                                 placeholder="Choose message blueprint..."
-                                                className="h-12 rounded-xl bg-muted/20 border-border/50 font-semibold text-xs"
                                             />
                                         )} />
                                     </div>
 
-                                    {/* Template preview + AI refine */}
-                                    {selectedTemplate && (
-                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                                            <div className="p-4 rounded-xl bg-muted/20 border border-border/50 space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <Zap className="h-4 w-4 text-primary" />
-                                                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Variables</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <VariablePicker
-                                                            variables={availableVariables}
-                                                            onVariableSelect={(varName) => {
-                                                                toast({ 
-                                                                    title: 'Variable Copied', 
-                                                                    description: `{{${varName}}} copied to clipboard` 
-                                                                });
-                                                                navigator.clipboard.writeText(`{{${varName}}}`);
-                                                            }}
-                                                            triggerLabel="Insert Variable"
-                                                            triggerClassName="h-7 text-[10px] font-semibold border-primary/20 hover:bg-primary/5 rounded-lg"
-                                                        />
-                                                        <Select value={selectedTone} onValueChange={(v: any) => setSelectedTone(v)}>
-                                                            <SelectTrigger className="h-7 w-28 text-[10px] font-semibold bg-card border-primary/20 rounded-lg">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {['formal','friendly','urgent','concise'].map(t => <SelectItem key={t} value={t} className="capitalize text-xs">{t}</SelectItem>)}
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <Button type="button" size="sm" variant="outline" onClick={handleAiRefine} disabled={isRefining} className="h-7 gap-1.5 font-semibold text-[10px] border-primary/20 hover:bg-primary/5 rounded-lg">
-                                                            {isRefining ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-                                                            AI Refine
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {(selectedTemplate.declaredVariables || selectedTemplate.variables || []).map(v => (
-                                                        <code key={v} className="bg-card px-3 py-1 rounded-lg border text-[10px] font-semibold text-primary shadow-sm">{`{{${v}}}`}</code>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Contextual binders */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {selectedTemplate.category === 'meetings' && (
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-[10px] font-bold text-primary flex items-center gap-1.5"><Calendar className="h-3 w-3" /> Bind Meeting</Label>
-                                                        <Controller name="sourceMeetingId" control={control} render={({ field }) => (
-                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                <SelectTrigger className="h-10 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold text-xs"><SelectValue placeholder="Pick meeting..." /></SelectTrigger>
-                                                                <SelectContent className="rounded-xl">
-                                                                    <SelectItem value="none">No Binding</SelectItem>
-                                                                    {meetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.entityName} – {m.type.name}</SelectItem>)}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        )} />
-                                                    </div>
-                                                )}
-                                                {selectedTemplate.category === 'surveys' && (
-                                                    <>
-                                                        <div className="space-y-1.5">
-                                                            <Label className="text-[10px] font-bold text-primary flex items-center gap-1.5"><ClipboardList className="h-3 w-3" /> Bind Survey</Label>
-                                                            <Controller name="sourceSurveyId" control={control} render={({ field }) => (
-                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                    <SelectTrigger className="h-10 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold text-xs"><SelectValue placeholder="Pick survey..." /></SelectTrigger>
-                                                                    <SelectContent className="rounded-xl">
-                                                                        <SelectItem value="none">No Binding</SelectItem>
-                                                                        {surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            )} />
-                                                        </div>
-                                                        {watchedSourceSurveyId && (
-                                                            <div className="space-y-1.5">
-                                                                <Label className="text-[10px] font-bold text-primary flex items-center gap-1.5"><Database className="h-3 w-3" /> Response</Label>
-                                                                <Controller name="sourceResponseId" control={control} render={({ field }) => (
-                                                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                        <SelectTrigger className="h-10 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold text-xs"><SelectValue placeholder="Pick response..." /></SelectTrigger>
-                                                                        <SelectContent className="rounded-xl">
-                                                                            <SelectItem value="none">None</SelectItem>
-                                                                            {responses?.map(r => <SelectItem key={r.id} value={r.id}>{format(new Date(r.submittedAt), 'MMM d, HH:mm')} – Score: {r.score}</SelectItem>)}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                )} />
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                )}
-                                                {selectedTemplate.category === 'forms' && (
-                                                    <>
-                                                        <div className="space-y-1.5">
-                                                            <Label className="text-[10px] font-bold text-primary flex items-center gap-1.5"><FileText className="h-3 w-3" /> Bind PDF</Label>
-                                                            <Controller name="sourcePdfId" control={control} render={({ field }) => (
-                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                    <SelectTrigger className="h-10 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold text-xs"><SelectValue placeholder="Pick PDF..." /></SelectTrigger>
-                                                                    <SelectContent className="rounded-xl">
-                                                                        <SelectItem value="none">No Binding</SelectItem>
-                                                                        {pdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            )} />
-                                                        </div>
-                                                        {watchedSourcePdfId && (
-                                                            <div className="space-y-1.5">
-                                                                <Label className="text-[10px] font-bold text-primary flex items-center gap-1.5"><Database className="h-3 w-3" /> Submission</Label>
-                                                                <Controller name="sourceSubmissionId" control={control} render={({ field }) => (
-                                                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                        <SelectTrigger className="h-10 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold text-xs"><SelectValue placeholder="Pick submission..." /></SelectTrigger>
-                                                                        <SelectContent className="rounded-xl">
-                                                                            <SelectItem value="none">None</SelectItem>
-                                                                            {submissions?.map(s => <SelectItem key={s.id} value={s.id}>{format(new Date((s as any).submittedAt), 'MMM d, HH:mm')}</SelectItem>)}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                )} />
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </div>
-                                        </motion.div>
-                                    )}
                                 </div>
                             ) : (
                                 /* Write new – placeholder for future rich editor */

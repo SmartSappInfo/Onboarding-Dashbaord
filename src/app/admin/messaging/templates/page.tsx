@@ -41,6 +41,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainer } from '@/components/ui/page-container';
+import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
 
 /**
  * @fileOverview Messaging Templates Management Page.
@@ -368,6 +369,7 @@ export default function MessageTemplatesPage() {
                     createdAt: new Date().toISOString() 
                 });
             }
+            invalidateAllTemplatesCache();
             toast({ title: 'Template Saved' });
             setIsAdding(false);
             setEditingTemplate(null);
@@ -395,6 +397,7 @@ export default function MessageTemplatesPage() {
 
             const sanitizedData = JSON.parse(JSON.stringify(clonedData));
             await addDoc(collection(firestore, 'message_templates'), sanitizedData);
+            invalidateAllTemplatesCache();
             
             toast({ title: 'Template Cloned Successfully', description: `Created "${clonedData.name}"` });
         } catch (e: any) {
@@ -409,6 +412,7 @@ export default function MessageTemplatesPage() {
         setIsDeleting(true);
         try {
             await deleteDoc(doc(firestore, 'message_templates', templateToDelete.id));
+            invalidateAllTemplatesCache();
             toast({ title: 'Template Removed' });
             setTemplateToDelete(null);
         } catch (e: any) {

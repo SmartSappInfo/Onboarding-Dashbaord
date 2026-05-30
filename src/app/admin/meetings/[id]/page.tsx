@@ -39,7 +39,10 @@ import {
   Mail,
   MessageSquare,
   Loader2,
-  ChevronLeft
+  ChevronLeft,
+  X,
+  Check,
+  Edit3
 } from 'lucide-react';
 import { format } from 'date-fns';
 import dynamic from 'next/dynamic';
@@ -78,6 +81,9 @@ export default function MeetingDetailPage() {
   const [logDrawerOpen, setLogDrawerOpen] = React.useState(false);
   const [selectedReminderType, setSelectedReminderType] = React.useState<string | null>(null);
   const [isTogglingRegistration, setIsTogglingRegistration] = React.useState(false);
+  const [isEditingName, setIsEditingName] = React.useState(false);
+  const [editingName, setEditingName] = React.useState('');
+  const [isSavingName, setIsSavingName] = React.useState(false);
 
   const handleCopy = (text: string, type: 'short' | 'long' | string) => {
     navigator.clipboard.writeText(text);
@@ -184,6 +190,27 @@ export default function MeetingDetailPage() {
       toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
     } finally {
       setIsTogglingRegistration(false);
+    }
+  };
+
+  const handleSaveName = async () => {
+    if (!firestore || !meetingDocRef || !editingName.trim()) return;
+    setIsSavingName(true);
+    try {
+      await updateDoc(meetingDocRef, { entityName: editingName.trim() });
+      toast({
+        title: 'Meeting updated',
+        description: 'Meeting internal name has been successfully updated.',
+      });
+      setIsEditingName(false);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: err.message || 'An error occurred.',
+      });
+    } finally {
+      setIsSavingName(false);
     }
   };
 
@@ -355,9 +382,57 @@ export default function MeetingDetailPage() {
               </Link>
             </Button>
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none mb-1">
-                {meeting.entityName}
-              </h1>
+              {isEditingName ? (
+                <div className="flex items-center gap-2 mb-1">
+                  <input
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    className="h-10 px-3 border rounded-xl text-lg font-semibold w-72 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
+                    disabled={isSavingName}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveName();
+                      if (e.key === 'Escape') setIsEditingName(false);
+                    }}
+                  />
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-9 w-9 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl shrink-0"
+                    onClick={handleSaveName}
+                    disabled={isSavingName}
+                  >
+                    {isSavingName ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-5 w-5" />}
+                  </Button>
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-9 w-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl shrink-0"
+                    onClick={() => setIsEditingName(false)}
+                    disabled={isSavingName}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-1 group/title">
+                  <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none">
+                    {meeting.entityName}
+                  </h1>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 opacity-0 group-hover/title:opacity-100 transition-opacity rounded-xl hover:bg-muted"
+                    onClick={() => {
+                      setIsEditingName(true);
+                      setEditingName(meeting.entityName || '');
+                    }}
+                  >
+                    <Edit3 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              )}
               <p className="text-sm text-muted-foreground">
                 {meeting.type.name} • {format(new Date(meeting.meetingTime), 'PPP p')}
               </p>

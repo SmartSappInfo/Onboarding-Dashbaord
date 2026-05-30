@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import dynamic from 'next/dynamic';
-import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where, addDoc } from 'firebase/firestore';
 import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
@@ -10,6 +10,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
 
 const TemplateWorkshop = dynamic(
     () => import('../templates/components/template-workshop').then(m => m.TemplateWorkshop),
@@ -48,7 +49,7 @@ export function TemplateWorkshopSheet({
     const { toast } = useToast();
     const { activeWorkspaceId } = useWorkspace();
     const { activeOrganizationId } = useTenant();
-    
+
     const [isSaving, setIsSaving] = React.useState(false);
     const [isLoadingTemplate, setIsLoadingTemplate] = React.useState(false);
     const [initialTemplate, setInitialTemplate] = React.useState<MessageTemplate | null>(null);
@@ -58,7 +59,6 @@ export function TemplateWorkshopSheet({
         if (open) {
             setMountKey(Date.now());
             if (templateId && firestore) {
-                // Fetch the template to edit
                 const fetchTemplate = async () => {
                     setIsLoadingTemplate(true);
                     try {
@@ -82,7 +82,7 @@ export function TemplateWorkshopSheet({
         }
     }, [open, templateId, firestore, toast]);
 
-    // Data Subscriptions
+    // Data subscriptions — only active while dialog is mounted
     const varsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'messaging_variables'), orderBy('category', 'asc')) : null, [firestore]);
     const stylesQuery = useMemoFirebase(() => (firestore && activeWorkspaceId) ? query(collection(firestore, 'message_styles'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc')) : null, [firestore, activeWorkspaceId]);
     const entitiesQuery = useMemoFirebase(() => (firestore && activeWorkspaceId) ? query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc')) : null, [firestore, activeWorkspaceId]);
@@ -103,11 +103,12 @@ export function TemplateWorkshopSheet({
 
         const contentForExtraction = `${data.subject || ''} ${data.body} ${JSON.stringify(data.blocks || [])}`;
         const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
-        const variableList = varMatches ? [...new Set(varMatches.map((m: string) => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
+        const variableList = varMatches
+            ? [...new Set(varMatches.map((m: string) => m.replace(/\{\{|\}\}/g, '').trim()))]
+            : [];
 
-        const workspaceIds = data.workspaceIds && data.workspaceIds.length > 0 
-            ? data.workspaceIds 
-            : [activeWorkspaceId];
+        const workspaceIds =
+            data.workspaceIds && data.workspaceIds.length > 0 ? data.workspaceIds : [activeWorkspaceId];
 
         const templateData = {
             ...data,
@@ -129,19 +130,17 @@ export function TemplateWorkshopSheet({
             if (templateId) {
                 const { updateDoc, doc } = await import('firebase/firestore');
                 await updateDoc(doc(firestore, 'message_templates', templateId), sanitizedData);
+                invalidateAllTemplatesCache();
                 toast({ title: 'Template Updated Successfully' });
-                if (onCreated) {
-                    onCreated({ id: templateId, ...sanitizedData });
-                }
+                if (onCreated) onCreated({ id: templateId, ...sanitizedData });
             } else {
-                const docRef = await addDoc(collection(firestore, 'message_templates'), { 
-                    ...sanitizedData, 
-                    createdAt: new Date().toISOString() 
+                const docRef = await addDoc(collection(firestore, 'message_templates'), {
+                    ...sanitizedData,
+                    createdAt: new Date().toISOString(),
                 });
+                invalidateAllTemplatesCache();
                 toast({ title: 'Template Saved Successfully' });
-                if (onCreated) {
-                    onCreated({ id: docRef.id, ...sanitizedData });
-                }
+                if (onCreated) onCreated({ id: docRef.id, ...sanitizedData });
             }
             onOpenChange(false);
         } catch (e: any) {
@@ -152,16 +151,28 @@ export function TemplateWorkshopSheet({
     };
 
     return (
-        <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-screen md:w-[95vw] sm:max-w-none p-0 flex flex-col border-none shadow-2xl z-[100]">
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            {/*
+             * Full-viewport modal — no padding, no rounding, no default close button.
+             * The TemplateWorkshop renders its own Cancel/Save controls.
+             * [&>button]:hidden suppresses the Radix default close × button.
+             */}
+            <DialogContent className="max-w-none w-screen h-screen p-0 border-none rounded-none shadow-2xl z-[100] flex flex-col [&>button]:hidden">
                 <div className="sr-only">
-                    <SheetTitle>Unified Template Editor</SheetTitle>
-                    <SheetDescription>Create a new messaging template</SheetDescription>
+                    <DialogTitle>{templateId ? 'Edit Template' : 'Create New Template'}</DialogTitle>
+                    <DialogDescription>
+                        {templateId
+                            ? 'Edit an existing messaging template.'
+                            : 'Create a new messaging template for your automation.'}
+                    </DialogDescription>
                 </div>
+
                 {open && isLoadingTemplate ? (
                     <div className="h-full w-full flex flex-col items-center justify-center gap-4">
                         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                        <p className="text-xs font-bold text-muted-foreground opacity-50 uppercase tracking-widest">Loading Template...</p>
+                        <p className="text-xs font-bold text-muted-foreground opacity-50 uppercase tracking-widest">
+                            Loading Template...
+                        </p>
                     </div>
                 ) : open && (
                     <TemplateWorkshop
@@ -179,7 +190,7 @@ export function TemplateWorkshopSheet({
                         initialContext={initialContext}
                     />
                 )}
-            </SheetContent>
-        </Sheet>
+            </DialogContent>
+        </Dialog>
     );
 }

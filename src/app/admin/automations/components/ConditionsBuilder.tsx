@@ -39,7 +39,6 @@ const CONDITION_FIELDS = [
   {
     group: 'App & Custom Fields',
     items: [
-      { value: 'app_field', label: 'App Custom Field' },
       { value: 'survey_field', label: 'Survey Field' },
       { value: 'form_field', label: 'PDF / Form Field' },
     ],
@@ -237,11 +236,7 @@ export function ConditionsBuilder({
   }, [firestore, activeWorkspaceId]);
   const { data: allPdfs } = useCollection<any>(pdfsQuery);
 
-  const appFieldsQuery = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'app_fields'), where('workspaceId', '==', activeWorkspaceId));
-  }, [firestore, activeWorkspaceId]);
-  const { data: allAppFields } = useCollection<any>(appFieldsQuery);
+  const allAppFields: any[] = [];
 
   const qrCodesQuery = useMemoFirebase(() => {
     if (!firestore || !activeOrganizationId || !activeWorkspaceId) return null;

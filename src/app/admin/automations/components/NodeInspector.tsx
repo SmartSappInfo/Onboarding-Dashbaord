@@ -191,6 +191,8 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
         allTags,
         forms,
         surveys,
+        automations,
+        appFields,
     } = useWorkspaceScopedQueries();
 
     const updateConfig = (updates: any) => {
@@ -215,15 +217,6 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                         <div className="flex items-center gap-2">
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-semibold text-[8px] uppercase h-5">Element Config</Badge>
                             <span className="text-[10px] font-semibold text-muted-foreground opacity-40">ID: {node.id.substring(0, 8)}</span>
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Step Label</Label>
-                            <Input 
-                                value={data.label || ''} 
-                                onChange={e => onUpdate({ label: e.target.value })} 
-                                placeholder="Give this step a name..."
-                                className="h-11 rounded-xl bg-background border-none font-bold shadow-inner"
-                            />
                         </div>
                     </div>
 
@@ -308,65 +301,95 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                     ) : null}
 
                     {node.type === 'actionNode' ? (
-                        <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
-                            <div className="space-y-4">
-                                <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
-                                    <PlusCircle className="h-3 w-3" /> Execution Logic
-                                </Label>
-                                <SearchInput
-                                    value={actionSearch}
-                                    onChange={setActionSearch}
-                                    placeholder="Search actions..."
-                                    className="mb-4"
-                                />
-                                <div className="grid grid-cols-1 gap-2">
-                                    {filteredActionTypes.map((action) => (
-                                        <button
-                                            key={action.value}
-                                            type="button"
-                                            onClick={() => onUpdate({
-                                                actionType: action.value,
-                                                label: action.label
-                                            })}
-                                            className={cn(
-                                                "flex items-start gap-4 p-3 rounded-2xl border-2 transition-all text-left group",
-                                                data.actionType === action.value ? "border-emerald-500 bg-emerald-500/10 shadow-md" : "border-transparent bg-background hover:bg-card/50"
-                                            )}
-                                        >
-                                            <div className={cn(
-                                                "p-2 rounded-xl transition-all shadow-sm shrink-0",
-                                                data.actionType === action.value ? "bg-emerald-500 text-white" : "bg-card text-muted-foreground"
-                                            )}>
-                                                <action.icon className="h-4 w-4" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-xs tracking-tight leading-none mb-1">{action.label}</p>
-                                                <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">{action.desc}</p>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                                {filteredActionTypes.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center p-8 text-center bg-card/30 rounded-2xl border border-dashed border-border">
-                                        <p className="text-xs font-bold text-muted-foreground">No actions match your search</p>
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                            {!data.actionType ? (
+                                /* ── No action chosen yet: show picker list ── */
+                                <div className="space-y-4">
+                                    <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
+                                        <PlusCircle className="h-3 w-3" /> Choose an Action
+                                    </Label>
+                                    <SearchInput
+                                        value={actionSearch}
+                                        onChange={setActionSearch}
+                                        placeholder="Search actions..."
+                                        className="mb-4"
+                                    />
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {filteredActionTypes.map((action) => (
+                                            <button
+                                                key={action.value}
+                                                type="button"
+                                                onClick={() => onUpdate({
+                                                    actionType: action.value,
+                                                    label: action.label
+                                                })}
+                                                className="flex items-start gap-4 p-3 rounded-2xl border-2 border-transparent bg-background hover:bg-card/50 hover:border-primary/20 transition-all text-left group"
+                                            >
+                                                <div className="p-2 rounded-xl transition-all shadow-sm shrink-0 bg-card text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
+                                                    <action.icon className="h-4 w-4" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-xs tracking-tight leading-none mb-1">{action.label}</p>
+                                                    <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">{action.desc}</p>
+                                                </div>
+                                            </button>
+                                        ))}
                                     </div>
-                                ) : null}
-                            </div>
+                                    {filteredActionTypes.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center p-8 text-center bg-card/30 rounded-2xl border border-dashed border-border">
+                                            <p className="text-xs font-bold text-muted-foreground">No actions match your search</p>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ) : (
+                                /* ── Action already chosen: show config only ── */
+                                <div className="space-y-6">
+                                    {/* Slim action-type header with swap button */}
+                                    <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/8 border border-emerald-500/20">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            {(() => {
+                                                const actionMeta = ACTION_TYPES.find(a => a.value === data.actionType);
+                                                const Icon = actionMeta?.icon ?? PlusCircle;
+                                                return (
+                                                    <>
+                                                        <div className="p-2 rounded-xl bg-emerald-500 text-white shadow-sm shrink-0">
+                                                            <Icon className="h-3.5 w-3.5" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-bold text-foreground truncate">{actionMeta?.label ?? data.actionType}</p>
+                                                            <p className="text-[9px] font-medium text-muted-foreground truncate">{actionMeta?.desc}</p>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => onUpdate({ actionType: '', label: 'New Action', config: {} })}
+                                            className="shrink-0 ml-2 h-7 px-2.5 rounded-xl border border-border/60 bg-background hover:bg-muted/40 text-[9px] font-bold text-muted-foreground hover:text-foreground transition-all"
+                                            title="Change action type"
+                                        >
+                                            Change
+                                        </button>
+                                    </div>
 
-                            <Separator className="opacity-50" />
+                                    <Separator className="opacity-40" />
 
-                            {data.actionType ? (
-                                <ActionConfigPanel
-                                    actionType={data.actionType}
-                                    config={config}
-                                    onUpdateConfig={updateConfig}
-                                    users={users}
-                                    stages={stages}
-                                    pipelines={pipelines}
-                                    variables={variables}
-                                    singular={singular}
-                                />
-                            ) : null}
+                                    {/* The actual config form — NO list, just properties */}
+                                    <ActionConfigPanel
+                                        actionType={data.actionType}
+                                        config={config}
+                                        onUpdateConfig={updateConfig}
+                                        users={users}
+                                        stages={stages}
+                                        pipelines={pipelines}
+                                        variables={variables}
+                                        singular={singular}
+                                        automations={automations}
+                                        appFields={appFields}
+                                    />
+                                </div>
+                            )}
                         </div>
                     ) : null}
 

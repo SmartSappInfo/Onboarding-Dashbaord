@@ -1,12 +1,12 @@
-
 'use client';
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, DollarSign, ArrowRightLeft, Users, Link2, Settings2, Clock, Activity, ShieldAlert } from 'lucide-react';
+import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, DollarSign, ArrowRightLeft, Users, Link2, Settings2, Clock, Activity, ShieldAlert, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
 
 const TRIGGER_ICONS: Record<string, any> = {
     ENTITY_CREATED: Building,
@@ -49,59 +49,239 @@ const TRIGGER_ICONS: Record<string, any> = {
     ENTITY_INACTIVE: Clock,
 };
 
+const TRIGGER_NAMES: Record<string, string> = {
+    ENTITY_CREATED: 'Entity Created',
+    ENTITY_UPDATED: 'Entity Updated',
+    ENTITY_ASSIGNED: 'Entity Assigned',
+    ENTITY_STAGE_CHANGED: 'Entity Stage Changed',
+    ENTITY_LINKED: 'Entity Linked',
+    ENTITY_UNLINKED: 'Entity Unlinked',
+    WORKSPACE_ENTITY_UPDATED: 'Workspace Entity Updated',
+    TASK_CREATED: 'Task Created',
+    TASK_COMPLETED: 'Task Completed',
+    SURVEY_SUBMITTED: 'Survey Submitted',
+    PDF_SIGNED: 'PDF Signed',
+    FORM_SUBMITTED: 'Form Submitted',
+    WEBHOOK_RECEIVED: 'Webhook Received',
+    MEETING_CREATED: 'Meeting Created',
+    MEETING_REGISTRANT_ADDED: 'Meeting Registrant Added',
+    MEETING_REGISTRANT_ATTENDED: 'Meeting Registrant Attended',
+    MEETING_REGISTRANT_NO_SHOW: 'Meeting Registrant No-Show',
+    TAG_ADDED: 'Tag Added',
+    TAG_REMOVED: 'Tag Removed',
+    DEAL_CREATED: 'Deal Created',
+    DEAL_STAGE_CHANGED: 'Deal Stage Changed',
+    DEAL_STATUS_CHANGED: 'Deal Status Changed',
+    DEAL_VALUE_CHANGED: 'Deal Value Changed',
+    CAMPAIGN_PAGE_SUBMITTED: 'Campaign Page Submitted',
+    CAMPAIGN_DELIVERED: 'Campaign Delivered',
+    CAMPAIGN_FAILED: 'Campaign Failed',
+    CAMPAIGN_OPENED: 'Campaign Opened',
+    CAMPAIGN_CLICKED: 'Campaign Clicked',
+    CAMPAIGN_NOT_DELIVERED: 'Campaign Not Delivered',
+    ENTITY_FIELD_CHANGED: 'Entity Field Changed',
+    DATE_REACHED: 'Date Reached',
+    TASK_OVERDUE: 'Task Overdue',
+    WEBPAGE_VISITED: 'Webpage Visited',
+    EVENT_RECORDED: 'Event Recorded',
+    EMAIL_BOUNCED: 'Email Bounced',
+    SCORE_CHANGED: 'Score Changed',
+    DEAL_OWNER_CHANGED: 'Deal Owner Changed',
+    ENTITY_INACTIVE: 'Entity Inactive',
+};
+
 /**
  * @fileOverview High-fidelity Trigger Node for Automation Canvas.
  * Represents the entry point of an institutional protocol.
  */
-export function TriggerNode({ data, selected }: any) {
+export function TriggerNode({ id, data, selected }: any) {
     const trigger = data.trigger;
+    const config = data.config || {};
     const Icon = TRIGGER_ICONS[trigger] || Zap;
 
+    const { allTags, forms, surveys, pipelines, stages } = useWorkspaceScopedQueries();
+
+    const stepName = TRIGGER_NAMES[trigger] || (trigger ? trigger.replace(/_/g, ' ') : 'Event Trigger');
+
+    const getTriggerSource = () => {
+        if (!trigger) return 'Entry';
+        if (trigger === 'WEBHOOK_RECEIVED') return 'Webhook';
+        if (trigger === 'FORM_SUBMITTED') return 'Form';
+        if (trigger === 'SURVEY_SUBMITTED') return 'Survey';
+        if (trigger === 'PDF_SIGNED') return 'PDF';
+        if (trigger === 'MEETING_CREATED' || trigger?.startsWith('MEETING_')) return 'Meeting';
+        return 'System';
+    };
+
+    const getTriggerDescription = () => {
+        if (!trigger) return 'Awaiting event signal';
+
+        switch (trigger) {
+            case 'ENTITY_CREATED':
+                return 'Fires when a new entity is created';
+            case 'ENTITY_UPDATED':
+                return 'Fires when entity fields are updated';
+            case 'ENTITY_ASSIGNED':
+                return 'Fires when entity is assigned to user';
+            case 'ENTITY_STAGE_CHANGED': {
+                const stage = stages?.find((s: any) => s.id === config.stageId);
+                const pipeline = pipelines?.find((p: any) => p.id === config.pipelineId);
+                if (stage && pipeline) {
+                    return `Stage changed to "${stage.name}" in "${pipeline.name}"`;
+                }
+                if (pipeline) {
+                    return `Stage changed in "${pipeline.name}"`;
+                }
+                return 'Fires when pipeline stage changes';
+            }
+            case 'FORM_SUBMITTED': {
+                const form = forms?.find((f: any) => f.id === config.formId);
+                return form ? `Form: "${form.name || form.title}" submitted` : 'Any form submitted';
+            }
+            case 'SURVEY_SUBMITTED': {
+                const survey = surveys?.find((s: any) => s.id === config.surveyId);
+                return survey ? `Survey: "${survey.internalName || survey.title}" completed` : 'Any survey completed';
+            }
+            case 'TAG_ADDED': {
+                const watchedTags = (config.tagIds || []).map((tid: string) => {
+                    const tag = allTags?.find((t: any) => t.id === tid);
+                    return tag ? tag.name : tid;
+                });
+                return watchedTags.length > 0 
+                    ? `Tag added: ${watchedTags.join(', ')}` 
+                    : 'Any tag added';
+            }
+            case 'TAG_REMOVED': {
+                const watchedTags = (config.tagIds || []).map((tid: string) => {
+                    const tag = allTags?.find((t: any) => t.id === tid);
+                    return tag ? tag.name : tid;
+                });
+                return watchedTags.length > 0 
+                    ? `Tag removed: ${watchedTags.join(', ')}` 
+                    : 'Any tag removed';
+            }
+            case 'WEBHOOK_RECEIVED':
+                return 'Fires when webhook payload received';
+            case 'MEETING_CREATED':
+                return config.meetingTypeId 
+                    ? `Meeting created: ID "${config.meetingTypeId}"` 
+                    : 'Any meeting created';
+            case 'MEETING_REGISTRANT_ADDED':
+                return config.meetingTypeId 
+                    ? `Registrant added to ID "${config.meetingTypeId}"` 
+                    : 'Registrant added to meeting';
+            case 'MEETING_REGISTRANT_ATTENDED':
+                return config.meetingTypeId 
+                    ? `Attended meeting: ID "${config.meetingTypeId}"` 
+                    : 'Attended meeting';
+            case 'MEETING_REGISTRANT_NO_SHOW':
+                return config.meetingTypeId 
+                    ? `No-show for meeting: ID "${config.meetingTypeId}"` 
+                    : 'No-show for meeting';
+            case 'ENTITY_FIELD_CHANGED':
+                return config.fieldPath 
+                    ? `Field "${config.fieldPath}" changed` 
+                    : 'Entity field changed';
+            case 'DATE_REACHED':
+                if (config.dateField) {
+                    const offset = config.offsetDays || 0;
+                    if (offset === 0) return `When date field "${config.dateField}" is reached`;
+                    if (offset < 0) return `${Math.abs(offset)} days before date field "${config.dateField}"`;
+                    return `${offset} days after date field "${config.dateField}"`;
+                }
+                return 'Date field reached';
+            case 'SCORE_CHANGED': {
+                const scoreType = config.scoreType || 'overallScore';
+                const scoreLabel = scoreType.replace('Score', '');
+                const op = config.operator || 'any_change';
+                if (op === 'any_change') return `${scoreLabel} score changed`;
+                const threshold = config.threshold ?? 50;
+                const opSymbol = op === 'greater_than' ? '>' : '<';
+                return `${scoreLabel} score ${opSymbol} ${threshold}`;
+            }
+            case 'ENTITY_INACTIVE':
+                return `Entity inactive for ${config.inactivityDays || 30} days`;
+            case 'WEBPAGE_VISITED':
+                return config.urlPattern 
+                    ? `URL matching "${config.urlPattern}" visited` 
+                    : 'Tracked page URL visited';
+            case 'EVENT_RECORDED':
+                return config.eventName 
+                    ? `Custom event "${config.eventName}" recorded` 
+                    : 'Custom event recorded';
+            case 'DEAL_CREATED':
+                return 'Fires when a new deal is created';
+            case 'DEAL_STAGE_CHANGED': {
+                const stage = stages?.find((s: any) => s.id === config.stageId);
+                const pipeline = pipelines?.find((p: any) => p.id === config.pipelineId);
+                if (stage && pipeline) {
+                    return `Deal stage changed to "${stage.name}" in "${pipeline.name}"`;
+                }
+                if (pipeline) {
+                    return `Deal stage changed in "${pipeline.name}"`;
+                }
+                return 'Fires when deal stage changes';
+            }
+            case 'DEAL_STATUS_CHANGED':
+                return 'Fires when deal status changes';
+            case 'DEAL_VALUE_CHANGED':
+                return 'Fires when deal value changes';
+            case 'DEAL_OWNER_CHANGED':
+                return 'Fires when deal owner changes';
+            case 'TASK_CREATED':
+                return 'Fires when task is created';
+            case 'TASK_COMPLETED':
+                return 'Fires when task is completed';
+            case 'TASK_OVERDUE':
+                return 'Fires when task becomes overdue';
+            default:
+                return trigger.replace(/_/g, ' ');
+        }
+    };
+
     return (
- <div className={cn(
-            "relative transition-all duration-500",
-            selected ? "scale-105" : "scale-100"
+        <div className={cn(
+            "relative transition-all duration-300",
+            selected ? "scale-[1.02]" : "scale-100"
         )}>
- <Card className={cn(
-                "w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden shadow-sm",
-                selected ? "border-emerald-500 shadow-2xl ring-4 ring-emerald-500/10" : "border-emerald-200"
+            <Card className={cn(
+                "w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center",
+                selected ? "border-emerald-500 shadow-md ring-2 ring-emerald-500/20" : "border-emerald-200"
             )}>
- <div className="bg-emerald-500 p-3 flex items-center justify-between border-b border-emerald-600/20">
- <div className="flex items-center gap-2 text-white">
- <Zap className="h-4 w-4 fill-white" />
- <span className="text-[10px] font-semibold ">Protocol Entry</span>
-                    </div>
- <div className="flex gap-1">
- <div className="h-1 w-1 rounded-full bg-card opacity-40" />
- <div className="h-1 w-1 rounded-full bg-card opacity-40" />
-                    </div>
+                {/* Left Colored Accent Block */}
+                <div className="w-12 h-full bg-emerald-500 flex items-center justify-center flex-shrink-0 animate-fade-in">
+                    <Icon className="h-4 w-4 text-white" />
                 </div>
- <div className="p-4 space-y-3 text-left">
- <div className="space-y-1">
- <p className="text-xs font-semibold text-foreground leading-tight">{data.label || 'Event Detected'}</p>
- <p className="text-[9px] font-bold text-muted-foreground opacity-60 italic">Source Signal</p>
-                    </div>
-                    
- <div className="flex items-center gap-2">
- <div className={cn(
-                            "p-1.5 rounded-lg border shadow-sm",
-                            trigger === 'WEBHOOK_RECEIVED' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"
-                        )}>
- <Icon className="h-3.5 w-3.5" />
-                        </div>
- <div className="flex flex-col">
- <span className="text-[8px] font-semibold text-muted-foreground leading-none mb-0.5">Event Type</span>
- <span className="text-[10px] font-bold truncate max-w-[140px]">{trigger?.replace('_', ' ') || 'Awaiting Selection'}</span>
-                        </div>
+                
+                {/* Right Content Area */}
+                <div className="flex-1 min-w-0 h-full pl-3 pr-2 flex items-center justify-between text-left">
+                    <div className="flex flex-col justify-center min-w-0 pr-1">
+                        <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none mb-1 truncate">
+                            Event Trigger
+                        </span>
+                        <p className="text-xs font-semibold text-foreground leading-tight truncate">
+                            {getTriggerDescription()}
+                        </p>
                     </div>
                 </div>
             </Card>
-  <Handle 
-    type="source" 
-    position={Position.Bottom} 
-    className="bg-emerald-500 border-2 border-white shadow-lg transition-colors hover:bg-emerald-600" 
-    style={{ width: '16px', height: '16px', bottom: '-8px' }}
-  />
+            <Handle 
+                type="source" 
+                position={Position.Bottom} 
+                className={cn(
+                    "border-2 border-white shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer",
+                    data.isDefaultConnected ? "bg-emerald-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
+                )}
+                style={{ width: '15px', height: '15px', bottom: '-7.5px' }}
+                onClick={(e) => {
+                    if (!data.isDefaultConnected && data.onAddStep) {
+                        e.stopPropagation();
+                        data.onAddStep(id);
+                    }
+                }}
+            >
+                {!data.isDefaultConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
+            </Handle>
         </div>
     );
 }

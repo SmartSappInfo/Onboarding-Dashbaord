@@ -66,8 +66,8 @@ function getBlueprint(category: TemplateCategory, recipientType: RecipientType):
         case 'meetings':
             if (recipientType === 'respondent' || recipientType === 'entity') {
                 subject = 'Meeting Confirmed: {{meeting_title}}';
-                body = 'Hello {{contact_name}},\n\nYour meeting "{{meeting_title}}" with {{org_name}} has been confirmed for {{meeting_time}}.\n\nLocation/Link: {{meeting_link}}\n\nWe look forward to seeing you!';
-                shortBody = 'Meeting confirmed: {{meeting_title}} on {{meeting_time}}. Link: {{meeting_link}}';
+                body = 'Hello {{contact_name}},\n\nYour meeting "{{meeting_title}}" with {{org_name}} has been confirmed for {{meeting_time}}.\n\nLocation/Link: {{registrant_join_link}}\n\nWe look forward to seeing you!';
+                shortBody = 'Meeting confirmed: {{meeting_title}} on {{meeting_time}}. Link: {{registrant_join_link}}';
             }
             break;
         case 'agreements':

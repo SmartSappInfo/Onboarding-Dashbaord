@@ -108,7 +108,7 @@ export function MinimalRespondentMessage() {
                                         value={field.value}
                                         onValueChange={field.onChange}
                                         placeholder="Choose email blueprint..."
-                                        className="h-9 bg-card border-blue-200 text-xs font-bold shadow-sm"
+                                        compact
                                     />
                                 )}
                             />
@@ -177,7 +177,7 @@ export function MinimalRespondentMessage() {
                                         value={field.value}
                                         onValueChange={field.onChange}
                                         placeholder="Choose SMS blueprint..."
-                                        className="h-9 bg-card border-orange-200 text-xs font-bold shadow-sm"
+                                        compact
                                     />
                                 )}
                             />

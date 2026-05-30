@@ -185,7 +185,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                                 value={field.value}
                                                 onValueChange={field.onChange}
                                                 placeholder="Select email blueprint..."
-                                                className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all"
+                                                compact
                                             />
                                         )}
                                     />
@@ -238,7 +238,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                                 value={field.value}
                                                 onValueChange={field.onChange}
                                                 placeholder="Select SMS blueprint..."
-                                                className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all"
+                                                compact
                                             />
                                         )}
                                     />

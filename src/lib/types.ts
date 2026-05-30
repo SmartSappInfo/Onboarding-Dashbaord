@@ -1139,6 +1139,7 @@ export interface Invoice {
 
 export interface Meeting {
   id: string;
+  title?: string;
   // ── V3: Standalone URL routing ──────────────────
   meetingSlug: string; // Unique slug for public URL: /meetings/[type]/[meetingSlug]
   // ── V3: Branding controls ──────────────────────
@@ -1285,7 +1286,7 @@ export interface MeetingRegistrationField {
   order: number;
 }
 
-export type MeetingRegistrantStatus = 'registered' | 'approved' | 'waitlisted' | 'cancelled' | 'attended' | 'no_show';
+export type MeetingRegistrantStatus = 'registered' | 'approved' | 'waitlisted' | 'cancelled' | 'attended' | 'no_show' | 'pending';
 
 export interface MeetingRegistrant {
   id: string;
@@ -1293,6 +1294,7 @@ export interface MeetingRegistrant {
   workspaceIds: string[];
   token: string;
   status: MeetingRegistrantStatus;
+  source?: 'invite' | 'one-click' | 'direct' | 'admin';
   registrationData: Record<string, any>;
   name: string;
   email?: string;
@@ -1688,6 +1690,8 @@ export interface SurveySummary {
   summary: string;
   createdAt: string;
   prompt?: string;
+  provider?: string;
+  modelId?: string;
 }
 
 export interface SurveySession {
@@ -2062,7 +2066,8 @@ export type RecipientType =
   | 'internal_alert'
   | 'assignee'
   | 'entity'
-  | 'external_alert';
+  | 'external_alert'
+  | 'all';
 
 export interface NotificationPreferences {
   email: boolean;
@@ -2083,7 +2088,8 @@ export type TemplateCategory =
   | 'automations'
   | 'qr_codes'
   | 'users'
-  | 'general';
+  | 'general'
+  | 'all';
 
 /**
  * Template target audience axis.

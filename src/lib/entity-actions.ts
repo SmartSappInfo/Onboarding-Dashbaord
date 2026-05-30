@@ -163,6 +163,10 @@ export async function createEntityAction(
        delete data.industryData.nominalRoll;
        delete data.industryData.companySize;
        delete data.industryData.entityType;
+
+       if (!data.industryData.industry) {
+         data.industryData.industry = workspaceIndustry;
+       }
     }
 
     // 2. Validate industryData against workspace industry if provided (Requirement 3.9)
@@ -595,6 +599,12 @@ export async function updateEntityAction(
       delete indData.nominalRoll;
       delete indData.companySize;
       delete indData.entityType;
+      
+      const { industry: workspaceIndustry } = await getWorkspaceIndustry(workspaceId);
+      if (!indData.industry) {
+        indData.industry = workspaceIndustry;
+      }
+      validateIndustryData(indData, workspaceIndustry);
       
       entityUpdate.industryData = indData;
     }

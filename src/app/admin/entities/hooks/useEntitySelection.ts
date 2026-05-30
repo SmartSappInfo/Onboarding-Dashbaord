@@ -10,6 +10,7 @@ interface UseEntitySelectionProps {
   onPageReset?: () => void;
   serverPaginated?: boolean;
   totalCount?: number;
+  allFilteredIds?: string[];
 }
 
 export function useEntitySelection({
@@ -19,6 +20,7 @@ export function useEntitySelection({
   onPageReset,
   serverPaginated = false,
   totalCount = 0,
+  allFilteredIds = [],
 }: UseEntitySelectionProps) {
   const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
 
@@ -45,9 +47,10 @@ export function useEntitySelection({
   // Sync / safety check: If entities list shrinks or workspace changes, clear selected IDs that no longer exist
   useEffect(() => {
     if (selectedEntityIds.length === 0) return;
-    const entityIdSet = new Set(entities.map(e => e.id));
+    const referenceList = allFilteredIds.length > 0 ? allFilteredIds : entities.map(e => e.id);
+    const entityIdSet = new Set(referenceList);
     setSelectedEntityIds(prev => prev.filter(id => entityIdSet.has(id)));
-  }, [entities]);
+  }, [entities, allFilteredIds]);
 
   // Reset page size / filter resets
   const resetSelectionAndPage = useCallback(() => {
@@ -70,16 +73,16 @@ export function useEntitySelection({
   // Select all items EXCEPT those on the current page (User's custom rule)
   const selectOtherPages = useCallback(() => {
     const pageIds = new Set(paginatedEntities.map(e => e.id));
-    const otherPageIds = entities
-      .filter(e => !pageIds.has(e.id))
-      .map(e => e.id);
+    const referenceList = allFilteredIds.length > 0 ? allFilteredIds : entities.map(e => e.id);
+    const otherPageIds = referenceList.filter(id => !pageIds.has(id));
     setSelectedEntityIds(otherPageIds);
-  }, [entities, paginatedEntities]);
+  }, [entities, paginatedEntities, allFilteredIds]);
 
   // Select all sorted/filtered items
   const selectAllInView = useCallback(() => {
-    setSelectedEntityIds(entities.map(e => e.id));
-  }, [entities]);
+    const referenceList = allFilteredIds.length > 0 ? allFilteredIds : entities.map(e => e.id);
+    setSelectedEntityIds(referenceList);
+  }, [entities, allFilteredIds]);
 
   // Memoized selection matrices
   const selectedCount = selectedEntityIds.length;
@@ -90,9 +93,10 @@ export function useEntitySelection({
   }, [paginatedEntities, selectedEntityIds]);
 
   const isAllSelectedInView = useMemo(() => {
-    if (entities.length === 0) return false;
-    return entities.length === selectedCount && entities.every(e => selectedEntityIds.includes(e.id));
-  }, [entities, selectedCount, selectedEntityIds]);
+    const referenceList = allFilteredIds.length > 0 ? allFilteredIds : entities.map(e => e.id);
+    if (referenceList.length === 0) return false;
+    return referenceList.length === selectedCount && referenceList.every(id => selectedEntityIds.includes(id));
+  }, [entities, selectedCount, selectedEntityIds, allFilteredIds]);
 
   const isIndeterminateOnPage = useMemo(() => {
     if (isAllSelectedOnPage || selectedCount === 0) return false;

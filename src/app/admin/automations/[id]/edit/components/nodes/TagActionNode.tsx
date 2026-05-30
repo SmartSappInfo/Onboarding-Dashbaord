@@ -2,85 +2,78 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { TagIcon, PlusCircle, MinusCircle } from 'lucide-react';
+import { TagIcon, PlusCircle, MinusCircle, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
 
 /**
  * TagActionNode — visual node for the automation canvas.
  * Applies or removes tags from a contact during flow execution.
  * Requirements: FR4.3.1, FR4.3.2
  */
-export function TagActionNode({ data, selected }: any) {
+export function TagActionNode({ id, data, selected }: any) {
   const action: 'add_tags' | 'remove_tags' = data.action || 'add_tags';
   const tagIds: string[] = data.tagIds || [];
+
+  const { allTags } = useWorkspaceScopedQueries();
 
   const isAdd = action === 'add_tags';
   const colorScheme = isAdd
     ? {
-        border: selected ? 'border-emerald-500' : 'border-emerald-200',
-        ring: 'ring-emerald-500/10',
-        header: 'bg-emerald-500 border-emerald-600/20',
+        border: selected ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-emerald-200',
+        header: 'bg-emerald-500',
         handle: 'bg-emerald-500',
-        badge: 'border-emerald-100 bg-emerald-50 text-emerald-700',
-        shadow: selected ? 'shadow-2xl' : 'shadow-sm',
       }
     : {
-        border: selected ? 'border-rose-500' : 'border-rose-200',
-        ring: 'ring-rose-500/10',
-        header: 'bg-rose-500 border-rose-600/20',
+        border: selected ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-rose-200',
+        header: 'bg-rose-500',
         handle: 'bg-rose-500',
-        badge: 'border-rose-100 bg-rose-50 text-rose-700',
-        shadow: selected ? 'shadow-2xl' : 'shadow-sm',
       };
 
   const ActionIcon = isAdd ? PlusCircle : MinusCircle;
 
+  const getTagActionDescription = () => {
+    const watchedTags = tagIds.map((tid: string) => {
+      const tag = allTags?.find((t: any) => t.id === tid);
+      return tag ? tag.name : tid;
+    });
+    const actionPrefix = isAdd ? 'Add tag' : 'Remove tag';
+    const suffix = tagIds.length > 1 ? 's' : '';
+    return watchedTags.length > 0 
+      ? `${actionPrefix}${suffix}: ${watchedTags.join(', ')}` 
+      : `${isAdd ? 'Apply' : 'Remove'} tags to contact`;
+  };
+
   return (
-    <div className={cn('relative transition-all duration-500', selected ? 'scale-105' : 'scale-100')}>
+    <div className={cn('relative transition-all duration-300', selected ? 'scale-[1.02]' : 'scale-100')}>
       <Handle
         type="target"
         position={Position.Top}
         className={cn('border-2 border-white shadow-lg transition-colors hover:brightness-95', colorScheme.handle)}
-        style={{ width: '16px', height: '16px', top: '-8px' }}
+        style={{ width: '11px', height: '11px', top: '-5.5px' }}
       />
 
       <Card
         className={cn(
-          'w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden text-left',
-          colorScheme.border,
-          colorScheme.shadow,
-          selected && `ring-4 ${colorScheme.ring}`
+          'w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center',
+          colorScheme.border
         )}
       >
-        <div className={cn('p-3 flex items-center justify-between border-b', colorScheme.header)}>
-          <div className="flex items-center gap-2 text-white">
-            <ActionIcon className="h-4 w-4" />
-            <span className="text-[10px] font-semibold ">
-              {isAdd ? 'Add Tags' : 'Remove Tags'}
-            </span>
-          </div>
-          <div className="h-1.5 w-1.5 rounded-full bg-card opacity-40" />
+        {/* Left Colored Accent Block */}
+        <div className={cn('w-12 h-full flex items-center justify-center flex-shrink-0 animate-fade-in text-white', colorScheme.header)}>
+          <ActionIcon className="h-4 w-4" />
         </div>
-
-        <div className="p-4 space-y-2">
-          <p className="text-xs font-semibold text-foreground leading-tight">
-            {data.label || (isAdd ? 'Add Tags' : 'Remove Tags')}
-          </p>
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            <Badge
-              variant="outline"
-              className={cn('text-[7px] font-semibold px-1.5 h-4', colorScheme.badge)}
-            >
-              {isAdd ? 'Add' : 'Remove'}
-            </Badge>
-            <Badge
-              variant="outline"
-              className="text-[7px] font-semibold px-1.5 h-4 bg-background0 border-none"
-            >
-              {tagIds.length} tag{tagIds.length !== 1 ? 's' : ''}
-            </Badge>
+        
+        {/* Right Content Area */}
+        <div className="flex-1 min-w-0 h-full pl-3 pr-4 flex items-center justify-between text-left">
+          <div className="flex flex-col justify-center min-w-0 pr-1">
+            <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none mb-1 truncate">
+              Tag Action
+            </span>
+            <p className="text-xs font-semibold text-foreground leading-tight truncate">
+              {getTagActionDescription()}
+            </p>
           </div>
         </div>
       </Card>
@@ -88,9 +81,21 @@ export function TagActionNode({ data, selected }: any) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className={cn('border-2 border-white shadow-lg transition-colors hover:brightness-95', colorScheme.handle)}
-        style={{ width: '16px', height: '16px', bottom: '-8px' }}
-      />
+        className={cn(
+          "border-2 border-white shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer",
+          colorScheme.handle,
+          !data.isDefaultConnected && "bg-blue-500 animate-pulse hover:bg-blue-600"
+        )}
+        style={{ width: '15px', height: '15px', bottom: '-7.5px' }}
+        onClick={(e) => {
+          if (!data.isDefaultConnected && data.onAddStep) {
+            e.stopPropagation();
+            data.onAddStep(id);
+          }
+        }}
+      >
+        {!data.isDefaultConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
+      </Handle>
     </div>
   );
 }

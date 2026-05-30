@@ -34,12 +34,14 @@ import {
     Clock,
     MessageSquare,
     Zap,
-    Rocket,
-    Copy,
-    QrCode,
-    Link2,
-    Users,
-    Webhook
+    Rocket, 
+    Copy, 
+    QrCode, 
+    Link2, 
+    Users, 
+    Webhook,
+    Pencil,
+    X
 } from 'lucide-react';
 
 import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField } from '@/lib/types';
@@ -85,6 +87,7 @@ import { MeetingFacilitatorsSection } from '../../components/MeetingFacilitators
 import MeetingPreviewPanel from '../../components/MeetingPreviewPanel';
 
 const formSchema = z.object({
+  title: z.string().min(1, 'Internal title is required.'),
   entity: z.custom<WorkspaceEntity>().optional().nullable(),
   meetingSlug: z.string()
     .min(3, 'Slug must be at least 3 characters.')
@@ -279,6 +282,21 @@ export default function EditMeetingPage() {
   const registrationEnabled = form.watch('registrationEnabled');
   const watchedBrandingEnabled = form.watch('brandingEnabled');
 
+  const [isEditingTitle, setIsEditingTitle] = React.useState(false);
+  const titleVal = form.watch('title') || 'New Webinar';
+  const [localTitle, setLocalTitle] = React.useState(titleVal);
+
+  React.useEffect(() => {
+    setLocalTitle(titleVal);
+  }, [titleVal]);
+
+  const handleSaveTitle = () => {
+    if (localTitle.trim()) {
+      form.setValue('title', localTitle.trim(), { shouldValidate: true });
+      setIsEditingTitle(false);
+    }
+  };
+
   // V3: Automatically toggle branding based on entity selection
   React.useEffect(() => {
     // If watchedEntity is strictly undefined, it means we're still loading the initial document.
@@ -302,6 +320,7 @@ export default function EditMeetingPage() {
                           MEETING_TYPES[0];
 
       form.reset({
+        title: meeting.title || meeting.heroTitle || 'New Webinar',
         entity: selectedEntity || null,
         meetingSlug: meeting.meetingSlug || meeting.entitySlug || '',
         meetingTime: meeting.meetingTime ? new Date(meeting.meetingTime) : new Date(),
@@ -381,6 +400,7 @@ export default function EditMeetingPage() {
         }
 
         const meetingData = {
+            title: data.title,
             entityId: data.entity?.entityId || '', 
             entityName: data.entity?.displayName || data.brandingName || data.heroTitle || 'Standalone Session',
             entitySlug: data.meetingSlug,
@@ -571,9 +591,48 @@ export default function EditMeetingPage() {
                         <ChevronLeft className="h-5 w-5" />
                     </Link>
                 </Button>
-                <div className="flex flex-col justify-center">
-                    <h1 className="text-2xl font-black tracking-tight text-foreground leading-none">Edit Session</h1>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1">{meeting?.entityName || 'Session Configuration'}</p>
+                <div className="flex flex-col justify-center text-left">
+                    {isEditingTitle ? (
+                        <div className="flex items-center gap-2">
+                            <Input 
+                                value={localTitle}
+                                onChange={(e) => setLocalTitle(e.target.value)}
+                                className="text-2xl font-black tracking-tight text-foreground bg-transparent border-b border-input focus-visible:ring-0 focus-visible:border-primary rounded-none px-0 py-1 h-auto w-full max-w-md font-bold"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleSaveTitle();
+                                    } else if (e.key === 'Escape') {
+                                        setLocalTitle(titleVal);
+                                        setIsEditingTitle(false);
+                                    }
+                                }}
+                            />
+                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-emerald-500 hover:bg-emerald-500/10 shrink-0" onClick={handleSaveTitle}>
+                                <Check className="h-4 w-4" />
+                            </Button>
+                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted/10 shrink-0" onClick={() => { setLocalTitle(titleVal); setIsEditingTitle(false); }}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 group/title">
+                            <h1 className="text-2xl font-black tracking-tight text-foreground leading-none">
+                                {titleVal}
+                            </h1>
+                            <Button 
+                                type="button" 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 rounded-lg opacity-0 group-hover/title:opacity-100 group-focus-within/title:opacity-100 scale-95 group-hover/title:scale-100 transition-all duration-200 text-muted-foreground hover:text-foreground shrink-0"
+                                onClick={() => setIsEditingTitle(true)}
+                            >
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1.5">{meeting?.entityName || 'Session Configuration'}</p>
                 </div>
             </div>
             <div className="flex items-center gap-3">

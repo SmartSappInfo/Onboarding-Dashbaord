@@ -59,7 +59,7 @@ const edgeTypes = {
     deletable: DeletableEdge,
 };
 
-const ElementLibraryModal = dynamic(() => import('./ElementLibraryModal'), { ssr: false });
+const AutomationStepLibraryModal = dynamic(() => import('./AutomationStepLibraryModal'), { ssr: false });
 
 const MAX_HISTORY = 60;
 
@@ -76,7 +76,7 @@ interface AutomationBuilderProps {
 
 /**
  * @fileOverview The SmartSapp Visual Automation Architect.
- * Features: drag-and-drop canvas, node inspector, element library,
+ * Features: drag-and-drop canvas, node inspector, automation step library,
  * custom deletable edges, and undo/redo history.
  */
 export default function AutomationBuilder({ initialNodes, initialEdges, onStateChange }: AutomationBuilderProps) {
@@ -99,6 +99,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
     const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
     const [selectedEdgeId, setSelectedEdgeId] = React.useState<string | null>(null);
     const [isLibraryOpen, setIsLibraryOpen] = React.useState(false);
+    const [librarySourceHandle, setLibrarySourceHandle] = React.useState<string | undefined>(undefined);
 
     // ─── Undo / Redo ──────────────────────────────────────────────────────
     const historyRef = React.useRef<HistoryEntry[]>([
@@ -198,14 +199,32 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         [setEdges]
     );
 
+    const isValidConnection = React.useCallback(
+        (connection: Connection) => {
+            if (connection.source === connection.target) return false;
+            
+            // Check if the source handle already has an outgoing connection
+            const sourceHasConnection = edges.some(
+                (edge) =>
+                    edge.source === connection.source &&
+                    edge.sourceHandle === connection.sourceHandle
+            );
+            return !sourceHasConnection;
+        },
+        [edges]
+    );
+
     const onConnect = React.useCallback(
-        (params: Connection) => setEdges((eds) => addEdge({
-            ...params,
-            type: 'deletable',
-            animated: false,
-            data: { onDelete: deleteEdge },
-        }, eds)),
-        [setEdges, deleteEdge]
+        (params: Connection) => {
+            if (!isValidConnection(params)) return;
+            setEdges((eds) => addEdge({
+                ...params,
+                type: 'deletable',
+                animated: false,
+                data: { onDelete: deleteEdge },
+            }, eds));
+        },
+        [setEdges, deleteEdge, isValidConnection]
     );
 
     const onEdgeUpdate = React.useCallback(
@@ -343,21 +362,25 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         let y = 300 + Math.random() * 50;
 
         const parentNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null;
-        let sourceHandle = undefined;
+        let sourceHandle = librarySourceHandle;
 
         if (parentNode) {
             let targetX = parentNode.position.x;
             let targetY = parentNode.position.y + 140;
 
-            if (parentNode.type === 'conditionNode' || parentNode.type === 'tagConditionNode') {
+            if (!sourceHandle && (parentNode.type === 'conditionNode' || parentNode.type === 'tagConditionNode')) {
                 const hasTrueEdge = edges.some(e => e.source === parentNode.id && e.sourceHandle === 'true');
                 if (!hasTrueEdge) {
                     sourceHandle = 'true';
-                    targetX -= 120;
                 } else {
                     sourceHandle = 'false';
-                    targetX += 120;
                 }
+            }
+
+            if (sourceHandle === 'true') {
+                targetX -= 120;
+            } else if (sourceHandle === 'false') {
+                targetX += 120;
             }
 
             const hasCollision = nodes.some(n => {
@@ -386,6 +409,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         }
         if (item.actionType === 'SEND_MESSAGE') {
             data.config.channel = item.channel || 'email';
+            data.config.recipientTargets = ['triggering'];
         }
         if (item.config) {
             data.config = {
@@ -404,19 +428,27 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         setNodes(nds => [...nds, newNode]);
 
         if (parentNode && nodeType !== 'triggerNode') {
-            const newEdge = {
-                id: `edge_${parentNode.id}_to_${id}_${Date.now()}`,
-                source: parentNode.id,
-                sourceHandle,
-                target: id,
-                type: 'deletable',
-                animated: false,
-                data: { onDelete: deleteEdge },
-            };
-            setEdges(eds => [...eds, newEdge]);
+            const isSourceConnected = edges.some(
+                (edge) =>
+                    edge.source === parentNode.id &&
+                    edge.sourceHandle === sourceHandle
+            );
+            if (!isSourceConnected) {
+                const newEdge = {
+                    id: `edge_${parentNode.id}_to_${id}_${Date.now()}`,
+                    source: parentNode.id,
+                    sourceHandle,
+                    target: id,
+                    type: 'deletable',
+                    animated: false,
+                    data: { onDelete: deleteEdge },
+                };
+                setEdges(eds => [...eds, newEdge]);
+            }
         }
 
         setSelectedNodeId(id);
+        setLibrarySourceHandle(undefined);
         setIsLibraryOpen(false);
     };
 
@@ -431,15 +463,38 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         [edges, deleteEdge]
     );
 
+    const nodesWithCallbacks = React.useMemo(() => {
+        return nodes.map(node => {
+            const hasTrueConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'true');
+            const hasFalseConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'false');
+            const hasDefaultConnection = edges.some(e => e.source === node.id && (!e.sourceHandle || e.sourceHandle === 'default' || e.sourceHandle === ''));
+
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    isDefaultConnected: hasDefaultConnection,
+                    isTrueConnected: hasTrueConnection,
+                    isFalseConnected: hasFalseConnection,
+                    onAddStep: (nodeId: string, sourceHandle?: string) => {
+                        setSelectedNodeId(nodeId);
+                        setLibrarySourceHandle(sourceHandle);
+                        setIsLibraryOpen(true);
+                    }
+                }
+            };
+        });
+    }, [nodes, edges]);
+
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
     return (
- <div className={cn(
+        <div className={cn(
             "h-full w-full bg-background relative group/builder",
             isFullScreen && "fixed inset-0 z-[100] bg-background"
         )}>
             <ReactFlow
-                nodes={nodes}
+                nodes={nodesWithCallbacks}
                 edges={edgesWithCallbacks}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
@@ -450,11 +505,12 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                 onPaneClick={onPaneClick}
                 edgeTypes={edgeTypes}
                 nodeTypes={nodeTypes}
+                isValidConnection={isValidConnection}
                 connectionLineType={ConnectionLineType.SmoothStep}
                 fitView
                 snapToGrid
                 snapGrid={[15, 15]}
- className="bg-background"
+                className="bg-background"
             >
                 <Background color="#cbd5e1" gap={30} size={1} />
                 
@@ -463,7 +519,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                         <TooltipProvider>
                             <ToolBtn 
                                 icon={PlusCircle} 
-                                label="Open Elements Library" 
+                                label="Open Automation Step Library" 
                                 color="text-violet-600 bg-violet-50 font-bold border border-violet-100 animate-pulse" 
                                 onClick={() => setIsLibraryOpen(true)} 
                             />
@@ -553,7 +609,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                 </Card>
             </div>
 
-            <ElementLibraryModal 
+            <AutomationStepLibraryModal 
                 open={isLibraryOpen} 
                 onOpenChange={setIsLibraryOpen} 
                 onSelect={addLibraryNode} 

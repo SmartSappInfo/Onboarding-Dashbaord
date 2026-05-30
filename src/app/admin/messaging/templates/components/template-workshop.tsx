@@ -74,7 +74,7 @@ import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { groupContactVariableDefinitions } from '@/lib/contact-variable-definitions';
+import { groupContactVariableDefinitions, generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 import { getAllSystemVariables } from '@/lib/system-variable-definitions';
 import { validateTemplateVariables } from '@/lib/template-validator';
 import { Users, UserCheck, ShieldCheck as ShieldCheckIcon, AlertTriangle, AlertCircle } from 'lucide-react';
@@ -211,6 +211,13 @@ export function TemplateWorkshop({
     const variables = React.useMemo(() => {
         const filtered = (rawVariables || []).filter(v => !v.key.startsWith('school_'));
         
+        // Dynamically build and inject contact variables
+        const contactVarDefs = generateContactVariableDefinitions('institution');
+        const contactKeys = new Set(contactVarDefs.map(v => v.key));
+        
+        // Filter out existing contact keys from rawVariables to prevent duplicate definitions
+        const nonDuplicateFiltered = filtered.filter(v => !contactKeys.has(v.key));
+
         // Dynamically build and inject terminology variables
         const terminologyVars: VariableDefinition[] = [
             {
@@ -281,10 +288,10 @@ export function TemplateWorkshop({
             }
         ];
         
-        const seenKeys = new Set(filtered.map(v => v.key));
+        const seenKeys = new Set(nonDuplicateFiltered.map(v => v.key));
         const filteredTerminologyVars = terminologyVars.filter(v => !seenKeys.has(v.key));
 
-        return [...filteredTerminologyVars, ...filtered];
+        return [...filteredTerminologyVars, ...contactVarDefs, ...nonDuplicateFiltered];
     }, [rawVariables, entityTerminology]);
 
     const recipientRoles = React.useMemo(() => [
@@ -303,7 +310,7 @@ export function TemplateWorkshop({
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
-    const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'tags' | 'properties' | 'validation'>('blocks');
+    const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'variables' | 'validation'>('blocks');
     const [variablesWidth, setVariablesWidth] = React.useState(320);
     const [isResizing, setIsResizing] = React.useState(false);
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
@@ -311,6 +318,43 @@ export function TemplateWorkshop({
 
     // Active editor insertion reference
     const editorInsertRef = React.useRef<((token: string) => void) | null>(null);
+
+    // Variable click-to-insert handler
+    const handleVariableInsert = React.useCallback((key: string) => {
+        const token = `{{${key}}}`;
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+            const input = activeEl as HTMLInputElement | HTMLTextAreaElement;
+            const start = input.selectionStart ?? 0;
+            const end = input.selectionEnd ?? 0;
+            const value = input.value;
+            const newValue = value.slice(0, start) + token + value.slice(end);
+            
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                activeEl.tagName === 'INPUT' ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype,
+                'value'
+            )?.set;
+            
+            if (nativeInputValueSetter) {
+                nativeInputValueSetter.call(input, newValue);
+            } else {
+                input.value = newValue;
+            }
+            
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            requestAnimationFrame(() => {
+                const newPos = start + token.length;
+                input.setSelectionRange(newPos, newPos);
+                input.focus();
+            });
+        } else if (editorInsertRef.current) {
+            editorInsertRef.current(key);
+        } else {
+            navigator.clipboard.writeText(token);
+            toast({ title: 'Token copied to clipboard', description: token });
+        }
+    }, [toast]);
 
     // Sidebar collapsible tags accordion state
     const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>({});
@@ -555,7 +599,7 @@ export function TemplateWorkshop({
         if (type === 'list') { newBlock.listStyle = 'unordered'; newBlock.items = ['Item 1']; }
         setBlocks(prev => [...prev, newBlock]);
         setSelectedBlockId(id);
-        setSidebarTab('properties');
+        setSidebarTab('blocks');
     };
 
     const handleDragEnd = (event: any) => {
@@ -589,10 +633,10 @@ export function TemplateWorkshop({
         }
     }, [contentMode, blocks.length, body.length]);
 
-    // Safety sync: If we switch away from rich_builder, force the sidebar to 'tags' so it doesn't break
+    // Safety sync: If we switch away from rich_builder, force the sidebar to 'variables' so it doesn't break
     React.useEffect(() => {
-        if (contentMode !== 'rich_builder' && sidebarTab !== 'tags' && sidebarTab !== 'validation') {
-            setSidebarTab('tags');
+        if (contentMode !== 'rich_builder' && sidebarTab !== 'variables' && sidebarTab !== 'validation') {
+            setSidebarTab('variables');
         }
     }, [contentMode, sidebarTab]);
 
@@ -1259,10 +1303,9 @@ export function TemplateWorkshop({
                                 <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
                                     <div className="px-2 py-2 border-b bg-background shrink-0 text-left">
                                         {contentMode === 'rich_builder' ? (
-                                            <TabsList className="grid w-full grid-cols-4 h-10 bg-background p-1 rounded-xl">
+                                            <TabsList className="grid w-full grid-cols-3 h-10 bg-background p-1 rounded-xl">
                                                 <TabsTrigger value="blocks" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
-                                                <TabsTrigger value="tags" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
-                                                <TabsTrigger value="properties" className="text-[9px] font-semibold gap-1.5"><Settings2 className="h-3 w-3" /> Props</TabsTrigger>
+                                                <TabsTrigger value="variables" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Variables</TabsTrigger>
                                                 <TabsTrigger value="validation" className="text-[9px] font-semibold gap-1.5 relative">
                                                     <AlertTriangle className="h-3 w-3" /> Validation
                                                     {(errorCount > 0 || warningCount > 0) && (
@@ -1277,7 +1320,7 @@ export function TemplateWorkshop({
                                             </TabsList>
                                         ) : (
                                             <TabsList className="grid w-full grid-cols-2 h-10 bg-background p-1 rounded-xl">
-                                                <TabsTrigger value="tags" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
+                                                <TabsTrigger value="variables" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Variables</TabsTrigger>
                                                 <TabsTrigger value="validation" className="text-[9px] font-semibold gap-1.5 relative">
                                                     <AlertTriangle className="h-3 w-3" /> Validation
                                                     {(errorCount > 0 || warningCount > 0) && (
@@ -1316,7 +1359,7 @@ export function TemplateWorkshop({
                                             </div>
                                         )}
 
-                                        {sidebarTab === 'tags' && (
+                                        {sidebarTab === 'variables' && (
                                             <div className="absolute inset-0 flex flex-col overflow-hidden">
                                                 <ScrollArea className="flex-1">
                                                     <div className="p-4 space-y-6">
@@ -1337,15 +1380,7 @@ export function TemplateWorkshop({
                                                                                 <button
                                                                                     key={v.key}
                                                                                     type="button"
-                                                                                    onClick={() => {
-                                                                                        const token = `{{${v.key}}}`;
-                                                                                        if (editorInsertRef.current) {
-                                                                                            editorInsertRef.current(v.key);
-                                                                                        } else {
-                                                                                            navigator.clipboard.writeText(token);
-                                                                                            toast({ title: 'Token copied to clipboard', description: token });
-                                                                                        }
-                                                                                    }}
+                                                                                    onClick={() => handleVariableInsert(v.key)}
                                                                                     className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
                                                                                 >
                                                                                     <div className="min-w-0">
@@ -1370,15 +1405,7 @@ export function TemplateWorkshop({
                                                                         <button
                                                                             key={v.key}
                                                                             type="button"
-                                                                            onClick={() => {
-                                                                                const token = `{{${v.key}}}`;
-                                                                                if (editorInsertRef.current) {
-                                                                                    editorInsertRef.current(v.key);
-                                                                                } else {
-                                                                                    navigator.clipboard.writeText(token);
-                                                                                    toast({ title: 'Token copied to clipboard', description: token });
-                                                                                }
-                                                                            }}
+                                                                            onClick={() => handleVariableInsert(v.key)}
                                                                             className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
                                                                         >
                                                                             <div className="min-w-0">
@@ -1421,15 +1448,7 @@ export function TemplateWorkshop({
                                                                                             <button
                                                                                                 key={v.key}
                                                                                                 type="button"
-                                                                                                onClick={() => {
-                                                                                                    if (editorInsertRef.current) {
-                                                                                                        editorInsertRef.current(v.key);
-                                                                                                    } else {
-                                                                                                        const token = `{{${v.key}}}`;
-                                                                                                        navigator.clipboard.writeText(token);
-                                                                                                        toast({ title: 'Token copied to clipboard', description: token });
-                                                                                                    }
-                                                                                                }}
+                                                                                                onClick={() => handleVariableInsert(v.key)}
                                                                                                 className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
                                                                                             >
                                                                                                 <div className="min-w-0">
@@ -1477,15 +1496,7 @@ export function TemplateWorkshop({
                                                                                             <button
                                                                                                 key={v.key}
                                                                                                 type="button"
-                                                                                                onClick={() => {
-                                                                                                    if (editorInsertRef.current) {
-                                                                                                        editorInsertRef.current(v.key);
-                                                                                                    } else {
-                                                                                                        const token = `{{${v.key}}}`;
-                                                                                                        navigator.clipboard.writeText(token);
-                                                                                                        toast({ title: 'Token copied to clipboard', description: token });
-                                                                                                    }
-                                                                                                }}
+                                                                                                onClick={() => handleVariableInsert(v.key)}
                                                                                                 className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
                                                                                             >
                                                                                                 <div className="min-w-0">
@@ -1513,15 +1524,7 @@ export function TemplateWorkshop({
                                                                         <button
                                                                             key={v.key}
                                                                             type="button"
-                                                                            onClick={() => {
-                                                                                const token = `{{${v.key}}}`;
-                                                                                if (editorInsertRef.current) {
-                                                                                    editorInsertRef.current(v.key);
-                                                                                } else {
-                                                                                    navigator.clipboard.writeText(token);
-                                                                                    toast({ title: 'Token copied to clipboard', description: token });
-                                                                                }
-                                                                            }}
+                                                                            onClick={() => handleVariableInsert(v.key)}
                                                                             className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
                                                                         >
                                                                             <div className="min-w-0">
@@ -1602,21 +1605,6 @@ export function TemplateWorkshop({
                                                         )}
                                                     </div>
                                                 </ScrollArea>
-                                            </div>
-                                        )}
-
-                                        {contentMode === 'rich_builder' && sidebarTab === 'properties' && (
-                                            <div className="absolute inset-0 overflow-y-auto p-4">
-                                                {selectedBlockId ? (
-                                                    <BlockInspector
-                                                        block={blocks.find(b => b.id === selectedBlockId)!}
-                                                        variables={variables}
-                                                        templateCategory={category}
-                                                        onUpdate={u => setBlocks(p => p.map(b => b.id === selectedBlockId ? { ...b, ...u } : b))}
-                                                    />
-                                                ) : (
-                                                    <div className="py-20 text-center opacity-30"><Layout className="h-8 w-8 mx-auto mb-2" /><p className="text-[10px] font-semibold leading-relaxed">Select a block on the canvas<br />to edit properties</p></div>
-                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -1782,7 +1770,7 @@ export function TemplateWorkshop({
                                                                         block={block}
                                                                         isSelected={selectedBlockId === block.id}
                                                                         simulationVars={activeSimVariables}
-                                                                        onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('properties'); }}
+                                                                        onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('blocks'); }}
                                                                         onRemove={() => { setBlocks(prev => prev.filter(b => b.id !== block.id)); if (selectedBlockId === block.id) setSelectedBlockId(null); }}
                                                                         onDuplicate={() => { const next = [...blocks]; next.splice(idx + 1, 0, { ...block, id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` }); setBlocks(next); }}
                                                                         onSwap={(a, b) => setBlocks(p => arrayMove(p, a, b))}
@@ -1805,6 +1793,32 @@ export function TemplateWorkshop({
                                     </div>
                                 </ScrollArea>
                             </div>
+
+                            {/* Right properties panel (only for Visual Blocks builder) */}
+                            {contentMode === 'rich_builder' && (
+                                <div className="border-l bg-background flex flex-col shrink-0 w-[340px] shadow-xl text-left select-text">
+                                    <div className="px-4 py-3 border-b bg-background flex items-center justify-between shrink-0">
+                                        <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"><Settings2 className="h-3.5 w-3.5" /> Properties</span>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-4">
+                                        {selectedBlockId ? (
+                                            <BlockInspector
+                                                block={blocks.find(b => b.id === selectedBlockId)!}
+                                                variables={variables}
+                                                templateCategory={category}
+                                                onUpdate={u => setBlocks(p => p.map(b => b.id === selectedBlockId ? { ...b, ...u } : b))}
+                                            />
+                                        ) : (
+                                            <div className="py-20 text-center opacity-30">
+                                                <Layout className="h-8 w-8 mx-auto mb-2" />
+                                                <p className="text-[10px] font-semibold leading-relaxed">
+                                                    Select a block on the canvas<br />to edit properties
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </motion.div>
                     )}
 

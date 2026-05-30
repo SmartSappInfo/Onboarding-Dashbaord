@@ -232,12 +232,7 @@ export default function FieldTeamView({ survey, responses }: { survey: Survey; r
                     <div className="p-2 bg-blue-500/10 rounded-xl">
                         <Users className="h-5 w-5 text-blue-600" />
                     </div>
-                    <div>
-                        <h3 className="text-sm font-black tracking-tight">Field Team Intelligence</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground/60 tracking-tight">
-                            Real-time outreach performance across all assigned representatives
-                        </p>
-                    </div>
+                    <h3 className="text-sm font-black tracking-tight">Field Team Intelligence</h3>
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -279,12 +274,7 @@ export default function FieldTeamView({ survey, responses }: { survey: Survey; r
                         <div className="p-2 bg-amber-500/10 rounded-xl text-amber-600">
                             <Award className="h-5 w-5" />
                         </div>
-                        <div>
-                            <CardTitle className="text-sm font-semibold tracking-tight">Representative Leaderboard</CardTitle>
-                            <CardDescription className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                                Click any metric to drill down into filtered responses
-                            </CardDescription>
-                        </div>
+                        <CardTitle className="text-sm font-semibold tracking-tight">Representative Leaderboard</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -418,12 +408,7 @@ export default function FieldTeamView({ survey, responses }: { survey: Survey; r
                             <div className="p-2 bg-primary/10 rounded-xl">
                                 <TrendingUp className="h-5 w-5 text-primary" />
                             </div>
-                            <div>
-                                <CardTitle className="text-sm font-semibold tracking-tight">Comparative Performance</CardTitle>
-                                <CardDescription className="text-[10px] font-bold text-muted-foreground/60 tracking-tight">
-                                    Side-by-side metrics across representatives
-                                </CardDescription>
-                            </div>
+                            <CardTitle className="text-sm font-semibold tracking-tight">Comparative Performance</CardTitle>
                         </div>
                     </CardHeader>
                     <CardContent className="p-6">

@@ -1,5 +1,3 @@
-'use server';
-
 import type { Automation } from './types';
 import { canUser } from './workspace-permissions';
 import type { AppPermissionAction } from './types';

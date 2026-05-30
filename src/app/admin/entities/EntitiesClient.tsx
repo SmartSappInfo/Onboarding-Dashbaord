@@ -17,7 +17,8 @@ import { usePaginatedEntities } from './hooks/usePaginatedEntities';
 import { 
   deleteEntityPermanentlyAction, 
   bulkArchiveEntitiesAction, 
-  bulkDeleteEntitiesAction 
+  bulkDeleteEntitiesAction,
+  getFilteredEntityIdsAction
 } from '@/lib/workspace-entity-actions';
 import { PageContainerFluid } from '@/components/ui/page-container';
 
@@ -481,6 +482,63 @@ export default function EntitiesClient() {
     updateUrlParams(filter);
   }, [updateUrlParams]);
 
+  const [filteredEntityIds, setFilteredEntityIds] = useState<string[]>([]);
+  const [isFetchingIds, setIsFetchingIds] = useState<boolean>(true);
+
+  // Set up useEffect with a 300ms debounce to fetch matching document IDs
+  useEffect(() => {
+    if (!activeWorkspaceId) {
+      setFilteredEntityIds([]);
+      setIsFetchingIds(false);
+      return;
+    }
+
+    if (isTagFiltering) {
+      return;
+    }
+
+    let isCurrent = true;
+    setIsFetchingIds(true);
+
+    const debounceTimer = setTimeout(() => {
+      const tagFilteredIdsArray = tagFilteredIds ? Array.from(tagFilteredIds) : null;
+
+      getFilteredEntityIdsAction(
+        activeWorkspaceId,
+        filterState as any,
+        assignedUserId,
+        tagFilteredIdsArray,
+        sortConfig
+      ).then(res => {
+        if (!isCurrent) return;
+        if (res.success && res.data) {
+          setFilteredEntityIds(res.data);
+        } else {
+          console.error("Failed to fetch filtered entity IDs:", res.error);
+          setFilteredEntityIds([]);
+        }
+        setIsFetchingIds(false);
+      }).catch(err => {
+        if (!isCurrent) return;
+        console.error("Error fetching filtered entity IDs:", err);
+        setFilteredEntityIds([]);
+        setIsFetchingIds(false);
+      });
+    }, 300);
+
+    return () => {
+      isCurrent = false;
+      clearTimeout(debounceTimer);
+    };
+  }, [
+    activeWorkspaceId,
+    filterState,
+    assignedUserId,
+    tagFilteredIds,
+    isTagFiltering,
+    sortConfig
+  ]);
+
   // STRICT PAGINATED QUERY: Fetches entities page-by-page from Firestore
   const { 
     entities, 
@@ -491,9 +549,7 @@ export default function EntitiesClient() {
     activeWorkspaceId,
     currentPage,
     pageSize,
-    filterState,
-    assignedUserId,
-    tagFilteredIds,
+    filteredEntityIds,
   });
 
   // saved audiences query for client-side filtering
@@ -660,7 +716,7 @@ export default function EntitiesClient() {
     { value: 'unchecked', label: 'Unchecked' },
   ];
 
-  const isLoading = isLoadingEntities || isLoadingFilter || isTagFiltering;
+  const isLoading = isLoadingEntities || isLoadingFilter || isTagFiltering || isFetchingIds;
 
   // Decoupled single-pass filtering engine (useEntityFilters hook)
   const { filteredEntities, activeFiltersCount, activeFilterCapsules } = useEntityFilters({
@@ -730,7 +786,8 @@ export default function EntitiesClient() {
     pageSize,
     onPageReset: () => setCurrentPage(1),
     serverPaginated: true,
-    totalCount: totalEntitiesCount || 0,
+    totalCount: filteredEntityIds.length,
+    allFilteredIds: filteredEntityIds,
   });
 
   const handleDeleteEntity = () => {
@@ -1348,7 +1405,7 @@ export default function EntitiesClient() {
                         <BentoPagination
                           currentPage={currentPage}
                           totalPages={totalPages}
-                          totalRecords={sortedEntities.length}
+                          totalRecords={filteredEntityIds.length}
                           pageSize={pageSize}
                           onPageChange={setCurrentPage}
                           onPageSizeChange={(size) => {
@@ -1560,7 +1617,7 @@ export default function EntitiesClient() {
                         <BentoPagination
                           currentPage={currentPage}
                           totalPages={totalPages}
-                          totalRecords={sortedEntities.length}
+                          totalRecords={filteredEntityIds.length}
                           pageSize={pageSize}
                           onPageChange={setCurrentPage}
                           onPageSizeChange={(size) => {

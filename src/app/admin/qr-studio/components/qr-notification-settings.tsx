@@ -94,7 +94,7 @@ export function QRNotificationSettings({
                     value={internalAlerts.emailTemplateId}
                     onValueChange={(val) => onChangeInternal({ ...internalAlerts, emailTemplateId: val })}
                     placeholder="Select email blueprint..."
-                    className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs"
+                    compact
                   />
                 </div>
 
@@ -121,7 +121,7 @@ export function QRNotificationSettings({
                     value={internalAlerts.smsTemplateId}
                     onValueChange={(val) => onChangeInternal({ ...internalAlerts, smsTemplateId: val })}
                     placeholder="Select SMS blueprint..."
-                    className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs"
+                    compact
                   />
                 </div>
               </div>

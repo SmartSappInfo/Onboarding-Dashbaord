@@ -31,7 +31,7 @@ import {
   Bell
 } from 'lucide-react';
 
-interface ElementLibraryModalProps {
+interface AutomationStepLibraryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (item: any) => void;
@@ -39,7 +39,7 @@ interface ElementLibraryModalProps {
 }
 
 const CATEGORIES = [
-  { id: 'all', label: 'All Elements', icon: Globe },
+  { id: 'all', label: 'All Steps', icon: Globe },
   { id: 'start_triggers', label: 'Start Triggers', icon: Zap },
   { id: 'sending_options', label: 'Sending Options', icon: Mail },
   { id: 'conditions_flow', label: 'Conditions & Flow', icon: ArrowRightLeft },
@@ -257,13 +257,31 @@ const LIBRARY_ITEMS = [
     payload: { type: 'actionNode', label: 'Create Deal', actionType: 'CREATE_DEAL' }
   },
   {
-    id: 'update_deal_stage_value_status',
-    title: 'Update Deal Stage/Value/Status',
-    description: 'Automatically adjust active deal stage positions, valuations, or status tags.',
+    id: 'update_deal_stage',
+    title: 'Update Deal Stage',
+    description: 'Shift a deal to another step on the Kanban pipeline board.',
     category: 'crm_sales',
     icon: ArrowRightLeft,
     nodeType: 'actionNode',
-    payload: { type: 'actionNode', label: 'Update Deal Stage/Value/Status', actionType: 'UPDATE_DEAL_STAGE' }
+    payload: { type: 'actionNode', label: 'Update Deal Stage', actionType: 'UPDATE_DEAL_STAGE' }
+  },
+  {
+    id: 'update_deal_value',
+    title: 'Update Deal Value',
+    description: 'Adjust estimated value metrics of the active deal.',
+    category: 'crm_sales',
+    icon: Target,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Update Deal Value', actionType: 'UPDATE_DEAL_VALUE' }
+  },
+  {
+    id: 'update_deal_status',
+    title: 'Update Deal Status',
+    description: 'Set status to Won, Lost, or Reopened.',
+    category: 'crm_sales',
+    icon: CheckSquare,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Update Deal Status', actionType: 'UPDATE_DEAL_STATUS' }
   },
   {
     id: 'create_task',
@@ -342,12 +360,12 @@ const defaultStyle = {
   glow: 'group-hover:shadow-sm',
 };
 
-export default function ElementLibraryModal({
+export default function AutomationStepLibraryModal({
   open,
   onOpenChange,
   onSelect,
   hasParentSelected = false,
-}: ElementLibraryModalProps) {
+}: AutomationStepLibraryModalProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [activeCategory, setActiveCategory] = React.useState<string>('all');
 
@@ -359,7 +377,7 @@ export default function ElementLibraryModal({
     }
   }, [open]);
 
-  // Real-time client-side filter (derived during render, not in an effect, following vercel-react-best-practices)
+  // Real-time client-side filter
   const filteredItems = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return LIBRARY_ITEMS.filter((item) => {
@@ -405,9 +423,9 @@ export default function ElementLibraryModal({
               <Zap className="h-5 w-5 animate-pulse" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-bold tracking-tight">Automation Element Library</DialogTitle>
+              <DialogTitle className="text-lg font-bold tracking-tight">Automation Step Library</DialogTitle>
               <DialogDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-                Select triggers, options, logic splits, or CRM integrations to architect your workflow.
+                Select triggers, options, logic splits, or CRM integrations to architect your automation step workflow.
               </DialogDescription>
             </div>
           </div>
@@ -550,7 +568,7 @@ export default function ElementLibraryModal({
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed rounded-3xl border-border bg-background/50 m-2">
                   <Search className="h-10 w-10 text-muted-foreground/30 mb-4 animate-bounce" />
-                  <h3 className="font-bold text-sm text-foreground mb-1">No elements found</h3>
+                  <h3 className="font-bold text-sm text-foreground mb-1">No steps found</h3>
                   <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
                     We couldn&apos;t find anything matching &ldquo;{searchQuery}&rdquo; in this category. Try adjusting your query or selecting a different category.
                   </p>

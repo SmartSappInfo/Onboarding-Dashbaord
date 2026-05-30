@@ -1096,6 +1096,16 @@ export async function getSimulationVariablesAction(params: {
         const meetingVars = buildMeetingBaseVariables(meeting, variables.meeting_timezone);
         Object.assign(variables, meetingVars);
 
+        // Populate computed meeting variables for simulation
+        const { generateCalendarLinkFromMeeting } = await import('./calendar-utils');
+        variables.calendar_link = generateCalendarLinkFromMeeting(meeting);
+
+        const typeSlug = meeting.type?.slug || 'webinar';
+        const meetingSlug = meeting.slug || meeting.id;
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+        variables.meeting_registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=simulated_rsvp_token`;
+        variables.registrant_join_link = `${baseUrl}/meetings/join/${meeting.id}?token=simulated_join_token`;
+
         if (meeting.facilitators?.length) {
           const facVars = buildFacilitatorVariables(meeting.facilitators[0]);
           Object.assign(variables, facVars);

@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
-import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline } from '@/lib/types';
+import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation } from '@/lib/types';
 
 interface ActionConfigPanelProps {
   actionType: string;
@@ -24,6 +24,8 @@ interface ActionConfigPanelProps {
   pipelines: Pipeline[];
   variables: VariableDefinition[];
   singular: string;
+  automations?: Automation[];
+  appFields?: any[];
 }
 
 export const ActionConfigPanel = React.memo(function ActionConfigPanel({
@@ -35,8 +37,16 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   pipelines,
   variables,
   singular,
+  automations = [],
+  appFields = [],
 }: ActionConfigPanelProps) {
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (actionType === 'SEND_MESSAGE' && config.recipientTargets === undefined) {
+      onUpdateConfig({ recipientTargets: ['triggering'] });
+    }
+  }, [actionType, config.recipientTargets, onUpdateConfig]);
 
   const updateConfig = (updates: Record<string, any>) => {
     onUpdateConfig(updates);
@@ -66,35 +76,16 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Master Template</Label>
             <MessagingTemplateSelector 
-              category="campaigns"
+              category="all"
               channel={(config.channel as 'email' | 'sms') || 'email'}
-              recipientType="entity"
+              recipientType="all"
               value={config.templateId}
               onValueChange={(v) => updateConfig({ templateId: v })}
+              onSelect={(tmpl) => updateConfig({ templateId: tmpl?.id || '', templateName: tmpl?.name || '' })}
               placeholder="Choose blueprint..."
-              className="h-12 rounded-xl bg-card border shadow-sm font-bold px-4 text-xs"
+              compact
             />
           </div>
-          {(variables?.length ?? 0) > 0 ? (
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Template variables</Label>
-              <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-muted/30 border">
-                {variables.slice(0, 12).map((v) => (
-                  <Badge
-                    key={v.id}
-                    variant="outline"
-                    className="text-[9px] font-mono cursor-pointer"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`{{${v.key}}}`);
-                      toast({ title: 'Copied', description: v.key });
-                    }}
-                  >
-                    {`{{${v.key}}}`}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ) : null}
 
           <div className="space-y-4">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Contact Recipients</Label>
@@ -107,7 +98,8 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                 { key: 'all', label: 'All Contacts', desc: 'Send to all contacts associated with the entity' },
                 { key: 'fixed', label: 'Manual Identity Entry', desc: 'Specify static destination addresses manually' },
               ].map((target) => {
-                const isChecked = (config.recipientTargets || []).includes(target.key as any);
+                const currentTargets = config.recipientTargets === undefined ? ['triggering'] : (config.recipientTargets || []);
+                const isChecked = currentTargets.includes(target.key as any);
                 return (
                   <div key={target.key} className="flex flex-col space-y-1.5 animate-in fade-in duration-200">
                     <label className="flex items-start gap-2.5 cursor-pointer select-none">
@@ -115,7 +107,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                         type="checkbox"
                         checked={isChecked}
                         onChange={(e) => {
-                          const current = config.recipientTargets || [];
+                          const current = config.recipientTargets === undefined ? ['triggering'] : (config.recipientTargets || []);
                           const updated = e.target.checked
                             ? [...current, target.key]
                             : current.filter((k: string) => k !== target.key);
@@ -283,50 +275,24 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             </div>
           </div>
 
-          {actionType === 'SEND_NOTIFICATION_EMAIL' || actionType === 'SEND_NOTIFICATION_PUSH' ? (
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
-                {actionType === 'SEND_NOTIFICATION_PUSH' ? 'Notification Title' : 'Subject Line'}
-              </Label>
-              <Input
-                placeholder={actionType === 'SEND_NOTIFICATION_PUSH' ? 'e.g. New signup received' : 'e.g. System Alert: Onboarding Step Completed'}
-                value={config.notificationSubject || ''}
-                onChange={(e) => updateConfig({ notificationSubject: e.target.value })}
-                className="h-11 rounded-xl bg-card border font-bold"
-              />
-            </div>
-          ) : null}
-
           <div className="space-y-2">
-            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Message Body</Label>
-            <textarea
-              placeholder="Type notification content... supports dynamic variables like {{entityName}}"
-              value={config.notificationBody || ''}
-              onChange={(e) => updateConfig({ notificationBody: e.target.value })}
-              className="w-full min-h-[120px] rounded-xl bg-card border p-4 font-medium text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary shadow-sm"
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Master Template</Label>
+            <MessagingTemplateSelector 
+              category="all"
+              channel={
+                actionType === 'SEND_NOTIFICATION_EMAIL' ? 'email' :
+                actionType === 'SEND_NOTIFICATION_SMS' ? 'sms' :
+                actionType === 'SEND_NOTIFICATION_IN_APP' ? 'in_app' :
+                'push'
+              }
+              recipientType="all"
+              value={config.templateId}
+              onValueChange={(v) => updateConfig({ templateId: v })}
+              onSelect={(tmpl) => updateConfig({ templateId: tmpl?.id || '', templateName: tmpl?.name || '' })}
+              placeholder="Choose blueprint..."
+              compact
             />
           </div>
-
-          {(variables?.length ?? 0) > 0 ? (
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Variables (Click to Copy)</Label>
-              <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-muted/30 border">
-                {variables.slice(0, 12).map((v) => (
-                  <Badge
-                    key={v.id}
-                    variant="outline"
-                    className="text-[9px] font-mono cursor-pointer"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`{{${v.key}}}`);
-                      toast({ title: 'Copied', description: v.key });
-                    }}
-                  >
-                    {`{{${v.key}}}`}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
       
@@ -384,50 +350,147 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         </div>
       ) : null}
 
-      {actionType === 'UPDATE_ENTITY' ? (
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Pipeline</Label>
-            <Select value={config.pipelineId || ''} onValueChange={(val) => updateConfig({ pipelineId: val, stageId: '' })}>
-              <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
-                <SelectValue placeholder="Select pipeline..." />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
-                {pipelines?.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {actionType === 'UPDATE_ENTITY' ? (() => {
+        const updates = config.updates || {};
+
+        const nativeFields = [
+          { key: 'displayName', label: 'Display Name', type: 'text' },
+          { key: 'primaryEmail', label: 'Primary Email', type: 'text' },
+          { key: 'primaryPhone', label: 'Primary Phone', type: 'text' },
+          { key: 'lifecycleStatus', label: 'Operational State', type: 'select', options: (stages || []).map(s => ({ value: s.id || s.name, label: s.name })) },
+          { key: 'assignedTo', label: 'Account Manager', type: 'select', options: (users || []).map(u => ({ value: u.id, label: u.name })) },
+          { key: 'pipelineId', label: 'Pipeline', type: 'select', options: (pipelines || []).map(p => ({ value: p.id, label: p.name })) },
+          { key: 'stageId', label: 'Pipeline Stage', type: 'select', options: (stages || []).filter(s => !config.pipelineId || s.pipelineId === config.pipelineId).map(s => ({ value: s.id, label: `${s.name} (${(pipelines || []).find(p => p.id === s.pipelineId)?.name || 'Default'})` })) }
+        ];
+
+        const customFields = (appFields || []).map((f: any) => ({
+          key: f.id || f.name,
+          label: f.label || f.name,
+          type: f.options && f.options.length > 0 ? 'select' : 'text',
+          options: f.options?.map((o: any) => ({ value: o.value || o, label: o.label || o.value || o }))
+        }));
+
+        const allFields = [...nativeFields, ...customFields];
+        const availableToAdd = allFields.filter(f => !Object.prototype.hasOwnProperty.call(updates, f.key));
+
+        const handleAddField = (fieldKey: string) => {
+          if (!fieldKey || fieldKey === 'none') return;
+          const fieldDef = allFields.find(f => f.key === fieldKey);
+          if (!fieldDef) return;
+          
+          const nextUpdates = {
+            ...updates,
+            [fieldKey]: fieldDef.type === 'select' && fieldDef.options && fieldDef.options.length > 0 ? fieldDef.options[0].value : ''
+          };
+
+          const nextConfig: Record<string, any> = { updates: nextUpdates };
+          if (['pipelineId', 'stageId', 'assignedTo', 'lifecycleStatus'].includes(fieldKey)) {
+            nextConfig[fieldKey] = nextUpdates[fieldKey];
+          }
+          updateConfig(nextConfig);
+        };
+
+        const handleUpdateFieldVal = (fieldKey: string, val: any) => {
+          const nextUpdates = {
+            ...updates,
+            [fieldKey]: val
+          };
+          const nextConfig: Record<string, any> = { updates: nextUpdates };
+          if (['pipelineId', 'stageId', 'assignedTo', 'lifecycleStatus'].includes(fieldKey)) {
+            nextConfig[fieldKey] = val;
+          }
+          if (fieldKey === 'pipelineId') {
+            delete nextUpdates.stageId;
+            nextConfig.stageId = '';
+          }
+          updateConfig(nextConfig);
+        };
+
+        const handleRemoveField = (fieldKey: string) => {
+          const nextUpdates = { ...updates };
+          delete nextUpdates[fieldKey];
+          const nextConfig: Record<string, any> = { updates: nextUpdates };
+          if (['pipelineId', 'stageId', 'assignedTo', 'lifecycleStatus'].includes(fieldKey)) {
+            nextConfig[fieldKey] = '';
+          }
+          updateConfig(nextConfig);
+        };
+
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Add Field to Update</Label>
+              <Select value="" onValueChange={handleAddField}>
+                <SelectTrigger className="h-12 rounded-xl bg-card border text-sm font-semibold text-left">
+                  <SelectValue placeholder="+ Choose field to add..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px] rounded-xl border bg-card/95 backdrop-blur-md">
+                  {availableToAdd.length > 0 ? (
+                    availableToAdd.map((f) => (
+                      <SelectItem key={f.key} value={f.key} className="rounded-lg text-xs font-semibold">
+                        {f.label}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled className="text-xs">
+                      All fields added
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {Object.keys(updates).length > 0 ? (
+              <div className="space-y-4 pt-2">
+                <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Configured Field Updates</Label>
+                {Object.entries(updates).map(([key, val]) => {
+                  const fieldDef = allFields.find(f => f.key === key) || { key, label: key, type: 'text', options: [] };
+                  return (
+                    <div key={key} className="p-4 rounded-2xl border bg-muted/20 flex flex-col gap-3 relative group/field">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold text-foreground">{fieldDef.label}</Label>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveField(key)}
+                          className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline flex items-center gap-1 transition-all"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      
+                      {fieldDef.type === 'select' ? (
+                        <Select value={String(val ?? '')} onValueChange={(newVal) => handleUpdateFieldVal(key, newVal)}>
+                          <SelectTrigger className="h-10 rounded-xl bg-card border text-xs font-semibold text-left">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[250px] rounded-xl border bg-card/95 backdrop-blur-md">
+                            {fieldDef.options?.map((opt: any) => (
+                              <SelectItem key={opt.value} value={String(opt.value)} className="rounded-lg text-xs font-semibold">
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={String(val ?? '')}
+                          onChange={(e) => handleUpdateFieldVal(key, e.target.value)}
+                          className="h-10 rounded-xl bg-card border text-xs font-semibold"
+                          placeholder={`Enter value for ${fieldDef.label}...`}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-6 text-center border-2 border-dashed rounded-2xl border-border bg-muted/10">
+                <p className="text-xs font-semibold text-muted-foreground">No fields configured yet. Select a field above to start updating.</p>
+              </div>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Stage</Label>
-            <Select value={config.stageId || ''} onValueChange={(val) => updateConfig({ stageId: val })} disabled={!config.pipelineId}>
-              <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
-                <SelectValue placeholder="Select stage..." />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
-                {stages?.filter(s => s.pipelineId === config.pipelineId).map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assignee</Label>
-            <Select value={config.assignedTo || 'auto'} onValueChange={(v) => updateConfig({ assignedTo: v })}>
-              <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
-                <SelectValue placeholder="Auto-Resolve" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
-                <SelectItem value="auto" className="font-semibold italic text-primary rounded-lg py-2.5">Auto-Resolve (Manager)</SelectItem>
-                {users?.map(u => (
-                  <SelectItem key={u.id} value={u.id} className="rounded-lg py-2.5">{u.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      ) : null}
+        );
+      })() : null}
 
       {actionType === 'ASSIGN_ENTITY' ? (
         <div className="space-y-2">
@@ -488,12 +551,34 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
 
       {actionType === 'RUN_AUTOMATION' ? (
         <div className="space-y-2">
-          <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Automation ID</Label>
-          <Input
+          <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Automation</Label>
+          <Select
             value={config.automationId || ''}
-            onChange={(e) => updateConfig({ automationId: e.target.value })}
-            className="h-12 rounded-xl bg-card border font-mono text-sm"
-          />
+            onValueChange={(val) => {
+              const matched = automations?.find(a => a.id === val);
+              updateConfig({ 
+                automationId: val, 
+                automationName: matched ? (matched.name || 'Unnamed Automation') : '' 
+              });
+            }}
+          >
+            <SelectTrigger className="h-12 rounded-xl bg-card border text-sm font-semibold text-left">
+              <SelectValue placeholder="Choose an automation to run..." />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px] rounded-xl border bg-card/95 backdrop-blur-md">
+              {automations && automations.length > 0 ? (
+                automations.map((auto) => (
+                  <SelectItem key={auto.id} value={auto.id || ''} className="rounded-lg text-xs font-semibold">
+                    {auto.name || 'Unnamed Automation'}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" disabled className="text-xs">
+                  No active automations found
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
       ) : null}
 

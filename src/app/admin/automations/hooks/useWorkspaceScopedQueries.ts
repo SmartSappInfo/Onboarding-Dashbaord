@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import type { UserProfile, OnboardingStage, VariableDefinition, Tag as TagType, Pipeline } from '@/lib/types';
+import type { UserProfile, OnboardingStage, VariableDefinition, Tag as TagType, Pipeline, Automation } from '@/lib/types';
 
 export function useWorkspaceScopedQueries() {
   const firestore = useFirestore();
@@ -62,6 +62,24 @@ export function useWorkspaceScopedQueries() {
     return query(collection(firestore, 'surveys'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('internalName', 'asc'));
   }, [firestore, activeWorkspaceId]);
 
+  // Automations - workspace-scoped
+  const automationsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (!activeWorkspaceId) {
+      return query(collection(firestore, 'automations'), orderBy('name', 'asc'));
+    }
+    return query(collection(firestore, 'automations'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
+  }, [firestore, activeWorkspaceId]);
+
+  // App Fields - workspace-scoped
+  const appFieldsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (!activeWorkspaceId) {
+      return query(collection(firestore, 'app_fields'), orderBy('name', 'asc'));
+    }
+    return query(collection(firestore, 'app_fields'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+  }, [firestore, activeWorkspaceId]);
+
   const { data: users } = useCollection<UserProfile>(usersQuery);
   const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
   const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
@@ -69,15 +87,25 @@ export function useWorkspaceScopedQueries() {
   const { data: allTags } = useCollection<TagType>(tagsQuery);
   const { data: forms } = useCollection<{ id: string; name?: string; title?: string }>(formsQuery);
   const { data: surveys } = useCollection<{ id: string; internalName?: string; title?: string }>(surveysQuery);
+  const { data: automations } = useCollection<Automation>(automationsQuery);
+  const { data: appFields } = useCollection<any>(appFieldsQuery);
+
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    if (!activeWorkspaceId) return users;
+    return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
+  }, [users, activeWorkspaceId]);
 
   return {
-    users: users || [],
+    users: filteredUsers,
     stages: stages || [],
     pipelines: pipelines || [],
     variables: variables || [],
     allTags: allTags || [],
     forms: forms || [],
     surveys: surveys || [],
+    automations: automations || [],
+    appFields: appFields || [],
     activeWorkspaceId,
   };
 }

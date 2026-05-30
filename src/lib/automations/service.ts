@@ -1,5 +1,3 @@
-'use server';
-
 import { revalidatePath } from 'next/cache';
 import type { Automation } from '../types';
 import { serializeBlueprint } from '../automation-blueprint';

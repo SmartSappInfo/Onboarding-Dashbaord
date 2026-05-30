@@ -6,9 +6,10 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { Survey, SurveyResponse, SurveySummary } from '@/lib/types';
-import { collection, query, orderBy, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { useFirestore, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import type { Survey, SurveyResponse, SurveySummary, UserProfile } from '@/lib/types';
+import { collection, addDoc, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { querySurveyData } from '@/ai/flows/query-survey-data-flow';
 import { format } from 'date-fns';
@@ -44,19 +45,41 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function AISummariesView({ survey, responses }: { survey: Survey, responses: SurveyResponse[] }) {
+export default function AISummariesView({ 
+    survey, 
+    responses, 
+    summaries = [], 
+    areSummariesLoading = false 
+}: { 
+    survey: Survey; 
+    responses: SurveyResponse[]; 
+    summaries?: SurveySummary[]; 
+    areSummariesLoading?: boolean; 
+}) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { user } = useUser();
+    const { activeOrganizationId } = useWorkspace();
     
     const [isQuerying, setIsQuerying] = React.useState(false);
     const [summaryToDelete, setSummaryToDelete] = React.useState<SurveySummary | null>(null);
 
-    const summariesCol = useMemoFirebase(() => {
-        if (!firestore || !survey?.id || typeof survey.id !== 'string') return null;
-        return query(collection(firestore, `surveys/${survey.id}/summaries`), orderBy('createdAt', 'desc'));
-    }, [firestore, survey?.id]);
+    // Live model preferences
+    const [liveProvider, setLiveProvider] = React.useState('googleai');
+    const [liveModelId, setLiveModelId] = React.useState('gemini-3-flash-preview');
 
-    const { data: summaries, isLoading } = useCollection<SurveySummary>(summariesCol);
+    React.useEffect(() => {
+        if (!user || !firestore) return;
+        const userRef = doc(firestore, 'users', user.uid);
+        const unsubscribe = onSnapshot(userRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data() as UserProfile;
+                if (data.preferredAiProvider) setLiveProvider(data.preferredAiProvider);
+                if (data.preferredAiModel) setLiveModelId(data.preferredAiModel);
+            }
+        });
+        return () => unsubscribe();
+    }, [user, firestore]);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -74,12 +97,17 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
                 survey,
                 responses,
                 query: data.prompt,
+                organizationId: activeOrganizationId || undefined,
+                provider: liveProvider,
+                modelId: liveModelId,
             });
 
-            const summaryData: Omit<SurveySummary, 'id'> = {
+            const summaryData = {
                 summary: result.answer,
                 createdAt: new Date().toISOString(),
                 prompt: data.prompt,
+                provider: liveProvider,
+                modelId: liveModelId,
             };
 
             const summariesCollection = collection(firestore, `surveys/${survey.id}/summaries`);
@@ -135,8 +163,9 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
  <div className="lg:col-span-2 lg:sticky top-6">
                     <Card>
                         <CardHeader>
- <CardTitle className="flex items-center gap-2"><BrainCircuit /> Interactive AI Analysis</CardTitle>
-                            <CardDescription>Ask a specific question about the survey responses.</CardDescription>
+                            <CardTitle className="flex items-center gap-2">
+                                <BrainCircuit className="h-5 w-5 text-primary" /> Interactive AI Analysis
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Form {...form}>
@@ -179,13 +208,13 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
  <div className="lg:col-span-3">
  <div className="space-y-4">
  <h3 className="text-xl font-semibold">Generated Summary History</h3>
-                        {isLoading && (
- <div className="space-y-4">
- <Skeleton className="h-40 w-full" />
- <Skeleton className="h-40 w-full" />
+                        {areSummariesLoading && (
+                            <div className="space-y-4">
+                                <Skeleton className="h-40 w-full" />
+                                <Skeleton className="h-40 w-full" />
                             </div>
                         )}
-                        {!isLoading && (!summaries || summaries.length === 0) && (
+                        {!areSummariesLoading && (!summaries || summaries.length === 0) && (
  <div className="text-center py-16 border-2 border-dashed rounded-lg">
  <p className="text-muted-foreground">No AI summaries have been generated yet.</p>
  <p className="text-sm text-muted-foreground mt-1">Ask a question to get started.</p>
@@ -214,8 +243,16 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
  <CardTitle className="text-base font-semibold leading-snug">
                                                         {summary.prompt || 'AI Generated Summary'}
                                                     </CardTitle>
- <CardDescription className="text-xs mt-1">
-                                                        {format(new Date(summary.createdAt), "MMM d, yyyy 'at' p")}
+                                                     <CardDescription className="text-xs mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
+                                                        <span>{format(new Date(summary.createdAt), "MMM d, yyyy 'at' p")}</span>
+                                                        {summary.modelId && (
+                                                            <>
+                                                                <span className="text-muted-foreground/30">•</span>
+                                                                <span className="bg-primary/5 text-primary border border-primary/10 px-1.5 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider">
+                                                                    {summary.modelId.replace('google/', '').replace(':free', '')}
+                                                                </span>
+                                                            </>
+                                                        )}
                                                     </CardDescription>
                                                 </div>
                                                 <DropdownMenu modal={false}>

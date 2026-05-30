@@ -1,5 +1,3 @@
-'use server';
-
 import { adminDb } from './firebase-admin';
 import type { AppPermissionId, UserProfile, Role, Workspace, WorkspaceEntity, PermissionsSchema, AppPermissionAction } from './types';
 import { evaluatePermission } from './permissions-engine';

@@ -142,8 +142,8 @@ function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isInModal, 
                 <div className="h-20 w-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle2 className="h-10 w-10 text-emerald-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900">{form.settings?.successMessage || 'Thank you!'}</h2>
-                <p className="text-slate-500 font-medium">Your response has been recorded successfully.</p>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{form.settings?.successMessage || 'Thank you!'}</h2>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">Your response has been recorded successfully.</p>
                 {isInModal && (
                     <Button onClick={onSuccess} className="rounded-xl font-bold w-full h-12 mt-4">Close Window</Button>
                 )}
@@ -170,20 +170,20 @@ function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isInModal, 
             }}
         >
             <div className="space-y-1 mb-6">
-                <h2 className="text-2xl font-bold tracking-tight text-slate-900">{form.title}</h2>
-                {form.description && <p className="text-sm text-slate-500">{form.description}</p>}
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">{form.title}</h2>
+                {form.description && <p className="text-sm text-slate-500 dark:text-slate-400">{form.description}</p>}
             </div>
 
             <div className="space-y-4">
                 {form.fields.map((field: any) => (
                     <div key={field.id} className="space-y-2">
-                        <Label className="text-sm font-semibold text-slate-700 ml-1">{field.label}{field.required && '*'}</Label>
+                        <Label className="text-sm font-semibold text-slate-700 dark:text-slate-350 ml-1">{field.label}{field.required && '*'}</Label>
                         {field.type === 'textarea' ? (
                             <textarea 
                                 name={field.id} 
                                 required={field.required}
                                 placeholder={field.placeholder}
-                                className="w-full min-h-[100px] p-4 rounded-2xl bg-slate-50 border-slate-200 focus:ring-2 focus:ring-primary/20 transition-all text-sm outline-none"
+                                className="w-full min-h-[100px] p-4 rounded-2xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary/20 transition-all text-sm outline-none"
                             />
                         ) : (
                             <Input 
@@ -191,7 +191,7 @@ function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isInModal, 
                                 type={field.type} 
                                 required={field.required}
                                 placeholder={field.placeholder}
-                                className="h-12 rounded-xl bg-slate-50 border-slate-200"
+                                className="h-12 rounded-xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-slate-100"
                             />
                         )}
                     </div>
@@ -215,8 +215,8 @@ function EmbeddedSurvey({ surveyId, pageId, onClose, isInModal }: { surveyId: st
                 <PlusSquare className="h-8 w-8" />
             </div>
             <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-slate-900">Survey Required</h2>
-                <p className="text-slate-500 font-medium leading-relaxed">To proceed, please complete our brief onboarding survey. This helps us tailor the experience for your institution.</p>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Survey Required</h2>
+                <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">To proceed, please complete our brief onboarding survey. This helps us tailor the experience for your institution.</p>
             </div>
             <Button 
                 onClick={() => window.open(`/s/${surveyId}?ref=${pageId}`, '_blank')}
@@ -226,7 +226,7 @@ function EmbeddedSurvey({ surveyId, pageId, onClose, isInModal }: { surveyId: st
                 <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             {isInModal && (
-                <button onClick={onClose} className="text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">Maybe Later</button>
+                <button onClick={onClose} className="text-slate-400 dark:text-slate-500 font-bold text-sm hover:text-slate-600 dark:hover:text-slate-350 transition-colors">Maybe Later</button>
             )}
         </div>
     );
@@ -292,10 +292,10 @@ export default function PublicPageClient({ slug }: { slug: string }) {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#09090b]">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                    <p className="text-slate-400 font-bold animate-pulse">Loading secure gateway...</p>
+                    <p className="text-slate-400 dark:text-slate-500 font-bold animate-pulse">Loading secure gateway...</p>
                 </div>
             </div>
         );
@@ -303,14 +303,14 @@ export default function PublicPageClient({ slug }: { slug: string }) {
 
     if (!page || !version) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#09090b]">
                 <div className="text-center space-y-6">
-                    <div className="h-24 w-24 bg-slate-100 rounded-[2rem] flex items-center justify-center mx-auto text-slate-300">
+                    <div className="h-24 w-24 bg-slate-100 dark:bg-zinc-900 rounded-[2rem] flex items-center justify-center mx-auto text-slate-300 dark:text-zinc-700">
                         <X className="h-12 w-12" />
                     </div>
                     <div className="space-y-2">
-                        <h1 className="text-3xl font-black text-slate-900">404 - Not Found</h1>
-                        <p className="text-slate-500 font-medium">The page you are looking for does not exist or has been moved.</p>
+                        <h1 className="text-3xl font-black text-slate-900 dark:text-slate-50">404 - Not Found</h1>
+                        <p className="text-slate-500 dark:text-slate-400 font-medium">The page you are looking for does not exist or has been moved.</p>
                     </div>
                     <Button asChild className="rounded-xl px-8 h-12">
                         <Link href="/">Go Home</Link>
@@ -350,12 +350,12 @@ export default function PublicPageClient({ slug }: { slug: string }) {
             {page?.settings?.showHeader && (
                 <header className="fixed top-0 z-50 w-full py-4">
                     <div className="container max-w-4xl mx-auto px-6">
-                        <div className="flex items-center justify-between rounded-full bg-white/70 backdrop-blur-md border border-border/50 py-1.5 px-6 shadow-lg shadow-black/5 transition-all">
+                        <div className="flex items-center justify-between rounded-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-border/50 dark:border-zinc-800 py-1.5 px-6 shadow-lg shadow-black/5 dark:shadow-black/20 transition-all">
                             <div className="flex items-center gap-4">
                                 <SmartSappLogo className="h-8 w-auto" />
                             </div>
                             <div className="flex items-center gap-4">
-                                <span className="hidden md:block text-xs font-bold text-slate-500">Done Paying?</span>
+                                <span className="hidden md:block text-xs font-bold text-slate-500 dark:text-slate-400">Done Paying?</span>
                                 <Button 
                                     variant="default"
                                     className="h-10 px-6 rounded-full font-bold text-xs shadow-md shadow-blue-500/20 transition-all active:scale-95 bg-blue-600 hover:bg-blue-700 text-white"
@@ -398,17 +398,17 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                             <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-2 animate-in zoom-in duration-500">
                                                 {block.props.title.split(' - ')[0]}
                                             </div>
-                                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 leading-tight font-headline">
+                                            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight font-headline">
                                                 {interpolate(block.props.title.split(' - ')[1])}
                                             </h1>
                                         </>
                                     ) : (
-                                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 leading-tight font-headline">
+                                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight font-headline">
                                             {interpolate(block.props.title)}
                                         </h1>
                                     )}
                                     {block.props.subtitle && (
-                                        <p className="text-slate-500 font-medium text-base max-w-2xl mx-auto leading-relaxed">
+                                        <p className="text-slate-500 dark:text-slate-400 font-medium text-base max-w-2xl mx-auto leading-relaxed">
                                             {interpolate(block.props.subtitle)}
                                         </p>
                                     )}
@@ -420,20 +420,20 @@ export default function PublicPageClient({ slug }: { slug: string }) {
 
                 {/* Main Content Card */}
                 <div className="container max-w-4xl mx-auto px-6 pb-24 font-body">
-                    <Card className="rounded-2xl border border-border/50 shadow-sm overflow-hidden bg-white/80 backdrop-blur-sm">
+                    <Card className="rounded-2xl border border-border/50 dark:border-zinc-800 shadow-sm overflow-hidden bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm">
                         <CardContent className="p-0">
                             {version.structureJson.sections?.filter(s => s.id !== 'hero-section').map((section, idx) => (
                                 <div key={section.id}>
-                                    {idx > 0 && <Separator className="bg-border/50" />}
+                                    {idx > 0 && <Separator className="bg-border/50 dark:bg-zinc-800/50" />}
                                     <div className="p-8 md:p-10 space-y-8">
                                         {/* Section Heading */}
                                         <div className="flex items-center gap-3 mb-2">
-                                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm shadow-blue-500/5">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm shadow-blue-500/5">
                                                 {section.id === 'payment-methods-section' ? <Banknote className="w-5 h-5" /> : 
                                                  section.id === 'procedure-section' ? <Smartphone className="w-5 h-5" /> : 
                                                  <CheckCircle2 className="w-5 h-5" />}
                                             </div>
-                                            <h3 className="text-lg font-bold tracking-tight text-[#0F172A] font-headline">
+                                            <h3 className="text-lg font-bold tracking-tight text-[#0F172A] dark:text-slate-100 font-headline">
                                                 {section.id === 'payment-methods-section' ? 'Bank Details' : 
                                                  section.id === 'procedure-section' ? 'Payment Procedure' : 
                                                  'Complete Payment'}
@@ -446,18 +446,18 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                                     {block.type === 'payment_methods' && (
                                                         <div className="grid grid-cols-1 gap-6">
                                                             {block.props.methods?.map((method: any, mIdx: number) => (
-                                                                <div key={mIdx} className="p-8 rounded-2xl bg-slate-50/50 border border-border/20 space-y-6 hover:bg-white hover:shadow-md transition-all duration-300">
+                                                                <div key={mIdx} className="p-8 rounded-2xl bg-slate-50/50 dark:bg-zinc-900/30 border border-border/20 dark:border-zinc-800/50 space-y-6 hover:bg-white hover:dark:bg-zinc-900/60 hover:shadow-md transition-all duration-300">
                                                                     <div className="flex items-center gap-4">
-                                                                        <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center border border-border/10">
+                                                                        <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center border border-border/10 dark:border-zinc-700">
                                                                             <img src={method.icon || 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png'} alt={method.name} className="w-8 h-8 object-contain" />
                                                                         </div>
-                                                                        <span className="font-bold text-slate-800 text-lg tracking-tight">{method.name || method.title}</span>
+                                                                        <span className="font-bold text-slate-800 dark:text-slate-100 text-lg tracking-tight">{method.name || method.title}</span>
                                                                     </div>
                                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                         {method.details.map((detail: any, dIdx: number) => (
                                                                             <div key={dIdx} className="flex flex-col space-y-1">
-                                                                                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">{detail.label}</span>
-                                                                                <span className="text-lg font-bold text-slate-900 tracking-tight">{detail.value}</span>
+                                                                                <span className="text-[10px] font-bold text-muted-foreground/60 dark:text-slate-500/80 uppercase tracking-widest">{detail.label}</span>
+                                                                                <span className="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight">{detail.value}</span>
                                                                             </div>
                                                                         ))}
                                                                     </div>
@@ -469,17 +469,17 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                                     {block.type === 'procedure_list' && (
                                                         <div className="space-y-6">
                                                             {block.props.imageUrl && (
-                                                                <div className="rounded-2xl overflow-hidden border border-border/20 shadow-inner bg-slate-100">
+                                                                <div className="rounded-2xl overflow-hidden border border-border/20 dark:border-zinc-800/50 shadow-inner bg-slate-100 dark:bg-zinc-900">
                                                                     <img src={block.props.imageUrl} alt={block.props.title} className="w-full h-auto" />
                                                                 </div>
                                                             )}
                                                             <ul className="grid grid-cols-1 gap-3">
                                                                 {block.props.steps?.map((step: any, sIdx: number) => (
-                                                                    <li key={sIdx} className="flex items-start gap-4 p-5 rounded-xl bg-slate-50/50 border border-border/20">
+                                                                    <li key={sIdx} className="flex items-start gap-4 p-5 rounded-xl bg-slate-50/50 dark:bg-zinc-900/30 border border-border/20 dark:border-zinc-800/50">
                                                                         <div className="mt-1 flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                                                                             <span className="text-sm font-bold text-primary">{sIdx + 1}</span>
                                                                         </div>
-                                                                        <p className="text-lg font-medium leading-relaxed text-slate-700" dangerouslySetInnerHTML={{ __html: step }} />
+                                                                        <p className="text-lg font-medium leading-relaxed text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={{ __html: step }} />
                                                                     </li>
                                                                 ))}
                                                             </ul>
@@ -487,7 +487,7 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                                     )}
 
                                                     {block.type === 'text' && (
-                                                        <div className="prose prose-slate max-w-none text-slate-600 font-medium" dangerouslySetInnerHTML={{ __html: interpolate(block.props.content) }} />
+                                                        <div className="prose prose-slate dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 font-medium" dangerouslySetInnerHTML={{ __html: interpolate(block.props.content) }} />
                                                     )}
 
                                                     {block.type === 'cta' && (
@@ -528,13 +528,13 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                                     {block.type === 'divider' && (
                                                         <div className="py-2">
                                                             {block.props.style === 'gradient' ? (
-                                                                <div className="h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+                                                                <div className="h-px bg-gradient-to-r from-transparent via-slate-300 dark:via-zinc-800 to-transparent" />
                                                             ) : (
                                                                 <hr className={cn(
-                                                                    "border-t",
+                                                                    "border-t border-border dark:border-zinc-800",
                                                                     block.props.style === 'dashed' && "border-dashed",
                                                                     block.props.style === 'dotted' && "border-dotted"
-                                                                )} style={{ borderColor: block.props.color || '#e2e8f0' }} />
+                                                                )} style={block.props.color ? { borderColor: block.props.color } : {}} />
                                                             )}
                                                         </div>
                                                     )}
@@ -542,12 +542,12 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                                     {block.type === 'faq' && block.props.items?.length > 0 && (
                                                         <div className="space-y-3">
                                                             {block.props.items.map((item: any) => (
-                                                                <details key={item.id} className="group rounded-xl border border-border/30 bg-slate-50/50 overflow-hidden">
-                                                                    <summary className="flex items-center justify-between p-5 cursor-pointer select-none font-bold text-sm text-slate-800 hover:bg-white transition-colors">
+                                                                <details key={item.id} className="group rounded-xl border border-border/30 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30 overflow-hidden">
+                                                                    <summary className="flex items-center justify-between p-5 cursor-pointer select-none font-bold text-sm text-slate-800 dark:text-slate-200 hover:bg-white hover:dark:bg-zinc-900 transition-colors">
                                                                         {item.question}
                                                                         <span className="ml-2 text-slate-400 group-open:rotate-180 transition-transform duration-200">▾</span>
                                                                     </summary>
-                                                                    <div className="px-5 pb-5 text-sm text-slate-600 leading-relaxed border-t border-border/20 pt-3">
+                                                                    <div className="px-5 pb-5 text-sm text-slate-600 dark:text-slate-400 leading-relaxed border-t border-border/20 dark:border-zinc-800/30 pt-3">
                                                                         {item.answer}
                                                                     </div>
                                                                 </details>
@@ -556,16 +556,16 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                                     )}
 
                                                     {block.type === 'testimonial' && (
-                                                        <div className="max-w-lg mx-auto p-8 bg-slate-50/50 rounded-2xl border border-border/20 text-center space-y-4">
-                                                            <div className="text-4xl text-slate-200">"</div>
-                                                            <p className="text-base italic text-slate-600 leading-relaxed font-medium">{interpolate(block.props.quote || '')}</p>
+                                                        <div className="max-w-lg mx-auto p-8 bg-slate-50/50 dark:bg-zinc-900/30 rounded-2xl border border-border/20 dark:border-zinc-800/50 text-center space-y-4">
+                                                            <div className="text-4xl text-slate-200 dark:text-zinc-800">"</div>
+                                                            <p className="text-base italic text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{interpolate(block.props.quote || '')}</p>
                                                             <div className="flex items-center justify-center gap-3 pt-2">
                                                                 {block.props.avatarUrl && (
-                                                                    <img src={block.props.avatarUrl} alt={block.props.author} className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" />
+                                                                    <img src={block.props.avatarUrl} alt={block.props.author} className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-zinc-800 shadow-sm" />
                                                                 )}
                                                                 <div className="text-left">
-                                                                    <p className="text-sm font-bold text-slate-800">{block.props.author || 'Author'}</p>
-                                                                    {block.props.role && <p className="text-xs text-slate-500">{block.props.role}</p>}
+                                                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{block.props.author || 'Author'}</p>
+                                                                    {block.props.role && <p className="text-xs text-slate-500 dark:text-slate-400">{block.props.role}</p>}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -574,9 +574,9 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                                     {block.type === 'stats' && block.props.items?.length > 0 && (
                                                         <div className={cn("grid gap-6 text-center", block.props.items.length <= 3 ? `grid-cols-${block.props.items.length}` : "grid-cols-2 md:grid-cols-4")}>
                                                             {block.props.items.map((item: any) => (
-                                                                <div key={item.id} className="p-6 bg-slate-50/50 rounded-2xl border border-border/20">
+                                                                <div key={item.id} className="p-6 bg-slate-50/50 dark:bg-zinc-900/30 rounded-2xl border border-border/20 dark:border-zinc-800/50">
                                                                     <p className="text-3xl font-black text-primary tracking-tight">{item.value}</p>
-                                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-2">{item.label}</p>
+                                                                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-2">{item.label}</p>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -627,18 +627,18 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                         <div className="space-y-6 py-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {receiptFormSuccess ? (
                                 <div className="text-center space-y-4 py-8">
-                                    <div className="h-20 w-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-                                        <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+                                    <div className="h-20 w-20 bg-emerald-100 dark:bg-emerald-950/30 rounded-full flex items-center justify-center mx-auto">
+                                        <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
                                     </div>
-                                    <h2 className="text-2xl font-bold text-slate-900 font-headline">Request Sent!</h2>
-                                    <p className="text-slate-500 font-medium">Your receipt request has been sent to Our Accounts Department. We will process it shortly.</p>
+                                    <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 font-headline">Request Sent!</h2>
+                                    <p className="text-slate-500 dark:text-slate-400 font-medium">Your receipt request has been sent to Our Accounts Department. We will process it shortly.</p>
                                     <Button onClick={() => { setModalState(null); setReceiptFormSuccess(false); }} className="rounded-xl font-bold w-full h-12">Done</Button>
                                 </div>
                             ) : (
                                 <>
                                     <div className="space-y-1">
-                                        <h2 className="text-2xl font-bold tracking-tight text-slate-900 font-headline">Request Receipt</h2>
-                                        <p className="text-sm text-slate-500">Enter your details below to receive your payment receipt.</p>
+                                        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50 font-headline">Request Receipt</h2>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">Enter your details below to receive your payment receipt.</p>
                                     </div>
                                     <form 
                                         className="space-y-4"
@@ -663,26 +663,26 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                         }}
                                     >
                                         <div className="space-y-2">
-                                            <Label className="text-sm font-semibold text-slate-700 ml-1">Your Name</Label>
-                                            <Input name="name" required placeholder="John Doe" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Your Name</Label>
+                                            <Input name="name" required placeholder="John Doe" className="h-12 rounded-xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 dark:text-slate-100" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-sm font-semibold text-slate-700 ml-1">Name of School</Label>
-                                            <Input name="school" required placeholder="Smart Academy" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Name of School</Label>
+                                            <Input name="school" required placeholder="Smart Academy" className="h-12 rounded-xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 dark:text-slate-100" />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-sm font-semibold text-slate-700 ml-1">Phone Number</Label>
-                                                <Input name="phone" required placeholder="024 XXX XXXX" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Phone Number</Label>
+                                                <Input name="phone" required placeholder="024 XXX XXXX" className="h-12 rounded-xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 dark:text-slate-100" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-sm font-semibold text-slate-700 ml-1">Email</Label>
-                                                <Input name="email" type="email" required placeholder="school@example.com" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Email</Label>
+                                                <Input name="email" type="email" required placeholder="school@example.com" className="h-12 rounded-xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 dark:text-slate-100" />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-sm font-semibold text-slate-700 ml-1">Payment Amount (GHS)</Label>
-                                            <Input name="amount" type="number" required placeholder="0.00" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Payment Amount (GHS)</Label>
+                                            <Input name="amount" type="number" required placeholder="0.00" className="h-12 rounded-xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 dark:text-slate-100" />
                                         </div>
                                         <Button type="submit" className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-blue-500/20 mt-4 bg-blue-600 hover:bg-blue-700 text-white">
                                             Send Request

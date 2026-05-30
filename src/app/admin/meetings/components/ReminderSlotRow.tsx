@@ -137,7 +137,7 @@ export default function ReminderSlotRow({ slot, index, onChange, onRemove }: Rem
                 value={slot.emailTemplateId || ''}
                 onValueChange={(v) => updateField('emailTemplateId', v)}
                 placeholder="Select email template..."
-                className="h-8 rounded-lg text-[10px] font-bold"
+                compact
               />
             </div>
           )}
@@ -154,7 +154,7 @@ export default function ReminderSlotRow({ slot, index, onChange, onRemove }: Rem
                 value={slot.smsTemplateId || ''}
                 onValueChange={(v) => updateField('smsTemplateId', v)}
                 placeholder="Select SMS template..."
-                className="h-8 rounded-lg text-[10px] font-bold"
+                compact
               />
             </div>
           )}

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { collection, query, where, doc, orderBy } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 import { useAudiences } from '@/lib/audience-hooks';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -84,6 +85,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   const meetingId = params.id as string;
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
+  const { activeOrganizationId } = useTenant();
   const { user: currentUser } = useUser();
   const { toast } = useToast();
 
@@ -115,6 +117,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
   // Registrants Ledger specific states
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQueryInvites, setSearchQueryInvites] = React.useState('');
   const [isToggling, setIsToggling] = React.useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [isProcessingBulk, setIsProcessingBulk] = React.useState(false);
@@ -152,6 +155,14 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
   const { data: workspaceEntities, isLoading: isLoadingEntities } = useCollection<any>(entitiesColRef);
 
+  // Fetch all base entities for canonical contacts
+  const baseEntitiesColRef = useMemoFirebase(() => {
+    if (!firestore || !activeOrganizationId) return null;
+    return query(collection(firestore, 'entities'), where('organizationId', '==', activeOrganizationId));
+  }, [firestore, activeOrganizationId]);
+
+  const { data: baseEntities } = useCollection<any>(baseEntitiesColRef);
+
   // Fetch saved audiences for the audience selector
   const { audiences: savedAudiences } = useAudiences(activeWorkspaceId);
 
@@ -169,41 +180,82 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   }, [firestore, smsTemplateId]);
   const { data: smsTemplate } = useDoc<any>(smsTemplateDocRef);
 
-  // Derive stats for invitations
+  // Filter invited guests vs actual registered attendees
+  const invitedGuests = React.useMemo(() => {
+    if (!registrants) return [];
+    return registrants.filter((r: any) => r.source === 'invite' || r.source === 'one-click');
+  }, [registrants]);
+
+  const registeredAttendees = React.useMemo(() => {
+    if (!registrants) return [];
+    return registrants.filter((r: any) => r.status === 'approved' || r.status === 'attended' || r.status === 'registered');
+  }, [registrants]);
+
+  // Derive stats for invitations and registrants separately
   const stats = React.useMemo(() => {
-    if (!registrants) return { invited: 0, going: 0, not_going: 0, later: 0, pending: 0, total: 0, attended: 0, attendanceRate: 0 };
+    // Default stats values
+    const defaults = { 
+      invited: 0, 
+      going: 0, 
+      not_going: 0, 
+      later: 0, 
+      pending: 0, 
+      total: 0, 
+      attended: 0, 
+      pendingRegistrants: 0, 
+      attendanceRate: 0 
+    };
+    if (!registrants) return defaults;
+
+    // Invited stats
     let invited = 0;
     let going = 0;
     let not_going = 0;
     let later = 0;
     let pending = 0;
+
+    invitedGuests.forEach((reg: any) => {
+      invited++;
+      const rsvp = reg.rsvpStatus;
+      if (rsvp === 'going') going++;
+      else if (rsvp === 'not_going') not_going++;
+      else if (rsvp === 'later') later++;
+      else pending++;
+    });
+
+    // Registrant stats
+    let total = 0;
     let attended = 0;
 
-    registrants.forEach((reg: any) => {
-      invited++;
-      const status = reg.rsvpStatus || reg.status;
-      if (status === 'going' || status === 'approved') going++;
-      else if (status === 'not_going' || status === 'cancelled') not_going++;
-      else if (status === 'later') later++;
-      else pending++;
-
+    registeredAttendees.forEach((reg: any) => {
+      total++;
       if (reg.status === 'attended') {
         attended++;
       }
     });
 
-    const total = registrants.length;
     const attendanceRate = total > 0 ? Math.round((attended / total) * 100) : 0;
 
-    return { invited, going, not_going, later, pending, total, attended, pendingRegistrants: total - attended, attendanceRate };
-  }, [registrants]);
+    return { 
+      invited, 
+      going, 
+      not_going, 
+      later, 
+      pending, 
+      total, 
+      attended, 
+      pendingRegistrants: total - attended, 
+      attendanceRate 
+    };
+  }, [registrants, invitedGuests, registeredAttendees]);
 
-  // Derive all unique contact roles from workspace entities
+  // Derive all unique contact roles from canonical base entities
   const availableRoles = React.useMemo(() => {
     if (!workspaceEntities) return [];
     const seen = new Map<string, string>();
     workspaceEntities.forEach((e: any) => {
-      const contacts = e.entityContacts || e.contacts || [];
+      const baseEntity = baseEntities?.find((be: any) => be.id === e.entityId);
+      const contacts = baseEntity?.entityContacts || baseEntity?.contacts || e.entityContacts || e.contacts || [];
       contacts.forEach((c: any) => {
         if (c.typeKey && !seen.has(c.typeKey)) {
           seen.set(c.typeKey, c.typeLabel || c.typeKey);
@@ -211,7 +263,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       });
     });
     return Array.from(seen.entries()).map(([key, label]) => ({ key, label }));
-  }, [workspaceEntities]);
+  }, [workspaceEntities, baseEntities]);
 
   // Compute all available custom registration fields safely and efficiently
   const allAvailableFields = React.useMemo(() => {
@@ -320,7 +372,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     // 2. Resolve matching contacts based on selected channels and contact scope / roles
     const recipients: any[] = [];
     pool.forEach((e: any) => {
-      const contacts = e.entityContacts || e.contacts || [];
+      const baseEntity = baseEntities?.find((be: any) => be.id === e.entityId);
+      const contacts = baseEntity?.entityContacts || baseEntity?.contacts || e.entityContacts || e.contacts || [];
       let matchedContacts: any[] = [];
 
       if (contactScope === 'primary') {
@@ -342,10 +395,11 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
         const isSmsSelected = selectedChannels.includes('sms');
 
         if ((isEmailSelected && hasEmail) || (isSmsSelected && hasPhone)) {
+          const entityName = baseEntity?.displayName || baseEntity?.name || e.displayName || e.name || '';
           recipients.push({
             entityId: e.entityId || e.id,
-            entityName: e.displayName || e.name || '',
-            name: c.name || e.displayName || e.name,
+            entityName,
+            name: c.name || entityName,
             email: c.email || '',
             phone: c.phone || '',
           });
@@ -354,20 +408,33 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     });
 
     return recipients;
-  }, [workspaceEntities, tagSegment, contactScope, selectedRoles, selectedChannels, assigneeFilter, currentUser?.uid]);
+  }, [workspaceEntities, baseEntities, tagSegment, contactScope, selectedRoles, selectedChannels, assigneeFilter, currentUser?.uid]);
 
-  // Filtered List for Registrants table search
-  const filteredRegistrants = React.useMemo(() => {
-    if (!registrants) return [];
-    if (!searchQuery.trim()) return registrants;
-    const lowerQuery = searchQuery.toLowerCase();
-    return registrants.filter((r: any) => {
+  // Filtered List for Invited Guests table search
+  const filteredInvites = React.useMemo(() => {
+    if (!invitedGuests) return [];
+    if (!searchQueryInvites.trim()) return invitedGuests;
+    const lowerQuery = searchQueryInvites.toLowerCase();
+    return invitedGuests.filter((r: any) => {
       const nameMatch = r.name?.toLowerCase().includes(lowerQuery) || false;
       const emailMatch = r.email?.toLowerCase().includes(lowerQuery) || false;
       const entityMatch = r.entityName?.toLowerCase().includes(lowerQuery) || false;
       return nameMatch || emailMatch || entityMatch;
     });
-  }, [registrants, searchQuery]);
+  }, [invitedGuests, searchQueryInvites]);
+
+  // Filtered List for Registrants table search
+  const filteredRegistrants = React.useMemo(() => {
+    if (!registeredAttendees) return [];
+    if (!searchQuery.trim()) return registeredAttendees;
+    const lowerQuery = searchQuery.toLowerCase();
+    return registeredAttendees.filter((r: any) => {
+      const nameMatch = r.name?.toLowerCase().includes(lowerQuery) || false;
+      const emailMatch = r.email?.toLowerCase().includes(lowerQuery) || false;
+      const entityMatch = r.entityName?.toLowerCase().includes(lowerQuery) || false;
+      return nameMatch || emailMatch || entityMatch;
+    });
+  }, [registeredAttendees, searchQuery]);
 
   const toggleChannel = (ch: 'email' | 'sms') => {
     setSelectedChannels(prev => 
@@ -626,10 +693,10 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
             <h1 className="text-2xl font-black tracking-tight text-foreground leading-none flex items-center gap-2">
               Session Management Hub
             </h1>
-            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1.5 flex items-center gap-2">
+            <div className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1.5 flex items-center gap-2">
               <Badge variant="secondary" className="px-2 py-0 h-5 font-bold">{meeting.type.name}</Badge>
               <span>{meeting.entityName}</span>
-            </p>
+            </div>
           </div>
         </div>
         <TabsList className="grid w-full sm:w-[420px] grid-cols-2 bg-muted/50 p-1.5 h-11 rounded-2xl">
@@ -790,69 +857,75 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                   </div>
 
                   {/* Templates Choices */}
-                  <div className="space-y-4">
-                    {selectedChannels.includes('email') && (
-                      <div className="space-y-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-                          <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email Template Choice</span>
-                          {emailTemplateId && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-6 text-[10px] font-bold text-primary gap-1"
-                              onClick={() => {
-                                setPreviewChannel('email');
-                                setPreviewTemplateOpen(true);
-                              }}
-                            >
-                              <Eye className="h-3 w-3" /> Preview Content
-                            </Button>
-                          )}
-                        </span>
-                        <MessagingTemplateSelector
-                          category="meetings"
-                          recipientType="external_alert"
-                          channel="email"
-                          templateTypePrefix="meeting_invitation"
-                          value={emailTemplateId}
-                          onValueChange={setEmailTemplateId}
-                          placeholder="Choose or create email template..."
-                          className="h-10 rounded-xl bg-muted/20 border-border/50 text-xs font-semibold animate-in fade-in"
-                        />
+                  {(selectedChannels.includes('email') || selectedChannels.includes('sms')) && (
+                    <div className="py-4 space-y-5">
+                      {/* Section label */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0">Template Selection</span>
+                        <div className="h-px flex-1 bg-border/40" />
                       </div>
-                    )}
 
-                    {selectedChannels.includes('sms') && (
-                      <div className="space-y-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-                          <span className="flex items-center gap-1.5"><Smartphone className="h-3.5 w-3.5" /> SMS Template Choice</span>
-                          {smsTemplateId && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-6 text-[10px] font-bold text-primary gap-1"
-                              onClick={() => {
-                                setPreviewChannel('sms');
-                                setPreviewTemplateOpen(true);
-                              }}
-                            >
-                              <Eye className="h-3 w-3" /> Preview Content
-                            </Button>
-                          )}
-                        </span>
-                        <MessagingTemplateSelector
-                          category="meetings"
-                          recipientType="external_alert"
-                          channel="sms"
-                          templateTypePrefix="meeting_invitation"
-                          value={smsTemplateId}
-                          onValueChange={setSmsTemplateId}
-                          placeholder="Choose or create SMS template..."
-                          className="h-10 rounded-xl bg-muted/20 border-border/50 text-xs font-semibold animate-in fade-in"
-                        />
+                      {/* Template columns — side by side columns */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {selectedChannels.includes('email') && (
+                          <div className="space-y-3 min-w-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                              <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email Template</span>
+                              {emailTemplateId && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-[10px] font-bold text-primary gap-1"
+                                  onClick={() => { setPreviewChannel('email'); setPreviewTemplateOpen(true); }}
+                                >
+                                  <Eye className="h-3 w-3" /> Preview
+                                </Button>
+                              )}
+                            </span>
+                            <MessagingTemplateSelector
+                              category="meetings"
+                              recipientType="external_alert"
+                              channel="email"
+                              templateTypePrefix="meeting_invitation"
+                              value={emailTemplateId}
+                              onValueChange={setEmailTemplateId}
+                              placeholder="Choose or create email template..."
+                            />
+                          </div>
+                        )}
+
+                        {selectedChannels.includes('sms') && (
+                          <div className="space-y-3 min-w-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                              <span className="flex items-center gap-1.5"><Smartphone className="h-3.5 w-3.5" /> SMS Template</span>
+                              {smsTemplateId && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-[10px] font-bold text-primary gap-1"
+                                  onClick={() => { setPreviewChannel('sms'); setPreviewTemplateOpen(true); }}
+                                >
+                                  <Eye className="h-3 w-3" /> Preview
+                                </Button>
+                              )}
+                            </span>
+                            <MessagingTemplateSelector
+                              category="meetings"
+                              recipientType="external_alert"
+                              channel="sms"
+                              templateTypePrefix="meeting_invitation"
+                              value={smsTemplateId}
+                              onValueChange={setSmsTemplateId}
+                              placeholder="Choose or create SMS template..."
+                            />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+
+                      {/* Separator below template section */}
+                      <div className="h-px bg-border/40" />
+                    </div>
+                  )}
 
                   {/* Contact Target Scope */}
                   <div className="space-y-3">
@@ -1021,6 +1094,138 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
               </Card>
             </div>
           </div>
+
+          {/* Invited Guests Ledger Card */}
+          <Card className="rounded-2xl border-none overflow-hidden ring-1 ring-border shadow-sm bg-card mt-8">
+            <CardHeader className="bg-muted/30 border-b py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Send className="h-5 w-5 text-primary" />
+                    Invited Guests Roster
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground font-sans">
+                    All contacts who have been sent one-click invitations for this session.
+                  </p>
+                </div>
+                
+                {/* Search Invited Guests */}
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    type="search" 
+                    placeholder="Search invited guests..." 
+                    value={searchQueryInvites}
+                    onChange={(e) => setSearchQueryInvites(e.target.value)}
+                    className="pl-9 h-10 rounded-xl bg-card border-border/50 text-xs font-semibold font-sans"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/10 border-b border-border/40">
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4 pl-6 font-sans">Invitee Details</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4 font-sans">Associated Entity</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4 font-sans">First Invited</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4 font-sans">Last Sent</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4 w-32 font-sans">RSVP Status</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4 w-12 text-right pr-6 font-sans"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredInvites.map((invitee: any) => (
+                    <TableRow key={invitee.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150">
+                      <TableCell className="pl-6">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm text-foreground font-sans">{invitee.name}</span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5 font-sans">
+                            <Mail className="h-3 w-3" /> {invitee.email || 'N/A'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs font-semibold text-muted-foreground font-sans">
+                        {invitee.entityName || invitee.entityId || <span className="text-muted-foreground/30 font-normal">—</span>}
+                      </TableCell>
+                      <TableCell className="text-xs font-medium text-muted-foreground font-sans">
+                        {invitee.registeredAt ? format(new Date(invitee.registeredAt), 'MMM d, yyyy') : 'Unknown'}
+                      </TableCell>
+                      <TableCell className="text-xs font-medium text-muted-foreground font-sans">
+                        {invitee.lastInviteSentAt ? format(new Date(invitee.lastInviteSentAt), 'MMM d, h:mm a') : 'Not sent'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={cn(
+                          'text-[9px] font-bold uppercase rounded-lg px-2 h-5 border-none shadow-sm transition-all font-sans',
+                          invitee.rsvpStatus === 'going' && 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/20',
+                          invitee.rsvpStatus === 'not_going' && 'bg-rose-500/10 text-rose-600 dark:bg-rose-950/20',
+                          invitee.rsvpStatus === 'later' && 'bg-amber-500/10 text-amber-600 dark:bg-amber-950/20',
+                          (!invitee.rsvpStatus || invitee.rsvpStatus === 'pending') && 'bg-slate-500/10 text-slate-600 dark:bg-slate-950/20'
+                        )}>
+                          {invitee.rsvpStatus === 'going' ? 'Going' : invitee.rsvpStatus === 'not_going' ? 'Declined' : invitee.rsvpStatus === 'later' ? 'Later' : 'Pending'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 hover:bg-muted">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
+                            <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider font-sans">Quick Actions</p>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              disabled={invitee.rsvpStatus === 'going' || invitee.status === 'approved' || invitee.status === 'attended'}
+                              onClick={async () => {
+                                setIsSending(true);
+                                try {
+                                  await sendMeetingInvitationsAction(
+                                    meetingId,
+                                    activeWorkspaceId || '',
+                                    [{
+                                      entityId: invitee.entityId || '',
+                                      name: invitee.name,
+                                      email: invitee.email,
+                                      phone: invitee.phone,
+                                      entityName: invitee.entityName
+                                    }],
+                                    selectedChannels,
+                                    emailTemplateId,
+                                    smsTemplateId
+                                  );
+                                  toast({ title: 'Success', description: 'Invitation resent successfully.' });
+                                } catch (e: any) {
+                                  toast({ variant: 'destructive', title: 'Error', description: e.message });
+                                } finally {
+                                  setIsSending(false);
+                                }
+                              }}
+                              className="rounded-lg text-xs font-semibold font-sans"
+                            >
+                              <Send className="h-4 w-4 mr-2" /> Resend Invite
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setRegistrantToDelete(invitee)} className="rounded-lg text-xs font-bold text-destructive focus:bg-destructive/5 font-sans">
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete Guest Invite
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredInvites.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-32 text-center text-muted-foreground/60 text-xs italic font-sans">
+                        No invited guests matches your filter/search criteria.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ========================================================================= */}
@@ -1300,9 +1505,6 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                 </h3>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setPreviewTemplateOpen(false)} className="h-9 w-9 rounded-xl">
-              <X className="h-4 w-4" />
-            </Button>
           </div>
 
           <div className="p-6 bg-muted/10 overflow-y-auto max-h-[70vh]">
@@ -1325,6 +1527,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                       .replace('{{meeting_timezone}}', 'EST')
                       .replace('{{meeting_type}}', meeting.type?.name || 'Interactive')
                       .replace('{{meeting_link}}', 'https://smartsapp.com/rsvp')
+                      .replace('{{meeting_registrant_one_click_link}}', 'https://smartsapp.com/rsvp')
                       .replace('{{calendar_link}}', 'https://smartsapp.com/calendar')
                       .replace('{{organization_name}}', 'SmartSapp Academy')
                   ) : (
@@ -1352,6 +1555,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                           .replace('{{meeting_time}}', meeting.meetingTime ? format(new Date(meeting.meetingTime), 'p') : 'Time TBD')
                           .replace('{{meeting_timezone}}', 'EST')
                           .replace('{{meeting_link}}', 'https://smartsapp.com/rsvp')
+                          .replace('{{meeting_registrant_one_click_link}}', 'https://smartsapp.com/rsvp')
                           .replace('{{organization_name}}', 'SmartSapp')
                       ) : (
                         'No SMS body.'

@@ -201,7 +201,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                                 value={field.value}
                                                 onValueChange={field.onChange}
                                                 placeholder="Select email template..."
-                                                className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs"
+                                                compact
                                             />
                                         )}
                                     />
@@ -254,7 +254,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                                 value={field.value}
                                                 onValueChange={field.onChange}
                                                 placeholder="Select SMS alert..."
-                                                className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs"
+                                                compact
                                             />
                                         )}
                                     />

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, orderBy, query, where, doc, deleteDoc, addDoc, getDocs } from 'firebase/firestore';
+import { collection, orderBy, query, where, doc, deleteDoc, addDoc, getDocs, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { Meeting, WorkspaceEntity, Entity } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
@@ -39,8 +39,10 @@ import {
     Check,
     School,
     Video,
-    Globe
+    Globe,
+    X
 } from 'lucide-react';
+
 import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
@@ -103,6 +105,32 @@ export default function MeetingsHubClient() {
   const [templateName, setTemplateName] = useState('');
   const [templateDesc, setTemplateDesc] = useState('');
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [editingMeetingId, setEditingMeetingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string>('');
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+
+  const handleSaveName = async (meetingId: string) => {
+    if (!firestore || !editingName.trim()) return;
+    setIsUpdating(true);
+    try {
+      const docRef = doc(firestore, 'meetings', meetingId);
+      await updateDoc(docRef, { entityName: editingName.trim() });
+      toast({
+        title: 'Meeting updated',
+        description: 'Meeting internal name has been successfully updated.',
+      });
+      setEditingMeetingId(null);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: err.message || 'An error occurred.',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const { singular, plural } = useTerminology();
 
@@ -483,10 +511,59 @@ export default function MeetingsHubClient() {
                                         />
                                     </TableCell>
                                     <TableCell className="font-semibold text-sm text-foreground tracking-tight">
-                                        <Link href={`/admin/meetings/${meeting.id}`} className="hover:text-primary hover:underline transition-colors">
-                                            {safeEntityName}
-                                        </Link>
+                                        {editingMeetingId === meeting.id ? (
+                                            <div className="flex items-center gap-2 max-w-xs">
+                                                <input
+                                                    type="text"
+                                                    value={editingName}
+                                                    onChange={(e) => setEditingName(e.target.value)}
+                                                    className="h-8 px-2 border rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-primary bg-background"
+                                                    disabled={isUpdating}
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleSaveName(meeting.id);
+                                                        if (e.key === 'Escape') setEditingMeetingId(null);
+                                                    }}
+                                                />
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="ghost" 
+                                                    className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
+                                                    onClick={() => handleSaveName(meeting.id)}
+                                                    disabled={isUpdating}
+                                                >
+                                                    {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-4 w-4" />}
+                                                </Button>
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="ghost" 
+                                                    className="h-7 w-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50 shrink-0"
+                                                    onClick={() => setEditingMeetingId(null)}
+                                                    disabled={isUpdating}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 group/title">
+                                                <Link href={`/admin/meetings/${meeting.id}`} className="hover:text-primary hover:underline transition-colors">
+                                                    {safeEntityName}
+                                                </Link>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-6 w-6 opacity-0 group-hover/title:opacity-100 transition-opacity rounded-md hover:bg-muted"
+                                                    onClick={() => {
+                                                        setEditingMeetingId(meeting.id);
+                                                        setEditingName(meeting.entityName || safeEntityName);
+                                                    }}
+                                                >
+                                                    <Edit3 className="h-3 w-3 text-muted-foreground" />
+                                                </Button>
+                                            </div>
+                                        )}
                                     </TableCell>
+
                                     <TableCell><Badge variant="secondary" className="text-[9px] font-semibold uppercase ">{type.name}</Badge></TableCell>
  <TableCell className="text-xs font-bold text-muted-foreground tracking-tighter tabular-nums">
                                         {meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP · p") : 'Not set'}

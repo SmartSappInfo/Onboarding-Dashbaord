@@ -64,7 +64,7 @@ export const AI_PROVIDERS = [
     }
 ];
 
-export default function AiModelSelector({ className }: { className?: string }) {
+export default function AiModelSelector({ className, hideLabel = false }: { className?: string; hideLabel?: boolean }) {
     const { user } = useUser();
     const { activeOrganization } = useTenant();
     const firestore = useFirestore();
@@ -163,9 +163,11 @@ export default function AiModelSelector({ className }: { className?: string }) {
 
     return (
         <div className={cn("flex flex-col gap-1.5", className)}>
-            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                AI Architect Model
-            </label>
+            {!hideLabel && (
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                    AI Architect Model
+                </label>
+            )}
             <Select value={selectedModel} onValueChange={handleModelChange}>
                 <SelectTrigger className="w-[280px] h-12 rounded-[1.25rem] bg-background border-none shadow-xl ring-1 ring-border/50 hover:ring-primary/20 transition-all font-bold group">
                     <div className="flex items-center gap-2.5">

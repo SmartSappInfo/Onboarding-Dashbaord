@@ -69,6 +69,7 @@ import { LocationCascade } from '@/components/location/LocationCascade';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { PageContainer } from '@/components/ui/page-container';
 
 // Deal opportunity integration
 import { DealOpportunityCard, type DealConfig } from '../components/DealOpportunityCard';

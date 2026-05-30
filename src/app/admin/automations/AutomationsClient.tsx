@@ -76,89 +76,102 @@ import {
 } from '@/components/ui/table';
 
 // Helper component for visual thumb preview of automation steps
-const MiniFlowPreview = ({ nodes }: { nodes?: any[] }) => {
+const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => {
     if (!nodes || !Array.isArray(nodes) || nodes.length === 0) {
-        return <span className="text-[10px] text-muted-foreground italic">No steps</span>;
+        return <span className="text-[10px] text-muted-foreground/60 italic">No steps</span>;
     }
-    
-    // Sort nodes to place trigger node first
-    const sorted = [...nodes].sort((a, b) => {
-        if (a.type === 'triggerNode') return -1;
-        if (b.type === 'triggerNode') return 1;
-        return 0;
+
+    // Find bounding box to scale positions
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    nodes.forEach(n => {
+        const x = n.position?.x ?? 0;
+        const y = n.position?.y ?? 0;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
     });
 
-    const previewNodes = sorted.slice(0, 4);
-    const hasMore = sorted.length > 4;
+    const pad = 8;
+    const width = 110;
+    const height = 48;
 
-    const getIcon = (type: string, data: any) => {
-        switch (type) {
-            case 'triggerNode': {
-                const trig = data?.trigger || data?.triggerType;
-                if (trig === 'ENTITY_FIELD_CHANGED') return <Settings2 className="h-3 w-3 text-emerald-500" />;
-                if (trig === 'DATE_REACHED' || trig === 'ENTITY_INACTIVE') return <Clock className="h-3 w-3 text-emerald-500" />;
-                if (trig === 'TASK_OVERDUE' || trig === 'EMAIL_BOUNCED') return <ShieldAlert className="h-3 w-3 text-rose-500" />;
-                if (trig === 'WEBPAGE_VISITED') return <Globe className="h-3 w-3 text-emerald-500" />;
-                if (trig === 'EVENT_RECORDED' || trig === 'SCORE_CHANGED') return <Activity className="h-3 w-3 text-emerald-500" />;
-                if (trig === 'DEAL_OWNER_CHANGED') return <Target className="h-3 w-3 text-emerald-500" />;
-                if (trig === 'TAG_ADDED' || trig === 'TAG_REMOVED') return <Tag className="h-3 w-3 text-emerald-500" />;
-                return <Zap className="h-3 w-3 text-emerald-500" />;
-            }
-            case 'actionNode':
-                if (data?.actionType === 'SEND_MESSAGE') return <Mail className="h-3 w-3 text-blue-500" />;
-                if (data?.actionType === 'CREATE_TASK') return <CheckSquare className="h-3 w-3 text-indigo-500" />;
-                return <Play className="h-3 w-3 text-blue-500" />;
-            case 'conditionNode':
-                return <ArrowRightLeft className="h-3 w-3 text-amber-500" />;
-            case 'delayNode':
-                return <Clock className="h-3 w-3 text-purple-500" />;
-            case 'tagConditionNode':
-            case 'tagActionNode':
-                return <Tag className="h-3 w-3 text-violet-500" />;
-            default:
-                return <Settings2 className="h-3 w-3 text-muted-foreground" />;
-        }
+    const scaleX = maxX === minX ? 1 : (width - pad * 2) / (maxX - minX);
+    const scaleY = maxY === minY ? 1 : (height - pad * 2) / (maxY - minY);
+
+    const getCoords = (n: any) => {
+        const x = n.position?.x ?? 0;
+        const y = n.position?.y ?? 0;
+        const px = maxX === minX ? width / 2 : pad + (x - minX) * scaleX;
+        const py = maxY === minY ? height / 2 : pad + (y - minY) * scaleY;
+        return { x: px, y: py };
     };
 
-    const getLabel = (node: any) => {
-        if (node.data?.label) return node.data.label;
-        if (node.type === 'triggerNode') return 'Trigger';
-        if (node.type === 'actionNode') return 'Action';
-        return 'Step';
+    const nodeColors: Record<string, string> = {
+        triggerNode: 'bg-emerald-500 shadow-emerald-500/30',
+        actionNode: 'bg-blue-500 shadow-blue-500/30',
+        conditionNode: 'bg-amber-500 shadow-amber-500/30',
+        delayNode: 'bg-purple-500 shadow-purple-500/30',
+        tagConditionNode: 'bg-violet-500 shadow-violet-500/30',
+        tagActionNode: 'bg-emerald-600 shadow-emerald-600/30',
     };
 
     return (
-        <div className="flex flex-col items-center py-1 gap-1 w-fit">
-            {previewNodes.map((node, i) => (
-                <React.Fragment key={node.id}>
-                    {i > 0 && (
-                        <div className="w-0.5 h-1.5 bg-muted-foreground/30 shrink-0" />
-                    )}
-                    <TooltipProvider delayDuration={100}>
+        <div className="relative w-[110px] h-[48px] rounded-lg border border-border/40 bg-muted/20 overflow-hidden shadow-inner shrink-0 transition-colors">
+            {/* Render Edges */}
+            {Array.isArray(edges) && edges.map((edge) => {
+                const sourceNode = nodes.find(n => n.id === edge.source);
+                const targetNode = nodes.find(n => n.id === edge.target);
+                if (!sourceNode || !targetNode) return null;
+                const src = getCoords(sourceNode);
+                const tgt = getCoords(targetNode);
+
+                return (
+                    <svg key={edge.id} className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                        <line 
+                            x1={src.x} 
+                            y1={src.y} 
+                            x2={tgt.x} 
+                            y2={tgt.y} 
+                            stroke="currentColor" 
+                            className="text-muted-foreground/30" 
+                            strokeWidth="1" 
+                        />
+                    </svg>
+                );
+            })}
+
+            {/* Render Nodes */}
+            {nodes.map((node) => {
+                const { x, y } = getCoords(node);
+                const colorClass = nodeColors[node.type] || 'bg-muted-foreground/50';
+                return (
+                    <TooltipProvider key={node.id} delayDuration={100}>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <div className={cn(
-                                    "flex items-center justify-center w-6 h-6 rounded-md shadow-sm border shrink-0 bg-muted/40 border-border/50 hover:bg-muted/80 transition-colors",
-                                    node.type === 'triggerNode' && "bg-emerald-500/10 border-emerald-500/25"
-                                )}>
-                                    {getIcon(node.type, node.data)}
-                                </div>
+                                <div 
+                                    className={cn(
+                                        "absolute w-2.5 h-2.5 rounded-full border border-background shadow-sm hover:scale-150 transition-transform cursor-pointer",
+                                        colorClass
+                                    )}
+                                    style={{ 
+                                        left: `${x}px`, 
+                                        top: `${y}px`,
+                                        transform: 'translate(-50%, -50%)'
+                                    }}
+                                />
                             </TooltipTrigger>
-                            <TooltipContent className="text-[9px] font-semibold">
-                                {getLabel(node)}
+                            <TooltipContent className="text-[9px] font-semibold py-1 px-2">
+                                {node.data?.label || node.type}
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
-                </React.Fragment>
-            ))}
-            {hasMore && (
-                <>
-                    <div className="w-0.5 h-1.5 bg-muted-foreground/30 shrink-0" />
-                    <span className="text-[8px] font-bold text-muted-foreground/60 w-6 h-6 flex items-center justify-center rounded bg-muted/40 border border-border/50 shrink-0">
-                        +{sorted.length - 4}
-                    </span>
-                </>
-            )}
+                );
+            })}
         </div>
     );
 };
@@ -600,7 +613,7 @@ export default function AutomationsClient() {
                                                 <div className="space-y-4">
                                                     <p className="text-xs font-medium text-muted-foreground leading-relaxed line-clamp-2 h-8">{auth.description || 'No description provided.'}</p>
                                                     <div className="flex justify-center pt-2">
-                                                        <MiniFlowPreview nodes={auth.nodes} />
+                                                        <MiniFlowPreview nodes={auth.nodes} edges={auth.edges} />
                                                     </div>
                                                     
                                                     {/* Mini stats display on card */}
@@ -754,8 +767,8 @@ export default function AutomationsClient() {
                                                                                 <XCircle className="h-3.5 w-3.5" />
                                                                             </Button>
                                                                         </div>
-                                                                    ) : (
-                                                                        <div className="flex items-center gap-2 group/name" onClick={(e) => e.stopPropagation()}>
+                                                                     ) : (
+                                                                        <div className="flex items-center gap-2 group/name">
                                                                             <p className="font-semibold text-sm text-foreground tracking-tight truncate max-w-[200px] sm:max-w-xs">
                                                                                 {auth.name}
                                                                             </p>
@@ -767,27 +780,27 @@ export default function AutomationsClient() {
                                                                                 }}
                                                                                 className="opacity-0 group-hover/name:opacity-100 hover:text-primary transition-opacity p-0.5 rounded focus:opacity-100"
                                                                                 title="Rename workflow"
-                                                                            >
-                                                                                <Pencil className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-primary" />
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                    <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-1 max-w-[280px] sm:max-w-xs md:max-w-md">
-                                                                        {auth.description || 'No description provided.'}
-                                                                    </p>
-                                                                    <div className="flex items-center gap-2 pt-1">
-                                                                        <Badge variant="outline" className="text-[8px] font-semibold bg-accent/20 text-muted-foreground border-border rounded-md px-1.5 py-0 tracking-wider uppercase">
-                                                                            {auth.trigger.replace(/_/g, ' ')}
-                                                                        </Badge>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="py-6 align-middle text-center">
-                                                            <div className="inline-block">
-                                                                <MiniFlowPreview nodes={auth.nodes} />
-                                                            </div>
-                                                        </TableCell>
+                                                                             >
+                                                                                 <Pencil className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-primary" />
+                                                                             </button>
+                                                                         </div>
+                                                                     )}
+                                                                     <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-1 max-w-[280px] sm:max-w-xs md:max-w-md">
+                                                                         {auth.description || 'No description provided.'}
+                                                                     </p>
+                                                                     <div className="flex items-center gap-2 pt-1">
+                                                                         <Badge variant="outline" className="text-[8px] font-semibold bg-accent/20 text-muted-foreground border-border rounded-md px-1.5 py-0 tracking-wider uppercase">
+                                                                             {auth.trigger.replace(/_/g, ' ')}
+                                                                         </Badge>
+                                                                     </div>
+                                                                 </div>
+                                                             </div>
+                                                         </TableCell>
+                                                         <TableCell className="py-6 align-middle text-center">
+                                                             <div className="inline-block">
+                                                                 <MiniFlowPreview nodes={auth.nodes} edges={auth.edges} />
+                                                             </div>
+                                                         </TableCell>
                                                         <TableCell className="py-6 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                                                             <div className="flex items-center justify-center gap-3 bg-muted/30 border border-border/50 rounded-xl px-3 py-1.5 w-fit mx-auto shadow-sm">
                                                                 <TooltipProvider delayDuration={100}>

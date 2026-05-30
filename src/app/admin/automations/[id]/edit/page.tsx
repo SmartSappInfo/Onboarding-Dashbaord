@@ -86,7 +86,11 @@ export default function EditAutomationPage() {
   const handleSave = async () => {
     if (!user) return;
     setIsSaving(true);
-    const res = await saveAutomationAction(automationId, currentData, user.uid);
+    // Sanitize node and edge state by deep cloning to plain JSON primitives.
+    // This strips functions, symbols, and non-serializable client references attached by ReactFlow
+    // to prevent Next.js from throwing serialization errors during Server Action transmission.
+    const cleanData = JSON.parse(JSON.stringify(currentData));
+    const res = await saveAutomationAction(automationId, cleanData, user.uid);
     if (res.success) {
       toast({ title: 'Logic Synchronized', description: 'Automation blueprint updated.' });
     } else {

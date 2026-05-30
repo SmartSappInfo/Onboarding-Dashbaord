@@ -35,6 +35,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useTerminology } from '@/hooks/use-terminology';
+import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
 
 export default function MessagingTriggersPage() {
   const firestore = useFirestore();
@@ -341,6 +342,7 @@ export default function MessagingTriggersPage() {
                 createdAt: new Date().toISOString() 
             });
         }
+        invalidateAllTemplatesCache();
         toast({ title: 'Override Saved Successfully' });
         setIsAdding(false);
         setEditingTemplate(null);
@@ -354,6 +356,7 @@ export default function MessagingTriggersPage() {
     setIsReverting(true);
     try {
       await deleteDoc(doc(firestore, 'message_templates', templateToRevert));
+      invalidateAllTemplatesCache();
       toast({ title: 'Reverted to System Default' });
       setTemplateToRevert(null);
     } catch (error: any) {

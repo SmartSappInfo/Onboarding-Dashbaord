@@ -3,13 +3,7 @@ import {
   collection, 
   query, 
   where, 
-  orderBy, 
-  limit, 
-  startAfter, 
-  onSnapshot,
-  getCountFromServer,
-  DocumentData,
-  QueryDocumentSnapshot
+  onSnapshot
 } from 'firebase/firestore';
 import type { WorkspaceEntity } from '@/lib/types';
 
@@ -18,9 +12,7 @@ interface UsePaginatedEntitiesProps {
   activeWorkspaceId: string | null | undefined;
   currentPage: number;
   pageSize: number;
-  filterState: any;
-  assignedUserId: string | null | undefined;
-  tagFilteredIds: Set<string> | null;
+  filteredEntityIds: string[];
 }
 
 export function usePaginatedEntities({
@@ -28,45 +20,20 @@ export function usePaginatedEntities({
   activeWorkspaceId,
   currentPage,
   pageSize,
-  filterState,
-  assignedUserId,
-  tagFilteredIds,
+  filteredEntityIds,
 }: UsePaginatedEntitiesProps) {
   const [entities, setEntities] = useState<WorkspaceEntity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<any>(null);
-  const [totalCount, setTotalCount] = useState(0);
-  const [pageSnapshots, setPageSnapshots] = useState<QueryDocumentSnapshot<DocumentData>[]>([]);
 
-  // 1. Get the total count for the filtered query (cheap index-only query)
+  // Slice the IDs that correspond to the current page
+  const pageIds = useMemo(() => {
+    return filteredEntityIds.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [filteredEntityIds, currentPage, pageSize]);
+
+  // Subscribe to updates for only the documents matching pageIds
   useEffect(() => {
-    if (!firestore || !activeWorkspaceId) return;
-
-    let q = query(
-      collection(firestore, 'workspace_entities'),
-      where('workspaceId', '==', activeWorkspaceId)
-    );
-
-    if (filterState.status && filterState.status !== 'all') {
-      q = query(q, where('status', '==', filterState.status));
-    }
-
-    if (assignedUserId) {
-      if (assignedUserId !== 'unassigned') {
-        q = query(q, where('assignedTo.userId', '==', assignedUserId));
-      }
-    }
-
-    getCountFromServer(q).then(snap => {
-      setTotalCount(snap.data().count);
-    }).catch(err => {
-      console.error('Error fetching total count:', err);
-    });
-  }, [firestore, activeWorkspaceId, filterState.status, assignedUserId]);
-
-  // 2. Fetch the paginated documents
-  useEffect(() => {
-    if (!firestore || !activeWorkspaceId) {
+    if (!firestore || !activeWorkspaceId || pageIds.length === 0) {
       setEntities([]);
       setIsLoading(false);
       return;
@@ -75,71 +42,53 @@ export function usePaginatedEntities({
     setIsLoading(true);
     setError(null);
 
-    // Build query with basic indexing constraints
-    let q = query(
-      collection(firestore, 'workspace_entities'),
-      where('workspaceId', '==', activeWorkspaceId)
-    );
-
-    if (filterState.status && filterState.status !== 'all') {
-      q = query(q, where('status', '==', filterState.status));
+    // Split pageIds into chunks of 30 due to Firestore's 'in' query limitations
+    const chunks: string[][] = [];
+    for (let i = 0; i < pageIds.length; i += 30) {
+      chunks.push(pageIds.slice(i, i + 30));
     }
 
-    if (assignedUserId) {
-      if (assignedUserId !== 'unassigned') {
-        q = query(q, where('assignedTo.userId', '==', assignedUserId));
-      }
-    }
+    const unsubscribes = chunks.map((chunk, chunkIdx) => {
+      const q = query(
+        collection(firestore, 'workspace_entities'),
+        where('__name__', 'in', chunk)
+      );
 
-    // Default order by addedAt descending
-    q = query(q, orderBy('addedAt', 'desc'));
-
-    // Apply cursor pagination
-    if (currentPage > 1 && pageSnapshots[currentPage - 2]) {
-      q = query(q, startAfter(pageSnapshots[currentPage - 2]));
-    }
-
-    q = query(q, limit(pageSize));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const results: WorkspaceEntity[] = [];
-        snapshot.forEach((doc) => {
-          results.push({ ...(doc.data() as any), id: doc.id });
-        });
-
-        // Store the last visible document snapshot of the current page for next page queries
-        if (snapshot.docs.length > 0) {
-          setPageSnapshots(prev => {
-            const nextSnapshots = [...prev];
-            nextSnapshots[currentPage - 1] = snapshot.docs[snapshot.docs.length - 1];
-            return nextSnapshots;
+      return onSnapshot(
+        q,
+        (snapshot) => {
+          const resultsMap: Record<string, WorkspaceEntity> = {};
+          snapshot.forEach((doc) => {
+            resultsMap[doc.id] = { ...(doc.data() as any), id: doc.id };
           });
+
+          setEntities(prev => {
+            const merged = { 
+              ...prev.reduce((acc, e) => { acc[e.id] = e; return acc; }, {} as Record<string, WorkspaceEntity>), 
+              ...resultsMap 
+            };
+            return pageIds.map(id => merged[id]).filter(Boolean);
+          });
+          
+          if (chunkIdx === chunks.length - 1) {
+            setIsLoading(false);
+          }
+        },
+        (err) => {
+          console.error(`Page subscription chunk ${chunkIdx} error:`, err);
+          setError(err);
+          setIsLoading(false);
         }
+      );
+    });
 
-        setEntities(results);
-        setIsLoading(false);
-      },
-      (err) => {
-        console.error('Pagination query error:', err);
-        setError(err);
-        setIsLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [firestore, activeWorkspaceId, currentPage, pageSize, filterState.status, assignedUserId]);
-
-  // Clear snapshots when filters or query criteria changes
-  useEffect(() => {
-    setPageSnapshots([]);
-  }, [filterState.status, assignedUserId, activeWorkspaceId]);
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, [firestore, activeWorkspaceId, pageIds]);
 
   return {
     entities,
     isLoading,
     error,
-    totalCount,
+    totalCount: filteredEntityIds.length,
   };
 }

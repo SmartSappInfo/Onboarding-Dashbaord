@@ -210,19 +210,19 @@ export default function RsvpResponseClient({
                         onClick={() => handleRsvp('going')}
                         className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white h-11 text-xs"
                       >
-                        Going
+                        I'll Attend
                       </Button>
                       <Button
                         onClick={() => handleRsvp('not_going')}
                         className="rounded-xl font-bold bg-rose-600 hover:bg-rose-500 text-white h-11 text-xs"
                       >
-                        Decline
+                        I Can't Attend
                       </Button>
                       <Button
                         onClick={() => handleRsvp('later')}
                         className="rounded-xl font-bold bg-amber-600 hover:bg-amber-500 text-white h-11 text-xs"
                       >
-                        Later
+                        Remind me Later
                       </Button>
                     </div>
                   ) : (

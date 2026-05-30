@@ -116,7 +116,7 @@ export const MessagingChannelBlock = React.memo(function MessagingChannelBlock({
                   value={emailValue}
                   onValueChange={onEmailChange}
                   placeholder={placeholderEmail}
-                  className="h-9 rounded-xl text-[10px] font-bold"
+                  compact
                 />
               </div>
             )}
@@ -133,7 +133,7 @@ export const MessagingChannelBlock = React.memo(function MessagingChannelBlock({
                   value={smsValue}
                   onValueChange={onSmsChange}
                   placeholder={placeholderSms}
-                  className="h-9 rounded-xl text-[10px] font-bold"
+                  compact
                 />
               </div>
             )}

@@ -227,8 +227,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     }
 
     // 4.5 Resolve Personalized Meeting Link (Webinar Lifecycle Phase 2)
-    // If a _meetingId is passed, check if the recipient is a registrant and append their token
-    if (meetingId && (finalVariables.meeting_link || finalVariables.link)) {
+    // If a _meetingId is passed, check if the recipient is a registrant and enrich variables
+    if (meetingId) {
         let registrantDoc = null;
         
         // Try email match
@@ -248,8 +248,48 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
 
         if (registrantDoc) {
-            const token = registrantDoc.data().token;
+            const rDocData = registrantDoc.data();
+            const token = rDocData.token;
             if (token) {
+                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+                
+                // Parse slugs from personalizedMeetingUrl
+                let typeSlug = 'meeting';
+                let meetingSlug = meetingId;
+                if (rDocData.personalizedMeetingUrl) {
+                    try {
+                        const urlObj = new URL(rDocData.personalizedMeetingUrl);
+                        const paths = urlObj.pathname.split('/').filter(Boolean);
+                        if (paths.length >= 3) {
+                            typeSlug = paths[1];
+                            meetingSlug = paths[2];
+                        }
+                    } catch { /* ignore */ }
+                }
+
+                // Set RSVP URLs dynamically
+                if (finalVariables.rsvp_going_url === undefined) {
+                    finalVariables.rsvp_going_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=going`;
+                }
+                if (finalVariables.rsvp_declined_url === undefined) {
+                    finalVariables.rsvp_declined_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=not_going`;
+                }
+                if (finalVariables.rsvp_later_url === undefined) {
+                    finalVariables.rsvp_later_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=later`;
+                }
+                if (finalVariables.registrant_join_link === undefined) {
+                    finalVariables.registrant_join_link = rDocData.personalizedMeetingUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+                }
+                if (finalVariables.meeting_registrant_join_link === undefined) {
+                    finalVariables.meeting_registrant_join_link = rDocData.personalizedMeetingUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+                }
+                if (finalVariables.meeting_registrant_one_click_link === undefined) {
+                    finalVariables.meeting_registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`;
+                }
+                if (finalVariables.registrant_one_click_link === undefined) {
+                    finalVariables.registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`;
+                }
+
                 if (finalVariables.meeting_link) {
                     const sep = finalVariables.meeting_link.includes('?') ? '&' : '?';
                     finalVariables.meeting_link = `${finalVariables.meeting_link}${sep}token=${token}`;

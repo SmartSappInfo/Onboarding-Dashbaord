@@ -378,7 +378,7 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                                                                 value={field.value}
                                                                                 onValueChange={field.onChange}
                                                                                 placeholder="No email blueprint"
-                                                                                className="h-12 rounded-xl bg-muted/20 border-none font-bold text-xs"
+                                                                                compact
                                                                             />
                                                                         )}
                                                                     />
@@ -397,7 +397,7 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                                                                 value={field.value}
                                                                                 onValueChange={field.onChange}
                                                                                 placeholder="No SMS blueprint"
-                                                                                className="h-12 rounded-xl bg-muted/20 border-none font-bold text-xs"
+                                                                                compact
                                                                             />
                                                                         )}
                                                                     />

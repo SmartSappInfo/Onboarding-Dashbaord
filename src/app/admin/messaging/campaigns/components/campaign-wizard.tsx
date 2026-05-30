@@ -653,7 +653,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                         }
                                     }}
                                     placeholder="Choose campaign blueprint..."
-                                    className="h-12 rounded-xl bg-card border-border/50 font-bold transition-all text-xs"
+                                    className="rounded-xl bg-card border-border/50 font-bold transition-all text-xs"
                                 />
                                 
                                 {state.templateId ? (

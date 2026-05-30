@@ -2,7 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { generateRegistrantToken } from '@/lib/meeting-tokens';
-import { sendRawMessage } from '@/lib/messaging-engine';
+import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
 import { ensureAbsoluteUrl } from '@/lib/utils/url-helpers';
 
 export async function deleteRegistrantAction(meetingId: string, registrantId: string) {
@@ -126,6 +126,7 @@ export async function adminRegisterParticipantAction(
       workspaceIds: meeting.workspaceIds || [],
       token,
       status: 'approved', // Admin registration defaults to approved
+      source: 'admin',
       registrationData: formData,
       name: formData.name,
       email: userEmail,
@@ -196,9 +197,16 @@ export async function sendMeetingInvitationsAction(
 
         if (!existingQuery.empty) {
           const existingDoc = existingQuery.docs[0];
+          const existingData = existingDoc.data();
+
+          // Skip contacts who have already accepted/registered/attended
+          if (existingData.status === 'approved' || existingData.status === 'attended') {
+            return { registrantId: existingDoc.id, success: true, skipped: true };
+          }
+
           registrantId = existingDoc.id;
-          token = existingDoc.data().token;
-          personalizedMeetingUrl = existingDoc.data().personalizedMeetingUrl;
+          token = existingData.token;
+          personalizedMeetingUrl = existingData.personalizedMeetingUrl;
           
           // Keep entityName updated if missing
           if (!existingDoc.data().entityName && rec.entityName) {
@@ -215,6 +223,7 @@ export async function sendMeetingInvitationsAction(
             entityName: rec.entityName || '',
             token,
             status: 'pending',
+            source: 'invite',
             name: rec.name,
             email: rec.email?.toLowerCase().trim() || '',
             phone: rec.phone || '',
@@ -249,6 +258,10 @@ export async function sendMeetingInvitationsAction(
                 meeting_title: meeting.heroTitle || meeting.entityName || 'Meeting',
                 meeting_time: new Date(meeting.meetingTime).toLocaleString(),
                 recipient_name: rec.name,
+                meeting_registrant_one_click_link: `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`,
+                rsvp_going_url: rsvpGoingUrl,
+                rsvp_declined_url: rsvpDeclinedUrl,
+                rsvp_later_url: rsvpLaterUrl,
               },
               scheduledAt: scheduleTime,
               status: 'pending',
@@ -259,11 +272,37 @@ export async function sendMeetingInvitationsAction(
               createdAt: now,
             });
           } else {
-            const subject = `Invitation: ${meeting.heroTitle || 'Meeting Session'}`;
-            let body = '';
+            const activeTemplateId = channel === 'email' ? emailTemplateId : smsTemplateId;
+            if (activeTemplateId) {
+              const res = await sendMessage({
+                templateId: activeTemplateId,
+                senderProfileId: 'default',
+                recipient: contactDetail,
+                variables: {
+                  meetingId,
+                  rsvpGoingUrl,
+                  rsvpDeclinedUrl,
+                  rsvpLaterUrl,
+                  meeting_title: meeting.heroTitle || meeting.entityName || 'Meeting',
+                  meeting_time: new Date(meeting.meetingTime).toLocaleString(),
+                  recipient_name: rec.name,
+                  meeting_registrant_one_click_link: `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`,
+                  rsvp_going_url: rsvpGoingUrl,
+                  rsvp_declined_url: rsvpDeclinedUrl,
+                  rsvp_later_url: rsvpLaterUrl,
+                },
+                entityId: rec.entityId,
+                workspaceId,
+              });
+              if (!res.success) {
+                throw new Error(res.error || 'Failed to dispatch message.');
+              }
+            } else {
+              const subject = `Invitation: ${meeting.heroTitle || 'Meeting Session'}`;
+              let body = '';
 
-            if (channel === 'email') {
-              body = `
+              if (channel === 'email') {
+                body = `
 <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
   <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; margin-top: 0;">You're Invited!</h2>
   <p style="font-size: 14px; color: #475569; line-height: 1.6;">Hello ${rec.name},</p>
@@ -285,21 +324,22 @@ export async function sendMeetingInvitationsAction(
   <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
   <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">Sent via SmartSapp Onboarding. All rights reserved.</p>
 </div>
-              `;
-            } else {
-              body = `Invitation: ${meeting.heroTitle || 'Meeting'}\nTime: ${new Date(meeting.meetingTime).toLocaleString()}\nRSVP:\nGoing: ${rsvpGoingUrl}\nNo: ${rsvpDeclinedUrl}`;
-            }
+                `;
+              } else {
+                body = `Invitation: ${meeting.heroTitle || 'Meeting'}\nTime: ${new Date(meeting.meetingTime).toLocaleString()}\nRSVP:\nGoing: ${rsvpGoingUrl}\nNo: ${rsvpDeclinedUrl}`;
+              }
 
-            const res = await sendRawMessage({
-              channel,
-              recipient: contactDetail,
-              subject: channel === 'email' ? subject : undefined,
-              body,
-              workspaceIds: [workspaceId],
-            });
+              const res = await sendRawMessage({
+                channel,
+                recipient: contactDetail,
+                subject: channel === 'email' ? subject : undefined,
+                body,
+                workspaceIds: [workspaceId],
+              });
 
-            if (!res.success) {
-              throw new Error(res.error || 'Failed to dispatch message.');
+              if (!res.success) {
+                throw new Error(res.error || 'Failed to dispatch message.');
+              }
             }
           }
         }
@@ -312,14 +352,15 @@ export async function sendMeetingInvitationsAction(
       })
     );
 
-    const successes = results.filter((r) => r.status === 'fulfilled').length;
+    const successes = results.filter((r) => r.status === 'fulfilled' && !(r.value as any)?.skipped).length;
+    const skipped = results.filter((r) => r.status === 'fulfilled' && (r.value as any)?.skipped).length;
     const failures = results.filter((r) => r.status === 'rejected').length;
 
     return {
       success: failures === 0,
       message: isScheduled
-        ? `Scheduled ${successes} invitations successfully for ${new Date(scheduleTime!).toLocaleString()}. ${failures > 0 ? `${failures} failed.` : ''}`
-        : `Dispatched ${successes} invitations immediately. ${failures > 0 ? `${failures} failed.` : ''}`,
+        ? `Scheduled ${successes} invitations successfully. ${failures > 0 ? `${failures} failed.` : ''}`
+        : `Dispatched ${successes} invitations immediately.${skipped > 0 ? ` Skipped ${skipped} already attending.` : ''} ${failures > 0 ? `${failures} failed.` : ''}`,
     };
   } catch (error: any) {
     console.error('[sendMeetingInvitationsAction]', error);
@@ -341,13 +382,74 @@ export async function submitRsvpResponseAction(
     }
 
     const regDoc = qSnap.docs[0];
-    const targetStatus = responseStatus === 'going' ? 'approved' : responseStatus === 'not_going' ? 'cancelled' : 'pending';
+    const regData = regDoc.data();
 
-    await regDoc.ref.update({
+    let targetStatus = 'pending';
+    let targetSource = regData.source || 'invite';
+
+    if (responseStatus === 'going') {
+      targetStatus = 'approved';
+      targetSource = 'one-click';
+    } else if (responseStatus === 'not_going') {
+      targetStatus = 'cancelled';
+    }
+
+    let updatedFields: Record<string, any> = {
       rsvpStatus: responseStatus,
       status: targetStatus,
+      source: targetSource,
       rsvpUpdatedAt: new Date().toISOString(),
-    });
+    };
+
+    // Pull and sync contact details from workspace_entities or entities
+    if (regData.entityId) {
+      try {
+        let entitySnap = await adminDb.collection('workspace_entities').doc(regData.entityId).get();
+        if (!entitySnap.exists) {
+          entitySnap = await adminDb.collection('entities').doc(regData.entityId).get();
+        }
+
+        if (entitySnap.exists) {
+          const entityData = entitySnap.data()!;
+          const contacts = entityData.entityContacts || entityData.contacts || [];
+          const matchedContact = contacts.find((c: any) => 
+            (c.email && c.email.toLowerCase().trim() === regData.email?.toLowerCase().trim()) ||
+            (c.phone && c.phone === regData.phone)
+          );
+          if (matchedContact) {
+            updatedFields.name = matchedContact.name || regData.name;
+            if (matchedContact.email) updatedFields.email = matchedContact.email.toLowerCase().trim();
+            if (matchedContact.phone) updatedFields.phone = matchedContact.phone;
+          }
+        }
+      } catch (err) {
+        console.warn('Entity sync skipped during RSVP:', err);
+      }
+    }
+
+    await regDoc.ref.update(updatedFields);
+
+    // If accepted going, trigger registrant activity tracking
+    if (responseStatus === 'going') {
+      const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
+      if (meetingSnap.exists) {
+        const meeting = meetingSnap.data()!;
+        const workspaceId = meeting.workspaceIds?.[0] || regData.workspaceIds?.[0] || '';
+        if (workspaceId) {
+          const { emitMeetingRegistrantActivity } = await import('@/lib/meeting-automation-events');
+          void emitMeetingRegistrantActivity({
+            type: 'meeting_registrant_added',
+            organizationId: meeting.organizationId || 'default',
+            workspaceId,
+            meetingId,
+            registrantId: regDoc.id,
+            registrantName: updatedFields.name || regData.name,
+            registrantEmail: updatedFields.email || regData.email,
+            meetingTypeId: meeting.type?.id,
+          });
+        }
+      }
+    }
 
     return { success: true };
   } catch (error: any) {

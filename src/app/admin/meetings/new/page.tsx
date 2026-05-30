@@ -5,6 +5,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
@@ -36,7 +37,9 @@ import {
     QrCode,
     Link2,
     Users,
-    Webhook
+    Webhook,
+    Pencil,
+    X
 } from 'lucide-react';
 import { MEETING_TEMPLATES } from '../constants/templates';
 
@@ -84,6 +87,7 @@ import { MeetingFacilitatorsSection } from '../components/MeetingFacilitatorsSec
 
 const formSchema = z.object({
   // V3: Entity is now optional — standalone meetings supported
+  title: z.string().min(1, 'Internal title is required.').default('New Webinar'),
   entity: z.custom<WorkspaceEntity>().optional().nullable(),
   // V3: meetingSlug is the standalone URL slug (replaces entitySlug as primary)
   meetingSlug: z.string()
@@ -240,6 +244,7 @@ export default function NewMeetingPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      title: 'New Webinar',
       entity: null,
       meetingSlug: '',
       meetingTime: new Date(new Date().setHours(10, 0, 0, 0)),
@@ -287,6 +292,21 @@ export default function NewMeetingPage() {
   const registrationEnabled = form.watch('registrationEnabled');
   const watchedBrandingEnabled = form.watch('brandingEnabled');
   const watchedHeroLayout = form.watch('heroLayout');
+
+  const [isEditingTitle, setIsEditingTitle] = React.useState(false);
+  const titleVal = form.watch('title') || 'New Webinar';
+  const [localTitle, setLocalTitle] = React.useState(titleVal);
+
+  React.useEffect(() => {
+    setLocalTitle(titleVal);
+  }, [titleVal]);
+
+  const handleSaveTitle = () => {
+    if (localTitle.trim()) {
+      form.setValue('title', localTitle.trim(), { shouldValidate: true });
+      setIsEditingTitle(false);
+    }
+  };
 
   React.useEffect(() => {
     const entityIdFromUrl = searchParams.get('entityId');
@@ -413,6 +433,7 @@ export default function NewMeetingPage() {
         }
         
         const meetingData: Record<string, any> = {
+            title: data.title,
             // V3: meetingSlug is the primary public URL identifier
             meetingSlug: data.meetingSlug,
             // V3: Entity is optional
@@ -617,15 +638,60 @@ export default function NewMeetingPage() {
     return (
         <div className="h-full w-full overflow-y-auto bg-background">
         <div className="w-full p-8 space-y-8 pb-24 text-left">
-        
-        {/* Header */}
- <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-            <div>
- <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none mb-1 text-left">Create Session</h1>
- <p className="text-[10px] font-bold text-muted-foreground text-left">Meeting & Webinar Configuration</p>
+             {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+                <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0" type="button">
+                    <Link href="/admin/meetings">
+                        <ChevronLeft className="h-5 w-5" />
+                    </Link>
+                </Button>
+                <div className="flex flex-col justify-center text-left">
+                    {isEditingTitle ? (
+                        <div className="flex items-center gap-2">
+                            <Input 
+                                value={localTitle}
+                                onChange={(e) => setLocalTitle(e.target.value)}
+                                className="text-2xl font-black tracking-tight text-foreground bg-transparent border-b border-input focus-visible:ring-0 focus-visible:border-primary rounded-none px-0 py-1 h-auto w-full max-w-md font-bold"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleSaveTitle();
+                                    } else if (e.key === 'Escape') {
+                                        setLocalTitle(titleVal);
+                                        setIsEditingTitle(false);
+                                    }
+                                }}
+                            />
+                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-emerald-500 hover:bg-emerald-500/10 shrink-0" onClick={handleSaveTitle}>
+                                <Check className="h-4 w-4" />
+                            </Button>
+                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted/10 shrink-0" onClick={() => { setLocalTitle(titleVal); setIsEditingTitle(false); }}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 group/title">
+                            <h1 className="text-2xl font-black tracking-tight text-foreground leading-none">
+                                {titleVal}
+                            </h1>
+                            <Button 
+                                type="button" 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 rounded-lg opacity-0 group-hover/title:opacity-100 group-focus-within/title:opacity-100 scale-95 group-hover/title:scale-100 transition-all duration-200 text-muted-foreground hover:text-foreground shrink-0"
+                                onClick={() => setIsEditingTitle(true)}
+                            >
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1.5">Internal Webinar/Session Title</p>
+                </div>
             </div>
- <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm w-fit">
- <Settings2 className="h-3 w-3" />
+            <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm w-fit">
+                <Settings2 className="h-3 w-3" />
                 Wizard Mode
             </div>
         </div>
@@ -1339,7 +1405,7 @@ export default function NewMeetingPage() {
                                                         { label: 'Meeting', token: '{{meeting_title}}' },
                                                         { label: 'Date', token: '{{meeting_date}}' },
                                                         { label: 'Time', token: '{{meeting_time}}' },
-                                                        { label: 'Link', token: '{{meeting_link}}' },
+                                                        { label: 'Join Link', token: '{{registrant_join_link}}' },
                                                     ].map(v => (
                                                         <button
                                                             key={v.token}

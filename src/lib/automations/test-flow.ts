@@ -1,5 +1,3 @@
-'use server';
-
 import { buildAutomationPayload } from '../automation-payload';
 import { logAutomationEvent } from '../automation-log';
 import {

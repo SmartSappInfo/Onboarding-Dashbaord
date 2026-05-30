@@ -5,13 +5,16 @@ import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { Survey, SurveyResponse, SurveySession } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Survey, SurveyResponse, SurveySession, SurveySummary } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList, PieChart, Pie, Legend, LineChart, Line, CartesianGrid } from 'recharts';
 import { cn } from '@/lib/utils';
-import { Target, MousePointer2, AlertCircle, TrendingDown, UserMinus, ShieldCheck, User as UserIcon, Award, Activity, Users, Trophy, BarChart3, TrendingUp } from 'lucide-react';
+import { Target, MousePointer2, AlertCircle, TrendingDown, UserMinus, ShieldCheck, User as UserIcon, Award, Activity, Users, Trophy, BarChart3, TrendingUp, Brain, Sparkles, MessageSquare, ArrowRight, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from "@/components/ui/progress";
@@ -282,9 +285,7 @@ function RepresentativeLeaderboard({ data }: { data: any[] }) {
                     <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
                         <Award className="h-5 w-5" />
                     </div>
-                    <div>
-                        <CardTitle className="text-sm font-semibold tracking-tight">Representative Performance</CardTitle>
-                    </div>
+                    <CardTitle className="text-sm font-semibold tracking-tight">Representative Performance</CardTitle>
                 </div>
             </CardHeader>
             <CardContent className="p-0 flex-1 overflow-auto max-h-[400px]">
@@ -379,7 +380,130 @@ const StatCard = React.memo(function StatCard({ label, value, icon: Icon, iconCl
     );
 });
 
-export default function AnalyticsView({ survey, responses }: { survey: Survey; responses: SurveyResponse[] }) {
+// ─── AI Insights Card Component ───────────────────────────────────────────────
+
+function AIInsightsCard({
+    summaries,
+    onGenerateSummary,
+    isGeneratingSummary,
+    surveyId
+}: {
+    summaries: SurveySummary[];
+    onGenerateSummary?: () => Promise<void>;
+    isGeneratingSummary?: boolean;
+    surveyId: string;
+}) {
+    const router = useRouter();
+    const latestSummary = summaries.find(s => !s.prompt) || summaries[0];
+
+    if (latestSummary) {
+        return (
+            <motion.div 
+                initial={{ opacity: 0, y: -12 }} 
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+            >
+                <Card className="relative overflow-hidden border border-violet-500/20 bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-transparent backdrop-blur-md shadow-xl">
+                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-violet-500/20 rounded-full blur-2xl pointer-events-none" />
+                    
+                    <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between gap-4 flex-wrap">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-violet-500/20 rounded-xl text-violet-600 dark:text-violet-400">
+                                    <Brain className="h-5 w-5 animate-pulse" />
+                                </div>
+                                <CardTitle className="text-sm font-bold tracking-tight text-violet-900 dark:text-violet-200">
+                                    AI Insights & Executive Summary
+                                </CardTitle>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-8 text-xs font-bold border-violet-500/20 hover:bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                                    onClick={() => router.push(`/admin/surveys/${surveyId}/results?view=ai-summaries`)}
+                                >
+                                    <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                                    Ask Follow-up
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-8 text-xs font-bold text-muted-foreground hover:text-foreground"
+                                    onClick={onGenerateSummary}
+                                    disabled={isGeneratingSummary}
+                                >
+                                    {isGeneratingSummary ? (
+                                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                    )}
+                                    Regenerate
+                                </Button>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                        <div 
+                            className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 text-sm leading-relaxed [&>p]:mb-3 [&>ul]:pl-4 [&>ul]:list-disc [&>ul>li]:mb-1 [&>h2]:text-base [&>h2]:font-bold [&>h2]:mt-4 [&>h2]:mb-2 [&>blockquote]:border-l-4 [&>blockquote]:border-violet-500 [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:my-3"
+                            dangerouslySetInnerHTML={{ __html: latestSummary.summary }}
+                        />
+                    </CardContent>
+                </Card>
+            </motion.div>
+        );
+    }
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0, y: -12 }} 
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+        >
+            <Card className="relative overflow-hidden border border-dashed border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent backdrop-blur-sm p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-violet-500/10 rounded-2xl text-violet-600 dark:text-violet-400 shrink-0">
+                            <Brain className="h-6 w-6" />
+                        </div>
+                        <h4 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                            Uncover Deeper Trends with AI Insights
+                        </h4>
+                    </div>
+                    <div className="shrink-0">
+                        <RainbowButton 
+                            onClick={onGenerateSummary} 
+                            disabled={isGeneratingSummary} 
+                            className="h-11 px-6 gap-2 font-bold shadow-xl text-white text-xs"
+                        >
+                            {isGeneratingSummary ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Sparkles className="h-4 w-4" />
+                            )}
+                            {isGeneratingSummary ? 'Analyzing Responses...' : 'Generate AI Summary'}
+                        </RainbowButton>
+                    </div>
+                </div>
+            </Card>
+        </motion.div>
+    );
+}
+
+export default function AnalyticsView({ 
+    survey, 
+    responses, 
+    summaries = [], 
+    onGenerateSummary, 
+    isGeneratingSummary 
+}: { 
+    survey: Survey; 
+    responses: SurveyResponse[]; 
+    summaries?: SurveySummary[]; 
+    onGenerateSummary?: () => Promise<void>; 
+    isGeneratingSummary?: boolean; 
+}) {
     const firestore = useFirestore();
     const { activeOrganizationId } = useTenant();
 
@@ -414,7 +538,15 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
     const submissionToLeadRate = responses.length > 0 ? ((totalLeads / responses.length) * 100).toFixed(1) : 0;
 
     return (
- <div className="space-y-8">
+        <div className="space-y-8">
+            
+            {/* AI Insights Card */}
+            <AIInsightsCard 
+                summaries={summaries} 
+                onGenerateSummary={onGenerateSummary} 
+                isGeneratingSummary={isGeneratingSummary} 
+                surveyId={survey.id}
+            />
             
             {/* Top Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

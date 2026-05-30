@@ -59,6 +59,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── 3. Dedup check ─────────────────────────────────────────────────────
   const userEmail = String(formData.email || '').toLowerCase().trim();
   const userPhone = String(formData.phone || '').trim();
+  const now = new Date().toISOString();
 
   if (userEmail || userPhone) {
     let existingSnap: FirebaseFirestore.QueryDocumentSnapshot | null = null;
@@ -74,6 +75,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (existingSnap) {
       const existing = existingSnap.data();
+      // If the registrant document is just a pending invite, convert them to a direct registrant
+      if (existing.status === 'pending' || existing.source === 'invite') {
+        await existingSnap.ref.update({
+          status: 'registered',
+          source: 'direct',
+          registeredAt: now,
+          registrationData: formData,
+        });
+        return NextResponse.json({
+          token: existing.token,
+          status: 'registered',
+          personalizedMeetingUrl: existing.personalizedMeetingUrl,
+          alreadyRegistered: true,
+        });
+      }
       return NextResponse.json({
         token: existing.token,
         status: existing.status,
@@ -109,7 +125,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meeting.id;
   const personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
 
-  const now = new Date().toISOString();
   const registrantName = String(formData.name || formData.full_name || '');
 
   const registrantData = {
@@ -117,6 +132,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     workspaceIds: meeting.workspaceIds || [],
     token,
     status,
+    source: 'direct',
     registrationData: formData,
     name: registrantName,
     email: userEmail,

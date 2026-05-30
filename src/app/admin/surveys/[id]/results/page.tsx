@@ -3,9 +3,9 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from 'react';
-import { useDoc, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import type { Survey, SurveyResponse, SurveyQuestion } from "@/lib/types";
-import { doc, collection, query, orderBy, addDoc } from 'firebase/firestore';
+import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import type { Survey, SurveyResponse, SurveyQuestion, SurveySummary, UserProfile } from "@/lib/types";
+import { doc, collection, query, orderBy, addDoc, onSnapshot } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Sparkles, Loader2, Download, BarChart3, FileText, Brain, Users } from "lucide-react";
 import { RainbowButton } from "@/components/ui/rainbow-button";
@@ -21,6 +21,8 @@ import AnalyticsView from "./components/analytics-view";
 import AISummariesView from "./components/ai-summaries-view";
 import { useSetBreadcrumb } from "@/hooks/use-set-breadcrumb";
 import { stripHtml } from "@/lib/utils";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import AiModelSelector from "@/components/ai/AiModelSelector";
 
 // Lazy-load Field Team view since it's behind a conditional tab (bundle-dynamic-imports)
 const FieldTeamView = dynamic(() => import('./components/field-team-view'), {
@@ -67,9 +69,28 @@ export default function SurveyResultsPage() {
     const firestore = useFirestore();
     const { id: surveyId } = params;
     const { toast } = useToast();
+    const { user } = useUser();
+    const { activeOrganizationId } = useWorkspace();
 
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
     const activeTab = searchParams.get("view") || "responses";
+
+    // Live model preferences
+    const [liveProvider, setLiveProvider] = React.useState('googleai');
+    const [liveModelId, setLiveModelId] = React.useState('gemini-3-flash-preview');
+
+    React.useEffect(() => {
+        if (!user || !firestore) return;
+        const userRef = doc(firestore, 'users', user.uid);
+        const unsubscribe = onSnapshot(userRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data() as UserProfile;
+                if (data.preferredAiProvider) setLiveProvider(data.preferredAiProvider);
+                if (data.preferredAiModel) setLiveModelId(data.preferredAiModel);
+            }
+        });
+        return () => unsubscribe();
+    }, [user, firestore]);
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
@@ -84,6 +105,13 @@ export default function SurveyResultsPage() {
     const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
     const { data: responses, isLoading: areResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
 
+    const summariesColRef = useMemoFirebase(() => {
+        if (!firestore || !surveyId || typeof surveyId !== 'string') return null;
+        return query(collection(firestore, `surveys/${surveyId}/summaries`), orderBy("createdAt", "desc"));
+    }, [firestore, surveyId]);
+
+    const { data: summaries, isLoading: areSummariesLoading } = useCollection<SurveySummary>(summariesColRef);
+
     // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
     useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
@@ -94,12 +122,20 @@ export default function SurveyResultsPage() {
         }
         setIsGeneratingSummary(true);
         try {
-            const result = await generateSurveySummary({ survey, responses });
+            const result = await generateSurveySummary({ 
+                survey, 
+                responses,
+                organizationId: activeOrganizationId || undefined,
+                provider: liveProvider,
+                modelId: liveModelId,
+            });
             
             const summariesCollection = collection(firestore, `surveys/${surveyId}/summaries`);
             const summaryData = {
                 summary: result.summary,
                 createdAt: new Date().toISOString(),
+                provider: liveProvider,
+                modelId: liveModelId,
             };
             
             await addDoc(summariesCollection, summaryData);
@@ -198,7 +234,8 @@ export default function SurveyResultsPage() {
                         </TabsTrigger>
                     )}
                     </TabsList>
- <div className="flex shrink-0 items-center gap-2">
+ <div className="flex shrink-0 items-center gap-4">
+                        <AiModelSelector hideLabel className="scale-90" />
                         {activeTab === "responses" ? (
                             <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
  <Download className="mr-2 h-4 w-4" />
@@ -229,14 +266,25 @@ export default function SurveyResultsPage() {
 
  <TabsContent value="analytics" className="m-0">
  <div className="p-4 sm:p-6 lg:p-8">
-                        <AnalyticsView survey={survey} responses={responses || []} />
+                        <AnalyticsView 
+                            survey={survey} 
+                            responses={responses || []} 
+                            summaries={summaries || []}
+                            onGenerateSummary={handleGenerateSummary}
+                            isGeneratingSummary={isGeneratingSummary}
+                        />
                     </div>
                 </TabsContent>
 
  <TabsContent value="ai-summaries" className="m-0">
  <div className="p-4 sm:p-6 lg:p-8">
                         {responses ? (
-                            <AISummariesView survey={survey} responses={responses} />
+                            <AISummariesView 
+                                survey={survey} 
+                                responses={responses} 
+                                summaries={summaries || []}
+                                areSummariesLoading={areSummariesLoading}
+                            />
                         ) : (
  <div className="flex h-64 items-center justify-center">
  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

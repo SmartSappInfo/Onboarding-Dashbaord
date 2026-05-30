@@ -15,6 +15,7 @@ export async function handleUpdateEntity(
   const identityFields = ['name', 'slug', 'displayName', 'lifecycleStatus'];
   const identityUpdates: Record<string, unknown> = { updatedAt: timestamp };
   const workspaceUpdates: Record<string, unknown> = { updatedAt: timestamp };
+  const customDataUpdates: Record<string, unknown> = {};
 
   const updates = (config.updates || config) as Record<string, unknown>;
   if (config.pipelineId) workspaceUpdates.pipelineId = config.pipelineId;
@@ -28,12 +29,20 @@ export async function handleUpdateEntity(
         identityUpdates[key] = value;
       } else if (['pipelineId', 'stageId', 'assignedTo', 'workspaceTags'].includes(key)) {
         workspaceUpdates[key] = value;
+      } else if (key !== 'updates' && key !== 'pipelineId' && key !== 'stageId' && key !== 'assignedTo' && key !== 'lifecycleStatus') {
+        customDataUpdates[key] = value;
       }
     }
   }
 
-  if (Object.keys(identityUpdates).length > 1) {
-    await adminDb.collection('entities').doc(contact.entityId).update(identityUpdates);
+  if (Object.keys(identityUpdates).length > 1 || Object.keys(customDataUpdates).length > 0) {
+    const payload: Record<string, any> = { ...identityUpdates };
+    if (Object.keys(customDataUpdates).length > 0) {
+      for (const [k, v] of Object.entries(customDataUpdates)) {
+        payload[`customData.${k}`] = v;
+      }
+    }
+    await adminDb.collection('entities').doc(contact.entityId).update(payload);
   }
 
   if (contact.workspaceEntityId && Object.keys(workspaceUpdates).length > 1) {
