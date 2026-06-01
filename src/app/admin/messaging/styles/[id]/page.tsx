@@ -26,6 +26,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
     ArrowLeft, 
     Save, 
@@ -84,7 +85,19 @@ export default function TenantStyleEditorPage() {
     // Page/Style State
     const [style, setStyle] = React.useState<MessageStyle | null>(null);
     const [name, setName] = React.useState('');
-    const [htmlWrapper, setHtmlWrapper] = React.useState(DEFAULT_HTML);
+    const [htmlWrapperInternal, setHtmlWrapperInternal] = React.useState(DEFAULT_HTML);
+    const [htmlWrapperExternal, setHtmlWrapperExternal] = React.useState(DEFAULT_HTML);
+    const [activeWrapperTab, setActiveWrapperTab] = React.useState<'internal' | 'external'>('internal');
+    
+    // Visual Override Fields
+    const [primaryColor, setPrimaryColor] = React.useState('#3B5FFF');
+    const [secondaryColor, setSecondaryColor] = React.useState('#8B5CF6');
+    const [fontFamily, setFontFamily] = React.useState('Figtree');
+    const [backgroundColor, setBackgroundColor] = React.useState('#f8fafc');
+    const [textColor, setTextColor] = React.useState('#1e293b');
+    const [cardBackgroundColor, setCardBackgroundColor] = React.useState('#ffffff');
+    const [borderRadius, setBorderRadius] = React.useState('16px');
+
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>([]);
     const [loading, setLoading] = React.useState(!isNew);
     const [saving, setSaving] = React.useState(false);
@@ -135,16 +148,32 @@ export default function TenantStyleEditorPage() {
             setStyle({
                 id: 'new',
                 name: 'New Style Template',
-                htmlWrapper: DEFAULT_HTML,
+                htmlWrapperInternal: DEFAULT_HTML,
+                htmlWrapperExternal: DEFAULT_HTML,
                 workspaceIds: [activeWorkspaceId],
                 organizationId: activeOrganizationId || '',
                 scope: 'organization',
                 isDefault: false,
                 createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
+                primaryColor: '#3B5FFF',
+                secondaryColor: '#8B5CF6',
+                fontFamily: 'Figtree',
+                backgroundColor: '#f8fafc',
+                textColor: '#1e293b',
+                cardBackgroundColor: '#ffffff',
+                borderRadius: '16px'
             });
             setName('New Style Template');
-            setHtmlWrapper(DEFAULT_HTML);
+            setHtmlWrapperInternal(DEFAULT_HTML);
+            setHtmlWrapperExternal(DEFAULT_HTML);
+            setPrimaryColor('#3B5FFF');
+            setSecondaryColor('#8B5CF6');
+            setFontFamily('Figtree');
+            setBackgroundColor('#f8fafc');
+            setTextColor('#1e293b');
+            setCardBackgroundColor('#ffffff');
+            setBorderRadius('16px');
             setWorkspaceIds([activeWorkspaceId]);
             setLoading(false);
             return;
@@ -160,7 +189,15 @@ export default function TenantStyleEditorPage() {
                     const data = snap.data() as MessageStyle;
                     setStyle(data);
                     setName(data.name);
-                    setHtmlWrapper(data.htmlWrapper);
+                    setHtmlWrapperInternal(data.htmlWrapperInternal ?? data.htmlWrapper ?? DEFAULT_HTML);
+                    setHtmlWrapperExternal(data.htmlWrapperExternal ?? data.htmlWrapper ?? DEFAULT_HTML);
+                    setPrimaryColor(data.primaryColor ?? '#3B5FFF');
+                    setSecondaryColor(data.secondaryColor ?? '#8B5CF6');
+                    setFontFamily(data.fontFamily ?? 'Figtree');
+                    setBackgroundColor(data.backgroundColor ?? '#f8fafc');
+                    setTextColor(data.textColor ?? '#1e293b');
+                    setCardBackgroundColor(data.cardBackgroundColor ?? '#ffffff');
+                    setBorderRadius(data.borderRadius ?? '16px');
                     setWorkspaceIds(data.workspaceIds || []);
                 } else {
                     toast({ variant: 'destructive', title: 'Error', description: 'Style blueprint not found.' });
@@ -177,7 +214,19 @@ export default function TenantStyleEditorPage() {
     }, [firestore, styleId, isNew, activeWorkspaceId, activeOrganizationId, toast, router]);
 
     // Brand resolution utility for previews
-    const resolveBrandingInHtml = React.useCallback((html: string, data?: any) => {
+    const resolveBrandingInHtml = React.useCallback((
+        html: string, 
+        data?: any,
+        customOverrides?: {
+            primaryColor?: string;
+            secondaryColor?: string;
+            fontFamily?: string;
+            backgroundColor?: string;
+            textColor?: string;
+            cardBackgroundColor?: string;
+            borderRadius?: string;
+        }
+    ) => {
         if (!html) return '';
         const currentYear = new Date().getFullYear().toString();
         const orgName = data?.name || 'Your Organization';
@@ -187,11 +236,16 @@ export default function TenantStyleEditorPage() {
         const addressStr = data?.address || '123 Main St, City, Country';
         const webUrl = data?.website || 'https://yourdomain.com';
         const unsubCopy = data?.unsubscribeCopy || 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.';
-        const primaryCol = data?.brandPrimaryColor || '#3B5FFF';
-        const secondaryCol = data?.brandSecondaryColor || '#8B5CF6';
-        const fontFam = data?.brandFontFamily || 'Figtree';
+        
+        const primaryCol = customOverrides?.primaryColor || data?.brandPrimaryColor || '#3B5FFF';
+        const secondaryCol = customOverrides?.secondaryColor || data?.brandSecondaryColor || '#8B5CF6';
+        const fontFam = customOverrides?.fontFamily || data?.brandFontFamily || 'Figtree';
+        const bgCol = customOverrides?.backgroundColor || '#f8fafc';
+        const textCol = customOverrides?.textColor || '#1e293b';
+        const cardBgCol = customOverrides?.cardBackgroundColor || '#ffffff';
+        const borderRad = customOverrides?.borderRadius || '16px';
 
-        return html
+        let processed = html
             .replaceAll('{{org_name}}', orgName)
             .replaceAll('{{org_logo_url}}', logo)
             .replaceAll('{{org_email}}', emailAddr)
@@ -202,17 +256,42 @@ export default function TenantStyleEditorPage() {
             .replaceAll('{{brand_primary_color}}', primaryCol)
             .replaceAll('{{brand_secondary_color}}', secondaryCol)
             .replaceAll('{{brand_font_family}}', fontFam)
+            .replaceAll('{{brand_background_color}}', bgCol)
+            .replaceAll('{{brand_text_color}}', textCol)
+            .replaceAll('{{brand_card_background_color}}', cardBgCol)
+            .replaceAll('{{brand_border_radius}}', borderRad)
             .replaceAll('{{current_year}}', currentYear);
+
+        // Also replace the default hex values and standard defaults in the HTML to show live preview correctly
+        processed = processed
+            .replaceAll('#f8fafc', bgCol)
+            .replaceAll('#ffffff', cardBgCol)
+            .replaceAll('16px', borderRad)
+            .replaceAll('sans-serif', fontFam)
+            .replaceAll('#3B5FFF', primaryCol)
+            .replaceAll('#8B5CF6', secondaryCol)
+            .replaceAll('#1e293b', textCol);
+
+        return processed;
     }, []);
 
     const handleSave = async () => {
-        if (!firestore || !name.trim() || !htmlWrapper.trim()) return;
+        if (!firestore || !name.trim() || !htmlWrapperInternal.trim() || !htmlWrapperExternal.trim()) return;
 
-        if (!htmlWrapper.includes('{{content}}')) {
+        if (!htmlWrapperInternal.includes('{{content}}')) {
             toast({ 
                 variant: 'destructive', 
-                title: 'Invalid HTML Template', 
-                description: 'The template must include the {{content}} placeholder injection point.' 
+                title: 'Invalid Internal HTML Template', 
+                description: 'The internal wrapper template must include the {{content}} placeholder injection point.' 
+            });
+            return;
+        }
+
+        if (!htmlWrapperExternal.includes('{{content}}')) {
+            toast({ 
+                variant: 'destructive', 
+                title: 'Invalid External HTML Template', 
+                description: 'The external wrapper template must include the {{content}} placeholder injection point.' 
             });
             return;
         }
@@ -230,7 +309,16 @@ export default function TenantStyleEditorPage() {
         try {
             const dataToSave = {
                 name: name.trim(),
-                htmlWrapper: htmlWrapper.trim(),
+                htmlWrapper: htmlWrapperExternal.trim(), // fallback
+                htmlWrapperInternal: htmlWrapperInternal.trim(),
+                htmlWrapperExternal: htmlWrapperExternal.trim(),
+                primaryColor: primaryColor.trim(),
+                secondaryColor: secondaryColor.trim(),
+                fontFamily: fontFamily.trim(),
+                backgroundColor: backgroundColor.trim(),
+                textColor: textColor.trim(),
+                cardBackgroundColor: cardBackgroundColor.trim(),
+                borderRadius: borderRadius.trim(),
                 workspaceIds,
                 organizationId: activeOrganizationId || '',
                 scope: 'organization',
@@ -295,7 +383,11 @@ export default function TenantStyleEditorPage() {
 
     const insertVariable = (key: string) => {
         const tag = `{{${key}}}`;
-        setHtmlWrapper(prev => prev + tag);
+        if (activeWrapperTab === 'internal') {
+            setHtmlWrapperInternal(prev => prev + tag);
+        } else {
+            setHtmlWrapperExternal(prev => prev + tag);
+        }
     };
 
     if (loading) {
@@ -378,20 +470,20 @@ export default function TenantStyleEditorPage() {
             </div>
 
             {/* Main Layout Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
-                {/* Left Config Panel */}
-                <div className="space-y-6">
+                {/* Left Config Panel (Sidebar) */}
+                <div className="lg:col-span-4 xl:col-span-3 space-y-6">
                     <Card className="rounded-[1.5rem] border shadow-sm">
                         <CardContent className="p-6 space-y-6">
                             <div>
                                 <h3 className="text-sm font-bold text-foreground">Wrapper Settings</h3>
-                                <p className="text-xs text-muted-foreground mt-0.5">Determine naming, deployment scope, and parameters.</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Determine naming and deployment scope.</p>
                             </div>
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label className="text-xs font-semibold text-muted-foreground ml-1">Style Label</Label>
-                                    <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Elegant Dark Newsletter Wrapper" className="h-10 rounded-xl" />
+                                    <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Elegant Dark Wrapper" className="h-10 rounded-xl" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-semibold text-primary ml-1 flex items-center gap-2">
@@ -403,71 +495,168 @@ export default function TenantStyleEditorPage() {
                         </CardContent>
                     </Card>
 
-                    <div className="space-y-2">
-                        <div className="flex justify-between items-center px-1">
-                            <Label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5"><Code className="h-3.5 w-3.5 text-primary" /> HTML Content Wrapper</Label>
-                            <Badge className="bg-orange-500/10 text-orange-600 border-none text-[8px] font-bold uppercase h-5 px-2">Must include &#123;&#123;content&#125;&#125;</Badge>
-                        </div>
-                        <Textarea 
-                            value={htmlWrapper} 
-                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setHtmlWrapper(e.target.value)} 
-                            placeholder="Write wrapper HTML template here..."
-                            className="min-h-[420px] font-mono text-xs bg-slate-950 text-blue-400 p-6 rounded-[1.5rem] border-slate-800 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none" 
-                        />
-                    </div>
-
-                    {/* Org Variables Reference Panel */}
-                    <details className="group rounded-2xl border bg-card overflow-hidden" open>
-                        <summary className="flex items-center justify-between cursor-pointer p-4 hover:bg-muted/30 transition-colors">
-                            <span className="text-xs font-bold text-primary flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> Organization Variables Helper</span>
-                            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                        </summary>
-                        <div className="px-4 pb-4 pt-0 border-t">
-                            <p className="text-[10px] font-semibold text-muted-foreground mb-3 mt-3">Click on any variable parameter to append its placeholder tag inside the wrapper HTML source.</p>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                {[
-                                    { key: 'org_name', desc: 'Organization name' },
-                                    { key: 'org_logo_url', desc: 'Logo image URL' },
-                                    { key: 'org_email', desc: 'Contact email' },
-                                    { key: 'org_phone', desc: 'Contact phone' },
-                                    { key: 'org_address', desc: 'Physical address' },
-                                    { key: 'org_website', desc: 'Website URL' },
-                                    { key: 'brand_primary_color', desc: 'Primary brand hex color' },
-                                    { key: 'brand_secondary_color', desc: 'Secondary brand hex color' },
-                                    { key: 'brand_font_family', desc: 'Typography font family' },
-                                    { key: 'unsubscribe_copy', desc: 'Unsubscribe copy disclaimers' },
-                                    { key: 'current_year', desc: 'Current calendar year (auto)' },
-                                    { key: 'content', desc: 'Body payload injection point' },
-                                ].map(v => (
-                                    <button
-                                        key={v.key}
-                                        type="button"
-                                        onClick={() => insertVariable(v.key)}
-                                        className="flex flex-col items-start p-2.5 rounded-xl border bg-muted/20 hover:bg-primary/5 hover:border-primary/20 transition-colors text-left"
-                                    >
-                                        <span className="text-[10px] font-bold font-mono text-primary">{`{{${v.key}}}`}</span>
-                                        <span className="text-[8px] font-semibold text-muted-foreground mt-0.5">{v.desc}</span>
-                                    </button>
-                                ))}
+                    <Card className="rounded-[1.5rem] border shadow-sm">
+                        <CardContent className="p-6 space-y-6">
+                            <div>
+                                <h3 className="text-sm font-bold text-foreground">Visual Style Overrides</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">Customize the color scheme, typography, and card shapes.</p>
                             </div>
-                        </div>
-                    </details>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-muted-foreground ml-1">Primary Brand Color</Label>
+                                    <div className="flex gap-2">
+                                        <Input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="w-10 h-10 p-1 bg-muted/20 border-none cursor-pointer rounded-xl shrink-0" />
+                                        <Input value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} placeholder="#3B5FFF" className="h-10 rounded-xl flex-1 text-xs" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-muted-foreground ml-1">Secondary Brand Color</Label>
+                                    <div className="flex gap-2">
+                                        <Input type="color" value={secondaryColor} onChange={e => setSecondaryColor(e.target.value)} className="w-10 h-10 p-1 bg-muted/20 border-none cursor-pointer rounded-xl shrink-0" />
+                                        <Input value={secondaryColor} onChange={e => setSecondaryColor(e.target.value)} placeholder="#8B5CF6" className="h-10 rounded-xl flex-1 text-xs" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-muted-foreground ml-1">Background Color</Label>
+                                    <div className="flex gap-2">
+                                        <Input type="color" value={backgroundColor} onChange={e => setBackgroundColor(e.target.value)} className="w-10 h-10 p-1 bg-muted/20 border-none cursor-pointer rounded-xl shrink-0" />
+                                        <Input value={backgroundColor} onChange={e => setBackgroundColor(e.target.value)} placeholder="#f8fafc" className="h-10 rounded-xl flex-1 text-xs" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-muted-foreground ml-1">Text Color</Label>
+                                    <div className="flex gap-2">
+                                        <Input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} className="w-10 h-10 p-1 bg-muted/20 border-none cursor-pointer rounded-xl shrink-0" />
+                                        <Input value={textColor} onChange={e => setTextColor(e.target.value)} placeholder="#1e293b" className="h-10 rounded-xl flex-1 text-xs" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-muted-foreground ml-1">Card Background Color</Label>
+                                    <div className="flex gap-2">
+                                        <Input type="color" value={cardBackgroundColor} onChange={e => setCardBackgroundColor(e.target.value)} className="w-10 h-10 p-1 bg-muted/20 border-none cursor-pointer rounded-xl shrink-0" />
+                                        <Input value={cardBackgroundColor} onChange={e => setCardBackgroundColor(e.target.value)} placeholder="#ffffff" className="h-10 rounded-xl flex-1 text-xs" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-muted-foreground ml-1">Font Family</Label>
+                                    <Input value={fontFamily} onChange={e => setFontFamily(e.target.value)} placeholder="e.g. Figtree, Inter, sans-serif" className="h-10 rounded-xl text-xs" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-muted-foreground ml-1">Border Radius</Label>
+                                    <Input value={borderRadius} onChange={e => setBorderRadius(e.target.value)} placeholder="e.g. 16px, 1rem, 0px" className="h-10 rounded-xl text-xs" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
-                {/* Right Preview Panel */}
-                <div className="space-y-2 lg:sticky lg:top-6">
-                    <div className="flex items-center justify-between px-1">
-                        <Label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5"><Eye className="h-3.5 w-3.5 text-primary" /> Atmospheric Rendering</Label>
-                        <Badge variant="outline" className="text-[8px] font-bold h-5 uppercase rounded-lg">Sandbox Gateway</Badge>
-                    </div>
-                    <div className="rounded-[1.5rem] overflow-hidden border bg-background shadow-inner h-[680px]">
-                        <iframe 
-                            srcDoc={resolveBrandingInHtml(htmlWrapper, orgData).replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Content Block</p><p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">This block represents where template body is dynamically injected.</p></div>')}
-                            className="w-full h-full border-none bg-white"
-                            title="Wrapper Dynamic Live Preview"
-                            sandbox="allow-same-origin"
-                        />
-                    </div>
+                {/* Right Main Content Area */}
+                <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+                    <Tabs value={activeWrapperTab} onValueChange={(val) => setActiveWrapperTab(val as 'internal' | 'external')} className="space-y-4">
+                        <TabsList className="bg-background border p-1 h-11 rounded-2xl shadow-sm w-fit">
+                            <TabsTrigger value="internal" className="text-xs font-semibold px-6 rounded-xl gap-2">
+                                🏢 Internal Wrapper (Admin Comms)
+                            </TabsTrigger>
+                            <TabsTrigger value="external" className="text-xs font-semibold px-6 rounded-xl gap-2">
+                                🌍 External Wrapper (Client Comms)
+                            </TabsTrigger>
+                        </TabsList>
+                        
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                            {/* Editor Column */}
+                            <div className="xl:col-span-7 space-y-4">
+                                <TabsContent value="internal" className="mt-0 space-y-2 focus-visible:ring-0">
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5"><Code className="h-3.5 w-3.5 text-primary" /> Internal HTML Wrapper</Label>
+                                        <Badge className="bg-orange-500/10 text-orange-600 border-none text-[8px] font-bold uppercase h-5 px-2">Must include &#123;&#123;content&#125;&#125;</Badge>
+                                    </div>
+                                    <Textarea 
+                                        value={htmlWrapperInternal} 
+                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setHtmlWrapperInternal(e.target.value)} 
+                                        placeholder="Write internal HTML wrapper template here..."
+                                        className="min-h-[420px] font-mono text-xs bg-slate-950 text-blue-400 p-6 rounded-[1.5rem] border-slate-800 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none" 
+                                    />
+                                </TabsContent>
+                                <TabsContent value="external" className="mt-0 space-y-2 focus-visible:ring-0">
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5"><Code className="h-3.5 w-3.5 text-primary" /> External HTML Wrapper</Label>
+                                        <Badge className="bg-orange-500/10 text-orange-600 border-none text-[8px] font-bold uppercase h-5 px-2">Must include &#123;&#123;content&#125;&#125;</Badge>
+                                    </div>
+                                    <Textarea 
+                                        value={htmlWrapperExternal} 
+                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setHtmlWrapperExternal(e.target.value)} 
+                                        placeholder="Write external HTML wrapper template here..."
+                                        className="min-h-[420px] font-mono text-xs bg-slate-950 text-blue-400 p-6 rounded-[1.5rem] border-slate-800 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none" 
+                                    />
+                                </TabsContent>
+                                
+                                {/* Org Variables Reference Panel */}
+                                <details className="group rounded-2xl border bg-card overflow-hidden" open>
+                                    <summary className="flex items-center justify-between cursor-pointer p-4 hover:bg-muted/30 transition-colors">
+                                        <span className="text-xs font-bold text-primary flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> Organization Variables Helper</span>
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                                    </summary>
+                                    <div className="px-4 pb-4 pt-0 border-t">
+                                        <p className="text-[10px] font-semibold text-muted-foreground mb-3 mt-3">Click on any variable parameter to append its placeholder tag inside the wrapper HTML source.</p>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                            {[
+                                                { key: 'org_name', desc: 'Organization name' },
+                                                { key: 'org_logo_url', desc: 'Logo image URL' },
+                                                { key: 'org_email', desc: 'Contact email' },
+                                                { key: 'org_phone', desc: 'Contact phone' },
+                                                { key: 'org_address', desc: 'Physical address' },
+                                                { key: 'org_website', desc: 'Website URL' },
+                                                { key: 'brand_primary_color', desc: 'Primary brand hex color' },
+                                                { key: 'brand_secondary_color', desc: 'Secondary brand hex color' },
+                                                { key: 'brand_font_family', desc: 'Typography font family' },
+                                                { key: 'unsubscribe_copy', desc: 'Unsubscribe copy disclaimers' },
+                                                { key: 'current_year', desc: 'Current calendar year (auto)' },
+                                                { key: 'content', desc: 'Body payload injection point' },
+                                            ].map(v => (
+                                                <button
+                                                    key={v.key}
+                                                    type="button"
+                                                    onClick={() => insertVariable(v.key)}
+                                                    className="flex flex-col items-start p-2.5 rounded-xl border bg-muted/20 hover:bg-primary/5 hover:border-primary/20 transition-colors text-left"
+                                                >
+                                                    <span className="text-[10px] font-bold font-mono text-primary">{`{{${v.key}}}`}</span>
+                                                    <span className="text-[8px] font-semibold text-muted-foreground mt-0.5">{v.desc}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </details>
+                            </div>
+                            
+                            {/* Preview Column */}
+                            <div className="xl:col-span-5 space-y-4 lg:sticky lg:top-6">
+                                <div className="flex items-center justify-between px-1">
+                                    <Label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5"><Eye className="h-3.5 w-3.5 text-primary" /> Live Rendering Preview</Label>
+                                    <Badge variant="outline" className="text-[8px] font-bold h-5 uppercase rounded-lg">Sandbox Gateway</Badge>
+                                </div>
+                                <div className="rounded-[1.5rem] overflow-hidden border bg-background shadow-inner h-[680px]">
+                                    <iframe 
+                                        srcDoc={resolveBrandingInHtml(
+                                            activeWrapperTab === 'internal' ? htmlWrapperInternal : htmlWrapperExternal, 
+                                            orgData,
+                                            {
+                                                primaryColor,
+                                                secondaryColor,
+                                                fontFamily,
+                                                backgroundColor,
+                                                textColor,
+                                                cardBackgroundColor,
+                                                borderRadius
+                                            }
+                                        ).replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Content Block</p><p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">This block represents where template body is dynamically injected.</p></div>')}
+                                        className="w-full h-full border-none bg-white"
+                                        title="Wrapper Dynamic Live Preview"
+                                        sandbox="allow-same-origin"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </Tabs>
                 </div>
 
             </div>

@@ -11,7 +11,8 @@ import {
     updateDoc, 
     where, 
     writeBatch, 
-    onSnapshot 
+    onSnapshot,
+    or
 } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MessageStyle, MessageTemplate } from '@/lib/types';
@@ -56,8 +57,26 @@ import {
     MapPin
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
+const DEFAULT_HTML = `<html>
+  <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">
+    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">
+      <div style="padding: 24px; border-bottom: 1px solid #e2e8f0;">
+        <img src="{{org_logo_url}}" alt="{{org_name}}" style="height: 40px; width: auto;" />
+      </div>
+      <div style="padding: 32px;">
+        {{content}}
+      </div>
+      <div style="padding: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">
+        <p style="margin: 0;">© {{current_year}} {{org_name}}</p>
+        <p style="margin: 4px 0 0;">{{org_address}}</p>
+        <p style="margin: 12px 0 0; font-size: 10px; color: #a1a1aa;">{{unsubscribe_copy}}</p>
+      </div>
+    </div>
+  </body>
+</html>`;
 import { generateVisualStyle } from '@/ai/flows/generate-visual-style-flow';
 import { MediaSelect } from '../../entities/components/media-select';
 import { RainbowButton } from '@/components/ui/rainbow-button';
@@ -154,12 +173,16 @@ export default function MessageStylesPage() {
 
     // Data Subscriptions - GLOBAL + WORKSPACE styles
     const stylesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
+        if (!firestore || !activeOrganizationId || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'message_styles'), 
-            orderBy('name', 'asc')
+            or(
+                where('scope', '==', 'global'),
+                where('organizationId', '==', activeOrganizationId),
+                where('workspaceIds', 'array-contains', activeWorkspaceId)
+            )
         );
-    }, [firestore, activeWorkspaceId]);
+    }, [firestore, activeOrganizationId, activeWorkspaceId]);
 
     const { data: allStyles, isLoading } = useCollection<MessageStyle>(stylesQuery);
 
@@ -177,13 +200,27 @@ export default function MessageStylesPage() {
     // Filter and Deduplicate styles relevant to workspace / scope
     const styles = React.useMemo(() => {
         if (!allStyles) return [];
-        // Local styles scoped to this workspace
-        const localStyles = allStyles.filter(s => s.workspaceIds?.includes(activeWorkspaceId));
-        // Global system blueprint styles
-        const globalStyles = allStyles.filter(s => !s.workspaceIds || s.workspaceIds.length === 0 || s.scope === 'global');
         
-        return [...localStyles, ...globalStyles];
-    }, [allStyles, activeWorkspaceId]);
+        // Filter styles that are global, belong to organization, or belong to active workspace
+        const filtered = allStyles.filter(s => 
+            s.scope === 'global' || 
+            s.organizationId === activeOrganizationId || 
+            s.workspaceIds?.includes(activeWorkspaceId)
+        );
+
+        // Deduplicate styles by ID
+        const uniqueStyles: MessageStyle[] = [];
+        const seenIds = new Set<string>();
+        for (const s of filtered) {
+            if (!seenIds.has(s.id)) {
+                seenIds.add(s.id);
+                uniqueStyles.push(s);
+            }
+        }
+
+        // Sort client-side by name
+        return uniqueStyles.sort((a, b) => a.name.localeCompare(b.name));
+    }, [allStyles, activeOrganizationId, activeWorkspaceId]);
 
     const styleInUseTemplates = React.useMemo(() => {
         if (!styleInUseToDelete || !allTemplates) return [];
@@ -193,7 +230,19 @@ export default function MessageStylesPage() {
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
     // Branding resolution utility for previews
-    const resolveBrandingInHtml = React.useCallback((html: string, data?: any) => {
+    const resolveBrandingInHtml = React.useCallback((
+        html: string, 
+        data?: any,
+        customOverrides?: {
+            primaryColor?: string;
+            secondaryColor?: string;
+            fontFamily?: string;
+            backgroundColor?: string;
+            textColor?: string;
+            cardBackgroundColor?: string;
+            borderRadius?: string;
+        }
+    ) => {
         if (!html) return '';
         const currentYear = new Date().getFullYear().toString();
         const orgName = data?.name || 'Your Organization';
@@ -203,11 +252,16 @@ export default function MessageStylesPage() {
         const addressStr = data?.address || '123 Main St, City, Country';
         const webUrl = data?.website || 'https://yourdomain.com';
         const unsubCopy = data?.unsubscribeCopy || 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.';
-        const primaryCol = data?.brandPrimaryColor || '#3B5FFF';
-        const secondaryCol = data?.brandSecondaryColor || '#8B5CF6';
-        const fontFam = data?.brandFontFamily || 'Figtree';
+        
+        const primaryCol = customOverrides?.primaryColor || data?.brandPrimaryColor || '#3B5FFF';
+        const secondaryCol = customOverrides?.secondaryColor || data?.brandSecondaryColor || '#8B5CF6';
+        const fontFam = customOverrides?.fontFamily || data?.brandFontFamily || 'Figtree';
+        const bgCol = customOverrides?.backgroundColor || '#f8fafc';
+        const textCol = customOverrides?.textColor || '#1e293b';
+        const cardBgCol = customOverrides?.cardBackgroundColor || '#ffffff';
+        const borderRad = customOverrides?.borderRadius || '16px';
 
-        return html
+        let processed = html
             .replaceAll('{{org_name}}', orgName)
             .replaceAll('{{org_logo_url}}', logo)
             .replaceAll('{{org_email}}', emailAddr)
@@ -218,7 +272,23 @@ export default function MessageStylesPage() {
             .replaceAll('{{brand_primary_color}}', primaryCol)
             .replaceAll('{{brand_secondary_color}}', secondaryCol)
             .replaceAll('{{brand_font_family}}', fontFam)
+            .replaceAll('{{brand_background_color}}', bgCol)
+            .replaceAll('{{brand_text_color}}', textCol)
+            .replaceAll('{{brand_card_background_color}}', cardBgCol)
+            .replaceAll('{{brand_border_radius}}', borderRad)
             .replaceAll('{{current_year}}', currentYear);
+
+        // Also replace the default hex values and standard defaults in the HTML to show live preview correctly
+        processed = processed
+            .replaceAll('#f8fafc', bgCol)
+            .replaceAll('#ffffff', cardBgCol)
+            .replaceAll('16px', borderRad)
+            .replaceAll('sans-serif', fontFam)
+            .replaceAll('#3B5FFF', primaryCol)
+            .replaceAll('#8B5CF6', secondaryCol)
+            .replaceAll('#1e293b', textCol);
+
+        return processed;
     }, []);
 
     // Manual Create Style Submit
@@ -236,6 +306,15 @@ export default function MessageStylesPage() {
             await addDoc(collection(firestore, 'message_styles'), {
                 name: name.trim(),
                 htmlWrapper: htmlWrapper.trim(),
+                htmlWrapperInternal: htmlWrapper.trim(),
+                htmlWrapperExternal: htmlWrapper.trim(),
+                primaryColor: '#3B5FFF',
+                secondaryColor: '#8B5CF6',
+                fontFamily: 'Figtree',
+                backgroundColor: '#f8fafc',
+                textColor: '#1e293b',
+                cardBackgroundColor: '#ffffff',
+                borderRadius: '16px',
                 workspaceIds: workspaceIds.length > 0 ? workspaceIds : [activeWorkspaceId],
                 organizationId: activeOrganizationId || '',
                 scope: 'organization',
@@ -270,7 +349,16 @@ export default function MessageStylesPage() {
 
             const docRef = await addDoc(collection(firestore, 'message_styles'), {
                 name: newName,
-                htmlWrapper: blueprint.htmlWrapper,
+                htmlWrapper: blueprint.htmlWrapper || DEFAULT_HTML,
+                htmlWrapperInternal: blueprint.htmlWrapperInternal ?? blueprint.htmlWrapper ?? DEFAULT_HTML,
+                htmlWrapperExternal: blueprint.htmlWrapperExternal ?? blueprint.htmlWrapper ?? DEFAULT_HTML,
+                primaryColor: blueprint.primaryColor ?? '#3B5FFF',
+                secondaryColor: blueprint.secondaryColor ?? '#8B5CF6',
+                fontFamily: blueprint.fontFamily ?? 'Figtree',
+                backgroundColor: blueprint.backgroundColor ?? '#f8fafc',
+                textColor: blueprint.textColor ?? '#1e293b',
+                cardBackgroundColor: blueprint.cardBackgroundColor ?? '#ffffff',
+                borderRadius: blueprint.borderRadius ?? '16px',
                 workspaceIds: [activeWorkspaceId],
                 organizationId: activeOrganizationId,
                 scope: 'organization',
@@ -296,7 +384,7 @@ export default function MessageStylesPage() {
     const handleEditClick = (style: MessageStyle) => {
         setEditingStyle(style);
         setEditName(style.name);
-        setEditHtml(style.htmlWrapper);
+        setEditHtml(style.htmlWrapperExternal ?? style.htmlWrapper ?? DEFAULT_HTML);
         setEditWorkspaceIds(style.workspaceIds || [activeWorkspaceId]);
     };
 
@@ -314,7 +402,8 @@ export default function MessageStylesPage() {
             await updateDoc(doc(firestore, 'message_styles', editingStyle.id), {
                 name: editName.trim(),
                 htmlWrapper: editHtml.trim(),
-                workspaceIds: editWorkspaceIds,
+                htmlWrapperInternal: editHtml.trim(),
+                htmlWrapperExternal: editHtml.trim(),
                 updatedAt: new Date().toISOString(),
             });
             setEditingStyle(null);
@@ -363,6 +452,15 @@ export default function MessageStylesPage() {
             await addDoc(collection(firestore, 'message_styles'), {
                 name: aiName.trim(),
                 htmlWrapper: generatedHtml.trim(),
+                htmlWrapperInternal: generatedHtml.trim(),
+                htmlWrapperExternal: generatedHtml.trim(),
+                primaryColor: '#3B5FFF',
+                secondaryColor: '#8B5CF6',
+                fontFamily: 'Figtree',
+                backgroundColor: '#f8fafc',
+                textColor: '#1e293b',
+                cardBackgroundColor: '#ffffff',
+                borderRadius: '16px',
                 workspaceIds: [activeWorkspaceId],
                 organizationId: activeOrganizationId || '',
                 scope: 'organization',
@@ -438,7 +536,16 @@ export default function MessageStylesPage() {
                 const newDocRef = doc(collection(firestore, 'message_styles'));
                 batch.set(newDocRef, {
                     name: newName,
-                    htmlWrapper: style.htmlWrapper,
+                    htmlWrapper: style.htmlWrapper || DEFAULT_HTML,
+                    htmlWrapperInternal: style.htmlWrapperInternal ?? style.htmlWrapper ?? DEFAULT_HTML,
+                    htmlWrapperExternal: style.htmlWrapperExternal ?? style.htmlWrapper ?? DEFAULT_HTML,
+                    primaryColor: style.primaryColor ?? '#3B5FFF',
+                    secondaryColor: style.secondaryColor ?? '#8B5CF6',
+                    fontFamily: style.fontFamily ?? 'Figtree',
+                    backgroundColor: style.backgroundColor ?? '#f8fafc',
+                    textColor: style.textColor ?? '#1e293b',
+                    cardBackgroundColor: style.cardBackgroundColor ?? '#ffffff',
+                    borderRadius: style.borderRadius ?? '16px',
                     workspaceIds: [activeWorkspaceId],
                     organizationId: activeOrganizationId || '',
                     scope: 'organization',
@@ -557,7 +664,7 @@ export default function MessageStylesPage() {
                                             {/* Preview / Iframe Area */}
                                             <div className="relative flex-1 bg-slate-50 overflow-hidden">
                                                 <ResponsiveIframePreview 
-                                                    srcDoc={resolveBrandingInHtml(style.htmlWrapper, orgData).replace('{{content}}', '<div style="height: 100px; background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-family: sans-serif; font-size: 12px; color: #94a3b8; border-radius: 12px; margin: 20px;">[ Content Gateway ]</div>')}
+                                                    srcDoc={resolveBrandingInHtml(style.htmlWrapperExternal ?? style.htmlWrapper ?? '', orgData, style).replace('{{content}}', '<div style="height: 100px; background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-family: sans-serif; font-size: 12px; color: #94a3b8; border-radius: 12px; margin: 20px;">[ Content Gateway ]</div>')}
                                                     className="pointer-events-none border-none opacity-85 group-hover:opacity-95 transition-opacity"
                                                     title={`Preview of ${style.name}`}
                                                 />
@@ -910,15 +1017,43 @@ export default function MessageStylesPage() {
                             </div>
                         </div>
                     </DialogHeader>
-                    <div className="flex-1 overflow-hidden relative bg-background flex justify-center">
-                        <ScrollArea className="h-full w-full">
-                            <div className="w-full max-w-[650px] mx-auto p-6">
-                                {previewStyle && (
-                                    <div dangerouslySetInnerHTML={{ __html: resolveBrandingInHtml(previewStyle.htmlWrapper, orgData).replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px 0;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Template Payload</p></div>') }} />
-                                )}
+                    {previewStyle && (
+                        <Tabs defaultValue="external" className="flex-1 flex flex-col overflow-hidden">
+                            <div className="px-8 py-2 bg-muted/10 border-b flex justify-between items-center">
+                                <TabsList className="bg-background border p-1 h-9 rounded-xl shadow-sm">
+                                    <TabsTrigger value="internal" className="text-[10px] font-semibold px-4 rounded-lg">🏢 Internal Wrapper</TabsTrigger>
+                                    <TabsTrigger value="external" className="text-[10px] font-semibold px-4 rounded-lg">🌍 External Wrapper</TabsTrigger>
+                                </TabsList>
+                                <Badge variant="outline" className="text-[8px] font-bold h-5 uppercase rounded-lg">Interactive Frame</Badge>
                             </div>
-                        </ScrollArea>
-                    </div>
+                            <div className="flex-1 overflow-hidden relative bg-background flex justify-center p-6">
+                                <TabsContent value="internal" className="w-full h-full mt-0">
+                                    <iframe 
+                                        srcDoc={resolveBrandingInHtml(
+                                            previewStyle.htmlWrapperInternal ?? previewStyle.htmlWrapper ?? '', 
+                                            orgData,
+                                            previewStyle
+                                        ).replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Content Block</p><p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">This block represents where internal admin templates are dynamically injected.</p></div>')}
+                                        className="w-full h-full border rounded-2xl bg-white shadow-inner"
+                                        title="Internal Wrapper Live Preview"
+                                        sandbox="allow-same-origin"
+                                    />
+                                </TabsContent>
+                                <TabsContent value="external" className="w-full h-full mt-0">
+                                    <iframe 
+                                        srcDoc={resolveBrandingInHtml(
+                                            previewStyle.htmlWrapperExternal ?? previewStyle.htmlWrapper ?? '', 
+                                            orgData,
+                                            previewStyle
+                                        ).replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Content Block</p><p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">This block represents where client-facing templates are dynamically injected.</p></div>')}
+                                        className="w-full h-full border rounded-2xl bg-white shadow-inner"
+                                        title="External Wrapper Live Preview"
+                                        sandbox="allow-same-origin"
+                                    />
+                                </TabsContent>
+                            </div>
+                        </Tabs>
+                    )}
                     <DialogFooter className="p-4 bg-card border-t shrink-0 flex items-center justify-end gap-2">
                         <Button variant="outline" onClick={() => setPreviewStyle(null)} className="rounded-xl h-11 px-6 text-xs font-semibold">
                             Close
