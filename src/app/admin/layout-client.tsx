@@ -199,6 +199,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
                 Workspace
               </Badge>
               <ThemeToggle />
+              <QuickComposeButton />
               <NotificationBell />
               <NotificationCenter />
               <div className="h-6 w-px bg-border mx-1" />
@@ -240,7 +241,6 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
         <main className="flex-1 flex flex-col overflow-auto relative w-full">
           {children}
         </main>
-        {isOperationsPage && <QuickComposeButton />}
       </SidebarInset>
     </SidebarProvider>
   );

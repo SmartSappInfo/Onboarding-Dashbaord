@@ -106,19 +106,17 @@ export default function QuickComposeButton({ entityId, recipient, entityName }: 
           <TooltipTrigger asChild>
             <Button
               onClick={() => setOpen(true)}
+              variant="ghost"
               size="icon"
               className={cn(
-                'fixed bottom-6 right-6 z-50 h-14 w-14 rounded-2xl shadow-2xl',
-                'bg-primary text-primary-foreground hover:bg-primary/90',
-                'transition-all duration-300 hover:scale-105 active:scale-95',
-                'ring-4 ring-primary/20'
+                'relative h-10 w-10 rounded-xl hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary'
               )}
               aria-label="Compose message (C)"
             >
               <Send className="h-5 w-5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="left" className="font-semibold">
+          <TooltipContent side="bottom" className="font-semibold">
             <p>Quick Compose <kbd className="ml-1.5 px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">C</kbd></p>
           </TooltipContent>
         </Tooltip>
