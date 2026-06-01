@@ -2727,7 +2727,6 @@ export function TemplateWorkshop({
                                                         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-2 animate-in fade-in duration-200">Block Types</p>
                                                         <div className="grid grid-cols-2 gap-2.5 animate-in slide-in-from-bottom-2 duration-250">
                                                             {(Object.keys(blockIcons) as Array<keyof typeof blockIcons>)
-                                                                .filter(type => type !== 'rsvp' || category === 'meetings')
                                                                 .map(type => {
                                                                     const BIcon = blockIcons[type];
                                                                     return (

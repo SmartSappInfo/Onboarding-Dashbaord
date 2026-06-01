@@ -204,10 +204,58 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
         for (const category of CATEGORIES) {
             for (const recipientType of RECIPIENT_TYPES) {
                 const blueprint = getBlueprint(category, recipientType);
+                const isMeetingsEmail = category === 'meetings';
 
                 // Variant 1: STANDARD (Recommended) - EMAIL
                 const standardId = `global_${category}_${recipientType}_standard_email`;
                 const standardRef = adminDb.collection('message_templates').doc(standardId);
+                
+                const standardBlocks = isMeetingsEmail ? [
+                    {
+                        id: `meet_head_${standardId}`,
+                        type: 'heading',
+                        title: blueprint.subject,
+                        variant: 'h2',
+                        style: {
+                            textAlign: 'center',
+                            fontWeight: 'bold',
+                            marginTop: '16px',
+                            marginBottom: '16px'
+                        }
+                    },
+                    {
+                        id: `meet_body_${standardId}`,
+                        type: 'text',
+                        content: blueprint.body,
+                        style: {
+                            textAlign: 'left',
+                            lineHeight: '1.6',
+                            marginTop: '8px',
+                            marginBottom: '16px'
+                        }
+                    },
+                    {
+                        id: `meet_rsvp_${standardId}`,
+                        type: 'rsvp',
+                        title: 'Will you attend this meeting?',
+                        goingLabel: 'Going',
+                        laterLabel: 'Later',
+                        declinedLabel: 'Not Going',
+                        style: {
+                            textAlign: 'center',
+                            backgroundColor: '#f8fafc',
+                            paddingTop: '20px',
+                            paddingBottom: '20px',
+                            paddingLeft: '20px',
+                            paddingRight: '20px',
+                            borderRadius: '12px',
+                            borderWidth: '1px',
+                            borderStyle: 'solid',
+                            borderColor: '#e2e8f0'
+                        }
+                    }
+                ] : undefined;
+
                 batch.set(standardRef, {
                     id: standardId,
                     scope: 'global',
@@ -215,9 +263,10 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
                     channel: 'email',
                     target: recipientType === 'internal_alert' ? 'internal_team' : 'external_client',
                     name: `${category.charAt(0).toUpperCase() + category.slice(1)} - ${recipientType.replace('_', ' ')} (Standard)`,
-                    contentMode: 'plain_text',
+                    contentMode: isMeetingsEmail ? 'rich_builder' : 'plain_text',
                     subject: blueprint.subject,
-                    body: blueprint.body,
+                    body: isMeetingsEmail ? '' : blueprint.body,
+                    blocks: standardBlocks,
                     templateType: `${category}_${recipientType}_standard`,
                     recipientType,
                     styleId: 'default',
@@ -233,6 +282,53 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
                 // Variant 2: SHORT (Mobile-Friendly) - EMAIL
                 const shortId = `global_${category}_${recipientType}_short_email`;
                 const shortRef = adminDb.collection('message_templates').doc(shortId);
+                
+                const shortBlocks = isMeetingsEmail ? [
+                    {
+                        id: `meet_head_${shortId}`,
+                        type: 'heading',
+                        title: blueprint.subject,
+                        variant: 'h2',
+                        style: {
+                            textAlign: 'center',
+                            fontWeight: 'bold',
+                            marginTop: '16px',
+                            marginBottom: '16px'
+                        }
+                    },
+                    {
+                        id: `meet_body_${shortId}`,
+                        type: 'text',
+                        content: blueprint.shortBody,
+                        style: {
+                            textAlign: 'left',
+                            lineHeight: '1.6',
+                            marginTop: '8px',
+                            marginBottom: '16px'
+                        }
+                    },
+                    {
+                        id: `meet_rsvp_${shortId}`,
+                        type: 'rsvp',
+                        title: 'Will you attend this meeting?',
+                        goingLabel: 'Going',
+                        laterLabel: 'Later',
+                        declinedLabel: 'Not Going',
+                        style: {
+                            textAlign: 'center',
+                            backgroundColor: '#f8fafc',
+                            paddingTop: '20px',
+                            paddingBottom: '20px',
+                            paddingLeft: '20px',
+                            paddingRight: '20px',
+                            borderRadius: '12px',
+                            borderWidth: '1px',
+                            borderStyle: 'solid',
+                            borderColor: '#e2e8f0'
+                        }
+                    }
+                ] : undefined;
+
                 batch.set(shortRef, {
                     id: shortId,
                     scope: 'global',
@@ -240,9 +336,10 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
                     channel: 'email',
                     target: recipientType === 'internal_alert' ? 'internal_team' : 'external_client',
                     name: `${category.charAt(0).toUpperCase() + category.slice(1)} - ${recipientType.replace('_', ' ')} (Short)`,
-                    contentMode: 'plain_text',
+                    contentMode: isMeetingsEmail ? 'rich_builder' : 'plain_text',
                     subject: blueprint.subject,
-                    body: blueprint.shortBody,
+                    body: isMeetingsEmail ? '' : blueprint.shortBody,
+                    blocks: shortBlocks,
                     templateType: `${category}_${recipientType}_short`,
                     recipientType,
                     styleId: 'default',
