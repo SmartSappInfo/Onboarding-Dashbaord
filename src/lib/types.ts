@@ -2310,9 +2310,12 @@ export interface MessageBlockRule {
 export interface MessageStyle {
   id: string;
   name: string;
-  htmlWrapper?: string; // Legacy fallback
-  htmlWrapperInternal: string; // Internal admin communications
-  htmlWrapperExternal: string; // External client communications
+  /** Legacy fallback wrapper */
+  htmlWrapper?: string;
+  /** HTML wrapper template for internal admin communications */
+  htmlWrapperInternal?: string;
+  /** HTML wrapper template for customer-facing client communications */
+  htmlWrapperExternal?: string;
   workspaceIds: string[];
   isDefault?: boolean;
   scope?: 'global' | 'organization';
