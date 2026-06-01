@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import type { MessageTemplate, TemplateStatus, TemplateTarget } from '@/lib/types';
-import { plainTextToHtml } from '@/lib/messaging-utils';
+import type { MessageTemplate, TemplateStatus, TemplateTarget, MessageStyle } from '@/lib/types';
+import { plainTextToHtml, renderBlocksToHtml } from '@/lib/messaging-utils';
 import { 
     Search, 
     FileType, 
@@ -29,6 +29,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface TemplateCardProps {
     template: MessageTemplate;
+    styles: MessageStyle[];
     cloningId: string | null;
     onPreview: () => void;
     onEdit: () => void;
@@ -37,11 +38,91 @@ interface TemplateCardProps {
     onUpdateStatus: (status: TemplateStatus) => void;
 }
 
-function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus }: TemplateCardProps) {
+function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus }: TemplateCardProps) {
     const emailSrcDoc = React.useMemo(() => {
         if (template.channel !== 'email') return '';
-        return template.contentMode === 'plain_text' ? plainTextToHtml(template.body) : template.body;
-    }, [template.channel, template.contentMode, template.body]);
+
+        let activeStyle: MessageStyle | null = null;
+        if (template.styleId !== 'none') {
+            const styleIdToUse = template.styleId;
+            if (!styleIdToUse || styleIdToUse === 'default') {
+                activeStyle = styles.find(s => s.isDefault) || null;
+            } else {
+                activeStyle = styles.find(s => s.id === styleIdToUse) || null;
+            }
+        }
+
+        let styleWrapper = '';
+        if (activeStyle) {
+            if (template.target === 'internal_team') {
+                styleWrapper = activeStyle.htmlWrapperInternal || activeStyle.htmlWrapper || '';
+            } else {
+                styleWrapper = activeStyle.htmlWrapperExternal || activeStyle.htmlWrapper || '';
+            }
+        }
+
+        const contentMode = template.contentMode;
+
+        // Auto-detect variable tokens from the template content and inject default mocks
+        const contentForScan = `${template.subject || ''} ${template.previewText || ''} ${template.body || ''} ${JSON.stringify(template.blocks || [])}`;
+        const matches = contentForScan.match(/\{\{([^{}]+?)\}\}/g);
+        const detectedVars = matches ? [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
+
+        // Hardcode a basic subset of MOCK_VARIABLES just for thumbnail gallery rendering
+        const mergedMocks: Record<string, string> = {
+            recipient_name: 'Recipient Name',
+            contact_name: 'Recipient Name',
+            org_name: 'Your Organization',
+            org_logo_url: 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/SmartSapp%20Logo%20short.png?alt=media&token=046f95a8-b331-4129-a4ef-43ae7837eadd',
+            org_email: 'support@smartsapp.com',
+            org_phone: '+1 (555) 019-2834',
+            org_address: '123 Organization Way',
+            current_year: new Date().getFullYear().toString(),
+            unsubscribe_copy: 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.',
+            unsubscribe_link: '#'
+        };
+
+        detectedVars.forEach(v => {
+            if (!(v in mergedMocks)) {
+                mergedMocks[v] = `[${v.replace(/_/g, ' ')}]`;
+            }
+        });
+
+        // Add helper functions needed for resolving variables/blocks
+        const resolveVars = (str: string, vars: Record<string, any>) => {
+            if (!str) return '';
+            return str.replace(/\{\{([^{}]+?)\}\}/g, (match, key) => {
+                const trimmedKey = key.trim();
+                return vars[trimmedKey] !== undefined ? String(vars[trimmedKey]) : match;
+            });
+        };
+
+        if (contentMode === 'rich_builder') {
+            return renderBlocksToHtml(template.blocks || [], mergedMocks, {
+                wrapper: styleWrapper || undefined,
+                style: activeStyle || undefined
+            });
+        }
+
+        let resolved = resolveVars(template.body || '', mergedMocks);
+        if (styleWrapper && styleWrapper.includes('{{content}}')) {
+            let contentHtml = resolved;
+            if (contentMode === 'plain_text' || !contentMode) {
+                const escaped = contentHtml
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+                // Simple link parsing for gallery preview
+                const withLinks = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3b82f6; text-decoration: underline;">$1</a>');
+                contentHtml = withLinks.replace(/\n/g, '<br>\n');
+            }
+            resolved = resolveVars(styleWrapper, mergedMocks).replace('{{content}}', contentHtml);
+        } else if (contentMode === 'plain_text' || !contentMode) {
+            resolved = plainTextToHtml(resolved);
+        }
+        return resolved;
+    }, [template, styles]);
 
     return (
         <Card className={cn("group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]", cloningId === template.id ? "opacity-50 scale-[0.98] grayscale" : "")}>
@@ -254,6 +335,7 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete
 
 interface TemplateGalleryProps {
     templates: MessageTemplate[];
+    styles?: MessageStyle[];
     isLoading: boolean;
     cloningId: string | null;
     onEdit: (tmpl: MessageTemplate) => void;
@@ -265,6 +347,7 @@ interface TemplateGalleryProps {
 
 export function TemplateGallery({
     templates,
+    styles = [],
     isLoading,
     cloningId,
     onEdit,
@@ -484,6 +567,7 @@ export function TemplateGallery({
                                         <TemplateCard 
                                             key={template.id} 
                                             template={template} 
+                                            styles={styles}
                                             cloningId={cloningId}
                                             onPreview={() => onPreview(template)}
                                             onEdit={() => onEdit(template)}

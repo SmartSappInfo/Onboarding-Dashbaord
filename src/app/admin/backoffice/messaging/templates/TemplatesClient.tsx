@@ -342,6 +342,7 @@ export default function TemplatesClient() {
 
                         <TemplateGallery 
                             templates={templates || []}
+                            styles={styles || []}
                             isLoading={isLoadingTemplates}
                             cloningId={null}
                             onEdit={handleEdit}

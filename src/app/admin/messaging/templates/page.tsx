@@ -5,6 +5,7 @@ import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } 
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, AppField } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
 import { TemplatePreviewModal } from './components/template-preview-modal';
@@ -68,15 +69,42 @@ export default function MessageTemplatesPage() {
     const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
 
     // Data Subscriptions - GLOBAL + WORKSPACE
-    const templatesQuery = useMemoFirebase(() => {
+    const workspaceTemplatesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'message_templates'), 
-            orderBy('createdAt', 'desc')
+            where('workspaceIds', 'array-contains', activeWorkspaceId)
         );
     }, [firestore, activeWorkspaceId]);
 
-    const { data: allTemplates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
+    const globalTemplatesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(
+            collection(firestore, 'message_templates'),
+            where('scope', '==', 'global')
+        );
+    }, [firestore]);
+
+    const { data: workspaceTemplates, isLoading: isLoadingW } = useCollection<MessageTemplate>(workspaceTemplatesQuery);
+    const { data: globalTemplates, isLoading: isLoadingG } = useCollection<MessageTemplate>(globalTemplatesQuery);
+    
+    const isLoadingTemplates = isLoadingW || isLoadingG;
+
+    const allTemplates = React.useMemo(() => {
+        if (!workspaceTemplates && !globalTemplates) return null;
+        const wList = workspaceTemplates || [];
+        const gList = globalTemplates || [];
+        const seen = new Set<string>();
+        const combined: MessageTemplate[] = [];
+        for (const t of [...wList, ...gList]) {
+            if (!seen.has(t.id)) {
+                seen.add(t.id);
+                combined.push(t);
+            }
+        }
+        // Sort by createdAt descending client-side to avoid requiring a composite index
+        return combined.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    }, [workspaceTemplates, globalTemplates]);
 
     const editId = searchParams.get('edit');
 
@@ -104,16 +132,16 @@ export default function MessageTemplatesPage() {
         if (!allTemplates) return [];
         
         // Templates belonging to this workspace
-        const workspaceTemplates = allTemplates.filter(t => t.workspaceIds?.includes(activeWorkspaceId));
+        const workspaceTemplatesList = allTemplates.filter(t => t.workspaceIds?.includes(activeWorkspaceId));
         
         // Global templates
-        const globalTemplates = allTemplates.filter(t => t.scope === 'global');
+        const globalTemplatesList = allTemplates.filter(t => t.scope === 'global');
 
         // Logic: For each unique 'templateType', if a workspace version exists, hide the global one.
-        const workspaceTypes = new Set(workspaceTemplates.map(t => t.templateType).filter(Boolean));
-        const filteredGlobal = globalTemplates.filter(t => !t.templateType || !workspaceTypes.has(t.templateType));
+        const workspaceTypes = new Set(workspaceTemplatesList.map(t => t.templateType).filter(Boolean));
+        const filteredGlobal = globalTemplatesList.filter(t => !t.templateType || !workspaceTypes.has(t.templateType));
 
-        return [...workspaceTemplates, ...filteredGlobal];
+        return [...workspaceTemplatesList, ...filteredGlobal];
     }, [allTemplates, activeWorkspaceId]);
 
     const varsQuery = useMemoFirebase(() => {
@@ -130,25 +158,33 @@ export default function MessageTemplatesPage() {
         );
     }, [firestore, activeWorkspaceId]);
 
-    const entitiesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc'));
-    }, [firestore, activeWorkspaceId]);
+
 
     const meetingsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc'));
-    }, [firestore]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'meetings'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId)
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const surveysQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'surveys'), where('status', '==', 'published'));
-    }, [firestore]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'surveys'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            where('status', '==', 'published')
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const pdfsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'pdfs'), where('status', '==', 'published'));
-    }, [firestore]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'pdfs'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            where('status', '==', 'published')
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const appFieldsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -161,11 +197,15 @@ export default function MessageTemplatesPage() {
 
     const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
-    const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
+    const { sortedEntities: entities } = useSortedEntities();
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
     const { data: appFields } = useCollection<AppField>(appFieldsQuery);
+
+    const sortedMeetings = React.useMemo(() => {
+        return (meetings || []).toSorted((a, b) => (b.meetingTime || '').localeCompare(a.meetingTime || ''));
+    }, [meetings]);
 
     const variables = React.useMemo(() => {
         const contactVarDefs = generateContactVariableDefinitions('institution');
@@ -480,6 +520,7 @@ export default function MessageTemplatesPage() {
 
                             <TemplateGallery 
                                 templates={templates || []}
+                                styles={styles || []}
                                 isLoading={isLoadingTemplates}
                                 cloningId={cloningId}
                                 onEdit={handleEdit}

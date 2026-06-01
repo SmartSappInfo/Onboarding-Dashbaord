@@ -174,6 +174,32 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
             stylesCount++;
         }
 
+        // Seed default styles for standard workspaces so that 'default' style resolves correctly
+        const workspacesToSeedDefaults = ['onboarding', 'prospect'];
+        for (const wsId of workspacesToSeedDefaults) {
+            const styleId = `default_style_${wsId}`;
+            const styleRef = adminDb.collection('message_styles').doc(styleId);
+            batch.set(styleRef, {
+                id: styleId,
+                name: `${wsId.charAt(0).toUpperCase() + wsId.slice(1)} Default Style`,
+                htmlWrapper: styleWrapper,
+                htmlWrapperInternal: styleWrapper,
+                htmlWrapperExternal: styleWrapper,
+                primaryColor: '#3B5FFF',
+                secondaryColor: '#8B5CF6',
+                fontFamily: 'Inter',
+                backgroundColor: '#f8fafc',
+                textColor: '#1e293b',
+                cardBackgroundColor: '#ffffff',
+                borderRadius: '24px',
+                workspaceIds: [wsId],
+                isDefault: true,
+                createdAt: timestamp,
+                updatedAt: timestamp
+            });
+            stylesCount++;
+        }
+
         // 2. Seed Templates (100 total: 10 categories * 5 recipientTypes * 2 channels)
         for (const category of CATEGORIES) {
             for (const recipientType of RECIPIENT_TYPES) {
@@ -194,7 +220,7 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
                     body: blueprint.body,
                     templateType: `${category}_${recipientType}_standard`,
                     recipientType,
-                    styleId: `global_style_${recipientType}`,
+                    styleId: 'default',
                     status: 'active',
                     version: 1,
                     isActive: true,
@@ -219,7 +245,7 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
                     body: blueprint.shortBody,
                     templateType: `${category}_${recipientType}_short`,
                     recipientType,
-                    styleId: `global_style_${recipientType}`,
+                    styleId: 'default',
                     status: 'active',
                     version: 1,
                     isActive: true,
