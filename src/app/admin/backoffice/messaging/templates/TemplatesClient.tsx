@@ -24,6 +24,7 @@ import { Loader2, Trash2, Plus, Zap, Database, ShieldCheck } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { seedGlobalMessagingBlueprint } from '@/lib/seed-messaging-blueprint';
+import { migrateLegacyTemplatesToBlocks } from '@/lib/migrate-messaging-fer';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PageContainerFluid } from '@/components/ui/page-container';
@@ -41,6 +42,7 @@ export default function TemplatesClient() {
     const [templateToDelete, setTemplateToDelete] = React.useState<MessageTemplate | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [isSeeding, setIsSeeding] = React.useState(false);
+    const [isMigrating, setIsMigrating] = React.useState(false);
     const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
 
     const editId = searchParams.get('edit');
@@ -252,6 +254,25 @@ export default function TemplatesClient() {
         }
     };
 
+    const handleMigrateTemplates = async () => {
+        setIsMigrating(true);
+        try {
+            const result = await migrateLegacyTemplatesToBlocks();
+            if (result.success) {
+                toast({ 
+                    title: 'Migration Successful', 
+                    description: `Successfully upgraded ${result.migrated} of ${result.total} legacy templates to rich block formats.` 
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Migration Failed', description: e.message });
+        } finally {
+            setIsMigrating(false);
+        }
+    };
+
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <AnimatePresence mode="wait">
@@ -284,11 +305,20 @@ export default function TemplatesClient() {
                                 <Button 
                                     variant="outline"
                                     onClick={handleSyncBlueprint} 
-                                    disabled={isSeeding}
+                                    disabled={isSeeding || isMigrating}
                                     className="rounded-xl font-bold h-11 px-6 shadow-sm gap-2 border-primary/20 hover:bg-primary/5"
                                 >
                                     {isSeeding ? <Loader2 className="h-5 w-5 animate-spin" /> : <Database className="h-5 w-5" />}
                                     Sync Blueprint Registry
+                                </Button>
+                                <Button 
+                                    variant="outline"
+                                    onClick={handleMigrateTemplates} 
+                                    disabled={isSeeding || isMigrating}
+                                    className="rounded-xl font-bold h-11 px-6 shadow-sm gap-2 border-amber-500/20 text-amber-600 hover:bg-amber-500/5 dark:text-amber-500"
+                                >
+                                    {isMigrating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Zap className="h-5 w-5" />}
+                                    Migrate Legacy Templates (FER)
                                 </Button>
                                 <Button 
                                     onClick={() => { setEditingTemplate(null); setIsAdding(true); }} 

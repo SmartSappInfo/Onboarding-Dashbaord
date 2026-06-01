@@ -158,6 +158,15 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
                 id: styleId,
                 name: `Global ${type.replace('_', ' ')} Style`,
                 htmlWrapper: styleWrapper,
+                htmlWrapperInternal: styleWrapper,
+                htmlWrapperExternal: styleWrapper,
+                primaryColor: '#3B5FFF',
+                secondaryColor: '#8B5CF6',
+                fontFamily: 'Inter',
+                backgroundColor: '#f8fafc',
+                textColor: '#1e293b',
+                cardBackgroundColor: '#ffffff',
+                borderRadius: '24px',
                 workspaceIds: [], // Global
                 createdAt: timestamp,
                 updatedAt: timestamp
