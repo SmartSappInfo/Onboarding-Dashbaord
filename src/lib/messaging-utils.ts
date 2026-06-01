@@ -109,8 +109,7 @@ export function plainTextToHtml(text: string, isDark?: boolean): string {
 </head>
 <body style="margin: 0; padding: 40px 20px; background-color: ${outerBg}; font-family: 'Figtree', Helvetica, Arial, sans-serif;">
   <div style="max-width: 600px; margin: 0 auto;">
-    <div style="height: 4px; background: linear-gradient(to right, #3B5FFF, #8B5CF6, #3B5FFF); border-radius: 24px 24px 0 0;"></div>
-    <div style="background-color: ${cardBg}; padding: 48px 40px; border-radius: 0 0 24px 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+    <div style="background-color: ${cardBg}; padding: 48px 40px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
       <div style="font-family: 'Figtree', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: ${textColor}; font-weight: 500;">
         ${withBreaks}
       </div>
@@ -545,10 +544,7 @@ export function renderBlocksToHtml(
 <body style="word-spacing:normal;background-color:${outerBg};padding: 40px 20px;">
   <div style="background-color:${outerBg};">
     <div style="margin:0px auto;max-width:${maxWidth};">
-      <!-- Gradient Top Line -->
-      <div style="height: 4px; background: linear-gradient(to right, ${options?.style?.primaryColor || '#3B5FFF'}, ${options?.style?.secondaryColor || '#8B5CF6'}, ${options?.style?.primaryColor || '#3B5FFF'}); border-radius: ${cardRadius} ${cardRadius} 0 0;"></div>
-      
-      <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%; background-color: ${cardBg}; border-radius: 0 0 ${cardRadius} ${cardRadius}; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%; background-color: ${cardBg}; border-radius: ${cardRadius}; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
         <tbody>
           <tr>
             <td style="direction:ltr;font-size:0px;padding:48px 40px;text-align:center;font-family: '${fontFam}', sans-serif; color: ${textColor};">
