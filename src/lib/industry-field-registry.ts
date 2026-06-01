@@ -330,7 +330,7 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
       { name: 'Referee', variableName: 'referee', type: 'short_text', compatibilityScope: ['common'] },
       { name: 'Location String', variableName: 'location_string', type: 'short_text', compatibilityScope: ['common'] },
       { name: 'Zone Name', variableName: 'zone_name', type: 'short_text', compatibilityScope: ['common'] },
-      { name: 'Organization Name', variableName: 'organization_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the organization' },
+      { name: 'Organization Name', variableName: 'org_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the organization' },
       { name: 'Workspace Name', variableName: 'workspace_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the current workspace' },
       { name: 'User Name', variableName: 'user_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the logged-in user sending the message' },
       // Recipient-aware variables

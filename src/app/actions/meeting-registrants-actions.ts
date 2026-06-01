@@ -167,7 +167,9 @@ export async function sendMeetingInvitationsAction(
   channels: ('email' | 'sms')[],
   emailTemplateId?: string,
   smsTemplateId?: string,
-  scheduleTime?: string
+  scheduleTime?: string,
+  subscribeOnly?: boolean,
+  stageId?: string
 ) {
   try {
     const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
@@ -233,6 +235,10 @@ export async function sendMeetingInvitationsAction(
           registrantId = docRef.id;
         }
 
+        if (subscribeOnly) {
+          return { registrantId, success: true };
+        }
+
         const rsvpGoingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=going`;
         const rsvpDeclinedUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=not_going`;
         const rsvpLaterUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=later`;
@@ -265,7 +271,7 @@ export async function sendMeetingInvitationsAction(
               },
               scheduledAt: scheduleTime,
               status: 'pending',
-              reminderType: 'meeting_invitation',
+              reminderType: stageId ? `meeting_invitation_${stageId}` : 'meeting_invitation',
               sourceEventId: meetingId,
               sourceEventType: 'meeting',
               retryCount: 0,
@@ -344,9 +350,19 @@ export async function sendMeetingInvitationsAction(
           }
         }
 
-        await registrantsRef.doc(registrantId).update({
+        const updateData: Record<string, any> = {
           lastInviteSentAt: new Date().toISOString(),
-        });
+        };
+        if (stageId) {
+          updateData[`sentInvitations.${stageId}`] = new Date().toISOString();
+          if (channels.includes('email') && rec.email) {
+            updateData[`sentInvitations.${stageId}_email`] = new Date().toISOString();
+          }
+          if (channels.includes('sms') && rec.phone) {
+            updateData[`sentInvitations.${stageId}_sms`] = new Date().toISOString();
+          }
+        }
+        await registrantsRef.doc(registrantId).update(updateData);
 
         return { registrantId, success: true };
       })

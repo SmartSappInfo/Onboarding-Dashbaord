@@ -78,7 +78,9 @@ export default async function RsvpRespondPage({
   }
 
   const registrantData = tokenQuery.docs[0].data();
-  const rsvpStatus = registrantData.rsvpStatus || registrantData.status || null;
+  const rawRsvp = registrantData.rsvpStatus || null;
+  const dbResponse =
+    rawRsvp === 'going' || rawRsvp === 'not_going' || rawRsvp === 'later' ? rawRsvp : null;
   const initialChoice =
     response === 'going' || response === 'not_going' || response === 'later' ? response : null;
 
@@ -94,6 +96,7 @@ export default async function RsvpRespondPage({
           entitySlug={entitySlug}
           token={token}
           initialResponse={initialChoice}
+          dbResponse={dbResponse}
         />
       </main>
       <Footer />

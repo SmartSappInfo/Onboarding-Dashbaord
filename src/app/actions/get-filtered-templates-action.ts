@@ -57,17 +57,10 @@ export async function getFilteredTemplatesAction(filters: FilterOptions): Promis
         // Filter out archived ones
         templates = templates.filter(t => t.status !== 'archived' && t.isActive !== false);
 
-        // Filter for External Client focused templates only
-        // Keep: target === 'external_client', recipientType in (respondent, entity, external_alert, all)
-        // Exclude: target === 'internal_team', recipientType in (internal_alert, assignee)
-        templates = templates.filter(t => {
-            // Explicitly internal — exclude
-            if (t.target === 'internal_team') return false;
-            if (t.recipientType === 'internal_alert' || t.recipientType === 'assignee') return false;
-
-            // Explicitly external, or no target/recipientType set (include by default)
-            return true;
-        });
+        // Filter by recipientType if specified
+        if (recipientType && recipientType !== 'all') {
+            templates = templates.filter(t => t.recipientType === recipientType);
+        }
 
         // Deduplicate templates by their templateType or id to ensure no duplicates
         const seenTypes = new Set<string>();

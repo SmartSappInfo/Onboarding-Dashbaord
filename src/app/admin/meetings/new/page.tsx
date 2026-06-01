@@ -45,7 +45,7 @@ import {
 import { MEETING_TEMPLATES } from '../constants/templates';
 
 import type { WorkspaceEntity, MeetingType, MeetingRegistrationField } from '@/lib/types';
-import { MEETING_TYPES, REMINDER_OFFSETS } from '@/lib/types';
+import { MEETING_TYPES, REMINDER_OFFSETS, getDefaultMeetingMessagingConfig } from '@/lib/types';
 import { Eye, EyeOff, LayoutTemplate, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -78,8 +78,7 @@ import { getDefaultRegistrationFields } from '@/lib/meeting-tokens';
 import RegistrationFieldBuilder from '../components/registration-field-builder';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { scheduleRemindersForMeeting, scheduleMessagingConfigReminders, scheduleFacilitatorAlerts } from '@/lib/reminder-actions';
-import { scheduleMeetingPostEvent } from '@/app/actions/meeting-post-event-action';
+import { rescheduleRemindersForMeeting } from '@/lib/reminder-actions';
 import { Checkbox } from '@/components/ui/checkbox';
 import MeetingPreviewPanel from '../components/MeetingPreviewPanel';
 import MeetingLeadCaptureSection from '../components/MeetingLeadCaptureSection';
@@ -279,6 +278,7 @@ export default function NewMeetingPage() {
       adminAlertEmailTemplateId: '',
       adminAlertSmsTemplateId: '',
       enabledReminders: [],
+      messagingConfig: getDefaultMeetingMessagingConfig(),
     },
   });
 
@@ -547,39 +547,11 @@ export default function NewMeetingPage() {
             }).catch(err => console.warn("Notification deferred:", err.message));
         }
 
-        // Task 12.2: Schedule reminders for the meeting
-        if (data.enabledReminders && data.enabledReminders.length > 0) {
-            scheduleRemindersForMeeting(
-                { id: docRef.id, ...meetingData } as any,
-                data.enabledReminders,
-                activeOrganizationId
-            ).catch(err => console.warn("Reminder scheduling deferred:", err.message));
-        }
-
-        // Phase 8: Schedule messaging config reminders if present
-        if (data.messagingConfig?.reminders?.length > 0) {
-            scheduleMessagingConfigReminders(
-                { id: docRef.id, ...meetingData } as any,
-                activeOrganizationId
-            ).catch(err => console.warn('Messaging reminders deferred:', err.message));
-        }
-
-        // Phase 8: Schedule facilitator pre-event alerts
-        if (data.messagingConfig?.facilitatorUserIds?.length > 0) {
-            scheduleFacilitatorAlerts(
-                { id: docRef.id, ...meetingData } as any,
-                activeOrganizationId,
-                'pre_event'
-            ).catch(err => console.warn('Facilitator alerts deferred:', err.message));
-        }
-
-        // Phase 8: Schedule post-event follow-up
-        if (data.messagingConfig?.postEventEnabled) {
-            scheduleMeetingPostEvent(
-                { id: docRef.id, ...meetingData } as any,
-                activeOrganizationId
-            ).catch(err => console.warn('Post-event scheduling deferred:', err.message));
-        }
+        // Consolidated robust scheduling of all meeting alerts, reminders and invitations
+        rescheduleRemindersForMeeting(
+            { id: docRef.id, ...meetingData } as any,
+            activeOrganizationId
+        ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
 
         router.push('/admin/meetings');
     } catch (error: any) {

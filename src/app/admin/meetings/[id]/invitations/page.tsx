@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { collection, query, where, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, doc, orderBy, updateDoc } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
@@ -59,7 +59,8 @@ import {
   adminRegisterParticipantAction
 } from '@/app/actions/meeting-registrants-actions';
 import { toggleRegistrantAttendance } from '@/app/actions/meeting-attendance-actions';
-import type { Meeting, MeetingRegistrant } from '@/lib/types';
+import type { Meeting, MeetingRegistrant, MeetingInvitationSlot } from '@/lib/types';
+import { DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -80,6 +81,18 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
+const DEFAULT_SLOTS: MeetingInvitationSlot[] = [
+  { id: 'initial', label: 'Initial Invitation', emailTemplateId: DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID, channels: ['email'], enabled: true },
+  { id: '1_month', label: '1 Month Before', channels: ['email'], enabled: false },
+  { id: '1_week', label: '1 Week Before', channels: ['email'], enabled: false },
+  { id: '5_days', label: '5 Days Before', channels: ['email'], enabled: false },
+  { id: '3_days', label: '3 Days Before', channels: ['email'], enabled: false },
+  { id: '2_days', label: '2 Days Before', channels: ['email'], enabled: false },
+  { id: '1_day', label: '1 Day Before', channels: ['email'], enabled: false },
+  { id: 'today', label: 'Today (8 AM)', channels: ['email'], enabled: false },
+  { id: 'last_chance', label: 'Time Up - Last Chance', channels: ['email'], enabled: false },
+];
+
 export default function UnifiedInvitationsAndRegistrantsPage() {
   const params = useParams();
   const router = useRouter();
@@ -90,7 +103,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   const { user: currentUser } = useUser();
   const { toast } = useToast();
 
-  const [selectedChannels, setSelectedChannels] = React.useState<('email' | 'sms')[]>(['email']);
+  const [selectedSlotId, setSelectedSlotId] = React.useState('initial');
   const [contactScope, setContactScope] = React.useState<'primary' | 'signatories' | 'roles' | 'all'>('primary');
   const [selectedRoles, setSelectedRoles] = React.useState<string[]>([]);
   const [tagSegment, setTagSegment] = React.useState<TagSegment>({
@@ -106,11 +119,9 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   // Assignee filter: 'all' = show all entities, 'mine' = show only my assigned entities
   const [assigneeFilter, setAssigneeFilter] = React.useState<'all' | 'mine'>('all');
 
-  const [emailTemplateId, setEmailTemplateId] = React.useState('');
-  const [smsTemplateId, setSmsTemplateId] = React.useState('');
-  const [isScheduled, setIsScheduled] = React.useState(false);
-  const [scheduleDateTime, setScheduleDateTime] = React.useState('');
+
   const [isSending, setIsSending] = React.useState(false);
+  const [isAddingToSchedule, setIsAddingToSchedule] = React.useState(false);
 
   // Template Preview Modal states
   const [previewTemplateOpen, setPreviewTemplateOpen] = React.useState(false);
@@ -139,6 +150,25 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   }, [firestore, meetingId]);
 
   const { data: meeting, isLoading: isLoadingMeeting, error: meetingError } = useDoc<Meeting>(meetingDocRef);
+
+  // Derived state from active slot configuration
+  const invitationSlots = React.useMemo(() => {
+    return meeting?.messagingConfig?.invitationSeries || DEFAULT_SLOTS;
+  }, [meeting]);
+
+  const activeSlot = React.useMemo(() => {
+    return invitationSlots.find(s => s.id === selectedSlotId) || invitationSlots[0];
+  }, [invitationSlots, selectedSlotId]);
+
+  const emailTemplateId = activeSlot?.emailTemplateId || '';
+  const smsTemplateId = activeSlot?.smsTemplateId || '';
+  const selectedChannels = activeSlot?.channels || ['email'];
+
+  const isMissingRequiredTemplates = React.useMemo(() => {
+    if (selectedChannels.includes('email') && !emailTemplateId) return true;
+    if (selectedChannels.includes('sms') && !smsTemplateId) return true;
+    return false;
+  }, [selectedChannels, emailTemplateId, smsTemplateId]);
 
   // Fetch all current registrants/invites
   const registrantsColRef = useMemoFirebase(() => {
@@ -434,11 +464,71 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     });
   }, [registeredAttendees, searchQuery]);
 
-  const toggleChannel = (ch: 'email' | 'sms') => {
-    setSelectedChannels(prev => 
-      prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch]
-    );
-  };
+  const handleToggleChannel = React.useCallback(async (ch: 'email' | 'sms') => {
+    if (!meeting || !meetingDocRef) return;
+    const currentConfig = (meeting.messagingConfig || {}) as any;
+    const invitationSeries = [...(currentConfig.invitationSeries || DEFAULT_SLOTS)];
+    const slotIndex = invitationSeries.findIndex(s => s.id === selectedSlotId);
+    if (slotIndex !== -1) {
+      const set = new Set(invitationSeries[slotIndex].channels || []);
+      if (set.has(ch)) {
+        set.delete(ch);
+      } else {
+        set.add(ch);
+        // Automatically assign default template ID for newly added channels if not set
+        if (ch === 'email' && !invitationSeries[slotIndex].emailTemplateId) {
+          invitationSeries[slotIndex].emailTemplateId = `global_meeting_invitation_${selectedSlotId}_email`;
+        }
+        if (ch === 'sms' && !invitationSeries[slotIndex].smsTemplateId) {
+          invitationSeries[slotIndex].smsTemplateId = `global_meeting_invitation_${selectedSlotId}_sms`;
+        }
+      }
+      invitationSeries[slotIndex].channels = Array.from(set) as ('email' | 'sms')[];
+      
+      try {
+        await updateDoc(meetingDocRef, {
+          'messagingConfig.invitationSeries': invitationSeries,
+          'messagingConfig.invitationsEnabled': true
+        });
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Sync Error', description: err.message });
+      }
+    }
+  }, [meeting, selectedSlotId, meetingDocRef, toast]);
+
+  const handleEmailTemplateChange = React.useCallback(async (templateId: string) => {
+    if (!meeting || !meetingDocRef) return;
+    const currentConfig = (meeting.messagingConfig || {}) as any;
+    const invitationSeries = [...(currentConfig.invitationSeries || DEFAULT_SLOTS)];
+    const slotIndex = invitationSeries.findIndex(s => s.id === selectedSlotId);
+    if (slotIndex !== -1) {
+      invitationSeries[slotIndex].emailTemplateId = templateId;
+      try {
+        await updateDoc(meetingDocRef, {
+          'messagingConfig.invitationSeries': invitationSeries
+        });
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Sync Error', description: err.message });
+      }
+    }
+  }, [meeting, selectedSlotId, meetingDocRef, toast]);
+
+  const handleSmsTemplateChange = React.useCallback(async (templateId: string) => {
+    if (!meeting || !meetingDocRef) return;
+    const currentConfig = (meeting.messagingConfig || {}) as any;
+    const invitationSeries = [...(currentConfig.invitationSeries || DEFAULT_SLOTS)];
+    const slotIndex = invitationSeries.findIndex(s => s.id === selectedSlotId);
+    if (slotIndex !== -1) {
+      invitationSeries[slotIndex].smsTemplateId = templateId;
+      try {
+        await updateDoc(meetingDocRef, {
+          'messagingConfig.invitationSeries': invitationSeries
+        });
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Sync Error', description: err.message });
+      }
+    }
+  }, [meeting, selectedSlotId, meetingDocRef, toast]);
 
   const toggleRole = (roleKey: string) => {
     setSelectedRoles(prev => 
@@ -470,7 +560,9 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
         selectedChannels,
         emailTemplateId || undefined,
         smsTemplateId || undefined,
-        isScheduled ? scheduleDateTime : undefined
+        undefined, // scheduleTime is removed
+        false, // subscribeOnly
+        selectedSlotId // stageId
       );
 
       if (res.success) {
@@ -482,6 +574,43 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
       setIsSending(false);
+    }
+  };
+
+  // Add Target Audience to Scheduled Invitation Series
+  const handleAddAudienceToSchedule = async () => {
+    if (filteredRecipients.length === 0) {
+      toast({ variant: 'destructive', title: 'Empty Audience', description: 'No recipients match the selected criteria.' });
+      return;
+    }
+    if (selectedChannels.length === 0) {
+      toast({ variant: 'destructive', title: 'Channels Required', description: 'Please select at least one channel (Email or SMS).' });
+      return;
+    }
+
+    setIsAddingToSchedule(true);
+    try {
+      const res = await sendMeetingInvitationsAction(
+        meetingId,
+        activeWorkspaceId || 'onboarding',
+        filteredRecipients,
+        selectedChannels,
+        emailTemplateId || undefined,
+        smsTemplateId || undefined,
+        undefined, // scheduleTime is removed
+        true, // subscribeOnly
+        selectedSlotId // stageId
+      );
+
+      if (res.success) {
+        toast({ title: 'Success', description: `${filteredRecipients.length} guest(s) added to the invitation schedule.` });
+      } else {
+        toast({ variant: 'destructive', title: 'Action failed', description: res.message });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+      setIsAddingToSchedule(false);
     }
   };
 
@@ -737,7 +866,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
             
             {/* Filter tools */}
             <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
+              <Card id="target-audience-criteria" className="border-none shadow-sm ring-1 ring-border rounded-2xl">
                 <CardHeader className="bg-muted/30 border-b py-4">
                   <CardTitle className="text-base font-bold flex items-center gap-2">
                     <Users className="h-5 w-5 text-primary" />
@@ -825,32 +954,100 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                     </div>
                   </div>
                   
-                  {/* Select Channels */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Select Channels</span>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { id: 'email', label: 'Email channel', icon: <Mail className="h-4 w-4" /> },
-                        { id: 'sms', label: 'SMS channel', icon: <Smartphone className="h-4 w-4" /> },
-                      ].map((opt) => {
-                        const isSelected = selectedChannels.includes(opt.id as any);
-                        return (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => toggleChannel(opt.id as any)}
-                            className={cn('flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 transition-all font-semibold text-xs',
-                              isSelected
-                                ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                                : 'border-border hover:border-primary/20 text-muted-foreground'
-                            )}
-                          >
-                            {opt.icon}
-                            {opt.label}
-                            {isSelected && <Check className="h-3 w-3 ml-auto text-primary" />}
-                          </button>
-                        );
-                      })}
+                  {/* Select Invitation Step & Channels */}
+                  <div className="space-y-4 p-5 rounded-2xl border bg-card/45 shadow-sm">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Select Invitation Series Step</span>
+                      <Select value={selectedSlotId} onValueChange={setSelectedSlotId}>
+                        <SelectTrigger className="h-11 rounded-xl font-bold text-xs bg-background border-border/60 hover:bg-muted/5">
+                          <SelectValue placeholder="Choose an invitation step..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          {invitationSlots.map((slot) => (
+                            <SelectItem key={slot.id} value={slot.id} className="text-xs font-semibold">
+                              {slot.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Active Channels for Selected Step</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: 'email', label: 'Email channel', icon: <Mail className="h-4 w-4" /> },
+                          { id: 'sms', label: 'SMS channel', icon: <Smartphone className="h-4 w-4" /> },
+                        ].map((opt) => {
+                          const isSelected = selectedChannels.includes(opt.id as any);
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => handleToggleChannel(opt.id as any)}
+                              className={cn('flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 transition-all font-semibold text-xs',
+                                isSelected
+                                  ? 'border-primary bg-primary/5 text-primary shadow-sm'
+                                  : 'border-border/50 hover:border-primary/20 text-muted-foreground bg-background'
+                              )}
+                            >
+                              {opt.icon}
+                              {opt.label}
+                              {isSelected && <Check className="h-3.5 w-3.5 ml-auto text-primary" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Schedule Info */}
+                    <div className="rounded-xl bg-muted/40 p-4 border border-border/50 space-y-3.5 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5 font-bold text-foreground text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                        <Clock className="h-3.5 w-3.5 text-primary" /> Automated Schedule Info
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="font-bold text-foreground/80 flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5 text-blue-500" /> Email Schedule
+                          </p>
+                          <p className="font-medium text-[11px]">
+                            {activeSlot?.id === 'initial' 
+                              ? (activeSlot.emailScheduledDate 
+                                ? new Date(activeSlot.emailScheduledDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                                : activeSlot.scheduledDate
+                                  ? new Date(activeSlot.scheduledDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                                  : 'Defaults to meeting time')
+                              : (activeSlot?.emailScheduledTime 
+                                ? `At ${activeSlot.emailScheduledTime} (Local)`
+                                : activeSlot?.scheduledTime
+                                  ? `At ${activeSlot.scheduledTime} (Local)`
+                                  : 'Defaults to meeting time')
+                            }
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-bold text-foreground/80 flex items-center gap-1.5">
+                            <Smartphone className="h-3.5 w-3.5 text-green-600" /> SMS Schedule
+                          </p>
+                          <p className="font-medium text-[11px]">
+                            {activeSlot?.id === 'initial' 
+                              ? (activeSlot.smsScheduledDate 
+                                ? new Date(activeSlot.smsScheduledDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                                : activeSlot.scheduledDate
+                                  ? new Date(activeSlot.scheduledDate).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                                  : 'Defaults to meeting time')
+                              : (activeSlot?.smsScheduledTime 
+                                ? `At ${activeSlot.smsScheduledTime} (Local)`
+                                : activeSlot?.scheduledTime
+                                  ? `At ${activeSlot.scheduledTime} (Local)`
+                                  : 'Defaults to meeting time')
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/60 italic border-t pt-2">
+                        Schedules are automated based on the meeting time and can be configured on the edit page.
+                      </p>
                     </div>
                   </div>
 
@@ -859,7 +1056,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                     <div className="py-4 space-y-5">
                       {/* Section label */}
                       <div className="flex items-center gap-3">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0">Template Selection</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0">Template Customization</span>
                         <div className="h-px flex-1 bg-border/40" />
                       </div>
 
@@ -882,11 +1079,11 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                             </span>
                             <MessagingTemplateSelector
                               category="meetings"
-                              recipientType="external_alert"
+                              recipientType="all"
                               channel="email"
                               templateTypePrefix="meeting_invitation"
                               value={emailTemplateId}
-                              onValueChange={setEmailTemplateId}
+                              onValueChange={handleEmailTemplateChange}
                               placeholder="Choose or create email template..."
                             />
                           </div>
@@ -909,16 +1106,29 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                             </span>
                             <MessagingTemplateSelector
                               category="meetings"
-                              recipientType="external_alert"
+                              recipientType="all"
                               channel="sms"
                               templateTypePrefix="meeting_invitation"
                               value={smsTemplateId}
-                              onValueChange={setSmsTemplateId}
+                              onValueChange={handleSmsTemplateChange}
                               placeholder="Choose or create SMS template..."
                             />
                           </div>
                         )}
                       </div>
+
+                      {/* Warning notice if template is missing but channel is selected */}
+                      {isMissingRequiredTemplates && (
+                        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-start gap-2 animate-in fade-in duration-300">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold">Missing Template Configuration</p>
+                            <p className="text-[11px] mt-0.5 text-amber-600/80 dark:text-amber-400/80">
+                              One or more selected channels do not have a template assigned. Please select or create a template to enable invitation sending.
+                            </p>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Separator below template section */}
                       <div className="h-px bg-border/40" />
@@ -996,7 +1206,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                 <CardHeader className="bg-muted/30 border-b py-4">
                   <CardTitle className="text-sm font-bold flex items-center gap-2">
                     <Send className="h-4 w-4 text-primary" />
-                    Invitation Summary & Scheduling
+                    Invitation Summary & Dispatch
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
@@ -1017,43 +1227,35 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
                   <Separator />
 
-                  {/* Scheduling options */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold flex items-center gap-1"><Clock className="h-4 w-4 text-primary" /> Schedule Invitation</span>
-                      <input
-                        type="checkbox"
-                        checked={isScheduled}
-                        onChange={(e) => setIsScheduled(e.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300 text-primary accent-primary cursor-pointer"
-                      />
-                    </div>
+                    <Button
+                      onClick={handleSendInvitations}
+                      disabled={isSending || isAddingToSchedule || filteredRecipients.length === 0 || selectedChannels.length === 0 || isMissingRequiredTemplates}
+                      className="w-full h-11 rounded-xl font-bold gap-2 text-xs shadow-md"
+                    >
+                      {isSending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      Send Invitations Immediately
+                    </Button>
 
-                    {isScheduled && (
-                      <div className="space-y-2 animate-in fade-in duration-300">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Settings2 className="h-3.5 w-3.5" /> Date & Time</span>
-                        <input
-                          type="datetime-local"
-                          value={scheduleDateTime}
-                          onChange={(e) => setScheduleDateTime(e.target.value)}
-                          className="w-full h-10 px-3 rounded-xl border bg-background text-xs font-semibold"
-                        />
-                      </div>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAddAudienceToSchedule}
+                      disabled={isSending || isAddingToSchedule || filteredRecipients.length === 0 || selectedChannels.length === 0 || isMissingRequiredTemplates}
+                      className="w-full h-11 rounded-xl font-bold gap-2 text-xs border-dashed border-primary/40 hover:border-primary hover:bg-primary/[0.02]"
+                    >
+                      {isAddingToSchedule ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-primary" />
+                      )}
+                      Add Audience to Invitation Schedule
+                    </Button>
                   </div>
-
-                  <Button
-                    onClick={handleSendInvitations}
-                    disabled={isSending || filteredRecipients.length === 0 || selectedChannels.length === 0}
-                    className="w-full h-12 rounded-xl font-bold gap-2 text-sm shadow-md"
-                  >
-                    {isSending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    {isScheduled ? 'Schedule Invitation Blast' : 'Send Invitations Immediately'}
-                  </Button>
                 </CardContent>
               </Card>
 
@@ -1175,7 +1377,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                             <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider font-sans">Quick Actions</p>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                              disabled={invitee.rsvpStatus === 'going' || invitee.status === 'approved' || invitee.status === 'attended'}
+                              disabled={invitee.rsvpStatus === 'going' || invitee.status === 'approved' || invitee.status === 'attended' || isMissingRequiredTemplates}
                               onClick={async () => {
                                 setIsSending(true);
                                 try {
@@ -1215,8 +1417,21 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                   ))}
                   {filteredInvites.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-32 text-center text-muted-foreground/60 text-xs italic font-sans">
-                        No invited guests matches your filter/search criteria.
+                      <TableCell colSpan={6} className="h-48 text-center text-muted-foreground/60 text-xs italic font-sans">
+                        <div className="flex flex-col items-center justify-center gap-3 py-4">
+                          <span>No contacts subscribed to this invitation schedule yet.</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              document.getElementById('target-audience-criteria')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="rounded-xl font-bold font-sans text-xs gap-1 border-dashed hover:border-primary hover:text-primary transition-all"
+                          >
+                            <Plus className="h-4 w-4" /> Add Guests
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )}
@@ -1492,6 +1707,9 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       {/* ========================================================================= */}
       <Dialog open={previewTemplateOpen} onOpenChange={setPreviewTemplateOpen}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden bg-background border rounded-3xl shadow-2xl">
+          <DialogTitle className="sr-only">
+            {previewChannel === 'email' ? 'Email Template Preview' : 'SMS Template Preview'}
+          </DialogTitle>
           <div className="p-6 border-b flex items-center justify-between bg-muted/20">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-primary/10 rounded-xl text-primary">
@@ -1527,7 +1745,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                       .replace('{{meeting_link}}', 'https://smartsapp.com/rsvp')
                       .replace('{{meeting_registrant_one_click_link}}', 'https://smartsapp.com/rsvp')
                       .replace('{{calendar_link}}', 'https://smartsapp.com/calendar')
-                      .replace('{{organization_name}}', 'SmartSapp Academy')
+                      .replace('{{org_name}}', 'SmartSapp Academy')
                   ) : (
                     'No email template body.'
                   )}
@@ -1554,7 +1772,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                           .replace('{{meeting_timezone}}', 'EST')
                           .replace('{{meeting_link}}', 'https://smartsapp.com/rsvp')
                           .replace('{{meeting_registrant_one_click_link}}', 'https://smartsapp.com/rsvp')
-                          .replace('{{organization_name}}', 'SmartSapp')
+                          .replace('{{org_name}}', 'SmartSapp')
                       ) : (
                         'No SMS body.'
                       )}

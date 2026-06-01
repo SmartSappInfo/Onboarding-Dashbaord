@@ -89,9 +89,9 @@ You are invited to join {{meeting_title}}.
 We look forward to seeing you there.
 
 Best regards,
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organizer_name', 'organization_name'],
+    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organizer_name', 'org_name'],
   },
 
   {
@@ -119,9 +119,9 @@ Your attendance for {{meeting_title}} has been confirmed.
 
 See you there!
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organization_name'],
+    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'org_name'],
   },
 
   {
@@ -138,9 +138,9 @@ We regret to inform you that {{meeting_title}} scheduled for {{meeting_time}} ha
 
 We apologise for any inconvenience caused. We will be in touch to reschedule.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'cancellation_reason', 'organization_name'],
+    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'cancellation_reason', 'org_name'],
   },
 
   {
@@ -169,9 +169,9 @@ New time: {{new_meeting_time}}
 
 Please update your calendar accordingly.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['contact_name', 'meeting_title', 'old_meeting_time', 'new_meeting_time', 'meeting_link', 'organization_name'],
+    declaredVariables: ['contact_name', 'meeting_title', 'old_meeting_time', 'new_meeting_time', 'meeting_link', 'org_name'],
   },
 
   {
@@ -201,9 +201,9 @@ This is a reminder that {{meeting_title}} is starting soon.
 Please join a few minutes early to prepare.
 
 Best,
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['meeting_title', 'meeting_time', 'join_link', 'organization_name'],
+    declaredVariables: ['meeting_title', 'meeting_time', 'join_link', 'org_name'],
   },
 
   {
@@ -231,9 +231,9 @@ Thank you for running {{meeting_title}}.
 Please remember to complete any necessary follow-ups and review the event analytics.
 
 Best,
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['meeting_title', 'organization_name'],
+    declaredVariables: ['meeting_title', 'org_name'],
   },
 
   {
@@ -261,9 +261,9 @@ Your meeting {{meeting_title}} starts in 15 minutes.
 
 🔗 Join now: {{meeting_link}}
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['contact_name', 'meeting_title', 'meeting_link', 'organization_name'],
+    declaredVariables: ['contact_name', 'meeting_title', 'meeting_link', 'org_name'],
     reminderConfig: {
       triggerType: 'before_event',
       offsetMinutes: 15,
@@ -301,9 +301,9 @@ A reminder that {{meeting_title}} starts in 1 hour.
 📅 Time: {{meeting_time}}
 🔗 Join Link: {{meeting_link}}
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organization_name'],
+    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'org_name'],
     reminderConfig: {
       triggerType: 'before_event',
       offsetMinutes: 60,
@@ -341,9 +341,9 @@ A reminder that {{meeting_title}} starts in 2 hours.
 📅 Time: {{meeting_time}}
 🔗 Join Link: {{meeting_link}}
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organization_name'],
+    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'org_name'],
     reminderConfig: {
       triggerType: 'before_event',
       offsetMinutes: 120,
@@ -383,9 +383,9 @@ This is a reminder that {{meeting_title}} is scheduled for tomorrow.
 
 We look forward to seeing you.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'meeting',
-    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organization_name'],
+    declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'org_name'],
     reminderConfig: {
       triggerType: 'before_event',
       offsetMinutes: 1440,
@@ -428,9 +428,9 @@ You have been invited to complete the following form: {{form_name}}.
 
 Please complete it at your earliest convenience.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'form',
-    declaredVariables: ['respondent_name', 'form_name', 'form_link', 'submission_deadline', 'organization_name'],
+    declaredVariables: ['respondent_name', 'form_name', 'form_link', 'submission_deadline', 'org_name'],
   },
 
   {
@@ -457,9 +457,9 @@ Thank you! We have received your submission for {{form_name}}.
 
 If you have any questions, please don't hesitate to reach out.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'form',
-    declaredVariables: ['respondent_name', 'form_name', 'submission_date', 'organization_name'],
+    declaredVariables: ['respondent_name', 'form_name', 'submission_date', 'org_name'],
   },
 
   {
@@ -476,9 +476,9 @@ This is a reminder that {{form_name}} is due soon.
 📅 Days remaining: {{days_remaining}}
 🔗 Complete it here: {{form_link}}
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'form',
-    declaredVariables: ['respondent_name', 'form_name', 'deadline', 'days_remaining', 'form_link', 'organization_name'],
+    declaredVariables: ['respondent_name', 'form_name', 'deadline', 'days_remaining', 'form_link', 'org_name'],
   },
 
   {
@@ -509,9 +509,9 @@ Your feedback is important to us and will only take a few minutes.
 
 Thank you for your time.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'survey',
-    declaredVariables: ['respondent_name', 'survey_title', 'survey_link', 'organization_name'],
+    declaredVariables: ['respondent_name', 'survey_title', 'survey_link', 'org_name'],
   },
 
   {
@@ -541,9 +541,9 @@ Thank you for completing {{survey_title}}!
 
 We appreciate your valuable feedback.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'survey',
-    declaredVariables: ['respondent_name', 'survey_title', 'completion_date', 'score', 'result_message', 'organization_name'],
+    declaredVariables: ['respondent_name', 'survey_title', 'completion_date', 'score', 'result_message', 'org_name'],
   },
 
   {
@@ -561,9 +561,9 @@ Your feedback matters! It only takes a few minutes.
 🔗 Complete the survey: {{survey_link}}
 📅 Days remaining: {{days_remaining}}
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'survey',
-    declaredVariables: ['respondent_name', 'survey_title', 'survey_link', 'days_remaining', 'organization_name'],
+    declaredVariables: ['respondent_name', 'survey_title', 'survey_link', 'days_remaining', 'org_name'],
   },
 
   {
@@ -593,9 +593,9 @@ A contract has been prepared for your review and signature: {{contract_name}}.
 
 Please review the document carefully before signing.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'agreement',
-    declaredVariables: ['signatory_name', 'contract_name', 'contract_link', 'deadline', 'organization_name'],
+    declaredVariables: ['signatory_name', 'contract_name', 'contract_link', 'deadline', 'org_name'],
   },
 
   {
@@ -612,9 +612,9 @@ Thank you! {{contract_name}} has been successfully signed.
 
 A copy of the signed contract has been saved to your records.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'agreement',
-    declaredVariables: ['signatory_name', 'contract_name', 'signing_date', 'organization_name'],
+    declaredVariables: ['signatory_name', 'contract_name', 'signing_date', 'org_name'],
   },
 
   {
@@ -633,9 +633,9 @@ A copy of the signed contract has been saved to your records.
 
 Please sign at your earliest convenience.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'agreement',
-    declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'days_remaining', 'contract_link', 'organization_name'],
+    declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'days_remaining', 'contract_link', 'org_name'],
   },
 
   {
@@ -661,9 +661,9 @@ This is a reminder that {{contract_name}} requires your signature before the dea
 ⏰ Deadline: {{deadline}}
 🔗 Sign here: {{contract_link}}
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'agreement',
-    declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'contract_link', 'organization_name'],
+    declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'contract_link', 'org_name'],
   },
 
   {
@@ -683,19 +683,19 @@ This is a reminder that {{contract_name}} requires your signature before the dea
     category: 'general',
     templateType: 'welcome_message',
     channel: 'email',
-    subject: 'Welcome to {{organization_name}}!',
+    subject: 'Welcome to {{org_name}}!',
     body: `Hi {{contact_name}},
 
-Welcome to {{organization_name}}! We're thrilled to have you on board.
+Welcome to {{org_name}}! We're thrilled to have you on board.
 
 You've been added to {{workspace_name}} and your account is now active.
 
 If you have any questions, please don't hesitate to reach out to us.
 
 Best regards,
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'common',
-    declaredVariables: ['contact_name', 'organization_name', 'workspace_name'],
+    declaredVariables: ['contact_name', 'org_name', 'workspace_name'],
   },
 
   {
@@ -714,9 +714,9 @@ Assigned to: {{assigned_to}}
 
 Log in to view the full details.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'entity',
-    declaredVariables: ['user_name', 'entity_name', 'old_stage', 'new_stage', 'assigned_to', 'organization_name'],
+    declaredVariables: ['user_name', 'entity_name', 'old_stage', 'new_stage', 'assigned_to', 'org_name'],
   },
 
   {
@@ -741,9 +741,9 @@ Log in to view the full details.
 
 Please log in to review the details and take the next steps.
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'entity',
-    declaredVariables: ['assigned_to', 'entity_name', 'assigner_name', 'organization_name'],
+    declaredVariables: ['assigned_to', 'entity_name', 'assigner_name', 'org_name'],
   },
 
   {
@@ -759,9 +759,9 @@ The status of {{entity_name}} has been updated.
 Previous status: {{old_status}}
 New status: {{new_status}}
 
-{{organization_name}}`,
+{{org_name}}`,
     variableContext: 'entity',
-    declaredVariables: ['user_name', 'entity_name', 'old_status', 'new_status', 'organization_name'],
+    declaredVariables: ['user_name', 'entity_name', 'old_status', 'new_status', 'org_name'],
   },
 
   {
@@ -778,8 +778,8 @@ New status: {{new_status}}
   {
     name: 'New Task Assigned (Email)', category: 'tasks', templateType: 'task_assigned', channel: 'email', recipientType: 'assignee',
     subject: 'Action Required: You have been assigned a new task',
-    body: `Hi {{assignee_name}},\n\nA new task has been assigned to you by {{assigner_name}}.\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: {{task_link}}\n\nPlease review the task and update the status accordingly.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['assignee_name', 'assigner_name', 'task_name', 'task_due_date', 'task_link', 'organization_name'],
+    body: `Hi {{assignee_name}},\n\nA new task has been assigned to you by {{assigner_name}}.\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: {{task_link}}\n\nPlease review the task and update the status accordingly.\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'assigner_name', 'task_name', 'task_due_date', 'task_link', 'org_name'],
   },
   {
     name: 'New Task Assigned (In-App)', category: 'tasks', templateType: 'task_assigned', channel: 'in_app', recipientType: 'assignee',
@@ -794,22 +794,22 @@ New status: {{new_status}}
   {
     name: 'Task Reminder - 1 Day Before (Email)', category: 'tasks', templateType: 'task_reminder_1day', channel: 'email', recipientType: 'assignee',
     subject: 'Reminder: Task "{{task_name}}" is due tomorrow',
-    body: `Hi {{assignee_name}},\n\nThis is a reminder that the following task is due tomorrow:\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: {{task_link}}\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'organization_name'],
+    body: `Hi {{assignee_name}},\n\nThis is a reminder that the following task is due tomorrow:\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: {{task_link}}\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'org_name'],
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 1440, offsetLabel: '1 day before', eventType: 'task_deadline' },
   },
   {
     name: 'Task Reminder - Overdue (Email)', category: 'tasks', templateType: 'task_overdue', channel: 'email', recipientType: 'assignee',
     subject: 'Urgent: Task "{{task_name}}" is overdue',
-    body: `Hi {{assignee_name}},\n\nThe following task is now overdue:\n\n📋 Task: {{task_name}}\n⏰ Original Due Date: {{task_due_date}}\n🔗 View Details: {{task_link}}\n\nPlease address this as soon as possible.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'organization_name'],
+    body: `Hi {{assignee_name}},\n\nThe following task is now overdue:\n\n📋 Task: {{task_name}}\n⏰ Original Due Date: {{task_due_date}}\n🔗 View Details: {{task_link}}\n\nPlease address this as soon as possible.\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'org_name'],
     reminderConfig: { triggerType: 'after_failure', offsetMinutes: 1440, offsetLabel: '1 day after', eventType: 'task_deadline' },
   },
   {
     name: 'Task Completed (Email)', category: 'tasks', templateType: 'task_completed', channel: 'email', recipientType: 'internal_alert',
     subject: 'Task Completed: {{task_name}}',
-    body: `Hi,\n\nThe following task has been marked as completed by {{assignee_name}}.\n\n📋 Task: {{task_name}}\n📅 Completed On: {{completion_date}}\n🔗 View Details: {{task_link}}\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'completion_date', 'task_link', 'organization_name'],
+    body: `Hi,\n\nThe following task has been marked as completed by {{assignee_name}}.\n\n📋 Task: {{task_name}}\n📅 Completed On: {{completion_date}}\n🔗 View Details: {{task_link}}\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'completion_date', 'task_link', 'org_name'],
     reminderConfig: { triggerType: 'after_completion', offsetMinutes: 0, offsetLabel: 'On completion', eventType: 'task_deadline' },
   },
 
@@ -817,8 +817,8 @@ New status: {{new_status}}
   {
     name: 'Automation Failed (Email)', category: 'automations', templateType: 'automation_failed', channel: 'email', recipientType: 'internal_alert',
     subject: 'Alert: Automation Workflow Failed',
-    body: `Hello,\n\nThe automation workflow "{{workflow_name}}" encountered an error and failed to execute successfully.\n\n🔴 Error Details: {{error_message}}\n⏰ Time of Failure: {{failure_time}}\n🔗 Review Workflow: {{workflow_link}}\n\nPlease investigate the issue promptly to ensure operations continue smoothly.\n\n{{organization_name}}`,
-    variableContext: 'common', declaredVariables: ['workflow_name', 'error_message', 'failure_time', 'workflow_link', 'organization_name'],
+    body: `Hello,\n\nThe automation workflow "{{workflow_name}}" encountered an error and failed to execute successfully.\n\n🔴 Error Details: {{error_message}}\n⏰ Time of Failure: {{failure_time}}\n🔗 Review Workflow: {{workflow_link}}\n\nPlease investigate the issue promptly to ensure operations continue smoothly.\n\n{{org_name}}`,
+    variableContext: 'common', declaredVariables: ['workflow_name', 'error_message', 'failure_time', 'workflow_link', 'org_name'],
   },
   {
     name: 'Automation Failed (Push)', category: 'automations', templateType: 'automation_failed', channel: 'push', recipientType: 'internal_alert',
@@ -835,8 +835,8 @@ New status: {{new_status}}
   {
     name: 'QR Code Scan Alert (Email)', category: 'qr_codes', templateType: 'qr_scan_alert', channel: 'email', recipientType: 'internal_alert',
     subject: 'Notification: New QR Code Scan',
-    body: `Hello,\n\nA new scan has been registered for your QR code.\n\n📱 QR Code: {{qr_name}}\n⏰ Scan Time: {{scan_time}}\n📍 Location: {{scan_location}}\n\n{{organization_name}}`,
-    variableContext: 'common', declaredVariables: ['qr_name', 'scan_time', 'scan_location', 'organization_name'],
+    body: `Hello,\n\nA new scan has been registered for your QR code.\n\n📱 QR Code: {{qr_name}}\n⏰ Scan Time: {{scan_time}}\n📍 Location: {{scan_location}}\n\n{{org_name}}`,
+    variableContext: 'common', declaredVariables: ['qr_name', 'scan_time', 'scan_location', 'org_name'],
   },
   {
     name: 'QR Code Scan Alert (Push)', category: 'qr_codes', templateType: 'qr_scan_alert', channel: 'push', recipientType: 'internal_alert',

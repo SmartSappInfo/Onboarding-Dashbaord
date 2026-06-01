@@ -84,6 +84,23 @@ export async function fetchTemplatesCached(
 }
 
 /**
+ * Synchronously retrieves cached templates if they are valid.
+ */
+export function getTemplatesCachedSync(
+    channel: MessageChannel | 'all',
+    workspaceId?: string,
+    organizationId?: string
+): MessageTemplate[] | null {
+    const key = getCacheKey(channel, workspaceId, organizationId);
+    const cached = templatesCache[key];
+    const now = Date.now();
+    if (cached && cached.data.length > 0 && (now - cached.timestamp < CACHE_TTL)) {
+        return cached.data;
+    }
+    return null;
+}
+
+/**
  * Explicitly invalidates the cache for all channel/workspace contexts.
  * Useful when templates are created, edited, or deleted anywhere.
  */

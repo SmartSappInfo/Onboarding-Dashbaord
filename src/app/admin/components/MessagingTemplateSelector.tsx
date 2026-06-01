@@ -12,10 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import type { TemplateCategory, RecipientType, MessageChannel, MessageTemplate } from '@/lib/types';
-import { fetchTemplatesCached } from './template-cache-manager';
+import { fetchTemplatesCached, getTemplatesCachedSync } from './template-cache-manager';
 import { useTenant } from '@/context/TenantContext';
 import { cn } from '@/lib/utils';
-import { plainTextToHtml } from '@/lib/messaging-utils';
+import { plainTextToHtml, renderBlocksToHtml } from '@/lib/messaging-utils';
 
 // Heavy workshop sheet — code-split, loads only when user opens creator
 const TemplateWorkshopSheet = dynamic(
@@ -181,11 +181,28 @@ const PickerCard = React.memo(function PickerCard({
     tmpl, isSelected, isPreviewed, onClick, onUse, onCloneAndEdit,
 }: PickerCardProps) {
     const isEmail = tmpl.channel === 'email';
-    const hasHtml = isEmail && tmpl.body && isHtmlContent(tmpl.body);
-    const emailSrcDoc = React.useMemo(() => {
-        if (!isEmail) return '';
-        return tmpl.contentMode === 'plain_text' ? plainTextToHtml(tmpl.body) : tmpl.body;
-    }, [isEmail, tmpl.contentMode, tmpl.body]);
+    const hasHtml = isEmail && (
+        (tmpl.contentMode === 'rich_builder' || !!tmpl.blocks?.length) ||
+        (tmpl.body && isHtmlContent(tmpl.body))
+    );
+    const textSnippet = React.useMemo(() => {
+        if (!isEmail) return tmpl.body || '';
+        if (tmpl.contentMode === 'rich_builder' || tmpl.blocks?.length) {
+            const textParts: string[] = [];
+            tmpl.blocks?.forEach((b: any) => {
+                if (b.type === 'text' && b.content) textParts.push(b.content);
+                if (b.type === 'paragraph' && b.content) textParts.push(b.content);
+                if (b.type === 'heading' && b.content) textParts.push(b.content);
+                if (b.type === 'section' && b.blocks) {
+                    b.blocks.forEach((subB: any) => {
+                        if (subB.content) textParts.push(subB.content);
+                    });
+                }
+            });
+            return textParts.join(' ').replace(/<[^>]*>/g, '') || 'Rich Builder Template';
+        }
+        return (tmpl.body || '').replace(/<[^>]*>/g, '');
+    }, [tmpl, isEmail]);
 
     return (
         <div
@@ -212,7 +229,19 @@ const PickerCard = React.memo(function PickerCard({
             <div className="h-[200px] relative overflow-hidden rounded-t-2xl flex items-start justify-center">
                 {isEmail ? (
                     hasHtml ? (
-                        <ResponsiveIframePreview srcDoc={emailSrcDoc} title={tmpl.name} />
+                        <div className="w-full h-full bg-slate-50/50 dark:bg-zinc-950/10 p-4 overflow-hidden text-left flex flex-col gap-2 relative">
+                            <div className="flex flex-col gap-1 shrink-0">
+                                <div className="h-2 bg-foreground/10 rounded w-1/3" />
+                                <div className="h-1.5 bg-foreground/5 rounded w-2/3" />
+                            </div>
+                            <div className="h-px bg-border/40 shrink-0" />
+                            <p className="text-[9.5px] text-foreground/50 leading-relaxed font-sans whitespace-pre-wrap line-clamp-6 flex-1">
+                                {textSnippet}
+                            </p>
+                            <span className="absolute bottom-3 right-3 text-[8px] font-bold uppercase tracking-wider text-muted-foreground/30 px-1.5 py-0.5 bg-muted/30 border border-border rounded">
+                                HTML Layout
+                            </span>
+                        </div>
                     ) : (
                         <div className="w-full h-full bg-muted/10 p-4 overflow-hidden">
                             <p className="text-[9.5px] text-foreground/40 leading-relaxed font-sans whitespace-pre-wrap line-clamp-9">
@@ -323,6 +352,9 @@ const LivePreviewPane = React.memo(function LivePreviewPane({ tmpl }: { tmpl: Me
     const isEmail = tmpl?.channel === 'email';
     const emailSrcDoc = React.useMemo(() => {
         if (!tmpl || !isEmail) return '';
+        if (tmpl.contentMode === 'rich_builder' || tmpl.blocks?.length) {
+            return renderBlocksToHtml(tmpl.blocks || [], {});
+        }
         return tmpl.contentMode === 'plain_text' ? plainTextToHtml(tmpl.body) : tmpl.body;
     }, [tmpl, isEmail]);
 
@@ -401,8 +433,11 @@ const InlineSelectedCard = React.memo(function InlineSelectedCard({
     const isEmail = template.channel === 'email';
     const emailSrcDoc = React.useMemo(() => {
         if (!isEmail) return '';
+        if (template.contentMode === 'rich_builder' || template.blocks?.length) {
+            return renderBlocksToHtml(template.blocks || [], {});
+        }
         return template.contentMode === 'plain_text' ? plainTextToHtml(template.body) : template.body;
-    }, [isEmail, template.contentMode, template.body]);
+    }, [isEmail, template.contentMode, template.body, template.blocks]);
 
     return (
         <div className="border border-border bg-card rounded-2xl overflow-hidden shadow-sm ring-1 ring-primary/10">
@@ -465,7 +500,7 @@ const InlineSelectedCard = React.memo(function InlineSelectedCard({
             {/* Live thumbnail */}
             <div className="h-[200px] relative overflow-hidden">
                 {isEmail ? (
-                    emailSrcDoc && isHtmlContent(emailSrcDoc) ? (
+                    emailSrcDoc && (template.contentMode === 'rich_builder' || template.blocks?.length || isHtmlContent(emailSrcDoc)) ? (
                         <ResponsiveIframePreview srcDoc={emailSrcDoc} title={template.name} className="absolute inset-0" />
                     ) : (
                         <div className="h-full p-4 overflow-y-auto bg-muted/10">
@@ -495,11 +530,21 @@ export function MessagingTemplateSelector({
     const [pickerOpen, setPickerOpen] = React.useState(false);
     const [creatorOpen, setCreatorOpen] = React.useState(false);
     const [editingTemplateId, setEditingTemplateId] = React.useState<string | undefined>();
-    const [templates, setTemplates] = React.useState<MessageTemplate[]>([]);
-    const [isLoading, setIsLoading] = React.useState(true);
+
+    // Synchronous initial cache hit resolve to eliminate initial load skeleton flickers
+    const initialCached = React.useMemo(() => {
+        return getTemplatesCachedSync(
+            channel,
+            activeWorkspaceId || undefined,
+            activeOrganizationId || undefined
+        );
+    }, [channel, activeWorkspaceId, activeOrganizationId]);
+
+    const [templates, setTemplates] = React.useState<MessageTemplate[]>(() => initialCached || []);
+    const [isLoading, setIsLoading] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [selectedCategory, setSelectedCategory] = React.useState('all');
-    const [hasFetched, setHasFetched] = React.useState(false);
+    const [hasFetched, setHasFetched] = React.useState(() => !!initialCached);
     // Click-to-preview state (no hover)
     const [previewedTemplate, setPreviewedTemplate] = React.useState<MessageTemplate | null>(null);
 
@@ -526,10 +571,24 @@ export function MessagingTemplateSelector({
     }, [pickerOpen, hasFetched, fetchTemplates]);
 
     React.useEffect(() => {
-        if (value && !isLoading && !templates.some(t => t.id === value)) fetchTemplates();
-    }, [value, templates, isLoading, fetchTemplates]);
+        if (value && !isLoading && !hasFetched && !templates.some(t => t.id === value)) fetchTemplates();
+    }, [value, templates, isLoading, hasFetched, fetchTemplates]);
 
-    React.useEffect(() => { setHasFetched(false); }, [channel, activeWorkspaceId, activeOrganizationId]);
+    // Handle synchronous state transition when tenant context resolves or changes
+    React.useEffect(() => {
+        const cached = getTemplatesCachedSync(
+            channel,
+            activeWorkspaceId || undefined,
+            activeOrganizationId || undefined
+        );
+        if (cached) {
+            setTemplates(cached);
+            setHasFetched(true);
+        } else {
+            setTemplates([]);
+            setHasFetched(false);
+        }
+    }, [channel, activeWorkspaceId, activeOrganizationId]);
 
     const selectedTemplate = React.useMemo(() => templates.find(t => t.id === value), [templates, value]);
 
@@ -580,16 +639,24 @@ export function MessagingTemplateSelector({
         ? <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
         : <MessageSquare className="h-3.5 w-3.5 text-primary shrink-0" />;
 
+    const baseTemplates = React.useMemo(() => {
+        return templates.filter(t => {
+            const matchesRecipient = recipientType === 'all' || t.recipientType === recipientType;
+            const matchesPrefix = !templateTypePrefix || t.templateType?.startsWith(templateTypePrefix);
+            return matchesRecipient && matchesPrefix;
+        });
+    }, [templates, recipientType, templateTypePrefix]);
+
     const filteredTemplates = React.useMemo(() => {
         const q = searchQuery.toLowerCase();
-        return templates.filter(t => {
+        return baseTemplates.filter(t => {
             const matchSearch = !q
                 || t.name.toLowerCase().includes(q)
                 || (t.subject || '').toLowerCase().includes(q)
                 || (t.body || '').toLowerCase().includes(q);
             return matchSearch && (selectedCategory === 'all' || t.category === selectedCategory);
         });
-    }, [templates, searchQuery, selectedCategory]);
+    }, [baseTemplates, searchQuery, selectedCategory]);
 
     // Reset preview when picker closes
     const handlePickerOpenChange = React.useCallback((open: boolean) => {
@@ -756,12 +823,12 @@ export function MessagingTemplateSelector({
                             'bg-background'
                         )}>
                             <p className="text-[8px] font-bold uppercase tracking-widest text-foreground/20 px-2 pt-1 pb-2">Categories</p>
-                            <CategoryButton label="All Types" count={templates.length} active={selectedCategory === 'all'} onClick={() => setSelectedCategory('all')} />
+                            <CategoryButton label="All Types" count={baseTemplates.length} active={selectedCategory === 'all'} onClick={() => setSelectedCategory('all')} />
                             {CATEGORIES_LIST.map(cat => (
                                 <CategoryButton
                                     key={cat.key}
                                     label={cat.label}
-                                    count={templates.filter(t => t.category === cat.key).length}
+                                    count={baseTemplates.filter(t => t.category === cat.key).length}
                                     active={selectedCategory === cat.key}
                                     onClick={() => setSelectedCategory(cat.key)}
                                 />

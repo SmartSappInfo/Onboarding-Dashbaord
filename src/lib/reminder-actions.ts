@@ -5,8 +5,10 @@ import { resolveAndRender } from './template-resolver';
 import { sendMessage } from './messaging-engine';
 import { computeScheduledAt } from './template-variable-utils';
 import { buildMeetingBaseVariables, buildRegistrantVariables, buildFacilitatorVariables } from './meeting-variable-helpers';
-import type { Meeting, ScheduledMessage, TemplateCategory, MeetingMessagingConfig, MeetingReminderSlot } from './types';
+import type { Meeting, ScheduledMessage, TemplateCategory, MeetingMessagingConfig, MeetingReminderSlot, MeetingInvitationSlot, MeetingRegistrant } from './types';
 import { REMINDER_OFFSETS } from './types';
+import { calculateChannelTriggerTime } from './invitation-utils';
+import { getBaseUrl } from './utils/url-helpers';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -158,27 +160,196 @@ export async function cancelRemindersForMeeting(meetingId: string): Promise<void
 // ---------------------------------------------------------------------------
 
 /**
- * Cancels all existing pending reminders for a meeting and re-creates them
- * based on the updated meeting time. Preserves the same reminder types.
+ * Cancels all existing pending reminders and invitations for a meeting and re-creates them
+ * based on the updated meeting time and configuration.
  */
 export async function rescheduleRemindersForMeeting(
-  meeting: Meeting,
+  meeting: Meeting & { messagingConfig?: MeetingMessagingConfig; enabledReminders?: string[] },
   orgId: string,
 ): Promise<void> {
-  // Collect the existing reminder types before cancelling
-  const snap = await adminDb
+  // 1. Cancel all pending scheduled messages linked to this meeting
+  await cancelRemindersForMeeting(meeting.id);
+
+  const promises: Promise<void>[] = [];
+
+  // 2. Schedule standard contact reminders if enabled
+  if (meeting.enabledReminders && meeting.enabledReminders.length > 0) {
+    promises.push(scheduleRemindersForMeeting(meeting, meeting.enabledReminders, orgId));
+  }
+
+  // 3. Schedule facilitator pre-event alerts if enabled
+  if (meeting.messagingConfig?.facilitatorRemindersEnabled) {
+    promises.push(scheduleFacilitatorAlerts(meeting, orgId, 'pre_event'));
+  }
+
+  // 4. Schedule custom reminders (to registrants) if configured
+  if (meeting.messagingConfig?.reminders?.length) {
+    promises.push(scheduleMessagingConfigReminders(meeting, orgId));
+  }
+
+  // 5. Schedule custom invitations if enabled
+  if (meeting.messagingConfig?.invitationsEnabled) {
+    promises.push(scheduleMeetingInvitations(meeting, orgId));
+  }
+
+  await Promise.all(promises);
+}
+
+/**
+ * Schedules or re-schedules invitation messages in scheduled_messages collection
+ * for all pending registrants.
+ */
+export async function scheduleMeetingInvitations(
+  meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
+  orgId: string
+): Promise<void> {
+  const config = meeting.messagingConfig;
+  if (!config?.invitationsEnabled || !config.invitationSeries || config.invitationSeries.length === 0 || !meeting.meetingTime) {
+    return;
+  }
+
+  // Fetch all pending registrants for this meeting
+  const pendingSnap = await adminDb
+    .collection(`meetings/${meeting.id}/registrants`)
+    .where('status', '==', 'pending')
+    .get();
+
+  if (pendingSnap.empty) {
+    return;
+  }
+
+  // First, cancel any existing pending invitation messages in scheduled_messages for this meeting
+  // to avoid duplicates when re-scheduling.
+  const existingSnap = await adminDb
     .collection('scheduled_messages')
     .where('sourceEventId', '==', meeting.id)
     .where('sourceEventType', '==', 'meeting')
     .where('status', '==', 'pending')
     .get();
 
-  const existingTypes = [...new Set(snap.docs.map((d) => d.data().reminderType as string).filter(Boolean))];
+  const batch = adminDb.batch();
+  let deleteCount = 0;
+  for (const doc of existingSnap.docs) {
+    const data = doc.data();
+    if (data.reminderType === 'meeting_invitation' || data.reminderType?.startsWith('meeting_invitation_')) {
+      batch.delete(doc.ref);
+      deleteCount++;
+    }
+  }
+  if (deleteCount > 0) {
+    await batch.commit();
+  }
 
-  await cancelRemindersForMeeting(meeting.id);
+  // Resolve timezone
+  let timezone = 'UTC';
+  try {
+    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+    if (orgSnap.exists) {
+      timezone = orgSnap.data()?.settings?.defaultTimezone || 'UTC';
+    }
+  } catch (err) {
+    console.warn(`[scheduleMeetingInvitations] Failed to fetch organization timezone:`, err);
+  }
 
-  if (existingTypes.length > 0) {
-    await scheduleRemindersForMeeting(meeting, existingTypes, orgId);
+  const enabledSlots = config.invitationSeries.filter(s => s.enabled);
+  if (enabledSlots.length === 0) return;
+
+  const baseUrl = getBaseUrl();
+  const typeSlug = meeting.type?.id || 'meeting';
+  const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meeting.id;
+
+  const meetingTime = new Date(meeting.meetingTime);
+  const meetingVars = buildMeetingBaseVariables(meeting, timezone);
+
+  const MAX_BATCH_SIZE = 450;
+  let currentBatch = adminDb.batch();
+  let opCount = 0;
+  const now = new Date();
+  const nowIso = now.toISOString();
+
+  for (const slot of enabledSlots) {
+    // Calculate channel-specific scheduled trigger dates
+    const emailTriggerTime = calculateChannelTriggerTime(meetingTime, slot, 'email', timezone);
+    const smsTriggerTime = calculateChannelTriggerTime(meetingTime, slot, 'sms', timezone);
+
+    for (const doc of pendingSnap.docs) {
+      const reg = doc.data() as MeetingRegistrant;
+      const token = reg.token;
+      if (!token) continue;
+
+      const rsvpGoingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=going`;
+      const rsvpDeclinedUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=not_going`;
+      const rsvpLaterUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=later`;
+
+      const regVars = buildRegistrantVariables({
+        name: reg.name || '',
+        email: reg.email || '',
+        phone: reg.phone || '',
+        personalizedMeetingUrl: reg.personalizedMeetingUrl || '',
+        status: reg.status || '',
+        registrationData: reg.registrationData || {},
+      });
+
+      const invitationVars = {
+        ...meetingVars,
+        ...regVars,
+        meetingId: meeting.id,
+        rsvpGoingUrl,
+        rsvpDeclinedUrl,
+        rsvpLaterUrl,
+        rsvp_going_url: rsvpGoingUrl,
+        rsvp_declined_url: rsvpDeclinedUrl,
+        rsvp_later_url: rsvpLaterUrl,
+        meeting_registrant_one_click_link: `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`,
+      };
+
+      for (const ch of slot.channels) {
+        const templateId = ch === 'email' ? slot.emailTemplateId : slot.smsTemplateId;
+        if (!templateId) continue;
+
+        const contact = ch === 'email' ? reg.email : reg.phone;
+        if (!contact) continue;
+
+        // Skip if this invitation channel was already sent to this registrant
+        const stageKey = `${slot.id}_${ch}`;
+        if (reg.sentInvitations?.[stageKey] || reg.sentInvitations?.[slot.id]) {
+          continue;
+        }
+
+        const triggerTime = ch === 'email' ? emailTriggerTime : smsTriggerTime;
+        if (triggerTime <= now) continue; // skip if past due
+
+        const docRef = adminDb.collection('scheduled_messages').doc();
+        const msg: Omit<ScheduledMessage, 'id'> = {
+          organizationId: orgId,
+          templateId,
+          channel: ch,
+          recipientContact: contact,
+          recipientEntityId: reg.entityId || undefined,
+          variables: invitationVars,
+          scheduledAt: triggerTime.toISOString(),
+          status: 'pending',
+          reminderType: `meeting_invitation_${slot.id}`,
+          sourceEventId: meeting.id,
+          sourceEventType: 'meeting',
+          retryCount: 0,
+          createdAt: nowIso,
+        };
+
+        currentBatch.set(docRef, msg);
+        opCount++;
+
+        if (opCount >= MAX_BATCH_SIZE) {
+          await currentBatch.commit();
+          currentBatch = adminDb.batch();
+          opCount = 0;
+        }
+      }
+    }
+  }
+
+  if (opCount > 0) {
+    await currentBatch.commit();
   }
 }
 
@@ -299,6 +470,11 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
         if (!regSnap.empty) {
           const regData = regSnap.docs[0].data();
           if (regData.status === 'cancelled') {
+            await doc.ref.update({ status: 'cancelled', cancelledAt: new Date().toISOString() });
+            continue;
+          }
+          // Auto-cancel scheduled invitation messages if registrant is no longer pending
+          if ((msg.reminderType === 'meeting_invitation' || msg.reminderType?.startsWith('meeting_invitation_')) && regData.status !== 'pending') {
             await doc.ref.update({ status: 'cancelled', cancelledAt: new Date().toISOString() });
             continue;
           }

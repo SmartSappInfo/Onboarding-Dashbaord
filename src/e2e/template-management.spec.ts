@@ -84,7 +84,7 @@ Join the meeting: {{meeting_link}}
 We look forward to seeing you there!
 
 Best regards,
-{{organization_name}}`);
+{{org_name}}`);
     
     // Step 5: Save the template
     const saveButton = page.getByRole('button', { name: /Save|Create Template/i });
@@ -298,7 +298,7 @@ Meeting Details:
 Looking forward to your participation!
 
 Best regards,
-{{organization_name}} Team`;
+{{org_name}} Team`;
     
     // Update subject
     const subjectField = page.locator('input[name="subject"], input[placeholder*="subject" i]');

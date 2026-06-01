@@ -1191,6 +1191,7 @@ export interface Meeting {
 
   // ── Messaging ──────────────────────────────────────────────────────────
   messagingConfig?: MeetingMessagingConfig;
+  organizationId?: string;
 
   // ── Publishing ─────────────────────────────────────────────────────────  // Phase 7: Publish Status
   publishStatus?: 'draft' | 'published' | 'archived';
@@ -1232,6 +1233,50 @@ export interface MeetingReminderSlot {
   enabled: boolean;
 }
 
+// ── Meeting Invitation Slot ──────────────────────────────────────────────────
+export interface MeetingInvitationSlot {
+  id: string; // e.g. 'initial', '1_month', '1_week', '5_days', '3_days', '2_days', '1_day', 'today', 'last_chance'
+  label: string;
+  emailTemplateId?: string;
+  smsTemplateId?: string;
+  channels: ('email' | 'sms')[];
+  enabled: boolean;
+  scheduledDate?: string; // ISO datetime string for 'initial' (Legacy/Fallback)
+  scheduledTime?: string; // HH:mm time string for other relative stages (Legacy/Fallback)
+  emailScheduledDate?: string; // ISO datetime string for 'initial' email
+  smsScheduledDate?: string;   // ISO datetime string for 'initial' SMS
+  emailScheduledTime?: string; // HH:mm time string for relative email stages
+  smsScheduledTime?: string;   // HH:mm time string for relative SMS stages
+}
+
+export const DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID = 'global_meeting_invitation_initial_email';
+
+export const getDefaultMeetingMessagingConfig = (): MeetingMessagingConfig => ({
+  registrationAckEnabled: false,
+  registrationAckChannels: ['email'],
+  facilitatorRemindersEnabled: false,
+  facilitatorPostEventEnabled: false,
+  facilitatorChannels: ['email'],
+  reminders: [],
+  invitationsEnabled: false,
+  invitationSeries: [
+    { id: 'initial', label: 'Initial Invitation', emailTemplateId: DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID, channels: ['email'], enabled: true },
+    { id: '1_month', label: '1 Month Before', channels: ['email'], enabled: false },
+    { id: '1_week', label: '1 Week Before', channels: ['email'], enabled: false },
+    { id: '5_days', label: '5 Days Before', channels: ['email'], enabled: false },
+    { id: '3_days', label: '3 Days Before', channels: ['email'], enabled: false },
+    { id: '2_days', label: '2 Days Before', channels: ['email'], enabled: false },
+    { id: '1_day', label: '1 Day Before', channels: ['email'], enabled: false },
+    { id: 'today', label: 'Today (8 AM)', channels: ['email'], enabled: false },
+    { id: 'last_chance', label: 'Time Up - Last Chance', channels: ['email'], enabled: false },
+  ],
+  postEventEnabled: false,
+  postEventDelayMinutes: 60,
+  postEventAudience: 'attendees_only',
+  postEventChannels: ['email'],
+  postEventAbsenteeEnabled: false,
+});
+
 // ── Meeting Messaging Config ───────────────────────────────────────────────
 export interface MeetingMessagingConfig {
   // Registration Ack (to registrant)
@@ -1252,6 +1297,10 @@ export interface MeetingMessagingConfig {
 
   // Custom Reminders (to registrants)
   reminders: MeetingReminderSlot[];
+
+  // Invitation Series (to pending registrants)
+  invitationsEnabled: boolean;
+  invitationSeries: MeetingInvitationSlot[];
 
   // Post-Event Follow-Up
   postEventEnabled: boolean;
@@ -1295,6 +1344,7 @@ export interface MeetingRegistrant {
   token: string;
   status: MeetingRegistrantStatus;
   source?: 'invite' | 'one-click' | 'direct' | 'admin';
+  entityId?: string; // Links back to the WorkspaceEntity or unified Entity
   registrationData: Record<string, any>;
   name: string;
   email?: string;
@@ -1306,6 +1356,7 @@ export interface MeetingRegistrant {
   personalizedMeetingUrl?: string;
   lastInviteSentAt?: string;
   lastReminderSentAt?: string;
+  sentInvitations?: Record<string, string>; // Record of invitation stages sent (e.g., { initial: '2025-01-01T...', '1_week': '2025-01-07T...' })
 }
 
 /**

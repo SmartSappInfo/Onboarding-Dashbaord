@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { MessagingTemplateSelector } from '@/app/admin/components/MessagingTemplateSelector';
+import { fetchTemplatesCached } from '@/app/admin/components/template-cache-manager';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import {
   Mail,
@@ -33,29 +34,88 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import ReminderSlotRow from './ReminderSlotRow';
 import { MessagingChannelBlock } from './MessagingChannelBlock';
+import { DateTimePicker, TimePicker } from '@/components/ui/datetime-picker';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
-import type { MeetingMessagingConfig, MeetingReminderSlot } from '@/lib/types';
+import type { MeetingMessagingConfig, MeetingReminderSlot, MeetingInvitationSlot } from '@/lib/types';
+import { DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID, getDefaultMeetingMessagingConfig } from '@/lib/types';
 
 // ─── Default Config ──────────────────────────────────────────────
-const DEFAULT_CONFIG: MeetingMessagingConfig = {
-  registrationAckEnabled: false,
-  registrationAckChannels: ['email'],
-  facilitatorRemindersEnabled: false,
-  facilitatorPostEventEnabled: false,
-  facilitatorChannels: ['email'],
-  reminders: [],
-  postEventEnabled: false,
-  postEventDelayMinutes: 60,
-  postEventAudience: 'attendees_only',
-  postEventChannels: ['email'],
-  postEventAbsenteeEnabled: false,
+const DEFAULT_CONFIG = getDefaultMeetingMessagingConfig();
+
+const getMeetingTimeAsDate = (mTime: any): Date => {
+  if (!mTime) return new Date();
+  if (mTime instanceof Date) return mTime;
+  return new Date(mTime);
 };
 
 // ─── Main Component ──────────────────────────────────────────────
 export default function MeetingMessagingTab() {
   const { watch, setValue } = useFormContext();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const firestore = useFirestore();
+
+  const watchedMeetingTime = watch('meetingTime');
+  const lastMeetingTimeRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!watchedMeetingTime) return;
+    const mDate = getMeetingTimeAsDate(watchedMeetingTime);
+    const hours = String(mDate.getHours()).padStart(2, '0');
+    const minutes = String(mDate.getMinutes()).padStart(2, '0');
+    const defaultTimeStr = `${hours}:${minutes}`;
+    const defaultDateStr = mDate.toISOString();
+
+    const lastMeetingTime = lastMeetingTimeRef.current;
+    lastMeetingTimeRef.current = defaultDateStr;
+
+    let oldTimeStr = '';
+    let oldDateStr = '';
+    if (lastMeetingTime) {
+      const oldDate = new Date(lastMeetingTime);
+      const oldHours = String(oldDate.getHours()).padStart(2, '0');
+      const oldMinutes = String(oldDate.getMinutes()).padStart(2, '0');
+      oldTimeStr = `${oldHours}:${oldMinutes}`;
+      oldDateStr = lastMeetingTime;
+    }
+
+    const currentSeries = watch('messagingConfig.invitationSeries') || DEFAULT_CONFIG.invitationSeries;
+    let changed = false;
+    const updated = currentSeries.map((slot: any) => {
+      const slotCopy = { ...slot };
+      if (slot.id === 'initial') {
+        if (!slot.emailScheduledDate || slot.emailScheduledDate === oldDateStr) {
+          slotCopy.emailScheduledDate = defaultDateStr;
+          changed = true;
+        }
+        if (!slot.smsScheduledDate || slot.smsScheduledDate === oldDateStr) {
+          slotCopy.smsScheduledDate = defaultDateStr;
+          changed = true;
+        }
+      } else {
+        if (!slot.emailScheduledTime || slot.emailScheduledTime === oldTimeStr) {
+          slotCopy.emailScheduledTime = defaultTimeStr;
+          changed = true;
+        }
+        if (!slot.smsScheduledTime || slot.smsScheduledTime === oldTimeStr) {
+          slotCopy.smsScheduledTime = defaultTimeStr;
+          changed = true;
+        }
+      }
+      return slotCopy;
+    });
+
+    if (changed) {
+      setValue('messagingConfig.invitationSeries', updated, { shouldDirty: true });
+    }
+  }, [watchedMeetingTime, setValue]);
+
+  // Background-pre-fetch templates as soon as tab resolves workspace/organization context
+  React.useEffect(() => {
+    if (activeWorkspaceId) {
+      fetchTemplatesCached('email', activeWorkspaceId, activeOrganizationId);
+      fetchTemplatesCached('sms', activeWorkspaceId, activeOrganizationId);
+    }
+  }, [activeWorkspaceId, activeOrganizationId]);
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
@@ -82,6 +142,7 @@ export default function MeetingMessagingTab() {
     ...DEFAULT_CONFIG,
     ...rawConfig,
     reminders: rawConfig.reminders || DEFAULT_CONFIG.reminders,
+    invitationSeries: rawConfig.invitationSeries || DEFAULT_CONFIG.invitationSeries,
     registrationAckChannels: rawConfig.registrationAckChannels || DEFAULT_CONFIG.registrationAckChannels,
     facilitatorChannels: rawConfig.facilitatorChannels || DEFAULT_CONFIG.facilitatorChannels,
     postEventChannels: rawConfig.postEventChannels || DEFAULT_CONFIG.postEventChannels,
@@ -129,15 +190,24 @@ export default function MeetingMessagingTab() {
       ))
     );
 
+    const hasInvitationsWarning = config.invitationsEnabled && config.invitationSeries.some(inv => 
+      inv.enabled && (
+        (inv.channels.includes('email') && !inv.emailTemplateId) ||
+        (inv.channels.includes('sms') && !inv.smsTemplateId)
+      )
+    );
+
     return {
       ack: hasAckWarning,
       facilitators: hasFacilitatorWarning,
       reminders: hasRemindersWarning,
       postEvent: hasPostEventWarning,
+      invitations: hasInvitationsWarning,
     };
   }, [config]);
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({
-    ack: true,
+    invitations: true,
+    ack: false,
     facilitators: false,
     reminders: false,
     postEvent: false,
@@ -174,6 +244,210 @@ export default function MeetingMessagingTab() {
 
   return (
     <div className="space-y-4">
+      {/* ── Section 0: Invitation Series ── */}
+      <CollapsibleSection
+        id="invitations"
+        title="Invitation Series"
+        description="Automated invitations to pending records"
+        icon={<Mail className="h-4 w-4 text-purple-600" />}
+        iconBg="bg-purple-500/10"
+        isOpen={openSections.invitations}
+        onToggle={() => toggleSection('invitations')}
+        badge={config.invitationsEnabled ? `${config.invitationSeries.filter(r => r.enabled).length} active` : undefined}
+        hasWarning={warnings.invitations}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-bold">Enable Invitation Series</Label>
+            <Switch
+              checked={config.invitationsEnabled}
+              onCheckedChange={(v) => updateConfig('invitationsEnabled', v)}
+            />
+          </div>
+
+          {config.invitationsEnabled && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+              {config.invitationSeries.map((inv, index) => (
+                <div key={inv.id} className="p-4 bg-muted/20 rounded-xl border space-y-4">
+                  <MessagingChannelBlock
+                    enableLabel={inv.label}
+                    enabled={inv.enabled}
+                    onEnabledChange={(v) => {
+                      const updated = [...config.invitationSeries];
+                      updated[index].enabled = v;
+                      if (v) {
+                        // Automatically assign default template IDs for enabled channels if not set
+                        if (updated[index].channels.includes('email') && !updated[index].emailTemplateId) {
+                          updated[index].emailTemplateId = `global_meeting_invitation_${inv.id}_email`;
+                        }
+                        if (updated[index].channels.includes('sms') && !updated[index].smsTemplateId) {
+                          updated[index].smsTemplateId = `global_meeting_invitation_${inv.id}_sms`;
+                        }
+
+                        // Intelligently default scheduled date/time based on meeting time
+                        const mTime = watch('meetingTime');
+                        const mDate = getMeetingTimeAsDate(mTime);
+                        if (inv.id === 'initial') {
+                          if (updated[index].channels.includes('email') && !updated[index].emailScheduledDate) {
+                            updated[index].emailScheduledDate = mDate.toISOString();
+                          }
+                          if (updated[index].channels.includes('sms') && !updated[index].smsScheduledDate) {
+                            updated[index].smsScheduledDate = mDate.toISOString();
+                          }
+                        } else {
+                          const hours = String(mDate.getHours()).padStart(2, '0');
+                          const minutes = String(mDate.getMinutes()).padStart(2, '0');
+                          const defaultTime = `${hours}:${minutes}`;
+                          if (updated[index].channels.includes('email') && !updated[index].emailScheduledTime) {
+                            updated[index].emailScheduledTime = defaultTime;
+                          }
+                          if (updated[index].channels.includes('sms') && !updated[index].smsScheduledTime) {
+                            updated[index].smsScheduledTime = defaultTime;
+                          }
+                        }
+                      }
+                      updateConfig('invitationSeries', updated);
+                    }}
+                    channels={inv.channels}
+                    onChannelsChange={(v) => {
+                      const updated = [...config.invitationSeries];
+                      updated[index].channels = v;
+                      // Automatically assign default template ID for newly added channels
+                      if (v.includes('email') && !updated[index].emailTemplateId) {
+                        updated[index].emailTemplateId = `global_meeting_invitation_${inv.id}_email`;
+                      }
+                      if (v.includes('sms') && !updated[index].smsTemplateId) {
+                        updated[index].smsTemplateId = `global_meeting_invitation_${inv.id}_sms`;
+                      }
+
+                      // Intelligently default scheduled date/time based on meeting time for newly added channels
+                      const mTime = watch('meetingTime');
+                      const mDate = getMeetingTimeAsDate(mTime);
+                      if (inv.id === 'initial') {
+                        if (v.includes('email') && !updated[index].emailScheduledDate) {
+                          updated[index].emailScheduledDate = mDate.toISOString();
+                        }
+                        if (v.includes('sms') && !updated[index].smsScheduledDate) {
+                          updated[index].smsScheduledDate = mDate.toISOString();
+                        }
+                      } else {
+                        const hours = String(mDate.getHours()).padStart(2, '0');
+                        const minutes = String(mDate.getMinutes()).padStart(2, '0');
+                        const defaultTime = `${hours}:${minutes}`;
+                        if (v.includes('email') && !updated[index].emailScheduledTime) {
+                          updated[index].emailScheduledTime = defaultTime;
+                        }
+                        if (v.includes('sms') && !updated[index].smsScheduledTime) {
+                          updated[index].smsScheduledTime = defaultTime;
+                        }
+                      }
+                      updateConfig('invitationSeries', updated);
+                    }}
+                    category="meetings"
+                    recipientType="external_alert"
+                    templateTypePrefix="meeting_invitation"
+                    emailValue={inv.emailTemplateId || ''}
+                    onEmailChange={(v) => {
+                      const updated = [...config.invitationSeries];
+                      updated[index].emailTemplateId = v;
+                      updateConfig('invitationSeries', updated);
+                    }}
+                    smsValue={inv.smsTemplateId || ''}
+                    onSmsChange={(v) => {
+                      const updated = [...config.invitationSeries];
+                      updated[index].smsTemplateId = v;
+                      updateConfig('invitationSeries', updated);
+                    }}
+                    placeholderEmail={`Select ${inv.label} template...`}
+                    placeholderSms={`Select ${inv.label} SMS...`}
+                  >
+                    {inv.enabled && (
+                      <div className="space-y-4 pt-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Email Schedule */}
+                          {inv.channels.includes('email') && (
+                            <div className="space-y-1.5">
+                              {inv.id === 'initial' ? (
+                                <>
+                                  <Label className="text-[10px] font-bold text-muted-foreground/60 flex items-center gap-1.5">
+                                    <Clock className="h-3 w-3 text-blue-500" /> Email Send Date &amp; Time
+                                  </Label>
+                                  <DateTimePicker
+                                    value={inv.emailScheduledDate ? new Date(inv.emailScheduledDate) : undefined}
+                                    onChange={(date) => {
+                                      const updated = [...config.invitationSeries];
+                                      updated[index].emailScheduledDate = date ? date.toISOString() : undefined;
+                                      updateConfig('invitationSeries', updated);
+                                    }}
+                                  />
+                                  <p className="text-[9px] text-muted-foreground/60 italic">Defaults to session start time.</p>
+                                </>
+                              ) : (
+                                <>
+                                  <Label className="text-[10px] font-bold text-muted-foreground/60 flex items-center gap-1.5">
+                                    <Clock className="h-3 w-3 text-blue-500" /> Email Send Time (Local)
+                                  </Label>
+                                  <TimePicker
+                                    value={inv.emailScheduledTime}
+                                    onChange={(time) => {
+                                      const updated = [...config.invitationSeries];
+                                      updated[index].emailScheduledTime = time;
+                                      updateConfig('invitationSeries', updated);
+                                    }}
+                                  />
+                                  <p className="text-[9px] text-muted-foreground/60 italic">Defaults to session start time.</p>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {/* SMS Schedule */}
+                          {inv.channels.includes('sms') && (
+                            <div className="space-y-1.5">
+                              {inv.id === 'initial' ? (
+                                <>
+                                  <Label className="text-[10px] font-bold text-muted-foreground/60 flex items-center gap-1.5">
+                                    <Clock className="h-3 w-3 text-green-600" /> SMS Send Date &amp; Time
+                                  </Label>
+                                  <DateTimePicker
+                                    value={inv.smsScheduledDate ? new Date(inv.smsScheduledDate) : undefined}
+                                    onChange={(date) => {
+                                      const updated = [...config.invitationSeries];
+                                      updated[index].smsScheduledDate = date ? date.toISOString() : undefined;
+                                      updateConfig('invitationSeries', updated);
+                                    }}
+                                  />
+                                  <p className="text-[9px] text-muted-foreground/60 italic">Defaults to session start time.</p>
+                                </>
+                              ) : (
+                                <>
+                                  <Label className="text-[10px] font-bold text-muted-foreground/60 flex items-center gap-1.5">
+                                    <Clock className="h-3 w-3 text-green-600" /> SMS Send Time (Local)
+                                  </Label>
+                                  <TimePicker
+                                    value={inv.smsScheduledTime}
+                                    onChange={(time) => {
+                                      const updated = [...config.invitationSeries];
+                                      updated[index].smsScheduledTime = time;
+                                      updateConfig('invitationSeries', updated);
+                                    }}
+                                  />
+                                  <p className="text-[9px] text-muted-foreground/60 italic">Defaults to session start time.</p>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </MessagingChannelBlock>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
+
       {/* ── Section 1: Registration Acknowledgement ── */}
       <CollapsibleSection
         id="ack"
@@ -504,48 +778,49 @@ function CollapsibleSection({
   return (
     <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
       <CardHeader
-        className="bg-muted/30 border-b pb-4 cursor-pointer hover:bg-muted/40 transition-colors"
+        className="bg-muted/30 border-b py-3.5 px-5 cursor-pointer hover:bg-muted/40 transition-colors"
         onClick={onToggle}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-xl", iconBg)}>{icon}</div>
-            <div>
-              <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2">
-                {title}
-                {badge && (
-                  <Badge variant="secondary" className="text-[8px] font-bold px-1.5 py-0 rounded-full">
-                    {badge}
-                  </Badge>
-                )}
-                {hasWarning && (
-                  <TooltipProvider>
-                    <Tooltip delayDuration={200}>
-                      <TooltipTrigger asChild>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 animate-bounce shrink-0 cursor-help" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" align="center" className="w-60 p-3 rounded-2xl border bg-popover text-popover-foreground shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200">
-                        <p className="text-[10px] font-bold leading-normal text-amber-600/90 flex items-center gap-1">
-                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" /> Action Required
-                        </p>
-                        <p className="text-[9px] text-muted-foreground mt-1.5 leading-relaxed">
-                          You have enabled active channels (Email or SMS) but have not selected their template blueprints.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </CardTitle>
-              <CardDescription className="text-[10px] font-medium text-left">{description}</CardDescription>
+            <div className={cn("p-2 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
+              {icon}
             </div>
+            <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2">
+              {title}
+              {hasWarning && (
+                <TooltipProvider>
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 animate-bounce shrink-0 cursor-help" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" align="center" className="w-60 p-3 rounded-2xl border bg-popover text-popover-foreground shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200">
+                      <p className="text-[10px] font-bold leading-normal text-amber-600/90 flex items-center gap-1">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" /> Action Required
+                      </p>
+                      <p className="text-[9px] text-muted-foreground mt-1.5 leading-relaxed">
+                        You have enabled active channels (Email or SMS) but have not selected their template blueprints.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </CardTitle>
           </div>
-          {isOpen ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform" />
-          )}
+          <div className="flex items-center gap-3 shrink-0">
+            {badge && (
+              <Badge variant="secondary" className="text-[8px] font-bold px-2 py-0.5 rounded-full bg-muted-foreground/10 text-muted-foreground hover:bg-muted-foreground/10 select-none">
+                {badge}
+              </Badge>
+            )}
+            {isOpen ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform" />
+            )}
+          </div>
         </div>
       </CardHeader>
       {isOpen && (

@@ -27,11 +27,16 @@ export function usePaginatedReminders(meetingId: string, reminderType: string) {
     setIsLoading(true);
     setError(null);
 
+    const reminderTypes = [reminderType];
+    if (reminderType === 'meeting_invitation_initial') {
+      reminderTypes.push('meeting_invitation');
+    }
+
     const q = query(
       collection(firestore, 'scheduled_messages'),
       where('sourceEventId', '==', meetingId),
       where('sourceEventType', '==', 'meeting'),
-      where('reminderType', '==', reminderType),
+      where('reminderType', 'in', reminderTypes),
       limit(currentLimit + 1) // Fetch one extra to determine hasMore
     );
 

@@ -9,6 +9,7 @@
 
 import type { Meeting, MeetingFacilitator, MeetingRegistrant } from './types';
 import { ensureAbsoluteUrl } from './utils/url-helpers';
+import { generateCalendarLinkFromMeeting } from './calendar-utils';
 
 // ---------------------------------------------------------------------------
 // Meeting base variables (available in ALL meeting templates)
@@ -45,10 +46,18 @@ export function buildMeetingBaseVariables(
     // Fallback — invalid meetingTime or timezone
   }
 
+  let calendarLink = '';
+  try {
+    calendarLink = generateCalendarLinkFromMeeting(meeting);
+  } catch {
+    // Fallback
+  }
+
   return {
     meeting_title: meeting.heroTitle || meeting.type?.name || 'Meeting',
     meeting_date: meetingDate,
     meeting_time: meetingTime,
+    meeting_timezone: tz,
     meeting_link: meeting.meetingLink || '',
     meeting_type: meeting.type?.name || '',
     meeting_duration: meeting.durationMinutes
@@ -57,6 +66,7 @@ export function buildMeetingBaseVariables(
     recording_url: meeting.recordingUrl || '',
     brochure_url: meeting.brochureUrl || '',
     feedback_form_url: meeting.feedbackFormUrl || '',
+    calendar_link: calendarLink,
     _meetingId: meeting.id,
   };
 }

@@ -33,6 +33,7 @@ import {
     Receipt,
     Camera,
     Loader2,
+    Video,
     RefreshCw,
     Zap,
     Target,
@@ -59,6 +60,7 @@ import { completeTaskNonBlocking } from '@/lib/task-actions';
 import { useToast } from '@/hooks/use-toast';
 import EntityBillingTab from '../components/EntityBillingTab';
 import EntityDealsTab from '../components/EntityDealsTab';
+import EntityMeetingsTab from '../components/EntityMeetingsTab';
 import { MediaSelect } from '../components/media-select';
 import {
   Dialog,
@@ -382,6 +384,9 @@ export default function EntityDetailPage() {
  <TabsList className="w-full justify-start bg-muted/30 rounded-none border-b border-border p-0 h-12 overflow-x-auto hide-scrollbar flex-nowrap">
  <TabsTrigger value="overview" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Insights</TabsTrigger>
  <TabsTrigger value="deals" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Deals</TabsTrigger>
+ <TabsTrigger value="meetings" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+  <Video className="h-3 w-3" /> Meetings
+ </TabsTrigger>
  <TabsTrigger value="tasks" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             Tasks
                             {tasks && tasks.length > 0 && (
@@ -410,6 +415,10 @@ export default function EntityDetailPage() {
 
  <TabsContent value="deals" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
      <EntityDealsTab entityId={entityId} />
+ </TabsContent>
+
+ <TabsContent value="meetings" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+     <EntityMeetingsTab entityId={entityId} />
  </TabsContent>
 
  <TabsContent value="tasks" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">

@@ -43,6 +43,22 @@ export function RecipientLogDrawer({
   const { logs, isLoading, error, hasMore, loadMore } = usePaginatedReminders(meetingId, reminderType);
 
   const getReminderLabel = (type: string) => {
+    if (type.startsWith('meeting_invitation_')) {
+      const slotId = type.replace('meeting_invitation_', '');
+      const invitationLabels: Record<string, string> = {
+        'initial': 'Initial Invitation',
+        '1_month': '1 Month Before',
+        '1_week': '1 Week Before',
+        '5_days': '5 Days Before',
+        '3_days': '3 Days Before',
+        '2_days': '2 Days Before',
+        '1_day': '1 Day Before',
+        'today': 'Today (8 AM)',
+        'last_chance': 'Time Up - Last Chance',
+      };
+      return invitationLabels[slotId] || slotId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
     const labels: Record<string, string> = {
       'meeting_reminder_15min': '15 minutes before',
       'meeting_reminder_1hour': '1 hour before',
@@ -54,6 +70,7 @@ export function RecipientLogDrawer({
       'post_event_thankyou': 'Thank you notification',
       'post_event_followup': 'Post-event feedback/follow-up',
       'registration_ack': 'Registration confirmation',
+      'meeting_invitation': 'Guest Invitation Blast',
     };
     if (labels[type]) return labels[type];
 

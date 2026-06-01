@@ -50,8 +50,13 @@ export function resolveVariables(text: string, variables: Record<string, any>): 
   if (!text) return '';
   const sanitized = sanitizeContent(text);
   return sanitized.replace(/\{\{(.*?)\}\}/g, (match, key) => {
-    const cleanKey = key.trim();
-    const value = variables[cleanKey];
+    const cleanKey = key.replace(/^\{+/, '').replace(/\}+$/, '').trim();
+    let value = variables[cleanKey];
+    if (value === undefined) {
+      // Try camelCase fallback (e.g. rsvp_going_url -> rsvpGoingUrl)
+      const camelKey = cleanKey.replace(/_([a-z])/g, (_: string, p1: string) => p1.toUpperCase());
+      value = variables[camelKey];
+    }
     if (value === undefined) return match;
     // tag_list is stored as JSON array string — render as comma-separated for display
     if (cleanKey === 'tag_list') {
@@ -295,9 +300,10 @@ export function renderBlocksToHtml(
       
       case 'text': {
         const content = resolveVariables(block.content || '', variables);
+        const parsedContent = parseMarkdownLinksToHtml(content).replace(/\n/g, '<br>\n');
         const textFontSize = fontSizeVal || '16px';
         const textStyle = `margin: 0; font-size: ${textFontSize}; ${fontWeight || 'font-weight: 500;'} ${lineHeight || 'line-height: 1.6;'} ${fontColor} ${fontFamily}`;
-        blockHtml = `<div style="${wrapperStyle}"><div style="${textStyle}">${content}</div></div>`;
+        blockHtml = `<div style="${wrapperStyle}"><div style="${textStyle}">${parsedContent}</div></div>`;
         break;
       }
 
@@ -349,9 +355,10 @@ export function renderBlocksToHtml(
 
       case 'quote': {
         const content = resolveVariables(block.content || '', variables);
+        const parsedContent = parseMarkdownLinksToHtml(content).replace(/\n/g, '<br>\n');
         blockHtml = `
           <div style="margin: 24px 0; padding: 24px; border-left: 4px solid ${options?.style?.primaryColor || '#3B5FFF'}; background-color: ${subBg}; font-family: ${s.fontFamily || "'" + fontFam + "', sans-serif"}; font-style: italic; color: ${s.color || (isDark ? '#9ca3af' : '#475569')}; font-size: ${fontSizeVal || '18px'}; line-height: 1.6; border-radius: 0 16px 16px 0; ${alignStyle}">
-            ${content}
+            ${parsedContent}
           </div>
         `;
         break;
@@ -436,6 +443,9 @@ export function renderBlocksToHtml(
         const going = resolveVariables(block.goingLabel || 'Going', variables);
         const declined = resolveVariables(block.declinedLabel || 'Not Going', variables);
         const later = resolveVariables(block.laterLabel || 'Later', variables);
+        const goingUrl = resolveVariables('{{rsvp_going_url}}', variables);
+        const laterUrl = resolveVariables('{{rsvp_later_url}}', variables);
+        const declinedUrl = resolveVariables('{{rsvp_declined_url}}', variables);
         
         blockHtml = `
           <div style="${wrapperStyle}">
@@ -449,17 +459,17 @@ export function renderBlocksToHtml(
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display: inline-block; margin: 0 auto;">
                     <tr>
                       <td style="padding: 4px 8px; vertical-align: middle;">
-                        <a href="{{rsvp_going_url}}" style="background-color: #10b981; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
+                        <a href="${goingUrl}" style="background-color: #10b981; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
                           ${going}
                         </a>
                       </td>
                       <td style="padding: 4px 8px; vertical-align: middle;">
-                        <a href="{{rsvp_later_url}}" style="background-color: #f59e0b; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
+                        <a href="${laterUrl}" style="background-color: #f59e0b; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
                           ${later}
                         </a>
                       </td>
                       <td style="padding: 4px 8px; vertical-align: middle;">
-                        <a href="{{rsvp_declined_url}}" style="background-color: #ef4444; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
+                        <a href="${declinedUrl}" style="background-color: #ef4444; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
                           ${declined}
                         </a>
                       </td>

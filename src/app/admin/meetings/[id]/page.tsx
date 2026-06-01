@@ -61,6 +61,7 @@ import { Input } from '@/components/ui/input';
 import { renderScheduledMessageAction, sendTestMessageAction } from '@/app/actions/scheduled-message-actions';
 import { useUser } from '@/firebase';
 import { RecipientLogDrawer } from './components/RecipientLogDrawer';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 export default function MeetingDetailPage() {
   const params = useParams();
@@ -303,6 +304,22 @@ export default function MeetingDetailPage() {
     return slots;
   }, [meeting]);
 
+  const participantSlots = React.useMemo(() => {
+    return activeSlots.filter(s => 
+      s.type === 'registration_ack' || 
+      s.type.startsWith('messaging_slot_reminder_') || 
+      s.type === 'post_event_thankyou' || 
+      s.type === 'post_event_absentee'
+    );
+  }, [activeSlots]);
+
+  const facilitatorSlots = React.useMemo(() => {
+    return activeSlots.filter(s => 
+      s.type === 'facilitator_pre_event' || 
+      s.type === 'facilitator_post_event'
+    );
+  }, [activeSlots]);
+
   // Parallel Query for QR Codes
   const qrQuery = useMemoFirebase(() => {
     if (!firestore || !meetingId || !activeOrganizationId || !activeWorkspaceId) return null;
@@ -534,42 +551,152 @@ export default function MeetingDetailPage() {
               <CardHeader className="bg-muted/30 border-b py-4">
                 <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
                   <Bell className="h-5 w-5 text-blue-600" />
-                  Scheduled Reminders
+                  Scheduled Messages
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                {activeSlots.length > 0 ? (
-                  <div className="space-y-3">
-                    {activeSlots.map((slot) => (
-                      <div 
-                        key={slot.id}
-                        className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
-                        onClick={() => {
-                          setSelectedReminderType(slot.type);
-                          setLogDrawerOpen(true);
-                        }}
-                      >
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold group-hover:text-primary transition-colors">
-                            {slot.label}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {slot.description}
-                          </p>
-                        </div>
-                        <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
-                          {slot.channel}
-                        </Badge>
+                <Tabs defaultValue="participants" className="w-full">
+                  <TabsList className="grid grid-cols-3 mb-6 bg-muted/50 rounded-xl p-1">
+                    <TabsTrigger value="participants" className="rounded-lg text-xs font-bold py-2">
+                      Participants
+                    </TabsTrigger>
+                    <TabsTrigger value="facilitators" className="rounded-lg text-xs font-bold py-2">
+                      Facilitators
+                    </TabsTrigger>
+                    <TabsTrigger value="invitations" className="rounded-lg text-xs font-bold py-2">
+                      Invitations
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="participants" className="space-y-3 focus-visible:outline-none">
+                    {participantSlots.length > 0 ? (
+                      <div className="space-y-3">
+                        {participantSlots.map((slot) => (
+                          <div 
+                            key={slot.id}
+                            className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
+                            onClick={() => {
+                              setSelectedReminderType(slot.type);
+                              setLogDrawerOpen(true);
+                            }}
+                          >
+                            <div className="flex-1 text-left">
+                              <p className="text-sm font-semibold group-hover:text-primary transition-colors">
+                                {slot.label}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {slot.description}
+                              </p>
+                            </div>
+                            <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
+                              {slot.channel}
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                    <p className="text-sm font-medium">No active slots configured</p>
-                    <p className="text-xs">Reminders will appear here once configured in settings</p>
-                  </div>
-                )}
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p className="text-sm font-medium">No active participant messages</p>
+                        <p className="text-xs">Reminders will appear here once configured in settings</p>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="facilitators" className="space-y-3 focus-visible:outline-none">
+                    {facilitatorSlots.length > 0 ? (
+                      <div className="space-y-3">
+                        {facilitatorSlots.map((slot) => (
+                          <div 
+                            key={slot.id}
+                            className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
+                            onClick={() => {
+                              setSelectedReminderType(slot.type);
+                              setLogDrawerOpen(true);
+                            }}
+                          >
+                            <div className="flex-1 text-left">
+                              <p className="text-sm font-semibold group-hover:text-primary transition-colors">
+                                {slot.label}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {slot.description}
+                              </p>
+                            </div>
+                            <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
+                              {slot.channel}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p className="text-sm font-medium">No active facilitator messages</p>
+                        <p className="text-xs">Facilitator alerts will appear here once configured</p>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="invitations" className="space-y-3 focus-visible:outline-none">
+                    {meeting?.messagingConfig?.invitationsEnabled ? (
+                      meeting?.messagingConfig?.invitationSeries?.some(s => s.enabled) ? (
+                        <div className="space-y-3">
+                          {meeting.messagingConfig.invitationSeries
+                            .filter(s => s.enabled)
+                            .map((slot) => (
+                              <div 
+                                key={slot.id}
+                                className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
+                                onClick={() => {
+                                  setSelectedReminderType(`meeting_invitation_${slot.id}`);
+                                  setLogDrawerOpen(true);
+                                }}
+                              >
+                                <div className="flex-1 text-left">
+                                  <p className="text-sm font-semibold group-hover:text-primary transition-colors">
+                                    {slot.label}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    Automated invitation messages sent to the invited guest roster.
+                                  </p>
+                                </div>
+                                <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
+                                  {slot.channels?.join(', ') || 'email'}
+                                </Badge>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <div 
+                          className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
+                          onClick={() => {
+                            setSelectedReminderType('meeting_invitation');
+                            setLogDrawerOpen(true);
+                          }}
+                        >
+                          <div className="flex-1 text-left">
+                            <p className="text-sm font-semibold group-hover:text-primary transition-colors">
+                              Guest Invitation Blast
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Automated and manual invitation blasts sent to the invited guest roster.
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
+                            email, sms
+                          </Badge>
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Mail className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p className="text-sm font-medium">No active scheduled invitations</p>
+                        <p className="text-xs">Configure invitations in the session setup page to enable scheduling</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </div>

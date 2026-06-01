@@ -82,9 +82,12 @@ export function SmartTemplateDropdown({
                 bypassCache
             );
             // Apply optional client-side templateType prefix filter (rerender-derived-state)
-            const filtered = templateTypePrefix
+            let filtered = templateTypePrefix
                 ? result.filter(t => t.templateType?.startsWith(templateTypePrefix))
                 : result;
+            if (recipientType && recipientType !== 'all') {
+                filtered = filtered.filter(t => t.recipientType === recipientType);
+            }
             setTemplates(filtered);
             return filtered;
         } catch (error) {
@@ -93,7 +96,7 @@ export function SmartTemplateDropdown({
         } finally {
             setIsLoading(false);
         }
-    }, [channel, templateTypePrefix, activeWorkspaceId, activeOrganizationId]);
+    }, [channel, templateTypePrefix, recipientType, activeWorkspaceId, activeOrganizationId]);
 
     const selectedTemplate = React.useMemo(() => 
         templates.find(t => t.id === value),
@@ -219,7 +222,7 @@ export function SmartTemplateDropdown({
                                             <div className="space-y-1">
                                                 <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground">Body Preview</span>
                                                 <p className="text-[10px] text-muted-foreground whitespace-pre-wrap line-clamp-4 font-mono leading-relaxed bg-muted/40 p-2.5 rounded-xl border border-border/40 max-h-28 overflow-y-auto">
-                                                    {selectedTemplate.body}
+                                                    {selectedTemplate.body || selectedTemplate.previewText || (selectedTemplate.blocks?.map(b => b.content).filter(Boolean).join(' ') || 'Visual template blocks')}
                                                 </p>
                                             </div>
                                         </div>

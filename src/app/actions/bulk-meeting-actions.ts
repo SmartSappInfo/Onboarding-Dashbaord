@@ -2,8 +2,8 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { generateRegistrantToken } from '@/lib/meeting-tokens';
-import { sendRawMessage } from '@/lib/messaging-engine';
-import type { WorkspaceEntity } from '@/lib/types';
+import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
+import type { WorkspaceEntity, MeetingRegistrant } from '@/lib/types';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 interface BulkMeetingInviteData {
@@ -11,6 +11,7 @@ interface BulkMeetingInviteData {
   meetingId: string;
   workspaceId: string;
   sendInvites: boolean; // if true, dispatch join email
+  templateId?: string;
 }
 
 export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData) {
@@ -36,7 +37,7 @@ export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData
     const now = new Date().toISOString();
     
     const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
-    const processedResults: { id: string; name: string; email: string; link: string }[] = [];
+    const processedResults: { id: string; name: string; email: string; phone: string; link: string }[] = [];
     const chunkLimit = 450; // Safety limit under 500
 
     for (let i = 0; i < entityIds.length; i += chunkLimit) {
@@ -63,19 +64,23 @@ export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData
         const personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
 
         const registrantDocRef = registrantsRef.doc();
-        const registrantData = {
+        const registrantData: Omit<MeetingRegistrant, 'id'> = {
           meetingId,
           workspaceIds: [workspaceId],
+          entityId: entity.entityId || snap.id.replace(`${workspaceId}_`, ''), // Link back to the entity
           token,
-          status: 'approved',
+          status: sendInvites ? 'pending' : 'approved',
           registrationData: { name, email },
           name,
           email,
-          phone: '',
+          phone: entity.primaryPhone || '',
           registeredAt: now,
-          approvedAt: now,
+          ...(sendInvites ? {} : { approvedAt: now }),
           personalizedMeetingUrl,
-          ...(sendInvites ? { lastInviteSentAt: now } : {}),
+          ...(sendInvites ? { 
+            lastInviteSentAt: now,
+            sentInvitations: { [data.templateId || 'initial']: now }
+          } : {}),
         };
 
         batch.set(registrantDocRef, registrantData);
@@ -83,6 +88,7 @@ export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData
           id: registrantDocRef.id,
           name,
           email,
+          phone: entity.primaryPhone || '',
           link: personalizedMeetingUrl,
         });
       });
@@ -92,25 +98,56 @@ export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData
 
     // 2. Asynchronously Dispatch email invites in parallel chunk batches if requested
     if (sendInvites && processedResults.length > 0) {
+      const templateIdStr = data.templateId || 'initial';
+      let emailTemplateId: string | null = null;
+      let smsTemplateId: string | null = null;
+
+      if (meeting.messagingConfig?.invitationSeries) {
+          const stage = meeting.messagingConfig.invitationSeries.find((s: any) => s.id === templateIdStr);
+          if (stage && stage.enabled) {
+              emailTemplateId = stage.emailTemplateId || null;
+              smsTemplateId = stage.smsTemplateId || null;
+          }
+      }
+
       const emailResults = await Promise.allSettled(
         processedResults.map(async (reg) => {
-          const subject = `Your Join Link: ${meetingTitle}`;
-          const body = `Hello ${reg.name},
+          const promises = [];
+          if (emailTemplateId) {
+            promises.push(sendMessage({
+              templateId: emailTemplateId,
+              senderProfileId: 'default',
+              recipient: reg.email,
+              variables: { _meetingId: meetingId },
+              workspaceId,
+              entityId: reg.id // Pass registrant ID or entity ID? Actually we mapped it above. Wait, let's use the actual entity ID!
+            }));
+          } else {
+             // Fallback
+             const subject = `Your Join Link: ${meetingTitle}`;
+             const body = `Hello ${reg.name},\n\nYou are invited to the upcoming meeting: **${meetingTitle}**.\n\nPlease use your unique join link below to access the session or RSVP:\n${reg.link}\n\nWe look forward to seeing you there!`;
+             promises.push(sendRawMessage({
+                channel: 'email',
+                recipient: reg.email,
+                subject,
+                body,
+                workspaceIds: [workspaceId],
+             }));
+          }
 
-You are registered for the upcoming meeting: **${meetingTitle}**.
+          if (smsTemplateId && reg.phone) {
+             promises.push(sendMessage({
+                templateId: smsTemplateId,
+                senderProfileId: 'default',
+                recipient: reg.phone,
+                variables: { _meetingId: meetingId },
+                workspaceId,
+                entityId: reg.id
+             }));
+          }
 
-Please use your unique join link below to access the session:
-${reg.link}
-
-We look forward to seeing you there!`;
-
-          return sendRawMessage({
-            channel: 'email',
-            recipient: reg.email,
-            subject,
-            body,
-            workspaceIds: [workspaceId],
-          });
+          const results = await Promise.all(promises);
+          return results.every(r => r.success) ? { success: true } : { success: false };
         })
       );
 

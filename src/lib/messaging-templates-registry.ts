@@ -19,7 +19,7 @@ export const MEETING_VARIABLES = {
   event: ['meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_type'],
   links: ['meeting_link', 'calendar_link', 'dashboard_link', 'recording_link', 'resource_link', 'feedback_form_link'],
   facilitator: ['user_name', 'registrant_count', 'attendee_count', 'no_show_count', 'registration_time'],
-  system: ['organization_name', 'support_contact'],
+  system: ['org_name', 'support_contact'],
 } as const;
 
 export const TEMPLATES: TemplateDef[] = [
@@ -28,33 +28,137 @@ export const TEMPLATES: TemplateDef[] = [
   // ══════════════════════════════════════════════════════════════════════════
 
   // ── 0. Meeting Invitation (Three-Axis: Inform → Motivate → Direct) ─────
+  // ── 0. Meeting Invitations (Series) ────────────────────────────────────
   {
-    name: 'Meeting Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation', channel: 'email',
+    name: 'Initial Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_initial', channel: 'email',
     recipientType: 'external_alert',
     subject: 'You\'re Invited: {{meeting_title}} — {{meeting_date}}',
-    body: `Dear {{contact_name}},\n\nWe would like to invite you to an upcoming session that has been organized for your benefit.\n\n📋 What: {{meeting_title}}\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}} ({{meeting_timezone}})\n📍 Format: {{meeting_type}}\n\nThis session is designed to keep you informed about key developments and provide an opportunity for meaningful engagement. Your participation will make a difference.\n\n🔗 Register Now: [Click Here to Register]({{meeting_registrant_one_click_link}})\n📆 Add to Calendar: [Add to Calendar]({{calendar_link}})\n\nPlease confirm your attendance at your earliest convenience.\n\nWe look forward to welcoming you.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_type', 'meeting_registrant_one_click_link', 'calendar_link', 'organization_name'],
+    body: `Dear {{contact_name}},\n\nWe would like to invite you to an upcoming session that has been organized for your benefit.\n\n📋 What: {{meeting_title}}\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}} ({{meeting_timezone}})\n📍 Format: {{meeting_type}}\n\nThis session is designed to keep you informed about key developments and provide an opportunity for meaningful engagement. Your participation will make a difference.\n\n🔗 Register Now: [Click Here to Register]({{meeting_registrant_one_click_link}})\n📆 Add to Calendar: [Add to Calendar]({{calendar_link}})\n\nPlease confirm your attendance at your earliest convenience.\n\nWe look forward to welcoming you.\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_type', 'meeting_registrant_one_click_link', 'calendar_link', 'org_name'],
   },
   {
-    name: 'Meeting Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation', channel: 'sms',
+    name: 'Initial Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_initial', channel: 'sms',
     recipientType: 'external_alert',
-    body: `Hi {{contact_name}}, you're invited to {{meeting_title}} on {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Register: {{meeting_registrant_one_click_link}} — {{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_registrant_one_click_link', 'organization_name'],
+    body: `Hi {{contact_name}}, you're invited to {{meeting_title}} on {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Register: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_registrant_one_click_link', 'org_name'],
   },
-
+  {
+    name: '1 Month Before Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_1_month', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Upcoming in 1 Month: {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\nJust a quick heads up that {{meeting_title}} is coming up in one month on {{meeting_date}}.\n\n🔗 Secure Your Spot: [Click Here to Register]({{meeting_registrant_one_click_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '1 Month Before Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_1_month', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, {{meeting_title}} is coming up in a month on {{meeting_date}}. Secure your spot: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '1 Week Before Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_1_week', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Next Week: {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\n{{meeting_title}} is happening next week!\n\nIf you haven't yet, please confirm your attendance.\n\n🔗 Register Now: [Click Here to Register]({{meeting_registrant_one_click_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '1 Week Before Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_1_week', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Next week: {{meeting_title}}. Don't miss out, register today: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '5 Days Before Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_5_days', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Only 5 Days Away: {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\nWe are just 5 days away from {{meeting_title}}.\n\n🔗 Claim Your Spot: [Register Here]({{meeting_registrant_one_click_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '5 Days Before Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_5_days', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Only 5 days until {{meeting_title}}! Register now: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '3 Days Before Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_3_days', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Don\'t Miss Out: {{meeting_title}} in 3 Days',
+    body: `Dear {{contact_name}},\n\n{{meeting_title}} is approaching quickly.\n\n🔗 Please Register: [Register Here]({{meeting_registrant_one_click_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '3 Days Before Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_3_days', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `3 days left until {{meeting_title}}! Register today: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '2 Days Before Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_2_days', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Approaching: {{meeting_title}} in 2 Days',
+    body: `Dear {{contact_name}},\n\nWe noticed you haven't RSVP'd to {{meeting_title}} yet.\n\n🔗 Register Now: [Register Here]({{meeting_registrant_one_click_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '2 Days Before Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_2_days', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `{{meeting_title}} is in 2 days. Secure your spot: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '1 Day Before Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_1_day', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Tomorrow: {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\n{{meeting_title}} is happening tomorrow!\n\n🔗 Register Now: [Register Here]({{meeting_registrant_one_click_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '1 Day Before Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_1_day', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Tomorrow: {{meeting_title}}. Register now: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: 'Today (8 AM) Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_today', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Today: {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\n{{meeting_title}} is happening today at {{meeting_time}}!\n\n🔗 Register to join us: [Register Here]({{meeting_registrant_one_click_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: 'Today (8 AM) Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_today', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `{{meeting_title}} is today at {{meeting_time}}. Register to join: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: 'Last Chance Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_last_chance', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Last Chance to Join: {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\nThis is your last chance to register for {{meeting_title}}, starting very soon.\n\n🔗 Register Now: [Register Here]({{meeting_registrant_one_click_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: 'Last Chance Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_last_chance', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Last chance to join {{meeting_title}}! Register here: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
   // ── 1. Registration Acknowledgement ────────────────────────────────────
   {
     name: 'Registration Acknowledgement (Email)', category: 'meetings', templateType: 'meeting_registration_ack', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Registration Confirmed: {{meeting_title}}',
-    body: `Dear {{contact_name}},\n\nThank you for registering for {{meeting_title}}.\n\nYour registration has been confirmed successfully.\n\nEvent Details\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🌍 Time Zone: {{meeting_timezone}}\n📍 Platform: {{meeting_type}}\n🔗 Join Link: [Click Here to Join now]({{registrant_join_link}})\n\n📆 Add to Calendar: [Click To Add Now!]({{calendar_link}})\n\nPlease save this information for easy access on the day of the session.\n\nWe look forward to having you participate.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_type', 'registrant_join_link', 'calendar_link', 'organization_name'],
+    body: `Dear {{contact_name}},\n\nThank you for registering for {{meeting_title}}.\n\nYour registration has been confirmed successfully.\n\nEvent Details\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🌍 Time Zone: {{meeting_timezone}}\n📍 Platform: {{meeting_type}}\n🔗 Join Link: [Click Here to Join now]({{registrant_join_link}})\n\n📆 Add to Calendar: [Click To Add Now!]({{calendar_link}})\n\nPlease save this information for easy access on the day of the session.\n\nWe look forward to having you participate.\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_type', 'registrant_join_link', 'calendar_link', 'org_name'],
   },
   {
     name: 'Registration Acknowledgement (SMS)', category: 'meetings', templateType: 'meeting_registration_ack', channel: 'sms',
     recipientType: 'external_alert',
-    body: `Hi {{contact_name}}, your registration for {{meeting_title}} is confirmed. {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Join: {{registrant_join_link}} — {{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'organization_name'],
+    body: `Hi {{contact_name}}, your registration for {{meeting_title}} is confirmed. {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Join: {{registrant_join_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'org_name'],
   },
 
   // ── 2. Facilitator: New Registration Alert ─────────────────────────────
@@ -62,8 +166,8 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'New Registration Alert (Email)', category: 'meetings', templateType: 'meeting_facilitator_new_registration', channel: 'email',
     recipientType: 'internal_alert',
     subject: 'New Registration: {{meeting_title}}',
-    body: `Dear {{user_name}},\n\nA new registration has been received for {{meeting_title}}.\n\nRegistrant Details:\n• Name: {{contact_name}}\n• Email: {{contact_email}}\n• Phone: {{contact_phone}}\n• Organization: {{entity_name}}\n• Registration Time: {{registration_time}}\n\nTotal Registrations: {{registrant_count}}\n\n🔗 Dashboard: [View Dashboard]({{dashboard_link}})\n\nRegards,\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'contact_name', 'contact_email', 'contact_phone', 'entity_name', 'registration_time', 'registrant_count', 'dashboard_link', 'organization_name'],
+    body: `Dear {{user_name}},\n\nA new registration has been received for {{meeting_title}}.\n\nRegistrant Details:\n• Name: {{contact_name}}\n• Email: {{contact_email}}\n• Phone: {{contact_phone}}\n• Organization: {{entity_name}}\n• Registration Time: {{registration_time}}\n\nTotal Registrations: {{registrant_count}}\n\n🔗 Dashboard: [View Dashboard]({{dashboard_link}})\n\nRegards,\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'contact_name', 'contact_email', 'contact_phone', 'entity_name', 'registration_time', 'registrant_count', 'dashboard_link', 'org_name'],
   },
   {
     name: 'New Registration Alert (SMS)', category: 'meetings', templateType: 'meeting_facilitator_new_registration', channel: 'sms',
@@ -78,8 +182,8 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Meeting Reminder – 2 Days (Email)', category: 'meetings', templateType: 'meeting_reminder_2days', channel: 'email',
     recipientType: 'external_alert',
     subject: 'In 2 Days: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nThis is a reminder that {{meeting_title}} is coming up in 2 days.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🌍 Time Zone: {{meeting_timezone}}\n🔗 Join Link: [Click Here to Join now]({{registrant_join_link}})\n\n📆 Add to Calendar: [Click To Add Now!]({{calendar_link}})\n\nWe look forward to seeing you.\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'calendar_link', 'organization_name'],
+    body: `Hi {{contact_name}},\n\nThis is a reminder that {{meeting_title}} is coming up in 2 days.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🌍 Time Zone: {{meeting_timezone}}\n🔗 Join Link: [Click Here to Join now]({{registrant_join_link}})\n\n📆 Add to Calendar: [Click To Add Now!]({{calendar_link}})\n\nWe look forward to seeing you.\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'calendar_link', 'org_name'],
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 2880, offsetLabel: '2 days before', eventType: 'meeting' },
   },
   {
@@ -93,8 +197,8 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Meeting Reminder – 1 Day (Email)', category: 'meetings', templateType: 'meeting_reminder_1day', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Tomorrow: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nThis is a reminder that {{meeting_title}} is scheduled for tomorrow.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🌍 Time Zone: {{meeting_timezone}}\n🔗 Join Link: [Click Here to Join now]({{registrant_join_link}})\n\n📆 Add to Calendar: [Click To Add Now!]({{calendar_link}})\n\nWe look forward to seeing you.\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'calendar_link', 'organization_name'],
+    body: `Hi {{contact_name}},\n\nThis is a reminder that {{meeting_title}} is scheduled for tomorrow.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🌍 Time Zone: {{meeting_timezone}}\n🔗 Join Link: [Click Here to Join now]({{registrant_join_link}})\n\n📆 Add to Calendar: [Click To Add Now!]({{calendar_link}})\n\nWe look forward to seeing you.\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'calendar_link', 'org_name'],
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 1440, offsetLabel: '1 day before', eventType: 'meeting' },
   },
   {
@@ -108,8 +212,8 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Meeting Reminder – 1 Hour (Email)', category: 'meetings', templateType: 'meeting_reminder_1hour', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Starting in 1 hour: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nA reminder that {{meeting_title}} starts in 1 hour.\n\n📅 Time: {{meeting_time}} ({{meeting_timezone}})\n🔗 Join Link: [Click Here to Join now]({{registrant_join_link}})\n\n📆 Add to Calendar: [Click To Add Now!]({{calendar_link}})\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'calendar_link', 'organization_name'],
+    body: `Hi {{contact_name}},\n\nA reminder that {{meeting_title}} starts in 1 hour.\n\n📅 Time: {{meeting_time}} ({{meeting_timezone}})\n🔗 Join Link: [Click Here to Join now]({{registrant_join_link}})\n\n📆 Add to Calendar: [Click To Add Now!]({{calendar_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'calendar_link', 'org_name'],
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 60, offsetLabel: '1 hour before', eventType: 'meeting' },
   },
   {
@@ -123,8 +227,8 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Meeting Reminder – 15 Minutes (Email)', category: 'meetings', templateType: 'meeting_reminder_15min', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Starting in 15 minutes: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\n{{meeting_title}} starts in 15 minutes.\n\n🔗 Join now: [Click Here to Join now]({{registrant_join_link}})\n\nDon't miss it!\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'registrant_join_link', 'organization_name'],
+    body: `Hi {{contact_name}},\n\n{{meeting_title}} starts in 15 minutes.\n\n🔗 Join now: [Click Here to Join now]({{registrant_join_link}})\n\nDon't miss it!\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'registrant_join_link', 'org_name'],
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 15, offsetLabel: '15 minutes before', eventType: 'meeting' },
   },
   {
@@ -138,8 +242,8 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Meeting Starting Now (Email)', category: 'meetings', templateType: 'meeting_time_up', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Starting Now: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\n{{meeting_title}} is starting right now!\n\n🔗 Join immediately: [Click Here to Join now]({{registrant_join_link}})\n\nDon't miss out!\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'registrant_join_link', 'organization_name'],
+    body: `Hi {{contact_name}},\n\n{{meeting_title}} is starting right now!\n\n🔗 Join immediately: [Click Here to Join now]({{registrant_join_link}})\n\nDon't miss out!\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'registrant_join_link', 'org_name'],
     reminderConfig: { triggerType: 'on_deadline', offsetMinutes: 0, offsetLabel: 'At event time', eventType: 'meeting' },
   },
   {
@@ -155,14 +259,14 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Post-Event Thank You (Email)', category: 'meetings', templateType: 'meeting_post_event_thankyou', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Thank you for attending {{meeting_title}}',
-    body: `Dear {{contact_name}},\n\nThank you for attending {{meeting_title}}. We hope you found the session valuable.\n\n📹 Recording: [Watch Recording]({{recording_link}})\n📂 Resources: [View Resources]({{resource_link}})\n📝 Share Your Feedback: [Complete Feedback]({{feedback_form_link}})\n\nIf you have any questions, please don't hesitate to reach out.\n\nWe look forward to seeing you at future events.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'resource_link', 'feedback_form_link', 'organization_name'],
+    body: `Dear {{contact_name}},\n\nThank you for attending {{meeting_title}}. We hope you found the session valuable.\n\n📹 Recording: [Watch Recording]({{recording_link}})\n📂 Resources: [View Resources]({{resource_link}})\n📝 Share Your Feedback: [Complete Feedback]({{feedback_form_link}})\n\nIf you have any questions, please don't hesitate to reach out.\n\nWe look forward to seeing you at future events.\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'resource_link', 'feedback_form_link', 'org_name'],
   },
   {
     name: 'Post-Event Thank You (SMS)', category: 'meetings', templateType: 'meeting_post_event_thankyou', channel: 'sms',
     recipientType: 'external_alert',
-    body: 'Thank you for attending {{meeting_title}}! Recording: {{recording_link}} — {{organization_name}}',
-    variableContext: 'meeting', declaredVariables: ['meeting_title', 'recording_link', 'organization_name'],
+    body: 'Thank you for attending {{meeting_title}}! Recording: {{recording_link}} — {{org_name}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'recording_link', 'org_name'],
   },
 
   // ── 5. Post-Event: Absentee Follow-Up ───────────────────────────────────
@@ -170,14 +274,14 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Absentee Follow-Up (Email)', category: 'meetings', templateType: 'meeting_post_event_absentee', channel: 'email',
     recipientType: 'external_alert',
     subject: 'We missed you at {{meeting_title}}',
-    body: `Dear {{contact_name}},\n\nWe noticed you were unable to attend {{meeting_title}}. We understand things come up, and we wanted to make sure you don't miss out.\n\n📹 Recording: [Watch Recording]({{recording_link}})\n📂 Resources: [View Resources]({{resource_link}})\n\nWe hope to see you at our next session.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'resource_link', 'organization_name'],
+    body: `Dear {{contact_name}},\n\nWe noticed you were unable to attend {{meeting_title}}. We understand things come up, and we wanted to make sure you don't miss out.\n\n📹 Recording: [Watch Recording]({{recording_link}})\n📂 Resources: [View Resources]({{resource_link}})\n\nWe hope to see you at our next session.\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'resource_link', 'org_name'],
   },
   {
     name: 'Absentee Follow-Up (SMS)', category: 'meetings', templateType: 'meeting_post_event_absentee', channel: 'sms',
     recipientType: 'external_alert',
-    body: 'Hi {{contact_name}}, we missed you at {{meeting_title}}. Catch the recording: {{recording_link}} — {{organization_name}}',
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'organization_name'],
+    body: 'Hi {{contact_name}}, we missed you at {{meeting_title}}. Catch the recording: {{recording_link}} — {{org_name}}',
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'org_name'],
   },
 
   // ── 6. Facilitator: Pre-Event Briefing ──────────────────────────────────
@@ -185,8 +289,8 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Facilitator Pre-Event Briefing (Email)', category: 'meetings', templateType: 'meeting_facilitator_pre_event', channel: 'email',
     recipientType: 'internal_alert',
     subject: 'Facilitator Briefing: {{meeting_title}}',
-    body: `Hi {{user_name}},\n\nThis is your facilitator reminder for {{meeting_title}}.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}} ({{meeting_timezone}})\n🔗 Meeting Link: [Join Meeting]({{facilitator_join_link}})\n📊 Registrants: {{registrant_count}}\n\nPlease ensure you are prepared and available to join 5 minutes early.\n\n🔗 Dashboard: [View Dashboard]({{dashboard_link}})\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'facilitator_join_link', 'registrant_count', 'dashboard_link', 'organization_name'],
+    body: `Hi {{user_name}},\n\nThis is your facilitator reminder for {{meeting_title}}.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}} ({{meeting_timezone}})\n🔗 Meeting Link: [Join Meeting]({{facilitator_join_link}})\n📊 Registrants: {{registrant_count}}\n\nPlease ensure you are prepared and available to join 5 minutes early.\n\n🔗 Dashboard: [View Dashboard]({{dashboard_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'facilitator_join_link', 'registrant_count', 'dashboard_link', 'org_name'],
   },
   {
     name: 'Facilitator Pre-Event Briefing (SMS)', category: 'meetings', templateType: 'meeting_facilitator_pre_event', channel: 'sms',
@@ -200,8 +304,8 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Facilitator Post-Event Debrief (Email)', category: 'meetings', templateType: 'meeting_facilitator_post_event', channel: 'email',
     recipientType: 'internal_alert',
     subject: 'Debrief: {{meeting_title}} Complete',
-    body: `Hi {{user_name}},\n\n{{meeting_title}} has concluded.\n\nAttendance Summary:\n• Total Registrations: {{registrant_count}}\n• Attended: {{attendee_count}}\n• No-Shows: {{no_show_count}}\n\nPlease review the registrant list and follow up with any action items.\n\n🔗 Dashboard: [View Dashboard]({{dashboard_link}})\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'registrant_count', 'attendee_count', 'no_show_count', 'dashboard_link', 'organization_name'],
+    body: `Hi {{user_name}},\n\n{{meeting_title}} has concluded.\n\nAttendance Summary:\n• Total Registrations: {{registrant_count}}\n• Attended: {{attendee_count}}\n• No-Shows: {{no_show_count}}\n\nPlease review the registrant list and follow up with any action items.\n\n🔗 Dashboard: [View Dashboard]({{dashboard_link}})\n\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'registrant_count', 'attendee_count', 'no_show_count', 'dashboard_link', 'org_name'],
   },
   {
     name: 'Facilitator Post-Event Debrief (SMS)', category: 'meetings', templateType: 'meeting_facilitator_post_event', channel: 'sms',
@@ -214,8 +318,8 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'Form Invitation (Email)', category: 'forms', templateType: 'form_invitation', channel: 'email',
     subject: 'Action required: {{form_name}}',
-    body: `Hi {{respondent_name}},\n\nYou have been invited to complete: {{form_name}}.\n\n🔗 Access the form: [Complete Form]({{form_link}})\n⏰ Deadline: {{submission_deadline}}\n\nPlease complete it at your earliest convenience.\n\n{{organization_name}}`,
-    variableContext: 'form', declaredVariables: ['respondent_name', 'form_name', 'form_link', 'submission_deadline', 'organization_name'],
+    body: `Hi {{respondent_name}},\n\nYou have been invited to complete: {{form_name}}.\n\n🔗 Access the form: [Complete Form]({{form_link}})\n⏰ Deadline: {{submission_deadline}}\n\nPlease complete it at your earliest convenience.\n\n{{org_name}}`,
+    variableContext: 'form', declaredVariables: ['respondent_name', 'form_name', 'form_link', 'submission_deadline', 'org_name'],
   },
   {
     name: 'Form Invitation (SMS)', category: 'forms', templateType: 'form_invitation', channel: 'sms',
@@ -225,14 +329,14 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'Form Submission Confirmation (Email)', category: 'forms', templateType: 'submission_confirmation', channel: 'email',
     subject: 'Submission received: {{form_name}}',
-    body: `Hi {{respondent_name}},\n\nThank you! We have received your submission for {{form_name}}.\n\n📅 Submitted on: {{submission_date}}\n\n{{organization_name}}`,
-    variableContext: 'form', declaredVariables: ['respondent_name', 'form_name', 'submission_date', 'organization_name'],
+    body: `Hi {{respondent_name}},\n\nThank you! We have received your submission for {{form_name}}.\n\n📅 Submitted on: {{submission_date}}\n\n{{org_name}}`,
+    variableContext: 'form', declaredVariables: ['respondent_name', 'form_name', 'submission_date', 'org_name'],
   },
   {
     name: 'Form Submission Reminder (Email)', category: 'forms', templateType: 'submission_reminder', channel: 'email',
     subject: 'Reminder: {{form_name}} due soon',
-    body: `Hi {{respondent_name}},\n\n{{form_name}} is due soon.\n\n⏰ Deadline: {{deadline}}\n📅 Days remaining: {{days_remaining}}\n🔗 Complete it here: [Complete Form]({{form_link}})\n\n{{organization_name}}`,
-    variableContext: 'form', declaredVariables: ['respondent_name', 'form_name', 'deadline', 'days_remaining', 'form_link', 'organization_name'],
+    body: `Hi {{respondent_name}},\n\n{{form_name}} is due soon.\n\n⏰ Deadline: {{deadline}}\n📅 Days remaining: {{days_remaining}}\n🔗 Complete it here: [Complete Form]({{form_link}})\n\n{{org_name}}`,
+    variableContext: 'form', declaredVariables: ['respondent_name', 'form_name', 'deadline', 'days_remaining', 'form_link', 'org_name'],
   },
   {
     name: 'Form Submission Reminder (SMS)', category: 'forms', templateType: 'submission_reminder', channel: 'sms',
@@ -244,8 +348,8 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'Survey Invitation (Email)', category: 'surveys', templateType: 'survey_invitation', channel: 'email',
     subject: "We'd love your feedback: {{survey_title}}",
-    body: `Hi {{respondent_name}},\n\nWe invite you to participate in our survey: {{survey_title}}.\n\nYour feedback is important and will only take a few minutes.\n\n🔗 Start the survey: [Start Survey]({{survey_link}})\n\nThank you for your time.\n\n{{organization_name}}`,
-    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'survey_link', 'organization_name'],
+    body: `Hi {{respondent_name}},\n\nWe invite you to participate in our survey: {{survey_title}}.\n\nYour feedback is important and will only take a few minutes.\n\n🔗 Start the survey: [Start Survey]({{survey_link}})\n\nThank you for your time.\n\n{{org_name}}`,
+    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'survey_link', 'org_name'],
   },
   {
     name: 'Survey Invitation (SMS)', category: 'surveys', templateType: 'survey_invitation', channel: 'sms',
@@ -255,14 +359,14 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'Survey Completion (Email)', category: 'surveys', templateType: 'survey_completion', channel: 'email',
     subject: 'Thank you for completing {{survey_title}}',
-    body: `Hi {{respondent_name}},\n\nThank you for completing {{survey_title}}!\n\n📅 Completed on: {{completion_date}}\n🏆 Your score: {{score}}\n\n{{result_message}}\n\nWe appreciate your valuable feedback.\n\n{{organization_name}}`,
-    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'completion_date', 'score', 'result_message', 'organization_name'],
+    body: `Hi {{respondent_name}},\n\nThank you for completing {{survey_title}}!\n\n📅 Completed on: {{completion_date}}\n🏆 Your score: {{score}}\n\n{{result_message}}\n\nWe appreciate your valuable feedback.\n\n{{org_name}}`,
+    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'completion_date', 'score', 'result_message', 'org_name'],
   },
   {
     name: 'Survey Reminder (Email)', category: 'surveys', templateType: 'survey_reminder', channel: 'email',
     subject: "Reminder: {{survey_title}} — still waiting for your response",
-    body: `Hi {{respondent_name}},\n\nWe noticed you haven't completed {{survey_title}} yet.\n\n🔗 Complete the survey: [Start Survey]({{survey_link}})\n📅 Days remaining: {{days_remaining}}\n\n{{organization_name}}`,
-    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'survey_link', 'days_remaining', 'organization_name'],
+    body: `Hi {{respondent_name}},\n\nWe noticed you haven't completed {{survey_title}} yet.\n\n🔗 Complete the survey: [Start Survey]({{survey_link}})\n📅 Days remaining: {{days_remaining}}\n\n{{org_name}}`,
+    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'survey_link', 'days_remaining', 'org_name'],
   },
   {
     name: 'Survey Reminder (SMS)', category: 'surveys', templateType: 'survey_reminder', channel: 'sms',
@@ -274,20 +378,20 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'Contract Sent (Email)', category: 'agreements', templateType: 'contract_sent', channel: 'email',
     subject: 'Contract ready for your signature: {{contract_name}}',
-    body: `Hi {{signatory_name}},\n\nA contract has been prepared for your review and signature: {{contract_name}}.\n\n🔗 Review and sign: [Review and Sign]({{contract_link}})\n⏰ Deadline: {{deadline}}\n\n{{organization_name}}`,
-    variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'contract_link', 'deadline', 'organization_name'],
+    body: `Hi {{signatory_name}},\n\nA contract has been prepared for your review and signature: {{contract_name}}.\n\n🔗 Review and sign: [Review and Sign]({{contract_link}})\n⏰ Deadline: {{deadline}}\n\n{{org_name}}`,
+    variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'contract_link', 'deadline', 'org_name'],
   },
   {
     name: 'Contract Signed (Email)', category: 'agreements', templateType: 'contract_signed', channel: 'email',
     subject: 'Contract signed: {{contract_name}}',
-    body: `Hi {{signatory_name}},\n\nThank you! {{contract_name}} has been successfully signed.\n\n📅 Signed on: {{signing_date}}\n\nA copy has been saved to your records.\n\n{{organization_name}}`,
-    variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'signing_date', 'organization_name'],
+    body: `Hi {{signatory_name}},\n\nThank you! {{contract_name}} has been successfully signed.\n\n📅 Signed on: {{signing_date}}\n\nA copy has been saved to your records.\n\n{{org_name}}`,
+    variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'signing_date', 'org_name'],
   },
   {
     name: 'Contract Pending (Email)', category: 'agreements', templateType: 'contract_pending', channel: 'email',
     subject: 'Action required: {{contract_name}} awaiting signature',
-    body: `Hi {{signatory_name}},\n\n{{contract_name}} is still awaiting your signature.\n\n⏰ Deadline: {{deadline}}\n📅 Days remaining: {{days_remaining}}\n🔗 Sign here: [Review and Sign]({{contract_link}})\n\n{{organization_name}}`,
-    variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'days_remaining', 'contract_link', 'organization_name'],
+    body: `Hi {{signatory_name}},\n\n{{contract_name}} is still awaiting your signature.\n\n⏰ Deadline: {{deadline}}\n📅 Days remaining: {{days_remaining}}\n🔗 Sign here: [Review and Sign]({{contract_link}})\n\n{{org_name}}`,
+    variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'days_remaining', 'contract_link', 'org_name'],
   },
   {
     name: 'Contract Pending (SMS)', category: 'agreements', templateType: 'contract_pending', channel: 'sms',
@@ -297,8 +401,8 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'Contract Reminder (Email)', category: 'agreements', templateType: 'contract_reminder', channel: 'email',
     subject: 'Reminder: {{contract_name}} expires soon',
-    body: `Hi {{signatory_name}},\n\nThis is a reminder that {{contract_name}} requires your signature before the deadline.\n\n⏰ Deadline: {{deadline}}\n🔗 Sign here: [Review and Sign]({{contract_link}})\n\n{{organization_name}}`,
-    variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'contract_link', 'organization_name'],
+    body: `Hi {{signatory_name}},\n\nThis is a reminder that {{contract_name}} requires your signature before the deadline.\n\n⏰ Deadline: {{deadline}}\n🔗 Sign here: [Review and Sign]({{contract_link}})\n\n{{org_name}}`,
+    variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'contract_link', 'org_name'],
   },
   {
     name: 'Contract Reminder (SMS)', category: 'agreements', templateType: 'contract_reminder', channel: 'sms',
@@ -309,15 +413,15 @@ export const TEMPLATES: TemplateDef[] = [
   // ── General ───────────────────────────────────────────────────────────────
   {
     name: 'Welcome Message (Email)', category: 'general', templateType: 'welcome_message', channel: 'email',
-    subject: "Welcome to {{organization_name}}!",
-    body: `Hi {{contact_name}},\n\nWelcome to {{organization_name}}! We're thrilled to have you on board.\n\nYou've been added to {{workspace_name}} and your account is now active.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'common', declaredVariables: ['contact_name', 'organization_name', 'workspace_name'],
+    subject: "Welcome to {{org_name}}!",
+    body: `Hi {{contact_name}},\n\nWelcome to {{org_name}}! We're thrilled to have you on board.\n\nYou've been added to {{workspace_name}} and your account is now active.\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'common', declaredVariables: ['contact_name', 'org_name', 'workspace_name'],
   },
   {
     name: 'Stage Change (Email)', category: 'general', templateType: 'stage_change', channel: 'email',
     subject: 'Update: {{entity_name}} has moved to {{new_stage}}',
-    body: `Hi {{user_name}},\n\n{{entity_name}} has been moved to a new stage.\n\nPrevious stage: {{old_stage}}\nNew stage: {{new_stage}}\nAssigned to: {{assigned_to}}\n\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['user_name', 'entity_name', 'old_stage', 'new_stage', 'assigned_to', 'organization_name'],
+    body: `Hi {{user_name}},\n\n{{entity_name}} has been moved to a new stage.\n\nPrevious stage: {{old_stage}}\nNew stage: {{new_stage}}\nAssigned to: {{assigned_to}}\n\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['user_name', 'entity_name', 'old_stage', 'new_stage', 'assigned_to', 'org_name'],
   },
   {
     name: 'Stage Change (SMS)', category: 'general', templateType: 'stage_change', channel: 'sms',
@@ -327,14 +431,14 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'Assignment Notification (Email)', category: 'general', templateType: 'assignment_notification', channel: 'email',
     subject: '{{entity_name}} has been assigned to you',
-    body: `Hi {{assigned_to}},\n\n{{entity_name}} has been assigned to you by {{assigner_name}}.\n\nPlease log in to review the details and take the next steps.\n\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['assigned_to', 'entity_name', 'assigner_name', 'organization_name'],
+    body: `Hi {{assigned_to}},\n\n{{entity_name}} has been assigned to you by {{assigner_name}}.\n\nPlease log in to review the details and take the next steps.\n\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['assigned_to', 'entity_name', 'assigner_name', 'org_name'],
   },
   {
     name: 'Status Update (Email)', category: 'general', templateType: 'status_update', channel: 'email',
     subject: 'Status update: {{entity_name}}',
-    body: `Hi {{user_name}},\n\nThe status of {{entity_name}} has been updated.\n\nPrevious status: {{old_status}}\nNew status: {{new_status}}\n\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['user_name', 'entity_name', 'old_status', 'new_status', 'organization_name'],
+    body: `Hi {{user_name}},\n\nThe status of {{entity_name}} has been updated.\n\nPrevious status: {{old_status}}\nNew status: {{new_status}}\n\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['user_name', 'entity_name', 'old_status', 'new_status', 'org_name'],
   },
   {
     name: 'Status Update (SMS)', category: 'general', templateType: 'status_update', channel: 'sms',
@@ -346,8 +450,8 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'New Task Assigned (Email)', category: 'tasks', templateType: 'task_assigned', channel: 'email', recipientType: 'assignee',
     subject: 'Action Required: You have been assigned a new task',
-    body: `Hi {{assignee_name}},\n\nA new task has been assigned to you by {{assigner_name}}.\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: [View Task]({{task_link}})\n\nPlease review the task and update the status accordingly.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['assignee_name', 'assigner_name', 'task_name', 'task_due_date', 'task_link', 'organization_name'],
+    body: `Hi {{assignee_name}},\n\nA new task has been assigned to you by {{assigner_name}}.\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: [View Task]({{task_link}})\n\nPlease review the task and update the status accordingly.\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'assigner_name', 'task_name', 'task_due_date', 'task_link', 'org_name'],
   },
   {
     name: 'New Task Assigned (In-App)', category: 'tasks', templateType: 'task_assigned', channel: 'in_app', recipientType: 'assignee',
@@ -362,22 +466,22 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'Task Reminder - 1 Day Before (Email)', category: 'tasks', templateType: 'task_reminder_1day', channel: 'email', recipientType: 'assignee',
     subject: 'Reminder: Task "{{task_name}}" is due tomorrow',
-    body: `Hi {{assignee_name}},\n\nThis is a reminder that the following task is due tomorrow:\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: [View Task]({{task_link}})\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'organization_name'],
+    body: `Hi {{assignee_name}},\n\nThis is a reminder that the following task is due tomorrow:\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: [View Task]({{task_link}})\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'org_name'],
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 1440, offsetLabel: '1 day before', eventType: 'task_reminder' },
   },
   {
     name: 'Task Reminder - Overdue (Email)', category: 'tasks', templateType: 'task_overdue', channel: 'email', recipientType: 'assignee',
     subject: 'Urgent: Task "{{task_name}}" is overdue',
-    body: `Hi {{assignee_name}},\n\nThe following task is now overdue:\n\n📋 Task: {{task_name}}\n⏰ Original Due Date: {{task_due_date}}\n🔗 View Details: [View Task]({{task_link}})\n\nPlease address this as soon as possible.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'organization_name'],
+    body: `Hi {{assignee_name}},\n\nThe following task is now overdue:\n\n📋 Task: {{task_name}}\n⏰ Original Due Date: {{task_due_date}}\n🔗 View Details: [View Task]({{task_link}})\n\nPlease address this as soon as possible.\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'org_name'],
     reminderConfig: { triggerType: 'after_failure', offsetMinutes: 1440, offsetLabel: '1 day after', eventType: 'task_reminder' },
   },
   {
     name: 'Task Completed (Email)', category: 'tasks', templateType: 'task_completed', channel: 'email', recipientType: 'internal_alert',
     subject: 'Task Completed: {{task_name}}',
-    body: `Hi,\n\nThe following task has been marked as completed by {{assignee_name}}.\n\n📋 Task: {{task_name}}\n📅 Completed On: {{completion_date}}\n🔗 View Details: [View Task]({{task_link}})\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'completion_date', 'task_link', 'organization_name'],
+    body: `Hi,\n\nThe following task has been marked as completed by {{assignee_name}}.\n\n📋 Task: {{task_name}}\n📅 Completed On: {{completion_date}}\n🔗 View Details: [View Task]({{task_link}})\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'completion_date', 'task_link', 'org_name'],
     reminderConfig: { triggerType: 'after_completion', offsetMinutes: 0, offsetLabel: 'On completion', eventType: 'task_reminder' },
   },
 
@@ -385,8 +489,8 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'Automation Failed (Email)', category: 'automations', templateType: 'automation_failed', channel: 'email', recipientType: 'internal_alert',
     subject: 'Alert: Automation Workflow Failed',
-    body: `Hello,\n\nThe automation workflow "{{workflow_name}}" encountered an error and failed to execute successfully.\n\n🔴 Error Details: {{error_message}}\n⏰ Time of Failure: {{failure_time}}\n🔗 Review Workflow: [View Workflow]({{workflow_link}})\n\nPlease investigate the issue promptly to ensure operations continue smoothly.\n\n{{organization_name}}`,
-    variableContext: 'common', declaredVariables: ['workflow_name', 'error_message', 'failure_time', 'workflow_link', 'organization_name'],
+    body: `Hello,\n\nThe automation workflow "{{workflow_name}}" encountered an error and failed to execute successfully.\n\n🔴 Error Details: {{error_message}}\n⏰ Time of Failure: {{failure_time}}\n🔗 Review Workflow: [View Workflow]({{workflow_link}})\n\nPlease investigate the issue promptly to ensure operations continue smoothly.\n\n{{org_name}}`,
+    variableContext: 'common', declaredVariables: ['workflow_name', 'error_message', 'failure_time', 'workflow_link', 'org_name'],
   },
   {
     name: 'Automation Failed (Push)', category: 'automations', templateType: 'automation_failed', channel: 'push', recipientType: 'internal_alert',
@@ -403,8 +507,8 @@ export const TEMPLATES: TemplateDef[] = [
   {
     name: 'QR Code Scan Alert (Email)', category: 'qr_codes', templateType: 'qr_scan_alert', channel: 'email', recipientType: 'internal_alert',
     subject: 'Notification: New QR Code Scan',
-    body: `Hello,\n\nA new scan has been registered for your QR code.\n\n📱 QR Code: {{qr_name}}\n⏰ Scan Time: {{scan_time}}\n📍 Location: {{scan_location}}\n\n{{organization_name}}`,
-    variableContext: 'common', declaredVariables: ['qr_name', 'scan_time', 'scan_location', 'organization_name'],
+    body: `Hello,\n\nA new scan has been registered for your QR code.\n\n📱 QR Code: {{qr_name}}\n⏰ Scan Time: {{scan_time}}\n📍 Location: {{scan_location}}\n\n{{org_name}}`,
+    variableContext: 'common', declaredVariables: ['qr_name', 'scan_time', 'scan_location', 'org_name'],
   },
   {
     name: 'QR Code Scan Alert (Push)', category: 'qr_codes', templateType: 'qr_scan_alert', channel: 'push', recipientType: 'internal_alert',
@@ -441,10 +545,10 @@ export const TEMPLATES: TemplateDef[] = [
     templateType: 'user_invitation',
     channel: 'email',
     recipientType: 'internal_alert',
-    subject: 'Invitation to join {{organization_name}}',
-    body: `Dear {{user_name}},\n\nYou have been invited to join {{organization_name}} as a team member.\n\nHere are your login credentials:\n• Email: {{user_email}}\n• Temporary Password: {{temp_password}}\n\n🔗 Login here: [Get Started Now!]({{login_link}})\n\nPlease make sure to change your password after your first login.\n\nBest regards,\n{{organization_name}}`,
+    subject: 'Invitation to join {{org_name}}',
+    body: `Dear {{user_name}},\n\nYou have been invited to join {{org_name}} as a team member.\n\nHere are your login credentials:\n• Email: {{user_email}}\n• Temporary Password: {{temp_password}}\n\n🔗 Login here: [Get Started Now!]({{login_link}})\n\nPlease make sure to change your password after your first login.\n\nBest regards,\n{{org_name}}`,
     variableContext: 'users',
-    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'organization_name'],
+    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'org_name'],
   },
   {
     name: 'User Invitation (SMS)',
@@ -452,9 +556,9 @@ export const TEMPLATES: TemplateDef[] = [
     templateType: 'user_invitation',
     channel: 'sms',
     recipientType: 'internal_alert',
-    body: `Hi {{user_name}}, you've been invited to join {{organization_name}}. Email: {{user_email}}, Temp Password: {{temp_password}}. Login: {{login_link}}`,
+    body: `Hi {{user_name}}, you've been invited to join {{org_name}}. Email: {{user_email}}, Temp Password: {{temp_password}}. Login: {{login_link}}`,
     variableContext: 'users',
-    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'organization_name'],
+    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'org_name'],
   },
   {
     name: 'User Password Reset (Email)',
@@ -462,10 +566,10 @@ export const TEMPLATES: TemplateDef[] = [
     templateType: 'user_password_reset',
     channel: 'email',
     recipientType: 'internal_alert',
-    subject: 'Password Reset for {{organization_name}}',
-    body: `Dear {{user_name}},\n\nAn administrator has reset your password for {{organization_name}}.\n\nHere are your new temporary credentials:\n• Email: {{user_email}}\n• Temporary Password: {{temp_password}}\n\n🔗 Login here: [Login to your account]({{login_link}})\n\nPlease make sure to change your password immediately upon logging in.\n\nBest regards,\n{{organization_name}}`,
+    subject: 'Password Reset for {{org_name}}',
+    body: `Dear {{user_name}},\n\nAn administrator has reset your password for {{org_name}}.\n\nHere are your new temporary credentials:\n• Email: {{user_email}}\n• Temporary Password: {{temp_password}}\n\n🔗 Login here: [Login to your account]({{login_link}})\n\nPlease make sure to change your password immediately upon logging in.\n\nBest regards,\n{{org_name}}`,
     variableContext: 'users',
-    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'organization_name'],
+    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'org_name'],
   },
   {
     name: 'User Password Reset (SMS)',
@@ -473,9 +577,9 @@ export const TEMPLATES: TemplateDef[] = [
     templateType: 'user_password_reset',
     channel: 'sms',
     recipientType: 'internal_alert',
-    body: `Hi {{user_name}}, your password for {{organization_name}} has been reset. Temp Password: {{temp_password}}. Login: {{login_link}}`,
+    body: `Hi {{user_name}}, your password for {{org_name}} has been reset. Temp Password: {{temp_password}}. Login: {{login_link}}`,
     variableContext: 'users',
-    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'organization_name'],
+    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'org_name'],
   },
   {
     name: 'Access Cancellation (Email)',
@@ -483,10 +587,10 @@ export const TEMPLATES: TemplateDef[] = [
     templateType: 'user_access_cancellation',
     channel: 'email',
     recipientType: 'internal_alert',
-    subject: 'Access Revoked for {{organization_name}}',
-    body: `Dear {{user_name}},\n\nThis is to notify you that your access to {{organization_name}} has been deactivated.\n\nIf you believe this is an error or have any questions, please contact your workspace administrator.\n\nBest regards,\n{{organization_name}}`,
+    subject: 'Access Revoked for {{org_name}}',
+    body: `Dear {{user_name}},\n\nThis is to notify you that your access to {{org_name}} has been deactivated.\n\nIf you believe this is an error or have any questions, please contact your workspace administrator.\n\nBest regards,\n{{org_name}}`,
     variableContext: 'users',
-    declaredVariables: ['user_name', 'organization_name'],
+    declaredVariables: ['user_name', 'org_name'],
   },
   {
     name: 'Access Cancellation (SMS)',
@@ -494,8 +598,8 @@ export const TEMPLATES: TemplateDef[] = [
     templateType: 'user_access_cancellation',
     channel: 'sms',
     recipientType: 'internal_alert',
-    body: `Hi {{user_name}}, your access to {{organization_name}} has been deactivated. Please contact your administrator if you have questions.`,
+    body: `Hi {{user_name}}, your access to {{org_name}} has been deactivated. Please contact your administrator if you have questions.`,
     variableContext: 'users',
-    declaredVariables: ['user_name', 'organization_name'],
+    declaredVariables: ['user_name', 'org_name'],
   },
 ];

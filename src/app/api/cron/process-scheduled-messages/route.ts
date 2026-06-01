@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processScheduledMessages } from '@/lib/reminder-actions';
+import { processMeetingInvitations } from '@/lib/invitation-actions';
 
 /**
  * Cron endpoint to process scheduled messages.
@@ -39,9 +40,13 @@ async function processCronRequest(request: NextRequest) {
     }
 
     // Process scheduled messages
-    const result = await processScheduledMessages();
+    const [result, invResult] = await Promise.all([
+      processScheduledMessages(),
+      processMeetingInvitations()
+    ]);
 
     console.log(`[CRON] Processed scheduled messages: ${result.sent} sent, ${result.failed} failed`);
+    console.log(`[CRON] Processed invitations: ${invResult.sent} sent, ${invResult.skipped} skipped, ${invResult.failed} failed`);
 
     return NextResponse.json({
       success: true,

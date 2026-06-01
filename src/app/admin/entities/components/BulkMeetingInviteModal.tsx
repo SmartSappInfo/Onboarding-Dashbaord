@@ -41,6 +41,7 @@ export default function BulkMeetingInviteModal({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [meetingId, setMeetingId] = React.useState('');
   const [actionType, setActionType] = React.useState<'invite' | 'register'>('invite');
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>('initial');
 
   // Fetch recent meetings for the current workspace
   const meetingsQuery = useMemoFirebase(() =>
@@ -76,6 +77,7 @@ export default function BulkMeetingInviteModal({
         meetingId,
         workspaceId: activeWorkspaceId!,
         sendInvites: actionType === 'invite',
+        templateId: selectedTemplateId,
       });
 
       if (result.error) {
@@ -158,13 +160,33 @@ export default function BulkMeetingInviteModal({
                   <RadioGroupItem value="invite" id="invite-radio" className="mt-1" />
                   <Label htmlFor="invite-radio" className="cursor-pointer">
                     <p className="font-bold text-sm flex items-center gap-1.5">
-                      <Mail className="h-4 w-4 text-primary" /> Register & Email Invites
+                      <Mail className="h-4 w-4 text-primary" /> Mark as Pending & Send Invite
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed font-semibold">
-                      Approves selected contacts, generates unique joining tokens, and dispatches dynamic joining emails.
+                      Adds participants as 'pending' and dispatches an invitation from the series.
                     </p>
                   </Label>
                 </div>
+                {actionType === 'invite' && meetingId && (
+                  <div className="pl-10 pr-4 pb-2 animate-in fade-in slide-in-from-top-2">
+                     <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                        <SelectTrigger className="h-9 rounded-lg font-bold bg-muted/20 border-primary/10 shadow-inner text-xs">
+                          <SelectValue placeholder="Select Invitation Stage" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-none shadow-xl">
+                          {meetings?.find((m: any) => m.id === meetingId)?.messagingConfig?.invitationSeries?.filter((s: any) => s.enabled)?.map((s: any) => (
+                            <SelectItem key={s.id} value={s.id} className="font-bold text-xs">
+                              {s.label}
+                            </SelectItem>
+                          )) || (
+                            <SelectItem value="initial" className="font-bold text-xs">
+                              Initial Invitation
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                  </div>
+                )}
 
                 <div
                   className={cn(

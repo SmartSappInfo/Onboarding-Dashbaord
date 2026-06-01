@@ -18,7 +18,7 @@ const mockVariables: TemplateVariable[] = [
   },
   {
     id: 'common_organization_name',
-    name: 'organization_name',
+    name: 'org_name',
     label: 'Organization Name',
     description: 'Name of the organization',
     dataType: 'string',

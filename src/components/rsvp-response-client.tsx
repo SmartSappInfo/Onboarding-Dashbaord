@@ -29,6 +29,7 @@ interface RsvpResponseClientProps {
   entitySlug: string;
   token: string;
   initialResponse: 'going' | 'not_going' | 'later' | null;
+  dbResponse?: 'going' | 'not_going' | 'later' | null;
 }
 
 export default function RsvpResponseClient({
@@ -40,13 +41,15 @@ export default function RsvpResponseClient({
   entitySlug,
   token,
   initialResponse,
+  dbResponse,
 }: RsvpResponseClientProps) {
   const router = useRouter();
   const [status, setStatus] = React.useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [response, setResponse] = React.useState<'going' | 'not_going' | 'later' | null>(
-    initialResponse,
+    initialResponse || dbResponse || null,
   );
   const [errorMsg, setErrorMsg] = React.useState('');
+  const autoSubmittedRef = React.useRef(false);
 
   const handleRsvp = React.useCallback(
     async (choice: 'going' | 'not_going' | 'later') => {
@@ -68,12 +71,13 @@ export default function RsvpResponseClient({
     [meetingId, token],
   );
 
-  // Automatically submit if there is an initial response parameter and status is idle
+  // Automatically submit if there is an initial response parameter and we have not submitted yet
   React.useEffect(() => {
-    if (initialResponse && !response) {
+    if (initialResponse && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true;
       handleRsvp(initialResponse);
     }
-  }, [initialResponse, response, handleRsvp]);
+  }, [initialResponse, handleRsvp]);
 
   const formattedDate = React.useMemo(() => {
     try {

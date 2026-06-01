@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 
 import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField } from '@/lib/types';
-import { MEETING_TYPES, REMINDER_OFFSETS } from '@/lib/types';
+import { MEETING_TYPES, REMINDER_OFFSETS, getDefaultMeetingMessagingConfig } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -79,8 +79,7 @@ import { getDefaultRegistrationFields } from '@/lib/meeting-tokens';
 import RegistrationFieldBuilder from '../../components/registration-field-builder';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { scheduleRemindersForMeeting, rescheduleRemindersForMeeting, scheduleMessagingConfigReminders, scheduleFacilitatorAlerts } from '@/lib/reminder-actions';
-import { scheduleMeetingPostEvent, cancelMeetingPostEvent } from '@/app/actions/meeting-post-event-action';
+import { rescheduleRemindersForMeeting } from '@/lib/reminder-actions';
 import { Checkbox } from '@/components/ui/checkbox';
 import MeetingLeadCaptureSection from '../../components/MeetingLeadCaptureSection';
 import MeetingMessagingTab from '../../components/MeetingMessagingTab';
@@ -270,6 +269,7 @@ export default function EditMeetingPage() {
       adminAlertEmailTemplateId: '',
       adminAlertSmsTemplateId: '',
       enabledReminders: [],
+      messagingConfig: getDefaultMeetingMessagingConfig(),
     },
   });
 
@@ -384,6 +384,36 @@ export default function EditMeetingPage() {
     
     
     try {
+        // If meetingTime changed, adjust initial invitation slot absolute dates
+        if (meeting?.meetingTime && data.meetingTime) {
+            const oldTime = new Date(meeting.meetingTime).getTime();
+            const newTime = data.meetingTime.getTime();
+            const diffMs = newTime - oldTime;
+            
+            if (diffMs !== 0 && data.messagingConfig?.invitationSeries) {
+                const adjustedSeries = data.messagingConfig.invitationSeries.map((slot: any) => {
+                    if (slot.id === 'initial') {
+                        const updated = { ...slot };
+                        if (slot.emailScheduledDate) {
+                            const d = new Date(slot.emailScheduledDate);
+                            updated.emailScheduledDate = new Date(d.getTime() + diffMs).toISOString();
+                        }
+                        if (slot.smsScheduledDate) {
+                            const d = new Date(slot.smsScheduledDate);
+                            updated.smsScheduledDate = new Date(d.getTime() + diffMs).toISOString();
+                        }
+                        return updated;
+                    }
+                    return slot;
+                });
+                data.messagingConfig = {
+                    ...data.messagingConfig,
+                    invitationSeries: adjustedSeries
+                };
+                setValue('messagingConfig', data.messagingConfig);
+            }
+        }
+
         const meetingsRef = collection(firestore, 'meetings');
         const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('meetingSlug', '==', data.meetingSlug));
         const querySnapshot = await getDocs(q);
@@ -488,42 +518,11 @@ export default function EditMeetingPage() {
             metadata: { meetingId }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
-        // Task 12.3: Reschedule reminders if meeting time changed
-        const timeChanged = meeting?.meetingTime !== data.meetingTime.toISOString();
-        if (timeChanged) {
-            rescheduleRemindersForMeeting(
-                { id: meetingId, ...meetingData } as any,
-                activeOrganizationId
-            ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
-        }
-
-        // Phase 8: Schedule messaging config reminders if present
-        if (data.messagingConfig?.reminders?.length > 0) {
-            // Cancel existing messaging slot reminders first
-            cancelMeetingPostEvent(meetingId).catch(err => console.warn('Post-event cancel deferred:', err.message));
-            
-            scheduleMessagingConfigReminders(
-                { id: meetingId, ...meetingData } as any,
-                activeOrganizationId
-            ).catch(err => console.warn('Messaging reminders deferred:', err.message));
-        }
-
-        // Phase 8: Schedule facilitator pre-event alerts
-        if (data.messagingConfig?.facilitatorUserIds?.length > 0) {
-            scheduleFacilitatorAlerts(
-                { id: meetingId, ...meetingData } as any,
-                activeOrganizationId,
-                'pre_event'
-            ).catch(err => console.warn('Facilitator alerts deferred:', err.message));
-        }
-
-        // Phase 8: Schedule post-event follow-up
-        if (data.messagingConfig?.postEventEnabled) {
-            scheduleMeetingPostEvent(
-                { id: meetingId, ...meetingData } as any,
-                activeOrganizationId
-            ).catch(err => console.warn('Post-event scheduling deferred:', err.message));
-        }
+        // Consolidated robust scheduling of all meeting alerts, reminders and invitations
+        rescheduleRemindersForMeeting(
+            { id: meetingId, ...meetingData } as any,
+            activeOrganizationId
+        ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
 
         router.push(`/admin/meetings/${meetingId}`);
     } catch (error: any) {

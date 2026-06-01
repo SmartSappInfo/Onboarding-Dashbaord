@@ -219,6 +219,12 @@ service cloud.firestore {
       }
     }
 
+    // Collection Group rule for registrants (required for collectionGroup queries)
+    match /{path=**}/registrants/{rId} {
+      allow create: if true;
+      allow read, list, update: if isAuthorized();
+    }
+
     match /custom_meeting_templates/{templateId} {
       allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));

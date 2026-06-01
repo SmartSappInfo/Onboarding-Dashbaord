@@ -40,8 +40,24 @@ interface SendMessageInput {
  * the external providers (mNotify/Resend). The providers are responsible for 
  * maintaining the queue and firing the message at the requested time.
  * 
- * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
+/**
+ * Normalizes phone numbers to generate common formats for database queries.
  */
+function getPhoneFormats(phone: string): string[] {
+  if (!phone) return [];
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 9) return [phone];
+  const digits9 = digits.slice(-9);
+  return Array.from(new Set([
+    phone,
+    digits,
+    `0${digits9}`,
+    `+233${digits9}`,
+    `233${digits9}`,
+    digits9
+  ])).filter(Boolean);
+}
+
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
   const { templateId, senderProfileId, recipient, variables, attachments, entityId, entityType, workspaceId, scheduledAt, tags, trackLinks } = input;
 
@@ -198,13 +214,33 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // 4.4 Meeting Context Auto-Enrichment
     // When _meetingId is present but meeting_title wasn't supplied by the caller,
     // fetch the meeting doc and inject base variables + facilitator/registrant context.
-    const meetingId = finalVariables._meetingId;
-    if (meetingId && finalVariables.meeting_title === undefined) {
+    const meetingId = finalVariables._meetingId || finalVariables.meetingId;
+    const needsMeetingEnrichment = meetingId && (
+        finalVariables.meeting_date === undefined ||
+        finalVariables.meeting_time === undefined ||
+        finalVariables.meeting_title === undefined ||
+        finalVariables.meeting_type === undefined ||
+        finalVariables.calendar_link === undefined ||
+        finalVariables.meeting_timezone === undefined
+    );
+    if (needsMeetingEnrichment) {
         try {
             const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
             if (meetingSnap.exists) {
                 const meeting = { id: meetingSnap.id, ...meetingSnap.data() } as Meeting;
-                const meetingVars = buildMeetingBaseVariables(meeting);
+                
+                // Let's resolve default timezone from organization if we can
+                let tz = 'UTC';
+                const orgId = (meeting as any).organizationId || template.organizationId || variables.organizationId;
+                if (orgId) {
+                    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+                    if (orgSnap.exists) {
+                        tz = orgSnap.data()?.settings?.defaultTimezone || 'UTC';
+                    }
+                }
+
+                const meetingVars = buildMeetingBaseVariables(meeting, tz);
+                
                 // Only set if not already provided by the caller
                 Object.entries(meetingVars).forEach(([k, v]) => {
                     if (finalVariables[k] === undefined) finalVariables[k] = v;
@@ -232,74 +268,124 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // If a _meetingId is passed, check if the recipient is a registrant and enrich variables
     if (meetingId) {
         let registrantDoc = null;
+
+        // Try direct lookup by entityId in the registrants subcollection first (e.g. from bulk/direct actions)
+        if (entityId) {
+            try {
+                const directSnap = await adminDb.collection(`meetings/${meetingId}/registrants`).doc(entityId).get();
+                if (directSnap.exists) {
+                    registrantDoc = directSnap;
+                }
+            } catch { /* ignore */ }
+        }
         
         // Try email match
-        const targetEmail = finalVariables.contact_email || recipient;
-        if (targetEmail && targetEmail.includes('@')) {
-            const emailQuery = await adminDb.collection(`meetings/${meetingId}/registrants`).where('email', '==', targetEmail).limit(1).get();
-            if (!emailQuery.empty) registrantDoc = emailQuery.docs[0];
+        if (!registrantDoc) {
+            const targetEmail = (finalVariables.contact_email || recipient)?.toLowerCase().trim();
+            if (targetEmail && targetEmail.includes('@')) {
+                const emailQuery = await adminDb.collection(`meetings/${meetingId}/registrants`).where('email', '==', targetEmail).limit(1).get();
+                if (!emailQuery.empty) registrantDoc = emailQuery.docs[0];
+            }
         }
 
         // Try phone match
         if (!registrantDoc) {
-            const targetPhone = finalVariables.contact_phone || recipient;
+            const targetPhone = (finalVariables.contact_phone || recipient)?.trim();
             if (targetPhone) {
-                const phoneQuery = await adminDb.collection(`meetings/${meetingId}/registrants`).where('phone', '==', targetPhone).limit(1).get();
+                const formats = getPhoneFormats(targetPhone);
+                const phoneQuery = await adminDb.collection(`meetings/${meetingId}/registrants`).where('phone', 'in', formats).limit(1).get();
                 if (!phoneQuery.empty) registrantDoc = phoneQuery.docs[0];
             }
         }
 
         if (registrantDoc) {
             const rDocData = registrantDoc.data();
-            const token = rDocData.token;
-            if (token) {
-                const baseUrl = getBaseUrl();
-                
-                // Parse slugs from personalizedMeetingUrl
-                let typeSlug = 'meeting';
-                let meetingSlug = meetingId;
-                if (rDocData.personalizedMeetingUrl) {
-                    try {
-                        const urlObj = new URL(rDocData.personalizedMeetingUrl);
-                        const paths = urlObj.pathname.split('/').filter(Boolean);
-                        if (paths.length >= 3) {
-                            typeSlug = paths[1];
-                            meetingSlug = paths[2];
-                        }
-                    } catch { /* ignore */ }
-                }
+            if (rDocData) {
+                const token = rDocData.token;
+                if (token) {
+                    const baseUrl = getBaseUrl();
+                    
+                    // Parse slugs from personalizedMeetingUrl
+                    let typeSlug = 'meeting';
+                    let meetingSlug = meetingId;
+                    if (rDocData.personalizedMeetingUrl) {
+                        try {
+                            const urlObj = new URL(rDocData.personalizedMeetingUrl);
+                            const paths = urlObj.pathname.split('/').filter(Boolean);
+                            if (paths.length >= 3) {
+                                typeSlug = paths[1];
+                                meetingSlug = paths[2];
+                            }
+                        } catch { /* ignore */ }
+                    }
 
-                // Set RSVP URLs dynamically
-                if (finalVariables.rsvp_going_url === undefined) {
-                    finalVariables.rsvp_going_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=going`;
-                }
-                if (finalVariables.rsvp_declined_url === undefined) {
-                    finalVariables.rsvp_declined_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=not_going`;
-                }
-                if (finalVariables.rsvp_later_url === undefined) {
-                    finalVariables.rsvp_later_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=later`;
-                }
-                if (finalVariables.registrant_join_link === undefined) {
-                    finalVariables.registrant_join_link = rDocData.personalizedMeetingUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
-                }
-                if (finalVariables.meeting_registrant_join_link === undefined) {
-                    finalVariables.meeting_registrant_join_link = rDocData.personalizedMeetingUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
-                }
-                if (finalVariables.meeting_registrant_one_click_link === undefined) {
-                    finalVariables.meeting_registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`;
-                }
-                if (finalVariables.registrant_one_click_link === undefined) {
-                    finalVariables.registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`;
-                }
+                    // Set RSVP URLs dynamically
+                    if (finalVariables.rsvp_going_url === undefined) {
+                        finalVariables.rsvp_going_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=going`;
+                    }
+                    if (finalVariables.rsvp_declined_url === undefined) {
+                        finalVariables.rsvp_declined_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=not_going`;
+                    }
+                    if (finalVariables.rsvp_later_url === undefined) {
+                        finalVariables.rsvp_later_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=later`;
+                    }
+                    if (finalVariables.registrant_join_link === undefined) {
+                        finalVariables.registrant_join_link = rDocData.personalizedMeetingUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+                    }
+                    if (finalVariables.meeting_registrant_join_link === undefined) {
+                        finalVariables.meeting_registrant_join_link = rDocData.personalizedMeetingUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+                    }
+                    if (finalVariables.meeting_registrant_one_click_link === undefined) {
+                        finalVariables.meeting_registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`;
+                    }
+                    if (finalVariables.registrant_one_click_link === undefined) {
+                        finalVariables.registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`;
+                    }
 
-                if (finalVariables.meeting_link) {
-                    const sep = finalVariables.meeting_link.includes('?') ? '&' : '?';
-                    finalVariables.meeting_link = `${finalVariables.meeting_link}${sep}token=${token}`;
+                    if (finalVariables.meeting_link) {
+                        const sep = finalVariables.meeting_link.includes('?') ? '&' : '?';
+                        finalVariables.meeting_link = `${finalVariables.meeting_link}${sep}token=${token}`;
+                    }
+                    if (finalVariables.link) {
+                        const sep = finalVariables.link.includes('?') ? '&' : '?';
+                        finalVariables.link = `${finalVariables.link}${sep}token=${token}`;
+                    }
                 }
-                if (finalVariables.link) {
-                    const sep = finalVariables.link.includes('?') ? '&' : '?';
-                    finalVariables.link = `${finalVariables.link}${sep}token=${token}`;
+            }
+        } else {
+            // Fallback for RSVP/join URLs if registrant is not found (e.g. test dispatches, facilitators, or missing registrant doc)
+            const baseUrl = getBaseUrl();
+            let typeSlug = 'meeting';
+            let meetingSlug = meetingId;
+            try {
+                const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
+                if (meetingSnap.exists) {
+                    const mData = meetingSnap.data();
+                    typeSlug = mData?.type?.id || 'meeting';
+                    meetingSlug = mData?.meetingSlug || mData?.entitySlug || meetingId;
                 }
+            } catch { /* ignore */ }
+
+            if (finalVariables.rsvp_going_url === undefined) {
+                finalVariables.rsvp_going_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=test-token&response=going`;
+            }
+            if (finalVariables.rsvp_declined_url === undefined) {
+                finalVariables.rsvp_declined_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=test-token&response=not_going`;
+            }
+            if (finalVariables.rsvp_later_url === undefined) {
+                finalVariables.rsvp_later_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=test-token&response=later`;
+            }
+            if (finalVariables.registrant_join_link === undefined) {
+                finalVariables.registrant_join_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=test-token`;
+            }
+            if (finalVariables.meeting_registrant_join_link === undefined) {
+                finalVariables.meeting_registrant_join_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=test-token`;
+            }
+            if (finalVariables.meeting_registrant_one_click_link === undefined) {
+                finalVariables.meeting_registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=test-token`;
+            }
+            if (finalVariables.registrant_one_click_link === undefined) {
+                finalVariables.registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=test-token`;
             }
         }
     }
