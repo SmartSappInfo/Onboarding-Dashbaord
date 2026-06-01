@@ -1,4 +1,4 @@
-import type { MessageBlock, MessageBlockRule } from './types';
+import type { MessageBlock, MessageBlockRule, MessageStyle } from './types';
 import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
 
 /**
@@ -212,50 +212,90 @@ export function renderBlocksToHtml(
     width?: string, 
     backgroundColor?: string,
     wrapper?: string,
-    isDark?: boolean
+    isDark?: boolean,
+    style?: MessageStyle
   }
 ): string {
   if (!blocks || !blocks.length) return '';
 
   const isDark = options?.isDark;
   const maxWidth = options?.width || '600px';
-  const outerBg = options?.backgroundColor || (isDark ? '#090d16' : '#F1F5F9');
-  const cardBg = isDark ? '#111827' : '#FFFFFF';
-  const textColor = isDark ? '#f3f4f6' : '#1e293b';
+  const outerBg = options?.style?.backgroundColor || options?.backgroundColor || (isDark ? '#090d16' : '#F1F5F9');
+  const cardBg = options?.style?.cardBackgroundColor || (isDark ? '#111827' : '#FFFFFF');
+  const textColor = options?.style?.textColor || (isDark ? '#f3f4f6' : '#1e293b');
   const dividerColor = isDark ? '#374151' : '#e2e8f0';
   const footerTextColor = isDark ? '#6b7280' : '#94a3b8';
   const subBg = isDark ? '#1f2937' : '#f8fafc';
+  const fontFam = options?.style?.fontFamily || 'Figtree';
 
-  const renderBlock = (block: MessageBlock): string => {
+  const cardRadius = options?.style?.borderRadius ? (options.style.borderRadius.endsWith('px') || options.style.borderRadius.endsWith('%') ? options.style.borderRadius : `${options.style.borderRadius}px`) : '24px';
+
+  const renderBlock = (block: MessageBlock, isNested?: boolean): string => {
     if (!shouldShowBlock(block, variables)) {
       return '';
     }
 
     const metadata = `<!-- BLOCK_DATA:${toBase64(JSON.stringify(block))} -->`;
 
-    const align = block.style?.textAlign || 'left';
+    const s = block.style || {};
+    const align = s.textAlign || 'left';
     const alignStyle = `text-align: ${align};`;
-    const blockBgColor = block.style?.backgroundColor ? `background-color: ${block.style.backgroundColor};` : '';
-    const padding = block.style?.padding || '12px 0';
     
-    // Core typography inheritance
-    const baseStyle = `font-family: 'Figtree', Helvetica, Arial, sans-serif; line-height: 1.6; color: ${textColor};`;
-    const wrapperStyle = `padding: ${padding}; ${alignStyle} ${blockBgColor} ${baseStyle}`;
+    // Spacing
+    const paddingTopVal = s.paddingTop ? (s.paddingTop.endsWith('px') || s.paddingTop.endsWith('%') || s.paddingTop.endsWith('pt') ? s.paddingTop : `${s.paddingTop}px`) : '';
+    const paddingBottomVal = s.paddingBottom ? (s.paddingBottom.endsWith('px') || s.paddingBottom.endsWith('%') || s.paddingBottom.endsWith('pt') ? s.paddingBottom : `${s.paddingBottom}px`) : '';
+    const paddingLeftVal = s.paddingLeft ? (s.paddingLeft.endsWith('px') || s.paddingLeft.endsWith('%') || s.paddingLeft.endsWith('pt') ? s.paddingLeft : `${s.paddingLeft}px`) : '';
+    const paddingRightVal = s.paddingRight ? (s.paddingRight.endsWith('px') || s.paddingRight.endsWith('%') || s.paddingRight.endsWith('pt') ? s.paddingRight : `${s.paddingRight}px`) : '';
+
+    const paddingStyles = [
+      paddingTopVal ? `padding-top: ${paddingTopVal};` : '',
+      paddingBottomVal ? `padding-bottom: ${paddingBottomVal};` : '',
+      paddingLeftVal ? `padding-left: ${paddingLeftVal};` : '',
+      paddingRightVal ? `padding-right: ${paddingRightVal};` : '',
+    ].filter(Boolean).join(' ') || (s.padding ? `padding: ${s.padding};` : 'padding: 12px 0;');
+    
+    const marginStyles = [
+      s.marginTop ? `margin-top: ${s.marginTop.endsWith('px') || s.marginTop.endsWith('%') || s.marginTop.endsWith('pt') ? s.marginTop : `${s.marginTop}px`};` : '',
+      s.marginBottom ? `margin-bottom: ${s.marginBottom.endsWith('px') || s.marginBottom.endsWith('%') || s.marginBottom.endsWith('pt') ? s.marginBottom : `${s.marginBottom}px`};` : '',
+    ].filter(Boolean).join(' ');
+
+    // Borders
+    const borderStyles = [
+      s.borderWidth ? `border-width: ${s.borderWidth.endsWith('px') ? s.borderWidth : `${s.borderWidth}px`};` : '',
+      s.borderStyle ? `border-style: ${s.borderStyle};` : '',
+      s.borderColor ? `border-color: ${s.borderColor};` : '',
+      s.borderRadius ? `border-radius: ${s.borderRadius.endsWith('px') || s.borderRadius.endsWith('%') ? s.borderRadius : `${s.borderRadius}px`};` : '',
+    ].filter(Boolean).join(' ');
+
+    const blockBgColor = s.backgroundColor ? `background-color: ${s.backgroundColor};` : '';
+    const fontColor = s.color ? `color: ${s.color};` : `color: ${textColor};`;
+    const fontSizeVal = s.fontSize ? (s.fontSize.endsWith('px') || s.fontSize.endsWith('pt') ? s.fontSize : `${s.fontSize}px`) : (s.width ? `${s.width}px` : '');
+    const fontSize = fontSizeVal ? `font-size: ${fontSizeVal};` : '';
+    const fontFamily = s.fontFamily ? `font-family: ${s.fontFamily};` : '';
+    const fontWeight = s.fontWeight ? `font-weight: ${s.fontWeight};` : '';
+    const lineHeight = s.lineHeight ? `line-height: ${s.lineHeight};` : '';
+
+    const baseStyle = `font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; ${fontColor} ${fontSize} ${fontWeight} ${lineHeight} ${alignStyle}`;
+    const wrapperStyle = `${paddingStyles} ${marginStyles} ${borderStyles} ${blockBgColor} ${alignStyle} ${baseStyle}`;
 
     let blockHtml = '';
 
     switch (block.type) {
       case 'heading': {
         const tag = block.variant || 'h2';
-        const fontSize = tag === 'h1' ? '32px' : tag === 'h2' ? '24px' : '18px';
+        const defaultFontSize = tag === 'h1' ? '32px' : tag === 'h2' ? '24px' : '18px';
         const title = resolveVariables(block.title || '', variables);
-        blockHtml = `<div style="${wrapperStyle}"><${tag} style="${baseStyle} margin: 0; font-size: ${fontSize}; font-weight: 900; line-height: 1.2; letter-spacing: -0.02em;">${title}</${tag}></div>`;
+        const headingFontSize = fontSizeVal || defaultFontSize;
+        const headingStyle = `margin: 0; font-size: ${headingFontSize}; ${fontWeight || 'font-weight: 900;'} ${lineHeight || 'line-height: 1.2;'} letter-spacing: -0.02em; ${fontColor} ${fontFamily}`;
+        blockHtml = `<div style="${wrapperStyle}"><${tag} style="${headingStyle}">${title}</${tag}></div>`;
         break;
       }
       
       case 'text': {
         const content = resolveVariables(block.content || '', variables);
-        blockHtml = `<div style="${wrapperStyle}"><div style="${baseStyle} font-size: 16px; margin: 0; font-weight: 500;">${content}</div></div>`;
+        const textFontSize = fontSizeVal || '16px';
+        const textStyle = `margin: 0; font-size: ${textFontSize}; ${fontWeight || 'font-weight: 500;'} ${lineHeight || 'line-height: 1.6;'} ${fontColor} ${fontFamily}`;
+        blockHtml = `<div style="${wrapperStyle}"><div style="${textStyle}">${content}</div></div>`;
         break;
       }
 
@@ -270,7 +310,9 @@ export function renderBlocksToHtml(
         if (!url) {
             blockHtml = '';
         } else {
-            blockHtml = `<div style="${wrapperStyle}"><img src="${url}" style="max-width: 100%; height: auto; border-radius: 16px; display: block; border: 1px solid ${dividerColor}; ${align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin-left: auto;' : ''}" alt="Image" /></div>`;
+            const defaultImgRadius = options?.style?.borderRadius ? (options.style.borderRadius.endsWith('px') || options.style.borderRadius.endsWith('%') ? options.style.borderRadius : `${options.style.borderRadius}px`) : '16px';
+            const imgRadius = s.borderRadius ? (s.borderRadius.endsWith('px') || s.borderRadius.endsWith('%') ? s.borderRadius : `${s.borderRadius}px`) : defaultImgRadius;
+            blockHtml = `<div style="${wrapperStyle}"><img src="${url}" style="max-width: 100%; height: auto; border-radius: ${imgRadius}; display: block; border: ${s.borderWidth ? `${s.borderWidth} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}` : `1px solid ${dividerColor}`}; ${align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin-left: auto;' : ''}" alt="Image" /></div>`;
         }
         break;
       }
@@ -278,9 +320,24 @@ export function renderBlocksToHtml(
       case 'button': {
         const title = resolveVariables(block.title || 'Click Here', variables);
         const link = resolveVariables(block.link || '#', variables);
+        const btnBg = s.backgroundColor || options?.style?.primaryColor || '#3B5FFF';
+        const btnColor = s.color || '#ffffff';
+        const styleRadius = options?.style?.borderRadius;
+        const defaultRadius = styleRadius ? (styleRadius.endsWith('px') || styleRadius.endsWith('%') ? styleRadius : `${styleRadius}px`) : '12px';
+        const btnRadius = s.borderRadius ? (s.borderRadius.endsWith('px') || s.borderRadius.endsWith('%') ? s.borderRadius : `${s.borderRadius}px`) : defaultRadius;
+        const btnFontSize = fontSizeVal || '16px';
+        const btnPadding = [
+          s.paddingTop || '16px',
+          s.paddingRight || '32px',
+          s.paddingBottom || '16px',
+          s.paddingLeft || '32px'
+        ].map(p => p.endsWith('px') || p.endsWith('%') ? p : `${p}px`).join(' ');
+
+        const shadowColor = options?.style?.primaryColor ? `${options.style.primaryColor}4D` : 'rgba(59, 95, 255, 0.3)';
+
         blockHtml = `
           <div style="${wrapperStyle} margin: 24px 0;">
-            <a href="${link}" style="background-color: #3B5FFF; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: 800; font-family: 'Figtree', sans-serif; display: inline-block; font-size: 16px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 10px 15px -3px rgba(59, 95, 255, 0.3);">
+            <a href="${link}" style="background-color: ${btnBg}; color: ${btnColor}; padding: ${btnPadding}; text-decoration: none; border-radius: ${btnRadius}; ${fontWeight || 'font-weight: 800;'} ${fontFamily} display: inline-block; font-size: ${btnFontSize}; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 10px 15px -3px ${shadowColor};">
               ${title}
             </a>
           </div>
@@ -291,7 +348,7 @@ export function renderBlocksToHtml(
       case 'quote': {
         const content = resolveVariables(block.content || '', variables);
         blockHtml = `
-          <div style="margin: 24px 0; padding: 24px; border-left: 4px solid #3B5FFF; background-color: ${subBg}; font-family: 'Figtree', sans-serif; font-style: italic; color: ${isDark ? '#9ca3af' : '#475569'}; font-size: 18px; line-height: 1.6; border-radius: 0 16px 16px 0; ${alignStyle}">
+          <div style="margin: 24px 0; padding: 24px; border-left: 4px solid ${options?.style?.primaryColor || '#3B5FFF'}; background-color: ${subBg}; font-family: ${s.fontFamily || "'" + fontFam + "', sans-serif"}; font-style: italic; color: ${s.color || (isDark ? '#9ca3af' : '#475569')}; font-size: ${fontSizeVal || '18px'}; line-height: 1.6; border-radius: 0 16px 16px 0; ${alignStyle}">
             ${content}
           </div>
         `;
@@ -299,9 +356,22 @@ export function renderBlocksToHtml(
       }
 
       case 'list': {
-        const tag = block.listStyle === 'ordered' ? 'ol' : 'ul';
-        const items = (block.items || []).map(item => `<li style="margin-bottom: 10px;">${resolveVariables(item, variables)}</li>`).join('');
-        blockHtml = `<div style="${wrapperStyle}"><${tag} style="${baseStyle} font-size: 16px; margin: 0; padding-left: 20px; text-align: left; font-weight: 500;">${items}</${tag}></div>`;
+        const tag = (block.listStyle === 'ordered' || block.listStyle === 'roman') ? 'ol' : 'ul';
+        const listStyleType = block.listStyle === 'roman' ? 'upper-roman' : block.listStyle === 'ordered' ? 'decimal' : block.listStyle === 'checkmark' || block.listStyle === 'arrow' ? 'none' : 'disc';
+        
+        const items = (block.items || []).map((item, i) => {
+          let prefix = '';
+          if (block.listStyle === 'checkmark') {
+            prefix = '<span style="color: #10b981; margin-right: 8px; font-weight: bold;">✓</span>';
+          } else if (block.listStyle === 'arrow') {
+            prefix = '<span style="color: #3b82f6; margin-right: 8px; font-weight: bold;">→</span>';
+          }
+          return `<li style="margin-bottom: 10px; list-style-type: ${listStyleType};">${prefix}${resolveVariables(item, variables)}</li>`;
+        }).join('');
+        
+        const listFontSize = fontSizeVal || '16px';
+        const listStyle = `${baseStyle} font-size: ${listFontSize}; margin: 0; padding-left: ${block.listStyle === 'checkmark' || block.listStyle === 'arrow' ? '0px' : '20px'}; text-align: left; ${fontWeight || 'font-weight: 500;'}`;
+        blockHtml = `<div style="${wrapperStyle}"><${tag} style="${listStyle}">${items}</${tag}></div>`;
         break;
       }
 
@@ -313,7 +383,7 @@ export function renderBlocksToHtml(
         const score = variables.score || 0;
         const maxScore = variables.max_score || 100;
         blockHtml = `
-          <div style="background-color: #3B5FFF; color: #ffffff; padding: 48px 32px; border-radius: 24px; text-align: center; margin: 32px 0; font-family: 'Figtree', sans-serif; box-shadow: 0 20px 25px -5px rgba(59, 95, 255, 0.2);">
+          <div style="background-color: ${options?.style?.primaryColor || '#3B5FFF'}; color: #ffffff; padding: 48px 32px; border-radius: 24px; text-align: center; margin: 32px 0; font-family: '${fontFam}', sans-serif; box-shadow: 0 20px 25px -5px rgba(59, 95, 255, 0.2);">
             <div style="text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: 0.2em; margin-bottom: 16px; opacity: 0.8;">Assessment Result</div>
             <div style="font-size: 72px; font-weight: 900; line-height: 1; letter-spacing: -0.05em;">${score}</div>
             <div style="font-size: 14px; font-weight: 700; opacity: 0.6; margin-top: 8px; letter-spacing: 0.1em;">OUT OF ${maxScore} POINTS</div>
@@ -349,7 +419,7 @@ export function renderBlocksToHtml(
         const fAddr = resolveVariables('{{org_address}}', variables);
         const fYear = resolveVariables('{{current_year}}', variables) || new Date().getFullYear().toString();
         blockHtml = `
-          <div style="padding: 32px 0 16px; margin-top: 24px; border-top: 1px solid ${dividerColor}; text-align: center; font-family: 'Figtree', sans-serif;">
+          <div style="padding: 32px 0 16px; margin-top: 24px; border-top: 1px solid ${dividerColor}; text-align: center; font-family: '${fontFam}', sans-serif;">
             <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: ${isDark ? '#9ca3af' : '#475569'};">${fName}</p>
             <p style="margin: 0 0 4px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${fAddr}</p>
             <p style="margin: 0 0 8px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${fEmail} | ${fPhone}</p>
@@ -359,18 +429,94 @@ export function renderBlocksToHtml(
         break;
       }
 
+      case 'rsvp': {
+        const title = resolveVariables(block.title || 'Will you attend this meeting?', variables);
+        const going = resolveVariables(block.goingLabel || 'Going', variables);
+        const declined = resolveVariables(block.declinedLabel || 'Not Going', variables);
+        const later = resolveVariables(block.laterLabel || 'Later', variables);
+        
+        blockHtml = `
+          <div style="${wrapperStyle}">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="${align === 'center' ? 'center' : align === 'right' ? 'right' : 'left'}" style="padding: 16px 0;">
+                  <div style="margin-bottom: 16px; font-size: ${fontSizeVal || '18px'}; ${fontWeight || 'font-weight: 700;'} font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; ${fontColor}">
+                    ${title}
+                  </div>
+                  
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display: inline-block; margin: 0 auto;">
+                    <tr>
+                      <td style="padding: 4px 8px; vertical-align: middle;">
+                        <a href="{{rsvp_going_url}}" style="background-color: #10b981; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
+                          ${going}
+                        </a>
+                      </td>
+                      <td style="padding: 4px 8px; vertical-align: middle;">
+                        <a href="{{rsvp_later_url}}" style="background-color: #f59e0b; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
+                          ${later}
+                        </a>
+                      </td>
+                      <td style="padding: 4px 8px; vertical-align: middle;">
+                        <a href="{{rsvp_declined_url}}" style="background-color: #ef4444; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
+                          ${declined}
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </div>
+        `;
+        break;
+      }
+
+      case 'columns': {
+        const cols = block.columns || [];
+        const colWidths = cols.map(c => c.width || `${Math.floor(100 / cols.length)}%`);
+        
+        const tableCells = cols.map((col, idx) => {
+          const cellBlocksHtml = col.blocks.map(b => renderBlock(b, true)).join('\n');
+          return `
+            <td style="width: ${colWidths[idx]}; vertical-align: top; padding: 8px;">
+              ${cellBlocksHtml}
+            </td>
+          `;
+        }).join('');
+
+        blockHtml = `
+          <div style="${wrapperStyle}">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+              <tr>
+                ${tableCells}
+              </tr>
+            </table>
+          </div>
+        `;
+        break;
+      }
+
       default:
         blockHtml = '';
     }
 
+    if (isNested) {
+      return blockHtml;
+    }
     return blockHtml + '\n' + metadata;
   };
 
-  const contentHtml = blocks.map(renderBlock).join('\n');
+  const contentHtml = blocks.map(b => renderBlock(b, false)).join('\n');
 
   const wrapperHtml = options?.wrapper && options.wrapper.includes('{{content}}')
     ? options.wrapper.replace('{{content}}', contentHtml)
     : contentHtml;
+
+  let fontLink = '';
+  if (fontFam && fontFam !== 'Figtree') {
+    const formattedFont = fontFam.replace(/\s+/g, '+');
+    fontLink = `\n<link href="https://fonts.googleapis.com/css2?family=${formattedFont}:wght@400;500;700;800;900&display=swap" rel="stylesheet">`;
+  }
 
   return `<!doctype html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -379,26 +525,26 @@ export function renderBlocksToHtml(
 <!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;800;900&display=swap" rel="stylesheet">${fontLink}
 <style type="text/css">
   #outlook a { padding:0; }
-  body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; font-family: 'Figtree', Helvetica, Arial, sans-serif !important; }
+  body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; font-family: '${fontFam}', Helvetica, Arial, sans-serif !important; }
   table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
   img { border:0;height:auto;line-height:100%; outline:none;text-decoration:none;-ms-interpolation-mode:bicubic; }
   p { display:block;margin:13px 0; line-height: 1.6; }
-  * { font-family: 'Figtree', Helvetica, Arial, sans-serif !important; }
+  * { font-family: '${fontFam}', Helvetica, Arial, sans-serif !important; }
 </style>
 </head>
 <body style="word-spacing:normal;background-color:${outerBg};padding: 40px 20px;">
   <div style="background-color:${outerBg};">
     <div style="margin:0px auto;max-width:${maxWidth};">
       <!-- Gradient Top Line -->
-      <div style="height: 4px; background: linear-gradient(to right, #3B5FFF, #8B5CF6, #3B5FFF); border-radius: 24px 24px 0 0;"></div>
+      <div style="height: 4px; background: linear-gradient(to right, ${options?.style?.primaryColor || '#3B5FFF'}, ${options?.style?.secondaryColor || '#8B5CF6'}, ${options?.style?.primaryColor || '#3B5FFF'}); border-radius: ${cardRadius} ${cardRadius} 0 0;"></div>
       
-      <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%; background-color: ${cardBg}; border-radius: 0 0 24px 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%; background-color: ${cardBg}; border-radius: 0 0 ${cardRadius} ${cardRadius}; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
         <tbody>
           <tr>
-            <td style="direction:ltr;font-size:0px;padding:48px 40px;text-align:center;font-family: 'Figtree', sans-serif;">
+            <td style="direction:ltr;font-size:0px;padding:48px 40px;text-align:center;font-family: '${fontFam}', sans-serif; color: ${textColor};">
               ${wrapperHtml}
             </td>
           </tr>
@@ -407,7 +553,7 @@ export function renderBlocksToHtml(
       
       <!-- Footer -->
       <div style="margin-top: 32px; text-align: center;">
-        <p style="font-family: 'Figtree', sans-serif; font-size: 11px; font-weight: 700; color: ${footerTextColor}; text-transform: uppercase; letter-spacing: 0.1em;">
+        <p style="font-family: '${fontFam}', sans-serif; font-size: 11px; font-weight: 700; color: ${footerTextColor}; text-transform: uppercase; letter-spacing: 0.1em;">
           Powered by SmartSapp Intelligence Hub &copy; ${new Date().getFullYear()}
         </p>
       </div>

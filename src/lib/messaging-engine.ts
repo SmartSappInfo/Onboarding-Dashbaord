@@ -13,6 +13,7 @@ import { resolveContact } from './contact-adapter';
 import { buildMeetingBaseVariables, buildFacilitatorVariables, buildRegistrantVariables } from './meeting-variable-helpers';
 import { getRecipientContact } from './migration-status-utils';
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
+import { getBaseUrl } from './utils/url-helpers';
 
 interface SendMessageInput {
   templateId: string;
@@ -154,7 +155,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             const contractSnap = await adminDb.collection('contracts').where('entityId', '==', resolvedEntityId).limit(1).get();
             if (!contractSnap.empty) {
                 const contractData = contractSnap.docs[0].data() as Contract;
-                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+                const baseUrl = getBaseUrl();
                 contactVars.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?entityId=${resolvedEntityId}`;
             }
 
@@ -251,7 +252,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             const rDocData = registrantDoc.data();
             const token = rDocData.token;
             if (token) {
-                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+                const baseUrl = getBaseUrl();
                 
                 // Parse slugs from personalizedMeetingUrl
                 let typeSlug = 'meeting';
@@ -375,16 +376,41 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     }
 
     // Phase 7: Inject Unsubscribe Link
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+    const baseUrl = getBaseUrl();
     const unsubId = resolvedEntityId || recipient;
     finalVariables.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${resolvedWorkspaceId}&c=${template.channel}`;
 
-    // 6. Resolve Style Wrapper (styleId is optional — null/undefined/'' means no wrapper)
+    // 6. Resolve Style Wrapper
     let styleWrapper = '';
-    if (template.styleId && template.styleId !== 'none') {
-        const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
-        if (styleSnap.exists) {
-            styleWrapper = (styleSnap.data() as MessageStyle).htmlWrapper;
+    let activeStyleDoc: MessageStyle | null = null;
+
+    if (template.styleId !== 'none') {
+        const styleIdToUse = template.styleId;
+        
+        // If styleId is empty, undefined, null, or 'default', query default workspace style
+        if (!styleIdToUse || styleIdToUse === 'default') {
+            const defaultSnap = await adminDb.collection('message_styles')
+                .where('workspaceIds', 'array-contains', resolvedWorkspaceId)
+                .where('isDefault', '==', true)
+                .limit(1)
+                .get();
+            if (!defaultSnap.empty) {
+                activeStyleDoc = { id: defaultSnap.docs[0].id, ...defaultSnap.docs[0].data() } as MessageStyle;
+            }
+        } else {
+            const styleSnap = await adminDb.collection('message_styles').doc(styleIdToUse).get();
+            if (styleSnap.exists) {
+                activeStyleDoc = { id: styleSnap.id, ...styleSnap.data() } as MessageStyle;
+            }
+        }
+
+        if (activeStyleDoc) {
+            // Select target-aware wrapper
+            if (template.target === 'internal_team') {
+                styleWrapper = activeStyleDoc.htmlWrapperInternal || activeStyleDoc.htmlWrapper || '';
+            } else {
+                styleWrapper = activeStyleDoc.htmlWrapperExternal || activeStyleDoc.htmlWrapper || '';
+            }
         }
     }
 
@@ -398,7 +424,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     if (useBlocks && template.blocks?.length) {
         resolvedBody = renderBlocksToHtml(template.blocks, finalVariables, {
-            wrapper: styleWrapper || undefined
+            wrapper: styleWrapper || undefined,
+            style: activeStyleDoc || undefined
         });
     } else {
         resolvedBody = resolveVariables(template.body, finalVariables);
