@@ -2257,19 +2257,40 @@ export interface MessageTemplate {
 
 export interface MessageBlock {
   id: string;
-  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card';
+  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card' | 'columns' | 'rsvp';
   title?: string;
   content?: string;
   url?: string;
   link?: string;
   variant?: 'h1' | 'h2' | 'h3';
-  listStyle?: 'ordered' | 'unordered';
+  listStyle?: 'ordered' | 'unordered' | 'roman' | 'checkmark' | 'arrow';
   items?: string[];
+  goingLabel?: string;
+  declinedLabel?: string;
+  laterLabel?: string;
+  columns?: {
+    width: string;
+    blocks: MessageBlock[];
+  }[];
   style?: {
     textAlign?: 'left' | 'center' | 'right' | 'justify';
     backgroundColor?: string;
     color?: string;
     padding?: string;
+    paddingTop?: string;
+    paddingBottom?: string;
+    paddingLeft?: string;
+    paddingRight?: string;
+    marginTop?: string;
+    marginBottom?: string;
+    fontSize?: string;
+    fontFamily?: string;
+    fontWeight?: string;
+    lineHeight?: string;
+    borderRadius?: string;
+    borderWidth?: string;
+    borderStyle?: string;
+    borderColor?: string;
     width?: string;
     variant?: string;
     animate?: boolean;
@@ -2289,13 +2310,24 @@ export interface MessageBlockRule {
 export interface MessageStyle {
   id: string;
   name: string;
-  htmlWrapper: string;
+  htmlWrapper?: string; // Legacy fallback
+  htmlWrapperInternal: string; // Internal admin communications
+  htmlWrapperExternal: string; // External client communications
   workspaceIds: string[];
   isDefault?: boolean;
   scope?: 'global' | 'organization';
   organizationId?: string | null;
   createdAt: string;
   updatedAt: string;
+
+  // Custom visual overrides
+  primaryColor?: string;
+  secondaryColor?: string;
+  fontFamily?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  cardBackgroundColor?: string;
+  borderRadius?: string;
 }
 
 // ─── Campaign Entity & Management (Phase 3) ──────────────────────────────────
