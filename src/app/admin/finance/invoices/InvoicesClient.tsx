@@ -5,6 +5,7 @@ import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Invoice, BillingPeriod, WorkspaceEntity, BillingProfile } from '@/lib/types';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { format } from 'date-fns';
 import { 
     Receipt, 
@@ -106,14 +107,7 @@ export default function InvoicesClient() {
         );
     }, [firestore, activeWorkspaceId]);
 
-    const entitiesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'workspace_entities'), 
-            where('workspaceId', '==', activeWorkspaceId),
-            orderBy('displayName', 'asc')
-        );
-    }, [firestore, activeWorkspaceId]);
+    const { sortedEntities: entities, isLoading: isLoadingEntities } = useSortedEntities();
 
     const periodsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -135,7 +129,7 @@ export default function InvoicesClient() {
     }, [firestore, activeWorkspaceId]);
 
     const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
-    const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesQuery);
+    // Removed duplicate entities subscription
     const { data: periods } = useCollection<BillingPeriod>(periodsQuery);
     const { data: profiles } = useCollection<BillingProfile>(profilesQuery);
 

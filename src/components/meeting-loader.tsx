@@ -32,31 +32,31 @@ const LogActivityModal = dynamic(() => import('../app/admin/entities/components/
 
 function MeetingPageSkeleton() {
   return (
-    <div className="container grid grid-cols-1 items-center gap-12 py-10 md:py-20 lg:gap-20">
+    <div className="container px-4 sm:px-6 grid grid-cols-1 items-center gap-8 py-10 md:gap-12 md:py-20 lg:gap-20">
         <div className="flex flex-col items-center text-center md:items-start md:text-left">
             <div className="mb-6 flex items-center gap-4">
-                <Skeleton className="h-16 w-16 rounded-full" />
+                <Skeleton className="h-14 w-14 sm:h-16 sm:w-16 rounded-full shrink-0" />
                 <div>
                     <Skeleton className="h-7 w-48" />
                     <Skeleton className="mt-2 h-5 w-32" />
                 </div>
             </div>
-            <Skeleton className="h-12 w-full max-w-lg" />
-            <Skeleton className="mt-4 h-6 w-full max-w-md" />
-            <Skeleton className="mt-4 h-6 w-full max-w-sm" />
-            <div className="my-10 w-full max-w-lg">
+            <Skeleton className="h-10 sm:h-12 w-full max-w-lg" />
+            <Skeleton className="mt-4 h-5 sm:h-6 w-full max-w-md" />
+            <Skeleton className="mt-4 h-5 sm:h-6 w-full max-w-sm" />
+            <div className="my-8 sm:my-10 w-full max-w-lg">
                 <div className="grid grid-cols-4 gap-2 sm:gap-5 justify-center">
-                    <Skeleton className="h-24 w-24 rounded-lg" />
-                    <Skeleton className="h-24 w-24 rounded-lg" />
-                    <Skeleton className="h-24 w-24 rounded-lg" />
-                    <Skeleton className="h-24 w-24 rounded-lg" />
+                    <Skeleton className="h-16 w-16 sm:h-24 sm:w-24 rounded-lg" />
+                    <Skeleton className="h-16 w-16 sm:h-24 sm:w-24 rounded-lg" />
+                    <Skeleton className="h-16 w-16 sm:h-24 sm:w-24 rounded-lg" />
+                    <Skeleton className="h-16 w-16 sm:h-24 sm:w-24 rounded-lg" />
                 </div>
             </div>
-            <Skeleton className="h-16 w-48 rounded-full" />
+            <Skeleton className="h-14 sm:h-16 w-40 sm:w-48 rounded-full" />
         </div>
-        <div className="relative flex items-center justify-center min-h-[400px] w-full order-last">
-            <div className="relative flex items-center justify-center">
-                <Skeleton className="relative w-[640px] h-[640px] object-contain" />
+        <div className="relative flex items-center justify-center w-full order-last">
+            <div className="relative w-full max-w-[640px] aspect-square">
+                <Skeleton className="absolute inset-0 w-full h-full rounded-2xl" />
             </div>
         </div>
     </div>

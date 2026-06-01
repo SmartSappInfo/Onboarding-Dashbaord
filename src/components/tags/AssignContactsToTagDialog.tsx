@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useRef, useEffect, useId } from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Tag, WorkspaceEntity } from '@/lib/types';
 import { bulkApplyTagsAction } from '@/lib/tag-actions';
@@ -48,17 +49,8 @@ export function AssignContactsToTagDialog({
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: boolean; count: number; partialFailures?: number } | null>(null);
 
-  // Load all workspace entities to allow searching/selection
-  const entitiesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(
-      collection(firestore, 'workspace_entities'),
-      where('workspaceId', '==', activeWorkspaceId),
-      orderBy('displayName', 'asc')
-    );
-  }, [firestore, activeWorkspaceId]);
-
-  const { data: allEntities } = useCollection<WorkspaceEntity>(entitiesQuery);
+  // Load all workspace entities to allow searching/selection using the cache
+  const { sortedEntities: allEntities } = useSortedEntities();
 
   const filteredEntities = useMemo(() => {
     if (!allEntities) return [];

@@ -1,34 +1,41 @@
+import type { Metadata } from 'next';
 import { adminDb } from '@/lib/firebase-admin';
 import RsvpResponseClient from '@/components/rsvp-response-client';
 import Footer from '@/components/footer';
 import { notFound } from 'next/navigation';
 
+export const metadata: Metadata = {
+  title: 'Meeting RSVP',
+  description: 'Update your availability for the upcoming meeting session.',
+  robots: { index: false, follow: false },
+};
+
 export default async function RsvpRespondPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ typeSlug: string; schoolSlug: string }>;
+  params: Promise<{ typeSlug: string; entitySlug: string }>;
   searchParams: Promise<{ token?: string; response?: string }>;
 }) {
-  const { typeSlug, schoolSlug } = await params;
+  const { typeSlug, entitySlug } = await params;
   const { token, response } = await searchParams;
 
   if (!token) {
     return notFound();
   }
 
-  // Resolve the meeting based on schoolSlug (meetingSlug or entitySlug) and typeSlug
+  // Resolve the meeting based on entitySlug (meetingSlug or entitySlug) and typeSlug
   const meetingsCol = adminDb.collection('meetings');
-  
+
   // Try meetingSlug query first
   let querySnap = await meetingsCol
-    .where('meetingSlug', '==', schoolSlug.toLowerCase())
+    .where('meetingSlug', '==', entitySlug.toLowerCase())
     .get();
 
   if (querySnap.empty) {
     // Try entitySlug query next
     querySnap = await meetingsCol
-      .where('entitySlug', '==', schoolSlug.toLowerCase())
+      .where('entitySlug', '==', entitySlug.toLowerCase())
       .get();
   }
 
@@ -37,9 +44,9 @@ export default async function RsvpRespondPage({
   }
 
   const allMeetings = querySnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-  
+
   // Filter by meeting type slug
-  const filtered = allMeetings.filter(m => {
+  const filtered = allMeetings.filter((m: any) => {
     const mTypeSlug = m.type?.slug || '';
     return mTypeSlug === typeSlug || (typeSlug === 'parent-engagement' && m.type?.id === 'parent');
   });
@@ -50,7 +57,7 @@ export default async function RsvpRespondPage({
 
   // Pick the best meeting (upcoming/latest)
   const now = new Date();
-  const sorted = filtered.sort((a, b) => {
+  const sorted = filtered.sort((a: any, b: any) => {
     const dateA = new Date(a.meetingTime).getTime();
     const dateB = new Date(b.meetingTime).getTime();
     const isAUp = dateA >= now.getTime();
@@ -72,7 +79,8 @@ export default async function RsvpRespondPage({
 
   const registrantData = tokenQuery.docs[0].data();
   const rsvpStatus = registrantData.rsvpStatus || registrantData.status || null;
-  const initialChoice = (response === 'going' || response === 'not_going' || response === 'later') ? response : null;
+  const initialChoice =
+    response === 'going' || response === 'not_going' || response === 'later' ? response : null;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -83,7 +91,7 @@ export default async function RsvpRespondPage({
           meetingTime={meeting.meetingTime}
           meetingLink={meeting.meetingLink || ''}
           typeSlug={typeSlug}
-          schoolSlug={schoolSlug}
+          entitySlug={entitySlug}
           token={token}
           initialResponse={initialChoice}
         />

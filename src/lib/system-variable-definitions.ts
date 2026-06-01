@@ -23,6 +23,9 @@ export const getMeetingSystemVariables = (): VariableDefinition[] => [
     { id: 'mv_noshow', key: 'no_show_count', label: 'No-Show Count', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'number' },
     { id: 'mv_one_click', key: 'meeting_registrant_one_click_link', label: 'One-Click RSVP Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'url' },
     { id: 'mv_join_link', key: 'registrant_join_link', label: 'Registrant Join Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'url' },
+    { id: 'mv_rsvp_going', key: 'rsvp_going_url', label: 'RSVP Going URL', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'url' },
+    { id: 'mv_rsvp_declined', key: 'rsvp_declined_url', label: 'RSVP Declined URL', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'url' },
+    { id: 'mv_rsvp_later', key: 'rsvp_later_url', label: 'RSVP Deciding Later URL', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'url' },
 ];
 
 /**

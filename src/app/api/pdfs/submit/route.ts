@@ -4,6 +4,7 @@ import { sendMessage } from '@/lib/messaging-engine';
 import { generatePdfBuffer } from '@/lib/pdf-actions';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import type { PDFForm } from '@/lib/types';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 /**
  * @fileOverview Public submission handler for PDF Forms.
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
                 console.error(">>> [AUTOMATION] PDF Generation failed for email attachment:", genError);
             }
 
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+            const baseUrl = getBaseUrl();
             const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
 
             // Resolve workspaceId from pdfData (Requirement 11)

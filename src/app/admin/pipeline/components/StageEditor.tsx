@@ -43,6 +43,7 @@ import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useEntityCache } from '@/context/EntityCacheContext';
 
 interface StageEditorProps {
     pipelineId: string;
@@ -158,18 +159,12 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
     );
   }, [firestore, pipelineId]);
   
-  // 2. Entities to calculate density
-  const entitiesQuery = useMemoFirebase(() => {
-    if (!firestore || !pipelineId) return null;
-    return query(
-        collection(firestore, 'workspace_entities'),
-        where('workspaceId', '==', activeWorkspaceId),
-        where('pipelineId', '==', pipelineId)
-    );
-  }, [firestore, pipelineId, activeWorkspaceId]);
-
   const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesQuery);
-  const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
+  const { entities: allEntities } = useEntityCache();
+  const entities = React.useMemo(() => {
+    if (!allEntities || !pipelineId) return null;
+    return allEntities.filter(e => (e as any).pipelineId === pipelineId);
+  }, [allEntities, pipelineId]);
   
   const [localStages, setLocalStages] = React.useState<OnboardingStage[]>([]);
   const [newStageName, setNewStageName] = React.useState('');

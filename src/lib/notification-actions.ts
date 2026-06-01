@@ -3,6 +3,7 @@
 
 import { sendEmail } from './resend-service';
 import { sendSms } from './mnotify-service';
+import { getBaseUrl } from './utils/url-helpers';
 
 /**
  * Handles automated notifications for subscription payment receipt requests.
@@ -93,7 +94,7 @@ export async function sendReceiptAcknowledgementAction(payload: {
             Amount Paid: <strong class="highlight">GHS ${amount}</strong><br>
             Phone: <strong class="highlight">${phone}</strong><br>
             Email: <strong class="highlight">${email}</strong><br><br>
-            Kindly update the <strong>Subscription Bills Sheet</strong> using the link below:<br>https://onboarding.smartsapp.com/q/subs-paid</td> </tr> <tr> <td class="cta"> <a href="https://onboarding.smartsapp.com/q/subs-paid" class="button" style="color:white">Subscription Bills</a> </td> </tr> <tr> <td class="text">  </td> </tr> <tr> <td class="text"> <br> Warmly,<br> <strong>SmartSapp Accounts Team</strong> </td> </tr> </table> <div class="footer"> © Minex360 Services Limited | SmartSapp. </div> </td> </tr> </table> </body> </html>
+            Kindly update the <strong>Subscription Bills Sheet</strong> using the link below:<br>${getBaseUrl()}/q/subs-paid</td> </tr> <tr> <td class="cta"> <a href="${getBaseUrl()}/q/subs-paid" class="button" style="color:white">Subscription Bills</a> </td> </tr> <tr> <td class="text">  </td> </tr> <tr> <td class="text"> <br> Warmly,<br> <strong>SmartSapp Accounts Team</strong> </td> </tr> </table> <div class="footer"> © Minex360 Services Limited | SmartSapp. </div> </td> </tr> </table> </body> </html>
         `;
 
         await sendEmail({
@@ -112,7 +113,7 @@ export async function sendReceiptAcknowledgementAction(payload: {
         });
 
         // 4. Send SmartSapp Team SMS Notification
-        const teamSmsMessage = `💡 New Payment - Receipt Requested\nPayee: ${name}\nSchool: ${school}\nAmount: GHS ${amount}\nEmail: ${email}\nPhone: ${phone}\nUpdate Billing: https://onboarding.smartsapp.com/q/subs-paid`;
+        const teamSmsMessage = `💡 New Payment - Receipt Requested\nPayee: ${name}\nSchool: ${school}\nAmount: GHS ${amount}\nEmail: ${email}\nPhone: ${phone}\nUpdate Billing: ${getBaseUrl()}/q/subs-paid`;
         
         const teamRecipients = ['233242737120', '233248826361', '233509751798', '233204308682'];
         

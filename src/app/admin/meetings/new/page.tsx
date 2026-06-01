@@ -10,6 +10,7 @@ import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
+import { useEntityCache } from '@/context/EntityCacheContext';
 
 import { 
     Calendar, 
@@ -217,12 +218,9 @@ export default function NewMeetingPage() {
   const [currentStep, setCurrentStep] = React.useState(0);
   const [selectedTemplateId, setSelectedTemplateId] = React.useState<string | null>(null);
 
-  const entitiesCol = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId));
-  }, [firestore, activeWorkspaceId]);
+
   
-  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
+  const { entities, isLoading: isLoadingEntities } = useEntityCache();
 
   const customTemplatesCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;

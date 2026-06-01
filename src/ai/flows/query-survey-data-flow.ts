@@ -7,6 +7,7 @@
 import { ai, getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
 import { z } from 'genkit';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 const QuerySurveyDataInputSchema = z.object({
   survey: z.any().describe('The survey object, including title, description, and elements array.'),
@@ -110,7 +111,7 @@ const querySurveyDataFlow = ai.defineFlow(
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${apiKey}`,
-                    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000',
+                    'HTTP-Referer': getBaseUrl(),
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({

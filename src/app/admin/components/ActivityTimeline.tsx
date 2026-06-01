@@ -4,6 +4,7 @@ import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Activity, UserProfile, WorkspaceEntity } from '@/lib/types';
+import { useEntityCache } from '@/context/EntityCacheContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isSameDay } from 'date-fns';
 import ActivityItem from './ActivityItem';
@@ -67,7 +68,7 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
 
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
   
-  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(useMemoFirebase(() => firestore ? query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId)) : null, [firestore, activeWorkspaceId]));
+  const { entities, isLoading: isLoadingEntities } = useEntityCache();
 
   const isLoading = isLoadingActivities || isLoadingUsers || isLoadingEntities;
 

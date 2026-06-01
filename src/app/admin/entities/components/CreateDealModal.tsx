@@ -21,6 +21,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { createDeal } from '@/app/actions/deal-actions';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 
 interface CreateDealModalProps {
     entityId?: string;
@@ -65,14 +66,11 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     const { data: stages } = useCollection<any>(stagesQuery);
 
     // Fetch workspace entities when creating a global deal without contact context
-    const entitiesQuery = useMemoFirebase(() => 
-        firestore && activeWorkspaceId && !entityId ? query(
-            collection(firestore, 'workspace_entities'), 
-            where('workspaceId', '==', activeWorkspaceId),
-            orderBy('name', 'asc')
-        ) : null, 
-    [firestore, activeWorkspaceId, entityId]);
-    const { data: entities } = useCollection<any>(entitiesQuery);
+    const { sortedEntities } = useSortedEntities();
+    const entities = React.useMemo(() => {
+        if (entityId) return null;
+        return sortedEntities;
+    }, [sortedEntities, entityId]);
 
     React.useEffect(() => {
         if (open) {
@@ -164,7 +162,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                             className="w-full justify-between h-10 rounded-xl font-bold bg-muted/20 border-primary/10 shadow-inner"
                                         >
                                             {selectedEntityId
-                                                ? entities?.find((e: any) => e.id === selectedEntityId)?.name || "Select Entity..."
+                                                ? ((entities?.find((e: any) => e.id === selectedEntityId) as any)?.name || entities?.find((e: any) => e.id === selectedEntityId)?.displayName || "Select Entity...")
                                                 : "Select Entity..."}
                                             <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -178,7 +176,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                                     {entities?.map((e: any) => (
                                                         <CommandItem
                                                             key={e.id}
-                                                            value={e.name}
+                                                            value={e.name || e.displayName}
                                                             onSelect={() => {
                                                                 setSelectedEntityId(e.id);
                                                                 setEntitySearchOpen(false);
@@ -186,8 +184,8 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                                             className="font-bold text-xs p-3 cursor-pointer"
                                                         >
                                                             <div className="flex flex-col">
-                                                                <span>{e.name}</span>
-                                                                <span className="text-[9px] text-muted-foreground font-normal">{e.email || 'No Email'} • {e.entityType || 'person'}</span>
+                                                                <span>{e.name || e.displayName}</span>
+                                                                <span className="text-[9px] text-muted-foreground font-normal">{e.email || e.primaryEmail || 'No Email'} • {e.entityType || 'person'}</span>
                                                             </div>
                                                         </CommandItem>
                                                     ))}

@@ -42,6 +42,7 @@ import { NavigationProvider } from '@/context/NavigationContext';
 import { TenantProvider, useTenant } from '@/context/TenantContext';
 import { IndustryProvider } from '@/context/IndustryContext';
 import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
+import { EntityCacheProvider } from '@/context/EntityCacheContext';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useFeatures } from '@/hooks/use-features';
@@ -249,11 +250,13 @@ export default function AdminLayoutClient({ children }: { children: ReactNode })
   return (
       <NavigationProvider>
         <TenantProvider>
-          <GlobalFilterProvider>
-            <IndustryProvider>
-              <AdminLayoutContent>{children}</AdminLayoutContent>
-            </IndustryProvider>
-          </GlobalFilterProvider>
+          <EntityCacheProvider>
+            <GlobalFilterProvider>
+              <IndustryProvider>
+                <AdminLayoutContent>{children}</AdminLayoutContent>
+              </IndustryProvider>
+            </GlobalFilterProvider>
+          </EntityCacheProvider>
         </TenantProvider>
       </NavigationProvider>
   );

@@ -22,12 +22,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { logMeetingAttendance } from '@/app/actions/meeting-attendance-actions';
 
 interface JoiningPageClientProps {
   typeSlug: string;
-  schoolSlug: string;
+  entitySlug: string;
   token: string | null;
 }
 
@@ -58,7 +57,7 @@ interface RegistrantInfo {
  * IMPORTANT: Simply landing here does NOT count as attendance.
  * Attendance is only logged when the user clicks "Join Meeting".
  */
-export default function JoiningPageClient({ typeSlug, schoolSlug, token }: JoiningPageClientProps) {
+export default function JoiningPageClient({ typeSlug, entitySlug, token }: JoiningPageClientProps) {
   const router = useRouter();
   const firestore = useFirestore();
 
@@ -73,7 +72,7 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
   useEffect(() => {
     if (!firestore || !token) {
       // No token → redirect to registration
-      router.replace(`/meetings/${typeSlug}/${schoolSlug}`);
+      router.replace(`/meetings/${typeSlug}/${entitySlug}`);
       return;
     }
 
@@ -84,14 +83,14 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
         // Try meetingSlug first, then entitySlug
         let meetingDoc: Meeting | null = null;
 
-        const slugQuery = query(meetingsCol, where('meetingSlug', '==', schoolSlug.toLowerCase()));
+        const slugQuery = query(meetingsCol, where('meetingSlug', '==', entitySlug.toLowerCase()));
         const slugSnap = await getDocs(slugQuery);
 
         let allMeetings: Meeting[] = [];
         if (!slugSnap.empty) {
           allMeetings = slugSnap.docs.map(d => ({ id: d.id, ...d.data() } as Meeting));
         } else {
-          const legacyQuery = query(meetingsCol, where('entitySlug', '==', schoolSlug.toLowerCase()));
+          const legacyQuery = query(meetingsCol, where('entitySlug', '==', entitySlug.toLowerCase()));
           const legacySnap = await getDocs(legacyQuery);
           if (!legacySnap.empty) {
             allMeetings = legacySnap.docs.map(d => ({ id: d.id, ...d.data() } as Meeting));
@@ -133,7 +132,7 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
             setEntity({
               id: entitySnap.id,
               name: d.name,
-              slug: d.slug || schoolSlug,
+              slug: d.slug || entitySlug,
               logoUrl: d.institutionData?.logoUrl || d.logoUrl,
               slogan: d.institutionData?.slogan || d.slogan,
             } as any);
@@ -147,7 +146,7 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
 
         if (tokenSnap.empty) {
           // Invalid token → redirect to registration
-          router.replace(`/meetings/${typeSlug}/${schoolSlug}`);
+          router.replace(`/meetings/${typeSlug}/${entitySlug}`);
           return;
         }
 
@@ -178,7 +177,7 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
     };
 
     resolve();
-  }, [firestore, token, typeSlug, schoolSlug, router]);
+  }, [firestore, token, typeSlug, entitySlug, router]);
 
   // ── Step 2: Monitor meeting time for auto-readiness ──
   useEffect(() => {
@@ -210,8 +209,12 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
 
     // Extract children from registration data
     const regData = registrant.registrationData || {};
-    const childrenRaw = regData.children || regData.childrenNames ||
-      regData['Children Names'] || regData['Child Names'] || [];
+    const childrenRaw =
+      regData.children ||
+      regData.childrenNames ||
+      regData['Children Names'] ||
+      regData['Child Names'] ||
+      [];
     const childrenArray = Array.isArray(childrenRaw)
       ? childrenRaw
       : typeof childrenRaw === 'string'
@@ -244,13 +247,14 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
 
   // ── Branding resolution ──
   const resolvedLogo = meeting?.logoUrl || (entity as any)?.logoUrl || null;
-  const resolvedName = meeting?.brandingName || (entity ? ((entity as any).displayName || entity.name || '') : '');
+  const resolvedName =
+    meeting?.brandingName || (entity ? ((entity as any).displayName || entity.name || '') : '');
   const firstName = registrant?.name?.split(' ')[0] || 'there';
 
   // ── Loading state ──
   if (pageState === 'loading') {
     return (
-      <section className="relative w-full bg-background min-h-screen flex items-center justify-center">
+      <section className="relative w-full bg-background min-h-screen flex items-center justify-center px-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">
@@ -264,15 +268,15 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
   // ── Invalid state ──
   if (pageState === 'invalid' || !meeting) {
     return (
-      <section className="relative w-full bg-background min-h-screen flex items-center justify-center">
+      <section className="relative w-full bg-background min-h-screen flex items-center justify-center px-4">
         <div className="text-center space-y-4 max-w-md">
           <ShieldCheck className="h-12 w-12 text-destructive mx-auto" />
-          <h1 className="text-2xl font-black uppercase tracking-tight">Session Not Found</h1>
+          <h1 className="text-2xl font-black tracking-tight">Session Not Found</h1>
           <p className="text-muted-foreground font-medium">
             This link may be expired or invalid. Please register to get a valid access link.
           </p>
           <Button
-            onClick={() => router.push(`/meetings/${typeSlug}/${schoolSlug}`)}
+            onClick={() => router.push(`/meetings/${typeSlug}/${entitySlug}`)}
             className="rounded-xl font-bold h-12 px-8"
           >
             Go to Registration
@@ -284,7 +288,7 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
 
   // ── Main Waiting Room UI ──
   return (
-    <section className="relative w-full bg-background text-foreground min-h-screen flex items-center overflow-hidden pt-16 md:pt-24 pb-16">
+    <section className="relative w-full bg-background text-foreground min-h-screen flex items-center overflow-hidden pt-16 sm:pt-20 md:pt-24 pb-12 sm:pb-16">
       <LightRays
         raysOrigin="top-center"
         raysColor="#3B5FFF"
@@ -302,7 +306,7 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
       />
       <AnimatedHeroShapes />
 
-      <div className="relative z-10 container max-w-3xl mx-auto">
+      <div className="relative z-10 container max-w-3xl mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -312,11 +316,12 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
           {/* Branding */}
           {resolvedLogo && (
             <div className="flex justify-center">
-              <div className="relative w-20 h-20">
+              <div className="relative w-14 h-14 sm:w-20 sm:h-20">
                 <Image
                   src={resolvedLogo}
                   alt={resolvedName || 'Meeting'}
                   fill
+                  sizes="80px"
                   className="rounded-full bg-white p-1 shadow-lg object-contain"
                 />
               </div>
@@ -328,7 +333,7 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-12 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-8 shadow-2xl max-w-md mx-auto"
+              className="p-6 sm:p-10 md:p-12 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-8 shadow-2xl max-w-md mx-auto"
             >
               <motion.div
                 animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }}
@@ -338,10 +343,12 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
                 <Rocket className="h-12 w-12 text-primary" />
               </motion.div>
               <div className="space-y-2">
-                <p className="text-2xl font-black text-foreground uppercase tracking-tight">
+                <p className="text-2xl font-black text-foreground tracking-tight">
                   Launching Meeting Room...
                 </p>
-                <p className="text-7xl font-black text-primary tabular-nums">{launchCountdown}</p>
+                <p className="text-5xl sm:text-7xl font-black text-primary tabular-nums">
+                  {launchCountdown}
+                </p>
               </div>
             </motion.div>
           )}
@@ -351,13 +358,13 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-12 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl max-w-md mx-auto"
+              className="p-6 sm:p-10 md:p-12 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl max-w-md mx-auto"
             >
               <div className="mx-auto bg-emerald-500/20 w-20 h-20 rounded-full flex items-center justify-center">
                 <CheckCircle2 className="h-10 w-10 text-emerald-400" />
               </div>
               <div className="space-y-2">
-                <p className="text-2xl font-black text-foreground uppercase tracking-tight">You're In!</p>
+                <p className="text-2xl font-black text-foreground tracking-tight">You're In!</p>
                 <p className="text-sm text-foreground/60 font-medium">
                   The meeting room has been opened in a new tab.
                 </p>
@@ -378,20 +385,20 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-12 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl max-w-md mx-auto"
+              className="p-6 sm:p-10 md:p-12 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl max-w-md mx-auto"
             >
               <div className="mx-auto bg-emerald-500/20 w-20 h-20 rounded-full flex items-center justify-center">
                 <CheckCircle2 className="h-10 w-10 text-emerald-400" />
               </div>
               <div className="space-y-2">
-                <p className="text-2xl font-black text-foreground uppercase tracking-tight">Session Complete</p>
+                <p className="text-2xl font-black text-foreground tracking-tight">Session Complete</p>
                 <p className="text-sm text-foreground/60 font-medium">
                   Thank you for attending, {firstName}!
                 </p>
               </div>
               {meeting.recordingUrl && (
                 <Button
-                  onClick={() => router.push(`/meetings/${typeSlug}/${schoolSlug}#recording`)}
+                  onClick={() => router.push(`/meetings/${typeSlug}/${entitySlug}#recording`)}
                   className="rounded-xl font-bold h-12 px-8"
                 >
                   Watch Recording
@@ -405,17 +412,23 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
             <>
               {/* Thank you header */}
               <div className="space-y-4">
-                <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full"
+                >
                   {meeting.type?.name || 'Meeting Session'}
                 </Badge>
 
-                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-none">
+                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight">
                   Thank you, {firstName}! 🎉
                 </h1>
 
-                <p className="text-lg text-foreground/70 font-medium max-w-lg mx-auto leading-relaxed">
-                  Your registration for <span className="font-bold text-foreground">{meeting.heroTitle || resolvedName || 'this session'}</span> has been confirmed.
-                  The meeting room will open automatically when it's time.
+                <p className="text-base sm:text-lg text-foreground/70 font-medium max-w-lg mx-auto leading-relaxed">
+                  Your registration for{' '}
+                  <span className="font-bold text-foreground">
+                    {meeting.heroTitle || resolvedName || 'this session'}
+                  </span>{' '}
+                  has been confirmed. The meeting room will open automatically when it's time.
                 </p>
               </div>
 
@@ -424,16 +437,16 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="p-8 md:p-10 bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/10 shadow-2xl max-w-lg mx-auto space-y-8"
+                className="p-5 sm:p-8 md:p-10 bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/10 shadow-2xl max-w-lg mx-auto space-y-8"
               >
                 {/* Date & Time */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-lg font-black uppercase text-primary">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 text-xs sm:text-sm md:text-base font-semibold text-primary">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
+                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                     <span>{format(new Date(meeting.meetingTime), 'EEEE, MMMM d, yyyy')}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
+                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                     <span>{format(new Date(meeting.meetingTime), 'h:mm a')}</span>
                   </div>
                 </div>
@@ -459,9 +472,9 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
                     <Button
                       onClick={handleJoinMeeting}
                       size="lg"
-                      className="w-full h-16 rounded-2xl font-black text-lg uppercase tracking-widest gap-3 shadow-2xl shadow-primary/30 active:scale-95 transition-all"
+                      className="w-full h-14 sm:h-16 rounded-2xl font-black text-base sm:text-lg uppercase tracking-widest gap-3 shadow-2xl shadow-primary/30 active:scale-95 transition-all"
                     >
-                      <Rocket className="h-6 w-6" />
+                      <Rocket className="h-5 w-5 sm:h-6 sm:w-6" />
                       Join Meeting Now
                     </Button>
                   </motion.div>
@@ -475,14 +488,19 @@ export default function JoiningPageClient({ typeSlug, schoolSlug, token }: Joini
                 transition={{ delay: 0.4 }}
                 className="text-foreground/40 text-xs font-medium space-y-1"
               >
-                <p>Registered as: <span className="text-foreground/60">{registrant.name}</span></p>
+                <p>
+                  Registered as:{' '}
+                  <span className="text-foreground/60">{registrant.name}</span>
+                </p>
                 {registrant.email && (
-                  <p>Email: <span className="text-foreground/60">{registrant.email}</span></p>
+                  <p>
+                    Email: <span className="text-foreground/60">{registrant.email}</span>
+                  </p>
                 )}
                 <p className="mt-4">
                   <button
-                    onClick={() => router.push(`/meetings/${typeSlug}/${schoolSlug}`)}
-                    className="text-foreground/30 text-[10px] font-bold uppercase tracking-widest hover:text-foreground/60 transition-colors"
+                    onClick={() => router.push(`/meetings/${typeSlug}/${entitySlug}`)}
+                    className="text-foreground/30 text-[10px] font-bold hover:text-foreground/60 transition-colors"
                   >
                     Not {firstName}? Go to Registration →
                   </button>

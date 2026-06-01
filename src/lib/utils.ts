@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { getBaseUrl } from "./utils/url-helpers"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -66,7 +67,7 @@ export function resolveVariableValue(key: string, school?: any): string | null {
         case 'agreement_url': {
             // Note: In a real simulation, we'd need to know which contract/PDF is in context.
             // For general preview, we point to a representative portal.
-            const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://onboarding.smartsapp.com';
+            const baseUrl = getBaseUrl();
             return `${baseUrl}/forms/contract-simulation?entityId=${school.id}`;
         }
         

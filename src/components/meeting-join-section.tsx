@@ -45,12 +45,12 @@ function RsvpOptionsPanel({
 
   if (status === 'success') {
     return (
-      <div className="w-full max-w-md mx-auto md:mx-0 p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl">
+      <div className="w-full md:max-w-md mx-auto md:mx-0 p-6 sm:p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl">
         <div className="mx-auto bg-emerald-500/20 w-16 h-16 rounded-full flex items-center justify-center border border-emerald-500/30 text-emerald-400">
           <CheckCircle2 className="h-8 w-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-black uppercase tracking-tight text-white font-sans">RSVP Submitted</h2>
+          <h2 className="text-xl font-black tracking-tight text-white font-sans">RSVP Submitted</h2>
           <p className="text-xs text-foreground/75 leading-relaxed font-sans">
             {choice === 'going' 
               ? "Fantastic! We've secured your spot and loaded the waiting room details." 
@@ -69,9 +69,9 @@ function RsvpOptionsPanel({
   }
 
   return (
-    <div className="w-full max-w-md mx-auto md:mx-0 p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-left space-y-6 shadow-2xl">
+    <div className="w-full md:max-w-md mx-auto md:mx-0 p-6 sm:p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-left space-y-6 shadow-2xl">
       <div className="space-y-1">
-        <h2 className="text-xl font-black uppercase tracking-tight text-white font-sans">
+        <h2 className="text-xl font-black tracking-tight text-white font-sans">
           Hello, {firstName}!
         </h2>
         <p className="text-xs text-foreground/60 font-sans">
@@ -126,7 +126,7 @@ function MeetingJoinSectionInner({ meeting, entityId }: { meeting: Meeting; enti
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-md mx-auto md:mx-0 p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center shadow-2xl flex items-center justify-center">
+      <div className="w-full md:max-w-md mx-auto md:mx-0 p-6 sm:p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center shadow-2xl flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -167,7 +167,7 @@ function MeetingJoinSectionInner({ meeting, entityId }: { meeting: Meeting; enti
 export default function MeetingJoinSection({ meeting, entityId }: { meeting: Meeting; entityId?: string }) {
   return (
     <Suspense fallback={
-      <div className="w-full max-w-md mx-auto md:mx-0 p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center shadow-2xl flex items-center justify-center">
+      <div className="w-full md:max-w-md mx-auto md:mx-0 p-6 sm:p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center shadow-2xl flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     }>

@@ -13,6 +13,7 @@ import { resolveFieldStorageBucket } from './field-storage-utils';
 import { cleanBatch, cleanValueByKey, type CleaningStats } from './import-data-cleaner';
 import { evaluateFormula } from './formula-parser';
 import { buildTagDocument } from './tag-schemas';
+import { getBaseUrl } from './utils/url-helpers';
 import { isDealImportConfig, type DealImportConfig, type IngestBatchOptions, type NotificationConfig } from './import-types';
 import { buildDealDocument, resolveDealName } from './deal-writer';
 
@@ -1667,7 +1668,7 @@ async function sendCompletionNotifications(
   const tmpl = templates?.bulkUploadCompleted;
 
   // Build variable map
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+  const baseUrl = getBaseUrl();
   const vars: Record<string, string> = {
     filename: importLog.filename || 'Unknown',
     successCount: String(importLog.successCount ?? 0),

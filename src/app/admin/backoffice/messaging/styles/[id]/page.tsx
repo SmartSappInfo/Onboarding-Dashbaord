@@ -131,7 +131,7 @@ export default function BackofficeStyleEditorPage() {
                     const data = snap.data() as MessageStyle;
                     setStyle(data);
                     setName(data.name);
-                    setHtmlWrapper(data.htmlWrapper);
+                    setHtmlWrapper(data.htmlWrapper || DEFAULT_HTML);
                 } else {
                     toast({ variant: 'destructive', title: 'Error', description: 'Style blueprint not found.' });
                     router.push('/admin/backoffice/messaging/styles');

@@ -37,30 +37,23 @@ import {
 import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
+import { useEntityCache } from '@/context/EntityCacheContext';
 
 // ─── Contact Scope Selector ───────────────────────────────────────────────────
 
 function ContactScopeSelector({ value, onChange }: { value: string; onChange: (val: string) => void }) {
     const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
     const [roles, setRoles] = React.useState<{label: string, value: string}[]>([]);
-    const firestore = useFirestore();
+    const { entities } = useEntityCache();
 
     React.useEffect(() => {
-        if (!activeWorkspaceId || !firestore) return;
+        if (!activeWorkspaceId || !entities) return;
+        const currentEntities = entities;
         async function fetchRoles() {
             try {
-                // Determine which entity types are actually present in this workspace to keep it "practical"
-                const typesSnap = await getDocs(
-                    query(
-                        collection(firestore, 'workspace_entities'),
-                        where('workspaceId', '==', activeWorkspaceId),
-                        limit(100)
-                    )
-                );
-                
                 const activeEntityTypes = new Set<string>();
-                typesSnap.docs.forEach(d => {
-                    const type = d.data().entityType;
+                currentEntities.slice(0, 100).forEach(d => {
+                    const type = d.entityType;
                     if (type) activeEntityTypes.add(type);
                 });
 
@@ -86,7 +79,7 @@ function ContactScopeSelector({ value, onChange }: { value: string; onChange: (v
             }
         }
         fetchRoles();
-    }, [activeWorkspaceId, activeOrganizationId, firestore]);
+    }, [activeWorkspaceId, activeOrganizationId, entities]);
 
     return (
         <Select value={value} onValueChange={onChange}>

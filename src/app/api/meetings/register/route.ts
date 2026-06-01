@@ -6,6 +6,7 @@ import { buildMeetingBaseVariables, buildRegistrantVariables } from '@/lib/meeti
 import { createEntityFromRegistration } from '@/app/actions/meeting-lead-capture-action';
 import { dispatchRegistrationWebhook, type RegistrationWebhookPayload } from '@/lib/outbound-webhook-service';
 import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 /**
  * POST /api/meetings/register
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── 5. Write registrant doc ────────────────────────────────────────────
   const token = generateRegistrantToken();
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+  const baseUrl = getBaseUrl();
 
   // Reconstruct the public path from meeting slug + type slug
   const typeSlug = meeting.type?.id || 'meeting';

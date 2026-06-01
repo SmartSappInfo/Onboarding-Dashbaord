@@ -244,7 +244,7 @@ export default function StylesClient() {
     const handleEditClick = (style: MessageStyle) => {
         setEditingStyle(style);
         setEditName(style.name);
-        setEditHtml(style.htmlWrapper);
+        setEditHtml(style.htmlWrapper || '');
     };
 
     const handleUpdate = async (e: React.FormEvent) => {
@@ -511,7 +511,7 @@ export default function StylesClient() {
                                 {/* Preview / Iframe Area */}
                                 <div className="relative flex-1 bg-slate-50 overflow-hidden">
                                     <ResponsiveIframePreview 
-                                        srcDoc={style.htmlWrapper.replace('{{content}}', '<div style="height: 100px; background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-family: sans-serif; font-size: 12px; border-radius: 12px; margin: 20px;">[ Content Gateway ]</div>')}
+                                        srcDoc={(style.htmlWrapper || '').replace('{{content}}', '<div style="height: 100px; background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-family: sans-serif; font-size: 12px; border-radius: 12px; margin: 20px;">[ Content Gateway ]</div>')}
                                         className="pointer-events-none border-none opacity-85 group-hover:opacity-95 transition-opacity"
                                         title={`Preview of ${style.name}`}
                                     />
@@ -682,7 +682,7 @@ export default function StylesClient() {
                         <ScrollArea className="h-full w-full">
                             <div className="w-full max-w-[650px] mx-auto p-6">
                                 {previewStyle && (
-                                    <div dangerouslySetInnerHTML={{ __html: previewStyle.htmlWrapper.replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px 0;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Template Payload</p></div>') }} />
+                                    <div dangerouslySetInnerHTML={{ __html: (previewStyle.htmlWrapper || '').replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px 0;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Template Payload</p></div>') }} />
                                 )}
                             </div>
                         </ScrollArea>

@@ -54,6 +54,7 @@ import {
 } from '@/app/actions/deal-actions';
 import { createTaskAction, updateTaskAction, deleteTaskAction } from '@/lib/task-server-actions';
 import { useTenant } from '@/context/TenantContext';
+import { useEntityCache } from '@/context/EntityCacheContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import dynamic from 'next/dynamic';
 import { PageContainer } from '@/components/ui/page-container';
@@ -152,14 +153,7 @@ export default function DealDetailsPage() {
     const [isContactAssociating, setIsContactAssociating] = React.useState(false);
 
     // Fetch workspace entities for secondary contacts
-    const entitiesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'workspace_entities'),
-            where('workspaceId', '==', activeWorkspaceId)
-        );
-    }, [firestore, activeWorkspaceId]);
-    const { data: workspaceEntities } = useCollection<WorkspaceEntity>(entitiesQuery);
+    const { entities: workspaceEntities } = useEntityCache();
 
     // Fetch Tasks for this Deal
     const dealTasksQuery = useMemoFirebase(() => {

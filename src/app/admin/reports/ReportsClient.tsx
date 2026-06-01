@@ -49,6 +49,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { WorkspaceEntity, Task, UserProfile, Zone, TaskCategory } from '@/lib/types';
+import { useEntityCache } from '@/context/EntityCacheContext';
 import { format, subDays, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -74,14 +75,8 @@ export default function ReportsClient() {
     const { activeWorkspaceId } = useWorkspace();
     const { singular, plural } = useTerminology();
     
-    // Subscriptions
-    const entitiesCol = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'workspace_entities'), 
-            where('workspaceId', '==', activeWorkspaceId)
-        );
-    }, [firestore, activeWorkspaceId]);
+    // Subscriptions using the Entity Cache
+    const { entities, isLoading: isLoadingEntities } = useEntityCache();
 
     const tasksCol = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -96,7 +91,6 @@ export default function ReportsClient() {
         return query(collection(firestore, 'zones'));
     }, [firestore]);
 
-    const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksCol);
     const { data: zones, isLoading: isLoadingZones } = useCollection<Zone>(zonesCol);
 

@@ -4,6 +4,7 @@ import * as React from 'react';
 import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus, WorkspaceEntity } from '@/lib/types';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { format, isToday, isPast, differenceInDays } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -188,14 +189,11 @@ export default function TasksClient() {
         );
     }, [firestore, activeOrganizationId]);
 
-    const entitiesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc'));
-    }, [firestore, activeWorkspaceId]);
+    const { sortedEntities: entities } = useSortedEntities();
 
     const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
-    const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
+    // Removed duplicate entities subscription
 
     const entityLogoMap = React.useMemo(() => {
         if (!entities) return new Map<string, string | undefined>();

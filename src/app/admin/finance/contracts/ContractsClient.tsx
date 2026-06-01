@@ -5,6 +5,7 @@ import * as React from 'react';
 import { collection, query, orderBy, doc, getDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { WorkspaceEntity, Entity, Contract, UserProfile } from '@/lib/types';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { 
     FileCheck, 
     Search, 
@@ -118,13 +119,7 @@ export default function AgreementsClient() {
     const canPurge = userPermissions.includes('contracts_delete') || userPermissions.includes('system_admin');
 
     // Data Subscriptions - SYNCED TO WORKSPACE
-    const entitiesCol = useMemoFirebase(() => 
-        firestore ? query(
-            collection(firestore, 'workspace_entities'), 
-            where('workspaceId', '==', activeWorkspaceId),
-            orderBy('displayName', 'asc')
-        ) : null, 
-    [firestore, activeWorkspaceId]);
+    const { sortedEntities: entities, isLoading: isLoadingEntities } = useSortedEntities();
 
     const globalEntitiesCol = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'entities')) : null, 
@@ -133,8 +128,6 @@ export default function AgreementsClient() {
     const contractsCol = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'contracts'), orderBy('updatedAt', 'desc')) : null, 
     [firestore]);
-
-    const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
     const { data: globalEntities, isLoading: isLoadingGlobal } = useCollection<Entity>(globalEntitiesCol);
     const { data: contracts, isLoading: isLoadingContracts } = useCollection<Contract>(contractsCol);
 

@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { useTenant } from '@/context/TenantContext';
 import { SmartSappIcon } from '@/components/icons';
+import { useEntityLookup } from '@/context/EntityCacheContext';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { PageContainerFluid } from '@/components/ui/page-container';
 
@@ -75,22 +76,11 @@ export default function PortalsClient() {
         ) : null, 
     [firestore, activeWorkspaceId]);
 
-    const entitiesQuery = useMemoFirebase(() => 
-        firestore && activeWorkspaceId ? query(
-            collection(firestore, 'workspace_entities'),
-            where('workspaceId', '==', activeWorkspaceId)
-        ) : null,
-    [firestore, activeWorkspaceId]);
+    const { byEntityId } = useEntityLookup();
 
     const { data: surveys, isLoading: isLoadingSurveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs, isLoading: isLoadingPdfs } = useCollection<PDFForm>(pdfsQuery);
     const { data: meetings, isLoading: isLoadingMeetings } = useCollection<Meeting>(meetingsQuery);
-    const { data: entities } = useCollection<any>(entitiesQuery);
-
-    const entityLogoMap = React.useMemo(() => {
-        if (!entities) return new Map<string, string>();
-        return new Map(entities.map((e: any) => [e.entityId, e.logoUrl]));
-    }, [entities]);
 
     const isLoading = isLoadingSurveys || isLoadingPdfs || isLoadingMeetings;
 
@@ -275,7 +265,7 @@ export default function PortalsClient() {
                                              path={`/surveys/${s.slug}`} 
                                              icon={ClipboardList} 
                                              color="bg-blue-500" 
-                                             logoUrl={s.logoUrl || (s.entityId ? entityLogoMap.get(s.entityId) : undefined)}
+                                             logoUrl={s.logoUrl || (s.entityId ? byEntityId.get(s.entityId)?.logoUrl : undefined)}
                                              entityId={s.entityId!}
                                          />
                                     ))}
@@ -295,7 +285,7 @@ export default function PortalsClient() {
                                              path={`/forms/${p.slug || p.id}`} 
                                              icon={FileText} 
                                              color="bg-orange-500" 
-                                             logoUrl={p.logoUrl || (p.entityId ? entityLogoMap.get(p.entityId) : undefined)}
+                                             logoUrl={p.logoUrl || (p.entityId ? byEntityId.get(p.entityId)?.logoUrl : undefined)}
                                              entityId={p.entityId || undefined}
                                          />
                                     ))}
@@ -317,7 +307,7 @@ export default function PortalsClient() {
                                                  path={`/meetings/${typeSlug}/${m.entitySlug}`} 
                                                  icon={Calendar} 
                                                  color="bg-purple-500" 
-                                                 logoUrl={m.entityId ? entityLogoMap.get(m.entityId) : undefined}
+                                                 logoUrl={m.entityId ? byEntityId.get(m.entityId)?.logoUrl : undefined}
                                                  entityId={m.entityId}
                                              />
                                         );

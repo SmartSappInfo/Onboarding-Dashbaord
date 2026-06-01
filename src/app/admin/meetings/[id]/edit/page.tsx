@@ -10,6 +10,7 @@ import { collection, doc, updateDoc, query, where, getDocs, orderBy } from 'fire
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { 
     Loader2, 
     Save, 
@@ -225,12 +226,9 @@ export default function EditMeetingPage() {
   
   useSetBreadcrumb(meeting?.entityName, `/admin/meetings/${meetingId}`);
 
-  const entitiesCol = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc'));
-  }, [firestore, activeWorkspaceId]);
+
   
-  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
+  const { sortedEntities: entities, isLoading: isLoadingEntities } = useSortedEntities();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),

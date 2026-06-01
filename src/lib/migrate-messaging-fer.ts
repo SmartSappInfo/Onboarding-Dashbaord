@@ -6,7 +6,7 @@ import type { MessageTemplate, MessageBlock } from './types';
 /**
  * Parses plain text or HTML legacy content into blocks for the rich builder.
  */
-export function parseBodyToBlocks(body: string, contentMode: string): MessageBlock[] {
+function parseBodyToBlocks(body: string, contentMode: string): MessageBlock[] {
     if (!body) return [];
     
     const timestamp = Date.now();

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, where, doc, deleteDoc, addDoc, getDocs, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { Meeting, WorkspaceEntity, Entity } from '@/lib/types';
+import { useEntityCache } from '@/context/EntityCacheContext';
 import { MEETING_TYPES } from '@/lib/types';
 import { getEntityEmail } from '@/lib/entity-helpers';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -149,13 +150,10 @@ export default function MeetingsHubClient() {
     );
   }, [meetingsCol, activeWorkspaceId]);
 
-  const entitiesCol = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId));
-  }, [firestore, activeWorkspaceId]);
+
 
   const { data: meetings, isLoading: isLoadingMeetings, error } = useCollection<Meeting>(meetingsQuery);
-  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
+  const { entities, isLoading: isLoadingEntities } = useEntityCache();
 
   const globalEntitiesCol = useMemoFirebase(() => {
     if (!firestore || !activeOrganizationId) return null;

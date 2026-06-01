@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, query, orderBy, where, getDocs } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,7 @@ import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
@@ -139,8 +140,7 @@ export default function EditPdfPage() {
 
   const { reset, watch, setValue, getValues, trigger } = form;
   const watchedSchoolId = watch('entityId');
-  const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc')) : null, [firestore, activeWorkspaceId]);
-  const { data: entities } = useCollection<WorkspaceEntity>(schoolsQuery);
+  const { sortedEntities: entities } = useSortedEntities();
 
   const selectedSchool = React.useMemo(() => entities?.find(s => s.id === watchedSchoolId), [entities, watchedSchoolId]);
 

@@ -3,7 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { generateRegistrantToken } from '@/lib/meeting-tokens';
 import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
-import { ensureAbsoluteUrl } from '@/lib/utils/url-helpers';
+import { ensureAbsoluteUrl, getBaseUrl } from '@/lib/utils/url-helpers';
 
 export async function deleteRegistrantAction(meetingId: string, registrantId: string) {
   try {
@@ -114,7 +114,7 @@ export async function adminRegisterParticipantAction(
     }
 
     const token = generateRegistrantToken();
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+    const baseUrl = getBaseUrl();
     const typeSlug = meeting.type?.id || 'meeting';
     const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingSnap.id;
     const personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
@@ -177,7 +177,7 @@ export async function sendMeetingInvitationsAction(
     const meeting = meetingSnap.data()!;
 
     const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+    const baseUrl = getBaseUrl();
     const typeSlug = meeting.type?.id || 'meeting';
     const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingId;
     const now = new Date().toISOString();

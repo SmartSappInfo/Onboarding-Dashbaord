@@ -1,6 +1,7 @@
 
 import { adminDb, FieldValue } from './firebase-admin';
 import { nanoid } from 'nanoid';
+import { getBaseUrl } from './utils/url-helpers';
 
 /**
  * Generates a compact Base62-like link ID.
@@ -43,7 +44,7 @@ export async function createTrackedLink(params: {
 
   await adminDb.collection('tracked_links').doc(id).set(linkData);
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+  const baseUrl = getBaseUrl();
   return `${baseUrl}/api/l/${id}`;
 }
 

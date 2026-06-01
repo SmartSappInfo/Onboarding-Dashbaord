@@ -5,6 +5,7 @@ import { collection, query, where, deleteDoc, doc, addDoc, updateDoc } from 'fir
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
+import { useEntityCache } from '@/context/EntityCacheContext';
 import { MESSAGING_TRIGGERS } from '@/lib/messaging-triggers';
 import type { MessageTemplate, MessagingTrigger, MessageChannel, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
 import { TriggerListItem } from './components/TriggerListItem';
@@ -169,10 +170,7 @@ export default function MessagingTriggersPage() {
     return query(collection(firestore, 'message_styles'), where('workspaceIds', 'array-contains', activeWorkspaceId));
   }, [firestore, activeWorkspaceId]);
 
-  const entitiesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId));
-  }, [firestore, activeWorkspaceId]);
+
 
   const meetingsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -191,7 +189,7 @@ export default function MessagingTriggersPage() {
 
   const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
   const { data: styles } = useCollection<MessageStyle>(stylesQuery);
-  const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
+  const { entities } = useEntityCache();
   const { data: meetings } = useCollection<Meeting>(meetingsQuery);
   const { data: surveys } = useCollection<Survey>(surveysQuery);
   const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);

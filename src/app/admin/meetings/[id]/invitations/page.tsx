@@ -7,6 +7,7 @@ import { collection, query, where, doc, orderBy } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
+import { useEntityCache } from '@/context/EntityCacheContext';
 import { useAudiences } from '@/lib/audience-hooks';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -148,12 +149,9 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   const { data: registrants, isLoading: isLoadingRegistrants, error: registrantsError } = useCollection<any>(registrantsColRef);
 
   // Fetch all workspace entities for live client-side filtering
-  const entitiesColRef = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId));
-  }, [firestore, activeWorkspaceId]);
 
-  const { data: workspaceEntities, isLoading: isLoadingEntities } = useCollection<any>(entitiesColRef);
+
+  const { entities: workspaceEntities, isLoading: isLoadingEntities } = useEntityCache();
 
   // Fetch all base entities for canonical contacts
   const baseEntitiesColRef = useMemoFirebase(() => {

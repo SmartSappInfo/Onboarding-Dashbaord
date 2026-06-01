@@ -655,14 +655,14 @@ export default function MeetingDetailPage() {
                       <div className="flex items-center gap-2">
                         <div className="flex-1 overflow-hidden bg-primary/5 border border-primary/20 rounded-xl px-3 py-2 flex items-center">
                           <span className="truncate text-xs font-mono font-medium text-primary">
-                            smartsapp.com/q/{qrCode.shortPath}
+                            {typeof window !== 'undefined' ? window.location.host : 'go.smartsapp.com'}/q/{qrCode.shortPath}
                           </span>
                         </div>
                         <Button
                           variant="secondary"
                           size="icon"
                           className="h-8 w-8 rounded-lg shrink-0 transition-all hover:bg-primary/10 hover:text-primary"
-                          onClick={() => handleCopy(`https://smartsapp.com/q/${qrCode.shortPath}`, 'short')}
+                          onClick={() => handleCopy(`${typeof window !== 'undefined' ? window.location.origin : 'https://go.smartsapp.com'}/q/${qrCode.shortPath}`, 'short')}
                         >
                           {copiedLink === 'short' ? <CopyCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                         </Button>

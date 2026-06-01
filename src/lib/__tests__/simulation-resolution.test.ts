@@ -43,6 +43,11 @@ vi.mock('../contact-adapter', () => ({
   resolveContact: vi.fn(),
 }));
 
+// 3. Mock url-helpers getBaseUrl
+vi.mock('../utils/url-helpers', () => ({
+  getBaseUrl: vi.fn(() => 'https://go.smartsapp.com'),
+}));
+
 import { getSimulationVariablesAction } from '../messaging-actions';
 import { resolveContact } from '../contact-adapter';
 import * as firebaseAdmin from '../firebase-admin';
@@ -78,7 +83,7 @@ describe('getSimulationVariablesAction', () => {
     expect(res.variables).toHaveProperty('current_date');
     expect(res.variables).toHaveProperty('current_time');
     expect(res.variables).toHaveProperty('current_year');
-    expect(res.variables.unsubscribe_link).toBe('https://onboarding.smartsapp.com/unsubscribe/sample');
+    expect(res.variables.unsubscribe_link).toBe('https://go.smartsapp.com/unsubscribe/sample');
   });
 
   it('resolves organization branding details when workspace and organization exist', async () => {

@@ -8,6 +8,7 @@ import { mergePermissionsSchemas, getBlankPermissions } from './permissions-engi
 import type { PermissionsSchema } from './types';
 import crypto from 'crypto';
 import { resolveAndRender } from './template-resolver';
+import { getBaseUrl } from './utils/url-helpers';
 
 /**
  * Generates a random secure password.
@@ -37,7 +38,7 @@ export async function inviteUserAction(params: {
         const { fullName, email, phone, workspaceRoles, organizationId, sendMethods } = params;
         const auth = getAuth();
         const tempPassword = generateRandomPassword();
-        const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+        const loginLink = `${getBaseUrl()}/login`;
 
         // 1. Fetch Organization Details
         const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
@@ -225,7 +226,7 @@ export async function adminResetUserPasswordAction(userId: string) {
         
         const userData = userSnap.data()!;
         const tempPassword = generateRandomPassword();
-        const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+        const loginLink = `${getBaseUrl()}/login`;
 
         // 1. Update Password in Firebase Auth
         await auth.updateUser(userId, { password: tempPassword });
@@ -346,7 +347,7 @@ export async function publicResetPasswordViaPhoneAction(phone: string) {
         const userData = userDoc.data();
 
         const tempPassword = generateRandomPassword();
-        const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+        const loginLink = `${getBaseUrl()}/login`;
 
         // 1. Update Auth
         await auth.updateUser(userId, { password: tempPassword });
@@ -421,7 +422,7 @@ export async function adminUpdateUserAccessAction(userId: string, isAuthorized: 
             const organizationId = userData.organizationId || 'system';
             const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
             const orgName = orgSnap.exists ? orgSnap.data()?.name || 'SmartSapp' : 'SmartSapp';
-            const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+            const loginLink = `${getBaseUrl()}/login`;
 
             let emailSubject = `Access Cancelled for ${orgName}`;
             let emailHtml = `Hello ${userData.name || 'User'}, your access to ${orgName} has been cancelled.`;
@@ -559,7 +560,7 @@ export async function declineJoinRequestAction(userId: string, adminUserId: stri
         const organizationId = userData.organizationId || 'system';
         const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
         const orgName = orgSnap.exists ? orgSnap.data()?.name || 'SmartSapp' : 'SmartSapp';
-        const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
+        const loginLink = `${getBaseUrl()}/login`;
 
         let emailSubject = `Join Request Declined for ${orgName}`;
         let emailHtml = `Hello ${userData.name || 'User'}, your request to join ${orgName} has been declined.`;

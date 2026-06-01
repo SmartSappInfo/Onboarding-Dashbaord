@@ -10,6 +10,7 @@ import { getContactEmail, getContactPhone } from './migration-status-utils';
 import { buildMeetingBaseVariables, buildFacilitatorVariables } from './meeting-variable-helpers';
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
 import { evaluateConditionNode } from './automation-condition';
+import { getBaseUrl } from './utils/url-helpers';
 
 /**
  * @fileOverview Server-side actions for the Variable Registry.
@@ -980,15 +981,42 @@ export async function getSimulationVariablesAction(params: {
     variables.current_date = new Date().toLocaleDateString();
     variables.current_time = new Date().toLocaleTimeString();
     variables.current_year = new Date().getFullYear().toString();
-    variables.unsubscribe_link = 'https://onboarding.smartsapp.com/unsubscribe/sample';
+    variables.unsubscribe_link = `${getBaseUrl()}/unsubscribe/sample`;
 
-    // Fetch workspace name & branding
-    try {
-      const wsSnap = await adminDb.collection('workspaces').doc(resolvedWorkspaceId).get();
-      if (wsSnap.exists) {
-        variables.workspace_name = wsSnap.data()?.name || '';
-        const orgId = wsSnap.data()?.organizationId;
-        if (orgId) {
+    // Concurrently fetch the initial workspace, app fields, contact, meeting, survey, and PDF documents
+    const wsPromise = adminDb.collection('workspaces').doc(resolvedWorkspaceId).get();
+    const fieldsPromise = adminDb.collection('app_fields')
+      .where('workspaceId', '==', resolvedWorkspaceId)
+      .where('status', '==', 'active')
+      .get();
+    const contactPromise = params.entityId
+      ? resolveContact(params.entityId, resolvedWorkspaceId)
+      : Promise.resolve(null);
+    const meetingPromise = params.meetingId
+      ? adminDb.collection('meetings').doc(params.meetingId).get()
+      : Promise.resolve(null);
+    const surveyPromise = params.surveyId
+      ? adminDb.collection('surveys').doc(params.surveyId).collection('responses').orderBy('submittedAt', 'desc').limit(1).get()
+      : Promise.resolve(null);
+    const pdfPromise = params.pdfId
+      ? adminDb.collection('pdfs').doc(params.pdfId).collection('submissions').orderBy('submittedAt', 'desc').limit(1).get()
+      : Promise.resolve(null);
+
+    const [wsSnap, fieldsSnap, contact, meetingSnap, responsesSnap, submissionsSnap] = await Promise.all([
+      wsPromise,
+      fieldsPromise,
+      contactPromise,
+      meetingPromise,
+      surveyPromise,
+      pdfPromise
+    ]);
+
+    // Process Workspace Name & Branding
+    if (wsSnap && wsSnap.exists) {
+      variables.workspace_name = wsSnap.data()?.name || '';
+      const orgId = wsSnap.data()?.organizationId;
+      if (orgId) {
+        try {
           const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
           if (orgSnap.exists) {
             const org = orgSnap.data() || {};
@@ -1000,144 +1028,130 @@ export async function getSimulationVariablesAction(params: {
             variables.org_website = org.website || '';
             variables.meeting_timezone = org.settings?.defaultTimezone || 'UTC';
           }
+        } catch (e) {
+          console.error('Failed to load branding info for simulation:', e);
         }
       }
-    } catch (e) {
-      console.error('Failed to load branding info for simulation:', e);
     }
 
-    // 2. Fetch workspace active custom fields defaults (app_fields)
-    try {
-      const fieldsSnap = await adminDb.collection('app_fields')
-        .where('workspaceId', '==', resolvedWorkspaceId)
-        .where('status', '==', 'active')
-        .get();
-
+    // Process Active Fields
+    if (fieldsSnap) {
       fieldsSnap.forEach(doc => {
         const field = doc.data() as any;
         if (field.defaultValue !== undefined) {
           variables[field.variableName] = field.defaultValue;
         }
       });
-    } catch (e) {
-      console.error('Failed to load workspace custom fields for simulation:', e);
     }
 
-    // 3. Resolve Entity/Contact Variables
-    if (params.entityId) {
-      const contact = await resolveContact(params.entityId, resolvedWorkspaceId);
-      if (contact) {
-        // Base variables
-        variables.school_name = contact.name;
-        variables.entity_name = contact.name;
-        variables.id = contact.id;
-        variables.initials = contact.initials || '';
-        variables.referee = contact.referee || '';
-        variables.location_string = contact.locationString || '';
-        variables.zone_name = contact.zoneName || '';
+    // Process Contact/Entity
+    if (contact) {
+      // Base variables
+      variables.school_name = contact.name;
+      variables.entity_name = contact.name;
+      variables.id = contact.id;
+      variables.initials = contact.initials || '';
+      variables.referee = contact.referee || '';
+      variables.location_string = contact.locationString || '';
+      variables.zone_name = contact.zoneName || '';
 
-        // Recipient variables (we simulate with primary contact)
-        const primary = contact.entityContacts?.find(c => c.isPrimary) || contact.entityContacts?.[0];
-        if (primary) {
-          variables.contact_name = primary.name || '';
-          variables.contact_email = primary.email || '';
-          variables.contact_phone = primary.phone || '';
-          
-          variables.recipient_name = primary.name || '';
-          variables.recipient_email = primary.email || '';
-          variables.recipient_phone = primary.phone || '';
-          variables.recipient_role = primary.typeLabel || '';
-          variables.recipient_first_name = (primary.name || '').split(' ')[0];
-        }
+      // Recipient variables (we simulate with primary contact)
+      const primary = contact.entityContacts?.find(c => c.isPrimary) || contact.entityContacts?.[0];
+      if (primary) {
+        variables.contact_name = primary.name || '';
+        variables.contact_email = primary.email || '';
+        variables.contact_phone = primary.phone || '';
+        
+        variables.recipient_name = primary.name || '';
+        variables.recipient_email = primary.email || '';
+        variables.recipient_phone = primary.phone || '';
+        variables.recipient_role = primary.typeLabel || '';
+        variables.recipient_first_name = (primary.name || '').split(' ')[0];
+      }
 
-        // Dynamic role/primary/signatory variables
-        const contactVars = getContactVariables({ entityContacts: contact.entityContacts || [] });
-        Object.assign(variables, contactVars);
+      // Dynamic role/primary/signatory variables
+      const contactVars = getContactVariables({ entityContacts: contact.entityContacts || [] });
+      Object.assign(variables, contactVars);
 
-        // Tags
-        const tagVars = await resolveTagVariables(contact.id, 'school', resolvedWorkspaceId);
+      // Concurrently fetch tags and contracts for the contact
+      try {
+        const tagVarsPromise = resolveTagVariables(contact.id, 'school', resolvedWorkspaceId);
+        const contractSnapPromise = adminDb.collection('contracts').where('entityId', '==', contact.id).limit(1).get();
+        const [tagVars, contractSnap] = await Promise.all([tagVarsPromise, contractSnapPromise]);
+
         Object.assign(variables, tagVars);
 
-        // Agreement link
-        const contractSnap = await adminDb.collection('contracts').where('entityId', '==', contact.id).limit(1).get();
         if (!contractSnap.empty) {
           const contractData = contractSnap.docs[0].data();
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+          const baseUrl = getBaseUrl();
           variables.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?entityId=${contact.id}`;
           variables.contract_name = contractData.name || '';
           variables.contract_status = contractData.status || '';
         }
-
-        // Dynamic buckets
-        const buckets = [
-          contact.financeData,
-          contact.industryData,
-          contact.personData,
-          contact.familyData,
-          contact.customData
-        ];
-        buckets.forEach(bucket => {
-          if (bucket) {
-            Object.entries(bucket).forEach(([k, v]) => {
-              if (v !== undefined) {
-                variables[k] = v;
-              }
-            });
-          }
-        });
+      } catch (e) {
+        console.error('Failed to load tags or contract for simulation:', e);
       }
-    }
 
-    // 4. Resolve Meeting Variables
-    if (params.meetingId) {
-      const meetingSnap = await adminDb.collection('meetings').doc(params.meetingId).get();
-      if (meetingSnap.exists) {
-        const meeting = { id: meetingSnap.id, ...meetingSnap.data() } as any;
-        const meetingVars = buildMeetingBaseVariables(meeting, variables.meeting_timezone);
-        Object.assign(variables, meetingVars);
-
-        // Populate computed meeting variables for simulation
-        const { generateCalendarLinkFromMeeting } = await import('./calendar-utils');
-        variables.calendar_link = generateCalendarLinkFromMeeting(meeting);
-
-        const typeSlug = meeting.type?.slug || 'webinar';
-        const meetingSlug = meeting.slug || meeting.id;
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
-        variables.meeting_registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=simulated_rsvp_token`;
-        variables.registrant_join_link = `${baseUrl}/meetings/join/${meeting.id}?token=simulated_join_token`;
-
-        if (meeting.facilitators?.length) {
-          const facVars = buildFacilitatorVariables(meeting.facilitators[0]);
-          Object.assign(variables, facVars);
+      // Dynamic buckets
+      const buckets = [
+        contact.financeData,
+        contact.industryData,
+        contact.personData,
+        contact.familyData,
+        contact.customData
+      ];
+      buckets.forEach(bucket => {
+        if (bucket) {
+          Object.entries(bucket).forEach(([k, v]) => {
+            if (v !== undefined) {
+              variables[k] = v;
+            }
+          });
         }
+      });
+    }
+
+    // Process Meeting Variables
+    if (meetingSnap && meetingSnap.exists) {
+      const meeting = { id: meetingSnap.id, ...meetingSnap.data() } as any;
+      const meetingVars = buildMeetingBaseVariables(meeting, variables.meeting_timezone);
+      Object.assign(variables, meetingVars);
+
+      // Populate computed meeting variables for simulation
+      const { generateCalendarLinkFromMeeting } = await import('./calendar-utils');
+      variables.calendar_link = generateCalendarLinkFromMeeting(meeting);
+
+      const typeSlug = meeting.type?.slug || 'webinar';
+      const meetingSlug = meeting.slug || meeting.id;
+      const baseUrl = getBaseUrl();
+      variables.meeting_registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=simulated_rsvp_token`;
+      variables.registrant_join_link = `${baseUrl}/meetings/join/${meeting.id}?token=simulated_join_token`;
+
+      if (meeting.facilitators?.length) {
+        const facVars = buildFacilitatorVariables(meeting.facilitators[0]);
+        Object.assign(variables, facVars);
       }
     }
 
-    // 5. Resolve Survey Variables (latest response)
-    if (params.surveyId) {
-      const responsesSnap = await adminDb.collection('surveys').doc(params.surveyId).collection('responses').orderBy('submittedAt', 'desc').limit(1).get();
-      if (!responsesSnap.empty) {
-        const resData = responsesSnap.docs[0].data();
-        variables.survey_score = resData.score || 0;
-        variables.max_score = resData.maxScore || 100;
-        variables.outcome_label = resData.outcome || '';
-        
-        // Flatten answers
-        resData.answers?.forEach((a: any) => {
-          variables[a.questionId] = typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value);
-        });
-      }
+    // Process Survey Variables (latest response)
+    if (responsesSnap && !responsesSnap.empty) {
+      const resData = responsesSnap.docs[0].data();
+      variables.survey_score = resData.score || 0;
+      variables.max_score = resData.maxScore || 100;
+      variables.outcome_label = resData.outcome || '';
+      
+      // Flatten answers
+      resData.answers?.forEach((a: any) => {
+        variables[a.questionId] = typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value);
+      });
     }
 
-    // 6. Resolve PDF Form/Submission Variables (latest submission)
-    if (params.pdfId) {
-      const submissionsSnap = await adminDb.collection('pdfs').doc(params.pdfId).collection('submissions').orderBy('submittedAt', 'desc').limit(1).get();
-      if (!submissionsSnap.empty) {
-        const subData = submissionsSnap.docs[0].data();
-        Object.entries(subData.formData || {}).forEach(([k, v]) => {
-          variables[k] = String(v);
-        });
-      }
+    // Process PDF Form/Submission Variables (latest submission)
+    if (submissionsSnap && !submissionsSnap.empty) {
+      const subData = submissionsSnap.docs[0].data();
+      Object.entries(subData.formData || {}).forEach(([k, v]) => {
+        variables[k] = String(v);
+      });
     }
 
     return { success: true, variables };

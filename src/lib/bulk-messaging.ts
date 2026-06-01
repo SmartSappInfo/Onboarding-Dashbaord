@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { after } from 'next/server';
 import { sendMessage } from './messaging-engine';
+import { getBaseUrl } from './utils/url-helpers';
 import { sendBatchEmails } from './resend-service';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
 import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageStyle } from './types';
@@ -142,7 +143,7 @@ export async function processBulkJobChunk(jobId: string) {
     if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {
         const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
         if (styleSnap.exists) {
-            styleWrapper = (styleSnap.data() as MessageStyle).htmlWrapper;
+            styleWrapper = (styleSnap.data() as MessageStyle).htmlWrapper || '';
         }
     }
 
@@ -173,7 +174,7 @@ export async function processBulkJobChunk(jobId: string) {
             const mergedVars = { ...orgBrandingVars, ...task.variables };
             
             // Phase 7: Inject Unsubscribe Link
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+            const baseUrl = getBaseUrl();
             const unsubId = task.entityId || task.recipient;
             mergedVars.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
 
@@ -445,7 +446,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
   if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {
     const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
     if (styleSnap.exists) {
-      styleWrapper = (styleSnap.data() as MessageStyle).htmlWrapper;
+      styleWrapper = (styleSnap.data() as MessageStyle).htmlWrapper || '';
     }
   }
 
@@ -483,7 +484,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
       const mergedVars = { ...orgBrandingVars, ...task.variables };
 
       // Inject unsubscribe link
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+      const baseUrl = getBaseUrl();
       const unsubId = task.entityId || task.recipient;
       mergedVars.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
 

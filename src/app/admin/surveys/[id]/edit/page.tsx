@@ -7,6 +7,7 @@ import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@
 import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { Button } from '@/components/ui/button';
 import { 
     Check, 
@@ -221,11 +222,8 @@ export default function EditSurveyPage() {
     
     useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
-    const institutionsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc'));
-    }, [firestore, activeWorkspaceId]);
-    const { data: institutions } = useCollection<WorkspaceEntity>(institutionsQuery);
+
+    const { sortedEntities: institutions } = useSortedEntities();
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),

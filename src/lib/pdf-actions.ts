@@ -10,6 +10,7 @@ import { toTitleCase } from './utils';
 import { sendMessage } from './messaging-engine';
 import { triggerInternalNotification } from './notification-engine';
 import { format } from 'date-fns';
+import { getBaseUrl } from './utils/url-helpers';
 
 /**
  * @fileOverview Server actions for the Institutional Contract Lifecycle.
@@ -355,7 +356,7 @@ export async function finalizeAgreementAction(
                     });
                 } catch (err) {}
 
-                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+                const baseUrl = getBaseUrl();
                 const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
 
                 // Resolve workspaceId from pdfData or school (Requirement 11)

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { WorkspaceEntity, UserProfile, Activity, Zone } from '@/lib/types';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { X, Building, User, Tag, MapPin, Activity as ActivityIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,14 +46,7 @@ export default function ActivitiesClient() {
         { value: 'pdf_status_changed', label: 'Doc Status' },
     ], [singular]);
 
-    // Fetch workspace_entities shared with this workspace
-    const entitiesCol = useMemoFirebase(() => 
-        firestore && activeWorkspaceId ? query(
-            collection(firestore, 'workspace_entities'), 
-            where('workspaceId', '==', activeWorkspaceId), 
-            orderBy('displayName')
-        ) : null, 
-    [firestore, activeWorkspaceId]);
+
     
     // ORG-SCOPED IDENTITY LOOKUP
     const usersCol = useMemoFirebase(() => 
@@ -72,7 +66,7 @@ export default function ActivitiesClient() {
         ) : null, 
     [firestore, activeOrganizationId]);
 
-    const { data: entities } = useCollection<WorkspaceEntity>(entitiesCol);
+    const { sortedEntities: entities } = useSortedEntities();
     const { data: users } = useCollection<UserProfile>(usersCol);
     const { data: zones } = useCollection<Zone>(zonesCol);
 

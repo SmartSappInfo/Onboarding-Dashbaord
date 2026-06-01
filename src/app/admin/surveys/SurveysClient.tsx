@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import type { Survey } from '@/lib/types';
+import { useEntityCache } from '@/context/EntityCacheContext';
 import { cloneSurvey, deleteSurveyAction, updateSurveyStatusAction } from '@/lib/survey-actions';
 import { usePermissions } from '@/hooks/use-permissions';
 import { getAssigneeDetails, sendSurveyLinkToAssignee } from '@/app/actions/survey-assignee-actions';
@@ -102,16 +103,10 @@ export default function SurveysClient() {
     );
   }, [surveysCol, activeWorkspaceId]);
 
-  const entitiesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(
-      collection(firestore, 'workspace_entities'),
-      where('workspaceId', '==', activeWorkspaceId)
-    );
-  }, [firestore, activeWorkspaceId]);
+
 
   const { data: surveys, isLoading: isLoadingSurveys, error } = useCollection<Survey>(surveysQuery);
-  const { data: entities } = useCollection<any>(entitiesQuery);
+  const { entities } = useEntityCache();
 
   const entityLogoMap = useMemo(() => {
     if (!entities) return new Map<string, string>();

@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, addDoc, setDoc, doc, query, where, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Button } from '@/components/ui/button';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { 
     Check, 
     Loader2, 
@@ -164,11 +165,8 @@ export default function NewSurveyPage() {
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
     const [mobileMode, setMobileMode] = React.useState<'edit' | 'preview'>('edit');
 
-    const institutionsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc'));
-    }, [firestore, activeWorkspaceId]);
-    const { data: institutions } = useCollection<WorkspaceEntity>(institutionsQuery);
+
+    const { sortedEntities: institutions } = useSortedEntities();
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),

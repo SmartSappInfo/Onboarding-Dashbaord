@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, TemplateCategory, VariableContext, MessageChannel } from './types';
 import { renderTemplate } from './template-utils';
+import { getBaseUrl } from './utils/url-helpers';
 import { MESSAGING_TRIGGERS } from './messaging-triggers';
 
 // ---------------------------------------------------------------------------
@@ -140,7 +141,7 @@ export async function buildVariableMap(
       vars['resource_link'] = meeting.resourceUrl ?? '';
       vars['feedback_form_link'] = meeting.feedbackFormUrl ?? '';
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+      const baseUrl = getBaseUrl();
       vars['dashboard_link'] = `${baseUrl}/admin/meetings/${resolutionCtx.meetingId}`;
 
       // Calendar link (computed)

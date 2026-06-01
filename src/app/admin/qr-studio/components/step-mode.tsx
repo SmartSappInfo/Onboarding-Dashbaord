@@ -105,7 +105,7 @@ export default function StepMode({ state, updateState, validationErrors = [] }: 
           </div>
           <div className="flex items-center gap-2">
             <div className="h-10 px-3 rounded-xl bg-muted border border-border flex items-center text-sm text-muted-foreground select-none shrink-0">
-              smartsapp.com/q/
+              {typeof window !== 'undefined' ? window.location.host : 'go.smartsapp.com'}/q/
             </div>
             <Input
               id="custom-shortlink"

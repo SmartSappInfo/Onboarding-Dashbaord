@@ -31,12 +31,18 @@ import {
     CheckSquare,
     Cpu,
     QrCode,
+    MousePointer2,
+    List,
     Mail as MailIcon,
     Zap,
     Megaphone,
     Bell,
     Undo,
-    Redo
+    Redo,
+    ArrowUp,
+    ArrowDown,
+    Copy,
+    Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -60,12 +66,13 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { AnimatePresence, motion } from 'framer-motion';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, rectIntersection, pointerWithin } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus } from '@/lib/types';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
-import { SortableBlockItem, blockIcons } from './visual-block';
+import { SortableBlockItem } from './visual-block';
+import { blockIcons } from './block-icons';
 import { BlockInspector } from './block-inspector';
 import { PlainTextEditor } from './PlainTextEditor';
 import { SimulationStudio } from './simulation-studio';
@@ -168,6 +175,1011 @@ function Stepper({ currentStep, onStepClick, name }: StepperProps) {
             })}
         </div>
     );
+}
+
+const blockTypeTemplates: Record<string, Array<{
+    name: string;
+    description: string;
+    create: () => MessageBlock;
+}>> = {
+    heading: [
+        {
+            name: 'Hero Title Banner',
+            description: 'Large, bold, centered title for headers',
+            create: () => ({
+                id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'heading',
+                variant: 'h1',
+                title: 'Welcome to SmartSapp!',
+                style: {
+                    textAlign: 'center',
+                    color: '#1e293b',
+                    fontSize: '28px',
+                    fontWeight: '900',
+                    paddingTop: '20px',
+                    paddingBottom: '8px',
+                    marginTop: '0px',
+                    marginBottom: '12px'
+                }
+            })
+        },
+        {
+            name: 'Section Title',
+            description: 'Clean left-aligned title for sections',
+            create: () => ({
+                id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'heading',
+                variant: 'h2',
+                title: 'Key Project Updates',
+                style: {
+                    textAlign: 'left',
+                    color: '#0f172a',
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    paddingTop: '16px',
+                    paddingBottom: '8px',
+                    marginTop: '16px',
+                    marginBottom: '8px'
+                }
+            })
+        },
+        {
+            name: 'Sub-section Title',
+            description: 'Subtle left-aligned header',
+            create: () => ({
+                id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'heading',
+                variant: 'h3',
+                title: 'Onboarding Instructions',
+                style: {
+                    textAlign: 'left',
+                    color: '#475569',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    paddingTop: '12px',
+                    paddingBottom: '4px',
+                    marginTop: '8px',
+                    marginBottom: '4px'
+                }
+            })
+        },
+        {
+            name: 'Accent Brand Heading',
+            description: 'Branded blue header',
+            create: () => ({
+                id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'heading',
+                variant: 'h2',
+                title: 'Exclusive Offer For You',
+                style: {
+                    textAlign: 'center',
+                    color: '#2563eb',
+                    fontSize: '22px',
+                    fontWeight: '800',
+                    paddingTop: '16px',
+                    paddingBottom: '8px',
+                    marginTop: '10px',
+                    marginBottom: '10px'
+                }
+            })
+        }
+    ],
+    text: [
+        {
+            name: 'Standard Paragraph',
+            description: 'Standard reading text layout',
+            create: () => ({
+                id: `blk_text_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'text',
+                content: 'This is a clean, readable text body block. Keep your paragraphs around 2-3 sentences to optimize for email scanning on mobile devices.',
+                style: {
+                    textAlign: 'left',
+                    color: '#334155',
+                    fontSize: '15px',
+                    paddingTop: '8px',
+                    paddingBottom: '8px',
+                    lineHeight: '1.6'
+                }
+            })
+        },
+        {
+            name: 'Prominent Intro',
+            description: 'Centered, slightly larger lead text',
+            create: () => ({
+                id: `blk_text_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'text',
+                content: 'We are thrilled to welcome you to our growing community. Let’s walk through the details of your active dashboard configuration below.',
+                style: {
+                    textAlign: 'center',
+                    color: '#1e293b',
+                    fontSize: '17px',
+                    fontWeight: '500',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    lineHeight: '1.6'
+                }
+            })
+        },
+        {
+            name: 'Fine Print / Unsubscribe',
+            description: 'Muted footnote style for disclaimers',
+            create: () => ({
+                id: `blk_text_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'text',
+                content: '© 2026 SmartSapp Inc. All rights reserved. You received this email because you subscribed to our service. To manage your preferences or unsubscribe, click the link below.',
+                style: {
+                    textAlign: 'center',
+                    color: '#64748b',
+                    fontSize: '11px',
+                    paddingTop: '16px',
+                    paddingBottom: '16px',
+                    lineHeight: '1.5'
+                }
+            })
+        },
+        {
+            name: 'Highlighted Callout',
+            description: 'Text highlighted inside a custom box card',
+            create: () => ({
+                id: `blk_text_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'text',
+                content: 'Pro-Tip: You can change the background color, padding, and corner radius of this callout block directly inside the Properties inspector on the right!',
+                style: {
+                    textAlign: 'left',
+                    color: '#1e3a8a',
+                    backgroundColor: '#eff6ff',
+                    borderRadius: '12px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#bfdbfe',
+                    paddingTop: '14px',
+                    paddingBottom: '14px',
+                    paddingLeft: '16px',
+                    paddingRight: '16px',
+                    fontSize: '14px',
+                    lineHeight: '1.5'
+                }
+            })
+        }
+    ],
+    list: [
+        {
+            name: 'Circular Bullets',
+            description: 'Standard bulleted list',
+            create: () => ({
+                id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'list',
+                listStyle: 'unordered',
+                items: [
+                    'Review your dashboard settings',
+                    'Complete details for workspace profile',
+                    'Invite team members to collaborate'
+                ],
+                style: {
+                    color: '#334155',
+                    fontSize: '15px',
+                    paddingTop: '8px',
+                    paddingBottom: '8px'
+                }
+            })
+        },
+        {
+            name: 'Numbered Steps',
+            description: 'Step-by-step ordered list',
+            create: () => ({
+                id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'list',
+                listStyle: 'ordered',
+                items: [
+                    'Step 1: Link your active profile credentials',
+                    'Step 2: Define your core terminology preference',
+                    'Step 3: Save and publish your workspace templates'
+                ],
+                style: {
+                    color: '#334155',
+                    fontSize: '15px',
+                    paddingTop: '8px',
+                    paddingBottom: '8px'
+                }
+            })
+        },
+        {
+            name: 'Roman Numerals',
+            description: 'List with uppercase roman numerals',
+            create: () => ({
+                id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'list',
+                listStyle: 'roman',
+                items: [
+                    'Section I: Pre-onboarding checklist verification',
+                    'Section II: Active template testing & validation',
+                    'Section III: Final production deployment steps'
+                ],
+                style: {
+                    color: '#334155',
+                    fontSize: '15px',
+                    paddingTop: '8px',
+                    paddingBottom: '8px'
+                }
+            })
+        },
+        {
+            name: 'Checklist Task Panel',
+            description: 'Task items with green checkmarks',
+            create: () => ({
+                id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'list',
+                listStyle: 'checkmark',
+                items: [
+                    'Account setup fully verified',
+                    'Template files synchronized',
+                    'Dnd-kit workspace integrated'
+                ],
+                style: {
+                    color: '#0f172a',
+                    fontSize: '14px',
+                    paddingTop: '10px',
+                    paddingBottom: '10px'
+                }
+            })
+        },
+        {
+            name: 'Arrow Bullet Points',
+            description: 'Items bulleted with blue indicators',
+            create: () => ({
+                id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'list',
+                listStyle: 'arrow',
+                items: [
+                    'Maximize efficiency with agent templates',
+                    'Save hours of development build resources',
+                    'Streamline admin workspace operations'
+                ],
+                style: {
+                    color: '#334155',
+                    fontSize: '14px',
+                    paddingTop: '8px',
+                    paddingBottom: '8px'
+                }
+            })
+        }
+    ],
+    image: [
+        {
+            name: 'Full Hero Card Image',
+            description: 'Rounded image with card frame shadow',
+            create: () => ({
+                id: `blk_image_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'image',
+                url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80',
+                style: {
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#e2e8f0',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    marginTop: '8px',
+                    marginBottom: '8px'
+                }
+            })
+        },
+        {
+            name: 'Avatar Portrait Circle',
+            description: 'Centered circular profile frame',
+            create: () => ({
+                id: `blk_image_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'image',
+                url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+                style: {
+                    borderRadius: '9999px',
+                    borderWidth: '3px',
+                    borderStyle: 'solid',
+                    borderColor: '#2563eb',
+                    textAlign: 'center',
+                    paddingTop: '12px',
+                    paddingBottom: '12px'
+                }
+            })
+        },
+        {
+            name: 'Polaroid Style Card',
+            description: 'Image with bottom white margin frame',
+            create: () => ({
+                id: `blk_image_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'image',
+                url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80',
+                style: {
+                    backgroundColor: '#ffffff',
+                    borderRadius: '8px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#e2e8f0',
+                    paddingTop: '12px',
+                    paddingBottom: '32px',
+                    paddingLeft: '12px',
+                    paddingRight: '12px',
+                    marginTop: '12px',
+                    marginBottom: '12px'
+                }
+            })
+        }
+    ],
+    video: [
+        {
+            name: 'Cinema Wide Player',
+            description: '16:9 mockup player layout',
+            create: () => ({
+                id: `blk_video_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'video',
+                url: '',
+                style: {
+                    borderRadius: '12px',
+                    paddingTop: '8px',
+                    paddingBottom: '8px',
+                    marginTop: '12px',
+                    marginBottom: '12px'
+                }
+            })
+        }
+    ],
+    button: [
+        {
+            name: 'CTA Pill Button',
+            description: 'Rounded primary button style',
+            create: () => ({
+                id: `blk_button_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'button',
+                title: 'Get Started Today',
+                url: 'https://',
+                style: {
+                    textAlign: 'center',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    borderRadius: '9999px',
+                    paddingTop: '14px',
+                    paddingBottom: '14px',
+                    paddingLeft: '32px',
+                    paddingRight: '32px',
+                    fontWeight: '700',
+                    fontSize: '16px'
+                }
+            })
+        },
+        {
+            name: 'Modern Outline Button',
+            description: 'Transparent style with clean border',
+            create: () => ({
+                id: `blk_button_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'button',
+                title: 'Learn More Details',
+                url: 'https://',
+                style: {
+                    textAlign: 'center',
+                    backgroundColor: 'transparent',
+                    color: '#2563eb',
+                    borderRadius: '12px',
+                    borderWidth: '2px',
+                    borderStyle: 'solid',
+                    borderColor: '#2563eb',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    fontWeight: '600',
+                    fontSize: '15px'
+                }
+            })
+        },
+        {
+            name: 'Soft Secondary Action',
+            description: 'Minimalistic gray background button',
+            create: () => ({
+                id: `blk_button_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'button',
+                title: 'View Dashboard',
+                url: 'https://',
+                style: {
+                    textAlign: 'center',
+                    backgroundColor: '#f1f5f9',
+                    color: '#334155',
+                    borderRadius: '12px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    fontWeight: '600',
+                    fontSize: '15px'
+                }
+            })
+        },
+        {
+            name: 'Destructive / Warning Button',
+            description: 'Red solid warning button style',
+            create: () => ({
+                id: `blk_button_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'button',
+                title: 'Decline Agreement',
+                url: 'https://',
+                style: {
+                    textAlign: 'center',
+                    backgroundColor: '#ef4444',
+                    color: '#ffffff',
+                    borderRadius: '12px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    fontWeight: '600',
+                    fontSize: '15px'
+                }
+            })
+        }
+    ],
+    quote: [
+        {
+            name: 'Editorial Callout Quote',
+            description: 'Quote with thick colored left border',
+            create: () => ({
+                id: `blk_quote_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'quote',
+                content: 'Onboarding is not just a process. It is a critical milestone for employee validation and system synchronization.',
+                style: {
+                    textAlign: 'left',
+                    color: '#475569',
+                    borderColor: '#2563eb',
+                    borderWidth: '4px',
+                    borderStyle: 'solid',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: '16px',
+                    paddingRight: '12px',
+                    fontSize: '15px',
+                    lineHeight: '1.6'
+                }
+            })
+        },
+        {
+            name: 'Centered Testimonial',
+            description: 'Minimal italic statement block',
+            create: () => ({
+                id: `blk_quote_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'quote',
+                content: '“SmartSapp transformed how we handle our internal communications and automation agreements.”',
+                style: {
+                    textAlign: 'center',
+                    color: '#1e293b',
+                    fontSize: '18px',
+                    fontWeight: '500',
+                    paddingTop: '16px',
+                    paddingBottom: '16px',
+                    lineHeight: '1.6'
+                }
+            })
+        },
+        {
+            name: 'Warm Highlight Bubble',
+            description: 'Warm background styled card bubble',
+            create: () => ({
+                id: `blk_quote_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'quote',
+                content: 'Important Reminder: Make sure to verify your connection security keys before triggering automated pipeline rules.',
+                style: {
+                    textAlign: 'left',
+                    color: '#78350f',
+                    backgroundColor: '#fffbeb',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#fde68a',
+                    paddingTop: '16px',
+                    paddingBottom: '16px',
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    fontSize: '14px',
+                    lineHeight: '1.5'
+                }
+            })
+        }
+    ],
+    divider: [
+        {
+            name: 'Subtle Spacer Line',
+            description: 'Thin slate-200 border line',
+            create: () => ({
+                id: `blk_divider_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'divider',
+                style: {
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#e2e8f0',
+                    marginTop: '16px',
+                    marginBottom: '16px'
+                }
+            })
+        },
+        {
+            name: 'Thick Accent Line',
+            description: 'Thicker blue border line',
+            create: () => ({
+                id: `blk_divider_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'divider',
+                style: {
+                    borderWidth: '3px',
+                    borderStyle: 'solid',
+                    borderColor: '#2563eb',
+                    marginTop: '20px',
+                    marginBottom: '20px'
+                }
+            })
+        },
+        {
+            name: 'Dashed Gap Separator',
+            description: 'Modern dashed border line separator',
+            create: () => ({
+                id: `blk_divider_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'divider',
+                style: {
+                    borderWidth: '2px',
+                    borderStyle: 'dashed',
+                    borderColor: '#cbd5e1',
+                    marginTop: '24px',
+                    marginBottom: '24px'
+                }
+            })
+        },
+        {
+            name: 'Invisible Spacer (30px)',
+            description: 'Spacing buffer gap for vertical layouts',
+            create: () => ({
+                id: `blk_divider_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'divider',
+                style: {
+                    borderWidth: '0px',
+                    borderStyle: 'none',
+                    marginTop: '15px',
+                    marginBottom: '15px'
+                }
+            })
+        }
+    ],
+    logo: [
+        {
+            name: 'Centered Branding Logo',
+            description: 'Centered organizational logo',
+            create: () => ({
+                id: `blk_logo_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'logo',
+                url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
+                style: {
+                    textAlign: 'center',
+                    paddingTop: '16px',
+                    paddingBottom: '16px'
+                }
+            })
+        },
+        {
+            name: 'Left Aligned Mini Logo',
+            description: 'Compact left-aligned logo',
+            create: () => ({
+                id: `blk_logo_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'logo',
+                url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&h=120&q=80',
+                style: {
+                    textAlign: 'left',
+                    paddingTop: '12px',
+                    paddingBottom: '12px'
+                }
+            })
+        }
+    ],
+    columns: [
+        {
+            name: 'Balanced 50/50 Columns',
+            description: 'Equal split two-column layout',
+            create: () => ({
+                id: `blk_columns_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'columns',
+                style: {
+                    paddingTop: '12px',
+                    paddingBottom: '12px'
+                },
+                columns: [
+                    { width: '50%', blocks: [] },
+                    { width: '50%', blocks: [] }
+                ]
+            })
+        },
+        {
+            name: 'Balanced Three Columns',
+            description: 'Equal split three-column layout',
+            create: () => ({
+                id: `blk_columns_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'columns',
+                style: {
+                    paddingTop: '12px',
+                    paddingBottom: '12px'
+                },
+                columns: [
+                    { width: '33.33%', blocks: [] },
+                    { width: '33.33%', blocks: [] },
+                    { width: '33.33%', blocks: [] }
+                ]
+            })
+        },
+        {
+            name: 'Asymmetric 70/30 Content',
+            description: 'Wide content left, narrow sidebar right',
+            create: () => ({
+                id: `blk_columns_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'columns',
+                style: {
+                    paddingTop: '12px',
+                    paddingBottom: '12px'
+                },
+                columns: [
+                    { width: '70%', blocks: [] },
+                    { width: '30%', blocks: [] }
+                ]
+            })
+        },
+        {
+            name: 'Asymmetric 30/70 Content',
+            description: 'Narrow sidebar left, wide content right',
+            create: () => ({
+                id: `blk_columns_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'columns',
+                style: {
+                    paddingTop: '12px',
+                    paddingBottom: '12px'
+                },
+                columns: [
+                    { width: '30%', blocks: [] },
+                    { width: '70%', blocks: [] }
+                ]
+            })
+        }
+    ],
+    'score-card': [
+        {
+            name: 'Blue Score Card',
+            description: 'Centered score display in active blue brand banner',
+            create: () => ({
+                id: `blk_score_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'score-card',
+                style: {
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    borderRadius: '16px',
+                    paddingTop: '24px',
+                    paddingBottom: '24px'
+                }
+            })
+        },
+        {
+            name: 'Stats Bordered Panel',
+            description: 'Metric count badge with thin border outline',
+            create: () => ({
+                id: `blk_score_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'score-card',
+                style: {
+                    backgroundColor: '#f8fafc',
+                    color: '#0f172a',
+                    borderWidth: '2px',
+                    borderStyle: 'solid',
+                    borderColor: '#cbd5e1',
+                    borderRadius: '16px',
+                    paddingTop: '20px',
+                    paddingBottom: '20px'
+                }
+            })
+        },
+        {
+            name: 'Warning Score Card',
+            description: 'Centered score display in warning amber color',
+            create: () => ({
+                id: `blk_score_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'score-card',
+                style: {
+                    backgroundColor: '#f59e0b',
+                    color: '#ffffff',
+                    borderRadius: '16px',
+                    paddingTop: '24px',
+                    paddingBottom: '24px'
+                }
+            })
+        }
+    ],
+    header: [
+        {
+            name: 'Branded Header Logo',
+            description: 'Branded header with logo and bottom divider line',
+            create: () => ({
+                id: `blk_header_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'header',
+                url: '{{org_logo_url}}',
+                style: {
+                    paddingTop: '16px',
+                    paddingBottom: '16px'
+                }
+            })
+        }
+    ],
+    footer: [
+        {
+            name: 'Copyright Info Footer',
+            description: 'Branded copyright notice text block',
+            create: () => ({
+                id: `blk_footer_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'footer',
+                content: '© {{org_name}}. All rights reserved.',
+                style: {
+                    paddingTop: '24px',
+                    paddingBottom: '24px'
+                }
+            })
+        }
+    ],
+    rsvp: [
+        {
+            name: 'Minimal RSVP Card',
+            description: 'Sleek, centered, compact card with RSVP options',
+            create: () => ({
+                id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'rsvp',
+                title: 'Will you attend the upcoming onboarding session?',
+                goingLabel: 'Going',
+                laterLabel: 'Decide Later',
+                declinedLabel: 'Not Attending',
+                style: {
+                    textAlign: 'center',
+                    backgroundColor: '#ffffff',
+                    paddingTop: '20px',
+                    paddingBottom: '20px',
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    borderRadius: '12px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#e2e8f0'
+                }
+            })
+        },
+        {
+            name: 'Modern Card RSVP',
+            description: 'Wide card with background shadow and spaced buttons',
+            create: () => ({
+                id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'rsvp',
+                title: 'Kindly RSVP for the Scheduled Sync Meeting',
+                goingLabel: 'Accept Invitation',
+                laterLabel: 'Tentative',
+                declinedLabel: 'Decline',
+                style: {
+                    textAlign: 'center',
+                    backgroundColor: '#f8fafc',
+                    paddingTop: '24px',
+                    paddingBottom: '24px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#cbd5e1'
+                }
+            })
+        },
+        {
+            name: 'Elegant Slate RSVP',
+            description: 'High-contrast card with deep slate border',
+            create: () => ({
+                id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'rsvp',
+                title: 'Please confirm your attendance below',
+                goingLabel: 'Yes, I am in',
+                laterLabel: 'Later',
+                declinedLabel: 'No, I cannot',
+                style: {
+                    textAlign: 'center',
+                    backgroundColor: '#f1f5f9',
+                    paddingTop: '20px',
+                    paddingBottom: '20px',
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    borderRadius: '8px',
+                    borderWidth: '2px',
+                    borderStyle: 'solid',
+                    borderColor: '#475569'
+                }
+            })
+        }
+    ]
+};
+
+function BlockTemplatePreview({ block }: { block: MessageBlock }) {
+    const s = block.style || {};
+    
+    // Scale styles down for miniature preview representation
+    const miniStyle: React.CSSProperties = {
+        textAlign: s.textAlign as any || 'left',
+        backgroundColor: s.backgroundColor || 'transparent',
+        color: s.color || 'inherit',
+        borderRadius: s.borderRadius || '0px',
+        borderWidth: s.borderWidth ? `${Math.max(1, parseInt(s.borderWidth) / 2)}px` : undefined,
+        borderStyle: s.borderStyle as any,
+        borderColor: s.borderColor,
+        fontWeight: s.fontWeight as any,
+        fontSize: '9px',
+        paddingTop: s.paddingTop ? `${Math.max(2, parseInt(s.paddingTop) / 4)}px` : '4px',
+        paddingBottom: s.paddingBottom ? `${Math.max(2, parseInt(s.paddingBottom) / 4)}px` : '4px',
+        paddingLeft: s.paddingLeft ? `${Math.max(4, parseInt(s.paddingLeft) / 4)}px` : '8px',
+        paddingRight: s.paddingRight ? `${Math.max(4, parseInt(s.paddingRight) / 4)}px` : '8px',
+        marginTop: '0px',
+        marginBottom: '0px',
+    };
+
+    switch (block.type) {
+        case 'heading': {
+            const fontSz = block.variant === 'h1' ? '12px' : block.variant === 'h2' ? '10px' : '9px';
+            return (
+                <div className="w-full text-center py-2 px-1">
+                    <div 
+                        style={{ 
+                            fontSize: fontSz, 
+                            fontWeight: 'bold', 
+                            color: s.color || '#1e293b',
+                            textAlign: (s.textAlign as any) || 'center' 
+                        }}
+                    >
+                        {block.title || 'Heading'}
+                    </div>
+                </div>
+            );
+        }
+        case 'text':
+            return (
+                <div className="w-full p-2 overflow-hidden" style={{ backgroundColor: s.backgroundColor, borderRadius: s.borderRadius, border: s.borderStyle ? `1px ${s.borderStyle} ${s.borderColor}` : undefined }}>
+                    <div className="space-y-1" style={{ textAlign: s.textAlign as any }}>
+                        <div className="h-1 bg-slate-300 rounded w-full inline-block" />
+                        <div className="h-1 bg-slate-300 rounded w-5/6 inline-block" />
+                        <div className="h-1 bg-slate-200 rounded w-2/3 inline-block" />
+                    </div>
+                </div>
+            );
+        case 'button':
+            return (
+                <div className="w-full flex justify-center py-2">
+                    <span 
+                        style={miniStyle}
+                        className="inline-block text-[8px] font-bold truncate max-w-[120px] pointer-events-none"
+                    >
+                        {block.title || 'Button'}
+                    </span>
+                </div>
+            );
+        case 'list': {
+            const isOrdered = block.listStyle === 'ordered';
+            const isRoman = block.listStyle === 'roman';
+            const isCheckmark = block.listStyle === 'checkmark';
+            const isArrow = block.listStyle === 'arrow';
+            return (
+                <div className="w-full p-2 space-y-1 text-[8px] text-slate-500">
+                    {[1, 2].map((n) => (
+                        <div key={n} className="flex items-center gap-1.5">
+                            {isOrdered ? (
+                                <span className="font-mono text-[7px]">{n}.</span>
+                            ) : isRoman ? (
+                                <span className="font-mono text-[7px]">{n === 1 ? 'I.' : 'II.'}</span>
+                            ) : isCheckmark ? (
+                                <span className="text-emerald-500 text-[8px]">✓</span>
+                            ) : isArrow ? (
+                                <span className="text-blue-500 text-[8px]">→</span>
+                            ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+                            )}
+                            <div className="h-1 bg-slate-200 rounded w-16" />
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+        case 'divider': {
+            const borderW = s.borderWidth ? parseInt(s.borderWidth) : 1;
+            const styleBorder = s.borderStyle || 'solid';
+            const colorBorder = s.borderColor || '#cbd5e1';
+            return (
+                <div className="w-full py-3 px-2">
+                    <div 
+                        style={{ 
+                            borderTop: `${Math.min(4, borderW)}px ${styleBorder} ${colorBorder}`,
+                            height: '0px'
+                        }} 
+                    />
+                </div>
+            );
+        }
+        case 'quote':
+            return (
+                <div 
+                    className="w-full p-2 border-l-2 bg-slate-50"
+                    style={{ 
+                        borderLeftColor: s.borderColor || '#3b82f6',
+                        backgroundColor: s.backgroundColor || '#f8fafc',
+                        borderRadius: s.borderRadius
+                    }}
+                >
+                    <div className="h-1 bg-slate-400 rounded w-full" />
+                    <div className="h-1 bg-slate-300 rounded w-5/6 mt-1" />
+                </div>
+            );
+        case 'image':
+            return (
+                <div className="w-full py-1 px-4 flex justify-center">
+                    <div 
+                        className="bg-slate-100 border border-dashed rounded flex flex-col items-center justify-center w-full h-10 text-[8px] text-slate-400"
+                        style={{ borderRadius: s.borderRadius }}
+                    >
+                        Image Preview
+                    </div>
+                </div>
+            );
+        case 'video':
+            return (
+                <div className="w-full py-1 px-4 flex justify-center">
+                    <div 
+                        className="bg-slate-800 rounded relative flex items-center justify-center w-full h-10 text-[8px] text-white"
+                        style={{ borderRadius: s.borderRadius }}
+                    >
+                        <span className="w-3 h-3 rounded-full bg-white/20 flex items-center justify-center">▶</span>
+                    </div>
+                </div>
+            );
+        case 'logo':
+            return (
+                <div className="w-full py-2 px-4 flex justify-center">
+                    <div className="bg-slate-100 rounded-full w-6 h-6 border flex items-center justify-center text-[8px] text-slate-400">
+                        Logo
+                    </div>
+                </div>
+            );
+        case 'columns': {
+            const cols = block.columns || [{ width: '50%' }, { width: '50%' }];
+            return (
+                <div className="w-full p-1.5 flex gap-1 bg-slate-50 rounded border">
+                    {cols.map((col, idx) => (
+                        <div 
+                            key={idx} 
+                            className="bg-white border rounded p-1 flex-1 flex flex-col gap-1 items-center justify-center min-h-[24px]"
+                            style={{ width: col.width }}
+                        >
+                            <div className="h-0.5 bg-slate-200 rounded w-full" />
+                            <div className="h-0.5 bg-slate-150 rounded w-2/3" />
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+        case 'score-card':
+            return (
+                <div className="w-full p-2 bg-blue-600 rounded-lg text-white text-center space-y-1" style={{ backgroundColor: s.backgroundColor }}>
+                    <div className="text-[6px] tracking-widest opacity-80 uppercase">SCORE</div>
+                    <div className="text-[12px] font-black font-sans leading-none">85</div>
+                </div>
+            );
+        case 'rsvp':
+            return (
+                <div className="w-full p-2 bg-slate-50 border rounded-lg space-y-1.5 text-center" style={{ backgroundColor: s.backgroundColor }}>
+                    <div className="h-1 bg-slate-400 rounded w-4/5 mx-auto" />
+                    <div className="flex gap-1 justify-center">
+                        <span className="bg-emerald-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">Going</span>
+                        <span className="bg-amber-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">Later</span>
+                        <span className="bg-rose-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">Decline</span>
+                    </div>
+                </div>
+            );
+        default:
+            return <div className="text-[8px] text-slate-400">Preview</div>;
+    }
 }
 
 interface TemplateWorkshopProps {
@@ -375,6 +1387,8 @@ export function TemplateWorkshop({
     const [previewText, setPreviewText] = React.useState(initialTemplate?.previewText || '');
     const [body, setBody] = React.useState(initialTemplate?.body || '');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>(initialTemplate?.blocks || []);
+    const [activeBlockSubView, setActiveBlockSubView] = React.useState<string | null>(null);
+    const [rightPanelTab, setRightPanelTab] = React.useState<'properties' | 'layers'>('properties');
     
     // Default style wrapper selector logic
     const [styleId, setStyleId] = React.useState(() => {
@@ -593,24 +1607,333 @@ export function TemplateWorkshop({
         }
     }, [blocks, channel, contentMode, editorMode, body]);
 
+    const findBlockRecursively = React.useCallback((items: MessageBlock[], id: string): MessageBlock | undefined => {
+        for (const item of items) {
+            if (item.id === id) return item;
+            if (item.type === 'columns' && item.columns) {
+                for (const col of item.columns) {
+                    const found = findBlockRecursively(col.blocks, id);
+                    if (found) return found;
+                }
+            }
+        }
+        return undefined;
+    }, []);
+
+    const updateBlockRecursively = React.useCallback((items: MessageBlock[], id: string, updates: Partial<MessageBlock>): MessageBlock[] => {
+        return items.map(item => {
+            if (item.id === id) {
+                return { ...item, ...updates };
+            }
+            if (item.type === 'columns' && item.columns) {
+                return {
+                    ...item,
+                    columns: item.columns.map(col => ({
+                        ...col,
+                        blocks: updateBlockRecursively(col.blocks, id, updates)
+                    }))
+                };
+            }
+            return item;
+        });
+    }, []);
+
+    const removeBlockRecursively = React.useCallback((items: MessageBlock[], id: string): MessageBlock[] => {
+        return items.filter(item => item.id !== id).map(item => {
+            if (item.type === 'columns' && item.columns) {
+                return {
+                    ...item,
+                    columns: item.columns.map(col => ({
+                        ...col,
+                        blocks: removeBlockRecursively(col.blocks, id)
+                    }))
+                };
+            }
+            return item;
+        });
+    }, []);
+
+    const duplicateBlockRecursively = React.useCallback((items: MessageBlock[], id: string): MessageBlock[] => {
+        const next: MessageBlock[] = [];
+        for (const item of items) {
+            if (item.id === id) {
+                next.push(item);
+                next.push({
+                    ...item,
+                    id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+                });
+            } else if (item.type === 'columns' && item.columns) {
+                next.push({
+                    ...item,
+                    columns: item.columns.map(col => ({
+                        ...col,
+                        blocks: duplicateBlockRecursively(col.blocks, id)
+                    }))
+                });
+            } else {
+                next.push(item);
+            }
+        }
+        return next;
+    }, []);
+
+    const swapBlocksRecursively = React.useCallback((items: MessageBlock[], id: string, direction: 'up' | 'down'): MessageBlock[] => {
+        const idx = items.findIndex(item => item.id === id);
+        if (idx !== -1) {
+            const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+            if (targetIdx >= 0 && targetIdx < items.length) {
+                return arrayMove(items, idx, targetIdx);
+            }
+            return items;
+        }
+        return items.map(item => {
+            if (item.type === 'columns' && item.columns) {
+                return {
+                    ...item,
+                    columns: item.columns.map(col => ({
+                        ...col,
+                        blocks: swapBlocksRecursively(col.blocks, id, direction)
+                    }))
+                };
+            }
+            return item;
+        });
+    }, []);
+
+    const handleSwapSubBlocks = React.useCallback((parentBlockId: string, colIdx: number, a: number, b: number) => {
+        setBlocks(prev => {
+            const updateSwap = (items: MessageBlock[]): MessageBlock[] => {
+                return items.map(item => {
+                    if (item.id === parentBlockId && item.type === 'columns' && item.columns) {
+                        return {
+                            ...item,
+                            columns: item.columns.map((col, idx) => {
+                                if (idx === colIdx) {
+                                    return {
+                                        ...col,
+                                        blocks: arrayMove(col.blocks, a, b)
+                                    };
+                                }
+                                return col;
+                            })
+                        };
+                    }
+                    if (item.type === 'columns' && item.columns) {
+                        return {
+                            ...item,
+                            columns: item.columns.map(col => ({
+                                ...col,
+                                blocks: updateSwap(col.blocks)
+                            }))
+                        };
+                    }
+                    return item;
+                });
+            };
+            return updateSwap(prev);
+        });
+    }, []);
+
+    const customCollisionDetection = React.useCallback((args: any) => {
+        const pointerCollisions = pointerWithin(args);
+        if (pointerCollisions.length > 0) {
+            const colCellCollision = pointerCollisions.find(c => String(c.id).startsWith('col-cell-'));
+            if (colCellCollision) {
+                return [colCellCollision];
+            }
+            return pointerCollisions;
+        }
+        return rectIntersection(args);
+    }, []);
+
     const handleAddBlock = (type: MessageBlock['type'], variant?: 'h1' | 'h2' | 'h3') => {
         const id = `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
         const newBlock: MessageBlock = { id, type, title: '', content: '', variant, style: { textAlign: 'left', variant: 'default' } };
         if (type === 'list') { newBlock.listStyle = 'unordered'; newBlock.items = ['Item 1']; }
+        if (type === 'columns') {
+            newBlock.columns = [
+                { width: '50%', blocks: [] },
+                { width: '50%', blocks: [] }
+            ];
+        }
         setBlocks(prev => [...prev, newBlock]);
         setSelectedBlockId(id);
         setSidebarTab('blocks');
     };
 
+    const handleAddTemplateBlock = (createFn: () => MessageBlock) => {
+        const newBlock = createFn();
+        setBlocks(prev => [...prev, newBlock]);
+        setSelectedBlockId(newBlock.id);
+        setSidebarTab('blocks');
+    };
+
     const handleDragEnd = (event: any) => {
         const { active, over } = event;
-        if (over && active.id !== over.id) {
-            setBlocks(items => {
-                const oldIdx = items.findIndex(i => i.id === active.id);
-                const newIdx = items.findIndex(i => i.id === over.id);
-                return arrayMove(items, oldIdx, newIdx);
-            });
-        }
+        if (!over) return;
+        
+        const activeId = active.id;
+        const overId = over.id;
+        
+        if (activeId === overId) return;
+
+        setBlocks(prev => {
+            const activeBlock = findBlockRecursively(prev, activeId);
+            if (!activeBlock) return prev;
+
+            const cleanTree = removeBlockRecursively(prev, activeId);
+
+            if (String(overId).startsWith('col-cell-')) {
+                const parts = String(overId).split('-');
+                const colIdx = parseInt(parts.pop() || '0');
+                const parentBlockId = parts.slice(2).join('-');
+
+                return cleanTree.map(item => {
+                    if (item.id === parentBlockId && item.type === 'columns' && item.columns) {
+                        return {
+                            ...item,
+                            columns: item.columns.map((col, idx) => {
+                                if (idx === colIdx) {
+                                    return {
+                                        ...col,
+                                        blocks: [...col.blocks, activeBlock]
+                                    };
+                                }
+                                return col;
+                            })
+                        };
+                    }
+                    return item;
+                });
+            }
+
+            const insertRelative = (items: MessageBlock[]): MessageBlock[] => {
+                const next: MessageBlock[] = [];
+                for (const item of items) {
+                    if (item.id === overId) {
+                        next.push(item);
+                        next.push(activeBlock);
+                    } else if (item.type === 'columns' && item.columns) {
+                        next.push({
+                            ...item,
+                            columns: item.columns.map(col => ({
+                                ...col,
+                                blocks: insertRelative(col.blocks)
+                            }))
+                        });
+                    } else {
+                        next.push(item);
+                    }
+                }
+                return next;
+            };
+
+            return insertRelative(cleanTree);
+        });
+    };
+
+    const renderSidebarBlockOutline = () => {
+        const renderItem = (block: MessageBlock, isNested = false) => {
+            const BIcon = blockIcons[block.type] || Layout;
+            const isSelected = selectedBlockId === block.id;
+
+            return (
+                <div key={block.id} className="space-y-1">
+                    <div 
+                        className={cn(
+                            "flex items-center justify-between p-2 rounded-xl border text-xs font-semibold cursor-pointer transition-all",
+                            isSelected ? "bg-blue-500/10 border-blue-500 text-blue-600 font-bold" : "bg-card hover:bg-muted/10 border-border text-foreground",
+                            isNested && "ml-4"
+                        )}
+                        onClick={() => setSelectedBlockId(block.id)}
+                    >
+                        <div className="flex items-center gap-2 truncate max-w-[50%]">
+                            <BIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate capitalize">{block.type}</span>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setBlocks(p => swapBlocksRecursively(p, block.id, 'up'));
+                                }}
+                            >
+                                <ArrowUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setBlocks(p => swapBlocksRecursively(p, block.id, 'down'));
+                                }}
+                            >
+                                <ArrowDown className="h-3 w-3" />
+                            </Button>
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setBlocks(prev => duplicateBlockRecursively(prev, block.id));
+                                }}
+                            >
+                                <Copy className="h-3 w-3" />
+                            </Button>
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 rounded-md hover:bg-muted text-destructive hover:bg-destructive/10"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setBlocks(prev => removeBlockRecursively(prev, block.id));
+                                    if (selectedBlockId === block.id) setSelectedBlockId(null);
+                                }}
+                            >
+                                <Trash2 className="h-3 w-3" />
+                            </Button>
+                        </div>
+                    </div>
+                    {block.type === 'columns' && block.columns && (
+                        <div className="pl-2 border-l border-dashed border-border/60 ml-3 space-y-2 py-1 animate-in fade-in duration-200">
+                            {block.columns.map((col, idx) => (
+                                <div key={idx} className="space-y-1.5">
+                                    <div className="text-[8px] font-bold text-muted-foreground/45 uppercase tracking-widest pl-4">Column {idx + 1}</div>
+                                    {col.blocks.map(b => renderItem(b, true))}
+                                    {col.blocks.length === 0 && (
+                                        <div className="text-[8px] font-semibold text-muted-foreground/30 italic pl-4 py-0.5">Empty dropzone</div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        return (
+            <div className="space-y-3 text-left">
+                {blocks.length === 0 ? (
+                    <div className="py-20 text-center opacity-30">
+                        <Layout className="h-8 w-8 mx-auto mb-2" />
+                        <p className="text-[10px] font-semibold">No blocks placed yet</p>
+                    </div>
+                ) : (
+                    <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
+                        {blocks.map(b => renderItem(b, false))}
+                    </div>
+                )}
+            </div>
+        );
     };
 
     const handleMouseDown = (e: React.MouseEvent) => { e.preventDefault(); setIsResizing(true); };
@@ -710,10 +2033,14 @@ export function TemplateWorkshop({
     }, []);
 
     const wrapperStyles = React.useMemo(() => {
-        const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+        const activeStyle = styleId !== 'none'
+            ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+            : null;
         if (!activeStyle) return null;
         
-        const html = activeStyle.htmlWrapper;
+        const html = target === 'internal_team'
+            ? (activeStyle.htmlWrapperInternal ?? activeStyle.htmlWrapper ?? '')
+            : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? '');
         let outerBg = '';
         const bodyStyleMatch = html.match(/<body[^>]*style=["']([^"']*)["']/i);
         if (bodyStyleMatch) {
@@ -738,12 +2065,16 @@ export function TemplateWorkshop({
         }
         
         return { outerBg, cardBg, borderRadius, border };
-    }, [styleId, styles]);
+    }, [styleId, styles, target]);
 
     const resolvedHeader = React.useMemo(() => {
-        const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+        const activeStyle = styleId !== 'none'
+            ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+            : null;
         if (!activeStyle) return '';
-        const html = activeStyle.htmlWrapper;
+        const html = target === 'internal_team'
+            ? (activeStyle.htmlWrapperInternal ?? activeStyle.htmlWrapper ?? '')
+            : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? '');
         const contentIdx = html.indexOf('{{content}}');
         if (contentIdx === -1) return '';
         let headerPart = html.substring(0, contentIdx);
@@ -754,22 +2085,26 @@ export function TemplateWorkshop({
                                .replace(/<body[^>]*>/i, '')
                                .replace(/<\/body>/i, '');
                                
-        const firstDiv = headerPart.match(/<div[^>]*style=["'][^"']*max-width[^"']*["'][^>]*>/i);
+        const firstDiv = headerPart.match(/<div[^>]*style=["']/i);
         if (firstDiv) {
             headerPart = headerPart.replace(firstDiv[0], '');
         }
-        const lastDiv = headerPart.match(/<div[^>]*style=["'][^"']*padding[^"']*["'][^>]*>$/i);
+        const lastDiv = headerPart.match(/<div[^>]*style=["']/i);
         if (lastDiv) {
             headerPart = headerPart.replace(lastDiv[0], '');
         }
         
         return resolveVariables(headerPart, activeSimVariables);
-    }, [styleId, styles, activeSimVariables]);
+    }, [styleId, styles, activeSimVariables, target]);
 
     const resolvedFooter = React.useMemo(() => {
-        const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+        const activeStyle = styleId !== 'none'
+            ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+            : null;
         if (!activeStyle) return '';
-        const html = activeStyle.htmlWrapper;
+        const html = target === 'internal_team'
+            ? (activeStyle.htmlWrapperInternal ?? activeStyle.htmlWrapper ?? '')
+            : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? '');
         const contentIdx = html.indexOf('{{content}}');
         if (contentIdx === -1) return '';
         let footerPart = html.substring(contentIdx + 11);
@@ -785,28 +2120,37 @@ export function TemplateWorkshop({
                                .replace(/<\/div>\s*<\/div>\s*$/i, '');
                                
         return resolveVariables(footerPart, activeSimVariables);
-    }, [styleId, styles, activeSimVariables]);
+    }, [styleId, styles, activeSimVariables, target]);
 
     const resolvedPreviewHtml = React.useMemo(() => {
-        const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+        const activeStyle = styleId !== 'none'
+            ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+            : null;
         const effectiveMode = channel === 'sms' ? 'plain_text' : contentMode;
+        
+        const styleWrapper = activeStyle
+            ? (target === 'internal_team'
+                ? (activeStyle.htmlWrapperInternal ?? activeStyle.htmlWrapper ?? '')
+                : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? ''))
+            : '';
 
         if (effectiveMode === 'rich_builder') {
             return renderBlocksToHtml(blocks, activeSimVariables, {
-                wrapper: activeStyle?.htmlWrapper
+                wrapper: styleWrapper || undefined,
+                style: activeStyle || undefined
             });
         }
         let resolved = resolveVariables(body, activeSimVariables);
         if (effectiveMode === 'plain_text' && channel === 'email') {
             resolved = resolved.replace(/\n/g, '<br>\n');
         }
-        if (activeStyle?.htmlWrapper?.includes('{{content}}')) {
-            resolved = resolveVariables(activeStyle.htmlWrapper, activeSimVariables).replace('{{content}}', resolved);
+        if (styleWrapper && styleWrapper.includes('{{content}}')) {
+            resolved = resolveVariables(styleWrapper, activeSimVariables).replace('{{content}}', resolved);
         } else if (effectiveMode === 'plain_text' && channel === 'email') {
             resolved = plainTextToHtml(resolved);
         }
         return resolved;
-    }, [contentMode, blocks, body, activeSimVariables, styleId, styles, channel]);
+    }, [contentMode, blocks, body, activeSimVariables, styleId, styles, channel, target]);
 
     const filteredVars = React.useMemo(() => {
         let list = variables;
@@ -1339,23 +2683,68 @@ export function TemplateWorkshop({
                                     <div className="flex-1 min-h-0 relative overflow-hidden bg-muted/5">
                                         {contentMode === 'rich_builder' && sidebarTab === 'blocks' && (
                                             <div className="absolute inset-0 overflow-y-auto p-4 space-y-4">
-                                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-2">Block Types</p>
-                                                <div className="grid grid-cols-2 gap-2.5">
-                                                    {(Object.keys(blockIcons) as Array<keyof typeof blockIcons>).map(type => {
-                                                        const BIcon = blockIcons[type];
-                                                        return (
+                                                {activeBlockSubView ? (
+                                                    <div className="space-y-4 animate-in fade-in duration-200">
+                                                        {/* Back Header */}
+                                                        <div className="flex items-center gap-2 pb-2 border-b">
                                                             <button
-                                                                key={type}
                                                                 type="button"
-                                                                onClick={() => handleAddBlock(type as MessageBlock['type'])}
-                                                                className="flex flex-col items-center justify-center p-3 rounded-xl border bg-card hover:bg-muted/10 hover:border-primary/20 transition-all text-center aspect-[1.1]"
+                                                                onClick={() => setActiveBlockSubView(null)}
+                                                                className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100/80 px-2 py-1 rounded-lg border border-blue-200 transition-all animate-in slide-in-from-left-2 duration-200"
                                                             >
-                                                                <BIcon className="h-4.5 w-4.5 text-muted-foreground mb-1.5 shrink-0" />
-                                                                <span className="text-[9px] font-semibold capitalize">{type}</span>
+                                                                <ArrowLeft className="h-3 w-3" /> Back
                                                             </button>
-                                                        );
-                                                    })}
-                                                </div>
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground capitalize">
+                                                                {activeBlockSubView === 'score-card' ? 'Score Card' : activeBlockSubView} Styles
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Templates List */}
+                                                        <div className="grid grid-cols-1 gap-3 animate-in slide-in-from-bottom-2 duration-300">
+                                                            {(blockTypeTemplates[activeBlockSubView] || []).map(tpl => (
+                                                                <button
+                                                                    key={tpl.name}
+                                                                    type="button"
+                                                                    onClick={() => handleAddTemplateBlock(tpl.create)}
+                                                                    className="w-full text-left rounded-xl border bg-card hover:bg-muted/10 hover:border-primary/30 hover:shadow-sm transition-all overflow-hidden flex flex-col group"
+                                                                >
+                                                                    {/* Miniature Rendered Preview Panel */}
+                                                                    <div className="w-full bg-slate-50/50 p-3 border-b flex items-center justify-center min-h-[56px] group-hover:bg-slate-50 transition-colors">
+                                                                        <BlockTemplatePreview block={tpl.create()} />
+                                                                    </div>
+
+                                                                    {/* Details Panel */}
+                                                                    <div className="p-2.5 min-w-0">
+                                                                        <p className="text-[10px] font-bold truncate text-slate-800">{tpl.name}</p>
+                                                                        <p className="text-[8px] text-muted-foreground truncate mt-0.5">{tpl.description}</p>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-2 animate-in fade-in duration-200">Block Types</p>
+                                                        <div className="grid grid-cols-2 gap-2.5 animate-in slide-in-from-bottom-2 duration-250">
+                                                            {(Object.keys(blockIcons) as Array<keyof typeof blockIcons>)
+                                                                .filter(type => type !== 'rsvp' || category === 'meetings')
+                                                                .map(type => {
+                                                                    const BIcon = blockIcons[type];
+                                                                    return (
+                                                                        <button
+                                                                            key={type}
+                                                                            type="button"
+                                                                            onClick={() => setActiveBlockSubView(type)}
+                                                                            className="flex flex-col items-center justify-center p-3 rounded-xl border bg-card hover:bg-muted/10 hover:border-primary/20 transition-all text-center aspect-[1.1]"
+                                                                        >
+                                                                            <BIcon className="h-4.5 w-4.5 text-muted-foreground mb-1.5 shrink-0" />
+                                                                            <span className="text-[9px] font-semibold capitalize">{type === 'score-card' ? 'Score Card' : type}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
 
@@ -1655,8 +3044,11 @@ export function TemplateWorkshop({
                                                         <SelectValue placeholder="No Wrapper" />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl">
+                                                        <SelectItem value="default" className="rounded-lg text-xs font-semibold">
+                                                            Use Default Style
+                                                        </SelectItem>
                                                         <SelectItem value="none" className="rounded-lg text-xs font-semibold text-muted-foreground">
-                                                            None
+                                                            No Wrapper
                                                         </SelectItem>
                                                         {styles.map(style => (
                                                             <SelectItem key={style.id} value={style.id} className="rounded-lg text-xs">
@@ -1759,7 +3151,7 @@ export function TemplateWorkshop({
                                                     />
                                                 )}
                                                 <div className="p-12 space-y-2">
-                                                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                                    <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd}>
                                                         <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
                                                             <div className="space-y-4">
                                                                 {blocks.map((block, idx) => (
@@ -1771,11 +3163,17 @@ export function TemplateWorkshop({
                                                                         isSelected={selectedBlockId === block.id}
                                                                         simulationVars={activeSimVariables}
                                                                         onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('blocks'); }}
-                                                                        onRemove={() => { setBlocks(prev => prev.filter(b => b.id !== block.id)); if (selectedBlockId === block.id) setSelectedBlockId(null); }}
-                                                                        onDuplicate={() => { const next = [...blocks]; next.splice(idx + 1, 0, { ...block, id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` }); setBlocks(next); }}
-                                                                        onSwap={(a, b) => setBlocks(p => arrayMove(p, a, b))}
+                                                                        onRemove={() => { setBlocks(prev => removeBlockRecursively(prev, block.id)); if (selectedBlockId === block.id) setSelectedBlockId(null); }}
+                                                                        onDuplicate={() => { setBlocks(prev => duplicateBlockRecursively(prev, block.id)); }}
+                                                                        onSwap={(a, b) => setBlocks(p => swapBlocksRecursively(p, block.id, b < a ? 'up' : 'down'))}
                                                                         totalCount={blocks.length}
-                                                                        onUpdate={u => setBlocks(p => p.map(b => b.id === block.id ? { ...b, ...u } : b))}
+                                                                        onUpdate={u => setBlocks(p => updateBlockRecursively(p, block.id, u))}
+                                                                        selectedSubBlockId={selectedBlockId}
+                                                                        onSelectSubBlock={(subId) => { setSelectedBlockId(subId); setSidebarTab('blocks'); }}
+                                                                        onRemoveSubBlock={(parentBlockId, colIdx, subBlockId) => { setBlocks(prev => removeBlockRecursively(prev, subBlockId)); if (selectedBlockId === subBlockId) setSelectedBlockId(null); }}
+                                                                        onDuplicateSubBlock={(parentBlockId, colIdx, subBlockId) => setBlocks(prev => duplicateBlockRecursively(prev, subBlockId))}
+                                                                        onSwapSubBlocks={handleSwapSubBlocks}
+                                                                        onUpdateSubBlock={(subBlockId, updates) => setBlocks(prev => updateBlockRecursively(prev, subBlockId, updates))}
                                                                     />
                                                                 ))}
                                                             </div>
@@ -1796,24 +3194,55 @@ export function TemplateWorkshop({
 
                             {/* Right properties panel (only for Visual Blocks builder) */}
                             {contentMode === 'rich_builder' && (
-                                <div className="border-l bg-background flex flex-col shrink-0 w-[340px] shadow-xl text-left select-text">
-                                    <div className="px-4 py-3 border-b bg-background flex items-center justify-between shrink-0">
-                                        <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"><Settings2 className="h-3.5 w-3.5" /> Properties</span>
+                                <div className="border-l bg-background flex flex-col shrink-0 w-[340px] shadow-xl text-left select-text h-full overflow-hidden">
+                                    {/* Tabs Header Switcher */}
+                                    <div className="border-b bg-background shrink-0 flex">
+                                        <button
+                                            type="button"
+                                            onClick={() => setRightPanelTab('properties')}
+                                            className={cn(
+                                                "flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-wider border-b-2 transition-all flex items-center justify-center gap-1.5",
+                                                rightPanelTab === 'properties'
+                                                    ? "border-blue-600 text-blue-600 bg-blue-50/5 font-extrabold"
+                                                    : "border-transparent text-muted-foreground hover:text-foreground bg-transparent"
+                                            )}
+                                        >
+                                            <Settings2 className="h-3.5 w-3.5" /> Properties
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRightPanelTab('layers')}
+                                            className={cn(
+                                                "flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-wider border-b-2 transition-all flex items-center justify-center gap-1.5",
+                                                rightPanelTab === 'layers'
+                                                    ? "border-blue-600 text-blue-600 bg-blue-50/5 font-extrabold"
+                                                    : "border-transparent text-muted-foreground hover:text-foreground bg-transparent"
+                                            )}
+                                        >
+                                            <Layout className="h-3.5 w-3.5" /> Layers
+                                        </button>
                                     </div>
+                                    
                                     <div className="flex-1 overflow-y-auto p-4">
-                                        {selectedBlockId ? (
-                                            <BlockInspector
-                                                block={blocks.find(b => b.id === selectedBlockId)!}
-                                                variables={variables}
-                                                templateCategory={category}
-                                                onUpdate={u => setBlocks(p => p.map(b => b.id === selectedBlockId ? { ...b, ...u } : b))}
-                                            />
+                                        {rightPanelTab === 'properties' ? (
+                                            selectedBlockId ? (
+                                                <BlockInspector
+                                                    block={findBlockRecursively(blocks, selectedBlockId)!}
+                                                    variables={variables}
+                                                    templateCategory={category}
+                                                    onUpdate={u => setBlocks(p => updateBlockRecursively(p, selectedBlockId, u))}
+                                                />
+                                            ) : (
+                                                <div className="py-20 text-center opacity-30 animate-in fade-in duration-200">
+                                                    <Layout className="h-8 w-8 mx-auto mb-2" />
+                                                    <p className="text-[10px] font-semibold leading-relaxed">
+                                                        Select a block on the canvas<br />to edit properties
+                                                    </p>
+                                                </div>
+                                            )
                                         ) : (
-                                            <div className="py-20 text-center opacity-30">
-                                                <Layout className="h-8 w-8 mx-auto mb-2" />
-                                                <p className="text-[10px] font-semibold leading-relaxed">
-                                                    Select a block on the canvas<br />to edit properties
-                                                </p>
+                                            <div className="animate-in fade-in duration-200">
+                                                {renderSidebarBlockOutline()}
                                             </div>
                                         )}
                                     </div>
@@ -1824,21 +3253,43 @@ export function TemplateWorkshop({
 
                     {step === 3 && (
                         <SimulationStudio
-                            template={initialTemplate || ({} as any)}
+                            template={{
+                                ...(initialTemplate || {}),
+                                subject,
+                                previewText,
+                                body,
+                                blocks
+                            } as any}
                             simVariables={simVariables}
                             isSimLoading={isSimLoading}
                             simEntity={simEntity} setSimEntity={setSimEntity}
                             simRecordId={simRecordId} setSimRecordId={setSimRecordId}
                             entities={entities} meetings={meetings} surveys={surveys} pdfs={pdfs}
                             resolvedPreview={(tmpl, vars, isDark) => {
-                                const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+                                const activeStyle = styleId !== 'none'
+                                    ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+                                    : null;
                                 const effectiveMode = channel === 'sms' ? 'plain_text' : contentMode;
+                                
+                                const styleWrapper = activeStyle
+                                    ? (target === 'internal_team'
+                                        ? (activeStyle.htmlWrapperInternal ?? activeStyle.htmlWrapper ?? '')
+                                        : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? ''))
+                                    : '';
+
                                 if (effectiveMode === 'rich_builder') {
-                                    return renderBlocksToHtml(blocks, vars, { wrapper: activeStyle?.htmlWrapper, isDark });
+                                    return renderBlocksToHtml(blocks, vars, { 
+                                        wrapper: styleWrapper || undefined, 
+                                        style: activeStyle || undefined, 
+                                        isDark 
+                                    });
                                 }
                                 let resolved = resolveVariables(body, vars);
-                                if (effectiveMode === 'html_code' && activeStyle?.htmlWrapper?.includes('{{content}}')) {
-                                    resolved = resolveVariables(activeStyle.htmlWrapper, vars).replace('{{content}}', resolved);
+                                if (effectiveMode === 'plain_text' && channel === 'email') {
+                                    resolved = resolved.replace(/\n/g, '<br>\n');
+                                }
+                                if (styleWrapper && styleWrapper.includes('{{content}}')) {
+                                    resolved = resolveVariables(styleWrapper, vars).replace('{{content}}', resolved);
                                 } else if (effectiveMode === 'plain_text' && channel === 'email') {
                                     resolved = plainTextToHtml(resolved, isDark);
                                 }

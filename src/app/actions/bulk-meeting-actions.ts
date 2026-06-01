@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { generateRegistrantToken } from '@/lib/meeting-tokens';
 import { sendRawMessage } from '@/lib/messaging-engine';
 import type { WorkspaceEntity } from '@/lib/types';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 interface BulkMeetingInviteData {
   entityIds: string[];
@@ -30,7 +31,8 @@ export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData
     const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingSnap.id;
     const meetingTitle = meeting.title || 'Onboarding Session';
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+    const baseUrl = getBaseUrl();
+
     const now = new Date().toISOString();
     
     const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);

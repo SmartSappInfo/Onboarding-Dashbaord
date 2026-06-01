@@ -58,6 +58,7 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebas
 import { collection, orderBy, query, where, limit } from 'firebase/firestore';
 import type { Task, UserProfile, WorkspaceEntity, TaskPriority, TaskCategory, Survey, PDFForm, SurveyResponse, Submission, TaskReminder, TaskNote, TaskAttachment } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useSortedEntities } from '@/context/EntityCacheContext';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -129,15 +130,11 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
         ) : null, 
     [open, firestore, activeOrganizationId]);
     
-    // Updated to fetch from workspace_entities
-    const entitiesQuery = useMemoFirebase(() => {
-        if (!open || !firestore || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'workspace_entities'), 
-            where('workspaceId', '==', activeWorkspaceId), 
-            orderBy('displayName', 'asc')
-        );
-    }, [open, firestore, activeWorkspaceId]);
+    const { sortedEntities } = useSortedEntities();
+    const entities = React.useMemo(() => {
+        if (!open) return null;
+        return sortedEntities;
+    }, [open, sortedEntities]);
 
     const surveysQuery = useMemoFirebase(() => {
         if (!open || !firestore || !activeWorkspaceId) return null;
@@ -150,7 +147,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
     }, [open, firestore, activeWorkspaceId]);
     
     const { data: users } = useCollection<UserProfile>(usersQuery);
-    const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
+    // Removed duplicate entities subscription
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
 

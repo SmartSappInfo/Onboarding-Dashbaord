@@ -50,6 +50,7 @@ import { EntitySelector } from './EntitySelector';
 import { VariablePicker } from '@/components/messaging/VariablePicker';
 import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
+import { useEntityCache } from '@/context/EntityCacheContext';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const formSchema = z.object({
@@ -278,12 +279,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const { data: responses } = useCollection<SurveyResponse>(responsesQuery);
     const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
-    const weQuery = useMemoFirebase(() =>
-        firestore && activeWorkspaceId
-            ? query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId))
-            : null,
-    [firestore, activeWorkspaceId]);
-    const { data: weRaw, isLoading: isLoadingWE } = useCollection<any>(weQuery);
+    const { entities: weRaw, isLoading: isLoadingWE } = useEntityCache();
 
     const entitiesQuery = useMemoFirebase(() =>
         firestore && activeOrganizationId
@@ -1370,10 +1366,7 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate; 
                     <p className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase mb-1">Subject</p>
                     <p className="font-semibold text-sm truncate">{resolveVariables(template.subject || '', combinedVars) || '(No Subject)'}</p>
                 </div>
-                <div className="flex-1 overflow-auto p-6">
-                    <div className="whitespace-pre-wrap font-medium leading-relaxed text-sm text-foreground dark:prose-invert prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: resolvedBody }} />
-                </div>
+                <iframe srcDoc={resolvedBody} className="flex-1 w-full border-none bg-card" title="High Fidelity Preview" />
             </div>
         );
     }
