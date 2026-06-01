@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
+import { parseMarkdownLinksToHtml } from '@/lib/utils/markdown-link-parser';
 import type { MessageTemplate, MessageStyle } from '@/lib/types';
 
 // Premium high-fidelity mock variables for rendering exact state without unresolved curly braces
@@ -72,7 +73,25 @@ export function TemplatePreviewModal({
     const resolvedContent = React.useMemo(() => {
         if (!template) return '';
 
-        const activeStyle = template.styleId ? styles.find(s => s.id === template.styleId) : null;
+        let activeStyle: MessageStyle | null = null;
+        if (template.styleId !== 'none') {
+            const styleIdToUse = template.styleId;
+            if (!styleIdToUse || styleIdToUse === 'default') {
+                activeStyle = styles.find(s => s.isDefault) || null;
+            } else {
+                activeStyle = styles.find(s => s.id === styleIdToUse) || null;
+            }
+        }
+
+        let styleWrapper = '';
+        if (activeStyle) {
+            if (template.target === 'internal_team') {
+                styleWrapper = activeStyle.htmlWrapperInternal || activeStyle.htmlWrapper || '';
+            } else {
+                styleWrapper = activeStyle.htmlWrapperExternal || activeStyle.htmlWrapper || '';
+            }
+        }
+
         const channel = template.channel;
         const contentMode = template.contentMode;
 
@@ -94,14 +113,25 @@ export function TemplatePreviewModal({
 
         if (contentMode === 'rich_builder') {
             return renderBlocksToHtml(template.blocks || [], mergedMocks, {
-                wrapper: activeStyle?.htmlWrapper
+                wrapper: styleWrapper || undefined,
+                style: activeStyle || undefined
             });
         }
 
         let resolved = resolveVariables(template.body, mergedMocks);
-        if (contentMode === 'html_code' && activeStyle?.htmlWrapper?.includes('{{content}}')) {
-            resolved = resolveVariables(activeStyle.htmlWrapper, mergedMocks).replace('{{content}}', resolved);
-        } else if (contentMode === 'plain_text') {
+        if (styleWrapper && styleWrapper.includes('{{content}}')) {
+            let contentHtml = resolved;
+            if (contentMode === 'plain_text' || !contentMode) {
+                const escaped = contentHtml
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+                const withLinks = parseMarkdownLinksToHtml(escaped);
+                contentHtml = withLinks.replace(/\n/g, '<br>\n');
+            }
+            resolved = resolveVariables(styleWrapper, mergedMocks).replace('{{content}}', contentHtml);
+        } else if (contentMode === 'plain_text' || !contentMode) {
             resolved = plainTextToHtml(resolved);
         }
         return resolved;
