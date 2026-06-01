@@ -4,6 +4,7 @@
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting, EntityType } from './types';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
+import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
 import { sendEmail, type EmailAttachment } from './resend-service';
@@ -431,7 +432,17 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         resolvedBody = resolveVariables(template.body, finalVariables);
         if (template.channel === 'email') {
             if (styleWrapper && styleWrapper.includes('{{content}}')) {
-                resolvedBody = resolveVariables(styleWrapper, finalVariables).replace('{{content}}', resolvedBody);
+                let contentHtml = resolvedBody;
+                if (template.contentMode === 'plain_text' || !template.contentMode) {
+                    const escaped = contentHtml
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                    const withLinks = parseMarkdownLinksToHtml(escaped);
+                    contentHtml = withLinks.replace(/\n/g, '<br>\n');
+                }
+                resolvedBody = resolveVariables(styleWrapper, finalVariables).replace('{{content}}', contentHtml);
             } else if (template.contentMode === 'plain_text' || !template.contentMode) {
                 // Plain text emails: convert \n to <br> and wrap in styled HTML container
                 resolvedBody = plainTextToHtml(resolvedBody);

@@ -227,8 +227,11 @@ export function renderBlocksToHtml(
   const footerTextColor = isDark ? '#6b7280' : '#94a3b8';
   const subBg = isDark ? '#1f2937' : '#f8fafc';
   const fontFam = options?.style?.fontFamily || 'Figtree';
+  const hasUnit = (val: string) => /px|%|em|rem|pt|vw|vh$/.test(val);
 
-  const cardRadius = options?.style?.borderRadius ? (options.style.borderRadius.endsWith('px') || options.style.borderRadius.endsWith('%') ? options.style.borderRadius : `${options.style.borderRadius}px`) : '24px';
+  const cardRadius = options?.style?.borderRadius 
+    ? (hasUnit(options.style.borderRadius) ? options.style.borderRadius : `${options.style.borderRadius}px`) 
+    : '24px';
 
   const renderBlock = (block: MessageBlock, isNested?: boolean): string => {
     if (!shouldShowBlock(block, variables)) {
@@ -310,8 +313,8 @@ export function renderBlocksToHtml(
         if (!url) {
             blockHtml = '';
         } else {
-            const defaultImgRadius = options?.style?.borderRadius ? (options.style.borderRadius.endsWith('px') || options.style.borderRadius.endsWith('%') ? options.style.borderRadius : `${options.style.borderRadius}px`) : '16px';
-            const imgRadius = s.borderRadius ? (s.borderRadius.endsWith('px') || s.borderRadius.endsWith('%') ? s.borderRadius : `${s.borderRadius}px`) : defaultImgRadius;
+            const defaultImgRadius = options?.style?.borderRadius ? (hasUnit(options.style.borderRadius) ? options.style.borderRadius : `${options.style.borderRadius}px`) : '16px';
+            const imgRadius = s.borderRadius ? (hasUnit(s.borderRadius) ? s.borderRadius : `${s.borderRadius}px`) : defaultImgRadius;
             blockHtml = `<div style="${wrapperStyle}"><img src="${url}" style="max-width: 100%; height: auto; border-radius: ${imgRadius}; display: block; border: ${s.borderWidth ? `${s.borderWidth} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}` : `1px solid ${dividerColor}`}; ${align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin-left: auto;' : ''}" alt="Image" /></div>`;
         }
         break;
@@ -323,8 +326,8 @@ export function renderBlocksToHtml(
         const btnBg = s.backgroundColor || options?.style?.primaryColor || '#3B5FFF';
         const btnColor = s.color || '#ffffff';
         const styleRadius = options?.style?.borderRadius;
-        const defaultRadius = styleRadius ? (styleRadius.endsWith('px') || styleRadius.endsWith('%') ? styleRadius : `${styleRadius}px`) : '12px';
-        const btnRadius = s.borderRadius ? (s.borderRadius.endsWith('px') || s.borderRadius.endsWith('%') ? s.borderRadius : `${s.borderRadius}px`) : defaultRadius;
+        const defaultRadius = styleRadius ? (hasUnit(styleRadius) ? styleRadius : `${styleRadius}px`) : '12px';
+        const btnRadius = s.borderRadius ? (hasUnit(s.borderRadius) ? s.borderRadius : `${s.borderRadius}px`) : defaultRadius;
         const btnFontSize = fontSizeVal || '16px';
         const btnPadding = [
           s.paddingTop || '16px',
@@ -513,9 +516,13 @@ export function renderBlocksToHtml(
     : contentHtml;
 
   let fontLink = '';
+  const webSafeFonts = ['arial', 'helvetica', 'georgia', 'times new roman', 'courier', 'courier new', 'verdana', 'sans-serif', 'serif', 'monospace', 'system-ui', '-apple-system'];
   if (fontFam && fontFam !== 'Figtree') {
-    const formattedFont = fontFam.replace(/\s+/g, '+');
-    fontLink = `\n<link href="https://fonts.googleapis.com/css2?family=${formattedFont}:wght@400;500;700;800;900&display=swap" rel="stylesheet">`;
+    const primaryFont = fontFam.split(',')[0].trim().replace(/['"]/g, '');
+    if (!webSafeFonts.includes(primaryFont.toLowerCase())) {
+        const formattedFont = primaryFont.replace(/\s+/g, '+');
+        fontLink = `\n<link href="https://fonts.googleapis.com/css2?family=${formattedFont}:wght@400;500;700;800;900&display=swap" rel="stylesheet">`;
+    }
   }
 
   return `<!doctype html>
@@ -528,11 +535,11 @@ export function renderBlocksToHtml(
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;800;900&display=swap" rel="stylesheet">${fontLink}
 <style type="text/css">
   #outlook a { padding:0; }
-  body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; font-family: '${fontFam}', Helvetica, Arial, sans-serif !important; }
+  body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; }
   table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
   img { border:0;height:auto;line-height:100%; outline:none;text-decoration:none;-ms-interpolation-mode:bicubic; }
   p { display:block;margin:13px 0; line-height: 1.6; }
-  * { font-family: '${fontFam}', Helvetica, Arial, sans-serif !important; }
+  body, table, td, p, a, h1, h2, h3, h4, h5, h6 { font-family: '${fontFam}', Helvetica, Arial, sans-serif; }
 </style>
 </head>
 <body style="word-spacing:normal;background-color:${outerBg};padding: 40px 20px;">
