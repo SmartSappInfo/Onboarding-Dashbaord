@@ -469,7 +469,7 @@ export function VisualBlock({
                 
                 return (
                     <div 
-                        className={cn("w-full text-left select-text transition-all duration-300 p-6 sm:p-7 shadow-[0_2px_12px_rgba(0,0,0,0.04)]", alignmentClass)} 
+                        className={cn("w-full text-left select-text transition-all duration-300 p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]", alignmentClass)} 
                         style={{
                             backgroundColor: s.backgroundColor || '#ffffff',
                             ...spacingStyle,
@@ -489,8 +489,7 @@ export function VisualBlock({
                                             type="text"
                                             value={pillTextVal}
                                             onChange={(e) => onContentUpdate?.({ pillText: e.target.value })}
-                                            className="bg-transparent border-none outline-none font-semibold text-blue-600 p-0 m-0 w-auto text-xs"
-                                            style={{ width: `${Math.max(pillTextVal.length || 5, 3)}ch` }}
+                                            className="bg-transparent border-none outline-none font-semibold text-blue-600 p-0 m-0 w-full text-xs text-center"
                                             onKeyDown={(e) => e.stopPropagation()}
                                             onFocus={(e) => e.stopPropagation()}
                                             onClick={(e) => e.stopPropagation()}
@@ -504,7 +503,7 @@ export function VisualBlock({
                                     <textarea
                                         value={title}
                                         onChange={(e) => onContentUpdate?.({ title: e.target.value })}
-                                        className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-tight"
+                                        className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-tight break-words"
                                         placeholder="Event Title"
                                         rows={1}
                                         onKeyDown={(e) => {
@@ -533,7 +532,7 @@ export function VisualBlock({
                                     <textarea
                                         value={eventDescVal}
                                         onChange={(e) => onContentUpdate?.({ content: e.target.value })}
-                                        className="text-xs sm:text-sm text-slate-500 bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-relaxed"
+                                        className="text-xs sm:text-sm text-slate-500 bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-relaxed break-words"
                                         placeholder="Event Description"
                                         rows={2}
                                         onKeyDown={(e) => e.stopPropagation()}
@@ -582,7 +581,7 @@ export function VisualBlock({
                                         type="text"
                                         value={rsvpDate}
                                         onChange={(e) => onContentUpdate?.({ rsvpDate: e.target.value })}
-                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full"
+                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all"
                                         placeholder="Dec 15, 2024"
                                         onKeyDown={(e) => e.stopPropagation()}
                                         onFocus={(e) => e.stopPropagation()}
@@ -616,7 +615,7 @@ export function VisualBlock({
                                         type="text"
                                         value={rsvpTime}
                                         onChange={(e) => onContentUpdate?.({ rsvpTime: e.target.value })}
-                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full"
+                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all"
                                         placeholder="2:00 PM"
                                         onKeyDown={(e) => e.stopPropagation()}
                                         onFocus={(e) => e.stopPropagation()}
@@ -650,7 +649,7 @@ export function VisualBlock({
                                         type="text"
                                         value={rsvpLocation}
                                         onChange={(e) => onContentUpdate?.({ rsvpLocation: e.target.value })}
-                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full"
+                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all"
                                         placeholder="Virtual Meeting"
                                         onKeyDown={(e) => e.stopPropagation()}
                                         onFocus={(e) => e.stopPropagation()}
@@ -669,13 +668,13 @@ export function VisualBlock({
                             {isBento ? (
                                 <div className="space-y-3">
                                     {/* Going (Full Width) */}
-                                    <div className="w-full bg-[#0052cc] text-white rounded-xl py-3 px-4 text-sm font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer hover:bg-[#0047b3] transition-all">
+                                    <div className="w-full bg-[#0052cc] text-white rounded-xl py-3 px-4 text-sm font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer hover:bg-[#0047b3] transition-all min-w-0">
                                         <input
                                             type="text"
                                             value={going}
                                             onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
-                                            style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(going.length || 5, 3)}ch` }}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
+                                            style={{ color: '#ffffff', font: 'inherit' }}
                                             onKeyDown={(e) => e.stopPropagation()}
                                             onFocus={(e) => e.stopPropagation()}
                                             onClick={(e) => e.stopPropagation()}
@@ -684,15 +683,15 @@ export function VisualBlock({
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                                     </div>
                                     {/* Split Secondary Buttons */}
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 min-[370px]:grid-cols-2 gap-3">
                                         {/* Later */}
-                                        <div className="bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
+                                        <div className="bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all min-w-0">
                                             <input
                                                 type="text"
                                                 value={later}
                                                 onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
-                                                style={{ color: '#334155', font: 'inherit', width: `${Math.max(later.length || 5, 3)}ch` }}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
+                                                style={{ color: '#334155', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                                 onFocus={(e) => e.stopPropagation()}
                                                 onClick={(e) => e.stopPropagation()}
@@ -701,13 +700,13 @@ export function VisualBlock({
                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                         </div>
                                         {/* Not Going */}
-                                        <div className="bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
+                                        <div className="bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all min-w-0">
                                             <input
                                                 type="text"
                                                 value={declined}
                                                 onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
-                                                style={{ color: '#334155', font: 'inherit', width: `${Math.max(declined.length || 9, 3)}ch` }}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
+                                                style={{ color: '#334155', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                                 onFocus={(e) => e.stopPropagation()}
                                                 onClick={(e) => e.stopPropagation()}
@@ -718,15 +717,15 @@ export function VisualBlock({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {/* Going (Full on Mobile grid-cols-2 spans 2, Inline on Desktop spans 1 of 3) */}
-                                    <div className="col-span-2 sm:col-span-1 bg-[#0052cc] text-white rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer hover:bg-[#0047b3] transition-all">
+                                <div className="grid grid-cols-1 min-[370px]:grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {/* Going (Full on Mobile < 370, 2-cols bento on 370-640, Inline on Desktop spans 1 of 3) */}
+                                    <div className="col-span-full min-[370px]:col-span-2 sm:col-span-1 bg-[#0052cc] text-white rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer hover:bg-[#0047b3] transition-all min-w-0">
                                         <input
                                             type="text"
                                             value={going}
                                             onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
-                                            style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(going.length || 5, 3)}ch` }}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
+                                            style={{ color: '#ffffff', font: 'inherit' }}
                                             onKeyDown={(e) => e.stopPropagation()}
                                             onFocus={(e) => e.stopPropagation()}
                                             onClick={(e) => e.stopPropagation()}
@@ -735,13 +734,13 @@ export function VisualBlock({
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                                     </div>
                                     {/* Later */}
-                                    <div className="col-span-1 bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-all">
+                                    <div className="col-span-full min-[370px]:col-span-1 bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-all min-w-0">
                                         <input
                                             type="text"
                                             value={later}
                                             onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
-                                            style={{ color: '#334155', font: 'inherit', width: `${Math.max(later.length || 5, 3)}ch` }}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
+                                            style={{ color: '#334155', font: 'inherit' }}
                                             onKeyDown={(e) => e.stopPropagation()}
                                             onFocus={(e) => e.stopPropagation()}
                                             onClick={(e) => e.stopPropagation()}
@@ -750,13 +749,13 @@ export function VisualBlock({
                                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                     </div>
                                     {/* Not Going */}
-                                    <div className="col-span-1 bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-all">
+                                    <div className="col-span-full min-[370px]:col-span-1 bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-all min-w-0">
                                         <input
                                             type="text"
                                             value={declined}
                                             onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
-                                            style={{ color: '#334155', font: 'inherit', width: `${Math.max(declined.length || 9, 3)}ch` }}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
+                                            style={{ color: '#334155', font: 'inherit' }}
                                             onKeyDown={(e) => e.stopPropagation()}
                                             onFocus={(e) => e.stopPropagation()}
                                             onClick={(e) => e.stopPropagation()}
@@ -776,7 +775,7 @@ export function VisualBlock({
             if (isDetailedCard) {
                 return (
                     <div 
-                        className={cn("w-full text-left p-6 select-text transition-all duration-300", alignmentClass)} 
+                        className={cn("w-full text-left p-4 sm:p-6 select-text transition-all duration-300", alignmentClass)} 
                         style={{
                             backgroundColor: s.backgroundColor || '#ffffff',
                             ...spacingStyle,
@@ -819,7 +818,7 @@ export function VisualBlock({
                                 <div className="text-blue-600 mt-1 shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0062cc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                 </div>
-                                <div className="flex-1 space-y-1">
+                                <div className="flex-1 min-w-0 space-y-1">
                                     <input
                                         type="text"
                                         value={rsvpDate}
@@ -852,7 +851,7 @@ export function VisualBlock({
                                 <div className="text-blue-600 mt-1 shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0062cc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
                                 </div>
-                                <div className="flex-1">
+                                <div className="flex-1 min-w-0">
                                     <input
                                         type="text"
                                         value={rsvpLocation}
@@ -870,18 +869,18 @@ export function VisualBlock({
                         </div>
 
                         {/* Buttons Grid */}
-                        <div className="mt-6">
+                        <div className="mt-6 animate-in fade-in duration-200">
                             {rsvpStyle === 'card_bento' ? (
                                 <div className="space-y-3">
                                     {/* Going (full width) */}
-                                    <div className="w-full bg-[#0062cc] text-white rounded-full py-3.5 px-4 text-sm font-bold flex items-center justify-center gap-2 shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <div className="w-full bg-[#0062cc] text-white rounded-full py-3.5 px-4 text-sm font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer min-w-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
                                         <input
                                             type="text"
                                             value={going}
                                             onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-black placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                                            style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(going.length || 5, 3)}ch` }}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
+                                            style={{ color: '#ffffff', font: 'inherit' }}
                                             onKeyDown={(e) => e.stopPropagation()}
                                             onFocus={(e) => e.stopPropagation()}
                                             onClick={(e) => e.stopPropagation()}
@@ -889,16 +888,16 @@ export function VisualBlock({
                                         />
                                     </div>
                                     {/* Secondary split */}
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 min-[370px]:grid-cols-2 gap-3">
                                         {/* Not Going */}
-                                        <div className="bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-4 text-xs font-bold flex items-center justify-center gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        <div className="bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer min-w-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                             <input
                                                 type="text"
                                                 value={declined}
                                                 onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                                                style={{ color: '#0062cc', font: 'inherit', width: `${Math.max(declined.length || 9, 3)}ch` }}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc]"
+                                                style={{ color: '#0062cc', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                                 onFocus={(e) => e.stopPropagation()}
                                                 onClick={(e) => e.stopPropagation()}
@@ -906,14 +905,14 @@ export function VisualBlock({
                                             />
                                         </div>
                                         {/* Later */}
-                                        <div className="bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-4 text-xs font-bold flex items-center justify-center gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>
+                                        <div className="bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer min-w-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>
                                             <input
                                                 type="text"
                                                 value={later}
                                                 onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                                                style={{ color: '#0062cc', font: 'inherit', width: `${Math.max(later.length || 5, 3)}ch` }}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc]"
+                                                style={{ color: '#0062cc', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                                 onFocus={(e) => e.stopPropagation()}
                                                 onClick={(e) => e.stopPropagation()}
@@ -923,16 +922,16 @@ export function VisualBlock({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {/* Going (Full on Mobile, Inline on Desktop) */}
-                                    <div className="col-span-2 sm:col-span-1 bg-[#0062cc] text-white rounded-full py-3 px-2 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <div className="grid grid-cols-1 min-[370px]:grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {/* Going (Full on Mobile, Bento on Mid, Inline on Desktop) */}
+                                    <div className="col-span-full min-[370px]:col-span-2 sm:col-span-1 bg-[#0062cc] text-white rounded-full py-3 px-2 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer min-w-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
                                         <input
                                             type="text"
                                             value={going}
                                             onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                                            style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(going.length || 5, 3)}ch` }}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
+                                            style={{ color: '#ffffff', font: 'inherit' }}
                                             onKeyDown={(e) => e.stopPropagation()}
                                             onFocus={(e) => e.stopPropagation()}
                                             onClick={(e) => e.stopPropagation()}
@@ -940,14 +939,14 @@ export function VisualBlock({
                                         />
                                     </div>
                                     {/* Not Going */}
-                                    <div className="col-span-1 bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-2 text-xs font-bold flex items-center justify-center gap-1.5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    <div className="col-span-full min-[370px]:col-span-1 bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-2 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer min-w-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                         <input
                                             type="text"
                                             value={declined}
                                             onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-ellipsis overflow-hidden whitespace-nowrap"
-                                            style={{ color: '#0062cc', font: 'inherit', width: `${Math.max(declined.length || 9, 3)}ch` }}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc]"
+                                            style={{ color: '#0062cc', font: 'inherit' }}
                                             onKeyDown={(e) => e.stopPropagation()}
                                             onFocus={(e) => e.stopPropagation()}
                                             onClick={(e) => e.stopPropagation()}
@@ -955,14 +954,14 @@ export function VisualBlock({
                                         />
                                     </div>
                                     {/* Later */}
-                                    <div className="col-span-1 bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-2 text-xs font-bold flex items-center justify-center gap-1.5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>
+                                    <div className="col-span-full min-[370px]:col-span-1 bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-2 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer min-w-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>
                                         <input
                                             type="text"
                                             value={later}
                                             onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-ellipsis overflow-hidden whitespace-nowrap"
-                                            style={{ color: '#0062cc', font: 'inherit', width: `${Math.max(later.length || 5, 3)}ch` }}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc]"
+                                            style={{ color: '#0062cc', font: 'inherit' }}
                                             onKeyDown={(e) => e.stopPropagation()}
                                             onFocus={(e) => e.stopPropagation()}
                                             onClick={(e) => e.stopPropagation()}

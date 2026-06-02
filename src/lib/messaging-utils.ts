@@ -570,6 +570,9 @@ export function renderBlocksToHtml(
           blockHtml = `
             <style>
               @media only screen and (max-width: 480px) {
+                .rsvp-card-${block.id} {
+                  padding: 16px !important;
+                }
                 .rsvp-meta-cell-${block.id} {
                   display: block !important;
                   width: 100% !important;
@@ -586,7 +589,7 @@ export function renderBlocksToHtml(
                 }
               }
             </style>
-            <div style="background-color: ${s.backgroundColor || '#ffffff'}; padding: 24px; border-radius: ${s.borderRadius || '16px'}; border: ${s.borderWidth || '1px'} ${s.borderStyle || 'solid'} ${s.borderColor || '#e2e8f0'}; font-family: '${fontFam}', Helvetica, Arial, sans-serif; text-align: left; margin: 16px 0; box-sizing: border-box; box-shadow: 0 2px 12px rgba(0,0,0,0.04);">
+            <div class="rsvp-card-${block.id}" style="background-color: ${s.backgroundColor || '#ffffff'}; padding: 24px; border-radius: ${s.borderRadius || '16px'}; border: ${s.borderWidth || '1px'} ${s.borderStyle || 'solid'} ${s.borderColor || '#e2e8f0'}; font-family: '${fontFam}', Helvetica, Arial, sans-serif; text-align: left; margin: 16px 0; box-sizing: border-box; box-shadow: 0 2px 12px rgba(0,0,0,0.04);">
               ${hasPillDesc ? `
                 <!-- Pill Badge -->
                 <div style="margin-bottom: 12px;">
@@ -621,9 +624,9 @@ export function renderBlocksToHtml(
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0052cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                           </div>
                         </td>
-                        <td style="vertical-align: middle; font-family: '${fontFam}', Helvetica, Arial, sans-serif;">
+                        <td style="vertical-align: middle; font-family: '${fontFam}', Helvetica, Arial, sans-serif; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">
                           <div style="font-size: 10px; font-weight: 700; color: #94a3b8; letter-spacing: 0.1em; text-transform: uppercase; line-height: 1.2;">${rsvpDateLabelVal}</div>
-                          <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-top: 2px; line-height: 1.2;">${rsvpDate}</div>
+                          <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-top: 2px; line-height: 1.2; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">${rsvpDate}</div>
                         </td>
                       </tr>
                     </table>
@@ -638,9 +641,9 @@ export function renderBlocksToHtml(
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0052cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                           </div>
                         </td>
-                        <td style="vertical-align: middle; font-family: '${fontFam}', Helvetica, Arial, sans-serif;">
+                        <td style="vertical-align: middle; font-family: '${fontFam}', Helvetica, Arial, sans-serif; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">
                           <div style="font-size: 10px; font-weight: 700; color: #94a3b8; letter-spacing: 0.1em; text-transform: uppercase; line-height: 1.2;">${rsvpTimeLabelVal}</div>
-                          <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-top: 2px; line-height: 1.2;">${rsvpTime}</div>
+                          <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-top: 2px; line-height: 1.2; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">${rsvpTime}</div>
                         </td>
                       </tr>
                     </table>
@@ -655,9 +658,9 @@ export function renderBlocksToHtml(
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0052cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
                           </div>
                         </td>
-                        <td style="vertical-align: middle; font-family: '${fontFam}', Helvetica, Arial, sans-serif;">
+                        <td style="vertical-align: middle; font-family: '${fontFam}', Helvetica, Arial, sans-serif; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">
                           <div style="font-size: 10px; font-weight: 700; color: #94a3b8; letter-spacing: 0.1em; text-transform: uppercase; line-height: 1.2;">${rsvpLocationLabelVal}</div>
-                          <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-top: 2px; line-height: 1.2;">${rsvpLocation}</div>
+                          <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-top: 2px; line-height: 1.2; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">${rsvpLocation}</div>
                         </td>
                       </tr>
                     </table>
@@ -770,7 +773,14 @@ export function renderBlocksToHtml(
           `;
 
           blockHtml = `
-            <div style="background-color: ${s.backgroundColor || '#ffffff'}; padding: 24px; border-radius: ${s.borderRadius || '16px'}; border: ${s.borderWidth || '1px'} ${s.borderStyle || 'solid'} ${s.borderColor || '#cbd5e1'}; font-family: '${fontFam}', Helvetica, Arial, sans-serif; text-align: left; margin: 16px 0; box-sizing: border-box;">
+            <style>
+              @media only screen and (max-width: 480px) {
+                .rsvp-card-${block.id} {
+                  padding: 16px !important;
+                }
+              }
+            </style>
+            <div class="rsvp-card-${block.id}" style="background-color: ${s.backgroundColor || '#ffffff'}; padding: 24px; border-radius: ${s.borderRadius || '16px'}; border: ${s.borderWidth || '1px'} ${s.borderStyle || 'solid'} ${s.borderColor || '#cbd5e1'}; font-family: '${fontFam}', Helvetica, Arial, sans-serif; text-align: left; margin: 16px 0; box-sizing: border-box;">
               ${block.title ? `
                 <div style="margin-bottom: 16px; font-size: 18px; font-weight: 800; color: #0f172a; line-height: 1.3; font-family: '${fontFam}', Helvetica, Arial, sans-serif;">
                   ${title}
@@ -786,9 +796,9 @@ export function renderBlocksToHtml(
                         <td style="vertical-align: top; padding-right: 12px; padding-top: 2px; width: 22px;">
                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0062cc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         </td>
-                        <td style="vertical-align: top; font-family: '${fontFam}', Helvetica, Arial, sans-serif;">
-                          <div style="font-size: 17px; font-weight: 800; color: #0f172a; line-height: 1.3; margin: 0;">${rsvpDate}</div>
-                          <div style="font-size: 13px; font-weight: 500; color: #64748b; margin: 2px 0 0 0;">${rsvpTime}</div>
+                        <td style="vertical-align: top; font-family: '${fontFam}', Helvetica, Arial, sans-serif; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">
+                          <div style="font-size: 17px; font-weight: 800; color: #0f172a; line-height: 1.3; margin: 0; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">${rsvpDate}</div>
+                          <div style="font-size: 13px; font-weight: 500; color: #64748b; margin: 2px 0 0 0; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">${rsvpTime}</div>
                         </td>
                       </tr>
                     </table>
@@ -803,8 +813,8 @@ export function renderBlocksToHtml(
                         <td style="vertical-align: top; padding-right: 12px; padding-top: 2px; width: 22px;">
                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0062cc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
                         </td>
-                        <td style="vertical-align: top; font-family: '${fontFam}', Helvetica, Arial, sans-serif;">
-                          <div style="font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.3; margin: 0;">${rsvpLocation}</div>
+                        <td style="vertical-align: top; font-family: '${fontFam}', Helvetica, Arial, sans-serif; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">
+                          <div style="font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.3; margin: 0; word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;">${rsvpLocation}</div>
                         </td>
                       </tr>
                     </table>

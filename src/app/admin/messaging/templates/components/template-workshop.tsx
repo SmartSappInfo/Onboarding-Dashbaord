@@ -1530,6 +1530,7 @@ export function TemplateWorkshop({
     const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'variables' | 'validation'>('blocks');
     const [variablesWidth, setVariablesWidth] = React.useState(320);
     const [isResizing, setIsResizing] = React.useState(false);
+    const dragStartRef = React.useRef({ mouseX: 0, startWidth: 0 });
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
     const [showValidationErrorDialog, setShowValidationErrorDialog] = React.useState(false);
 
@@ -2141,9 +2142,21 @@ export function TemplateWorkshop({
         );
     };
 
-    const handleMouseDown = (e: React.MouseEvent) => { e.preventDefault(); setIsResizing(true); };
+    const handleMouseDown = (e: React.MouseEvent) => {
+        e.preventDefault();
+        dragStartRef.current = {
+            mouseX: e.clientX,
+            startWidth: variablesWidth
+        };
+        setIsResizing(true);
+    };
     React.useEffect(() => {
-        const move = (e: MouseEvent) => isResizing && setVariablesWidth(Math.max(250, Math.min(600, e.clientX)));
+        const move = (e: MouseEvent) => {
+            if (!isResizing) return;
+            const deltaX = e.clientX - dragStartRef.current.mouseX;
+            const newWidth = Math.max(250, Math.min(600, dragStartRef.current.startWidth + deltaX));
+            setVariablesWidth(newWidth);
+        };
         const stop = () => setIsResizing(false);
         if (isResizing) { window.addEventListener('mousemove', move); window.addEventListener('mouseup', stop); }
         return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', stop); };
@@ -2848,7 +2861,13 @@ export function TemplateWorkshop({
 
                     {step === 2 && (
                         <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
-                            <div className="border-r bg-background flex flex-col shrink-0 relative transition-all duration-300 shadow-xl" style={{ width: variablesWidth }}>
+                            <div 
+                                className={cn(
+                                    "border-r bg-background flex flex-col shrink-0 relative shadow-xl",
+                                    !isResizing && "transition-all duration-300"
+                                )} 
+                                style={{ width: variablesWidth }}
+                            >
                                 <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
                                     <div className="px-2 py-2 border-b bg-background shrink-0 text-left">
                                         {contentMode === 'rich_builder' ? (
@@ -3207,7 +3226,11 @@ export function TemplateWorkshop({
                             </div>
 
                             <div 
-                                className="flex-1 flex flex-col overflow-hidden relative transition-all duration-500"
+                                className={cn(
+                                    "flex-1 flex flex-col overflow-hidden relative",
+                                    !isResizing && "transition-all duration-500",
+                                    isResizing && "pointer-events-none select-none"
+                                )}
                                 style={{ backgroundColor: wrapperStyles?.outerBg || 'transparent' }}
                             >
                                 <div className="h-14 shrink-0 bg-background border-b px-6 flex items-center justify-between z-10 shadow-sm text-left">
