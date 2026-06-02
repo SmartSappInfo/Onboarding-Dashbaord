@@ -55,6 +55,9 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     const titleInputRef = React.useRef<HTMLInputElement>(null);
     const contentTextareaRef = React.useRef<HTMLTextAreaElement>(null);
     const linkInputRef = React.useRef<HTMLInputElement>(null);
+    const dateInputRef = React.useRef<HTMLInputElement>(null);
+    const timeInputRef = React.useRef<HTMLInputElement>(null);
+    const locationInputRef = React.useRef<HTMLInputElement>(null);
 
     if (!block) return null;
 
@@ -307,6 +310,79 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                     {/* RSVP Block Settings */}
                     {block.type === 'rsvp' && (
                         <div className="space-y-4 animate-in fade-in duration-200">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">RSVP Layout Style</Label>
+                                <Select 
+                                    value={block.rsvpStyle || 'standard'} 
+                                    onValueChange={(val) => onUpdate({ rsvpStyle: val as any })}
+                                >
+                                    <SelectTrigger className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-blue-500/20 font-semibold text-xs">
+                                        <SelectValue placeholder="Select style..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-none shadow-lg">
+                                        <SelectItem value="standard" className="text-xs font-semibold">Standard (Buttons Only)</SelectItem>
+                                        <SelectItem value="card_bento" className="text-xs font-semibold">Detailed Card (Bento Buttons)</SelectItem>
+                                        <SelectItem value="card_inline" className="text-xs font-semibold">Detailed Card (Inline Buttons)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Detailed Card Fields */}
+                            {(block.rsvpStyle === 'card_bento' || block.rsvpStyle === 'card_inline') && (
+                                <>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Date Text</Label>
+                                            <InlineVariablePicker 
+                                                targetRef={dateInputRef} 
+                                                currentValue={block.rsvpDate || ''} 
+                                                onFieldChange={val => onUpdate({ rsvpDate: val })} 
+                                            />
+                                        </div>
+                                        <Input 
+                                            ref={dateInputRef}
+                                            value={block.rsvpDate || ''} 
+                                            onChange={e => onUpdate({ rsvpDate: e.target.value })} 
+                                            placeholder="e.g. Tuesday, Sep 24"
+                                            className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Time Text</Label>
+                                            <InlineVariablePicker 
+                                                targetRef={timeInputRef} 
+                                                currentValue={block.rsvpTime || ''} 
+                                                onFieldChange={val => onUpdate({ rsvpTime: val })} 
+                                            />
+                                        </div>
+                                        <Input 
+                                            ref={timeInputRef}
+                                            value={block.rsvpTime || ''} 
+                                            onChange={e => onUpdate({ rsvpTime: e.target.value })} 
+                                            placeholder="e.g. 10:00 - 11:00 AM"
+                                            className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Location / Join Text</Label>
+                                            <InlineVariablePicker 
+                                                targetRef={locationInputRef} 
+                                                currentValue={block.rsvpLocation || ''} 
+                                                onFieldChange={val => onUpdate({ rsvpLocation: val })} 
+                                            />
+                                        </div>
+                                        <Input 
+                                            ref={locationInputRef}
+                                            value={block.rsvpLocation || ''} 
+                                            onChange={e => onUpdate({ rsvpLocation: e.target.value })} 
+                                            placeholder="e.g. Google Meet or {{meeting_location}}"
+                                            className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                        />
+                                    </div>
+                                </>
+                            )}
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Invitation Text</Label>

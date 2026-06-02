@@ -446,40 +446,192 @@ export function renderBlocksToHtml(
         const goingUrl = resolveVariables('{{rsvp_going_url}}', variables);
         const laterUrl = resolveVariables('{{rsvp_later_url}}', variables);
         const declinedUrl = resolveVariables('{{rsvp_declined_url}}', variables);
-        
-        blockHtml = `
-          <div style="${wrapperStyle}">
+
+        const rsvpStyle = block.rsvpStyle || 'standard';
+        const isDetailed = rsvpStyle === 'card_bento' || rsvpStyle === 'card_inline';
+        const rsvpDate = resolveVariables(block.rsvpDate || 'Tuesday, Sep 24', variables);
+        const rsvpTime = resolveVariables(block.rsvpTime || '10:00 - 11:00 AM', variables);
+        const rsvpLocation = resolveVariables(block.rsvpLocation || 'Google Meet', variables);
+
+        if (isDetailed) {
+          const buttonsHtml = rsvpStyle === 'card_bento' ? `
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td align="${align === 'center' ? 'center' : align === 'right' ? 'right' : 'left'}" style="padding: 16px 0;">
-                  <div style="margin-bottom: 16px; font-size: ${fontSizeVal || '18px'}; ${fontWeight || 'font-weight: 700;'} font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; ${fontColor}">
-                    ${title}
-                  </div>
-                  
-                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display: inline-block; margin: 0 auto;">
-                    <tr>
-                      <td style="padding: 4px 8px; vertical-align: middle;">
-                        <a href="${goingUrl}" style="background-color: #10b981; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
-                          ${going}
-                        </a>
-                      </td>
-                      <td style="padding: 4px 8px; vertical-align: middle;">
-                        <a href="${laterUrl}" style="background-color: #f59e0b; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
-                          ${later}
-                        </a>
-                      </td>
-                      <td style="padding: 4px 8px; vertical-align: middle;">
-                        <a href="${declinedUrl}" style="background-color: #ef4444; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
-                          ${declined}
-                        </a>
-                      </td>
-                    </tr>
-                  </table>
+                <td align="center" style="padding-bottom: 12px;">
+                  <a href="${goingUrl}" style="background-color: #0062cc; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 9999px; font-weight: 700; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: block; text-align: center; font-size: 14px; border: 1px solid #0062cc;">
+                    <span style="display: inline-block; vertical-align: middle; margin-right: 6px; margin-top: -2px;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                    <span style="vertical-align: middle; display: inline-block;">${going}</span>
+                  </a>
                 </td>
               </tr>
             </table>
-          </div>
-        `;
+            
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="width: 49%; padding-right: 6px; vertical-align: middle;">
+                  <a href="${declinedUrl}" style="background-color: #ffffff; color: #0062cc; padding: 11px 16px; text-decoration: none; border-radius: 9999px; font-weight: 700; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: block; text-align: center; font-size: 13px; border: 1.5px solid #cbd5e1;">
+                    <span style="display: inline-block; vertical-align: middle; margin-right: 6px; margin-top: -2px;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0062cc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </span>
+                    <span style="vertical-align: middle; display: inline-block;">${declined}</span>
+                  </a>
+                </td>
+                <td style="width: 49%; padding-left: 6px; vertical-align: middle;">
+                  <a href="${laterUrl}" style="background-color: #ffffff; color: #0062cc; padding: 11px 16px; text-decoration: none; border-radius: 9999px; font-weight: 700; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: block; text-align: center; font-size: 13px; border: 1.5px solid #cbd5e1;">
+                    <span style="display: inline-block; vertical-align: middle; margin-right: 6px; margin-top: -2px;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0062cc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>
+                    </span>
+                    <span style="vertical-align: middle; display: inline-block;">${later}</span>
+                  </a>
+                </td>
+              </tr>
+            </table>
+          ` : `
+            <style>
+              @media only screen and (max-width: 480px) {
+                .rsvp-btn-going-${block.id} {
+                  display: block !important;
+                  width: 100% !important;
+                  padding-bottom: 12px !important;
+                  padding-right: 0 !important;
+                }
+                .rsvp-btn-sec-l-${block.id} {
+                  display: inline-block !important;
+                  width: 48% !important;
+                  padding-right: 6px !important;
+                  box-sizing: border-box !important;
+                  padding-left: 0 !important;
+                }
+                .rsvp-btn-sec-r-${block.id} {
+                  display: inline-block !important;
+                  width: 48% !important;
+                  padding-left: 6px !important;
+                  box-sizing: border-box !important;
+                  padding-right: 0 !important;
+                }
+                .rsvp-btn-sec-l-${block.id} a, .rsvp-btn-sec-r-${block.id} a {
+                  padding: 11px 16px !important;
+                  font-size: 13px !important;
+                }
+                .rsvp-btn-going-${block.id} a {
+                  padding: 12px 24px !important;
+                  font-size: 14px !important;
+                }
+              }
+            </style>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td class="rsvp-btn-going-${block.id}" style="width: 32%; padding-right: 6px; vertical-align: middle;">
+                  <a href="${goingUrl}" style="background-color: #0062cc; color: #ffffff; padding: 11px 8px; text-decoration: none; border-radius: 9999px; font-weight: 700; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: block; text-align: center; font-size: 12px; border: 1px solid #0062cc;">
+                    <span style="display: inline-block; vertical-align: middle; margin-right: 4px; margin-top: -2px;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                    <span style="vertical-align: middle; display: inline-block;">${going}</span>
+                  </a>
+                </td>
+                <td class="rsvp-btn-sec-l-${block.id}" style="width: 32%; padding-left: 3px; padding-right: 3px; vertical-align: middle;">
+                  <a href="${declinedUrl}" style="background-color: #ffffff; color: #0062cc; padding: 10px 8px; text-decoration: none; border-radius: 9999px; font-weight: 700; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: block; text-align: center; font-size: 12px; border: 1.5px solid #cbd5e1;">
+                    <span style="display: inline-block; vertical-align: middle; margin-right: 4px; margin-top: -2px;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0062cc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </span>
+                    <span style="vertical-align: middle; display: inline-block;">${declined}</span>
+                  </a>
+                </td>
+                <td class="rsvp-btn-sec-r-${block.id}" style="width: 32%; padding-left: 6px; vertical-align: middle;">
+                  <a href="${laterUrl}" style="background-color: #ffffff; color: #0062cc; padding: 10px 8px; text-decoration: none; border-radius: 9999px; font-weight: 700; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: block; text-align: center; font-size: 12px; border: 1.5px solid #cbd5e1;">
+                    <span style="display: inline-block; vertical-align: middle; margin-right: 4px; margin-top: -2px;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0062cc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>
+                    </span>
+                    <span style="vertical-align: middle; display: inline-block;">${later}</span>
+                  </a>
+                </td>
+              </tr>
+            </table>
+          `;
+
+          blockHtml = `
+            <div style="background-color: ${s.backgroundColor || '#ffffff'}; padding: 24px; border-radius: ${s.borderRadius || '16px'}; border: ${s.borderWidth || '1px'} ${s.borderStyle || 'solid'} ${s.borderColor || '#cbd5e1'}; font-family: '${fontFam}', Helvetica, Arial, sans-serif; text-align: left; margin: 16px 0; box-sizing: border-box;">
+              ${block.title ? `
+                <div style="margin-bottom: 16px; font-size: 18px; font-weight: 800; color: #0f172a; line-height: 1.3; font-family: '${fontFam}', Helvetica, Arial, sans-serif;">
+                  ${title}
+                </div>
+              ` : ''}
+              
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <!-- Date/Time Row -->
+                <tr>
+                  <td style="padding-bottom: 14px; vertical-align: top;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+                      <tr>
+                        <td style="vertical-align: top; padding-right: 12px; padding-top: 2px; width: 22px;">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0062cc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </td>
+                        <td style="vertical-align: top; font-family: '${fontFam}', Helvetica, Arial, sans-serif;">
+                          <div style="font-size: 17px; font-weight: 800; color: #0f172a; line-height: 1.3; margin: 0;">${rsvpDate}</div>
+                          <div style="font-size: 13px; font-weight: 500; color: #64748b; margin: 2px 0 0 0;">${rsvpTime}</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Location Row -->
+                <tr>
+                  <td style="vertical-align: top;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+                      <tr>
+                        <td style="vertical-align: top; padding-right: 12px; padding-top: 2px; width: 22px;">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0062cc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+                        </td>
+                        <td style="vertical-align: top; font-family: '${fontFam}', Helvetica, Arial, sans-serif;">
+                          <div style="font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.3; margin: 0;">${rsvpLocation}</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              
+              ${buttonsHtml}
+            </div>
+          `;
+        } else {
+          blockHtml = `
+            <div style="${wrapperStyle}">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="${align === 'center' ? 'center' : align === 'right' ? 'right' : 'left'}" style="padding: 16px 0;">
+                    <div style="margin-bottom: 16px; font-size: ${fontSizeVal || '18px'}; ${fontWeight || 'font-weight: 700;'} font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; ${fontColor}">
+                      ${title}
+                    </div>
+                    
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display: inline-block; margin: 0 auto;">
+                      <tr>
+                        <td style="padding: 4px 8px; vertical-align: middle;">
+                          <a href="${goingUrl}" style="background-color: #10b981; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
+                            ${going}
+                          </a>
+                        </td>
+                        <td style="padding: 4px 8px; vertical-align: middle;">
+                          <a href="${laterUrl}" style="background-color: #f59e0b; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
+                            ${later}
+                          </a>
+                        </td>
+                        <td style="padding: 4px 8px; vertical-align: middle;">
+                          <a href="${declinedUrl}" style="background-color: #ef4444; color: #ffffff; padding: 10px 18px; text-decoration: none; border-radius: 8px; font-weight: bold; font-family: '${fontFam}', Helvetica, Arial, sans-serif; display: inline-block; font-size: 14px;">
+                            ${declined}
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          `;
+        }
         break;
       }
 

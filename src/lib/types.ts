@@ -2343,6 +2343,10 @@ export interface MessageBlock {
   goingLabel?: string;
   declinedLabel?: string;
   laterLabel?: string;
+  rsvpStyle?: 'standard' | 'card_bento' | 'card_inline';
+  rsvpDate?: string;
+  rsvpTime?: string;
+  rsvpLocation?: string;
   columns?: {
     width: string;
     blocks: MessageBlock[];

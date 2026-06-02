@@ -922,6 +922,62 @@ const blockTypeTemplates: Record<string, Array<{
     ],
     rsvp: [
         {
+            name: 'Interactive Event Card (Bento)',
+            description: 'Date, time, and location card with bento-style RSVP buttons',
+            create: () => ({
+                id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'rsvp',
+                title: '', // No title by default, starts directly with details
+                goingLabel: 'Going',
+                laterLabel: 'Later',
+                declinedLabel: 'Not Going',
+                rsvpStyle: 'card_bento',
+                rsvpDate: 'Tuesday, Sep 24',
+                rsvpTime: '10:00 - 11:00 AM',
+                rsvpLocation: 'Google Meet',
+                style: {
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    paddingTop: '24px',
+                    paddingBottom: '24px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#cbd5e1'
+                }
+            })
+        },
+        {
+            name: 'Interactive Event Card (Inline)',
+            description: 'Date, time, and location card with inline adaptive RSVP buttons',
+            create: () => ({
+                id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'rsvp',
+                title: '', // No title by default, starts directly with details
+                goingLabel: 'Going',
+                laterLabel: 'Later',
+                declinedLabel: 'Not Going',
+                rsvpStyle: 'card_inline',
+                rsvpDate: 'Tuesday, Sep 24',
+                rsvpTime: '10:00 - 11:00 AM',
+                rsvpLocation: 'Google Meet',
+                style: {
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    paddingTop: '24px',
+                    paddingBottom: '24px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#cbd5e1'
+                }
+            })
+        },
+        {
             name: 'Minimal RSVP Card',
             description: 'Sleek, centered, compact card with RSVP options',
             create: () => ({
@@ -1166,17 +1222,39 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                     <div className="text-[12px] font-black font-sans leading-none">85</div>
                 </div>
             );
-        case 'rsvp':
+        case 'rsvp': {
+            const isDetailed = block.rsvpStyle && block.rsvpStyle !== 'standard';
             return (
-                <div className="w-full p-2 bg-slate-50 border rounded-lg space-y-1.5 text-center" style={{ backgroundColor: s.backgroundColor }}>
-                    <div className="h-1 bg-slate-400 rounded w-4/5 mx-auto" />
-                    <div className="flex gap-1 justify-center">
-                        <span className="bg-emerald-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">Going</span>
-                        <span className="bg-amber-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">Later</span>
-                        <span className="bg-rose-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">Decline</span>
-                    </div>
+                <div className="w-full p-2 bg-slate-50 border rounded-lg space-y-1.5 text-left" style={{ backgroundColor: s.backgroundColor }}>
+                    {isDetailed && (
+                        <div className="space-y-0.5 text-[5px] text-slate-500 mb-1 leading-tight scale-90 origin-left">
+                            <div className="flex items-center gap-1 font-bold text-slate-800">
+                                <span>📅</span> <span>{block.rsvpDate || 'Tuesday, Sep 24'}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <span>📹</span> <span>{block.rsvpLocation || 'Google Meet'}</span>
+                            </div>
+                        </div>
+                    )}
+                    {!isDetailed && <div className="h-1 bg-slate-400 rounded w-4/5 mx-auto" />}
+                    {block.rsvpStyle === 'card_bento' ? (
+                        <div className="space-y-1 w-full">
+                            <span className="bg-blue-600 rounded px-1 py-0.5 text-[5px] text-white font-bold block text-center leading-none select-none">Going</span>
+                            <div className="flex gap-1">
+                                <span className="bg-slate-100 border border-slate-200 rounded px-1 py-0.5 text-[5px] text-slate-700 font-bold flex-1 text-center leading-none select-none">Decline</span>
+                                <span className="bg-slate-100 border border-slate-200 rounded px-1 py-0.5 text-[5px] text-slate-700 font-bold flex-1 text-center leading-none select-none">Later</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex gap-1 justify-center">
+                            <span className="bg-emerald-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">{block.goingLabel || 'Going'}</span>
+                            <span className="bg-amber-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">{block.laterLabel || 'Later'}</span>
+                            <span className="bg-rose-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">{block.declinedLabel || 'Decline'}</span>
+                        </div>
+                    )}
                 </div>
             );
+        }
         default:
             return <div className="text-[8px] text-slate-400">Preview</div>;
     }
