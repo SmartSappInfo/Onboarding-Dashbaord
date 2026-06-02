@@ -58,6 +58,11 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     const dateInputRef = React.useRef<HTMLInputElement>(null);
     const timeInputRef = React.useRef<HTMLInputElement>(null);
     const locationInputRef = React.useRef<HTMLInputElement>(null);
+    const pillInputRef = React.useRef<HTMLInputElement>(null);
+    const descTextareaRef = React.useRef<HTMLTextAreaElement>(null);
+    const dateLabelInputRef = React.useRef<HTMLInputElement>(null);
+    const timeLabelInputRef = React.useRef<HTMLInputElement>(null);
+    const locationLabelInputRef = React.useRef<HTMLInputElement>(null);
 
     if (!block) return null;
 
@@ -308,127 +313,249 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                     )}
 
                     {/* RSVP Block Settings */}
-                    {block.type === 'rsvp' && (
-                        <div className="space-y-4 animate-in fade-in duration-200">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">RSVP Layout Style</Label>
-                                <Select 
-                                    value={block.rsvpStyle || 'standard'} 
-                                    onValueChange={(val) => onUpdate({ rsvpStyle: val as any })}
-                                >
-                                    <SelectTrigger className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-blue-500/20 font-semibold text-xs">
-                                        <SelectValue placeholder="Select style..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-none shadow-lg">
-                                        <SelectItem value="standard" className="text-xs font-semibold">Standard (Buttons Only)</SelectItem>
-                                        <SelectItem value="card_bento" className="text-xs font-semibold">Detailed Card (Bento Buttons)</SelectItem>
-                                        <SelectItem value="card_inline" className="text-xs font-semibold">Detailed Card (Inline Buttons)</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                    {block.type === 'rsvp' && (() => {
+                        const style = block.rsvpStyle || 'standard';
+                        const isDetailed = [
+                            'card_bento', 'card_inline',
+                            'event_full_bento', 'event_full_inline',
+                            'event_compact_bento', 'event_compact_inline'
+                        ].includes(style);
+                        const isFull = ['event_full_bento', 'event_full_inline'].includes(style);
+                        const isEvent = [
+                            'event_full_bento', 'event_full_inline',
+                            'event_compact_bento', 'event_compact_inline'
+                        ].includes(style);
 
-                            {/* Detailed Card Fields */}
-                            {(block.rsvpStyle === 'card_bento' || block.rsvpStyle === 'card_inline') && (
-                                <>
-                                    <div className="space-y-2">
+                        return (
+                            <div className="space-y-4 animate-in fade-in duration-200">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">RSVP Layout Style</Label>
+                                    <Select 
+                                        value={style} 
+                                        onValueChange={(val) => onUpdate({ rsvpStyle: val as any })}
+                                    >
+                                        <SelectTrigger className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-blue-500/20 font-semibold text-xs">
+                                            <SelectValue placeholder="Select style..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl border-none shadow-lg">
+                                            <SelectItem value="standard" className="text-xs font-semibold">Standard (Buttons Only)</SelectItem>
+                                            <SelectItem value="card_bento" className="text-xs font-semibold">Detailed Card (Bento Buttons)</SelectItem>
+                                            <SelectItem value="card_inline" className="text-xs font-semibold">Detailed Card (Inline Buttons)</SelectItem>
+                                            <SelectItem value="event_full_bento" className="text-xs font-semibold">Event Card (Full - Bento)</SelectItem>
+                                            <SelectItem value="event_full_inline" className="text-xs font-semibold">Event Card (Full - Inline)</SelectItem>
+                                            <SelectItem value="event_compact_bento" className="text-xs font-semibold">Event Card (Compact - Bento)</SelectItem>
+                                            <SelectItem value="event_compact_inline" className="text-xs font-semibold">Event Card (Compact - Inline)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {isFull && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Pill Badge Text</Label>
+                                                <InlineVariablePicker 
+                                                    targetRef={pillInputRef} 
+                                                    currentValue={block.pillText || ''} 
+                                                    onFieldChange={val => onUpdate({ pillText: val })} 
+                                                />
+                                            </div>
+                                            <Input 
+                                                ref={pillInputRef}
+                                                value={block.pillText || ''} 
+                                                onChange={e => onUpdate({ pillText: e.target.value })} 
+                                                placeholder="e.g. Invitation"
+                                                className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Event Description</Label>
+                                                <InlineVariablePicker 
+                                                    targetRef={descTextareaRef} 
+                                                    currentValue={block.content || ''} 
+                                                    onFieldChange={val => onUpdate({ content: val })} 
+                                                />
+                                            </div>
+                                            <Textarea 
+                                                ref={descTextareaRef}
+                                                value={block.content || ''} 
+                                                onChange={e => onUpdate({ content: e.target.value })} 
+                                                placeholder="Describe your event details..."
+                                                className="font-medium text-xs rounded-xl min-h-[60px] bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {isDetailed && (
+                                    <>
+                                        {/* Date Details */}
+                                        <div className="border-t border-slate-100/50 pt-3 space-y-2">
+                                            {isEvent && (
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Date Label</Label>
+                                                    <InlineVariablePicker 
+                                                        targetRef={dateLabelInputRef} 
+                                                        currentValue={block.rsvpDateLabel || ''} 
+                                                        onFieldChange={val => onUpdate({ rsvpDateLabel: val })} 
+                                                    />
+                                                </div>
+                                            )}
+                                            {isEvent && (
+                                                <Input 
+                                                    ref={dateLabelInputRef}
+                                                    value={block.rsvpDateLabel || ''} 
+                                                    onChange={e => onUpdate({ rsvpDateLabel: e.target.value })} 
+                                                    placeholder="DATE (default)"
+                                                    className="font-bold text-[10px] h-8 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 mb-1" 
+                                                />
+                                            )}
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">{isEvent ? "Date Value" : "Date Text"}</Label>
+                                                <InlineVariablePicker 
+                                                    targetRef={dateInputRef} 
+                                                    currentValue={block.rsvpDate || ''} 
+                                                    onFieldChange={val => onUpdate({ rsvpDate: val })} 
+                                                />
+                                            </div>
+                                            <Input 
+                                                ref={dateInputRef}
+                                                value={block.rsvpDate || ''} 
+                                                onChange={e => onUpdate({ rsvpDate: e.target.value })} 
+                                                placeholder="e.g. Dec 15, 2024"
+                                                className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                            />
+                                        </div>
+
+                                        {/* Time Details */}
+                                        <div className="border-t border-slate-100/50 pt-3 space-y-2">
+                                            {isEvent && (
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Time Label</Label>
+                                                    <InlineVariablePicker 
+                                                        targetRef={timeLabelInputRef} 
+                                                        currentValue={block.rsvpTimeLabel || ''} 
+                                                        onFieldChange={val => onUpdate({ rsvpTimeLabel: val })} 
+                                                    />
+                                                </div>
+                                            )}
+                                            {isEvent && (
+                                                <Input 
+                                                    ref={timeLabelInputRef}
+                                                    value={block.rsvpTimeLabel || ''} 
+                                                    onChange={e => onUpdate({ rsvpTimeLabel: e.target.value })} 
+                                                    placeholder="TIME (default)"
+                                                    className="font-bold text-[10px] h-8 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 mb-1" 
+                                                />
+                                            )}
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">{isEvent ? "Time Value" : "Time Text"}</Label>
+                                                <InlineVariablePicker 
+                                                    targetRef={timeInputRef} 
+                                                    currentValue={block.rsvpTime || ''} 
+                                                    onFieldChange={val => onUpdate({ rsvpTime: val })} 
+                                                />
+                                            </div>
+                                            <Input 
+                                                ref={timeInputRef}
+                                                value={block.rsvpTime || ''} 
+                                                onChange={e => onUpdate({ rsvpTime: e.target.value })} 
+                                                placeholder="e.g. 2:00 PM"
+                                                className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                            />
+                                        </div>
+
+                                        {/* Location/Type Details */}
+                                        <div className="border-t border-slate-100/50 pt-3 space-y-2">
+                                            {isEvent && (
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Location Label</Label>
+                                                    <InlineVariablePicker 
+                                                        targetRef={locationLabelInputRef} 
+                                                        currentValue={block.rsvpLocationLabel || ''} 
+                                                        onFieldChange={val => onUpdate({ rsvpLocationLabel: val })} 
+                                                    />
+                                                </div>
+                                            )}
+                                            {isEvent && (
+                                                <Input 
+                                                    ref={locationLabelInputRef}
+                                                    value={block.rsvpLocationLabel || ''} 
+                                                    onChange={e => onUpdate({ rsvpLocationLabel: e.target.value })} 
+                                                    placeholder="TYPE (default)"
+                                                    className="font-bold text-[10px] h-8 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 mb-1" 
+                                                />
+                                            )}
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">{isEvent ? "Location Value" : "Location/Join Text"}</Label>
+                                                <InlineVariablePicker 
+                                                    targetRef={locationInputRef} 
+                                                    currentValue={block.rsvpLocation || ''} 
+                                                    onFieldChange={val => onUpdate({ rsvpLocation: val })} 
+                                                />
+                                            </div>
+                                            <Input 
+                                                ref={locationInputRef}
+                                                value={block.rsvpLocation || ''} 
+                                                onChange={e => onUpdate({ rsvpLocation: e.target.value })} 
+                                                placeholder="e.g. Virtual Meeting"
+                                                className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {(!isEvent || isFull) && (
+                                    <div className="space-y-2 border-t border-slate-100/50 pt-3">
                                         <div className="flex items-center justify-between">
-                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Date Text</Label>
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">{isEvent ? "Event Title" : "Invitation Text"}</Label>
                                             <InlineVariablePicker 
-                                                targetRef={dateInputRef} 
-                                                currentValue={block.rsvpDate || ''} 
-                                                onFieldChange={val => onUpdate({ rsvpDate: val })} 
+                                                targetRef={titleInputRef} 
+                                                currentValue={block.title || ''} 
+                                                onFieldChange={val => onUpdate({ title: val })} 
                                             />
                                         </div>
                                         <Input 
-                                            ref={dateInputRef}
-                                            value={block.rsvpDate || ''} 
-                                            onChange={e => onUpdate({ rsvpDate: e.target.value })} 
-                                            placeholder="e.g. Tuesday, Sep 24"
-                                            className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                            ref={titleInputRef}
+                                            value={block.title || ''} 
+                                            onChange={e => onUpdate({ title: e.target.value })} 
+                                            placeholder="e.g. Design Team Synchronization"
+                                            className="font-bold rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Time Text</Label>
-                                            <InlineVariablePicker 
-                                                targetRef={timeInputRef} 
-                                                currentValue={block.rsvpTime || ''} 
-                                                onFieldChange={val => onUpdate({ rsvpTime: val })} 
-                                            />
-                                        </div>
-                                        <Input 
-                                            ref={timeInputRef}
-                                            value={block.rsvpTime || ''} 
-                                            onChange={e => onUpdate({ rsvpTime: e.target.value })} 
-                                            placeholder="e.g. 10:00 - 11:00 AM"
-                                            className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Location / Join Text</Label>
-                                            <InlineVariablePicker 
-                                                targetRef={locationInputRef} 
-                                                currentValue={block.rsvpLocation || ''} 
-                                                onFieldChange={val => onUpdate({ rsvpLocation: val })} 
-                                            />
-                                        </div>
-                                        <Input 
-                                            ref={locationInputRef}
-                                            value={block.rsvpLocation || ''} 
-                                            onChange={e => onUpdate({ rsvpLocation: e.target.value })} 
-                                            placeholder="e.g. Google Meet or {{meeting_location}}"
-                                            className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
-                                        />
-                                    </div>
-                                </>
-                            )}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Invitation Text</Label>
-                                    <InlineVariablePicker 
-                                        targetRef={titleInputRef} 
-                                        currentValue={block.title || ''} 
-                                        onFieldChange={val => onUpdate({ title: val })} 
+                                )}
+
+                                <div className="space-y-2 border-t border-slate-100/50 pt-3">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Going" Button Label</Label>
+                                    <Input 
+                                        value={block.goingLabel || 'Going'} 
+                                        onChange={e => onUpdate({ goingLabel: e.target.value })} 
+                                        placeholder="Going"
+                                        className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     />
                                 </div>
-                                <Input 
-                                    ref={titleInputRef}
-                                    value={block.title || ''} 
-                                    onChange={e => onUpdate({ title: e.target.value })} 
-                                    placeholder="e.g. Will you attend this meeting?"
-                                    className="font-bold rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
-                                />
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Later" Button Label</Label>
+                                    <Input 
+                                        value={block.laterLabel || 'Later'} 
+                                        onChange={e => onUpdate({ laterLabel: e.target.value })} 
+                                        placeholder="Later"
+                                        className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Not Going" Button Label</Label>
+                                    <Input 
+                                        value={block.declinedLabel || 'Not Going'} 
+                                        onChange={e => onUpdate({ declinedLabel: e.target.value })} 
+                                        placeholder="Not Going"
+                                        className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Going" Button Label</Label>
-                                <Input 
-                                    value={block.goingLabel || 'Going'} 
-                                    onChange={e => onUpdate({ goingLabel: e.target.value })} 
-                                    placeholder="Going"
-                                    className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Later" Button Label</Label>
-                                <Input 
-                                    value={block.laterLabel || 'Later'} 
-                                    onChange={e => onUpdate({ laterLabel: e.target.value })} 
-                                    placeholder="Later"
-                                    className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Not Going" Button Label</Label>
-                                <Input 
-                                    value={block.declinedLabel || 'Not Going'} 
-                                    onChange={e => onUpdate({ declinedLabel: e.target.value })} 
-                                    placeholder="Not Going"
-                                    className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
-                                />
-                            </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {/* Image & Video Settings */}
                     {(block.type === 'image' || block.type === 'video') && (

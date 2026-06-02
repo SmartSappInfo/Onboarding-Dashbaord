@@ -922,6 +922,132 @@ const blockTypeTemplates: Record<string, Array<{
     ],
     rsvp: [
         {
+            name: 'Event Card (Full Bento)',
+            description: 'Invitation card with pill badge, title, description, and Bento RSVP buttons',
+            create: () => ({
+                id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'rsvp',
+                rsvpStyle: 'event_full_bento',
+                pillText: 'Invitation',
+                title: 'Design Team Synchronization',
+                content: 'Reviewing the quarterly brand evolution and digital style guidance for the upcoming luxury client launch.',
+                rsvpDateLabel: 'DATE',
+                rsvpDate: 'Dec 15, 2024',
+                rsvpTimeLabel: 'TIME',
+                rsvpTime: '2:00 PM',
+                rsvpLocationLabel: 'TYPE',
+                rsvpLocation: 'Virtual Meeting',
+                goingLabel: 'Going',
+                laterLabel: 'Later',
+                declinedLabel: 'Not Going',
+                style: {
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    paddingTop: '24px',
+                    paddingBottom: '24px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#e2e8f0'
+                }
+            })
+        },
+        {
+            name: 'Event Card (Full Inline)',
+            description: 'Invitation card with pill badge, title, description, and Inline/Adaptive RSVP buttons',
+            create: () => ({
+                id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'rsvp',
+                rsvpStyle: 'event_full_inline',
+                pillText: 'Invitation',
+                title: 'Design Team Synchronization',
+                content: 'Reviewing the quarterly brand evolution and digital style guidance for the upcoming luxury client launch.',
+                rsvpDateLabel: 'DATE',
+                rsvpDate: 'Dec 15, 2024',
+                rsvpTimeLabel: 'TIME',
+                rsvpTime: '2:00 PM',
+                rsvpLocationLabel: 'TYPE',
+                rsvpLocation: 'Virtual Meeting',
+                goingLabel: 'Going',
+                laterLabel: 'Later',
+                declinedLabel: 'Not Going',
+                style: {
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    paddingTop: '24px',
+                    paddingBottom: '24px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#e2e8f0'
+                }
+            })
+        },
+        {
+            name: 'Event Card (Compact Bento)',
+            description: 'RSVP card with event details and Bento buttons, without header section',
+            create: () => ({
+                id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'rsvp',
+                rsvpStyle: 'event_compact_bento',
+                rsvpDateLabel: 'DATE',
+                rsvpDate: 'Dec 15, 2024',
+                rsvpTimeLabel: 'TIME',
+                rsvpTime: '2:00 PM',
+                rsvpLocationLabel: 'TYPE',
+                rsvpLocation: 'Virtual Meeting',
+                goingLabel: 'Going',
+                laterLabel: 'Later',
+                declinedLabel: 'Not Going',
+                style: {
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    paddingTop: '24px',
+                    paddingBottom: '24px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#e2e8f0'
+                }
+            })
+        },
+        {
+            name: 'Event Card (Compact Inline)',
+            description: 'RSVP card with event details and Adaptive Inline buttons, without header section',
+            create: () => ({
+                id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'rsvp',
+                rsvpStyle: 'event_compact_inline',
+                rsvpDateLabel: 'DATE',
+                rsvpDate: 'Dec 15, 2024',
+                rsvpTimeLabel: 'TIME',
+                rsvpTime: '2:00 PM',
+                rsvpLocationLabel: 'TYPE',
+                rsvpLocation: 'Virtual Meeting',
+                goingLabel: 'Going',
+                laterLabel: 'Later',
+                declinedLabel: 'Not Going',
+                style: {
+                    textAlign: 'left',
+                    backgroundColor: '#ffffff',
+                    paddingTop: '24px',
+                    paddingBottom: '24px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#e2e8f0'
+                }
+            })
+        },
+        {
             name: 'Interactive Event Card (Bento)',
             description: 'Date, time, and location card with bento-style RSVP buttons',
             create: () => ({
@@ -1224,6 +1350,7 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
             );
         case 'rsvp': {
             const isDetailed = block.rsvpStyle && block.rsvpStyle !== 'standard';
+            const isBento = ['card_bento', 'event_full_bento', 'event_compact_bento'].includes(block.rsvpStyle || '');
             return (
                 <div className="w-full p-2 bg-slate-50 border rounded-lg space-y-1.5 text-left" style={{ backgroundColor: s.backgroundColor }}>
                     {isDetailed && (
@@ -1237,7 +1364,7 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                         </div>
                     )}
                     {!isDetailed && <div className="h-1 bg-slate-400 rounded w-4/5 mx-auto" />}
-                    {block.rsvpStyle === 'card_bento' ? (
+                    {isBento ? (
                         <div className="space-y-1 w-full">
                             <span className="bg-blue-600 rounded px-1 py-0.5 text-[5px] text-white font-bold block text-center leading-none select-none">Going</span>
                             <div className="flex gap-1">

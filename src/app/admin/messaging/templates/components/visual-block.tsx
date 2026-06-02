@@ -452,11 +452,326 @@ export function VisualBlock({
             const later = block.laterLabel || 'Later';
             
             const rsvpStyle = block.rsvpStyle || 'standard';
-            const isDetailedCard = rsvpStyle === 'card_bento' || rsvpStyle === 'card_inline';
-            
             const rsvpDate = block.rsvpDate || 'Tuesday, Sep 24';
             const rsvpTime = block.rsvpTime || '10:00 - 11:00 AM';
             const rsvpLocation = block.rsvpLocation || 'Google Meet';
+            const isEventStyle = ['event_full_bento', 'event_full_inline', 'event_compact_bento', 'event_compact_inline'].includes(rsvpStyle);
+            if (isEventStyle) {
+                const hasPillDesc = ['event_full_bento', 'event_full_inline'].includes(rsvpStyle);
+                const isBento = ['event_full_bento', 'event_compact_bento'].includes(rsvpStyle);
+                
+                const pillTextVal = block.pillText || 'Invitation';
+                const eventDescVal = block.content || 'Reviewing the quarterly brand evolution and digital style guidance for the upcoming luxury client launch.';
+                
+                const rsvpDateLabelVal = block.rsvpDateLabel || 'DATE';
+                const rsvpTimeLabelVal = block.rsvpTimeLabel || 'TIME';
+                const rsvpLocationLabelVal = block.rsvpLocationLabel || 'TYPE';
+                
+                return (
+                    <div 
+                        className={cn("w-full text-left select-text transition-all duration-300 p-6 sm:p-7 shadow-[0_2px_12px_rgba(0,0,0,0.04)]", alignmentClass)} 
+                        style={{
+                            backgroundColor: s.backgroundColor || '#ffffff',
+                            ...spacingStyle,
+                            ...borderStyle,
+                            borderRadius: s.borderRadius || '16px',
+                            borderWidth: s.borderWidth || '1px',
+                            borderStyle: s.borderStyle || 'solid',
+                            borderColor: s.borderColor || '#cbd5e1',
+                        }}
+                    >
+                        {hasPillDesc && (
+                            <>
+                                {/* Pill Badge */}
+                                <div className="mb-3">
+                                    <span className="inline-flex bg-blue-50 text-blue-600 rounded-full px-3 py-1 text-xs font-semibold select-text">
+                                        <input
+                                            type="text"
+                                            value={pillTextVal}
+                                            onChange={(e) => onContentUpdate?.({ pillText: e.target.value })}
+                                            className="bg-transparent border-none outline-none font-semibold text-blue-600 p-0 m-0 w-auto text-xs"
+                                            style={{ width: `${Math.max(pillTextVal.length || 5, 3)}ch` }}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            onFocus={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        />
+                                    </span>
+                                </div>
+                                
+                                {/* Event Title */}
+                                <div className="mb-2">
+                                    <textarea
+                                        value={title}
+                                        onChange={(e) => onContentUpdate?.({ title: e.target.value })}
+                                        className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-tight"
+                                        placeholder="Event Title"
+                                        rows={1}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') e.preventDefault();
+                                            e.stopPropagation();
+                                        }}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onInput={(e) => {
+                                            const target = e.target as HTMLTextAreaElement;
+                                            target.style.height = 'auto';
+                                            target.style.height = `${target.scrollHeight}px`;
+                                        }}
+                                        ref={(el) => {
+                                            if (el) {
+                                                el.style.height = 'auto';
+                                                el.style.height = `${el.scrollHeight}px`;
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                
+                                {/* Event Description */}
+                                <div className="mb-5">
+                                    <textarea
+                                        value={eventDescVal}
+                                        onChange={(e) => onContentUpdate?.({ content: e.target.value })}
+                                        className="text-xs sm:text-sm text-slate-500 bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-relaxed"
+                                        placeholder="Event Description"
+                                        rows={2}
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onInput={(e) => {
+                                            const target = e.target as HTMLTextAreaElement;
+                                            target.style.height = 'auto';
+                                            target.style.height = `${target.scrollHeight}px`;
+                                        }}
+                                        ref={(el) => {
+                                            if (el) {
+                                                el.style.height = 'auto';
+                                                el.style.height = `${el.scrollHeight}px`;
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                
+                                {/* Horizontal Divider */}
+                                <div className="border-t border-slate-100/80 my-4" />
+                            </>
+                        )}
+
+                        {/* Metadata Columns */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-1">
+                            {/* Column 1: Date */}
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="bg-blue-50/80 text-blue-600 p-2.5 rounded-xl flex items-center justify-center shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <div className="flex-1 min-w-0 leading-tight">
+                                    <input
+                                        type="text"
+                                        value={rsvpDateLabelVal}
+                                        onChange={(e) => onContentUpdate?.({ rsvpDateLabel: e.target.value })}
+                                        className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full"
+                                        placeholder="DATE"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={rsvpDate}
+                                        onChange={(e) => onContentUpdate?.({ rsvpDate: e.target.value })}
+                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full"
+                                        placeholder="Dec 15, 2024"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Vertical Divider 1 */}
+                            <div className="hidden sm:block h-9 w-px bg-slate-100 shrink-0 self-center" />
+
+                            {/* Column 2: Time */}
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="bg-blue-50/80 text-blue-600 p-2.5 rounded-xl flex items-center justify-center shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                </div>
+                                <div className="flex-1 min-w-0 leading-tight">
+                                    <input
+                                        type="text"
+                                        value={rsvpTimeLabelVal}
+                                        onChange={(e) => onContentUpdate?.({ rsvpTimeLabel: e.target.value })}
+                                        className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full"
+                                        placeholder="TIME"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={rsvpTime}
+                                        onChange={(e) => onContentUpdate?.({ rsvpTime: e.target.value })}
+                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full"
+                                        placeholder="2:00 PM"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Vertical Divider 2 */}
+                            <div className="hidden sm:block h-9 w-px bg-slate-100 shrink-0 self-center" />
+
+                            {/* Column 3: Type */}
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="bg-blue-50/80 text-blue-600 p-2.5 rounded-xl flex items-center justify-center shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+                                </div>
+                                <div className="flex-1 min-w-0 leading-tight">
+                                    <input
+                                        type="text"
+                                        value={rsvpLocationLabelVal}
+                                        onChange={(e) => onContentUpdate?.({ rsvpLocationLabel: e.target.value })}
+                                        className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full"
+                                        placeholder="TYPE"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={rsvpLocation}
+                                        onChange={(e) => onContentUpdate?.({ rsvpLocation: e.target.value })}
+                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full"
+                                        placeholder="Virtual Meeting"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Horizontal Divider */}
+                        <div className="border-t border-slate-100/80 my-4" />
+
+                        {/* Buttons Grid */}
+                        <div>
+                            {isBento ? (
+                                <div className="space-y-3">
+                                    {/* Going (Full Width) */}
+                                    <div className="w-full bg-[#0052cc] text-white rounded-xl py-3 px-4 text-sm font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer hover:bg-[#0047b3] transition-all">
+                                        <input
+                                            type="text"
+                                            value={going}
+                                            onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
+                                            style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(going.length || 5, 3)}ch` }}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            onFocus={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        />
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                    </div>
+                                    {/* Split Secondary Buttons */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {/* Later */}
+                                        <div className="bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
+                                            <input
+                                                type="text"
+                                                value={later}
+                                                onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
+                                                style={{ color: '#334155', font: 'inherit', width: `${Math.max(later.length || 5, 3)}ch` }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                onFocus={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                            />
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        </div>
+                                        {/* Not Going */}
+                                        <div className="bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
+                                            <input
+                                                type="text"
+                                                value={declined}
+                                                onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
+                                                style={{ color: '#334155', font: 'inherit', width: `${Math.max(declined.length || 9, 3)}ch` }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                onFocus={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                            />
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {/* Going (Full on Mobile grid-cols-2 spans 2, Inline on Desktop spans 1 of 3) */}
+                                    <div className="col-span-2 sm:col-span-1 bg-[#0052cc] text-white rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer hover:bg-[#0047b3] transition-all">
+                                        <input
+                                            type="text"
+                                            value={going}
+                                            onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
+                                            style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(going.length || 5, 3)}ch` }}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            onFocus={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        />
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                    </div>
+                                    {/* Later */}
+                                    <div className="col-span-1 bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-all">
+                                        <input
+                                            type="text"
+                                            value={later}
+                                            onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
+                                            style={{ color: '#334155', font: 'inherit', width: `${Math.max(later.length || 5, 3)}ch` }}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            onFocus={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        />
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    </div>
+                                    {/* Not Going */}
+                                    <div className="col-span-1 bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-all">
+                                        <input
+                                            type="text"
+                                            value={declined}
+                                            onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
+                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
+                                            style={{ color: '#334155', font: 'inherit', width: `${Math.max(declined.length || 9, 3)}ch` }}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            onFocus={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                        />
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+
+            const isDetailedCard = rsvpStyle === 'card_bento' || rsvpStyle === 'card_inline';
 
             if (isDetailedCard) {
                 return (

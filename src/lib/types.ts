@@ -2343,10 +2343,14 @@ export interface MessageBlock {
   goingLabel?: string;
   declinedLabel?: string;
   laterLabel?: string;
-  rsvpStyle?: 'standard' | 'card_bento' | 'card_inline';
+  rsvpStyle?: 'standard' | 'card_bento' | 'card_inline' | 'event_full_bento' | 'event_full_inline' | 'event_compact_bento' | 'event_compact_inline';
   rsvpDate?: string;
   rsvpTime?: string;
   rsvpLocation?: string;
+  pillText?: string;
+  rsvpDateLabel?: string;
+  rsvpTimeLabel?: string;
+  rsvpLocationLabel?: string;
   columns?: {
     width: string;
     blocks: MessageBlock[];
