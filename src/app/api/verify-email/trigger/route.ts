@@ -29,17 +29,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const emailSchema = z.string().email();
     const rawEmails = parsed.data.emails;
     
-    // Gracefully filter out empty or syntactically invalid emails
+    // Gracefully filter out empty or blank strings, keeping all actual values to be verified/flagged
     const emails = rawEmails
       .map((e) => e?.trim())
-      .filter((e) => e && emailSchema.safeParse(e).success);
+      .filter((e) => e !== '');
 
     if (emails.length === 0) {
       return NextResponse.json(
-        { queued: false, message: 'No valid emails found in the batch.', skippedCount: rawEmails.length },
+        { queued: false, message: 'No emails found in the batch.', skippedCount: rawEmails.length },
         { status: 200 }
       );
     }

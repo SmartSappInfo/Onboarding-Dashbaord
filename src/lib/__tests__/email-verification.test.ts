@@ -20,10 +20,34 @@ describe('EmailVerificationEngine', () => {
 
     it('passes valid email formats', async () => {
       const engine = new EmailVerificationEngine([new SyntaxValidator()]);
-      const result = await engine.verify('john.doe@example.com');
+      const result = await engine.verify('john.doe@gmail.com');
       
       expect(result.checks.syntax).toBe(true);
       expect(result.score).toBeGreaterThan(0);
+    });
+
+    it('rejects placeholder/dummy usernames', async () => {
+      const engine = new EmailVerificationEngine([new SyntaxValidator()]);
+      
+      const resNone = await engine.verify('none@gmail.com');
+      expect(resNone.valid).toBe(false);
+      expect(resNone.checks.syntax).toBe(false);
+
+      const resTest = await engine.verify('test@outlook.com');
+      expect(resTest.valid).toBe(false);
+      expect(resTest.checks.syntax).toBe(false);
+    });
+
+    it('rejects placeholder/dummy domains', async () => {
+      const engine = new EmailVerificationEngine([new SyntaxValidator()]);
+      
+      const resExample = await engine.verify('user@example.com');
+      expect(resExample.valid).toBe(false);
+      expect(resExample.checks.syntax).toBe(false);
+
+      const resTestDom = await engine.verify('user@test.com');
+      expect(resTestDom.valid).toBe(false);
+      expect(resTestDom.checks.syntax).toBe(false);
     });
   });
 
@@ -76,7 +100,7 @@ describe('EmailVerificationEngine', () => {
         MockSmtp as any
       ]);
       
-      const result = await engine.verify('valid@example.com');
+      const result = await engine.verify('valid@gmail.com');
       expect(result.valid).toBe(true);
       expect(result.score).toBeGreaterThanOrEqual(90);
       expect(result.status).toBe('verified');

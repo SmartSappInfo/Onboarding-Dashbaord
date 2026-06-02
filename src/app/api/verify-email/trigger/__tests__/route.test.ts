@@ -83,7 +83,7 @@ describe('verify-email/trigger API Route', () => {
     expect(data.processedCount).toBe(2);
   });
 
-  it('gracefully filters out completely invalid emails and verifies valid ones without returning a 400 error', async () => {
+  it('processes invalid emails so they can be flagged as invalid in the database instead of filtering them out', async () => {
     vi.spyOn(ContactHygieneRepository, 'isLocked').mockResolvedValue(false);
     vi.spyOn(ContactHygieneRepository, 'setVerifyingLock').mockResolvedValue(undefined);
 
@@ -99,15 +99,15 @@ describe('verify-email/trigger API Route', () => {
 
     expect(response.status).toBe(202);
     expect(data.queued).toBe(true);
-    // Only the single valid email 'john.doe@example.com' should be accepted for processing
-    expect(data.processedCount).toBe(1);
+    // Non-empty invalid emails ('completely-invalid-email-address') are processed so they get updated in the DB
+    expect(data.processedCount).toBe(2);
   });
 
-  it('returns a successful 200 message when no valid emails are found in the request', async () => {
+  it('returns a successful 200 message when only empty/blank emails are found in the request', async () => {
     const req = new Request('http://localhost/api/verify-email/trigger', {
       method: 'POST',
       body: JSON.stringify({
-        emails: ['not-an-email', '   ', 'another-invalid-one'],
+        emails: ['   ', '', '   '],
       }),
     });
 
@@ -117,7 +117,7 @@ describe('verify-email/trigger API Route', () => {
     expect(response.status).toBe(200);
     expect(data.queued).toBe(false);
     expect(data.skippedCount).toBe(3);
-    expect(data.message).toContain('No valid emails found');
+    expect(data.message).toContain('No emails found in the batch');
   });
 
   it('returns a 400 error if request body payload is empty or invalid structure', async () => {

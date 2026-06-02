@@ -68,12 +68,28 @@ const BURNER_DOMAINS = loadBurnerDomains();
 export class SyntaxValidator implements IVerificationStrategy {
   name = 'Syntax';
 
+  private static PLACEHOLDER_USERNAMES = new Set([
+    'none', 'test', 'placeholder', 'no-email', 'noemail', 'dummy', 
+    'fake', 'null', 'nil', 'na', 'n/a', 'temp', 'example'
+  ]);
+
   async execute(context: VerificationContext): Promise<CheckResult> {
     const result = z.string().email().safeParse(context.email);
-    if (result.success) {
-      return { passed: true, scoreWeight: 15 };
+    if (!result.success) {
+      return { passed: false, scoreWeight: 0, error: 'Invalid RFC syntax' };
     }
-    return { passed: false, scoreWeight: 0, error: 'Invalid RFC syntax' };
+
+    const username = context.username.toLowerCase().trim();
+    if (SyntaxValidator.PLACEHOLDER_USERNAMES.has(username)) {
+      return { passed: false, scoreWeight: 0, error: `Flagged as placeholder username: '${username}'` };
+    }
+
+    const domain = context.domain.toLowerCase().trim();
+    if (domain === 'example.com' || domain === 'test.com') {
+      return { passed: false, scoreWeight: 0, error: `Flagged as placeholder domain: '${domain}'` };
+    }
+
+    return { passed: true, scoreWeight: 15 };
   }
 }
 

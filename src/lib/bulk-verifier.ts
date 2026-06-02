@@ -18,19 +18,26 @@ export class BulkVerificationService {
    */
   async processBulk(emails: string[], options: BulkVerificationOptions = {}) {
     const domainMap = new Map<string, string[]>();
-    
+    const allUpdates: [string, VerifyEmailResult][] = [];
+
     // 1. Group emails by their domain to enforce serialization rules
     for (const email of emails) {
       const [, domain] = email.split('@');
-      if (!domain) continue;
+      if (!domain) {
+        // No domain -> syntactically invalid, execute immediately if not already cached
+        const cached = await this.getHygieneFromCache(email);
+        if (options.forceRefresh || !cached || cached.status !== 'invalid') {
+          const finalResult = await this.executeSingleVerification(email);
+          allUpdates.push([email, finalResult]);
+        }
+        continue;
+      }
       const lowerDomain = domain.toLowerCase();
       if (!domainMap.has(lowerDomain)) {
         domainMap.set(lowerDomain, []);
       }
       domainMap.get(lowerDomain)!.push(email);
     }
-
-    const allUpdates: [string, VerifyEmailResult][] = [];
 
     // 2. Process each domain bucket in parallel, but serialize requests WITHIN the same domain
     const domainPromises = Array.from(domainMap.entries()).map(async ([domain, domainEmails]) => {
