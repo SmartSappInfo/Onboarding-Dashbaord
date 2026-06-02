@@ -108,14 +108,88 @@ export function VisualBlock({
     switch (block.type) {
         case 'heading': {
             const Tag = block.variant || 'h2';
+            const variant = s.variant || 'standard';
             const sizeClass = Tag === 'h1' ? "text-3xl font-extrabold" : Tag === 'h2' ? "text-2xl font-bold" : "text-lg font-semibold";
+            const pillTextVal = block.pillText || '';
+            const contentVal = block.content || '';
+
+            const isLeftAccent = variant === 'left_accent';
+            const isDarkSlate = variant === 'dark_slate';
+            const isEnvelopeBadge = variant === 'envelope_badge';
+            const isNestedCard = variant === 'nested_card';
+            const isSimpleWide = variant === 'simple_wide';
+
+            const align = s.textAlign || (isDarkSlate || isEnvelopeBadge || isSimpleWide ? 'center' : 'left');
+            const customAlignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
+            const customFlexAlignClass = align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start';
+
+            const outerStyle: React.CSSProperties = {
+                ...spacingStyle,
+                ...borderStyle,
+                backgroundColor: s.backgroundColor || undefined,
+                backgroundImage: s.backgroundImage || undefined,
+                backgroundSize: s.backgroundSize || undefined,
+                borderLeft: isLeftAccent ? '4px solid #2563eb' : undefined,
+            };
+
+            const headingStyle: React.CSSProperties = {
+                ...typographyStyle,
+                margin: 0,
+                padding: 0,
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: isDarkSlate ? '#ffffff' : (s.color || '#0f172a'),
+            };
+
             return (
-                <div className={cn("w-full", alignmentClass)} style={{ backgroundColor: s.backgroundColor }}>
+                <div 
+                    className={cn("w-full transition-all duration-200 select-text", customAlignClass)} 
+                    style={outerStyle}
+                >
+                    {/* Badge/Pill */}
+                    {block.pillText !== undefined && (
+                        <div className={cn("mb-2.5 flex", customFlexAlignClass)}>
+                            {isDarkSlate ? (
+                                <input
+                                    type="text"
+                                    value={pillTextVal}
+                                    onChange={(e) => onContentUpdate?.({ pillText: e.target.value })}
+                                    className="bg-transparent border-none outline-none font-black tracking-wider text-blue-300 uppercase p-0 m-0 w-auto text-center focus:ring-0 focus:outline-none"
+                                    placeholder="Date / Label"
+                                    style={{ width: `${Math.max(pillTextVal.length || 12, 4)}ch`, fontSize: '11px' }}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                />
+                            ) : (
+                                <span className="inline-flex items-center bg-blue-50 text-blue-600 rounded-full px-3 py-1 text-xs font-semibold select-text border border-blue-100/50">
+                                    {block.url === 'envelope' && (
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 shrink-0 mr-1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                    )}
+                                    <input
+                                        type="text"
+                                        value={pillTextVal}
+                                        onChange={(e) => onContentUpdate?.({ pillText: e.target.value })}
+                                        className="bg-transparent border-none outline-none font-semibold text-blue-605 p-0 m-0 w-full text-xs text-center focus:ring-0 focus:outline-none"
+                                        placeholder="Badge Text"
+                                        style={{ color: '#2563eb', width: `${Math.max(pillTextVal.length || 8, 4)}ch` }}
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                </span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Heading Title */}
                     <textarea
                         value={block.title || ''}
                         onChange={(e) => onContentUpdate?.({ title: e.target.value })}
-                        className={cn("tracking-tight leading-tight m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text", sizeClass, alignmentClass)}
-                        style={combinedStyle}
+                        className={cn("tracking-tight leading-tight m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text", sizeClass, customAlignClass)}
+                        style={headingStyle}
                         placeholder="New Heading"
                         rows={1}
                         onInput={(e) => {
@@ -137,6 +211,80 @@ export function VisualBlock({
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                     />
+
+                    {/* Subtext Description with optional Icon/Avatar */}
+                    {block.content !== undefined && !isSimpleWide && (
+                        <div className={cn(
+                            isNestedCard 
+                                ? "mt-4 p-4 bg-slate-50/90 border border-slate-200/80 rounded-2xl shadow-sm text-left w-full"
+                                : "mt-2.5 flex items-center gap-2 text-sm font-medium",
+                            isNestedCard ? "" : customFlexAlignClass
+                        )}>
+                            {!isNestedCard && block.url === 'calendar' && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 shrink-0"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            )}
+                            {!isNestedCard && block.url && block.url.startsWith('http') && (
+                                <img src={block.url} alt="avatar" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                            )}
+                            <textarea
+                                value={contentVal}
+                                onChange={(e) => onContentUpdate?.({ content: e.target.value })}
+                                className={cn("bg-transparent border-none outline-none p-0 m-0 w-full focus:ring-0 focus:outline-none resize-none select-text", isNestedCard ? "text-slate-650 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}
+                                placeholder="Subtext description..."
+                                rows={isNestedCard ? 2 : 1}
+                                onInput={(e) => {
+                                    const target = e.target as HTMLTextAreaElement;
+                                    target.style.height = 'auto';
+                                    target.style.height = `${target.scrollHeight}px`;
+                                }}
+                                ref={(el) => {
+                                    if (el) {
+                                        el.style.height = 'auto';
+                                        el.style.height = `${el.scrollHeight}px`;
+                                    }
+                                }}
+                                onKeyDown={(e) => e.stopPropagation()}
+                                onFocus={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                    )}
+
+                    {/* Left Accent Details Footer */}
+                    {isLeftAccent && block.rsvpDate !== undefined && (
+                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2.5 text-slate-700 text-sm font-bold text-left">
+                            {block.url === 'clock' && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            )}
+                            <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                                <input
+                                    type="text"
+                                    value={block.rsvpDate || ''}
+                                    onChange={(e) => onContentUpdate?.({ rsvpDate: e.target.value })}
+                                    className="bg-transparent border-none outline-none p-0 m-0 w-full font-extrabold text-slate-800 focus:ring-0 focus:outline-none text-xs"
+                                    placeholder="Date (e.g. Thursday, Oct 26)"
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                />
+                                {block.rsvpTime !== undefined && (
+                                    <input
+                                        type="text"
+                                        value={block.rsvpTime || ''}
+                                        onChange={(e) => onContentUpdate?.({ rsvpTime: e.target.value })}
+                                        className="bg-transparent border-none outline-none p-0 m-0 w-full font-medium text-slate-500 focus:ring-0 focus:outline-none text-[10px]"
+                                        placeholder="Time (e.g. 10:00 AM - 11:30 AM)"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onFocus={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }

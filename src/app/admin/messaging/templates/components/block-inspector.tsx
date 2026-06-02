@@ -63,6 +63,11 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     const dateLabelInputRef = React.useRef<HTMLInputElement>(null);
     const timeLabelInputRef = React.useRef<HTMLInputElement>(null);
     const locationLabelInputRef = React.useRef<HTMLInputElement>(null);
+    const headingPillRef = React.useRef<HTMLInputElement>(null);
+    const headingSubtextRef = React.useRef<HTMLInputElement>(null);
+    const headingUrlRef = React.useRef<HTMLInputElement>(null);
+    const headingRsvpDateRef = React.useRef<HTMLInputElement>(null);
+    const headingRsvpTimeRef = React.useRef<HTMLInputElement>(null);
 
     if (!block) return null;
 
@@ -146,6 +151,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                 {/* 1. Content/Block-Type Unique Inputs */}
                 <div className="space-y-4">
                     {/* Heading Block Settings */}
+                    {/* Heading Block Settings */}
                     {block.type === 'heading' && (
                         <div className="space-y-4">
                             <div className="space-y-2">
@@ -162,6 +168,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     value={block.title || ''} 
                                     onChange={e => onUpdate({ title: e.target.value })} 
                                     className="font-bold rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                    placeholder="Enter heading title..."
                                 />
                             </div>
                             <div className="space-y-2">
@@ -181,6 +188,114 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     ))}
                                 </div>
                             </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Badge / Pill Text</Label>
+                                    <InlineVariablePicker 
+                                        targetRef={headingPillRef} 
+                                        currentValue={block.pillText || ''} 
+                                        onFieldChange={val => onUpdate({ pillText: val })} 
+                                    />
+                                </div>
+                                <Input 
+                                    ref={headingPillRef}
+                                    value={block.pillText || ''} 
+                                    onChange={e => onUpdate({ pillText: e.target.value })} 
+                                    className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                    placeholder="e.g. High Priority (optional)"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Subtitle / Subtext</Label>
+                                    <InlineVariablePicker 
+                                        targetRef={headingSubtextRef} 
+                                        currentValue={block.content || ''} 
+                                        onFieldChange={val => onUpdate({ content: val })} 
+                                    />
+                                </div>
+                                <Input 
+                                    ref={headingSubtextRef}
+                                    value={block.content || ''} 
+                                    onChange={e => onUpdate({ content: e.target.value })} 
+                                    className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                    placeholder="e.g. Invited by Alex Chen (optional)"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Style Variant</Label>
+                                <Select 
+                                    value={block.style?.variant || 'standard'} 
+                                    onValueChange={(val) => handleStyleUpdate({ variant: val })}
+                                >
+                                    <SelectTrigger className="h-10 rounded-xl font-semibold bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-blue-500/20">
+                                        <SelectValue placeholder="Standard Heading" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border border-slate-200">
+                                        <SelectItem value="standard">Standard Heading</SelectItem>
+                                        <SelectItem value="left_accent">Left Accent Card (Theme 1)</SelectItem>
+                                        <SelectItem value="dark_slate">Dark Slate Card (Theme 2)</SelectItem>
+                                        <SelectItem value="envelope_badge">Envelope Badge (Theme 3)</SelectItem>
+                                        <SelectItem value="nested_card">Nested Card (Theme 4)</SelectItem>
+                                        <SelectItem value="simple_wide">Wide Banner (Theme 5)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Icon / Avatar URL</Label>
+                                    <InlineVariablePicker 
+                                        targetRef={headingUrlRef} 
+                                        currentValue={block.url || ''} 
+                                        onFieldChange={val => onUpdate({ url: val })} 
+                                    />
+                                </div>
+                                <Input 
+                                    ref={headingUrlRef}
+                                    value={block.url || ''} 
+                                    onChange={e => onUpdate({ url: e.target.value })} 
+                                    className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                    placeholder="Type 'calendar', 'clock', 'envelope' or image URL"
+                                />
+                            </div>
+                            {block.style?.variant === 'left_accent' && (
+                                <>
+                                    <div className="space-y-2 animate-in slide-in-from-top-1 duration-200">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Date Info</Label>
+                                            <InlineVariablePicker 
+                                                targetRef={headingRsvpDateRef} 
+                                                currentValue={block.rsvpDate || ''} 
+                                                onFieldChange={val => onUpdate({ rsvpDate: val })} 
+                                            />
+                                        </div>
+                                        <Input 
+                                            ref={headingRsvpDateRef}
+                                            value={block.rsvpDate || ''} 
+                                            onChange={e => onUpdate({ rsvpDate: e.target.value })} 
+                                            className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                            placeholder="e.g. Thursday, Oct 26"
+                                        />
+                                    </div>
+                                    <div className="space-y-2 animate-in slide-in-from-top-1 duration-200">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Time Info</Label>
+                                            <InlineVariablePicker 
+                                                targetRef={headingRsvpTimeRef} 
+                                                currentValue={block.rsvpTime || ''} 
+                                                onFieldChange={val => onUpdate({ rsvpTime: val })} 
+                                            />
+                                        </div>
+                                        <Input 
+                                            ref={headingRsvpTimeRef}
+                                            value={block.rsvpTime || ''} 
+                                            onChange={e => onUpdate({ rsvpTime: e.target.value })} 
+                                            className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                            placeholder="e.g. 10:00 AM - 11:30 AM (PST)"
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
 

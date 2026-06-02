@@ -81,7 +81,8 @@ describe('shouldShowBlock', () => {
 describe('renderBlocksToHtml with styles', () => {
   it('applies custom style colors and fonts', () => {
     const blocks: MessageBlock[] = [
-      { id: '1', type: 'text', content: 'Testing custom styles' }
+      { id: '1', type: 'text', content: 'Testing custom styles' },
+      { id: '2', type: 'button', title: 'Click Me', link: 'https://example.com' }
     ];
     const style = {
       backgroundColor: '#ff0000',
@@ -99,8 +100,104 @@ describe('renderBlocksToHtml with styles', () => {
     expect(html).toContain('background-color: #00ff00');
     expect(html).toContain('color: #0000ff');
     expect(html).toContain('font-family: \'Roboto\', Helvetica, Arial, sans-serif');
-    expect(html).toContain('linear-gradient(to right, #ffff00, #ff00ff, #ffff00)');
+    expect(html).toContain('background-color: #ffff00'); // btnBg should use primaryColor
+    expect(html).toContain('box-shadow: 0 10px 15px -3px #ffff004D'); // shadowColor should use primaryColor with alpha
     expect(html).toContain('border-radius: 30px');
     expect(html).toContain('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900');
   });
+
+  it('renders heading variants correctly', () => {
+    const headingBlocks = [
+      {
+        id: 'h1',
+        type: 'heading',
+        variant: 'h1',
+        title: 'Left Accent Card Title',
+        content: 'Left Accent Card Content',
+        pillText: 'MEETING_ACCENT',
+        rsvpDate: 'Thursday, Oct 26',
+        rsvpTime: '10:00 AM',
+        url: 'clock',
+        style: {
+          variant: 'left_accent'
+        }
+      },
+      {
+        id: 'h2',
+        type: 'heading',
+        variant: 'h1',
+        title: 'Dark Slate Title',
+        content: 'Dark Slate Content',
+        pillText: 'SUMMIT_OCT',
+        style: {
+          variant: 'dark_slate'
+        }
+      },
+      {
+        id: 'h3',
+        type: 'heading',
+        variant: 'h1',
+        title: 'Envelope Badge Title',
+        content: 'Envelope Badge Content',
+        pillText: 'INVITATION_ENV',
+        url: 'envelope',
+        style: {
+          variant: 'envelope_badge'
+        }
+      },
+      {
+        id: 'h4',
+        type: 'heading',
+        variant: 'h1',
+        title: 'Nested Card Title',
+        content: 'Nested Card Content',
+        pillText: 'MEETING_NESTED',
+        style: {
+          variant: 'nested_card'
+        }
+      },
+      {
+        id: 'h5',
+        type: 'heading',
+        variant: 'h1',
+        title: 'Simple Wide Title',
+        pillText: 'MEETING_WIDE',
+        style: {
+          variant: 'simple_wide'
+        }
+      }
+    ];
+
+    const html = renderBlocksToHtml(headingBlocks, {}, { style: { htmlWrapper: '{{content}}' } });
+
+    // Left Accent Checks
+    expect(html).toContain('border-left: 4px solid #2563eb !important;');
+    expect(html).toContain('MEETING_ACCENT');
+    expect(html).toContain('Left Accent Card Title');
+    expect(html).toContain('Left Accent Card Content');
+    expect(html).toContain('Thursday, Oct 26');
+    expect(html).toContain('10:00 AM');
+    expect(html).toContain('viewBox="0 0 24 24"'); // clock SVG icon check
+
+    // Dark Slate Checks
+    expect(html).toContain('color: #ffffff');
+    expect(html).toContain('SUMMIT_OCT');
+    expect(html).toContain('Dark Slate Title');
+    expect(html).toContain('Dark Slate Content');
+
+    // Envelope Badge Checks
+    expect(html).toContain('INVITATION_ENV');
+    expect(html).toContain('Envelope Badge Title');
+    expect(html).toContain('Envelope Badge Content');
+
+    // Nested Card Checks
+    expect(html).toContain('Nested Card Title');
+    expect(html).toContain('Nested Card Content');
+    expect(html).toContain('background-color: #f8fafc'); // nested table background
+
+    // Simple Wide Checks
+    expect(html).toContain('MEETING_WIDE');
+    expect(html).toContain('Simple Wide Title');
+  });
 });
+

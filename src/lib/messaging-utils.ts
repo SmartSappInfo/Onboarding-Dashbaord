@@ -282,8 +282,13 @@ export function renderBlocksToHtml(
     const fontWeight = s.fontWeight ? `font-weight: ${s.fontWeight};` : '';
     const lineHeight = s.lineHeight ? `line-height: ${s.lineHeight};` : '';
 
+    const bgImageStyles = [
+      s.backgroundImage ? `background-image: ${s.backgroundImage};` : '',
+      s.backgroundSize ? `background-size: ${s.backgroundSize};` : '',
+    ].filter(Boolean).join(' ');
+
     const baseStyle = `font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; ${fontColor} ${fontSize} ${fontWeight} ${lineHeight} ${alignStyle}`;
-    const wrapperStyle = `${paddingStyles} ${marginStyles} ${borderStyles} ${blockBgColor} ${alignStyle} ${baseStyle}`;
+    const wrapperStyle = `${paddingStyles} ${marginStyles} ${borderStyles} ${blockBgColor} ${bgImageStyles} ${alignStyle} ${baseStyle}`;
 
     let blockHtml = '';
 
@@ -293,8 +298,122 @@ export function renderBlocksToHtml(
         const defaultFontSize = tag === 'h1' ? '32px' : tag === 'h2' ? '24px' : '18px';
         const title = resolveVariables(block.title || '', variables);
         const headingFontSize = fontSizeVal || defaultFontSize;
-        const headingStyle = `margin: 0; font-size: ${headingFontSize}; ${fontWeight || 'font-weight: 900;'} ${lineHeight || 'line-height: 1.2;'} letter-spacing: -0.02em; ${fontColor} ${fontFamily}`;
-        blockHtml = `<div style="${wrapperStyle}"><${tag} style="${headingStyle}">${title}</${tag}></div>`;
+
+        const variant = s.variant || 'standard';
+        const isLeftAccent = variant === 'left_accent';
+        const isDarkSlate = variant === 'dark_slate';
+        const isEnvelopeBadge = variant === 'envelope_badge';
+        const isNestedCard = variant === 'nested_card';
+        const isSimpleWide = variant === 'simple_wide';
+
+        const align = s.textAlign || (isDarkSlate || isEnvelopeBadge || isSimpleWide ? 'center' : 'left');
+        const headingColor = isDarkSlate ? '#ffffff' : (s.color || '#0f172a');
+        const headingStyle = `margin: 0; font-size: ${headingFontSize}; ${fontWeight || 'font-weight: 900;'} ${lineHeight || 'line-height: 1.2;'} letter-spacing: -0.02em; color: ${headingColor}; ${fontFamily}`;
+
+        // Build wrapper style specifically for left_accent if applicable
+        let headingWrapperStyle = wrapperStyle;
+        if (isLeftAccent) {
+          headingWrapperStyle += ' border-left: 4px solid #2563eb !important;';
+        }
+
+        let headerContent = '';
+
+        // Badge/Pill Text
+        if (block.pillText) {
+          const pillTextVal = resolveVariables(block.pillText, variables);
+          if (isDarkSlate) {
+            headerContent += `
+              <div style="margin-bottom: 10px; text-align: center;">
+                <span style="font-size: 11px; font-weight: 900; letter-spacing: 0.05em; color: #93c5fd; text-transform: uppercase; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"};">
+                  ${pillTextVal}
+                </span>
+              </div>
+            `;
+          } else {
+            const hasEnvelope = isEnvelopeBadge && block.url === 'envelope';
+            const envelopeIcon = hasEnvelope ? `
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: inline-block; margin-right: 6px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            ` : '';
+            
+            headerContent += `
+              <div style="margin-bottom: 10px; text-align: ${align};">
+                <span style="display: inline-block; background-color: #eff6ff; color: #2563eb; border-radius: 9999px; padding: 4px 12px; font-size: 11px; font-weight: 600; line-height: 1.2; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"};">
+                  ${envelopeIcon}${pillTextVal}
+                </span>
+              </div>
+            `;
+          }
+        }
+
+        // Title
+        headerContent += `<${tag} style="${headingStyle}">${title}</${tag}>`;
+
+        // Subtext Description
+        if (block.content && !isSimpleWide) {
+          const contentVal = resolveVariables(block.content, variables);
+          
+          if (isNestedCard) {
+            headerContent += `
+              <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 16px; font-size: 13px; font-weight: 500; line-height: 1.5; color: #475569; text-align: left; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"};">
+                    ${contentVal}
+                  </td>
+                </tr>
+              </table>
+            `;
+          } else {
+            const iconUrl = block.url ? resolveVariables(block.url, variables) : '';
+            let iconHtml = '';
+            
+            if (iconUrl === 'calendar') {
+              iconHtml = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: inline-block; margin-right: 6px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              `;
+            } else if (iconUrl && iconUrl.startsWith('http')) {
+              iconHtml = `<img src="${iconUrl}" style="width: 20px; height: 20px; border-radius: 50%; vertical-align: middle; margin-right: 6px; display: inline-block;" alt="avatar" />`;
+            }
+
+            const descColor = isDarkSlate ? '#cbd5e1' : '#4b5563';
+            headerContent += `
+              <div style="margin-top: 10px; font-size: 14px; font-weight: 500; line-height: 1.5; color: ${descColor}; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; text-align: ${align};">
+                ${iconHtml}<span style="vertical-align: middle; display: inline-block;">${contentVal}</span>
+              </div>
+            `;
+          }
+        }
+
+        // Details Footer for Left Accent
+        if (isLeftAccent && block.rsvpDate !== undefined) {
+          const rsvpDateVal = resolveVariables(block.rsvpDate || '', variables);
+          const rsvpTimeVal = block.rsvpTime ? resolveVariables(block.rsvpTime, variables) : '';
+          const iconUrl = block.url ? resolveVariables(block.url, variables) : '';
+          
+          let iconHtml = '';
+          if (iconUrl === 'clock') {
+            iconHtml = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: block;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            `;
+          }
+
+          headerContent += `
+            <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #f1f5f9; width: 100%; border-collapse: collapse;">
+              <tr>
+                ${iconHtml ? `
+                  <td valign="middle" style="width: 24px; padding-right: 8px;">
+                    ${iconHtml}
+                  </td>
+                ` : ''}
+                <td valign="middle" style="text-align: left;">
+                  <div style="font-size: 12px; font-weight: 800; color: #1e293b; line-height: 1.3; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"};">${rsvpDateVal}</div>
+                  ${rsvpTimeVal ? `<div style="font-size: 10px; font-weight: 500; color: #64748b; line-height: 1.3; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"};">${rsvpTimeVal}</div>` : ''}
+                </td>
+              </tr>
+            </table>
+          `;
+        }
+
+        blockHtml = `<div style="${headingWrapperStyle}">${headerContent}</div>`;
         break;
       }
       

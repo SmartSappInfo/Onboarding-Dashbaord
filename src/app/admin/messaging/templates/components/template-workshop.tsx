@@ -180,12 +180,154 @@ function Stepper({ currentStep, onStepClick, name }: StepperProps) {
 const blockTypeTemplates: Record<string, Array<{
     name: string;
     description: string;
+    aspectRatio?: string;
     create: () => MessageBlock;
 }>> = {
     heading: [
         {
+            name: 'Left Accent Card',
+            description: 'Left-accented meeting card with date/time details at the bottom',
+            aspectRatio: 'aspect-[1/1]',
+            create: () => ({
+                id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'heading',
+                variant: 'h1',
+                title: 'Design Team Sync',
+                content: 'Join us for our weekly alignment. We\'ll be reviewing the latest component updates, discussing the upcoming Q3 roadmap, and tackling any immediate blockers.',
+                pillText: 'MEETING',
+                rsvpDate: 'Thursday, Oct 26',
+                rsvpTime: '10:00 AM - 11:30 AM (PST)',
+                url: 'clock',
+                style: {
+                    variant: 'left_accent',
+                    textAlign: 'left',
+                    color: '#0f172a',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderColor: '#f1f5f9',
+                    borderStyle: 'solid',
+                    paddingTop: '20px',
+                    paddingBottom: '20px',
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    marginTop: '10px',
+                    marginBottom: '10px'
+                }
+            })
+        },
+        {
+            name: 'Dark Slate Card',
+            description: 'Centered dark slate header card with clean white/grey typography',
+            aspectRatio: 'aspect-[3/4]',
+            create: () => ({
+                id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'heading',
+                variant: 'h1',
+                title: 'Annual Strategy Summit',
+                content: 'Join executive leadership for an exclusive three-day retreat focusing on innovation, global expansion, and future frameworks.',
+                pillText: 'OCTOBER 15-17, 2024',
+                style: {
+                    variant: 'dark_slate',
+                    textAlign: 'center',
+                    color: '#ffffff',
+                    backgroundColor: '#344154',
+                    borderRadius: '16px',
+                    paddingTop: '24px',
+                    paddingBottom: '24px',
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    marginTop: '10px',
+                    marginBottom: '10px'
+                }
+            })
+        },
+        {
+            name: 'Envelope Badge Header',
+            description: 'Centered card layout featuring an envelope-icon invitation badge',
+            aspectRatio: 'aspect-[1/1]',
+            create: () => ({
+                id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'heading',
+                variant: 'h1',
+                title: 'Digital Horizon Summit',
+                content: 'Join us for an exclusive gathering of industry leaders exploring the intersection of design, technology, and modern correspondence.',
+                pillText: 'INVITATION',
+                url: 'envelope',
+                style: {
+                    variant: 'envelope_badge',
+                    textAlign: 'center',
+                    color: '#0f172a',
+                    backgroundColor: '#ffffff',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderColor: '#e2e8f0',
+                    borderStyle: 'solid',
+                    paddingTop: '24px',
+                    paddingBottom: '24px',
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    marginTop: '10px',
+                    marginBottom: '10px'
+                }
+            })
+        },
+        {
+            name: 'Nested Card Content',
+            description: 'Light blue gradient card where the description is nested inside a grey sub-card',
+            aspectRatio: 'aspect-[4/3]',
+            create: () => ({
+                id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'heading',
+                variant: 'h1',
+                title: 'Design Team Sync',
+                content: 'Join us for our weekly alignment. We\'ll be reviewing the latest component updates, discussing the upcoming Q3 roadmap, and tackling any immediate blockers.',
+                pillText: 'MEETING',
+                style: {
+                    variant: 'nested_card',
+                    textAlign: 'left',
+                    color: '#0f172a',
+                    backgroundColor: '#f0f7ff',
+                    backgroundImage: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                    borderRadius: '16px',
+                    paddingTop: '20px',
+                    paddingBottom: '20px',
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    marginTop: '10px',
+                    marginBottom: '10px'
+                }
+            })
+        },
+        {
+            name: 'Wide Banner Header',
+            description: 'Minimalist wide layout featuring badge and centered header title',
+            aspectRatio: 'aspect-[21/9]',
+            create: () => ({
+                id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'heading',
+                variant: 'h1',
+                title: 'Design Team Sync',
+                pillText: 'MEETING',
+                style: {
+                    variant: 'simple_wide',
+                    textAlign: 'center',
+                    color: '#0f172a',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '12px',
+                    paddingTop: '16px',
+                    paddingBottom: '16px',
+                    paddingLeft: '16px',
+                    paddingRight: '16px',
+                    marginTop: '10px',
+                    marginBottom: '10px'
+                }
+            })
+        },
+        {
             name: 'Hero Title Banner',
             description: 'Large, bold, centered title for headers',
+            aspectRatio: 'aspect-[21/9]',
             create: () => ({
                 id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'heading',
@@ -206,6 +348,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Section Title',
             description: 'Clean left-aligned title for sections',
+            aspectRatio: 'aspect-[16/5]',
             create: () => ({
                 id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'heading',
@@ -226,6 +369,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Sub-section Title',
             description: 'Subtle left-aligned header',
+            aspectRatio: 'aspect-[16/4]',
             create: () => ({
                 id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'heading',
@@ -246,6 +390,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Accent Brand Heading',
             description: 'Branded blue header',
+            aspectRatio: 'aspect-[16/5]',
             create: () => ({
                 id: `blk_heading_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'heading',
@@ -268,6 +413,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Standard Paragraph',
             description: 'Standard reading text layout',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_text_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'text',
@@ -285,6 +431,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Prominent Intro',
             description: 'Centered, slightly larger lead text',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_text_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'text',
@@ -303,6 +450,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Fine Print / Unsubscribe',
             description: 'Muted footnote style for disclaimers',
+            aspectRatio: 'aspect-[16/6]',
             create: () => ({
                 id: `blk_text_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'text',
@@ -320,6 +468,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Highlighted Callout',
             description: 'Text highlighted inside a custom box card',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_text_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'text',
@@ -346,6 +495,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Circular Bullets',
             description: 'Standard bulleted list',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'list',
@@ -366,6 +516,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Numbered Steps',
             description: 'Step-by-step ordered list',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'list',
@@ -386,6 +537,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Roman Numerals',
             description: 'List with uppercase roman numerals',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'list',
@@ -406,6 +558,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Checklist Task Panel',
             description: 'Task items with green checkmarks',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'list',
@@ -426,6 +579,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Arrow Bullet Points',
             description: 'Items bulleted with blue indicators',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_list_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'list',
@@ -448,6 +602,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Full Hero Card Image',
             description: 'Rounded image with card frame shadow',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_image_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'image',
@@ -467,6 +622,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Avatar Portrait Circle',
             description: 'Centered circular profile frame',
+            aspectRatio: 'aspect-[1/1]',
             create: () => ({
                 id: `blk_image_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'image',
@@ -485,6 +641,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Polaroid Style Card',
             description: 'Image with bottom white margin frame',
+            aspectRatio: 'aspect-[3/4]',
             create: () => ({
                 id: `blk_image_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'image',
@@ -509,6 +666,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Cinema Wide Player',
             description: '16:9 mockup player layout',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_video_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'video',
@@ -527,6 +685,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'CTA Pill Button',
             description: 'Rounded primary button style',
+            aspectRatio: 'aspect-[21/9]',
             create: () => ({
                 id: `blk_button_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'button',
@@ -549,6 +708,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Modern Outline Button',
             description: 'Transparent style with clean border',
+            aspectRatio: 'aspect-[21/9]',
             create: () => ({
                 id: `blk_button_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'button',
@@ -574,6 +734,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Soft Secondary Action',
             description: 'Minimalistic gray background button',
+            aspectRatio: 'aspect-[21/9]',
             create: () => ({
                 id: `blk_button_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'button',
@@ -596,6 +757,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Destructive / Warning Button',
             description: 'Red solid warning button style',
+            aspectRatio: 'aspect-[21/9]',
             create: () => ({
                 id: `blk_button_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'button',
@@ -620,6 +782,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Editorial Callout Quote',
             description: 'Quote with thick colored left border',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_quote_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'quote',
@@ -642,6 +805,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Centered Testimonial',
             description: 'Minimal italic statement block',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_quote_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'quote',
@@ -660,6 +824,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Warm Highlight Bubble',
             description: 'Warm background styled card bubble',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_quote_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'quote',
@@ -686,6 +851,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Subtle Spacer Line',
             description: 'Thin slate-200 border line',
+            aspectRatio: 'aspect-[16/3]',
             create: () => ({
                 id: `blk_divider_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'divider',
@@ -701,6 +867,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Thick Accent Line',
             description: 'Thicker blue border line',
+            aspectRatio: 'aspect-[16/3]',
             create: () => ({
                 id: `blk_divider_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'divider',
@@ -716,6 +883,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Dashed Gap Separator',
             description: 'Modern dashed border line separator',
+            aspectRatio: 'aspect-[16/3]',
             create: () => ({
                 id: `blk_divider_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'divider',
@@ -731,6 +899,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Invisible Spacer (30px)',
             description: 'Spacing buffer gap for vertical layouts',
+            aspectRatio: 'aspect-[16/3]',
             create: () => ({
                 id: `blk_divider_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'divider',
@@ -747,6 +916,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Centered Branding Logo',
             description: 'Centered organizational logo',
+            aspectRatio: 'aspect-[21/9]',
             create: () => ({
                 id: `blk_logo_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'logo',
@@ -761,6 +931,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Left Aligned Mini Logo',
             description: 'Compact left-aligned logo',
+            aspectRatio: 'aspect-[21/9]',
             create: () => ({
                 id: `blk_logo_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'logo',
@@ -777,6 +948,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Balanced 50/50 Columns',
             description: 'Equal split two-column layout',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_columns_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'columns',
@@ -793,6 +965,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Balanced Three Columns',
             description: 'Equal split three-column layout',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_columns_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'columns',
@@ -810,6 +983,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Asymmetric 70/30 Content',
             description: 'Wide content left, narrow sidebar right',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_columns_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'columns',
@@ -826,6 +1000,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Asymmetric 30/70 Content',
             description: 'Narrow sidebar left, wide content right',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_columns_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'columns',
@@ -844,6 +1019,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Blue Score Card',
             description: 'Centered score display in active blue brand banner',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_score_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'score-card',
@@ -859,6 +1035,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Stats Bordered Panel',
             description: 'Metric count badge with thin border outline',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_score_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'score-card',
@@ -877,6 +1054,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Warning Score Card',
             description: 'Centered score display in warning amber color',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_score_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'score-card',
@@ -894,6 +1072,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Branded Header Logo',
             description: 'Branded header with logo and bottom divider line',
+            aspectRatio: 'aspect-[16/4]',
             create: () => ({
                 id: `blk_header_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'header',
@@ -909,6 +1088,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Copyright Info Footer',
             description: 'Branded copyright notice text block',
+            aspectRatio: 'aspect-[16/4]',
             create: () => ({
                 id: `blk_footer_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'footer',
@@ -924,6 +1104,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Event Card (Full Bento)',
             description: 'Invitation card with pill badge, title, description, and Bento RSVP buttons',
+            aspectRatio: 'aspect-[3/4]',
             create: () => ({
                 id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'rsvp',
@@ -957,6 +1138,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Event Card (Full Inline)',
             description: 'Invitation card with pill badge, title, description, and Inline/Adaptive RSVP buttons',
+            aspectRatio: 'aspect-[3/4]',
             create: () => ({
                 id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'rsvp',
@@ -990,6 +1172,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Event Card (Compact Bento)',
             description: 'RSVP card with event details and Bento buttons, without header section',
+            aspectRatio: 'aspect-[1/1]',
             create: () => ({
                 id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'rsvp',
@@ -1020,6 +1203,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Event Card (Compact Inline)',
             description: 'RSVP card with event details and Adaptive Inline buttons, without header section',
+            aspectRatio: 'aspect-[1/1]',
             create: () => ({
                 id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'rsvp',
@@ -1050,6 +1234,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Interactive Event Card (Bento)',
             description: 'Date, time, and location card with bento-style RSVP buttons',
+            aspectRatio: 'aspect-[1/1]',
             create: () => ({
                 id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'rsvp',
@@ -1078,6 +1263,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Interactive Event Card (Inline)',
             description: 'Date, time, and location card with inline adaptive RSVP buttons',
+            aspectRatio: 'aspect-[1/1]',
             create: () => ({
                 id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'rsvp',
@@ -1106,6 +1292,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Minimal RSVP Card',
             description: 'Sleek, centered, compact card with RSVP options',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'rsvp',
@@ -1130,6 +1317,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Modern Card RSVP',
             description: 'Wide card with background shadow and spaced buttons',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'rsvp',
@@ -1154,6 +1342,7 @@ const blockTypeTemplates: Record<string, Array<{
         {
             name: 'Elegant Slate RSVP',
             description: 'High-contrast card with deep slate border',
+            aspectRatio: 'aspect-[16/9]',
             create: () => ({
                 id: `blk_rsvp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'rsvp',
@@ -1191,7 +1380,7 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
         borderStyle: s.borderStyle as any,
         borderColor: s.borderColor,
         fontWeight: s.fontWeight as any,
-        fontSize: '9px',
+        fontSize: '8px',
         paddingTop: s.paddingTop ? `${Math.max(2, parseInt(s.paddingTop) / 4)}px` : '4px',
         paddingBottom: s.paddingBottom ? `${Math.max(2, parseInt(s.paddingBottom) / 4)}px` : '4px',
         paddingLeft: s.paddingLeft ? `${Math.max(4, parseInt(s.paddingLeft) / 4)}px` : '8px',
@@ -1202,25 +1391,103 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
 
     switch (block.type) {
         case 'heading': {
-            const fontSz = block.variant === 'h1' ? '12px' : block.variant === 'h2' ? '10px' : '9px';
+            const variant = s.variant || 'standard';
+            const pillTextVal = block.pillText || '';
+            const contentVal = block.content || '';
+            
+            const align = s.textAlign || (variant === 'dark_slate' || variant === 'envelope_badge' || variant === 'simple_wide' ? 'center' : 'left');
+            const alignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
+            const flexAlignClass = align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start';
+
+            const fontColor = variant === 'dark_slate' ? '#ffffff' : (s.color || '#0f172a');
+            const subTextColor = variant === 'dark_slate' ? '#cbd5e1' : '#64748b';
+
+            const isLeftAccent = variant === 'left_accent';
+            const isEnvelopeBadge = variant === 'envelope_badge';
+            const isNestedCard = variant === 'nested_card';
+            const isSimpleWide = variant === 'simple_wide';
+
+            const previewStyle: React.CSSProperties = {
+                backgroundColor: s.backgroundColor || 'transparent',
+                backgroundImage: s.backgroundImage || undefined,
+                backgroundSize: s.backgroundSize || undefined,
+                borderRadius: s.borderRadius ? `${Math.max(6, parseInt(s.borderRadius) / 2)}px` : '12px',
+                borderWidth: s.borderWidth ? '1px' : undefined,
+                borderStyle: s.borderStyle || undefined,
+                borderColor: s.borderColor || undefined,
+                borderLeft: isLeftAccent ? '2.5px solid #2563eb' : undefined,
+            };
+
             return (
-                <div className="w-full text-center py-2 px-1">
+                <div 
+                    className="w-full h-full text-left p-3 flex flex-col justify-center transition-all min-h-0 relative select-none"
+                    style={previewStyle}
+                >
+                    {/* Badge / Pill */}
+                    {block.pillText && (
+                        <div className={cn("mb-1 flex", flexAlignClass)}>
+                            {isEnvelopeBadge ? (
+                                <span className="inline-flex items-center bg-blue-50/80 text-blue-600 rounded-full px-1 py-0.2 text-[4px] font-black tracking-tight scale-90 leading-none">
+                                    ✉️ {pillTextVal}
+                                </span>
+                            ) : variant === 'dark_slate' ? (
+                                <span className="text-[4.5px] font-black tracking-wider text-blue-300 uppercase leading-none">
+                                    {pillTextVal}
+                                </span>
+                            ) : (
+                                <span className="inline-flex bg-blue-50 text-blue-600 rounded-full px-1.5 py-0.2 text-[4.5px] font-bold leading-none">
+                                    {pillTextVal}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Title */}
                     <div 
+                        className={cn("font-extrabold leading-tight", alignClass)}
                         style={{ 
-                            fontSize: fontSz, 
-                            fontWeight: 'bold', 
-                            color: s.color || '#1e293b',
-                            textAlign: (s.textAlign as any) || 'center' 
+                            fontSize: isSimpleWide ? '10px' : '9px', 
+                            color: fontColor,
                         }}
                     >
-                        {block.title || 'Heading'}
+                        {block.title || 'Heading Title'}
                     </div>
+
+                    {/* Content (Description) */}
+                    {block.content && !isSimpleWide && (
+                        isNestedCard ? (
+                            <div className="mt-1 p-1 bg-white/70 border border-slate-100 rounded-lg text-[4.5px] leading-tight text-slate-500 font-medium w-full text-left">
+                                {contentVal}
+                            </div>
+                        ) : (
+                            <div className={cn("mt-1 text-[5px] font-medium leading-tight flex items-center gap-0.5", alignClass, flexAlignClass)} style={{ color: subTextColor }}>
+                                {block.url === 'calendar' && (
+                                    <span className="scale-75 select-none origin-left">📅</span>
+                                )}
+                                {block.url && block.url.startsWith('http') && (
+                                    <img src={block.url} alt="avatar" className="w-2.5 h-2.5 rounded-full object-cover shrink-0" />
+                                )}
+                                <span className="truncate">{contentVal}</span>
+                            </div>
+                        )
+                    )}
+
+                    {/* Bottom Metadata row (Left Accent style footer) */}
+                    {isLeftAccent && block.rsvpDate && (
+                        <div className="mt-1.5 pt-1.5 border-t border-slate-150/60 flex items-center gap-1 text-slate-700 text-[4.5px] font-bold">
+                            <span className="text-blue-500 scale-75 origin-left shrink-0">🕒</span>
+                            <div className="flex flex-col leading-none">
+                                <span className="font-extrabold text-[4.5px] text-slate-800">{block.rsvpDate}</span>
+                                {block.rsvpTime && <span className="text-slate-500 text-[3.5px] font-semibold">{block.rsvpTime}</span>}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
         case 'text':
             return (
-                <div className="w-full p-2 overflow-hidden" style={{ backgroundColor: s.backgroundColor, borderRadius: s.borderRadius, border: s.borderStyle ? `1px ${s.borderStyle} ${s.borderColor}` : undefined }}>
+                <div className="w-full p-2.5 overflow-hidden" style={{ backgroundColor: s.backgroundColor, borderRadius: s.borderRadius ? `${Math.max(4, parseInt(s.borderRadius) / 2)}px` : '6px', border: s.borderStyle ? `1px ${s.borderStyle} ${s.borderColor}` : undefined }}>
                     <div className="space-y-1" style={{ textAlign: s.textAlign as any }}>
                         <div className="h-1 bg-slate-300 rounded w-full inline-block" />
                         <div className="h-1 bg-slate-300 rounded w-5/6 inline-block" />
@@ -1228,24 +1495,35 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                     </div>
                 </div>
             );
-        case 'button':
+        case 'button': {
+            const btnBg = s.backgroundColor || '#2563eb';
+            const btnColor = s.color || '#ffffff';
+            const btnRadius = s.borderRadius ? `${Math.max(4, parseInt(s.borderRadius) / 2)}px` : '6px';
+            const align = s.textAlign || 'center';
             return (
-                <div className="w-full flex justify-center py-2">
+                <div className={`w-full flex ${align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'} py-2`}>
                     <span 
-                        style={miniStyle}
-                        className="inline-block text-[8px] font-bold truncate max-w-[120px] pointer-events-none"
+                        style={{
+                            ...miniStyle,
+                            backgroundColor: btnBg,
+                            color: btnColor,
+                            borderRadius: btnRadius,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                        }}
+                        className="inline-block text-[7.5px] font-bold truncate max-w-[120px] pointer-events-none text-center"
                     >
                         {block.title || 'Button'}
                     </span>
                 </div>
             );
+        }
         case 'list': {
             const isOrdered = block.listStyle === 'ordered';
             const isRoman = block.listStyle === 'roman';
             const isCheckmark = block.listStyle === 'checkmark';
             const isArrow = block.listStyle === 'arrow';
             return (
-                <div className="w-full p-2 space-y-1 text-[8px] text-slate-500">
+                <div className="w-full p-2.5 space-y-1.5 text-[8px] text-slate-500">
                     {[1, 2].map((n) => (
                         <div key={n} className="flex items-center gap-1.5">
                             {isOrdered ? (
@@ -1259,7 +1537,7 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                             ) : (
                                 <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
                             )}
-                            <div className="h-1 bg-slate-200 rounded w-16" />
+                            <div className="h-1 bg-slate-200 rounded w-20" />
                         </div>
                     ))}
                 </div>
@@ -1270,7 +1548,7 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
             const styleBorder = s.borderStyle || 'solid';
             const colorBorder = s.borderColor || '#cbd5e1';
             return (
-                <div className="w-full py-3 px-2">
+                <div className="w-full py-3.5 px-2">
                     <div 
                         style={{ 
                             borderTop: `${Math.min(4, borderW)}px ${styleBorder} ${colorBorder}`,
@@ -1283,55 +1561,73 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
         case 'quote':
             return (
                 <div 
-                    className="w-full p-2 border-l-2 bg-slate-50"
+                    className="w-full p-2.5 border-l-2 bg-slate-50"
                     style={{ 
                         borderLeftColor: s.borderColor || '#3b82f6',
                         backgroundColor: s.backgroundColor || '#f8fafc',
-                        borderRadius: s.borderRadius
+                        borderRadius: s.borderRadius ? `${Math.max(4, parseInt(s.borderRadius) / 2)}px` : '4px'
                     }}
                 >
                     <div className="h-1 bg-slate-400 rounded w-full" />
                     <div className="h-1 bg-slate-300 rounded w-5/6 mt-1" />
                 </div>
             );
-        case 'image':
+        case 'image': {
+            const imgUrl = block.url || '';
             return (
-                <div className="w-full py-1 px-4 flex justify-center">
-                    <div 
-                        className="bg-slate-100 border border-dashed rounded flex flex-col items-center justify-center w-full h-10 text-[8px] text-slate-400"
-                        style={{ borderRadius: s.borderRadius }}
-                    >
-                        Image Preview
-                    </div>
+                <div className="w-full py-1 px-2 flex justify-center">
+                    {imgUrl && !imgUrl.includes('{{') ? (
+                        <img 
+                            src={imgUrl} 
+                            alt="Preview" 
+                            className="w-full h-10 object-cover border" 
+                            style={{ borderRadius: s.borderRadius ? `${Math.max(4, parseInt(s.borderRadius) / 2)}px` : '4px' }} 
+                        />
+                    ) : (
+                        <div 
+                            className="bg-slate-100 border border-dashed rounded flex flex-col items-center justify-center w-full h-10 text-[7px] text-slate-400 font-bold"
+                            style={{ borderRadius: s.borderRadius ? `${Math.max(4, parseInt(s.borderRadius) / 2)}px` : '4px' }}
+                        >
+                            Image Preview
+                        </div>
+                    )}
                 </div>
             );
+        }
         case 'video':
             return (
-                <div className="w-full py-1 px-4 flex justify-center">
+                <div className="w-full py-1 px-2 flex justify-center">
                     <div 
-                        className="bg-slate-800 rounded relative flex items-center justify-center w-full h-10 text-[8px] text-white"
-                        style={{ borderRadius: s.borderRadius }}
+                        className="bg-slate-800 rounded relative flex items-center justify-center w-full h-10 text-[7px] text-white font-bold"
+                        style={{ borderRadius: s.borderRadius ? `${Math.max(4, parseInt(s.borderRadius) / 2)}px` : '4px' }}
                     >
-                        <span className="w-3 h-3 rounded-full bg-white/20 flex items-center justify-center">▶</span>
+                        <span className="w-3.5 h-3.5 rounded-full bg-white/20 flex items-center justify-center text-[7px]">▶</span>
                     </div>
                 </div>
             );
-        case 'logo':
+        case 'logo': {
+            const logoUrl = block.url || '';
+            const align = s.textAlign || 'center';
             return (
-                <div className="w-full py-2 px-4 flex justify-center">
-                    <div className="bg-slate-100 rounded-full w-6 h-6 border flex items-center justify-center text-[8px] text-slate-400">
-                        Logo
-                    </div>
+                <div className={`w-full py-1.5 flex ${align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'}`}>
+                    {logoUrl && !logoUrl.includes('{{') ? (
+                        <img src={logoUrl} alt="Logo" className="h-6 w-auto object-contain" />
+                    ) : (
+                        <div className="bg-slate-100 rounded-full w-6 h-6 border flex items-center justify-center text-[7px] text-slate-400 font-bold">
+                            Logo
+                        </div>
+                    )}
                 </div>
             );
+        }
         case 'columns': {
             const cols = block.columns || [{ width: '50%' }, { width: '50%' }];
             return (
-                <div className="w-full p-1.5 flex gap-1 bg-slate-50 rounded border">
+                <div className="w-full p-2 flex gap-1.5 bg-slate-50 rounded border">
                     {cols.map((col, idx) => (
                         <div 
                             key={idx} 
-                            className="bg-white border rounded p-1 flex-1 flex flex-col gap-1 items-center justify-center min-h-[24px]"
+                            className="bg-white border rounded p-1.5 flex-1 flex flex-col gap-1 items-center justify-center min-h-[28px]"
                             style={{ width: col.width }}
                         >
                             <div className="h-0.5 bg-slate-200 rounded w-full" />
@@ -1343,42 +1639,176 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
         }
         case 'score-card':
             return (
-                <div className="w-full p-2 bg-blue-600 rounded-lg text-white text-center space-y-1" style={{ backgroundColor: s.backgroundColor }}>
-                    <div className="text-[6px] tracking-widest opacity-80 uppercase">SCORE</div>
+                <div className="w-full p-2.5 bg-blue-600 rounded-xl text-white text-center space-y-1 shadow-sm" style={{ backgroundColor: s.backgroundColor }}>
+                    <div className="text-[5px] tracking-widest opacity-85 uppercase font-bold">SCORE</div>
                     <div className="text-[12px] font-black font-sans leading-none">85</div>
                 </div>
             );
         case 'rsvp': {
-            const isDetailed = block.rsvpStyle && block.rsvpStyle !== 'standard';
-            const isBento = ['card_bento', 'event_full_bento', 'event_compact_bento'].includes(block.rsvpStyle || '');
+            const rStyle = block.rsvpStyle || 'standard';
+            const isEvent = ['event_full_bento', 'event_full_inline', 'event_compact_bento', 'event_compact_inline'].includes(rStyle);
+            const isDetailed = ['card_bento', 'card_inline'].includes(rStyle);
+            const hasPillDesc = ['event_full_bento', 'event_full_inline'].includes(rStyle);
+            const isBento = ['card_bento', 'event_full_bento', 'event_compact_bento'].includes(rStyle);
+
+            const going = block.goingLabel || 'Going';
+            const declined = block.declinedLabel || 'Not Going';
+            const later = block.laterLabel || 'Later';
+            const rDate = block.rsvpDate || 'Tuesday, Sep 24';
+            const rTime = block.rsvpTime || '10:00 - 11:00 AM';
+            const rLoc = block.rsvpLocation || 'Google Meet';
+
+            if (isEvent) {
+                return (
+                    <div className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-left text-[6px] space-y-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.02)]" style={{ backgroundColor: s.backgroundColor || '#ffffff' }}>
+                        {hasPillDesc && (
+                            <div className="space-y-0.5">
+                                <span className="inline-block bg-blue-50 text-blue-600 rounded-full px-1.5 py-0.2 text-[4.5px] font-bold">
+                                    {block.pillText || 'Invitation'}
+                                </span>
+                                <div className="text-[7.5px] font-black text-slate-800 leading-none truncate">
+                                    {block.title || 'Event Title'}
+                                </div>
+                                <div className="text-[5px] text-slate-400 leading-none truncate">
+                                    {block.content || 'Event description...'}
+                                </div>
+                                <div className="border-t border-slate-100 my-0.5" />
+                            </div>
+                        )}
+                        
+                        {/* Metadata Grid */}
+                        <div className="grid grid-cols-3 gap-0.5 text-[4px] leading-tight">
+                            <div className="flex items-center gap-0.5 truncate">
+                                <span className="text-blue-500 scale-95 shrink-0">📅</span>
+                                <div className="truncate">
+                                    <div className="font-bold text-slate-400 text-[3.5px] scale-90 origin-left">DATE</div>
+                                    <div className="font-bold text-slate-700 truncate">{rDate}</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-0.5 truncate border-l border-slate-100 pl-0.5">
+                                <span className="text-blue-500 scale-95 shrink-0">🕒</span>
+                                <div className="truncate">
+                                    <div className="font-bold text-slate-400 text-[3.5px] scale-90 origin-left">TIME</div>
+                                    <div className="font-bold text-slate-700 truncate">{rTime}</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-0.5 truncate border-l border-slate-100 pl-0.5">
+                                <span className="text-blue-500 scale-95 shrink-0">📹</span>
+                                <div className="truncate">
+                                    <div className="font-bold text-slate-400 text-[3.5px] scale-90 origin-left">TYPE</div>
+                                    <div className="font-bold text-slate-700 truncate">{rLoc}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-slate-100 my-0.5" />
+
+                        {/* Buttons */}
+                        {isBento ? (
+                            <div className="space-y-0.5 w-full">
+                                <div className="w-full bg-[#0052cc] text-white rounded-lg py-0.5 text-[5px] font-bold flex items-center justify-center gap-0.5 leading-none select-none">
+                                    {going}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="5" height="5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1">
+                                    <div className="bg-white border border-slate-200 text-slate-650 rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none">
+                                        {later}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="4.5" height="4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    </div>
+                                    <div className="bg-white border border-slate-200 text-slate-655 rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none">
+                                        {declined}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="4.5" height="4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-3 gap-1 w-full">
+                                <div className="bg-[#0052cc] text-white rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none truncate">
+                                    {going}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="4.5" height="4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                </div>
+                                <div className="bg-white border border-slate-200 text-slate-650 rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none truncate">
+                                    {later}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                </div>
+                                <div className="bg-white border border-slate-200 text-slate-655 rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none truncate">
+                                    {declined}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            if (isDetailed) {
+                return (
+                    <div className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-left text-[6px] space-y-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.02)]" style={{ backgroundColor: s.backgroundColor || '#ffffff' }}>
+                        {block.title && (
+                            <div className="text-[7.5px] font-black text-slate-800 leading-none truncate">
+                                {block.title}
+                            </div>
+                        )}
+                        <div className="space-y-0.5">
+                            <div className="flex items-center gap-1 leading-none text-slate-700">
+                                <span className="text-blue-500 scale-90">🕒</span>
+                                <div className="truncate font-bold">{rDate} • {rTime}</div>
+                            </div>
+                            <div className="flex items-center gap-1 leading-none text-slate-700">
+                                <span className="text-blue-500 scale-90">📹</span>
+                                <div className="truncate font-semibold">{rLoc}</div>
+                            </div>
+                        </div>
+
+                        {/* Buttons */}
+                        {isBento ? (
+                            <div className="space-y-0.5 w-full">
+                                <div className="w-full bg-[#0062cc] text-white rounded-lg py-0.5 text-[5px] font-bold flex items-center justify-center gap-0.5 leading-none select-none">
+                                    {going}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="5" height="5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1">
+                                    <div className="bg-white border border-slate-200 text-[#0062cc] rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none">
+                                        {declined}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="4.5" height="4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                    </div>
+                                    <div className="bg-white border border-slate-200 text-[#0062cc] rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none">
+                                        {later}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="4.5" height="4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-3 gap-1 w-full">
+                                <div className="bg-[#0062cc] text-white rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none truncate">
+                                    {going}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="4.5" height="4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                </div>
+                                <div className="bg-white border border-slate-200 text-[#0062cc] rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none truncate">
+                                    {declined}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                </div>
+                                <div className="bg-white border border-slate-200 text-[#0062cc] rounded-lg py-0.5 text-[4px] font-bold flex items-center justify-center gap-0.5 leading-none select-none truncate">
+                                    {later}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="4" height="4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            // Standard Style
             return (
-                <div className="w-full p-2 bg-slate-50 border rounded-lg space-y-1.5 text-left" style={{ backgroundColor: s.backgroundColor }}>
-                    {isDetailed && (
-                        <div className="space-y-0.5 text-[5px] text-slate-500 mb-1 leading-tight scale-90 origin-left">
-                            <div className="flex items-center gap-1 font-bold text-slate-800">
-                                <span>📅</span> <span>{block.rsvpDate || 'Tuesday, Sep 24'}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <span>📹</span> <span>{block.rsvpLocation || 'Google Meet'}</span>
-                            </div>
-                        </div>
-                    )}
-                    {!isDetailed && <div className="h-1 bg-slate-400 rounded w-4/5 mx-auto" />}
-                    {isBento ? (
-                        <div className="space-y-1 w-full">
-                            <span className="bg-blue-600 rounded px-1 py-0.5 text-[5px] text-white font-bold block text-center leading-none select-none">Going</span>
-                            <div className="flex gap-1">
-                                <span className="bg-slate-100 border border-slate-200 rounded px-1 py-0.5 text-[5px] text-slate-700 font-bold flex-1 text-center leading-none select-none">Decline</span>
-                                <span className="bg-slate-100 border border-slate-200 rounded px-1 py-0.5 text-[5px] text-slate-700 font-bold flex-1 text-center leading-none select-none">Later</span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex gap-1 justify-center">
-                            <span className="bg-emerald-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">{block.goingLabel || 'Going'}</span>
-                            <span className="bg-amber-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">{block.laterLabel || 'Later'}</span>
-                            <span className="bg-rose-500 rounded px-1 py-0.5 text-[5px] text-white font-bold leading-none select-none">{block.declinedLabel || 'Decline'}</span>
-                        </div>
-                    )}
+                <div className="w-full p-2 bg-white border border-slate-100 rounded-lg text-center text-[6px] space-y-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.02)]" style={{ backgroundColor: s.backgroundColor }}>
+                    <div className="font-bold text-slate-700 leading-none truncate">
+                        {block.title || 'Will you attend this meeting?'}
+                    </div>
+                    <div className="flex gap-1 justify-center">
+                        <span className="bg-emerald-500 text-white rounded px-1.5 py-0.5 text-[4px] font-bold leading-none select-none">{going}</span>
+                        <span className="bg-amber-500 text-white rounded px-1.5 py-0.5 text-[4px] font-bold leading-none select-none">{later}</span>
+                        <span className="bg-rose-500 text-white rounded px-1.5 py-0.5 text-[4px] font-bold leading-none select-none">{declined}</span>
+                    </div>
                 </div>
             );
         }
@@ -2560,7 +2990,8 @@ export function TemplateWorkshop({
     };
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden text-left bg-background">
+        <TooltipProvider>
+            <div className="flex-1 flex flex-col overflow-hidden text-left bg-background">
             <header className="sticky top-0 z-50 border-b px-6 h-16 flex items-center justify-between shrink-0 bg-background">
                 <div className="flex items-center gap-4 text-left">
                     <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={onCancel}>
@@ -2925,25 +3356,41 @@ export function TemplateWorkshop({
 
                                                         {/* Templates List */}
                                                         <div className="grid grid-cols-1 gap-3 animate-in slide-in-from-bottom-2 duration-300">
-                                                            {(blockTypeTemplates[activeBlockSubView] || []).map(tpl => (
-                                                                <button
-                                                                    key={tpl.name}
-                                                                    type="button"
-                                                                    onClick={() => handleAddTemplateBlock(tpl.create)}
-                                                                    className="w-full text-left rounded-xl border bg-card hover:bg-muted/10 hover:border-primary/30 hover:shadow-sm transition-all overflow-hidden flex flex-col group"
-                                                                >
-                                                                    {/* Miniature Rendered Preview Panel */}
-                                                                    <div className="w-full bg-slate-50/50 p-3 border-b flex items-center justify-center min-h-[56px] group-hover:bg-slate-50 transition-colors">
-                                                                        <BlockTemplatePreview block={tpl.create()} />
-                                                                    </div>
-
-                                                                    {/* Details Panel */}
-                                                                    <div className="p-2.5 min-w-0">
-                                                                        <p className="text-[10px] font-bold truncate text-slate-800">{tpl.name}</p>
-                                                                        <p className="text-[8px] text-muted-foreground truncate mt-0.5">{tpl.description}</p>
-                                                                    </div>
-                                                                </button>
-                                                            ))}
+                                                            {(blockTypeTemplates[activeBlockSubView] || []).map(tpl => {
+                                                                const blockItem = tpl.create();
+                                                                const buttonBg = blockItem.style?.backgroundColor || undefined;
+                                                                const buttonBgImage = blockItem.style?.backgroundImage || undefined;
+                                                                const buttonBgSize = blockItem.style?.backgroundSize || undefined;
+                                                                return (
+                                                                    <Tooltip key={tpl.name}>
+                                                                        <TooltipTrigger asChild>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleAddTemplateBlock(tpl.create)}
+                                                                                className={cn(
+                                                                                    "w-full text-left rounded-xl border hover:border-primary/45 hover:shadow-md transition-all overflow-hidden p-0 flex items-center justify-center group relative",
+                                                                                    tpl.aspectRatio || "aspect-[16/9]"
+                                                                                )}
+                                                                                style={{
+                                                                                    backgroundColor: buttonBg,
+                                                                                    backgroundImage: buttonBgImage,
+                                                                                    backgroundSize: buttonBgSize,
+                                                                                }}
+                                                                            >
+                                                                                <BlockTemplatePreview block={blockItem} />
+                                                                            </button>
+                                                                        </TooltipTrigger>
+                                                                    <TooltipContent 
+                                                                        side="right" 
+                                                                        sideOffset={12} 
+                                                                        className="p-3 max-w-[280px] space-y-1 rounded-xl bg-slate-950 border border-slate-800 text-white shadow-2xl select-none z-50 text-left animate-in fade-in slide-in-from-left-2 duration-150"
+                                                                    >
+                                                                        <p className="text-xs font-black text-white tracking-tight">{tpl.name}</p>
+                                                                        <p className="text-[10px] font-medium text-slate-400 leading-relaxed">{tpl.description}</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -3771,5 +4218,6 @@ export function TemplateWorkshop({
                 </AlertDialogContent>
             </AlertDialog>
         </div>
+        </TooltipProvider>
     );
 }
