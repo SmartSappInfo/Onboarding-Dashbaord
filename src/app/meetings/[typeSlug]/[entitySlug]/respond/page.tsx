@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { adminDb } from '@/lib/firebase-admin';
 import RsvpResponseClient from '@/components/rsvp-response-client';
-import Footer from '@/components/footer';
 import { notFound } from 'next/navigation';
+import { SmartSappLogo } from '@/components/icons';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Meeting RSVP',
@@ -84,6 +86,20 @@ export default async function RsvpRespondPage({
   const initialChoice =
     response === 'going' || response === 'not_going' || response === 'later' ? response : null;
 
+  let orgName = 'SmartSapp';
+  if (meeting.brandingName) {
+    orgName = meeting.brandingName;
+  } else if (meeting.entityId) {
+    try {
+      const entityDoc = await adminDb.collection('entities').doc(meeting.entityId).get();
+      if (entityDoc.exists) {
+        orgName = entityDoc.data()?.name || orgName;
+      }
+    } catch (error) {
+      console.error('Error resolving entity name in respond/page.tsx:', error);
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
@@ -99,7 +115,10 @@ export default async function RsvpRespondPage({
           dbResponse={dbResponse}
         />
       </main>
-      <Footer />
+      <footer className="py-8 text-center text-xs text-muted-foreground bg-background border-t border-border/10 font-sans flex flex-col items-center justify-center gap-2">
+        <SmartSappLogo className="h-6" />
+        <p className="mt-1">Powered by {orgName}</p>
+      </footer>
     </div>
   );
 }

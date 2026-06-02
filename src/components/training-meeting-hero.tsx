@@ -21,11 +21,13 @@ import MeetingJoinSection from '@/components/meeting-join-section';
 interface TrainingMeetingHeroProps {
   entity: Entity | School | null;
   meeting: Meeting;
+  tokenResult?: any;
+  nextSectionId?: string;
 }
 
 const DEFAULT_HERO = "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0";
 
-export default function TrainingMeetingHero({ entity, meeting }: TrainingMeetingHeroProps) {
+export default function TrainingMeetingHero({ entity, meeting, tokenResult, nextSectionId }: TrainingMeetingHeroProps) {
   const [meetingState, setMeetingState] = useState<'UPCOMING' | 'ENDED_NO_RECORDING' | 'ENDED_WITH_RECORDING'>('UPCOMING');
 
   // V3: Branding resolution
@@ -35,6 +37,10 @@ export default function TrainingMeetingHero({ entity, meeting }: TrainingMeeting
   
   const showBranding = meeting.brandingEnabled !== false && (resolvedLogo || resolvedName);
   const showFormLayout = meeting.heroLayout === 'form' && meeting.registrationEnabled;
+
+  const registrant = tokenResult?.registrant || null;
+  const isConfirmed = registrant && (registrant.status === 'approved' || registrant.status === 'attended' || registrant.status === 'registered');
+  const showHeroCountdown = meetingState === 'UPCOMING' && !isConfirmed;
 
   useEffect(() => {
     const checkMeetingState = () => {
@@ -62,7 +68,7 @@ export default function TrainingMeetingHero({ entity, meeting }: TrainingMeeting
   );
 
   return (
-    <section className="relative w-full bg-background text-foreground pb-16 md:pb-24 min-h-screen flex items-center overflow-hidden pt-24 md:pt-32">
+    <section className="relative w-full bg-background text-foreground pb-16 md:pb-24 min-h-screen flex items-center overflow-visible md:overflow-hidden pt-24 md:pt-32">
         <LightRays
             raysOrigin="top-center"
             raysColor="#3B5FFF"
@@ -154,11 +160,11 @@ export default function TrainingMeetingHero({ entity, meeting }: TrainingMeeting
                         <span>{format(new Date(meeting.meetingTime), "h:mm a")}</span>
                     </div>
                 </div>
-                {meetingState === 'UPCOMING' && <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />}
+                {showHeroCountdown && <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />}
               </div>
             
               {meetingState === 'UPCOMING' && !showFormLayout && (
-                <MeetingJoinSection meeting={meeting} entityId={entity?.id} />
+                <MeetingJoinSection meeting={meeting} entityId={entity?.id} tokenResult={tokenResult} />
               )}
             
               {meetingState === 'ENDED_NO_RECORDING' && (
@@ -188,7 +194,7 @@ export default function TrainingMeetingHero({ entity, meeting }: TrainingMeeting
                     transition={{ duration: 0.6, ease: "easeOut" }}
                     className="w-full max-w-lg"
                   >
-                    <MeetingJoinSection meeting={meeting} entityId={entity?.id} />
+                    <MeetingJoinSection meeting={meeting} entityId={entity?.id} tokenResult={tokenResult} />
                   </motion.div>
                 ) : (
                   <motion.div 
@@ -212,7 +218,7 @@ export default function TrainingMeetingHero({ entity, meeting }: TrainingMeeting
           </div>
         </div>
       </div>
-      {meetingState === 'ENDED_WITH_RECORDING' && <ScrollDownIndicator href="#recording" />}
+      {nextSectionId && <ScrollDownIndicator href={nextSectionId} />}
     </section>
   );
 }

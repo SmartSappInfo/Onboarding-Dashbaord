@@ -1,9 +1,7 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
-import dynamic from 'next/dynamic';
 
 import { useFirestore } from '@/firebase';
 import type { Meeting, Entity } from '@/lib/types';
@@ -21,13 +19,7 @@ import TrainingMeetingHero from './training-meeting-hero';
 import WebinarMeetingHero from './webinar-meeting-hero';
 import MeetingNotFound from './meeting-not-found';
 import RecordingSection from './recording-section';
-
-// Corrected relative paths for dynamic imports from src/components/
-const ActivityTimeline = dynamic(() => import('../app/admin/components/ActivityTimeline'), {
-    loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
-});
-
-const LogActivityModal = dynamic(() => import('../app/admin/entities/components/LogActivityModal'), { ssr: false });
+import { useRegistrationToken } from '@/hooks/use-registration-token';
 
 function MeetingPageSkeleton() {
   return (
@@ -63,6 +55,7 @@ function MeetingPageSkeleton() {
 }
 
 const ParentEngagementLayout = ({ entity, meeting }: { entity: any, meeting: Meeting }) => {
+  const tokenResult = useRegistrationToken(meeting);
   const helpVideos = [
       'https://youtu.be/4zchas6SKtE',
       'https://youtu.be/1p5ICDnyzjk',
@@ -76,7 +69,7 @@ const ParentEngagementLayout = ({ entity, meeting }: { entity: any, meeting: Mee
     ];
   return (
     <>
-      <MeetingHero entity={entity} meeting={meeting} />
+      <MeetingHero entity={entity} meeting={meeting} tokenResult={tokenResult} nextSectionId="#welcome" />
       <WelcomeSection />
       <AppDownloadSection />
       <SetupProfileSection />
@@ -89,27 +82,33 @@ const ParentEngagementLayout = ({ entity, meeting }: { entity: any, meeting: Mee
 }
 
 const KickoffLayout = ({ entity, meeting }: { entity: any, meeting: Meeting }) => {
+  const tokenResult = useRegistrationToken(meeting);
+  const nextSectionId = meeting.recordingUrl ? "#recording" : undefined;
   return (
     <>
-      <KickoffMeetingHero entity={entity} meeting={meeting} />
+      <KickoffMeetingHero entity={entity} meeting={meeting} tokenResult={tokenResult} nextSectionId={nextSectionId} />
       {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
     </>
   )
 }
 
 const TrainingLayout = ({ entity, meeting }: { entity: any, meeting: Meeting }) => {
+  const tokenResult = useRegistrationToken(meeting);
+  const nextSectionId = meeting.recordingUrl ? "#recording" : undefined;
   return (
     <>
-      <TrainingMeetingHero entity={entity} meeting={meeting} />
+      <TrainingMeetingHero entity={entity} meeting={meeting} tokenResult={tokenResult} nextSectionId={nextSectionId} />
       {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
     </>
   )
 }
 
 const WebinarLayout = ({ entity, meeting }: { entity: any, meeting: Meeting }) => {
+  const tokenResult = useRegistrationToken(meeting);
+  const nextSectionId = meeting.brochureUrl ? "#brochure" : (meeting.recordingUrl ? "#recording" : undefined);
   return (
     <>
-      <WebinarMeetingHero entity={entity} meeting={meeting} />
+      <WebinarMeetingHero entity={entity} meeting={meeting} tokenResult={tokenResult} nextSectionId={nextSectionId} />
       {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
       {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
     </>

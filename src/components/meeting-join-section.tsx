@@ -69,26 +69,26 @@ function RsvpOptionsPanel({
   }
 
   return (
-    <div className="w-full md:max-w-md mx-auto md:mx-0 p-6 sm:p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-left space-y-6 shadow-2xl">
-      <div className="space-y-1">
-        <h2 className="text-xl font-black tracking-tight text-white font-sans">
+    <div className="w-full md:max-w-md mx-auto md:mx-0 p-4 sm:p-6 md:p-8 bg-white/5 backdrop-blur-md rounded-[2rem] md:rounded-[2.5rem] border border-white/10 text-left space-y-4 md:space-y-6 shadow-2xl">
+      <div className="space-y-0.5 md:space-y-1">
+        <h2 className="text-lg md:text-xl font-black tracking-tight text-white font-sans">
           Hello, {firstName}!
         </h2>
-        <p className="text-xs text-foreground/60 font-sans">
+        <p className="text-[11px] md:text-xs text-foreground/60 font-sans">
           You are invited to the upcoming session.
         </p>
       </div>
 
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-foreground/70 font-sans">
+      <div className="space-y-3 md:space-y-4">
+        <div className="space-y-1.5 md:space-y-2">
+          <label className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-foreground/70 font-sans">
             Choose RSVP Option
           </label>
           <Select 
             value={choice} 
             onValueChange={(val: any) => setChoice(val)}
           >
-            <SelectTrigger className="h-12 rounded-xl font-bold bg-white/5 border-white/10 text-white focus:ring-0 focus:outline-none">
+            <SelectTrigger className="h-10 md:h-12 rounded-xl font-bold bg-white/5 border-white/10 text-white focus:ring-0 focus:outline-none text-xs md:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-white">
@@ -99,18 +99,18 @@ function RsvpOptionsPanel({
           </Select>
         </div>
 
-        <p className="text-xs text-foreground/70 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5 font-sans">
+        <p className="text-[11px] md:text-xs text-foreground/70 leading-relaxed bg-white/5 p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 font-sans">
           ℹ️ <span className="font-semibold text-white">One-click Registration:</span> We will automatically register you and secure your spot using your invitation details. No forms to fill!
         </p>
 
         {errorMsg && (
-          <p className="text-xs font-semibold text-rose-400 font-sans">{errorMsg}</p>
+          <p className="text-[11px] md:text-xs font-semibold text-rose-400 font-sans">{errorMsg}</p>
         )}
 
         <Button 
           onClick={handleSubmit} 
           disabled={status === 'submitting'}
-          className="w-full h-12 rounded-xl font-bold text-xs uppercase tracking-widest gap-2 bg-primary hover:bg-primary/90 text-white mt-2 font-sans"
+          className="w-full h-10 md:h-12 rounded-xl font-bold text-xs uppercase tracking-widest gap-2 bg-primary hover:bg-primary/90 text-white mt-1 md:mt-2 font-sans"
         >
           {status === 'submitting' ? 'Submitting...' : 'Submit RSVP'}
           <ArrowRight className="h-4 w-4" />
@@ -120,8 +120,18 @@ function RsvpOptionsPanel({
   );
 }
 
-function MeetingJoinSectionInner({ meeting, entityId }: { meeting: Meeting; entityId?: string }) {
-  const { registrant, registrationRequired, isLoading, setToken, clearToken } = useRegistrationToken(meeting);
+function MeetingJoinSectionInner({ 
+  meeting, 
+  entityId, 
+  tokenResult 
+}: { 
+  meeting: Meeting; 
+  entityId?: string; 
+  tokenResult?: any; 
+}) {
+  const localTokenResult = useRegistrationToken(meeting);
+  const resolvedTokenResult = tokenResult || localTokenResult;
+  const { registrant, registrationRequired, isLoading, setToken, clearToken } = resolvedTokenResult;
   const resolvedEntityId = entityId || '';
 
   if (isLoading) {
@@ -164,14 +174,22 @@ function MeetingJoinSectionInner({ meeting, entityId }: { meeting: Meeting; enti
   );
 }
 
-export default function MeetingJoinSection({ meeting, entityId }: { meeting: Meeting; entityId?: string }) {
+export default function MeetingJoinSection({ 
+  meeting, 
+  entityId, 
+  tokenResult 
+}: { 
+  meeting: Meeting; 
+  entityId?: string; 
+  tokenResult?: any; 
+}) {
   return (
     <Suspense fallback={
       <div className="w-full md:max-w-md mx-auto md:mx-0 p-6 sm:p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center shadow-2xl flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     }>
-      <MeetingJoinSectionInner meeting={meeting} entityId={entityId} />
+      <MeetingJoinSectionInner meeting={meeting} entityId={entityId} tokenResult={tokenResult} />
     </Suspense>
   );
 }

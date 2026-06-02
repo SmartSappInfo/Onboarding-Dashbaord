@@ -236,12 +236,41 @@ export async function sendMeetingInvitationsAction(
         let token = '';
         let personalizedMeetingUrl = '';
 
-        const existingQuery = await registrantsRef
-          .where('entityId', '==', rec.entityId)
-          .limit(1)
-          .get();
+        let existingQuery = null;
+        const emailToSearch = rec.email?.toLowerCase().trim();
+        const phoneToSearch = rec.phone?.trim();
 
-        if (!existingQuery.empty) {
+        if (emailToSearch) {
+          const q = await registrantsRef
+            .where('email', '==', emailToSearch)
+            .limit(1)
+            .get();
+          if (!q.empty) {
+            existingQuery = q;
+          }
+        }
+
+        if (!existingQuery && phoneToSearch) {
+          const q = await registrantsRef
+            .where('phone', '==', phoneToSearch)
+            .limit(1)
+            .get();
+          if (!q.empty) {
+            existingQuery = q;
+          }
+        }
+
+        if (!existingQuery && rec.entityId) {
+          const q = await registrantsRef
+            .where('entityId', '==', rec.entityId)
+            .limit(1)
+            .get();
+          if (!q.empty) {
+            existingQuery = q;
+          }
+        }
+
+        if (existingQuery && !existingQuery.empty) {
           const existingDoc = existingQuery.docs[0];
           const existingData = existingDoc.data();
 

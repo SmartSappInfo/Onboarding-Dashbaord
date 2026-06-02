@@ -20,11 +20,13 @@ import MeetingJoinSection from '@/components/meeting-join-section';
 interface MeetingHeroProps {
   entity: Entity | School | null;
   meeting: Meeting;
+  tokenResult?: any;
+  nextSectionId?: string;
 }
 
 const DEFAULT_HERO = "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0";
 
-export default function MeetingHero({ entity, meeting }: MeetingHeroProps) {
+export default function MeetingHero({ entity, meeting, tokenResult, nextSectionId }: MeetingHeroProps) {
   const [meetingState, setMeetingState] = useState<'UPCOMING' | 'ENDED_NO_RECORDING' | 'ENDED_WITH_RECORDING'>('UPCOMING');
 
   // ── V3: Branding resolution ──────────────────────
@@ -38,6 +40,10 @@ export default function MeetingHero({ entity, meeting }: MeetingHeroProps) {
   const showBranding = meeting.brandingEnabled !== false && (resolvedLogo || resolvedName);
   // Hero layout mode: 'form' swaps right panel from image to registration form
   const showFormLayout = meeting.heroLayout === 'form' && meeting.registrationEnabled;
+
+  const registrant = tokenResult?.registrant || null;
+  const isConfirmed = registrant && (registrant.status === 'approved' || registrant.status === 'attended' || registrant.status === 'registered');
+  const showHeroCountdown = meetingState === 'UPCOMING' && !isConfirmed;
 
   useEffect(() => {
     const checkMeetingState = () => {
@@ -65,7 +71,7 @@ export default function MeetingHero({ entity, meeting }: MeetingHeroProps) {
   );
 
   return (
-    <section className="relative w-full bg-background text-foreground pb-12 sm:pb-16 md:pb-24 min-h-screen flex items-center overflow-hidden pt-20 sm:pt-24 md:pt-32">
+    <section className="relative w-full bg-background text-foreground pb-12 sm:pb-16 md:pb-24 min-h-screen flex items-center overflow-visible md:overflow-hidden pt-20 sm:pt-24 md:pt-32">
         <LightRays
             raysOrigin="top-center"
             raysColor="#3B5FFF"
@@ -160,12 +166,12 @@ export default function MeetingHero({ entity, meeting }: MeetingHeroProps) {
                         <span>{format(new Date(meeting.meetingTime), "h:mm a")}</span>
                     </div>
                 </div>
-                {meetingState === 'UPCOMING' && <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />}
+                {showHeroCountdown && <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />}
               </div>
             
               {/* V3: In 'form' layout mode, join section moves to left column only when NOT showing form on right */}
               {meetingState === 'UPCOMING' && !showFormLayout && (
-                <MeetingJoinSection meeting={meeting} entityId={entity?.id} />
+                <MeetingJoinSection meeting={meeting} entityId={entity?.id} tokenResult={tokenResult} />
               )}
             
               {meetingState === 'ENDED_NO_RECORDING' && (
@@ -196,7 +202,7 @@ export default function MeetingHero({ entity, meeting }: MeetingHeroProps) {
                     transition={{ duration: 0.6, ease: "easeOut" }}
                     className="w-full max-w-lg"
                   >
-                    <MeetingJoinSection meeting={meeting} entityId={entity?.id} />
+                    <MeetingJoinSection meeting={meeting} entityId={entity?.id} tokenResult={tokenResult} />
                   </motion.div>
                 ) : (
                   /* Default image layout */
@@ -222,7 +228,7 @@ export default function MeetingHero({ entity, meeting }: MeetingHeroProps) {
           </div>
         </div>
       </div>
-      <ScrollDownIndicator href="#welcome" />
+      {nextSectionId && <ScrollDownIndicator href={nextSectionId} />}
     </section>
   );
 }

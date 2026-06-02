@@ -7,7 +7,7 @@ import { Download } from 'lucide-react';
 
 export default function BrochureDownloadSection({ brochureUrl }: { brochureUrl?: string }) {
   return (
-    <section className="relative w-full bg-[#0A1427] text-white py-20 md:py-28 overflow-hidden">
+    <section id="brochure" className="relative w-full bg-[#0A1427] text-white py-20 md:py-28 overflow-hidden">
       <LightRays
         raysOrigin="top-center"
         raysColor="#3B5FFF"

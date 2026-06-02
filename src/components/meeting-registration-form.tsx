@@ -141,15 +141,15 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
     switch (field.type) {
       case 'textarea':
         return (
-          <div key={field.key} className="space-y-2">
+          <div key={field.key} className="space-y-1 md:space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 ml-1 flex items-center gap-2">
               {field.label} {field.required && <span className="text-rose-400">*</span>}
             </Label>
             <Textarea
               {...form.register(field.key)}
               placeholder={field.placeholder || ''}
-              rows={3}
-              className="bg-white/90 text-black border-none rounded-xl px-4 shadow-inner resize-none"
+              rows={2}
+              className="bg-white/90 text-black border-none rounded-xl px-4 shadow-inner resize-none text-xs md:text-sm"
               disabled={isSubmitting}
             />
             {error && <p className="text-rose-400 text-[10px] font-black uppercase tracking-tighter px-1">{error.message as string}</p>}
@@ -158,7 +158,7 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
 
       case 'select':
         return (
-          <div key={field.key} className="space-y-2">
+          <div key={field.key} className="space-y-1 md:space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 ml-1">
               {field.label} {field.required && <span className="text-rose-400">*</span>}
             </Label>
@@ -167,7 +167,7 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
               value={form.watch(field.key) || ''}
               disabled={isSubmitting}
             >
-              <SelectTrigger className="h-12 bg-white/90 text-black border-none rounded-xl shadow-inner">
+              <SelectTrigger className="h-10 md:h-12 bg-white/90 text-black border-none rounded-xl shadow-inner text-xs md:text-sm">
                 <SelectValue placeholder={field.placeholder || 'Select...'} />
               </SelectTrigger>
               <SelectContent>
@@ -182,7 +182,7 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
 
       case 'checkbox':
         return (
-          <div key={field.key} className="flex items-center gap-3 py-2">
+          <div key={field.key} className="flex items-center gap-3 py-1.5 md:py-2">
             <Checkbox
               id={field.key}
               checked={form.watch(field.key) || false}
@@ -190,7 +190,7 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
               disabled={isSubmitting}
               className="border-white/40 data-[state=checked]:bg-primary"
             />
-            <Label htmlFor={field.key} className="text-sm font-medium text-white/80 cursor-pointer">
+            <Label htmlFor={field.key} className="text-xs md:text-sm font-medium text-white/80 cursor-pointer">
               {field.label} {field.required && <span className="text-rose-400">*</span>}
             </Label>
           </div>
@@ -198,7 +198,7 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
 
       default:
         return (
-          <div key={field.key} className="space-y-2">
+          <div key={field.key} className="space-y-1 md:space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 ml-1 flex items-center gap-2">
               {field.label} {field.required && <span className="text-rose-400">*</span>}
             </Label>
@@ -206,7 +206,7 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
               {...form.register(field.key)}
               type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
               placeholder={field.placeholder || ''}
-              className="h-12 text-lg bg-white/90 text-black border-none rounded-xl px-4 shadow-inner"
+              className="h-10 md:h-12 text-xs md:text-sm bg-white/90 text-black border-none rounded-xl px-4 shadow-inner"
               disabled={isSubmitting}
             />
             {error && <p className="text-rose-400 text-[10px] font-black uppercase tracking-tighter px-1">{error.message as string}</p>}
@@ -220,13 +220,13 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full md:max-w-md mx-auto md:mx-0 p-6 sm:p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-4 shadow-2xl"
+        className="w-full md:max-w-md mx-auto md:mx-0 p-5 sm:p-7 md:p-10 bg-white/5 backdrop-blur-md rounded-[2rem] md:rounded-[2.5rem] border border-white/10 text-center space-y-3 md:space-y-4 shadow-2xl"
       >
-        <div className="mx-auto bg-emerald-500/20 w-16 h-16 rounded-full flex items-center justify-center">
-          <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+        <div className="mx-auto bg-emerald-500/20 w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center">
+          <CheckCircle2 className="h-6 w-6 md:h-8 md:w-8 text-emerald-400" />
         </div>
-        <p className="text-xl font-black text-white tracking-tight">Registration Complete!</p>
-        <p className="text-sm text-white/60 font-medium">Please wait while we prepare your session...</p>
+        <p className="text-lg md:text-xl font-black text-white tracking-tight">Registration Complete!</p>
+        <p className="text-xs md:text-sm text-white/60 font-medium">Please wait while we prepare your session...</p>
       </motion.div>
     );
   }
@@ -237,28 +237,28 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         onSubmit={form.handleSubmit(onSubmit)}
-        className="p-5 sm:p-7 md:p-8 bg-white/10 backdrop-blur-xl rounded-[2.5rem] border border-white/20 shadow-2xl space-y-6"
+        className="p-4 sm:p-6 md:p-8 bg-white/10 backdrop-blur-xl rounded-[2rem] md:rounded-[2.5rem] border border-white/20 shadow-2xl space-y-4 md:space-y-6"
       >
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Register for this Session</p>
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Register for this Session</p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
           {fields.map(renderField)}
         </div>
 
         <Button
           type="submit"
           size="lg"
-          className="w-full h-16 rounded-[1.5rem] font-black text-lg bg-primary text-white hover:bg-primary/90 shadow-2xl shadow-primary/30 transition-all active:scale-95 uppercase tracking-widest gap-3"
+          className="w-full h-12 md:h-16 rounded-[1.25rem] md:rounded-[1.5rem] font-black text-sm md:text-lg bg-primary text-white hover:bg-primary/90 shadow-2xl shadow-primary/30 transition-all active:scale-95 uppercase tracking-widest gap-2 md:gap-3"
           disabled={isSubmitting}
         >
           {isSubmitting ? (
-            <Loader2 className="animate-spin h-6 w-6" />
+            <Loader2 className="animate-spin h-5 w-5 md:h-6 md:w-6" />
           ) : (
             <>
-              <Sparkles className="h-6 w-6" />
+              <Sparkles className="h-4 w-4 md:h-6 md:w-6" />
               {meeting.heroCtaLabel || 'Register Now'}
             </>
           )}

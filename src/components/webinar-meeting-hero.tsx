@@ -20,11 +20,13 @@ import MeetingJoinSection from '@/components/meeting-join-section';
 interface WebinarMeetingHeroProps {
   entity: Entity | School | null;
   meeting: Meeting;
+  tokenResult?: any;
+  nextSectionId?: string;
 }
 
 const DEFAULT_HERO = "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0";
 
-export default function WebinarMeetingHero({ entity, meeting }: WebinarMeetingHeroProps) {
+export default function WebinarMeetingHero({ entity, meeting, tokenResult, nextSectionId }: WebinarMeetingHeroProps) {
   const [meetingState, setMeetingState] = useState<'UPCOMING' | 'ENDED_NO_RECORDING' | 'ENDED_WITH_RECORDING'>('UPCOMING');
 
   // V3: Branding resolution
@@ -33,6 +35,10 @@ export default function WebinarMeetingHero({ entity, meeting }: WebinarMeetingHe
   const entitySlogan = entity ? ((entity as any).slogan || '') : '';
   const showBranding = meeting.brandingEnabled !== false && (resolvedLogo || entityName);
   const showFormLayout = meeting.heroLayout === 'form' && meeting.registrationEnabled;
+
+  const registrant = tokenResult?.registrant || null;
+  const isConfirmed = registrant && (registrant.status === 'approved' || registrant.status === 'attended' || registrant.status === 'registered');
+  const showHeroCountdown = meetingState === 'UPCOMING' && !isConfirmed;
 
   useEffect(() => {
     const checkMeetingState = () => {
@@ -57,7 +63,7 @@ export default function WebinarMeetingHero({ entity, meeting }: WebinarMeetingHe
   const ctaLabel = getHeroCtaLabel(meeting.type?.id || 'webinar', meeting.heroCtaLabel);
 
   return (
-    <section className="relative w-full bg-background text-foreground pt-32 pb-16 md:pt-40 md:pb-24 h-screen flex items-center overflow-hidden">
+    <section className="relative w-full bg-background text-foreground pt-32 pb-16 md:pt-40 md:pb-24 min-h-screen h-auto md:h-screen flex items-center overflow-visible md:overflow-hidden">
         <LightRays
             raysOrigin="top-center"
             raysColor="#8B5CF6"
@@ -126,11 +132,11 @@ export default function WebinarMeetingHero({ entity, meeting }: WebinarMeetingHe
                       <span>{format(new Date(meeting.meetingTime), "h:mm a")}</span>
                   </div>
               </div>
-              {meetingState === 'UPCOMING' && <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />}
+              {showHeroCountdown && <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />}
             </div>
             
             {meetingState === 'UPCOMING' && !showFormLayout && (
-              <MeetingJoinSection meeting={meeting} entityId={entity?.id} />
+              <MeetingJoinSection meeting={meeting} entityId={entity?.id} tokenResult={tokenResult} />
             )}
             
             {meetingState === 'ENDED_NO_RECORDING' && (
@@ -160,7 +166,7 @@ export default function WebinarMeetingHero({ entity, meeting }: WebinarMeetingHe
                   transition={{ duration: 0.6, ease: "easeOut" }}
                   className="w-full max-w-lg"
                 >
-                  <MeetingJoinSection meeting={meeting} entityId={entity?.id} />
+                  <MeetingJoinSection meeting={meeting} entityId={entity?.id} tokenResult={tokenResult} />
                 </motion.div>
               ) : (
                 <motion.div 
@@ -183,8 +189,7 @@ export default function WebinarMeetingHero({ entity, meeting }: WebinarMeetingHe
           </div>
         </div>
       </div>
-      {meetingState === 'ENDED_WITH_RECORDING' && <ScrollDownIndicator href="#recording" />}
-      {meetingState === 'UPCOMING' && <ScrollDownIndicator href="#welcome" />}
+      {nextSectionId && <ScrollDownIndicator href={nextSectionId} />}
     </section>
   );
 }
