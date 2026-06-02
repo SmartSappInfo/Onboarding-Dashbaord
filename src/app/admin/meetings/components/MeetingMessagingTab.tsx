@@ -197,12 +197,24 @@ export default function MeetingMessagingTab() {
       )
     );
 
+    const hasRescheduleWarning = config.rescheduleEnabled && (
+      (config.rescheduleChannels.includes('email') && (!config.rescheduleEmailTemplateId || !config.rescheduleFacilitatorEmailTemplateId || !config.rescheduleRegistrantEmailTemplateId)) ||
+      (config.rescheduleChannels.includes('sms') && (!config.rescheduleSmsTemplateId || !config.rescheduleFacilitatorSmsTemplateId || !config.rescheduleRegistrantSmsTemplateId))
+    );
+
+    const hasCancelWarning = config.cancelEnabled && (
+      (config.cancelChannels.includes('email') && (!config.cancelEmailTemplateId || !config.cancelFacilitatorEmailTemplateId || !config.cancelRegistrantEmailTemplateId)) ||
+      (config.cancelChannels.includes('sms') && (!config.cancelSmsTemplateId || !config.cancelFacilitatorSmsTemplateId || !config.cancelRegistrantSmsTemplateId))
+    );
+
     return {
       ack: hasAckWarning,
       facilitators: hasFacilitatorWarning,
       reminders: hasRemindersWarning,
       postEvent: hasPostEventWarning,
       invitations: hasInvitationsWarning,
+      reschedule: hasRescheduleWarning,
+      cancel: hasCancelWarning,
     };
   }, [config]);
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({
@@ -211,6 +223,8 @@ export default function MeetingMessagingTab() {
     facilitators: false,
     reminders: false,
     postEvent: false,
+    reschedule: false,
+    cancel: false,
   });
 
   const toggleSection = React.useCallback((id: string) => {
@@ -739,6 +753,236 @@ export default function MeetingMessagingTab() {
                   placeholderSms="Select absentee SMS..."
                   showChannelsToggle={false}
                 />
+              </div>
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
+
+      {/* ── Section 5: Reschedule Alerts ── */}
+      <CollapsibleSection
+        id="reschedule"
+        title="Reschedule Alerts"
+        description="Notify guests & facilitators on schedule changes"
+        icon={<Clock className="h-4 w-4 text-indigo-600" />}
+        iconBg="bg-indigo-500/10"
+        isOpen={openSections.reschedule}
+        onToggle={() => toggleSection('reschedule')}
+        badge={config.rescheduleEnabled ? 'Active' : undefined}
+        hasWarning={warnings.reschedule}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-bold">Enable Reschedule Alerts</Label>
+            <Switch
+              checked={config.rescheduleEnabled}
+              onCheckedChange={(v) => updateConfig('rescheduleEnabled', v)}
+            />
+          </div>
+
+          {config.rescheduleEnabled && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+              <div className="space-y-3">
+                <div className="flex items-center gap-1">
+                  {(['email', 'sms'] as const).map(ch => (
+                    <button
+                      key={ch}
+                      type="button"
+                      onClick={() => {
+                        const set = new Set(config.rescheduleChannels);
+                        set.has(ch) ? set.delete(ch) : set.add(ch);
+                        updateConfig('rescheduleChannels', Array.from(set) as ('email' | 'sms')[]);
+                      }}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1",
+                        config.rescheduleChannels.includes(ch)
+                          ? ch === 'email' ? "bg-blue-500/10 text-blue-600" : "bg-green-500/10 text-green-600"
+                          : "bg-muted/20 text-muted-foreground/40 hover:text-muted-foreground"
+                      )}
+                    >
+                      {ch === 'email' ? <Mail className="h-3 w-3" /> : <Smartphone className="h-3 w-3" />}
+                      {ch}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-4 bg-muted/20 rounded-xl border space-y-4">
+                  <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Guest Rescheduled Alerts</h4>
+                  <MessagingChannelBlock
+                    enableLabel="Enable Guest Notifications"
+                    enabled={true}
+                    onEnabledChange={() => {}}
+                    channels={config.rescheduleChannels}
+                    onChannelsChange={() => {}}
+                    category="meetings"
+                    recipientType="external_alert"
+                    templateTypePrefix="meeting_rescheduled_guest"
+                    emailValue={config.rescheduleEmailTemplateId || ''}
+                    onEmailChange={(v) => updateConfig('rescheduleEmailTemplateId', v)}
+                    smsValue={config.rescheduleSmsTemplateId || ''}
+                    onSmsChange={(v) => updateConfig('rescheduleSmsTemplateId', v)}
+                    placeholderEmail="Select rescheduled guest template..."
+                    showChannelsToggle={false}
+                    hideSwitch={true}
+                  />
+                </div>
+
+                <div className="p-4 bg-muted/20 rounded-xl border space-y-4">
+                  <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Registrant Rescheduled Alerts</h4>
+                  <MessagingChannelBlock
+                    enableLabel="Enable Registrant Notifications"
+                    enabled={true}
+                    onEnabledChange={() => {}}
+                    channels={config.rescheduleChannels}
+                    onChannelsChange={() => {}}
+                    category="meetings"
+                    recipientType="external_alert"
+                    templateTypePrefix="meeting_rescheduled_registrant"
+                    emailValue={config.rescheduleRegistrantEmailTemplateId || ''}
+                    onEmailChange={(v) => updateConfig('rescheduleRegistrantEmailTemplateId', v)}
+                    smsValue={config.rescheduleRegistrantSmsTemplateId || ''}
+                    onSmsChange={(v) => updateConfig('rescheduleRegistrantSmsTemplateId', v)}
+                    placeholderEmail="Select rescheduled registrant template..."
+                    showChannelsToggle={false}
+                    hideSwitch={true}
+                  />
+                </div>
+
+                <div className="p-4 bg-muted/20 rounded-xl border space-y-4">
+                  <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Facilitator Rescheduled Alerts</h4>
+                  <MessagingChannelBlock
+                    enableLabel="Enable Facilitator Notifications"
+                    enabled={true}
+                    onEnabledChange={() => {}}
+                    channels={config.rescheduleChannels}
+                    onChannelsChange={() => {}}
+                    category="meetings"
+                    recipientType="internal_alert"
+                    templateTypePrefix="meeting_rescheduled_facilitator"
+                    emailValue={config.rescheduleFacilitatorEmailTemplateId || ''}
+                    onEmailChange={(v) => updateConfig('rescheduleFacilitatorEmailTemplateId', v)}
+                    smsValue={config.rescheduleFacilitatorSmsTemplateId || ''}
+                    onSmsChange={(v) => updateConfig('rescheduleFacilitatorSmsTemplateId', v)}
+                    placeholderEmail="Select rescheduled facilitator template..."
+                    showChannelsToggle={false}
+                    hideSwitch={true}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
+
+      {/* ── Section 6: Cancellation Alerts ── */}
+      <CollapsibleSection
+        id="cancel"
+        title="Cancellation Alerts"
+        description="Notify guests & facilitators on cancellations"
+        icon={<Send className="h-4 w-4 text-rose-600" />}
+        iconBg="bg-rose-500/10"
+        isOpen={openSections.cancel}
+        onToggle={() => toggleSection('cancel')}
+        badge={config.cancelEnabled ? 'Active' : undefined}
+        hasWarning={warnings.cancel}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-bold">Enable Cancellation Alerts</Label>
+            <Switch
+              checked={config.cancelEnabled}
+              onCheckedChange={(v) => updateConfig('cancelEnabled', v)}
+            />
+          </div>
+
+          {config.cancelEnabled && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+              <div className="space-y-3">
+                <div className="flex items-center gap-1">
+                  {(['email', 'sms'] as const).map(ch => (
+                    <button
+                      key={ch}
+                      type="button"
+                      onClick={() => {
+                        const set = new Set(config.cancelChannels);
+                        set.has(ch) ? set.delete(ch) : set.add(ch);
+                        updateConfig('cancelChannels', Array.from(set) as ('email' | 'sms')[]);
+                      }}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1",
+                        config.cancelChannels.includes(ch)
+                          ? ch === 'email' ? "bg-blue-500/10 text-blue-600" : "bg-green-500/10 text-green-600"
+                          : "bg-muted/20 text-muted-foreground/40 hover:text-muted-foreground"
+                      )}
+                    >
+                      {ch === 'email' ? <Mail className="h-3 w-3" /> : <Smartphone className="h-3 w-3" />}
+                      {ch}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-4 bg-muted/20 rounded-xl border space-y-4">
+                  <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Guest Cancellation Alerts</h4>
+                  <MessagingChannelBlock
+                    enableLabel="Enable Guest Notifications"
+                    enabled={true}
+                    onEnabledChange={() => {}}
+                    channels={config.cancelChannels}
+                    onChannelsChange={() => {}}
+                    category="meetings"
+                    recipientType="external_alert"
+                    templateTypePrefix="meeting_cancelled_guest"
+                    emailValue={config.cancelEmailTemplateId || ''}
+                    onEmailChange={(v) => updateConfig('cancelEmailTemplateId', v)}
+                    smsValue={config.cancelSmsTemplateId || ''}
+                    onSmsChange={(v) => updateConfig('cancelSmsTemplateId', v)}
+                    placeholderEmail="Select cancelled guest template..."
+                    showChannelsToggle={false}
+                    hideSwitch={true}
+                  />
+                </div>
+
+                <div className="p-4 bg-muted/20 rounded-xl border space-y-4">
+                  <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Registrant Cancellation Alerts</h4>
+                  <MessagingChannelBlock
+                    enableLabel="Enable Registrant Notifications"
+                    enabled={true}
+                    onEnabledChange={() => {}}
+                    channels={config.cancelChannels}
+                    onChannelsChange={() => {}}
+                    category="meetings"
+                    recipientType="external_alert"
+                    templateTypePrefix="meeting_cancelled_registrant"
+                    emailValue={config.cancelRegistrantEmailTemplateId || ''}
+                    onEmailChange={(v) => updateConfig('cancelRegistrantEmailTemplateId', v)}
+                    smsValue={config.cancelRegistrantSmsTemplateId || ''}
+                    onSmsChange={(v) => updateConfig('cancelRegistrantSmsTemplateId', v)}
+                    placeholderEmail="Select cancelled registrant template..."
+                    showChannelsToggle={false}
+                    hideSwitch={true}
+                  />
+                </div>
+
+                <div className="p-4 bg-muted/20 rounded-xl border space-y-4">
+                  <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Facilitator Cancellation Alerts</h4>
+                  <MessagingChannelBlock
+                    enableLabel="Enable Facilitator Notifications"
+                    enabled={true}
+                    onEnabledChange={() => {}}
+                    channels={config.cancelChannels}
+                    onChannelsChange={() => {}}
+                    category="meetings"
+                    recipientType="internal_alert"
+                    templateTypePrefix="meeting_cancelled_facilitator"
+                    emailValue={config.cancelFacilitatorEmailTemplateId || ''}
+                    onEmailChange={(v) => updateConfig('cancelFacilitatorEmailTemplateId', v)}
+                    smsValue={config.cancelSmsTemplateId || ''}
+                    onSmsChange={(v) => updateConfig('cancelSmsTemplateId', v)}
+                    placeholderEmail="Select cancelled facilitator template..."
+                    showChannelsToggle={false}
+                    hideSwitch={true}
+                  />
+                </div>
               </div>
             </div>
           )}

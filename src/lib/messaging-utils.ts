@@ -520,9 +520,18 @@ export function renderBlocksToHtml(
 
   const contentHtml = blocks.map(b => renderBlock(b, false)).join('\n');
 
-  const wrapperHtml = options?.wrapper && options.wrapper.includes('{{content}}')
-    ? options.wrapper.replace('{{content}}', contentHtml)
-    : contentHtml;
+  let wrapperHtml = contentHtml;
+  if (options?.wrapper && options.wrapper.includes('{{content}}')) {
+    const resolvedWrapper = resolveVariables(options.wrapper, variables).replace('{{content}}', contentHtml);
+    if (
+      resolvedWrapper.toLowerCase().includes('<html') ||
+      resolvedWrapper.toLowerCase().includes('<!doctype') ||
+      resolvedWrapper.toLowerCase().includes('<body')
+    ) {
+      return resolvedWrapper;
+    }
+    wrapperHtml = resolvedWrapper;
+  }
 
   let fontLink = '';
   const webSafeFonts = ['arial', 'helvetica', 'georgia', 'times new roman', 'courier', 'courier new', 'verdana', 'sans-serif', 'serif', 'monospace', 'system-ui', '-apple-system'];

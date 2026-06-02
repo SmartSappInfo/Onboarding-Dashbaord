@@ -42,7 +42,7 @@ export async function seedEnrichedMeetingTemplatesAction(): Promise<{
               content: tpl.body,
               style: { textAlign: 'left', lineHeight: '1.6', marginTop: '8px', marginBottom: '16px' }
           },
-          {
+          ...(tpl.templateType.includes('invitation') ? [{
               id: `meet_rsvp_${docId}`,
               type: 'rsvp',
               title: 'Will you attend this meeting?',
@@ -50,7 +50,7 @@ export async function seedEnrichedMeetingTemplatesAction(): Promise<{
               laterLabel: 'Later',
               declinedLabel: 'Not Going',
               style: { textAlign: 'center', backgroundColor: '#f8fafc', paddingTop: '20px', paddingBottom: '20px', paddingLeft: '20px', paddingRight: '20px', borderRadius: '12px', borderWidth: '1px', borderStyle: 'solid', borderColor: '#e2e8f0' }
-          }
+          }] : [])
       ] : undefined;
 
       const templateDoc = {
@@ -63,6 +63,7 @@ export async function seedEnrichedMeetingTemplatesAction(): Promise<{
         contentMode: isEmail ? 'rich_builder' : 'plain_text',
         subject: tpl.subject || '',
         body: isEmail ? '' : tpl.body,
+        styleId: 'default',
         ...(blocks ? { blocks } : {}),
         templateType: tpl.templateType,
         recipientType: tpl.recipientType || 'external_alert',

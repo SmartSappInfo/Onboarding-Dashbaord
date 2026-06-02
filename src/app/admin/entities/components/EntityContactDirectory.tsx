@@ -6,8 +6,9 @@ import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { EmailHygieneHoverCard } from '../../components/EmailHygieneHoverCard';
 import { logActivity } from '@/lib/activity-logger';
 import { 
-    Plus, User, Mail, Phone, ShieldCheck, BadgeCheck, X, AlertCircle, Loader2, Save, Trash2, Pencil, MoreHorizontal, UserCheck
+    Plus, User, Mail, Phone, ShieldCheck, BadgeCheck, X, AlertCircle, Loader2, Save, Trash2, Pencil, MoreHorizontal, UserCheck, Video
 } from 'lucide-react';
+import BulkMeetingInviteModal from './BulkMeetingInviteModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,6 +66,10 @@ export default function EntityContactDirectory({
     const [editingId, setEditingId] = React.useState<string | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
     const { user } = useUser();
+    
+    // Invitation states
+    const [isInviteModalOpen, setIsInviteModalOpen] = React.useState(false);
+    const [selectedContactForInvite, setSelectedContactForInvite] = React.useState<string | null>(null);
     
     // Role selection state
     const [availableRoles, setAvailableRoles] = React.useState<ContactTypeEntry[]>(getSystemContactTypes(entityData.entityType));
@@ -235,6 +240,10 @@ export default function EntityContactDirectory({
                                     contact={contact}
                                     onEdit={() => setEditingId(contact.id)}
                                     onDelete={() => setContactToDelete(contact.id)}
+                                    onInvite={() => {
+                                        setSelectedContactForInvite(contact.id);
+                                        setIsInviteModalOpen(true);
+                                    }}
                                     disabled={!!editingId || isAdding}
                                 />
                             )
@@ -283,14 +292,22 @@ export default function EntityContactDirectory({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <BulkMeetingInviteModal
+                open={isInviteModalOpen}
+                onOpenChange={setIsInviteModalOpen}
+                entityIds={[entityId]}
+                preSelectedContactIds={selectedContactForInvite ? [selectedContactForInvite] : undefined}
+            />
         </Card>
     );
 }
 
-function ContactRow({ contact, onEdit, onDelete, disabled }: { 
+function ContactRow({ contact, onEdit, onDelete, onInvite, disabled }: { 
     contact: EntityContact, 
     onEdit: () => void, 
     onDelete: () => void,
+    onInvite: () => void,
     disabled: boolean 
 }) {
     const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
@@ -424,13 +441,17 @@ function ContactRow({ contact, onEdit, onDelete, disabled }: {
                             <MoreHorizontal className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48 rounded-xl p-2 border-none shadow-2xl">
+                    <DropdownMenuContent align="end" className="w-48 rounded-xl p-2 border-none shadow-2xl bg-zinc-950 border border-zinc-800 text-zinc-100">
                         <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-2">Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={onEdit} className="rounded-lg p-2.5 gap-3 cursor-pointer">
+                        <DropdownMenuItem onClick={onEdit} className="rounded-lg p-2.5 gap-3 cursor-pointer hover:bg-zinc-900 focus:bg-zinc-900">
                             <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600"><Pencil className="h-3.5 w-3.5" /></div>
                             <span className="font-bold text-sm">Edit Contact</span>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="my-1" />
+                        <DropdownMenuItem onClick={onInvite} className="rounded-lg p-2.5 gap-3 cursor-pointer hover:bg-zinc-900 focus:bg-zinc-900">
+                            <div className="p-1.5 bg-emerald-500/10 rounded-md text-emerald-600"><Video className="h-3.5 w-3.5" /></div>
+                            <span className="font-bold text-sm">Invite to Meeting</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="my-1 border-zinc-800" />
                         <DropdownMenuItem onClick={onDelete} className="text-destructive focus:bg-destructive/10 rounded-lg p-2.5 gap-3 cursor-pointer">
                             <Trash2 className="h-3.5 w-3.5" />
                             <span className="font-bold text-sm">Remove</span>

@@ -7,12 +7,41 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CalendarPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { seedEnrichedMeetingTemplatesAction } from '@/app/actions/seed-meeting-invitation-templates-action';
+import { seedDefaultStyleBlueprintsAction } from '@/app/actions/seed-default-style-blueprints-action';
+import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
 import { useTenant } from '@/context/TenantContext';
 
 export default function SeedsClient() {
     const { toast } = useToast();
     const { activeWorkspaceId, activeOrganizationId } = useTenant();
     const [isSeeding, setIsSeeding] = React.useState(false);
+    const [isGlobalSeeding, setIsGlobalSeeding] = React.useState(false);
+
+    const handleSeedGlobalTemplates = async () => {
+        setIsGlobalSeeding(true);
+        try {
+            const result = await seedGlobalTemplatesAction();
+            if (result.created > 0) {
+                toast({
+                    title: 'Global Messaging Blueprints Seeded',
+                    description: `Successfully seeded/verified ${result.created} global templates.`,
+                });
+            } else if (result.errors?.length > 0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Seeding Failed',
+                    description: result.errors[0]?.error || 'Failed to seed global messaging blueprints.',
+                });
+            }
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Execution Error',
+                description: error.message || 'An error occurred during global messaging blueprints seeding.',
+            });
+        }
+        setIsGlobalSeeding(false);
+    };
 
     const handleSeedMeetingTemplates = async () => {
         setIsSeeding(true);
@@ -38,6 +67,34 @@ export default function SeedsClient() {
             });
         }
         setIsSeeding(false);
+    };
+
+    const [isStyleSeeding, setIsStyleSeeding] = React.useState(false);
+
+    const handleSeedDefaultStyleBlueprints = async () => {
+        setIsStyleSeeding(true);
+        try {
+            const result = await seedDefaultStyleBlueprintsAction();
+            if (result.success) {
+                toast({
+                    title: 'Blueprints Customized to Default Style',
+                    description: `Successfully executed FER protocol. Updated ${result.updatedCount} blueprints out of ${result.totalProcessed} total blueprints to use target-aware default template style.`,
+                });
+            } else if (result.errors?.length > 0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Style Seeding Failed',
+                    description: result.errors[0]?.error || 'Failed to update blueprint styles.',
+                });
+            }
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Execution Error',
+                description: error.message || 'An error occurred during default style seeding.',
+            });
+        }
+        setIsStyleSeeding(false);
     };
 
     return (
@@ -88,6 +145,80 @@ export default function SeedsClient() {
                                         <CalendarPlus className="h-4 w-4 mr-2" />
                                     )}
                                     {isSeeding ? 'Processing...' : 'Enrich & Seed Meeting Templates'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-indigo-100 bg-indigo-50/30 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <CalendarPlus className="h-24 w-24 text-indigo-600" />
+                        </div>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Style Reconciliation</span>
+                            </div>
+                            <CardTitle className="text-xl text-indigo-950">Target-Aware Blueprint Styling (FER)</CardTitle>
+                            <CardDescription className="max-w-2xl text-indigo-900/70">
+                                Run the Fetch-Enrich-Restore protocol to migrate all system blueprints and customized templates to use the default target-aware style wrapper.
+                                This ensures internal templates render with clean internal layouts and external client messages use professional external layouts.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                                <div className="flex flex-wrap gap-2">
+                                    <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Fetch-Enrich-Restore</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Internal Wrappers</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">External Wrappers</Badge>
+                                </div>
+                                <Button 
+                                    onClick={handleSeedDefaultStyleBlueprints} 
+                                    disabled={isStyleSeeding}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 border-none min-w-[180px]"
+                                >
+                                    {isStyleSeeding ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <CalendarPlus className="h-4 w-4 mr-2" />
+                                    )}
+                                    {isStyleSeeding ? 'Processing...' : 'Seed Default Style Wrappers'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-purple-100 bg-purple-50/30 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <CalendarPlus className="h-24 w-24 text-purple-600" />
+                        </div>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600">Global Registry</span>
+                            </div>
+                            <CardTitle className="text-xl text-purple-950">Global Messaging Blueprints</CardTitle>
+                            <CardDescription className="max-w-2xl text-purple-900/70">
+                                Seed or update the global default messaging templates and triggers in the system registry. This imports and updates the latest definitions for reschedule, cancellation, and registration alerts.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                                <div className="flex flex-wrap gap-2">
+                                    <Badge variant="outline" className="bg-white/50 border-purple-200 text-purple-700">Triggers & Registry</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-purple-200 text-purple-700">System Blueprints</Badge>
+                                </div>
+                                <Button 
+                                    onClick={handleSeedGlobalTemplates} 
+                                    disabled={isGlobalSeeding}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200 border-none min-w-[180px]"
+                                >
+                                    {isGlobalSeeding ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <CalendarPlus className="h-4 w-4 mr-2" />
+                                    )}
+                                    {isGlobalSeeding ? 'Processing...' : 'Seed Global Blueprints'}
                                 </Button>
                             </div>
                         </CardContent>

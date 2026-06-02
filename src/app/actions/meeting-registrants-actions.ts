@@ -3,11 +3,55 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { generateRegistrantToken } from '@/lib/meeting-tokens';
 import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
-import { ensureAbsoluteUrl, getBaseUrl } from '@/lib/utils/url-helpers';
+import { ensureAbsoluteUrl, getBaseUrl, getRequestBaseUrl } from '@/lib/utils/url-helpers';
 
 export async function deleteRegistrantAction(meetingId: string, registrantId: string) {
   try {
-    await adminDb.collection(`meetings/${meetingId}/registrants`).doc(registrantId).delete();
+    const regDocRef = adminDb.collection(`meetings/${meetingId}/registrants`).doc(registrantId);
+    const regSnap = await regDocRef.get();
+
+    if (regSnap.exists) {
+      const regData = regSnap.data()!;
+      const email = regData.email?.toLowerCase().trim();
+      const phone = regData.phone;
+
+      // Find scheduled messages for this recipient
+      const batch = adminDb.batch();
+      
+      const queryPromises = [];
+      if (email) {
+        queryPromises.push(
+          adminDb.collection('scheduled_messages')
+            .where('sourceEventId', '==', meetingId)
+            .where('sourceEventType', '==', 'meeting')
+            .where('recipientContact', '==', email)
+            .get()
+        );
+      }
+      if (phone) {
+        queryPromises.push(
+          adminDb.collection('scheduled_messages')
+            .where('sourceEventId', '==', meetingId)
+            .where('sourceEventType', '==', 'meeting')
+            .where('recipientContact', '==', phone)
+            .get()
+        );
+      }
+
+      if (queryPromises.length > 0) {
+        const querySnaps = await Promise.all(queryPromises);
+        querySnaps.forEach(snap => {
+          snap.docs.forEach(doc => {
+            batch.delete(doc.ref);
+          });
+        });
+      }
+
+      // Delete the registrant doc itself
+      batch.delete(regDocRef);
+      await batch.commit();
+    }
+
     return { success: true };
   } catch (error: any) {
     console.error('[deleteRegistrantAction]', error);
@@ -114,7 +158,7 @@ export async function adminRegisterParticipantAction(
     }
 
     const token = generateRegistrantToken();
-    const baseUrl = getBaseUrl();
+    const baseUrl = await getRequestBaseUrl();
     const typeSlug = meeting.type?.id || 'meeting';
     const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingSnap.id;
     const personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
@@ -179,7 +223,7 @@ export async function sendMeetingInvitationsAction(
     const meeting = meetingSnap.data()!;
 
     const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
-    const baseUrl = getBaseUrl();
+    const baseUrl = await getRequestBaseUrl();
     const typeSlug = meeting.type?.id || 'meeting';
     const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingId;
     const now = new Date().toISOString();
@@ -202,8 +246,18 @@ export async function sendMeetingInvitationsAction(
           const existingData = existingDoc.data();
 
           // Skip contacts who have already accepted/registered/attended
-          if (existingData.status === 'approved' || existingData.status === 'attended') {
-            return { registrantId: existingDoc.id, success: true, skipped: true };
+          if (existingData.status === 'approved' || existingData.status === 'attended' || existingData.status === 'registered') {
+            return {
+              registrantId: existingDoc.id,
+              success: true,
+              skipped: true,
+              recipient: {
+                name: rec.name,
+                email: rec.email || '',
+                phone: rec.phone || '',
+                status: existingData.status
+              }
+            };
           }
 
           registrantId = existingDoc.id;
@@ -236,6 +290,10 @@ export async function sendMeetingInvitationsAction(
         }
 
         if (subscribeOnly) {
+          await registrantsRef.doc(registrantId).update({
+            status: 'pending',
+            sentInvitations: {}
+          });
           return { registrantId, success: true };
         }
 
@@ -361,12 +419,40 @@ export async function sendMeetingInvitationsAction(
           if (channels.includes('sms') && rec.phone) {
             updateData[`sentInvitations.${stageId}_sms`] = new Date().toISOString();
           }
+
+          // Mark all other invitation slots as sent/blocked so that
+          // when sending immediately, the contact is only subscribed to the selected invitation slot.
+          const slots: { id: string }[] = meeting.messagingConfig?.invitationSeries || [
+            { id: 'initial' },
+            { id: '1_month' },
+            { id: '1_week' },
+            { id: '5_days' },
+            { id: '3_days' },
+            { id: '2_days' },
+            { id: '1_day' },
+            { id: 'today' },
+            { id: 'last_chance' }
+          ];
+          for (const slot of slots) {
+            if (slot.id !== stageId) {
+              updateData[`sentInvitations.${slot.id}`] = new Date().toISOString();
+              updateData[`sentInvitations.${slot.id}_email`] = new Date().toISOString();
+              updateData[`sentInvitations.${slot.id}_sms`] = new Date().toISOString();
+            }
+          }
         }
         await registrantsRef.doc(registrantId).update(updateData);
 
         return { registrantId, success: true };
       })
     );
+
+    const skippedList: any[] = [];
+    results.forEach((r) => {
+      if (r.status === 'fulfilled' && (r.value as any)?.skipped && (r.value as any)?.recipient) {
+        skippedList.push((r.value as any).recipient);
+      }
+    });
 
     const successes = results.filter((r) => r.status === 'fulfilled' && !(r.value as any)?.skipped).length;
     const skipped = results.filter((r) => r.status === 'fulfilled' && (r.value as any)?.skipped).length;
@@ -377,10 +463,15 @@ export async function sendMeetingInvitationsAction(
       message: isScheduled
         ? `Scheduled ${successes} invitations successfully. ${failures > 0 ? `${failures} failed.` : ''}`
         : `Dispatched ${successes} invitations immediately.${skipped > 0 ? ` Skipped ${skipped} already attending.` : ''} ${failures > 0 ? `${failures} failed.` : ''}`,
+      totalRecipients: recipients.length,
+      successCount: successes,
+      skippedCount: skipped,
+      failedCount: failures,
+      skippedRecipients: skippedList,
     };
   } catch (error: any) {
     console.error('[sendMeetingInvitationsAction]', error);
-    return { success: false, message: error.message };
+    return { success: false, message: error.message, totalRecipients: 0, successCount: 0, skippedCount: 0, failedCount: 0, skippedRecipients: [] };
   }
 }
 

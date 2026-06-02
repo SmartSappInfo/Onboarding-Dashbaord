@@ -122,6 +122,14 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
   const [isSending, setIsSending] = React.useState(false);
   const [isAddingToSchedule, setIsAddingToSchedule] = React.useState(false);
+  const [reportModalOpen, setReportModalOpen] = React.useState(false);
+  const [reportData, setReportData] = React.useState<{
+    type: 'dispatch' | 'schedule';
+    successCount: number;
+    skippedCount: number;
+    failedCount: number;
+    skippedRecipients: { name: string; email?: string; phone?: string; status: string }[];
+  } | null>(null);
 
   // Template Preview Modal states
   const [previewTemplateOpen, setPreviewTemplateOpen] = React.useState(false);
@@ -567,6 +575,14 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
       if (res.success) {
         toast({ title: 'Success', description: res.message });
+        setReportData({
+          type: 'dispatch',
+          successCount: res.successCount ?? 0,
+          skippedCount: res.skippedCount ?? 0,
+          failedCount: res.failedCount ?? 0,
+          skippedRecipients: res.skippedRecipients ?? []
+        });
+        setReportModalOpen(true);
       } else {
         toast({ variant: 'destructive', title: 'Dispatch failed', description: res.message });
       }
@@ -604,6 +620,14 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
       if (res.success) {
         toast({ title: 'Success', description: `${filteredRecipients.length} guest(s) added to the invitation schedule.` });
+        setReportData({
+          type: 'schedule',
+          successCount: res.successCount ?? 0,
+          skippedCount: res.skippedCount ?? 0,
+          failedCount: res.failedCount ?? 0,
+          skippedRecipients: res.skippedRecipients ?? []
+        });
+        setReportModalOpen(true);
       } else {
         toast({ variant: 'destructive', title: 'Action failed', description: res.message });
       }
@@ -1860,6 +1884,81 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ========================================================================= */}
+      {/* DIALOG: INVITATION ACTION REPORT */}
+      {/* ========================================================================= */}
+      <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
+        <DialogContent className="sm:max-w-[500px] p-6 rounded-3xl border shadow-2xl bg-background">
+          <DialogHeader className="pb-3 border-b">
+            <DialogTitle className="text-lg font-extrabold flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              {reportData?.type === 'dispatch' ? 'Invitation Dispatch Summary' : 'Schedule Subscription Summary'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              {reportData?.type === 'dispatch' 
+                ? 'Results of the immediate invitation dispatch.' 
+                : 'Results of subscribing the audience to the invitation schedule.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {reportData && (
+            <div className="space-y-5 py-4">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3.5 bg-primary/5 rounded-2xl border border-primary/10">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    {reportData.type === 'dispatch' ? 'Invitations Sent' : 'Subscribed/Scheduled'}
+                  </p>
+                  <p className="text-2xl font-black text-primary mt-1">{reportData.successCount}</p>
+                </div>
+                <div className="p-3.5 bg-amber-500/5 rounded-2xl border border-amber-500/10">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Already Registered (Skipped)
+                  </p>
+                  <p className="text-2xl font-black text-amber-500 mt-1">{reportData.skippedCount}</p>
+                </div>
+              </div>
+
+              {/* Skipped / Already Registered List */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  Already Registered Contacts ({reportData.skippedRecipients.length})
+                </p>
+                {reportData.skippedRecipients.length > 0 ? (
+                  <div className="border border-border/60 rounded-2xl overflow-hidden max-h-[220px] overflow-y-auto divide-y divide-border/40">
+                    {reportData.skippedRecipients.map((recipient, i) => (
+                      <div key={i} className="p-3 bg-muted/10 hover:bg-muted/20 flex items-center justify-between text-xs transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-foreground truncate">{recipient.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {recipient.email || recipient.phone || 'No contact info'}
+                          </p>
+                        </div>
+                        <div className="shrink-0 ml-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                            {recipient.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 border border-dashed rounded-2xl text-center text-xs text-muted-foreground">
+                    No contacts were skipped due to existing registration.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="border-t pt-4">
+            <Button onClick={() => setReportModalOpen(false)} className="w-full sm:w-auto rounded-xl font-bold text-xs px-5 h-10">
+              Dismiss Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </Tabs>
     </div>
   );

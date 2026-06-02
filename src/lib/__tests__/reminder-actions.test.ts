@@ -8,8 +8,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../firebase-admin', () => {
   const update = vi.fn().mockResolvedValue(undefined);
   const set = vi.fn();
+  const deleteMock = vi.fn();
   const commit = vi.fn().mockResolvedValue(undefined);
-  const batch = vi.fn(() => ({ set, commit, update }));
+  const batch = vi.fn(() => ({ set, commit, update, delete: deleteMock }));
 
   const docGet = vi.fn();
   const docRef = { update };
@@ -23,7 +24,7 @@ vi.mock('../firebase-admin', () => {
 
   return {
     adminDb: { batch, collection },
-    __mocks: { update, set, commit, batch, docGet, doc, get, where, collection },
+    __mocks: { update, set, delete: deleteMock, commit, batch, docGet, doc, get, where, collection },
   };
 });
 
@@ -41,6 +42,7 @@ vi.mock('../template-resolver', () => ({
 import {
   cancelRemindersForMeeting,
   processScheduledMessages,
+  rescheduleRemindersForMeeting,
 } from '../reminder-actions';
 import { computeScheduledAt } from '../template-variable-utils';
 import * as firebaseAdmin from '../firebase-admin';
@@ -50,6 +52,7 @@ import * as messagingEngine from '../messaging-engine';
 const mocks = () => (firebaseAdmin as any).__mocks as {
   update: ReturnType<typeof vi.fn>;
   set: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
   commit: ReturnType<typeof vi.fn>;
   batch: ReturnType<typeof vi.fn>;
   docGet: ReturnType<typeof vi.fn>;
@@ -144,16 +147,16 @@ describe('cancelRemindersForMeeting', () => {
 
   it('cancels multiple reminders in a single batch', async () => {
     const fakeDocs = [
-      { ref: { update: vi.fn() } },
-      { ref: { update: vi.fn() } },
-      { ref: { update: vi.fn() } },
+      { ref: { delete: vi.fn() } },
+      { ref: { delete: vi.fn() } },
+      { ref: { delete: vi.fn() } },
     ];
     mocks().get.mockResolvedValue({ empty: false, docs: fakeDocs });
 
     await cancelRemindersForMeeting('meeting-multi');
 
-    // batch.update called once per doc
-    expect(mocks().update).toHaveBeenCalledTimes(3);
+    // batch.delete called once per doc
+    expect(mocks().delete).toHaveBeenCalledTimes(3);
     expect(mocks().commit).toHaveBeenCalledTimes(1);
   });
 });
@@ -284,5 +287,35 @@ describe('processScheduledMessages', () => {
 
     expect(result.sent).toBe(2);
     expect(result.failed).toBe(1);
+  });
+});
+
+describe('rescheduleRemindersForMeeting', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks().where.mockReturnValue({ where: mocks().where, get: mocks().get });
+    mocks().commit.mockResolvedValue(undefined);
+  });
+
+  it('cancels old reminders and schedules new alerts', async () => {
+    const fakeDoc = { ref: { delete: vi.fn().mockResolvedValue(undefined) } };
+    mocks().get.mockResolvedValue({ empty: false, docs: [fakeDoc] });
+
+    const meeting = {
+      id: 'meeting-123',
+      meetingTime: new Date(Date.now() + 3600 * 1000 * 24).toISOString(), // 1 day in the future
+      enabledReminders: ['meeting_reminder_1day'],
+      messagingConfig: {
+        invitationsEnabled: false,
+        reminders: []
+      }
+    };
+
+    await rescheduleRemindersForMeeting(meeting as any, 'org-123');
+
+    // Should cancel old reminders first
+    expect(mocks().where).toHaveBeenCalledWith('sourceEventId', '==', 'meeting-123');
+    expect(mocks().where).toHaveBeenCalledWith('status', '==', 'pending');
+    expect(mocks().commit).toHaveBeenCalled();
   });
 });

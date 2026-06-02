@@ -26,6 +26,23 @@ export async function seedGlobalTemplatesAction(): Promise<{ total: number; crea
       
       const trigger = MESSAGING_TRIGGERS.find(t => t.id === tpl.templateType);
 
+      const isEmail = tpl.channel === 'email';
+      const blocks = isEmail ? [
+          {
+              id: `block_head_${docId}`,
+              type: 'heading',
+              title: tpl.subject || tpl.name,
+              variant: 'h2',
+              style: { textAlign: 'center', fontWeight: 'bold', marginTop: '16px', marginBottom: '16px' }
+          },
+          {
+              id: `block_body_${docId}`,
+              type: 'text',
+              content: tpl.body,
+              style: { textAlign: 'left', lineHeight: '1.6', marginTop: '8px', marginBottom: '16px' }
+          }
+      ] : undefined;
+
       const templateDoc = {
         id: docId,
         scope: 'global',
@@ -33,9 +50,11 @@ export async function seedGlobalTemplatesAction(): Promise<{ total: number; crea
         channel: tpl.channel,
         target: trigger?.target || (tpl.recipientType === 'internal_alert' ? 'internal_team' : 'external_client'),
         name: tpl.name,
-        contentMode: 'plain_text',
+        contentMode: isEmail ? 'rich_builder' : 'plain_text',
         subject: tpl.subject || '',
-        body: tpl.body,
+        body: isEmail ? '' : tpl.body,
+        ...(blocks ? { blocks } : {}),
+        styleId: 'default',
         templateType: tpl.templateType,
         recipientType: tpl.recipientType || trigger?.recipientType || 'external_alert',
         variableContext: tpl.variableContext || 'common',

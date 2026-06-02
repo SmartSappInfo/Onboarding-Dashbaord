@@ -863,6 +863,20 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "registrants",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "workspaceIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

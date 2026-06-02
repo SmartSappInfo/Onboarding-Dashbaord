@@ -49,6 +49,9 @@ export function validateTemplateVariables(
     // 3. Check if it exists elsewhere on the platform (context mismatch warning)
     const existsElsewhere = STATIC_VARIABLES.find(sv => sv.name === varName);
     if (existsElsewhere) {
+      if (existsElsewhere.context === 'common') {
+        continue;
+      }
       errors.push({
         type: 'warning',
         variable: varName,

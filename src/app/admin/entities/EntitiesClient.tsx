@@ -26,7 +26,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList, Video } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
 import AiEntityGenerator from './components/ai-entity-generator';
 import {
@@ -408,6 +408,7 @@ export default function EntitiesClient() {
   const [isBulkTaskOpen, setIsBulkTaskOpen] = useState(false);
   const [isBulkMeetingOpen, setIsBulkMeetingOpen] = useState(false);
   const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
+  const [singleMeetingEntityId, setSingleMeetingEntityId] = useState<string | null>(null);
 
 
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -789,6 +790,10 @@ export default function EntitiesClient() {
     totalCount: filteredEntityIds.length,
     allFilteredIds: filteredEntityIds,
   });
+
+  const selectedEntities = useMemo(() => {
+    return sortedEntities.filter((e: any) => selectedEntityIds.includes(e.id));
+  }, [sortedEntities, selectedEntityIds]);
 
   const handleDeleteEntity = () => {
     if (!firestore || !entityToDelete) return;
@@ -1566,6 +1571,10 @@ export default function EntitiesClient() {
                                                             
                                                             <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{editProfile}</span></Link></DropdownMenuItem>
                                                             <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${entity.entityId}${filterState.contactRoles?.length ? `&contactRoles=${encodeURIComponent(filterState.contactRoles.join(','))}` : ''}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl p-2.5 gap-3 cursor-pointer" onClick={() => setSingleMeetingEntityId(entity.entityId)}>
+                                                                <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Video className="h-3.5 w-3.5" /></div>
+                                                                <span className="font-bold text-sm">Invite to Meeting</span>
+                                                            </DropdownMenuItem>
                                                             <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
                                                                 <Link href={buildComposerLink(entity, filterState.contactRoles)}>
                                                                     <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Send className="h-3.5 w-3.5" /></div>
@@ -1739,11 +1748,21 @@ export default function EntitiesClient() {
             />
 
             <BulkMeetingInviteModal
-              entityIds={selectedEntityIds}
+              entityIds={selectedEntities.map(e => e.entityId)}
               open={isBulkMeetingOpen}
               onOpenChange={setIsBulkMeetingOpen}
               onComplete={() => clearSelection()}
             />
+
+            {singleMeetingEntityId && (
+              <BulkMeetingInviteModal
+                entityIds={[singleMeetingEntityId]}
+                open={!!singleMeetingEntityId}
+                onOpenChange={(open) => {
+                  if (!open) setSingleMeetingEntityId(null);
+                }}
+              />
+            )}
 
             {/* Reassignment modal with bulk support */}
             <AssignUserModal 

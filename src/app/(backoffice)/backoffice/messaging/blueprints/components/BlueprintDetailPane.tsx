@@ -7,6 +7,7 @@ import {
   Eye, Mail, Smartphone, BarChart3, Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { renderBlocksToHtml } from '@/lib/messaging-utils';
 
 interface BlueprintDetailPaneProps {
   trigger: MessagingTrigger;
@@ -31,6 +32,15 @@ export function BlueprintDetailPane({ trigger, globalTemplates, adoptionCount, o
 
   const activeTemplate = globalTemplates?.find(t => t.templateType === trigger.id && t.channel === activeTab);
   const isConfigured = !!activeTemplate;
+
+  const isRichBuilder = activeTemplate?.contentMode === 'rich_builder' || !!activeTemplate?.blocks?.length;
+  const emailSrcDoc = React.useMemo(() => {
+    if (!activeTemplate || activeTab !== 'email') return '';
+    if (isRichBuilder) {
+      return renderBlocksToHtml(activeTemplate.blocks || [], {});
+    }
+    return activeTemplate.body || '';
+  }, [activeTemplate, activeTab, isRichBuilder]);
 
   const getTargetIcon = () => {
     switch (trigger.target) {
@@ -147,8 +157,18 @@ export function BlueprintDetailPane({ trigger, globalTemplates, adoptionCount, o
                         <span className="font-mono text-foreground/80">&lt;system@platform.com&gt;</span>
                       </div>
                     </div>
-                    <div className="p-4 flex-1 bg-background overflow-y-auto text-xs leading-relaxed font-normal whitespace-pre-wrap select-text text-foreground">
-                      {activeTemplate.body || "No template content configured."}
+                    <div className="flex-1 bg-background overflow-hidden relative min-h-[300px]">
+                      {isRichBuilder ? (
+                        <iframe
+                          srcDoc={emailSrcDoc}
+                          className="w-full h-full border-none bg-background absolute inset-0"
+                          title="Blueprint Preview"
+                        />
+                      ) : (
+                        <div className="p-4 h-full overflow-y-auto text-xs leading-relaxed font-normal whitespace-pre-wrap select-text text-foreground">
+                          {activeTemplate.body || "No template content configured."}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (

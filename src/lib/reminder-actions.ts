@@ -8,7 +8,7 @@ import { buildMeetingBaseVariables, buildRegistrantVariables, buildFacilitatorVa
 import type { Meeting, ScheduledMessage, TemplateCategory, MeetingMessagingConfig, MeetingReminderSlot, MeetingInvitationSlot, MeetingRegistrant } from './types';
 import { REMINDER_OFFSETS } from './types';
 import { calculateChannelTriggerTime } from './invitation-utils';
-import { getBaseUrl } from './utils/url-helpers';
+import { getBaseUrl, getRequestBaseUrl } from './utils/url-helpers';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -254,7 +254,7 @@ export async function scheduleMeetingInvitations(
   const enabledSlots = config.invitationSeries.filter(s => s.enabled);
   if (enabledSlots.length === 0) return;
 
-  const baseUrl = getBaseUrl();
+  const baseUrl = await getRequestBaseUrl();
   const typeSlug = meeting.type?.id || 'meeting';
   const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meeting.id;
 

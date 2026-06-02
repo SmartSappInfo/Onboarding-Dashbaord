@@ -222,7 +222,10 @@ service cloud.firestore {
     // Collection Group rule for registrants (required for collectionGroup queries)
     match /{path=**}/registrants/{rId} {
       allow create: if true;
-      allow read, list, update: if isAuthorized();
+      allow read, list, update: if isAuthorized() && (
+        isSystemAdmin() ||
+        canAccessWorkspace(resource.data.workspaceIds)
+      );
     }
 
     match /custom_meeting_templates/{templateId} {

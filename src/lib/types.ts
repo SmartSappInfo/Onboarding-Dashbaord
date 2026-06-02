@@ -1275,6 +1275,10 @@ export const getDefaultMeetingMessagingConfig = (): MeetingMessagingConfig => ({
   postEventAudience: 'attendees_only',
   postEventChannels: ['email'],
   postEventAbsenteeEnabled: false,
+  rescheduleEnabled: false,
+  rescheduleChannels: ['email'],
+  cancelEnabled: false,
+  cancelChannels: ['email'],
 });
 
 // ── Meeting Messaging Config ───────────────────────────────────────────────
@@ -1314,6 +1318,26 @@ export interface MeetingMessagingConfig {
   postEventAbsenteeEnabled: boolean;
   postEventAbsenteeEmailTemplateId?: string;
   postEventAbsenteeSmsTemplateId?: string;
+
+  // Reschedule Notifications
+  rescheduleEnabled: boolean;
+  rescheduleEmailTemplateId?: string;
+  rescheduleSmsTemplateId?: string;
+  rescheduleChannels: ('email' | 'sms')[];
+  rescheduleFacilitatorEmailTemplateId?: string;
+  rescheduleFacilitatorSmsTemplateId?: string;
+  rescheduleRegistrantEmailTemplateId?: string;
+  rescheduleRegistrantSmsTemplateId?: string;
+
+  // Cancellation Notifications
+  cancelEnabled: boolean;
+  cancelEmailTemplateId?: string;
+  cancelSmsTemplateId?: string;
+  cancelChannels: ('email' | 'sms')[];
+  cancelFacilitatorEmailTemplateId?: string;
+  cancelFacilitatorSmsTemplateId?: string;
+  cancelRegistrantEmailTemplateId?: string;
+  cancelRegistrantSmsTemplateId?: string;
 
   // Outbound Registration Webhook
   /** When enabled, a signed JSON POST is sent to registrationWebhookUrl on every new registration */

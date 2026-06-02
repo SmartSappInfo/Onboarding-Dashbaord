@@ -14,7 +14,7 @@ import { resolveContact } from './contact-adapter';
 import { buildMeetingBaseVariables, buildFacilitatorVariables, buildRegistrantVariables } from './meeting-variable-helpers';
 import { getRecipientContact } from './migration-status-utils';
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
-import { getBaseUrl } from './utils/url-helpers';
+import { getBaseUrl, getRequestBaseUrl } from './utils/url-helpers';
 
 interface SendMessageInput {
   templateId: string;
@@ -172,7 +172,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             const contractSnap = await adminDb.collection('contracts').where('entityId', '==', resolvedEntityId).limit(1).get();
             if (!contractSnap.empty) {
                 const contractData = contractSnap.docs[0].data() as Contract;
-                const baseUrl = getBaseUrl();
+                const baseUrl = await getRequestBaseUrl();
                 contactVars.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?entityId=${resolvedEntityId}`;
             }
 
@@ -303,7 +303,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             if (rDocData) {
                 const token = rDocData.token;
                 if (token) {
-                    const baseUrl = getBaseUrl();
+                    const baseUrl = await getRequestBaseUrl();
                     
                     // Parse slugs from personalizedMeetingUrl
                     let typeSlug = 'meeting';
@@ -354,7 +354,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             }
         } else {
             // Fallback for RSVP/join URLs if registrant is not found (e.g. test dispatches, facilitators, or missing registrant doc)
-            const baseUrl = getBaseUrl();
+            const baseUrl = await getRequestBaseUrl();
             let typeSlug = 'meeting';
             let meetingSlug = meetingId;
             try {
@@ -463,7 +463,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     }
 
     // Phase 7: Inject Unsubscribe Link
-    const baseUrl = getBaseUrl();
+    const baseUrl = await getRequestBaseUrl();
     const unsubId = resolvedEntityId || recipient;
     finalVariables.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${resolvedWorkspaceId}&c=${template.channel}`;
 
