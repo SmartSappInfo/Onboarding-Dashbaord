@@ -131,8 +131,8 @@ export default function TrainingMeetingHero({ entity, meeting, tokenResult, next
                   )}
                   {resolvedName && (
                     <div>
-                      <h2 className="text-2xl font-bold uppercase tracking-tight">{resolvedName}</h2>
-                      {resolvedSlogan && <p className="text-foreground/80 font-medium italic">{resolvedSlogan}</p>}
+                      <h2 className="text-2xl font-bold uppercase tracking-tight text-slate-900 dark:text-white">{resolvedName}</h2>
+                      {resolvedSlogan && <p className="text-slate-700/80 dark:text-slate-300/80 font-medium italic">{resolvedSlogan}</p>}
                     </div>
                   )}
                 </div>

@@ -153,7 +153,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   // Derived Stats
   const stats = useMemo(() => {
     if (!registrants) return { total: 0, attended: 0, pending: 0, attendanceRate: 0 };
-    const total = registrants.length;
+    const total = registrants.filter(r => r.status === 'registered' || r.status === 'approved' || r.status === 'attended').length;
     const attended = registrants.filter(r => r.status === 'attended').length;
     const pending = total - attended;
     const attendanceRate = total > 0 ? Math.round((attended / total) * 100) : 0;

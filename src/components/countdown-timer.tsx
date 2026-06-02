@@ -44,11 +44,11 @@ const CountdownTimer = ({ targetDate }: CountdownTimerProps) => {
   }, [targetDate]);
 
   const TimeBlock = ({ value, label }: { value: number, label: string }) => (
-    <div className="flex flex-col items-center justify-center rounded-lg bg-white/10 p-2 sm:p-4 backdrop-blur-sm w-full">
-      <span className="font-mono text-3xl sm:text-5xl font-bold text-white">
+    <div className="flex flex-col items-center justify-center rounded-lg bg-blue-500/10 dark:bg-white/10 p-2 sm:p-4 border border-blue-500/20 dark:border-white/10 backdrop-blur-sm w-full">
+      <span className="font-mono text-3xl sm:text-5xl font-bold text-slate-900 dark:text-white">
         {String(value).padStart(2, '0')}
       </span>
-      <span className="text-xs sm:text-sm uppercase text-white/80">{label}</span>
+      <span className="text-xs sm:text-sm uppercase text-slate-700/80 dark:text-white/80">{label}</span>
     </div>
   );
 
@@ -64,7 +64,7 @@ const CountdownTimer = ({ targetDate }: CountdownTimerProps) => {
   }
   
   if (Object.values(timeLeft).every(v => v === 0)) {
-    return <div className="text-center text-2xl font-bold p-4 bg-white/20 text-white rounded-lg backdrop-blur-sm">The meeting has started!</div>
+    return <div className="text-center text-2xl font-bold p-4 bg-blue-500/10 dark:bg-white/20 text-slate-900 dark:text-white rounded-lg backdrop-blur-sm">The meeting has started!</div>
   }
 
   return (

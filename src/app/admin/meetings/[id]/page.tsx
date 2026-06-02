@@ -172,7 +172,7 @@ export default function MeetingDetailPage() {
   const { data: registrants } = useCollection<any>(registrantsColRef);
 
   // Derive count safely in render (zero-effect derivation)
-  const registrantsCount = registrants?.length ?? 0;
+  const registrantsCount = registrants?.filter(r => r.status === 'registered' || r.status === 'approved' || r.status === 'attended').length ?? 0;
 
   // Toggle registration status with race-condition protection
   const handleToggleRegistration = async () => {

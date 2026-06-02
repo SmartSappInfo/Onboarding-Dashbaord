@@ -10,6 +10,7 @@ import { submitRsvpResponseAction } from '@/app/actions/meeting-registrants-acti
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 function RsvpOptionsPanel({ 
   meeting, 
@@ -24,13 +25,14 @@ function RsvpOptionsPanel({
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = async () => {
+  const handleRsvp = async (selectedChoice: 'going' | 'not_going' | 'later') => {
+    setChoice(selectedChoice);
     setStatus('submitting');
     try {
-      const res = await submitRsvpResponseAction(meeting.id, registrant.token, choice);
+      const res = await submitRsvpResponseAction(meeting.id, registrant.token, selectedChoice);
       if (res.success) {
         setStatus('success');
-        onSuccess(choice);
+        onSuccess(selectedChoice);
       } else {
         setErrorMsg(res.error || 'Failed to submit RSVP.');
         setStatus('error');
@@ -41,17 +43,17 @@ function RsvpOptionsPanel({
     }
   };
 
-  const firstName = registrant.name?.split(' ')[0] || 'Guest';
+  const contactName = registrant.name || 'Friend';
 
   if (status === 'success') {
     return (
-      <div className="w-full md:max-w-md mx-auto md:mx-0 p-6 sm:p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl">
-        <div className="mx-auto bg-emerald-500/20 w-16 h-16 rounded-full flex items-center justify-center border border-emerald-500/30 text-emerald-400">
+      <div className="w-full md:max-w-md mx-auto md:mx-0 p-6 sm:p-10 bg-white/40 dark:bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-slate-200/50 dark:border-white/10 text-center space-y-6 shadow-2xl">
+        <div className="mx-auto bg-emerald-500/20 w-16 h-16 rounded-full flex items-center justify-center border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="h-8 w-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-black tracking-tight text-white font-sans">RSVP Submitted</h2>
-          <p className="text-xs text-foreground/75 leading-relaxed font-sans">
+          <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white font-sans">RSVP Submitted</h2>
+          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-sans">
             {choice === 'going' 
               ? "Fantastic! We've secured your spot and loaded the waiting room details." 
               : choice === 'not_going'
@@ -69,52 +71,70 @@ function RsvpOptionsPanel({
   }
 
   return (
-    <div className="w-full md:max-w-md mx-auto md:mx-0 p-4 sm:p-6 md:p-8 bg-white/5 backdrop-blur-md rounded-[2rem] md:rounded-[2.5rem] border border-white/10 text-left space-y-4 md:space-y-6 shadow-2xl">
-      <div className="space-y-0.5 md:space-y-1">
-        <h2 className="text-lg md:text-xl font-black tracking-tight text-white font-sans">
-          Hello, {firstName}!
+    <div className="w-full md:max-w-md mx-auto md:mx-0 p-4 sm:p-6 md:p-8 bg-white/40 dark:bg-white/5 backdrop-blur-md rounded-[2rem] md:rounded-[2.5rem] border border-slate-200/50 dark:border-white/10 text-left space-y-4 md:space-y-6 shadow-2xl">
+      <div className="space-y-2">
+        <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white font-sans">
+          Hi {contactName} 👋
         </h2>
-        <p className="text-[11px] md:text-xs text-foreground/60 font-sans">
-          You are invited to the upcoming session.
+        <p className="text-[15px] md:text-base text-slate-800 dark:text-slate-200 leading-relaxed font-medium font-sans">
+          We're excited to have you in this session. Are you joining us?
         </p>
       </div>
 
-      <div className="space-y-3 md:space-y-4">
-        <div className="space-y-1.5 md:space-y-2">
-          <label className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-foreground/70 font-sans">
-            Choose RSVP Option
-          </label>
-          <Select 
-            value={choice} 
-            onValueChange={(val: any) => setChoice(val)}
-          >
-            <SelectTrigger className="h-10 md:h-12 rounded-xl font-bold bg-white/5 border-white/10 text-white focus:ring-0 focus:outline-none text-xs md:text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl bg-slate-900 border-white/10 text-white">
-              <SelectItem value="going" className="font-bold cursor-pointer hover:bg-white/10 rounded-lg text-xs">I'll Attend (Going)</SelectItem>
-              <SelectItem value="not_going" className="font-bold cursor-pointer hover:bg-white/10 rounded-lg text-xs">I Can't Attend (Decline)</SelectItem>
-              <SelectItem value="later" className="font-bold cursor-pointer hover:bg-white/10 rounded-lg text-xs">Remind me Later</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-4 pt-2">
+        {status === 'submitting' ? (
+          <div className="flex flex-col items-center justify-center py-6 space-y-2">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">Submitting your response...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <motion.div
+              animate={{
+                scale: [1, 1.03, 1],
+              }}
+              transition={{
+                duration: 1.2,
+                repeat: Infinity,
+                repeatDelay: 3.8,
+                ease: "easeInOut"
+              }}
+              className="w-full"
+            >
+              <Button
+                onClick={() => handleRsvp('going')}
+                variant="default"
+                className="w-full rounded-xl font-bold h-12 text-sm shadow-md bg-primary hover:bg-primary/90 text-white"
+              >
+                Yes, I'll Join
+              </Button>
+            </motion.div>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={() => handleRsvp('later')}
+                variant="secondary"
+                className="rounded-xl font-bold h-11 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white border border-slate-200/30 dark:border-white/5"
+              >
+                Later
+              </Button>
+              <Button
+                onClick={() => handleRsvp('not_going')}
+                variant="secondary"
+                className="rounded-xl font-bold h-11 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white border border-slate-200/30 dark:border-white/5"
+              >
+                Can't Make It
+              </Button>
+            </div>
+          </div>
+        )}
 
-        <p className="text-[11px] md:text-xs text-foreground/70 leading-relaxed bg-white/5 p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 font-sans">
-          ℹ️ <span className="font-semibold text-white">One-click Registration:</span> We will automatically register you and secure your spot using your invitation details. No forms to fill!
+        <p className="text-[11px] md:text-xs text-slate-600 dark:text-slate-400 leading-relaxed bg-blue-500/5 dark:bg-white/5 p-3 md:p-4 rounded-xl md:rounded-2xl border border-blue-500/10 dark:border-white/10 font-sans">
+          ℹ️ <span className="font-semibold text-slate-900 dark:text-white">One-click Registration:</span> Your spot will automatically be secure with one click. No forms to fill!
         </p>
 
         {errorMsg && (
-          <p className="text-[11px] md:text-xs font-semibold text-rose-400 font-sans">{errorMsg}</p>
+          <p className="text-[11px] md:text-xs font-semibold text-rose-600 dark:text-rose-400 font-sans">{errorMsg}</p>
         )}
-
-        <Button 
-          onClick={handleSubmit} 
-          disabled={status === 'submitting'}
-          className="w-full h-10 md:h-12 rounded-xl font-bold text-xs uppercase tracking-widest gap-2 bg-primary hover:bg-primary/90 text-white mt-1 md:mt-2 font-sans"
-        >
-          {status === 'submitting' ? 'Submitting...' : 'Submit RSVP'}
-          <ArrowRight className="h-4 w-4" />
-        </Button>
       </div>
     </div>
   );

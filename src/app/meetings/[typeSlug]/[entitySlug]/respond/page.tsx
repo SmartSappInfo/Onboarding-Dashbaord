@@ -113,6 +113,7 @@ export default async function RsvpRespondPage({
           token={token}
           initialResponse={initialChoice}
           dbResponse={dbResponse}
+          contactName={registrantData.name || ''}
         />
       </main>
       <footer className="py-8 text-center text-xs text-muted-foreground bg-background border-t border-border/10 font-sans flex flex-col items-center justify-center gap-2">

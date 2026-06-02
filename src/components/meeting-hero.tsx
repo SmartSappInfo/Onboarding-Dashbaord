@@ -137,8 +137,8 @@ export default function MeetingHero({ entity, meeting, tokenResult, nextSectionI
                   )}
                   {resolvedName && (
                     <div>
-                      <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{resolvedName}</h2>
-                      {resolvedSlogan && <p className="text-foreground/80 font-medium italic">{resolvedSlogan}</p>}
+                      <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{resolvedName}</h2>
+                      {resolvedSlogan && <p className="text-slate-700/80 dark:text-slate-300/80 font-medium italic">{resolvedSlogan}</p>}
                     </div>
                   )}
                 </div>

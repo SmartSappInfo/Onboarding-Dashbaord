@@ -30,6 +30,7 @@ interface RsvpResponseClientProps {
   token: string;
   initialResponse: 'going' | 'not_going' | 'later' | null;
   dbResponse?: 'going' | 'not_going' | 'later' | null;
+  contactName: string;
 }
 
 export default function RsvpResponseClient({
@@ -42,6 +43,7 @@ export default function RsvpResponseClient({
   token,
   initialResponse,
   dbResponse,
+  contactName,
 }: RsvpResponseClientProps) {
   const router = useRouter();
   const [status, setStatus] = React.useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
@@ -191,7 +193,7 @@ export default function RsvpResponseClient({
                   {response === 'going' && "You're Confirmed! 🎉"}
                   {response === 'not_going' && 'RSVP Declined'}
                   {response === 'later' && 'RSVP Saved — Decide Later'}
-                  {!response && "We'd Love to Have You!"}
+                  {!response && `Hi ${contactName}`}
                 </h1>
                 <p className="text-sm font-medium text-foreground/75 leading-relaxed max-w-sm mx-auto">
                   {response === 'going' &&
@@ -200,7 +202,7 @@ export default function RsvpResponseClient({
                     "We are sorry you can't make it. You can watch the recording afterwards if available."}
                   {response === 'later' &&
                     "No problem! We've saved your interest. You can return to this page anytime to update your choice."}
-                  {!response && `Please select your availability for: ${meetingTitle}`}
+                  {!response && "We're excited to have you in this session. Are you joining us?"}
                 </p>
               </div>
 
@@ -222,26 +224,30 @@ export default function RsvpResponseClient({
               {status === 'idle' || status === 'error' ? (
                 <div className="space-y-3 pt-4">
                   {!response ? (
-                    /* Stack on mobile, 3-col from sm: up */
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex flex-col gap-3">
                       <Button
                         onClick={() => handleRsvp('going')}
-                        className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white h-12 text-sm"
+                        variant="default"
+                        className="w-full rounded-xl font-bold h-12 text-sm shadow-md"
                       >
-                        I'll Attend
+                        Yes, I'll Attend
                       </Button>
-                      <Button
-                        onClick={() => handleRsvp('not_going')}
-                        className="rounded-xl font-bold bg-rose-600 hover:bg-rose-500 text-white h-12 text-sm"
-                      >
-                        I Can't Attend
-                      </Button>
-                      <Button
-                        onClick={() => handleRsvp('later')}
-                        className="rounded-xl font-bold bg-amber-600 hover:bg-amber-500 text-white h-12 text-sm"
-                      >
-                        Remind me Later
-                      </Button>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button
+                          onClick={() => handleRsvp('later')}
+                          variant="secondary"
+                          className="rounded-xl font-bold h-11 text-xs"
+                        >
+                          Later
+                        </Button>
+                        <Button
+                          onClick={() => handleRsvp('not_going')}
+                          variant="secondary"
+                          className="rounded-xl font-bold h-11 text-xs"
+                        >
+                          Can't Make It
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-2">

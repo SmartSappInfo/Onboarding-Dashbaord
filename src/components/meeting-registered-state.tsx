@@ -125,7 +125,7 @@ export default function MeetingRegisteredState({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md mx-auto md:mx-0 p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl"
+        className="w-full max-w-md mx-auto md:mx-0 p-10 bg-black/5 dark:bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-black/10 dark:border-white/10 text-center space-y-6 shadow-2xl"
       >
         <motion.div
           animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }}
@@ -135,7 +135,7 @@ export default function MeetingRegisteredState({
           <Rocket className="h-10 w-10 text-primary" />
         </motion.div>
         <div className="space-y-2">
-          <p className="text-2xl font-black text-white leading-tight uppercase tracking-tight">
+          <p className="text-2xl font-black text-foreground leading-tight uppercase tracking-tight">
             Launching Meeting Room...
           </p>
           <p className="text-6xl font-black text-primary tabular-nums">{launchCountdown}</p>
@@ -149,21 +149,21 @@ export default function MeetingRegisteredState({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md mx-auto md:mx-0 p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl"
+        className="w-full max-w-md mx-auto md:mx-0 p-10 bg-black/5 dark:bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-black/10 dark:border-white/10 text-center space-y-6 shadow-2xl"
       >
         <div className="mx-auto bg-emerald-500/20 w-16 h-16 rounded-full flex items-center justify-center">
           <CheckCircle2 className="h-8 w-8 text-emerald-400" />
         </div>
         <div className="space-y-2">
-          <p className="text-xl font-black text-white uppercase tracking-tight">You're In!</p>
-          <p className="text-sm text-white/60 font-medium">
+          <p className="text-xl font-black text-foreground uppercase tracking-tight">You're In!</p>
+          <p className="text-sm text-muted-foreground font-medium">
             Meeting room has been opened in a new tab.
           </p>
         </div>
         <Button
           variant="outline"
           onClick={() => window.open(meeting.meetingLink, '_blank')}
-          className="rounded-xl font-bold text-white border-white/20 hover:bg-white/10"
+          className="rounded-xl font-bold text-foreground border-border hover:bg-muted"
         >
           Reopen Meeting Room
         </Button>
@@ -176,14 +176,14 @@ export default function MeetingRegisteredState({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md mx-auto md:mx-0 p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-4 shadow-2xl"
+        className="w-full max-w-md mx-auto md:mx-0 p-10 bg-black/5 dark:bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-black/10 dark:border-white/10 text-center space-y-4 shadow-2xl"
       >
         <div className="mx-auto bg-emerald-500/20 w-16 h-16 rounded-full flex items-center justify-center">
           <CheckCircle2 className="h-8 w-8 text-emerald-400" />
         </div>
         <div className="space-y-2">
-          <p className="text-xl font-black text-white uppercase tracking-tight">Session Complete</p>
-          <p className="text-sm text-white/60 font-medium">
+          <p className="text-xl font-black text-foreground uppercase tracking-tight">Session Complete</p>
+          <p className="text-sm text-muted-foreground font-medium">
             Thank you for attending, {firstName}!
           </p>
         </div>
@@ -194,7 +194,7 @@ export default function MeetingRegisteredState({
               const el = document.getElementById('recording');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="rounded-xl font-bold text-white border-white/20 hover:bg-white/10"
+            className="rounded-xl font-bold text-foreground border-border hover:bg-muted"
           >
             Watch Recording
           </Button>
@@ -210,15 +210,15 @@ export default function MeetingRegisteredState({
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-md mx-auto md:mx-0 space-y-6"
     >
-      <div className="p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl">
+      <div className="p-10 bg-black/5 dark:bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-black/10 dark:border-white/10 text-center space-y-6 shadow-2xl">
         <div className="mx-auto bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center">
           <User className="h-8 w-8 text-primary" />
         </div>
         <div className="space-y-3">
-          <p className="text-2xl font-black text-white leading-tight">
+          <p className="text-2xl font-black text-foreground leading-tight">
             Welcome back, {firstName}! 👋
           </p>
-          <p className="text-base font-medium text-white/70 leading-relaxed px-4">
+          <p className="text-base font-medium text-muted-foreground leading-relaxed px-4">
             You're registered for this session. The meeting room will open automatically when it's time.
           </p>
         </div>
@@ -229,7 +229,7 @@ export default function MeetingRegisteredState({
 
         <div className={cn(
           "flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest",
-          registrant.status === 'waitlisted' ? "text-amber-400" : "text-emerald-400"
+          registrant.status === 'waitlisted' ? "text-amber-500" : "text-emerald-500 dark:text-emerald-400"
         )}>
           {registrant.status === 'waitlisted' ? (
             <>
@@ -247,7 +247,7 @@ export default function MeetingRegisteredState({
 
       <button
         onClick={onClearToken}
-        className="text-white/30 text-[10px] font-bold uppercase tracking-widest hover:text-white/60 transition-colors mx-auto block"
+        className="text-muted-foreground/60 text-[10px] font-bold uppercase tracking-widest hover:text-muted-foreground/90 transition-colors mx-auto block"
       >
         Not {firstName}? Register as someone else →
       </button>

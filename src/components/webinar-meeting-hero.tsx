@@ -102,8 +102,8 @@ export default function WebinarMeetingHero({ entity, meeting, tokenResult, nextS
                 )}
                 {entityName && (
                   <div>
-                    <h2 className="text-2xl font-bold uppercase tracking-tight">{entityName}</h2>
-                    {entitySlogan && <p className="text-foreground/80 font-medium italic">{entitySlogan}</p>}
+                    <h2 className="text-2xl font-bold uppercase tracking-tight text-slate-900 dark:text-white">{entityName}</h2>
+                    {entitySlogan && <p className="text-slate-700/80 dark:text-slate-300/80 font-medium italic">{entitySlogan}</p>}
                   </div>
                 )}
               </div>
