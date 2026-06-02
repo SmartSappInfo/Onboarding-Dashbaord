@@ -78,9 +78,20 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext'; // Added useTenant import
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import MeetingCalendar from './components/MeetingCalendar';
-import MeetingQRDialog from './components/MeetingQRDialog';
+import dynamic from 'next/dynamic';
 import { QrCode } from 'lucide-react';
+
+const MeetingCalendar = dynamic(() => import('./components/MeetingCalendar'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col items-center justify-center p-12 space-y-4">
+      <Loader2 className="h-8 w-8 text-primary animate-spin" />
+      <p className="text-sm font-semibold text-muted-foreground animate-pulse">Loading Calendar Map...</p>
+    </div>
+  )
+});
+
+const MeetingQRDialog = dynamic(() => import('./components/MeetingQRDialog'), { ssr: false });
 import { PageContainerFluid } from '@/components/ui/page-container';
 
 const getInitials = (name?: string) => {
@@ -155,19 +166,12 @@ export default function MeetingsHubClient() {
   const { data: meetings, isLoading: isLoadingMeetings, error } = useCollection<Meeting>(meetingsQuery);
   const { entities, isLoading: isLoadingEntities } = useEntityCache();
 
-  const globalEntitiesCol = useMemoFirebase(() => {
-    if (!firestore || !activeOrganizationId) return null;
-    return query(collection(firestore, 'entities'), where('organizationId', '==', activeOrganizationId));
-  }, [firestore, activeOrganizationId]);
-
-  const { data: globalEntities, isLoading: isLoadingGlobalEntities } = useCollection<Entity>(globalEntitiesCol);
-
-  const isLoading = isLoadingMeetings || isLoadingEntities || isLoadingGlobalEntities || isLoadingFilter;
+  const isLoading = isLoadingMeetings || isLoadingEntities || isLoadingFilter;
 
   const entityLogoMap = useMemo(() => {
-    if (!globalEntities) return new Map<string, string | undefined>();
-    return new Map(globalEntities.map(s => [s.id, s.logoUrl]));
-  }, [globalEntities]);
+    if (!entities) return new Map<string, string | undefined>();
+    return new Map(entities.map(s => [s.entityId, s.logoUrl]));
+  }, [entities]);
 
   const entityEmailMap = useMemo(() => {
     if (!entities) return new Map<string, string | undefined>();
