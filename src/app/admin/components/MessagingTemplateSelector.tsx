@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID } from '@/lib/types';
 import type { TemplateCategory, RecipientType, MessageChannel, MessageTemplate } from '@/lib/types';
 import { fetchTemplatesCached, getTemplatesCachedSync } from './template-cache-manager';
 import { useTenant } from '@/context/TenantContext';
@@ -421,10 +422,11 @@ const LivePreviewPane = React.memo(function LivePreviewPane({ tmpl }: { tmpl: Me
 
 // ─── Inline selected card (shown when template is chosen in parent UI) ─────────
 const InlineSelectedCard = React.memo(function InlineSelectedCard({
-    template, channelIcon, onEditClick, onOpenPicker, onClear, isLoading,
+    template, channelIcon, onPreviewClick, onEditClick, onOpenPicker, onClear, isLoading,
 }: {
     template: MessageTemplate;
     channelIcon: React.ReactNode;
+    onPreviewClick: () => void;
     onEditClick: () => void;
     onOpenPicker: () => void;
     onClear: () => void;
@@ -471,6 +473,11 @@ const InlineSelectedCard = React.memo(function InlineSelectedCard({
                     </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                    <Button type="button" variant="ghost" size="icon"
+                        className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        onClick={onPreviewClick} title="Preview template">
+                        <Eye className="h-3.5 w-3.5" />
+                    </Button>
                     <Button type="button" variant="ghost" size="icon"
                         className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60"
                         onClick={onEditClick} title="Edit blueprint">
@@ -530,6 +537,11 @@ export function MessagingTemplateSelector({
     const [pickerOpen, setPickerOpen] = React.useState(false);
     const [creatorOpen, setCreatorOpen] = React.useState(false);
     const [editingTemplateId, setEditingTemplateId] = React.useState<string | undefined>();
+    const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
+
+    const handlePreviewClick = React.useCallback(() => {
+        setPreviewDialogOpen(true);
+    }, []);
 
     // Synchronous initial cache hit resolve to eliminate initial load skeleton flickers
     const initialCached = React.useMemo(() => {
@@ -674,24 +686,46 @@ export function MessagingTemplateSelector({
                     'w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all duration-200 text-left group',
                     value && selectedTemplate
                         ? 'border-primary/30 bg-primary/5 hover:border-primary/50'
+                        : value && !selectedTemplate && !isLoading && hasFetched
+                        ? 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50'
                         : 'border-border/70 bg-card hover:border-border hover:bg-muted/20'
                 )}
             >
                 {channelIcon}
                 <span className={cn(
                     'flex-1 min-w-0 text-xs font-semibold truncate',
-                    value && selectedTemplate ? 'text-foreground' : 'text-muted-foreground'
+                    value && selectedTemplate ? 'text-foreground' : value && !selectedTemplate && !isLoading && hasFetched ? 'text-amber-500 font-bold' : 'text-muted-foreground'
                 )}>
-                    {isLoading && value ? 'Loading…' : value && selectedTemplate ? selectedTemplate.name : placeholder}
+                    {isLoading && value 
+                        ? 'Loading…' 
+                        : value && selectedTemplate 
+                        ? selectedTemplate.name 
+                        : value && !selectedTemplate && hasFetched
+                        ? `Unresolved Template (${value})`
+                        : placeholder}
                 </span>
-                {value && selectedTemplate ? (
-                    <span className="flex items-center gap-0.5 shrink-0">
-                        <span role="button" tabIndex={0}
-                            onClick={e => { e.stopPropagation(); handleEditClick(); }}
-                            onKeyDown={e => e.key === 'Enter' && handleEditClick()}
-                            className="h-5 w-5 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
-                            <Pencil className="h-2.5 w-2.5" />
-                        </span>
+                {value && (selectedTemplate || (!isLoading && hasFetched)) ? (
+                    <span className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                        {selectedTemplate && (
+                            <>
+                                <span role="button" tabIndex={0}
+                                    onClick={e => { e.stopPropagation(); handlePreviewClick(); }}
+                                    onKeyDown={e => e.key === 'Enter' && handlePreviewClick()}
+                                    className="h-5 w-5 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+                                    title="Preview template"
+                                >
+                                    <Eye className="h-2.5 w-2.5" />
+                                </span>
+                                <span role="button" tabIndex={0}
+                                    onClick={e => { e.stopPropagation(); handleEditClick(); }}
+                                    onKeyDown={e => e.key === 'Enter' && handleEditClick()}
+                                    className="h-5 w-5 flex items-center justify-center rounded-md hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+                                    title="Edit blueprint"
+                                >
+                                    <Pencil className="h-2.5 w-2.5" />
+                                </span>
+                            </>
+                        )}
                         <span role="button" tabIndex={0}
                             onClick={e => { e.stopPropagation(); handleClear(); }}
                             onKeyDown={e => e.key === 'Enter' && handleClear()}
@@ -733,11 +767,47 @@ export function MessagingTemplateSelector({
                 <InlineSelectedCard
                     template={selectedTemplate}
                     channelIcon={channelIcon}
+                    onPreviewClick={handlePreviewClick}
                     onEditClick={handleEditClick}
                     onOpenPicker={() => setPickerOpen(true)}
                     onClear={handleClear}
                     isLoading={isLoading}
                 />
+            ) : value && !selectedTemplate && !isLoading && hasFetched ? (
+                // Warning card for unresolved template
+                <div className="border border-amber-500/20 bg-amber-500/5 rounded-2xl p-6 text-center space-y-4">
+                    <div className="flex flex-col items-center justify-center text-amber-500">
+                        <AlertCircle className="h-8 w-8 mb-2" />
+                        <h4 className="text-xs font-bold">Template Not Found</h4>
+                        <p className="text-[10px] text-muted-foreground mt-1 max-w-sm">
+                            The template assigned to this slot (ID: <code className="text-foreground/80 bg-muted/40 px-1 py-0.5 rounded text-[9px] font-mono">{value}</code>) could not be resolved.
+                        </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                                const fallbackId = channel === 'email'
+                                    ? DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID
+                                    : 'global_meeting_invitation_initial_sms';
+                                onValueChange(fallbackId);
+                            }}
+                            className="rounded-xl px-4 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm h-8"
+                        >
+                            Use Default
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setPickerOpen(true)}
+                            className="rounded-xl px-4 text-[10px] font-semibold border-border hover:bg-muted/40 h-8"
+                        >
+                            Browse Templates
+                        </Button>
+                    </div>
+                </div>
             ) : (
                 // Loading skeleton — min-height matches the empty state card
                 <div className="border border-border bg-card rounded-2xl overflow-hidden animate-pulse">
@@ -756,7 +826,7 @@ export function MessagingTemplateSelector({
 
     return (
         <>
-            {fullCardView}
+            {compact ? compactView : fullCardView}
 
             {/* ── Picker dialog ── */}
             <Dialog open={pickerOpen} onOpenChange={handlePickerOpenChange}>
@@ -931,6 +1001,46 @@ export function MessagingTemplateSelector({
                         >
                             <Plus className="h-3.5 w-3.5" /> Create Custom Template
                         </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Quick Preview Dialog ── */}
+            <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+                <DialogContent className="w-[90vw] max-w-3xl h-[80vh] p-0 overflow-hidden flex flex-col rounded-3xl border border-border bg-background shadow-2xl shadow-black/70 z-[110] [&>button]:right-5 [&>button]:top-5 [&>button]:text-foreground/30 [&>button]:hover:text-foreground/70">
+                    <div className="px-6 py-4 border-b border-border shrink-0 flex items-center justify-between pr-12">
+                        <div className="flex items-center gap-2">
+                            <Eye className="h-4 w-4 text-primary" />
+                            <DialogTitle className="text-sm font-bold text-foreground truncate">
+                                Preview: {selectedTemplate?.name}
+                            </DialogTitle>
+                        </div>
+                    </div>
+                    <div className="flex-1 min-h-0 bg-background relative">
+                        {selectedTemplate && (
+                            selectedTemplate.channel === 'email' ? (
+                                <ResponsiveIframePreview 
+                                    srcDoc={
+                                        selectedTemplate.contentMode === 'rich_builder' || selectedTemplate.blocks?.length
+                                            ? renderBlocksToHtml(selectedTemplate.blocks || [], {})
+                                            : selectedTemplate.contentMode === 'plain_text' 
+                                            ? plainTextToHtml(selectedTemplate.body) 
+                                            : selectedTemplate.body
+                                    } 
+                                    title={selectedTemplate.name} 
+                                    className="absolute inset-0 bg-background" 
+                                />
+                            ) : (
+                                <div className="h-full flex items-center justify-center p-6 bg-slate-950/40">
+                                    <div className="w-[320px] h-[480px] border border-zinc-800 bg-zinc-950 rounded-[40px] overflow-hidden shadow-2xl flex flex-col p-3 relative">
+                                        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-32 h-4 rounded-full bg-black/60 z-20" />
+                                        <div className="flex-1 rounded-[32px] overflow-hidden relative border border-zinc-900 bg-background flex flex-col">
+                                            <SmsBubble body={selectedTemplate.body} />
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
