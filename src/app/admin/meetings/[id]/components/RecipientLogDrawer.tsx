@@ -53,7 +53,7 @@ export function RecipientLogDrawer({
         '3_days': '3 Days Before',
         '2_days': '2 Days Before',
         '1_day': '1 Day Before',
-        'today': 'Today (8 AM)',
+        'today': 'Happening Today',
         'last_chance': 'Time Up - Last Chance',
       };
       return invitationLabels[slotId] || slotId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

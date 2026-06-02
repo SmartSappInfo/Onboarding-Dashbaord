@@ -1267,7 +1267,7 @@ export const getDefaultMeetingMessagingConfig = (): MeetingMessagingConfig => ({
     { id: '3_days', label: '3 Days Before', channels: ['email'], enabled: false },
     { id: '2_days', label: '2 Days Before', channels: ['email'], enabled: false },
     { id: '1_day', label: '1 Day Before', channels: ['email'], enabled: false },
-    { id: 'today', label: 'Today (8 AM)', channels: ['email'], enabled: false },
+    { id: 'today', label: 'Happening Today', channels: ['email'], enabled: false },
     { id: 'last_chance', label: 'Time Up - Last Chance', channels: ['email'], enabled: false },
   ],
   postEventEnabled: false,
@@ -2358,6 +2358,8 @@ export interface MessageBlock {
   style?: {
     textAlign?: 'left' | 'center' | 'right' | 'justify';
     backgroundColor?: string;
+    backgroundImage?: string;
+    backgroundSize?: string;
     color?: string;
     padding?: string;
     paddingTop?: string;

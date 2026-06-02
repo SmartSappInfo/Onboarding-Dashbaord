@@ -667,7 +667,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         type: 'notification_sent',
         source: 'system',
         description: `${scheduledAt ? 'Scheduled' : 'Sent'} ${template.channel} "${resolvedLogTitle}" to ${recipient}`,
-        metadata: { logId: logRef.id, channel: template.channel, providerId }
+        metadata: { logId: logRef.id, channel: template.channel, providerId, isRetry: !!finalVariables.isRetry || finalVariables.isRetry === 'true' }
     });
 
     return { success: true, logId: logRef.id };

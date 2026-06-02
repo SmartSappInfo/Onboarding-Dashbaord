@@ -27,12 +27,13 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         // Legacy fields
-        entityId: 'school_1',
+        schoolId: 'school_1',
         entityName: 'Test School',
         // New field
+        entityId: 'entity_1',
       };
 
-      expect(pdfForm.entityId).toBe('school_1');
+      expect(pdfForm.schoolId).toBe('school_1');
       expect(pdfForm.entityId).toBe('entity_1');
     });
 
@@ -49,16 +50,17 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         // Legacy fields
-        entityId: 'school_1',
+        schoolId: 'school_1',
         entityName: 'Test School',
         // New field
+        entityId: 'entity_1',
       };
 
-      expect(survey.entityId).toBe('school_1');
+      expect(survey.schoolId).toBe('school_1');
       expect(survey.entityId).toBe('entity_1');
     });
 
-    it('should support PDFForm with only entityId (no entityId)', () => {
+    it('should support PDFForm with only entityId (no schoolId)', () => {
       const pdfForm: PDFForm = {
         id: 'pdf_2',
         workspaceIds: ['workspace_1'],
@@ -76,10 +78,10 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
       };
 
       expect(pdfForm.entityId).toBe('entity_1');
-      expect(pdfForm.entityId).toBeUndefined();
+      expect(pdfForm.schoolId).toBeUndefined();
     });
 
-    it('should support Survey with only entityId (no entityId)', () => {
+    it('should support Survey with only entityId (no schoolId)', () => {
       const survey: Survey = {
         id: 'survey_2',
         workspaceIds: ['workspace_1'],
@@ -96,7 +98,7 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
       };
 
       expect(survey.entityId).toBe('entity_1');
-      expect(survey.entityId).toBeUndefined();
+      expect(survey.schoolId).toBeUndefined();
     });
   });
 
@@ -269,7 +271,7 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
   });
 
   describe('Backward Compatibility', () => {
-    it('should support legacy PDFForm with only entityId', () => {
+    it('should support legacy PDFForm with only schoolId', () => {
       const legacyPdfForm: PDFForm = {
         id: 'pdf_legacy',
         workspaceIds: ['workspace_1'],
@@ -283,15 +285,15 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         // Only legacy fields
-        entityId: 'school_1',
+        schoolId: 'school_1',
         entityName: 'Legacy School',
       };
 
-      expect(legacyPdfForm.entityId).toBe('school_1');
+      expect(legacyPdfForm.schoolId).toBe('school_1');
       expect(legacyPdfForm.entityId).toBeUndefined();
     });
 
-    it('should support legacy Survey with only entityId', () => {
+    it('should support legacy Survey with only schoolId', () => {
       const legacySurvey: Survey = {
         id: 'survey_legacy',
         workspaceIds: ['workspace_1'],
@@ -304,11 +306,11 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         // Only legacy fields
-        entityId: 'school_1',
+        schoolId: 'school_1',
         entityName: 'Legacy School',
       };
 
-      expect(legacySurvey.entityId).toBe('school_1');
+      expect(legacySurvey.schoolId).toBe('school_1');
       expect(legacySurvey.entityId).toBeUndefined();
     });
 

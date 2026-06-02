@@ -20,6 +20,17 @@ type LogActivityInput = Omit<Activity, 'id' | 'timestamp'>;
  * Updated with Vercel Best Practices: Non-blocking automation triggers via after().
  */
 export async function logActivity(activityData: LogActivityInput): Promise<void> {
+    const runAfter = (fn: () => void | Promise<void>) => {
+        try {
+            after(fn);
+        } catch {
+            // Fallback: run asynchronously outside Next.js request scope (e.g. in tests)
+            Promise.resolve().then(fn).catch(err => {
+                console.error("runAfter fallback execution failed:", err);
+            });
+        }
+    };
+
     try {
         let finalData = { ...activityData };
         
@@ -36,8 +47,15 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                 if (contact) {
                     entityName = contact.name || entityName;
                     entitySlug = contact.slug || entitySlug;
-                    entityType = contact.entityType || entityType;
                     displayName = contact.name || displayName;
+                    
+                    if (contact.migrationStatus === 'migrated' || contact.migrationStatus === 'dual-write') {
+                        entityId = contact.entityId;
+                        entityType = contact.entityType || entityType;
+                    } else {
+                        entityId = undefined;
+                        entityType = undefined;
+                    }
                 }
             }
         }
@@ -45,10 +63,10 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         // Update finalData with resolved fields
         finalData = {
             ...finalData,
-            entityId: entityId || null,
-            entityName: entityName || null,
+            entityId: entityId || undefined,
+            entityName: entityName || undefined,
             entitySlug: entitySlug || undefined,
-            entityType: entityType || null,
+            entityType: entityType || undefined,
             displayName: displayName || undefined,
         };
 
@@ -60,7 +78,7 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
 
         // 4. BROADCAST TO AUTOMATION ENGINE
         const triggerType = resolveAutomationTrigger(activityData.type);
-        if (triggerType) {
+        if (triggerType && !activityData.metadata?.isRetry) {
             console.log(`>>> [EVENT:BUS] Signal detected: ${triggerType}. Scheduling Logic Processor.`);
 
             const payload = buildAutomationPayload({
@@ -77,9 +95,8 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                 displayName: finalData.displayName,
             });
 
-            // Vercel Best Practice: server-after-nonblocking
-            // Ensures the main operation is not blocked by automation processing
-            after(async () => {
+            // non-blocking automation triggers via runAfter
+            runAfter(async () => {
                 try {
                     await triggerAutomationProtocols(triggerType, payload);
                 } catch (err: any) {
@@ -90,7 +107,7 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         
         // Recalculate score asynchronously on any logged activity
         if (finalData.entityId && finalData.workspaceId && finalData.organizationId) {
-            after(async () => {
+            runAfter(async () => {
                 try {
                     const { recalculateEntityScore } = await import('./scoring-engine');
                     await recalculateEntityScore(finalData.entityId!, finalData.workspaceId!, finalData.organizationId!);

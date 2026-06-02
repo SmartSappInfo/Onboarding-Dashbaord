@@ -63,7 +63,6 @@ function createEntity(id: string, entityType: 'institution' | 'family' | 'person
     name: data.name,
     slug: entityType === 'institution' ? data.slug : undefined,
     contacts: data.contacts || [],
-    entityType: 'institution',
     entityContacts: [],
     globalTags: [],
     ...(entityType === 'institution' && { institutionData: data.institutionData }),
@@ -112,7 +111,6 @@ function linkEntityToWorkspace(
     currentStageName: operationalState.currentStageName,
     assignedTo: operationalState.assignedTo || null,
     status: 'active',
-    entityType: 'institution',
     workspaceTags: operationalState.workspaceTags || [],
     // Denormalized fields
     displayName: entity.name,

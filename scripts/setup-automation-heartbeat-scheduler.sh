@@ -32,10 +32,10 @@ echo -e "Project: ${BOLD}${GREEN}$PROJECT_ID${RESET}"
 echo -e "\n${BLUE}[2/6] App Hosting URL${RESET}"
 SERVICE_URL=$(npx firebase-tools apphosting:backends:list --project="$PROJECT_ID" 2>/dev/null | grep -o -E 'https://[^ ]+\.hosted\.app' | head -n 1 || true)
 if [ -z "$SERVICE_URL" ]; then
-  SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format="value(status.url)" 2>/dev/null || true)
+  SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format="value(status.url)" --project="$PROJECT_ID" 2>/dev/null || true)
 fi
 if [ -z "$SERVICE_URL" ]; then
-  DISCOVERED=$(gcloud run services list --format="value(SERVICE,REGION,URL)" 2>/dev/null | head -n 1)
+  DISCOVERED=$(gcloud run services list --format="value(SERVICE,REGION,URL)" --project="$PROJECT_ID" 2>/dev/null | head -n 1)
   if [ -z "$DISCOVERED" ]; then
     echo -e "${RED}No Cloud Run / App Hosting URL found. Deploy the app first.${RESET}"
     exit 1

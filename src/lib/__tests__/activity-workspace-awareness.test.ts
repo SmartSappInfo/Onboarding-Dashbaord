@@ -208,13 +208,13 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
       // Verify adapter was called
       expect(resolveContact).toHaveBeenCalledWith('school_123', 'workspace_1');
 
-      // Verify both entityId and entityId are populated (dual-write)
+      // Verify both schoolId and entityId are populated (dual-write)
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'school_123', // Legacy field maintained
+          schoolId: 'school_123', // Legacy field maintained
+          entityId: 'entity_456', // Unified ID
           entityName: 'Migrated School',
           entitySlug: 'migrated-school',
-          
           displayName: 'Migrated School',
         })
       );
@@ -248,10 +248,10 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
         description: 'Created school',
       });
 
-      // Verify entityId is maintained, no entityId for legacy records
+      // Verify schoolId is maintained, no entityId for legacy records
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'school_123',
+          schoolId: 'school_123',
           entityName: 'Legacy School',
           entitySlug: 'legacy-school',
         })
@@ -279,7 +279,6 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
 
       // Verify no contact fields are set
       const callArgs = mockAdd.mock.calls[0][0];
-      expect(callArgs.entityId).toBeUndefined();
       expect(callArgs.entityId).toBeUndefined();
       expect(callArgs.entityType).toBeUndefined();
     });

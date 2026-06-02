@@ -38,14 +38,14 @@ SERVICE_URL=$(npx firebase-tools apphosting:backends:list --project="$PROJECT_ID
 if [ -z "$SERVICE_URL" ]; then
   echo -e "${YELLOW}Could not resolve App Hosting URL automatically via firebase-tools.${RESET}"
   echo -e "Falling back to underlying Cloud Run service URL..."
-  SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format="value(status.url)" 2>/dev/null || true)
+  SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format="value(status.url)" --project="$PROJECT_ID" 2>/dev/null || true)
 fi
 
 if [ -z "$SERVICE_URL" ]; then
   echo -e "${YELLOW}Warning: Could not find service '${SERVICE_NAME}' in '${REGION}'.${RESET}"
   echo -e "Attempting to auto-discover any Cloud Run services in the project..."
   
-  DISCOVERED=$(gcloud run services list --format="value(SERVICE,REGION,URL)" 2>/dev/null | head -n 1)
+  DISCOVERED=$(gcloud run services list --format="value(SERVICE,REGION,URL)" --project="$PROJECT_ID" 2>/dev/null | head -n 1)
   if [ -z "$DISCOVERED" ]; then
     echo -e "${RED}Error: No Cloud Run services found in project. Is the app deployed?${RESET}"
     exit 1

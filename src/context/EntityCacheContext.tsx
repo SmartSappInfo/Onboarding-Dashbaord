@@ -122,7 +122,9 @@ export function EntityCacheProvider({ children }: { children: ReactNode }) {
 
   // Workspace switch guard — discard callbacks from stale subscriptions
   const activeWorkspaceRef = useRef(activeWorkspaceId);
-  activeWorkspaceRef.current = activeWorkspaceId;
+  useEffect(() => {
+    activeWorkspaceRef.current = activeWorkspaceId;
+  }, [activeWorkspaceId]);
 
   useEffect(() => {
     if (!firestore || !activeWorkspaceId) {

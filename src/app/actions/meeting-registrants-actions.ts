@@ -204,145 +204,202 @@ export async function adminRegisterParticipantAction(
   }
 }
 
-export async function sendMeetingInvitationsAction(
+interface SingleRecipientResult {
+  success: boolean;
+  skipped?: boolean;
+  registrantId?: string | null;
+  sentChannels: ('email' | 'sms')[];
+  failedChannels: { channel: 'email' | 'sms'; error: string }[];
+  recipient: {
+    entityId: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    entityName?: string;
+    status?: string;
+  };
+}
+
+async function dispatchSingleRecipient(
   meetingId: string,
+  meeting: any,
   workspaceId: string,
-  recipients: { entityId: string; name: string; email?: string; phone?: string; entityName?: string }[],
+  rec: { entityId: string; name: string; email?: string; phone?: string; entityName?: string },
   channels: ('email' | 'sms')[],
   emailTemplateId?: string,
   smsTemplateId?: string,
   scheduleTime?: string,
   subscribeOnly?: boolean,
-  stageId?: string
-) {
+  stageId?: string,
+  baseUrl?: string
+): Promise<SingleRecipientResult> {
+  const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
+  const typeSlug = meeting.type?.id || 'meeting';
+  const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingId;
+  const now = new Date().toISOString();
+  const isScheduled = !!scheduleTime && new Date(scheduleTime) > new Date();
+
   try {
-    const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
-    if (!meetingSnap.exists) {
-      throw new Error('Meeting not found');
+    let registrantId: string | null = null;
+    let token = '';
+    let personalizedMeetingUrl = '';
+
+    let existingQuery = null;
+    const emailToSearch = rec.email?.toLowerCase().trim();
+    const phoneToSearch = rec.phone?.trim();
+
+    if (emailToSearch) {
+      const q = await registrantsRef
+        .where('email', '==', emailToSearch)
+        .limit(1)
+        .get();
+      if (!q.empty) {
+        existingQuery = q;
+      }
     }
-    const meeting = meetingSnap.data()!;
 
-    const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
-    const baseUrl = await getRequestBaseUrl();
-    const typeSlug = meeting.type?.id || 'meeting';
-    const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingId;
-    const now = new Date().toISOString();
+    if (!existingQuery && phoneToSearch) {
+      const q = await registrantsRef
+        .where('phone', '==', phoneToSearch)
+        .limit(1)
+        .get();
+      if (!q.empty) {
+        existingQuery = q;
+      }
+    }
 
-    const isScheduled = !!scheduleTime && new Date(scheduleTime) > new Date();
+    if (!existingQuery && rec.entityId) {
+      const q = await registrantsRef
+        .where('entityId', '==', rec.entityId)
+        .limit(1)
+        .get();
+      if (!q.empty) {
+        existingQuery = q;
+      }
+    }
 
-    const results = await Promise.allSettled(
-      recipients.map(async (rec) => {
-        let registrantId: string | null = null;
-        let token = '';
-        let personalizedMeetingUrl = '';
+    if (existingQuery && !existingQuery.empty) {
+      const existingDoc = existingQuery.docs[0];
+      const existingData = existingDoc.data();
 
-        let existingQuery = null;
-        const emailToSearch = rec.email?.toLowerCase().trim();
-        const phoneToSearch = rec.phone?.trim();
-
-        if (emailToSearch) {
-          const q = await registrantsRef
-            .where('email', '==', emailToSearch)
-            .limit(1)
-            .get();
-          if (!q.empty) {
-            existingQuery = q;
-          }
-        }
-
-        if (!existingQuery && phoneToSearch) {
-          const q = await registrantsRef
-            .where('phone', '==', phoneToSearch)
-            .limit(1)
-            .get();
-          if (!q.empty) {
-            existingQuery = q;
-          }
-        }
-
-        if (!existingQuery && rec.entityId) {
-          const q = await registrantsRef
-            .where('entityId', '==', rec.entityId)
-            .limit(1)
-            .get();
-          if (!q.empty) {
-            existingQuery = q;
-          }
-        }
-
-        if (existingQuery && !existingQuery.empty) {
-          const existingDoc = existingQuery.docs[0];
-          const existingData = existingDoc.data();
-
-          // Skip contacts who have already accepted/registered/attended
-          if (existingData.status === 'approved' || existingData.status === 'attended' || existingData.status === 'registered') {
-            return {
-              registrantId: existingDoc.id,
-              success: true,
-              skipped: true,
-              recipient: {
-                name: rec.name,
-                email: rec.email || '',
-                phone: rec.phone || '',
-                status: existingData.status
-              }
-            };
-          }
-
-          registrantId = existingDoc.id;
-          token = existingData.token;
-          personalizedMeetingUrl = existingData.personalizedMeetingUrl;
-          
-          // Keep entityName updated if missing
-          if (!existingDoc.data().entityName && rec.entityName) {
-            await existingDoc.ref.update({ entityName: rec.entityName });
-          }
-        } else {
-          token = generateRegistrantToken();
-          personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
-
-          const docRef = await registrantsRef.add({
-            meetingId,
-            workspaceIds: meeting.workspaceIds || [workspaceId],
-            entityId: rec.entityId,
-            entityName: rec.entityName || '',
-            token,
-            status: 'pending',
-            source: 'invite',
+      // Skip contacts who have already accepted/registered/attended
+      if (existingData.status === 'approved' || existingData.status === 'attended' || existingData.status === 'registered') {
+        return {
+          success: true,
+          skipped: true,
+          registrantId: existingDoc.id,
+          sentChannels: [],
+          failedChannels: [],
+          recipient: {
+            entityId: rec.entityId || '',
             name: rec.name,
-            email: rec.email?.toLowerCase().trim() || '',
+            email: rec.email || '',
             phone: rec.phone || '',
-            registeredAt: now,
-            personalizedMeetingUrl,
-          });
-          registrantId = docRef.id;
-        }
+            entityName: rec.entityName || '',
+            status: existingData.status
+          }
+        };
+      }
 
-        if (subscribeOnly) {
-          await registrantsRef.doc(registrantId).update({
+      registrantId = existingDoc.id;
+      token = existingData.token;
+      personalizedMeetingUrl = existingData.personalizedMeetingUrl;
+      
+      // Keep entityName updated if missing
+      if (!existingDoc.data().entityName && rec.entityName) {
+        await existingDoc.ref.update({ entityName: rec.entityName });
+      }
+    } else {
+      token = generateRegistrantToken();
+      personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+
+      const docRef = await registrantsRef.add({
+        meetingId,
+        workspaceIds: meeting.workspaceIds || [workspaceId],
+        entityId: rec.entityId,
+        entityName: rec.entityName || '',
+        token,
+        status: 'pending',
+        source: 'invite',
+        name: rec.name,
+        email: rec.email?.toLowerCase().trim() || '',
+        phone: rec.phone || '',
+        registeredAt: now,
+        personalizedMeetingUrl,
+      });
+      registrantId = docRef.id;
+    }
+
+    if (subscribeOnly) {
+      await registrantsRef.doc(registrantId).update({
+        status: 'pending',
+        sentInvitations: {}
+      });
+      return {
+        success: true,
+        registrantId,
+        sentChannels: [],
+        failedChannels: [],
+        recipient: {
+          entityId: rec.entityId || '',
+          name: rec.name,
+          email: rec.email || '',
+          phone: rec.phone || '',
+          entityName: rec.entityName || ''
+        }
+      };
+    }
+
+    const rsvpGoingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=going`;
+    const rsvpDeclinedUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=not_going`;
+    const rsvpLaterUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=later`;
+
+    const sentChannels: ('email' | 'sms')[] = [];
+    const failedChannels: { channel: 'email' | 'sms'; error: string }[] = [];
+
+    for (const channel of channels) {
+      const contactDetail = channel === 'email' ? rec.email : rec.phone;
+      if (!contactDetail) continue;
+
+      try {
+        if (isScheduled) {
+          const scheduledRef = adminDb.collection('scheduled_messages').doc();
+          await scheduledRef.set({
+            organizationId: meeting.organizationId || 'default',
+            workspaceId,
+            templateId: channel === 'email' ? emailTemplateId : smsTemplateId,
+            channel,
+            recipientContact: contactDetail,
+            recipientEntityId: rec.entityId,
+            variables: {
+              meetingId,
+              rsvpGoingUrl,
+              rsvpDeclinedUrl,
+              rsvpLaterUrl,
+              meeting_title: meeting.heroTitle || meeting.entityName || 'Meeting',
+              meeting_time: new Date(meeting.meetingTime).toLocaleString(),
+              recipient_name: rec.name,
+              meeting_registrant_one_click_link: `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`,
+              rsvp_going_url: rsvpGoingUrl,
+              rsvp_declined_url: rsvpDeclinedUrl,
+              rsvp_later_url: rsvpLaterUrl,
+            },
+            scheduledAt: scheduleTime,
             status: 'pending',
-            sentInvitations: {}
+            reminderType: stageId ? `meeting_invitation_${stageId}` : 'meeting_invitation',
+            sourceEventId: meetingId,
+            sourceEventType: 'meeting',
+            retryCount: 0,
+            createdAt: now,
           });
-          return { registrantId, success: true };
-        }
-
-        const rsvpGoingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=going`;
-        const rsvpDeclinedUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=not_going`;
-        const rsvpLaterUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=later`;
-
-        for (const channel of channels) {
-          const contactDetail = channel === 'email' ? rec.email : rec.phone;
-          if (!contactDetail) continue;
-
-          if (isScheduled) {
-            const scheduledRef = adminDb.collection('scheduled_messages').doc();
-            await scheduledRef.set({
-              organizationId: meeting.organizationId || 'default',
-              workspaceId,
-              templateId: channel === 'email' ? emailTemplateId : smsTemplateId,
-              channel,
-              recipientContact: contactDetail,
-              recipientEntityId: rec.entityId,
+          sentChannels.push(channel);
+        } else {
+          const activeTemplateId = channel === 'email' ? emailTemplateId : smsTemplateId;
+          if (activeTemplateId) {
+            const res = await sendMessage({
+              templateId: activeTemplateId,
+              senderProfileId: 'default',
+              recipient: contactDetail,
               variables: {
                 meetingId,
                 rsvpGoingUrl,
@@ -355,47 +412,21 @@ export async function sendMeetingInvitationsAction(
                 rsvp_going_url: rsvpGoingUrl,
                 rsvp_declined_url: rsvpDeclinedUrl,
                 rsvp_later_url: rsvpLaterUrl,
+                isRetry: (rec as any).isRetry ? 'true' : undefined
               },
-              scheduledAt: scheduleTime,
-              status: 'pending',
-              reminderType: stageId ? `meeting_invitation_${stageId}` : 'meeting_invitation',
-              sourceEventId: meetingId,
-              sourceEventType: 'meeting',
-              retryCount: 0,
-              createdAt: now,
+              entityId: rec.entityId,
+              workspaceId,
             });
+            if (!res.success) {
+              throw new Error(res.error || 'Failed to dispatch message.');
+            }
+            sentChannels.push(channel);
           } else {
-            const activeTemplateId = channel === 'email' ? emailTemplateId : smsTemplateId;
-            if (activeTemplateId) {
-              const res = await sendMessage({
-                templateId: activeTemplateId,
-                senderProfileId: 'default',
-                recipient: contactDetail,
-                variables: {
-                  meetingId,
-                  rsvpGoingUrl,
-                  rsvpDeclinedUrl,
-                  rsvpLaterUrl,
-                  meeting_title: meeting.heroTitle || meeting.entityName || 'Meeting',
-                  meeting_time: new Date(meeting.meetingTime).toLocaleString(),
-                  recipient_name: rec.name,
-                  meeting_registrant_one_click_link: `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`,
-                  rsvp_going_url: rsvpGoingUrl,
-                  rsvp_declined_url: rsvpDeclinedUrl,
-                  rsvp_later_url: rsvpLaterUrl,
-                },
-                entityId: rec.entityId,
-                workspaceId,
-              });
-              if (!res.success) {
-                throw new Error(res.error || 'Failed to dispatch message.');
-              }
-            } else {
-              const subject = `Invitation: ${meeting.heroTitle || 'Meeting Session'}`;
-              let body = '';
+            const subject = `Invitation: ${meeting.heroTitle || 'Meeting Session'}`;
+            let body = '';
 
-              if (channel === 'email') {
-                body = `
+            if (channel === 'email') {
+              body = `
 <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
   <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; margin-top: 0;">You're Invited!</h2>
   <p style="font-size: 14px; color: #475569; line-height: 1.6;">Hello ${rec.name},</p>
@@ -417,75 +448,187 @@ export async function sendMeetingInvitationsAction(
   <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
   <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">Sent via SmartSapp Onboarding. All rights reserved.</p>
 </div>
-                `;
-              } else {
-                body = `Invitation: ${meeting.heroTitle || 'Meeting'}\nTime: ${new Date(meeting.meetingTime).toLocaleString()}\nRSVP:\nGoing: ${rsvpGoingUrl}\nNo: ${rsvpDeclinedUrl}`;
-              }
-
-              const res = await sendRawMessage({
-                channel,
-                recipient: contactDetail,
-                subject: channel === 'email' ? subject : undefined,
-                body,
-                workspaceIds: [workspaceId],
-              });
-
-              if (!res.success) {
-                throw new Error(res.error || 'Failed to dispatch message.');
-              }
+              `;
+            } else {
+              body = `Invitation: ${meeting.heroTitle || 'Meeting'}\nTime: ${new Date(meeting.meetingTime).toLocaleString()}\nRSVP:\nGoing: ${rsvpGoingUrl}\nNo: ${rsvpDeclinedUrl}`;
             }
+
+            const res = await sendRawMessage({
+              channel,
+              recipient: contactDetail,
+              subject: channel === 'email' ? subject : undefined,
+              body,
+              variables: {
+                isRetry: (rec as any).isRetry ? 'true' : undefined
+              },
+              workspaceIds: [workspaceId],
+            });
+
+            if (!res.success) {
+              throw new Error(res.error || 'Failed to dispatch message.');
+            }
+            sentChannels.push(channel);
           }
         }
+      } catch (err: any) {
+        failedChannels.push({ channel, error: err.message || 'Unknown error' });
+      }
+    }
 
-        const updateData: Record<string, any> = {
-          lastInviteSentAt: new Date().toISOString(),
-        };
-        if (stageId) {
-          updateData[`sentInvitations.${stageId}`] = new Date().toISOString();
-          if (channels.includes('email') && rec.email) {
-            updateData[`sentInvitations.${stageId}_email`] = new Date().toISOString();
-          }
-          if (channels.includes('sms') && rec.phone) {
-            updateData[`sentInvitations.${stageId}_sms`] = new Date().toISOString();
-          }
+    // Dynamic logging of successes in the Invited Guest Ledger
+    if (sentChannels.length > 0) {
+      const updateData: Record<string, any> = {
+        lastInviteSentAt: new Date().toISOString(),
+      };
+      if (stageId) {
+        updateData[`sentInvitations.${stageId}`] = new Date().toISOString();
+        if (sentChannels.includes('email') && rec.email) {
+          updateData[`sentInvitations.${stageId}_email`] = new Date().toISOString();
+        }
+        if (sentChannels.includes('sms') && rec.phone) {
+          updateData[`sentInvitations.${stageId}_sms`] = new Date().toISOString();
+        }
 
-          // Mark all other invitation slots as sent/blocked so that
-          // when sending immediately, the contact is only subscribed to the selected invitation slot.
-          const slots: { id: string }[] = meeting.messagingConfig?.invitationSeries || [
-            { id: 'initial' },
-            { id: '1_month' },
-            { id: '1_week' },
-            { id: '5_days' },
-            { id: '3_days' },
-            { id: '2_days' },
-            { id: '1_day' },
-            { id: 'today' },
-            { id: 'last_chance' }
-          ];
-          for (const slot of slots) {
-            if (slot.id !== stageId) {
-              updateData[`sentInvitations.${slot.id}`] = new Date().toISOString();
-              updateData[`sentInvitations.${slot.id}_email`] = new Date().toISOString();
-              updateData[`sentInvitations.${slot.id}_sms`] = new Date().toISOString();
-            }
+        // Mark all other invitation slots as sent/blocked so that
+        // when sending immediately, the contact is only subscribed to the selected invitation slot.
+        const slots: { id: string }[] = meeting.messagingConfig?.invitationSeries || [
+          { id: 'initial' },
+          { id: '1_month' },
+          { id: '1_week' },
+          { id: '5_days' },
+          { id: '3_days' },
+          { id: '2_days' },
+          { id: '1_day' },
+          { id: 'today' },
+          { id: 'last_chance' }
+        ];
+        for (const slot of slots) {
+          if (slot.id !== stageId) {
+            updateData[`sentInvitations.${slot.id}`] = new Date().toISOString();
+            updateData[`sentInvitations.${slot.id}_email`] = new Date().toISOString();
+            updateData[`sentInvitations.${slot.id}_sms`] = new Date().toISOString();
           }
         }
-        await registrantsRef.doc(registrantId).update(updateData);
+      }
+      await registrantsRef.doc(registrantId).update(updateData);
+    }
 
-        return { registrantId, success: true };
-      })
-    );
+    const expectedChannels = channels.filter(c => (c === 'email' ? rec.email : rec.phone));
+    if (failedChannels.length > 0 && sentChannels.length < expectedChannels.length) {
+      return {
+        success: false,
+        registrantId,
+        sentChannels,
+        failedChannels,
+        recipient: {
+          entityId: rec.entityId || '',
+          name: rec.name,
+          email: rec.email || '',
+          phone: rec.phone || '',
+          entityName: rec.entityName || ''
+        }
+      };
+    }
 
+    return {
+      success: true,
+      registrantId,
+      sentChannels,
+      failedChannels: [],
+      recipient: {
+        entityId: rec.entityId || '',
+        name: rec.name,
+        email: rec.email || '',
+        phone: rec.phone || '',
+        entityName: rec.entityName || ''
+      }
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      sentChannels: [],
+      failedChannels: channels.map(c => ({ channel: c, error: error.message || 'Fatal execution error' })),
+      recipient: {
+        entityId: rec.entityId || '',
+        name: rec.name,
+        email: rec.email || '',
+        phone: rec.phone || '',
+        entityName: rec.entityName || ''
+      }
+    };
+  }
+}
+
+export async function sendMeetingInvitationsAction(
+  meetingId: string,
+  workspaceId: string,
+  recipients: { entityId: string; name: string; email?: string; phone?: string; entityName?: string }[],
+  channels: ('email' | 'sms')[],
+  emailTemplateId?: string,
+  smsTemplateId?: string,
+  scheduleTime?: string,
+  subscribeOnly?: boolean,
+  stageId?: string
+) {
+  try {
+    // 1. Fetch dependencies in parallel to prevent waterfalls
+    const meetingDocRef = adminDb.collection('meetings').doc(meetingId);
+    const meetingSnap = await meetingDocRef.get();
+    if (!meetingSnap.exists) {
+      throw new Error('Meeting not found');
+    }
+    const meeting = meetingSnap.data()!;
+    const baseUrl = await getRequestBaseUrl();
+    const isScheduled = !!scheduleTime && new Date(scheduleTime) > new Date();
+
+    const results: SingleRecipientResult[] = [];
+    const CHUNK_SIZE = 15; // Batch chunking for throttling and rate-limiting
+
+    for (let i = 0; i < recipients.length; i += CHUNK_SIZE) {
+      const chunk = recipients.slice(i, i + CHUNK_SIZE);
+      const chunkPromises = chunk.map((rec) => {
+        const activeChannels = (rec as any).channels || channels;
+        return dispatchSingleRecipient(
+          meetingId,
+          meeting,
+          workspaceId,
+          rec,
+          activeChannels,
+          emailTemplateId,
+          smsTemplateId,
+          scheduleTime,
+          subscribeOnly,
+          stageId,
+          baseUrl
+        );
+      });
+      const chunkResults = await Promise.all(chunkPromises);
+      results.push(...chunkResults);
+    }
+
+    const successList: any[] = [];
     const skippedList: any[] = [];
-    results.forEach((r) => {
-      if (r.status === 'fulfilled' && (r.value as any)?.skipped && (r.value as any)?.recipient) {
-        skippedList.push((r.value as any).recipient);
+    const failedList: any[] = [];
+
+    results.forEach((val) => {
+      if (val.success) {
+        if (val.skipped) {
+          skippedList.push(val.recipient);
+        } else {
+          successList.push(val.recipient);
+        }
+      } else {
+        failedList.push({
+          ...val.recipient,
+          failedChannels: val.failedChannels.map(fc => fc.channel),
+          error: val.failedChannels.map(fc => `${fc.channel}: ${fc.error}`).join('; ')
+        });
       }
     });
 
-    const successes = results.filter((r) => r.status === 'fulfilled' && !(r.value as any)?.skipped).length;
-    const skipped = results.filter((r) => r.status === 'fulfilled' && (r.value as any)?.skipped).length;
-    const failures = results.filter((r) => r.status === 'rejected').length;
+    const successes = successList.length;
+    const skipped = skippedList.length;
+    const failures = failedList.length;
 
     return {
       success: failures === 0,
@@ -497,10 +640,11 @@ export async function sendMeetingInvitationsAction(
       skippedCount: skipped,
       failedCount: failures,
       skippedRecipients: skippedList,
+      failedRecipients: failedList,
     };
   } catch (error: any) {
     console.error('[sendMeetingInvitationsAction]', error);
-    return { success: false, message: error.message, totalRecipients: 0, successCount: 0, skippedCount: 0, failedCount: 0, skippedRecipients: [] };
+    return { success: false, message: error.message, totalRecipients: 0, successCount: 0, skippedCount: 0, failedCount: 0, skippedRecipients: [], failedRecipients: [] };
   }
 }
 
@@ -590,6 +734,43 @@ export async function submitRsvpResponseAction(
     return { success: true };
   } catch (error: any) {
     console.error('[submitRsvpResponseAction]', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function manuallyUpdateGuestStatusAction(
+  meetingId: string,
+  registrantId: string,
+  targetState: 'going' | 'cancelled' | 'pending'
+) {
+  try {
+    let updateFields: Record<string, any> = {};
+    if (targetState === 'going') {
+      updateFields = {
+        rsvpStatus: 'going',
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+        rsvpUpdatedAt: new Date().toISOString()
+      };
+    } else if (targetState === 'cancelled') {
+      updateFields = {
+        rsvpStatus: 'not_going',
+        status: 'cancelled',
+        cancelledAt: new Date().toISOString(),
+        rsvpUpdatedAt: new Date().toISOString()
+      };
+    } else {
+      updateFields = {
+        rsvpStatus: 'pending',
+        status: 'pending',
+        rsvpUpdatedAt: new Date().toISOString()
+      };
+    }
+
+    await adminDb.collection(`meetings/${meetingId}/registrants`).doc(registrantId).update(updateFields);
+    return { success: true };
+  } catch (error: any) {
+    console.error('[manuallyUpdateGuestStatusAction]', error);
     return { success: false, error: error.message };
   }
 }

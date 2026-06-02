@@ -92,14 +92,14 @@ export const scratchTemplates = [
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
   },
   {
-    name: 'Today (8 AM) Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_today', channel: 'email',
+    name: 'Happening Today Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_today', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Today: {{meeting_title}}',
     body: `Dear {{contact_name}},\n\n{{meeting_title}} is happening today at {{meeting_time}}!\n\n🔗 Register to join us: [Register Here]({{meeting_registrant_one_click_link}})\n\n{{org_name}}`,
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_registrant_one_click_link', 'org_name'],
   },
   {
-    name: 'Today (8 AM) Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_today', channel: 'sms',
+    name: 'Happening Today Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_today', channel: 'sms',
     recipientType: 'external_alert',
     body: `{{meeting_title}} is today at {{meeting_time}}. Register to join: {{meeting_registrant_one_click_link}} — {{org_name}}`,
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'meeting_registrant_one_click_link', 'org_name'],

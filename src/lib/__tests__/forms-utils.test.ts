@@ -137,7 +137,7 @@ describe('Forms Utilities', () => {
     it('should compute stats correct counts and percentages', () => {
       const now = new Date();
       const weekAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString();
-      const monthAgo = new Date(now.getFullYear(), now.getMonth(), 2).toISOString();
+      const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, 15).toISOString();
       
       const submissions: FormSubmission[] = [
         { id: '1', formId: 'f', submittedAt: weekAgo, data: {}, workspaceId: 'w', organizationId: 'o', entityId: 'e1' },

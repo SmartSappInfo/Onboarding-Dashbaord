@@ -40,7 +40,8 @@ import {
   X,
   Trash2,
   Plus,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,8 @@ import {
   deleteRegistrantAction, 
   updateRegistrantStatusAction, 
   sendRegistrantJoinLinkAction,
-  adminRegisterParticipantAction
+  adminRegisterParticipantAction,
+  manuallyUpdateGuestStatusAction
 } from '@/app/actions/meeting-registrants-actions';
 import { toggleRegistrantAttendance } from '@/app/actions/meeting-attendance-actions';
 import type { Meeting, MeetingRegistrant, MeetingInvitationSlot } from '@/lib/types';
@@ -89,9 +91,38 @@ const DEFAULT_SLOTS: MeetingInvitationSlot[] = [
   { id: '3_days', label: '3 Days Before', channels: ['email'], enabled: false },
   { id: '2_days', label: '2 Days Before', channels: ['email'], enabled: false },
   { id: '1_day', label: '1 Day Before', channels: ['email'], enabled: false },
-  { id: 'today', label: 'Today (8 AM)', channels: ['email'], enabled: false },
+  { id: 'today', label: 'Happening Today', channels: ['email'], enabled: false },
   { id: 'last_chance', label: 'Time Up - Last Chance', channels: ['email'], enabled: false },
 ];
+
+function useClientPagination<T>(items: T[], initialPageSize = 10) {
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(initialPageSize);
+  
+  const paginatedItems = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [items, currentPage, pageSize]);
+
+  const totalPages = React.useMemo(() => {
+    return Math.max(1, Math.ceil(items.length / pageSize));
+  }, [items.length, pageSize]);
+
+  // Reset page when items array size changes (e.g. when filters update)
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [items.length]);
+
+  return {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    paginatedItems,
+    totalPages,
+    totalCount: items.length
+  };
+}
 
 export default function UnifiedInvitationsAndRegistrantsPage() {
   const params = useParams();
@@ -121,6 +152,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
 
   const [isSending, setIsSending] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<string>('registrants');
   const [isAddingToSchedule, setIsAddingToSchedule] = React.useState(false);
   const [reportModalOpen, setReportModalOpen] = React.useState(false);
   const [reportData, setReportData] = React.useState<{
@@ -129,7 +161,15 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     skippedCount: number;
     failedCount: number;
     skippedRecipients: { name: string; email?: string; phone?: string; status: string }[];
+    failedRecipients: { name: string; email?: string; phone?: string; entityId?: string; entityName?: string; error: string; failedChannels: ('email' | 'sms')[] }[];
   } | null>(null);
+  const [modalActiveTab, setModalActiveTab] = React.useState<'skipped' | 'failed'>('failed');
+
+  // Roster filters & inline sending loading states
+  const [filterRsvpStatus, setFilterRsvpStatus] = React.useState<string>('all');
+  const [filterAttendance, setFilterAttendance] = React.useState<string>('all');
+  const [filterSignupStatus, setFilterSignupStatus] = React.useState<string>('all');
+  const [isRowSending, setIsRowSending] = React.useState<Record<string, boolean>>({});
 
   // Template Preview Modal states
   const [previewTemplateOpen, setPreviewTemplateOpen] = React.useState(false);
@@ -446,31 +486,74 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     return recipients;
   }, [workspaceEntities, baseEntities, tagSegment, contactScope, selectedRoles, selectedChannels, assigneeFilter, currentUser?.uid]);
 
-  // Filtered List for Invited Guests table search
+  // Filtered List for Invited Guests table search and filters
   const filteredInvites = React.useMemo(() => {
     if (!invitedGuests) return [];
-    if (!searchQueryInvites.trim()) return invitedGuests;
-    const lowerQuery = searchQueryInvites.toLowerCase();
-    return invitedGuests.filter((r: any) => {
-      const nameMatch = r.name?.toLowerCase().includes(lowerQuery) || false;
-      const emailMatch = r.email?.toLowerCase().includes(lowerQuery) || false;
-      const entityMatch = r.entityName?.toLowerCase().includes(lowerQuery) || false;
-      return nameMatch || emailMatch || entityMatch;
-    });
-  }, [invitedGuests, searchQueryInvites]);
+    let result = invitedGuests;
 
-  // Filtered List for Registrants table search
+    // 1. Search Query
+    if (searchQueryInvites.trim()) {
+      const lowerQuery = searchQueryInvites.toLowerCase();
+      result = result.filter((r: any) => {
+        const nameMatch = r.name?.toLowerCase().includes(lowerQuery) || false;
+        const emailMatch = r.email?.toLowerCase().includes(lowerQuery) || false;
+        const entityMatch = r.entityName?.toLowerCase().includes(lowerQuery) || false;
+        return nameMatch || emailMatch || entityMatch;
+      });
+    }
+
+    // 2. RSVP Status
+    if (filterRsvpStatus !== 'all') {
+      result = result.filter((r: any) => {
+        const status = r.rsvpStatus || 'pending';
+        if (filterRsvpStatus === 'pending') {
+          return status === 'pending' || status === '';
+        }
+        return status === filterRsvpStatus;
+      });
+    }
+
+    return result;
+  }, [invitedGuests, searchQueryInvites, filterRsvpStatus]);
+
+  // Hook up Invited Guests pagination
+  const invitesPagination = useClientPagination(filteredInvites, 10);
+
+  // Filtered List for Registrants table search and filters
   const filteredRegistrants = React.useMemo(() => {
     if (!registeredAttendees) return [];
-    if (!searchQuery.trim()) return registeredAttendees;
-    const lowerQuery = searchQuery.toLowerCase();
-    return registeredAttendees.filter((r: any) => {
-      const nameMatch = r.name?.toLowerCase().includes(lowerQuery) || false;
-      const emailMatch = r.email?.toLowerCase().includes(lowerQuery) || false;
-      const entityMatch = r.entityName?.toLowerCase().includes(lowerQuery) || false;
-      return nameMatch || emailMatch || entityMatch;
-    });
-  }, [registeredAttendees, searchQuery]);
+    let result = registeredAttendees;
+
+    // 1. Search Query
+    if (searchQuery.trim()) {
+      const lowerQuery = searchQuery.toLowerCase();
+      result = result.filter((r: any) => {
+        const nameMatch = r.name?.toLowerCase().includes(lowerQuery) || false;
+        const emailMatch = r.email?.toLowerCase().includes(lowerQuery) || false;
+        const entityMatch = r.entityName?.toLowerCase().includes(lowerQuery) || false;
+        return nameMatch || emailMatch || entityMatch;
+      });
+    }
+
+    // 2. Attendance Filter
+    if (filterAttendance !== 'all') {
+      result = result.filter((r: any) => {
+        if (filterAttendance === 'attended') return r.status === 'attended';
+        if (filterAttendance === 'no-show') return r.status !== 'attended';
+        return true;
+      });
+    }
+
+    // 3. Signup Status Filter
+    if (filterSignupStatus !== 'all') {
+      result = result.filter((r: any) => r.status === filterSignupStatus);
+    }
+
+    return result;
+  }, [registeredAttendees, searchQuery, filterAttendance, filterSignupStatus]);
+
+  // Hook up Registrants Ledger pagination
+  const registrantsPagination = useClientPagination(filteredRegistrants, 10);
 
   const handleToggleChannel = React.useCallback(async (ch: 'email' | 'sms') => {
     if (!meeting || !meetingDocRef) return;
@@ -573,18 +656,23 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
         selectedSlotId // stageId
       );
 
-      if (res.success) {
-        toast({ title: 'Success', description: res.message });
+      if (res) {
         setReportData({
           type: 'dispatch',
           successCount: res.successCount ?? 0,
           skippedCount: res.skippedCount ?? 0,
           failedCount: res.failedCount ?? 0,
-          skippedRecipients: res.skippedRecipients ?? []
+          skippedRecipients: res.skippedRecipients ?? [],
+          failedRecipients: res.failedRecipients ?? []
         });
+        setModalActiveTab((res.failedCount ?? 0) > 0 ? 'failed' : 'skipped');
         setReportModalOpen(true);
-      } else {
-        toast({ variant: 'destructive', title: 'Dispatch failed', description: res.message });
+
+        if (res.success) {
+          toast({ title: 'Success', description: res.message });
+        } else {
+          toast({ variant: 'destructive', title: 'Dispatch completed with failures', description: res.message });
+        }
       }
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -618,23 +706,94 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
         selectedSlotId // stageId
       );
 
-      if (res.success) {
-        toast({ title: 'Success', description: `${filteredRecipients.length} guest(s) added to the invitation schedule.` });
+      if (res) {
         setReportData({
           type: 'schedule',
           successCount: res.successCount ?? 0,
           skippedCount: res.skippedCount ?? 0,
           failedCount: res.failedCount ?? 0,
-          skippedRecipients: res.skippedRecipients ?? []
+          skippedRecipients: res.skippedRecipients ?? [],
+          failedRecipients: res.failedRecipients ?? []
         });
+        setModalActiveTab((res.failedCount ?? 0) > 0 ? 'failed' : 'skipped');
         setReportModalOpen(true);
-      } else {
-        toast({ variant: 'destructive', title: 'Action failed', description: res.message });
+
+        if (res.success) {
+          toast({ title: 'Success', description: `${filteredRecipients.length} guest(s) added to the invitation schedule.` });
+        } else {
+          toast({ variant: 'destructive', title: 'Action completed with failures', description: res.message });
+        }
       }
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
       setIsAddingToSchedule(false);
+    }
+  };
+
+  const [isRetrying, setIsRetrying] = React.useState(false);
+
+  const handleRetryFailed = async () => {
+    if (!reportData || !reportData.failedRecipients || reportData.failedRecipients.length === 0) return;
+
+    setIsRetrying(true);
+    try {
+      const res = await sendMeetingInvitationsAction(
+        meetingId,
+        activeWorkspaceId || 'onboarding',
+        reportData.failedRecipients.map(r => ({
+          entityId: r.entityId || '',
+          name: r.name,
+          email: r.email,
+          phone: r.phone,
+          entityName: r.entityName,
+          channels: r.failedChannels, // Only retry failed channels
+          isRetry: true // Annotate retry dispatches to avoid duplicating events
+        }) as any),
+        selectedChannels,
+        emailTemplateId || undefined,
+        smsTemplateId || undefined,
+        undefined, // scheduleTime is removed
+        false, // subscribeOnly
+        selectedSlotId // stageId
+      );
+
+      setReportData(prev => {
+        if (!prev) return null;
+
+        const newlySucceeded = res.successCount ?? 0;
+        const newlySkipped = res.skippedCount ?? 0;
+        const newlyFailed = res.failedCount ?? 0;
+
+        return {
+          ...prev,
+          successCount: prev.successCount + newlySucceeded,
+          skippedCount: prev.skippedCount + newlySkipped,
+          failedCount: newlyFailed,
+          skippedRecipients: [...prev.skippedRecipients, ...(res.skippedRecipients || [])],
+          failedRecipients: res.failedRecipients || []
+        };
+      });
+
+      if (res.success) {
+        toast({ title: 'Success', description: 'All failed dispatches resent successfully.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Partial Retry Failure', description: res.message });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Retry Error', description: e.message });
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const handleUpdateGuestStatus = async (invitee: any, targetState: 'going' | 'cancelled' | 'pending') => {
+    try {
+      const res = await manuallyUpdateGuestStatusAction(meetingId, invitee.id, targetState);
+      if (!res.success) throw new Error(res.error);
+      toast({ title: 'Status Updated', description: `${invitee.name}'s status updated to ${targetState === 'cancelled' ? 'Declined' : targetState}.` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
     }
   };
 
@@ -830,10 +989,10 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
   return (
     <div className="w-full h-full p-8 space-y-8 overflow-y-auto bg-background">
-      <Tabs defaultValue="invitations" className="w-full space-y-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-8">
       
       {/* Executive Combined Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0">
             <Link href={`/admin/meetings/${meetingId}`}>
@@ -850,42 +1009,24 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
             </div>
           </div>
         </div>
-        <TabsList className="grid w-full sm:w-[420px] grid-cols-2 bg-muted/50 p-1.5 h-11 rounded-2xl">
-          <TabsTrigger value="invitations" className="rounded-xl font-bold text-xs gap-2">
-            <Send className="h-4 w-4" /> Bulk Invites & Filters
-          </TabsTrigger>
+        <TabsList className="grid w-full lg:w-[580px] grid-cols-3 bg-muted/50 p-1.5 h-11 rounded-2xl">
           <TabsTrigger value="registrants" className="rounded-xl font-bold text-xs gap-2">
             <Users className="h-4 w-4" /> Registrants & Attendance ({stats.total})
+          </TabsTrigger>
+          <TabsTrigger value="invited" className="rounded-xl font-bold text-xs gap-2">
+            <Send className="h-4 w-4" /> Invited Guests ({stats.invited})
+          </TabsTrigger>
+          <TabsTrigger value="invite" className="rounded-xl font-bold text-xs gap-2">
+            <Mail className="h-4 w-4" /> Invite Guests
           </TabsTrigger>
         </TabsList>
       </div>
 
         {/* ========================================================================= */}
-        {/* TABS CONTENT: INVITATION WORKSPACE */}
+        {/* TABS CONTENT: INVITE GUESTS WORKSPACE */}
         {/* ========================================================================= */}
-        <TabsContent value="invitations" className="space-y-8 animate-in fade-in duration-300">
+        <TabsContent value="invite" className="space-y-8 animate-in fade-in duration-300">
           
-          {/* RSVP Real-time Tracker Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[
-              { label: 'Invited', count: stats.invited, icon: <Send className="h-4 w-4 text-primary" />, bg: 'bg-primary/5 border-primary/20' },
-              { label: 'Going', count: stats.going, icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />, bg: 'bg-emerald-500/5 border-emerald-500/20' },
-              { label: 'Declined', count: stats.not_going, icon: <XCircle className="h-4 w-4 text-rose-500" />, bg: 'bg-rose-500/5 border-rose-500/20' },
-              { label: 'Later', count: stats.later, icon: <Clock className="h-4 w-4 text-amber-500" />, bg: 'bg-amber-500/5 border-amber-500/20' },
-              { label: 'Pending', count: stats.pending, icon: <Info className="h-4 w-4 text-slate-500" />, bg: 'bg-slate-500/5 border-slate-500/20' },
-            ].map((item) => (
-              <Card key={item.label} className={`border ${item.bg} rounded-2xl shadow-sm overflow-hidden`}>
-                <CardContent className="p-5 flex flex-col items-start space-y-2">
-                  <div className="p-1.5 rounded-lg bg-background border">{item.icon}</div>
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{item.label}</p>
-                    <p className="text-2xl font-black text-foreground tabular-nums">{item.count}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Filter tools */}
@@ -1318,9 +1459,36 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
               </Card>
             </div>
           </div>
+        </TabsContent>
+
+        {/* ========================================================================= */}
+        {/* TABS CONTENT: INVITED GUESTS LEDGER */}
+        {/* ========================================================================= */}
+        <TabsContent value="invited" className="space-y-8 animate-in fade-in duration-300">
+          
+          {/* RSVP Real-time Tracker Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { label: 'Invited', count: stats.invited, icon: <Send className="h-4 w-4 text-primary" />, bg: 'bg-primary/5 border-primary/20' },
+              { label: 'Going', count: stats.going, icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />, bg: 'bg-emerald-500/5 border-emerald-500/20' },
+              { label: 'Declined', count: stats.not_going, icon: <XCircle className="h-4 w-4 text-rose-500" />, bg: 'bg-rose-500/5 border-rose-500/20' },
+              { label: 'Later', count: stats.later, icon: <Clock className="h-4 w-4 text-amber-500" />, bg: 'bg-amber-500/5 border-amber-500/20' },
+              { label: 'Pending', count: stats.pending, icon: <Info className="h-4 w-4 text-slate-500" />, bg: 'bg-slate-500/5 border-slate-500/20' },
+            ].map((item) => (
+              <Card key={item.label} className={`border ${item.bg} rounded-2xl shadow-sm overflow-hidden`}>
+                <CardContent className="p-5 flex flex-col items-start space-y-2">
+                  <div className="p-1.5 rounded-lg bg-background border">{item.icon}</div>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{item.label}</p>
+                    <p className="text-2xl font-black text-foreground tabular-nums">{item.count}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
           {/* Invited Guests Ledger Card */}
-          <Card className="rounded-2xl border-none overflow-hidden ring-1 ring-border shadow-sm bg-card mt-8">
+          <Card className="rounded-2xl border-none overflow-hidden ring-1 ring-border shadow-sm bg-card">
             <CardHeader className="bg-muted/30 border-b py-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="space-y-1">
@@ -1333,16 +1501,32 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                   </p>
                 </div>
                 
-                {/* Search Invited Guests */}
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    type="search" 
-                    placeholder="Search invited guests..." 
-                    value={searchQueryInvites}
-                    onChange={(e) => setSearchQueryInvites(e.target.value)}
-                    className="pl-9 h-10 rounded-xl bg-card border-border/50 text-xs font-semibold font-sans"
-                  />
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                  {/* RSVP Filter Dropdown */}
+                  <Select value={filterRsvpStatus} onValueChange={(val) => { setFilterRsvpStatus(val); invitesPagination.setCurrentPage(1); }}>
+                    <SelectTrigger className="h-10 w-full sm:w-44 rounded-xl text-xs font-bold bg-card border-border/50 font-sans">
+                      <SelectValue placeholder="All RSVP Statuses" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="all" className="text-xs font-semibold font-sans">All RSVP Statuses</SelectItem>
+                      <SelectItem value="going" className="text-xs font-semibold font-sans">Going</SelectItem>
+                      <SelectItem value="not_going" className="text-xs font-semibold font-sans">Declined</SelectItem>
+                      <SelectItem value="later" className="text-xs font-semibold font-sans">Later</SelectItem>
+                      <SelectItem value="pending" className="text-xs font-semibold font-sans">Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Search Invited Guests */}
+                  <div className="relative w-full sm:w-60">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      type="search" 
+                      placeholder="Search invited guests..." 
+                      value={searchQueryInvites}
+                      onChange={(e) => { setSearchQueryInvites(e.target.value); invitesPagination.setCurrentPage(1); }}
+                      className="pl-9 h-10 rounded-xl bg-card border-border/50 text-xs font-semibold font-sans"
+                    />
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1360,7 +1544,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredInvites.map((invitee: any) => (
+                  {invitesPagination.paginatedItems.map((invitee: any) => (
                     <TableRow key={invitee.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150">
                       <TableCell className="pl-6">
                         <div className="flex flex-col">
@@ -1390,78 +1574,172 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                           {invitee.rsvpStatus === 'going' ? 'Going' : invitee.rsvpStatus === 'not_going' ? 'Declined' : invitee.rsvpStatus === 'later' ? 'Later' : 'Pending'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 hover:bg-muted">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
-                            <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider font-sans">Quick Actions</p>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              disabled={invitee.rsvpStatus === 'going' || invitee.status === 'approved' || invitee.status === 'attended' || isMissingRequiredTemplates}
-                              onClick={async () => {
-                                setIsSending(true);
-                                try {
-                                  await sendMeetingInvitationsAction(
-                                    meetingId,
-                                    activeWorkspaceId || '',
-                                    [{
-                                      entityId: invitee.entityId || '',
-                                      name: invitee.name,
-                                      email: invitee.email,
-                                      phone: invitee.phone,
-                                      entityName: invitee.entityName
-                                    }],
-                                    selectedChannels,
-                                    emailTemplateId,
-                                    smsTemplateId
-                                  );
-                                  toast({ title: 'Success', description: 'Invitation resent successfully.' });
-                                } catch (e: any) {
-                                  toast({ variant: 'destructive', title: 'Error', description: e.message });
-                                } finally {
-                                  setIsSending(false);
-                                }
-                              }}
-                              className="rounded-lg text-xs font-semibold font-sans"
-                            >
-                              <Send className="h-4 w-4 mr-2" /> Resend Invite
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setRegistrantToDelete(invitee)} className="rounded-lg text-xs font-bold text-destructive focus:bg-destructive/5 font-sans">
-                              <Trash2 className="h-4 w-4 mr-2" /> Delete Guest Invite
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className="text-right pr-6 py-3">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Exposed Resend Icon Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={invitee.rsvpStatus === 'going' || invitee.status === 'approved' || invitee.status === 'attended' || isMissingRequiredTemplates || isRowSending[invitee.id]}
+                            onClick={async () => {
+                              setIsRowSending(prev => ({ ...prev, [invitee.id]: true }));
+                              try {
+                                await sendMeetingInvitationsAction(
+                                  meetingId,
+                                  activeWorkspaceId || '',
+                                  [{
+                                    entityId: invitee.entityId || '',
+                                    name: invitee.name,
+                                    email: invitee.email,
+                                    phone: invitee.phone,
+                                    entityName: invitee.entityName
+                                  }],
+                                  selectedChannels,
+                                  emailTemplateId,
+                                  smsTemplateId
+                                );
+                                toast({ title: 'Success', description: 'Invitation resent successfully.' });
+                              } catch (e: any) {
+                                toast({ variant: 'destructive', title: 'Error', description: e.message });
+                              } finally {
+                                setIsRowSending(prev => ({ ...prev, [invitee.id]: false }));
+                              }
+                            }}
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                            title="Resend Invite"
+                          >
+                            {isRowSending[invitee.id] ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
+                          </Button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 hover:bg-muted">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
+                              <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider font-sans">Quick Actions</p>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleUpdateGuestStatus(invitee, 'going')} 
+                                disabled={invitee.rsvpStatus === 'going'}
+                                className="rounded-lg text-xs font-semibold font-sans"
+                              >
+                                <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-500" /> Mark as Going
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleUpdateGuestStatus(invitee, 'cancelled')} 
+                                disabled={invitee.rsvpStatus === 'not_going'}
+                                className="rounded-lg text-xs font-semibold font-sans"
+                              >
+                                <XCircle className="h-4 w-4 mr-2 text-rose-500" /> Mark as Declined
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleUpdateGuestStatus(invitee, 'pending')} 
+                                disabled={!invitee.rsvpStatus || invitee.rsvpStatus === 'pending'}
+                                className="rounded-lg text-xs font-semibold font-sans"
+                              >
+                                <Clock className="h-4 w-4 mr-2 text-slate-500" /> Mark as Pending
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setRegistrantToDelete(invitee)} className="rounded-lg text-xs font-bold text-destructive focus:bg-destructive/5 font-sans">
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete Guest Invite
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredInvites.length === 0 && (
+                  {invitedGuests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-48 text-center text-muted-foreground/60 text-xs italic font-sans">
-                        <div className="flex flex-col items-center justify-center gap-3 py-4">
-                          <span>No contacts subscribed to this invitation schedule yet.</span>
+                      <TableCell colSpan={6} className="h-48 text-center font-sans">
+                        <div className="flex flex-col items-center justify-center gap-3 py-6">
+                          <span className="text-xs text-muted-foreground/60 italic">No guests have been invited to this session yet.</span>
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              document.getElementById('target-audience-criteria')?.scrollIntoView({ behavior: 'smooth' });
-                            }}
+                            onClick={() => setActiveTab('invite')}
                             className="rounded-xl font-bold font-sans text-xs gap-1 border-dashed hover:border-primary hover:text-primary transition-all"
                           >
-                            <Plus className="h-4 w-4" /> Add Guests
+                            <Plus className="h-4 w-4" /> Invite Guests
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  )}
+                  ) : filteredInvites.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-32 text-center text-muted-foreground/60 text-xs italic font-sans animate-in fade-in duration-300">
+                        No guests match your filter/search criteria.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
                 </TableBody>
               </Table>
             </CardContent>
+            {filteredInvites.length > 0 && (
+              <div className="border-t p-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5 font-sans">
+                {/* Total and range indicator */}
+                <span className="text-xs text-muted-foreground font-medium">
+                  Showing <span className="font-semibold text-foreground">{Math.min(filteredInvites.length, (invitesPagination.currentPage - 1) * invitesPagination.pageSize + 1)}</span> to{' '}
+                  <span className="font-semibold text-foreground">{Math.min(filteredInvites.length, invitesPagination.currentPage * invitesPagination.pageSize)}</span> of{' '}
+                  <span className="font-semibold text-foreground">{filteredInvites.length}</span> guests
+                </span>
+
+                <div className="flex items-center gap-4">
+                  {/* Page Size Select */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">Rows per page:</span>
+                    <Select
+                      value={String(invitesPagination.pageSize)}
+                      onValueChange={(val) => {
+                        invitesPagination.setPageSize(Number(val));
+                        invitesPagination.setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-16 rounded-lg text-xs font-bold bg-background border-border/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg">
+                        <SelectItem value="10" className="text-xs font-medium">10</SelectItem>
+                        <SelectItem value="25" className="text-xs font-medium">25</SelectItem>
+                        <SelectItem value="50" className="text-xs font-medium">50</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Previous / Next buttons */}
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => invitesPagination.setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={invitesPagination.currentPage === 1}
+                      className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 transition-all border-border/40 hover:bg-muted"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-xs font-semibold text-muted-foreground px-2">
+                      Page {invitesPagination.currentPage} of {invitesPagination.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => invitesPagination.setCurrentPage(prev => Math.min(invitesPagination.totalPages, prev + 1))}
+                      disabled={invitesPagination.currentPage === invitesPagination.totalPages}
+                      className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 transition-all border-border/40 hover:bg-muted"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </TabsContent>
 
@@ -1554,12 +1832,37 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                 <CardTitle className="text-lg font-bold">Registration Roster</CardTitle>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                <div className="relative w-full sm:w-72">
+                {/* Attendance Filter Select */}
+                <Select value={filterAttendance} onValueChange={(val) => { setFilterAttendance(val); registrantsPagination.setCurrentPage(1); }}>
+                  <SelectTrigger className="h-10 w-full sm:w-40 rounded-xl text-xs font-bold bg-background border-none ring-1 ring-border shadow-sm">
+                    <SelectValue placeholder="All Attendance" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all" className="text-xs font-semibold">All Attendance</SelectItem>
+                    <SelectItem value="attended" className="text-xs font-semibold">Attended</SelectItem>
+                    <SelectItem value="no-show" className="text-xs font-semibold">No Show</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Signup Status Filter Select */}
+                <Select value={filterSignupStatus} onValueChange={(val) => { setFilterSignupStatus(val); registrantsPagination.setCurrentPage(1); }}>
+                  <SelectTrigger className="h-10 w-full sm:w-36 rounded-xl text-xs font-bold bg-background border-none ring-1 ring-border shadow-sm">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all" className="text-xs font-semibold font-sans">All Statuses</SelectItem>
+                    <SelectItem value="approved" className="text-xs font-semibold font-sans">Approved</SelectItem>
+                    <SelectItem value="cancelled" className="text-xs font-semibold font-sans">Cancelled</SelectItem>
+                    <SelectItem value="pending" className="text-xs font-semibold font-sans">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="relative w-full sm:w-60">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
                     placeholder="Search by name, email, or school..." 
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => { setSearchQuery(e.target.value); registrantsPagination.setCurrentPage(1); }}
                     className="pl-9 h-10 rounded-xl bg-background border-none ring-1 ring-border shadow-sm focus-visible:ring-primary w-full text-xs font-semibold"
                   />
                 </div>
@@ -1632,7 +1935,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRegistrants.map((registrant: any) => (
+                  {registrantsPagination.paginatedItems.map((registrant: any) => (
                     <TableRow key={registrant.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150" data-state={selectedIds.has(registrant.id) ? "selected" : undefined}>
                       <TableCell className="pl-4">
                         <Checkbox 
@@ -1681,47 +1984,147 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 hover:bg-muted">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
-                            <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Quick Actions</p>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleSendLink(registrant)} className="rounded-lg text-xs font-semibold">
-                              <Send className="h-4 w-4 mr-2" /> Send Join Link
-                            </DropdownMenuItem>
-                            {registrant.status === 'cancelled' ? (
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'approved')} className="rounded-lg text-xs font-semibold">
-                                <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-500" /> Approve Signup
-                              </DropdownMenuItem>
+                      <TableCell className="text-right pr-6 py-3">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Exposed Send Join Link Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isRowSending[registrant.id]}
+                            onClick={async () => {
+                              setIsRowSending(prev => ({ ...prev, [registrant.id]: true }));
+                              try {
+                                await handleSendLink(registrant);
+                              } finally {
+                                setIsRowSending(prev => ({ ...prev, [registrant.id]: false }));
+                              }
+                            }}
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                            title="Send Join Link"
+                          >
+                            {isRowSending[registrant.id] ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
                             ) : (
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'cancelled')} className="rounded-lg text-xs font-semibold">
-                                <XCircle className="h-4 w-4 mr-2 text-rose-500" /> Cancel Signup
-                              </DropdownMenuItem>
+                              <Send className="h-4 w-4" />
                             )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setRegistrantToDelete(registrant)} className="rounded-lg text-xs font-bold text-destructive focus:bg-destructive/5">
-                              <Trash2 className="h-4 w-4 mr-2" /> Delete Roster Entry
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          </Button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 hover:bg-muted">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
+                              <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Quick Actions</p>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleSendLink(registrant)} className="rounded-lg text-xs font-semibold">
+                                <Send className="h-4 w-4 mr-2" /> Send Join Link
+                              </DropdownMenuItem>
+                              {registrant.status === 'cancelled' ? (
+                                <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'approved')} className="rounded-lg text-xs font-semibold">
+                                  <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-500" /> Approve Signup
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'cancelled')} className="rounded-lg text-xs font-semibold">
+                                  <XCircle className="h-4 w-4 mr-2 text-rose-500" /> Cancel Signup
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setRegistrantToDelete(registrant)} className="rounded-lg text-xs font-bold text-destructive focus:bg-destructive/5">
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete Roster Entry
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredRegistrants.length === 0 && (
+                  {!registrants || registrants.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={activeColumns.length + 6} className="h-32 text-center text-muted-foreground/60 text-xs italic">
-                        No registrants matches your filter/search criteria.
+                      <TableCell colSpan={activeColumns.length + 6} className="h-48 text-center font-sans">
+                        <div className="flex flex-col items-center justify-center gap-3 py-6">
+                          <span className="text-xs text-muted-foreground/60 italic font-sans">No registrants or attendants registered for this session yet.</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setActiveTab('invite')}
+                            className="rounded-xl font-bold font-sans text-xs gap-1 border-dashed hover:border-primary hover:text-primary transition-all"
+                          >
+                            <Plus className="h-4 w-4" /> Invite Guests
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  )}
+                  ) : filteredRegistrants.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={activeColumns.length + 6} className="h-32 text-center text-muted-foreground/60 text-xs italic font-sans">
+                        No registrants match your filter/search criteria.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
                 </TableBody>
               </Table>
             </CardContent>
+            {filteredRegistrants.length > 0 && (
+              <div className="border-t p-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5 font-sans">
+                {/* Total and range indicator */}
+                <span className="text-xs text-muted-foreground font-medium">
+                  Showing <span className="font-semibold text-foreground">{Math.min(filteredRegistrants.length, (registrantsPagination.currentPage - 1) * registrantsPagination.pageSize + 1)}</span> to{' '}
+                  <span className="font-semibold text-foreground">{Math.min(filteredRegistrants.length, registrantsPagination.currentPage * registrantsPagination.pageSize)}</span> of{' '}
+                  <span className="font-semibold text-foreground">{filteredRegistrants.length}</span> registrants
+                </span>
+
+                <div className="flex items-center gap-4">
+                  {/* Page Size Select */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">Rows per page:</span>
+                    <Select
+                      value={String(registrantsPagination.pageSize)}
+                      onValueChange={(val) => {
+                        registrantsPagination.setPageSize(Number(val));
+                        registrantsPagination.setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-16 rounded-lg text-xs font-bold bg-background border-border/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg">
+                        <SelectItem value="10" className="text-xs font-medium">10</SelectItem>
+                        <SelectItem value="25" className="text-xs font-medium">25</SelectItem>
+                        <SelectItem value="50" className="text-xs font-medium">50</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Previous / Next buttons */}
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => registrantsPagination.setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={registrantsPagination.currentPage === 1}
+                      className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 transition-all border-border/40 hover:bg-muted"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-xs font-semibold text-muted-foreground px-2">
+                      Page {registrantsPagination.currentPage} of {registrantsPagination.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => registrantsPagination.setCurrentPage(prev => Math.min(registrantsPagination.totalPages, prev + 1))}
+                      disabled={registrantsPagination.currentPage === registrantsPagination.totalPages}
+                      className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 transition-all border-border/40 hover:bg-muted"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </TabsContent>
 
@@ -1889,7 +2292,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       {/* DIALOG: INVITATION ACTION REPORT */}
       {/* ========================================================================= */}
       <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
-        <DialogContent className="sm:max-w-[500px] p-6 rounded-3xl border shadow-2xl bg-background">
+        <DialogContent className="sm:max-w-[520px] p-6 rounded-3xl border shadow-2xl bg-background">
           <DialogHeader className="pb-3 border-b">
             <DialogTitle className="text-lg font-extrabold flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-emerald-500" />
@@ -1905,55 +2308,144 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
           {reportData && (
             <div className="space-y-5 py-4">
               {/* Summary Cards */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3.5 bg-primary/5 rounded-2xl border border-primary/10">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    {reportData.type === 'dispatch' ? 'Invitations Sent' : 'Subscribed/Scheduled'}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-3 bg-primary/5 rounded-2xl border border-primary/10 text-center">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                    {reportData.type === 'dispatch' ? 'Sent' : 'Subscribed'}
                   </p>
-                  <p className="text-2xl font-black text-primary mt-1">{reportData.successCount}</p>
+                  <p className="text-xl font-black text-primary mt-1">{reportData.successCount}</p>
                 </div>
-                <div className="p-3.5 bg-amber-500/5 rounded-2xl border border-amber-500/10">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Already Registered (Skipped)
+                <div className="p-3 bg-amber-500/5 rounded-2xl border border-amber-500/10 text-center">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Skipped
                   </p>
-                  <p className="text-2xl font-black text-amber-500 mt-1">{reportData.skippedCount}</p>
+                  <p className="text-xl font-black text-amber-500 mt-1">{reportData.skippedCount}</p>
+                </div>
+                <div className="p-3 bg-rose-500/5 rounded-2xl border border-rose-500/10 text-center">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Failed
+                  </p>
+                  <p className="text-xl font-black text-rose-500 mt-1">{reportData.failedCount}</p>
                 </div>
               </div>
 
-              {/* Skipped / Already Registered List */}
-              <div className="space-y-2">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                  Already Registered Contacts ({reportData.skippedRecipients.length})
-                </p>
-                {reportData.skippedRecipients.length > 0 ? (
-                  <div className="border border-border/60 rounded-2xl overflow-hidden max-h-[220px] overflow-y-auto divide-y divide-border/40">
-                    {reportData.skippedRecipients.map((recipient, i) => (
-                      <div key={i} className="p-3 bg-muted/10 hover:bg-muted/20 flex items-center justify-between text-xs transition-colors">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-foreground truncate">{recipient.name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            {recipient.email || recipient.phone || 'No contact info'}
+              {/* Tabs selector */}
+              <div className="flex gap-1.5 p-1 bg-muted/40 rounded-xl border border-border/40">
+                <button
+                  type="button"
+                  onClick={() => setModalActiveTab('failed')}
+                  className={cn(
+                    "flex-1 py-2 rounded-lg text-[11px] font-bold transition-all",
+                    modalActiveTab === 'failed' 
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Failed ({reportData.failedRecipients?.length || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalActiveTab('skipped')}
+                  className={cn(
+                    "flex-1 py-2 rounded-lg text-[11px] font-bold transition-all",
+                    modalActiveTab === 'skipped'
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Already Registered ({reportData.skippedRecipients?.length || 0})
+                </button>
+              </div>
+
+              {/* Tab: Failed list */}
+              {modalActiveTab === 'failed' && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Failed Contacts ({reportData.failedRecipients?.length || 0})
+                  </p>
+                  {reportData.failedRecipients && reportData.failedRecipients.length > 0 ? (
+                    <div className="border border-border/60 rounded-2xl overflow-hidden max-h-[220px] overflow-y-auto divide-y divide-border/40 bg-muted/5">
+                      {reportData.failedRecipients.map((recipient, i) => (
+                        <div key={i} className="p-3 bg-muted/5 hover:bg-muted/10 flex flex-col gap-1.5 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-foreground text-xs truncate">{recipient.name}</p>
+                              <p className="text-[10px] text-muted-foreground truncate">
+                                {recipient.email || recipient.phone || 'No contact info'}
+                              </p>
+                            </div>
+                            <div className="flex gap-1 shrink-0 ml-2">
+                              {recipient.failedChannels?.map(ch => (
+                                <span key={ch} className="px-1.5 py-0.5 rounded-md text-[8px] font-extrabold uppercase bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                                  {ch} Failed
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-rose-600 dark:text-rose-400 bg-rose-500/5 p-2 rounded-lg border border-rose-500/10 italic">
+                            {recipient.error}
                           </p>
                         </div>
-                        <div className="shrink-0 ml-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                            {recipient.status}
-                          </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 border border-dashed rounded-2xl text-center text-xs text-muted-foreground">
+                      No failed contacts found.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab: Skipped list */}
+              {modalActiveTab === 'skipped' && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Already Registered Contacts ({reportData.skippedRecipients.length})
+                  </p>
+                  {reportData.skippedRecipients.length > 0 ? (
+                    <div className="border border-border/60 rounded-2xl overflow-hidden max-h-[220px] overflow-y-auto divide-y divide-border/40 bg-muted/5">
+                      {reportData.skippedRecipients.map((recipient, i) => (
+                        <div key={i} className="p-3 bg-muted/5 hover:bg-muted/10 flex items-center justify-between text-xs transition-colors">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-foreground truncate">{recipient.name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {recipient.email || recipient.phone || 'No contact info'}
+                            </p>
+                          </div>
+                          <div className="shrink-0 ml-2">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                              {recipient.status}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 border border-dashed rounded-2xl text-center text-xs text-muted-foreground">
-                    No contacts were skipped due to existing registration.
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 border border-dashed rounded-2xl text-center text-xs text-muted-foreground">
+                      No contacts were skipped due to existing registration.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          <DialogFooter className="border-t pt-4">
-            <Button onClick={() => setReportModalOpen(false)} className="w-full sm:w-auto rounded-xl font-bold text-xs px-5 h-10">
+          <DialogFooter className="border-t pt-4 flex flex-col sm:flex-row gap-2 justify-end">
+            {reportData && reportData.failedCount > 0 && (
+              <Button 
+                onClick={handleRetryFailed} 
+                disabled={isRetrying} 
+                className="w-full sm:w-auto rounded-xl font-bold text-xs px-5 h-10 gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-sm flex items-center justify-center"
+              >
+                {isRetrying ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                {isRetrying ? 'Retrying dispatches...' : 'Retry Failed Dispatches'}
+              </Button>
+            )}
+            <Button onClick={() => setReportModalOpen(false)} variant="outline" className="w-full sm:w-auto rounded-xl font-bold text-xs px-5 h-10">
               Dismiss Report
             </Button>
           </DialogFooter>

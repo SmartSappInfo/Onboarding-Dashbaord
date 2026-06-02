@@ -47,15 +47,15 @@ export function calculateChannelTriggerTime(
             minute: '2-digit',
             hour12: false
           });
-          const formatted = dtf.format(meetingTime);
+          const formatted = dtf.format(triggerTime);
           const formattedParts = formatted.split(':');
           if (formattedParts.length >= 2) {
-            const meetingHours = parseInt(formattedParts[0], 10);
-            const meetingMinutes = parseInt(formattedParts[1], 10);
-            if (!isNaN(meetingHours) && !isNaN(meetingMinutes)) {
-              const meetingTotalMins = meetingHours * 60 + meetingMinutes;
-              const targetTotalMins = targetHours * 60 + targetMinutes;
-              const diffMinutes = targetTotalMins - meetingTotalMins;
+            const currentHours = parseInt(formattedParts[0], 10) % 24;
+            const currentMinutes = parseInt(formattedParts[1], 10);
+            if (!isNaN(currentHours) && !isNaN(currentMinutes)) {
+              const currentTotalMins = currentHours * 60 + currentMinutes;
+              const targetTotalMins = (targetHours % 24) * 60 + targetMinutes;
+              const diffMinutes = targetTotalMins - currentTotalMins;
 
               triggerTime.setTime(triggerTime.getTime() + (diffMinutes * 60 * 1000));
             }
