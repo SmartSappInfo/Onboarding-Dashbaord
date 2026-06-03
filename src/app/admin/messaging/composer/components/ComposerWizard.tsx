@@ -6,9 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, query, where, orderBy, limit, doc, onSnapshot } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, SenderProfile, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable } from '@/lib/types';
+import type { MessageTemplate, SenderProfile, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable, MessageStyle } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
-import { resolveVariables, renderBlocksToHtml } from '@/lib/messaging-utils';
+import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk, processJobChunkBackground } from '@/lib/bulk-messaging';
 import { type ScheduleMessageResult } from '@/lib/sequential-scheduler';
 import { resolveContact } from '@/lib/contact-adapter';
@@ -18,6 +18,7 @@ import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
 import { useToast } from '@/hooks/use-toast';
+import { parseMarkdownLinksToHtml } from '@/lib/utils/markdown-link-parser';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -248,6 +249,12 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         firestore ? query(collection(firestore, 'sender_profiles'), where('isActive', '==', true), where('channel', '==', watchedChannel)) : null,
     [firestore, watchedChannel]);
 
+    const stylesQuery = useMemoFirebase(() =>
+        (firestore && activeWorkspaceId)
+            ? query(collection(firestore, 'message_styles'), where('workspaceIds', 'array-contains', activeWorkspaceId))
+            : null,
+    [firestore, activeWorkspaceId]);
+
     const meetingsQuery = useMemoFirebase(() =>
         firestore ? query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc')) : null,
     [firestore]);
@@ -273,6 +280,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     [firestore, watchedSourcePdfId]);
 
     const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
+    const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
@@ -1102,6 +1110,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                         <MessagePreviewer
                                             template={selectedTemplate}
                                             variables={{ ...sampleVariables, ...getValues('variables'), ...(watchedMode === 'bulk' ? csvData[0] : {}) }}
+                                            styles={styles || []}
                                         />
                                     ) : (
                                         <div className="p-8 rounded-xl border-2 border-dashed border-border/50 text-center text-muted-foreground text-xs">
@@ -1339,7 +1348,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 }
 
 // ─── MessagePreviewer ─────────────────────────────────────────────────────────
-function MessagePreviewer({ template, variables }: { template: MessageTemplate; variables: Record<string, any> }) {
+function MessagePreviewer({ template, variables, styles = [] }: { template: MessageTemplate; variables: Record<string, any>; styles?: MessageStyle[] }) {
     const combinedVars = { ...variables };
 
     if (variables.ai_refined_body) {
@@ -1355,9 +1364,55 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate; 
         );
     }
 
-    const resolvedBody = template.blocks?.length
-        ? renderBlocksToHtml(template.blocks, combinedVars)
-        : resolveVariables(template.body, combinedVars);
+    let activeStyle: MessageStyle | null = null;
+    if (template.styleId !== 'none') {
+        const styleIdToUse = template.styleId;
+        if (!styleIdToUse || styleIdToUse === 'default') {
+            activeStyle = styles.find(s => s.isDefault) || null;
+        } else {
+            activeStyle = styles.find(s => s.id === styleIdToUse) || null;
+        }
+    }
+
+    let styleWrapper = '';
+    if (activeStyle) {
+        if (template.target === 'internal_team') {
+            styleWrapper = activeStyle.htmlWrapperInternal || activeStyle.htmlWrapper || '';
+        } else {
+            styleWrapper = activeStyle.htmlWrapperExternal || activeStyle.htmlWrapper || '';
+        }
+    }
+
+    let resolvedBody = '';
+    if (template.channel === 'email') {
+        if (template.contentMode === 'rich_builder' || template.blocks?.length) {
+            resolvedBody = renderBlocksToHtml(template.blocks || [], combinedVars, {
+                wrapper: styleWrapper || undefined,
+                style: activeStyle || undefined
+            });
+        } else {
+            let resolved = resolveVariables(template.body || '', combinedVars);
+            if (styleWrapper && styleWrapper.includes('{{content}}')) {
+                let contentHtml = resolved;
+                if (template.contentMode === 'plain_text' || !template.contentMode) {
+                    const escaped = contentHtml
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                    const withLinks = parseMarkdownLinksToHtml(escaped);
+                    contentHtml = withLinks.replace(/\n/g, '<br>\n');
+                }
+                resolvedBody = resolveVariables(styleWrapper, combinedVars).replace('{{content}}', contentHtml);
+            } else if (template.contentMode === 'plain_text' || !template.contentMode) {
+                resolvedBody = plainTextToHtml(resolved);
+            } else {
+                resolvedBody = resolved;
+            }
+        }
+    } else {
+        resolvedBody = resolveVariables(template.body || '', combinedVars);
+    }
 
     if (template.channel === 'email') {
         return (
