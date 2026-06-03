@@ -45,7 +45,8 @@ export interface ConditionGroup {
 export async function evaluateConditionNode(
   node: ConditionNodeLike,
   payload: Record<string, unknown>,
-  resolveAudience?: (audienceId: string) => Promise<any>
+  resolveAudience?: (audienceId: string) => Promise<any>,
+  checkAutomationStatus?: (entityId: string, automationId: string, operator: string) => Promise<boolean>
 ): Promise<boolean> {
   const config = node.data?.config;
   if (!config) return false;
@@ -62,7 +63,7 @@ export async function evaluateConditionNode(
 
         const condRelation = (group.relation || 'and').toLowerCase() as 'and' | 'or';
         const condResults = await Promise.all(
-          groupConditions.map((cond) => evaluateSingleCondition(cond, payload, resolveAudience))
+          groupConditions.map((cond) => evaluateSingleCondition(cond, payload, resolveAudience, checkAutomationStatus))
         );
 
         if (condRelation === 'or') {
@@ -91,7 +92,8 @@ export async function evaluateConditionNode(
       linkUrl: config.linkUrl,
     },
     payload,
-    resolveAudience
+    resolveAudience,
+    checkAutomationStatus
   );
 }
 
@@ -136,7 +138,8 @@ function compareValues(actualValue: unknown, operator: string, comparisonValue: 
 async function evaluateSingleCondition(
   cond: ConditionItem,
   payload: Record<string, unknown>,
-  resolveAudience?: (audienceId: string) => Promise<any>
+  resolveAudience?: (audienceId: string) => Promise<any>,
+  checkAutomationStatus?: (entityId: string, automationId: string, operator: string) => Promise<boolean>
 ): Promise<boolean> {
   const { field, operator, value, emailTemplateId, linkUrl } = cond;
   if (!field || !operator) return false;
@@ -168,7 +171,7 @@ async function evaluateSingleCondition(
       }
 
       const matchNode = { data: { config: { groups: groupsToEvaluate, relation } } };
-      const isMatched = await evaluateConditionNode(matchNode, payload, resolveAudience);
+      const isMatched = await evaluateConditionNode(matchNode, payload, resolveAudience, checkAutomationStatus);
       return operator === 'in_audience' ? isMatched : !isMatched;
     } catch (err) {
       console.error(`[evaluateSingleCondition] Failed resolving audience ${audienceId}:`, err);
@@ -347,6 +350,25 @@ async function evaluateSingleCondition(
     const visited = (payload.visitedShortlinks || []) as string[];
     const hasVisited = visited.includes(shortPath);
     return operator === 'has_visited' ? hasVisited : !hasVisited;
+  }
+
+  // Automation Status checks
+  if (field === 'automation') {
+    const automationId = String(value);
+    const entityId = String(payload.entityId || payload.id || payload.contactId || '');
+    if (!entityId || !automationId) return false;
+
+    if (!checkAutomationStatus) {
+      console.warn(`[evaluateSingleCondition] checkAutomationStatus callback not provided for automation field check`);
+      return false;
+    }
+
+    try {
+      return await checkAutomationStatus(entityId, automationId, operator);
+    } catch (err) {
+      console.error(`[evaluateSingleCondition] Failed checking automation ${automationId} for entity ${entityId}:`, err);
+      return false;
+    }
   }
 
   // Case D: General comparisons

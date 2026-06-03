@@ -25,9 +25,10 @@ interface TaskColumnProps {
     tasks: Task[];
     entityLogoMap?: Map<string, string | undefined>;
     onTaskClick: (task: Task) => void;
+    userMap?: Map<string, any>;
 }
 
-export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick }: TaskColumnProps) {
+export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick, userMap }: TaskColumnProps) {
     const { setNodeRef, isOver } = useDroppable({
         id: status,
         data: { type: 'COLUMN', status }
@@ -39,7 +40,7 @@ export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick }
     return (
  <div ref={setNodeRef} className="h-full w-72 flex-shrink-0 flex flex-col">
  <Card className={cn(
-                "h-full flex flex-col bg-muted/30 border-none ring-1 ring-border rounded-[2rem] overflow-hidden transition-all duration-300",
+                "h-full flex flex-col bg-muted/30 border-none ring-1 ring-border rounded-2xl overflow-hidden transition-all duration-300",
                 isOver && "ring-primary bg-primary/5 shadow-2xl",
                 "border-t-4",
                 config.color
@@ -63,6 +64,7 @@ export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick }
                                     task={task} 
                                     entityLogoUrl={task.entityId ? entityLogoMap?.get(task.entityId) : undefined}
                                     onClick={() => onTaskClick(task)} 
+                                    userMap={userMap}
                                 />
                             ))}
                         </SortableContext>

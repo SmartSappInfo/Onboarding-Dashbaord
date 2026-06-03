@@ -98,5 +98,12 @@ export function evaluateTriggerConfig(
     if (config.eventName && config.eventName !== payload.eventName) return false;
   }
 
+  if (automation.trigger === 'AUTOMATION_ENTERED' || automation.trigger === 'AUTOMATION_COMPLETED') {
+    const watchAutomationId = config.watchAutomationId as string | undefined;
+    if (watchAutomationId && watchAutomationId !== 'all' && watchAutomationId !== payload.automationId) {
+      return false;
+    }
+  }
+
   return true;
 }

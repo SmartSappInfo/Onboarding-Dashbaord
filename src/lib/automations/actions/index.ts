@@ -74,6 +74,28 @@ export async function processActionNode(
         workspaceId: context.workspaceId,
         entityId: context.entityId,
       });
+      try {
+        const { adminDb } = await import('../../firebase-admin');
+        await adminDb.collection('automation_runs').doc(context.runId).update({
+          status: 'completed',
+          finishedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Failed to update run status to completed:', err);
+      }
+      try {
+        const { triggerAutomationProtocols } = await import('../../automation-processor');
+        await triggerAutomationProtocols('AUTOMATION_COMPLETED', {
+          automationId: context.automationId,
+          runId: context.runId,
+          workspaceId: context.workspaceId,
+          entityId: context.entityId,
+          entityType: context.entityType,
+          completedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Failed to trigger AUTOMATION_COMPLETED:', err);
+      }
       break;
   }
 }

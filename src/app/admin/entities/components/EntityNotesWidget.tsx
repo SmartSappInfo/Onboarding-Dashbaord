@@ -171,7 +171,7 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
                     ) : displayNotes && displayNotes.length > 0 ? (
                         displayNotes.map(note => (
                             <div key={note.id} className={cn(
-                                "p-3 rounded-xl border-l-4 border-amber-400 bg-amber-50/50 transition-all relative border-t-0 border-r-0 border-b-0",
+                                "p-3 rounded-xl border-l-4 border-amber-400 bg-amber-50/50 transition-shadow duration-200 relative border-t-0 border-r-0 border-b-0",
                                 note.isPinned ? "shadow-md ring-1 ring-amber-500/10" : "shadow-sm hover:shadow-md"
                             )}>
                                 {note.isPinned && (

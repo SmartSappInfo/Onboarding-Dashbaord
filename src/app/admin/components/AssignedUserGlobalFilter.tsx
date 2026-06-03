@@ -17,7 +17,7 @@ const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[
 export default function AssignedUserGlobalFilter() {
   const { assignedUserId, setAssignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const firestore = useFirestore();
-  const { activeOrganizationId } = useTenant();
+  const { activeOrganizationId, activeWorkspaceId } = useTenant();
   
   const usersCol = useMemoFirebase(() => 
     firestore && activeOrganizationId ? query(
@@ -30,6 +30,11 @@ export default function AssignedUserGlobalFilter() {
 
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersCol);
   
+  const workspaceUsers = React.useMemo(() => {
+    if (!users || !activeWorkspaceId) return [];
+    return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
+  }, [users, activeWorkspaceId]);
+  
   const isLoading = isLoadingFilter || isLoadingUsers;
 
   const handleValueChange = (selectedValue: string) => {
@@ -40,7 +45,7 @@ export default function AssignedUserGlobalFilter() {
     }
   };
 
-  const selectedUser = users?.find(u => u.id === assignedUserId);
+  const selectedUser = workspaceUsers?.find(u => u.id === assignedUserId);
 
   if (isLoading) {
  return <Skeleton className="h-10 w-48" />;
@@ -87,17 +92,17 @@ export default function AssignedUserGlobalFilter() {
                 </div>
             </SelectItem>
           </SelectGroup>
-          {users && users.length > 0 && (
+          {workspaceUsers && workspaceUsers.length > 0 && (
             <SelectGroup>
               <SelectSeparator />
-              {users.map(user => (
- <SelectItem key={user.id} value={user.id} className="rounded-xl">
- <div className="flex items-center gap-2">
- <Avatar className="h-5 w-5">
+              {workspaceUsers.map(user => (
+                <SelectItem key={user.id} value={user.id} className="rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-5 w-5">
                       <AvatarImage src={user.photoURL} alt={user.name} />
- <AvatarFallback className="text-[10px]">{getInitials(user.name)}</AvatarFallback>
+                      <AvatarFallback className="text-[10px]">{getInitials(user.name)}</AvatarFallback>
                     </Avatar>
- <span className="font-bold">{user.name}</span>
+                    <span className="font-bold">{user.name}</span>
                   </div>
                 </SelectItem>
               ))}

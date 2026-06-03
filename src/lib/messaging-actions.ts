@@ -546,6 +546,43 @@ export async function previewCampaignAudience(params: {
         const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
         return snap.exists ? snap.data() : null;
       };
+      const checkAutomationStatusHelper = async (entityId: string, automationId: string, operator: string) => {
+        if (operator === 'currently_in') {
+          const snap = await adminDb.collection('automation_runs')
+            .where('entityId', '==', entityId)
+            .where('automationId', '==', automationId)
+            .where('status', '==', 'running')
+            .limit(1)
+            .get();
+          return !snap.empty;
+        }
+        if (operator === 'has_entered') {
+          const snap = await adminDb.collection('automation_runs')
+            .where('entityId', '==', entityId)
+            .where('automationId', '==', automationId)
+            .limit(1)
+            .get();
+          return !snap.empty;
+        }
+        if (operator === 'has_completed') {
+          const snap = await adminDb.collection('automation_runs')
+            .where('entityId', '==', entityId)
+            .where('automationId', '==', automationId)
+            .where('status', '==', 'completed')
+            .limit(1)
+            .get();
+          return !snap.empty;
+        }
+        if (operator === 'not_entered') {
+          const snap = await adminDb.collection('automation_runs')
+            .where('entityId', '==', entityId)
+            .where('automationId', '==', automationId)
+            .limit(1)
+            .get();
+          return snap.empty;
+        }
+        return false;
+      };
 
       const matched: ContactEntry[] = [];
       for (const c of results) {
@@ -556,7 +593,7 @@ export async function previewCampaignAudience(params: {
           tagIds: c.tags,
           workspaceTags: c.tags,
         };
-        const ok = await evaluateConditionNode(mockNode, payload, resolveAudienceHelper);
+        const ok = await evaluateConditionNode(mockNode, payload, resolveAudienceHelper, checkAutomationStatusHelper);
         if (ok) matched.push(c);
       }
       results = matched;

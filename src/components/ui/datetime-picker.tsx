@@ -18,9 +18,11 @@ interface DateTimePickerProps {
   value: Date | undefined;
   onChange: (date: Date | undefined) => void;
   disabled?: boolean;
+  className?: string;
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 }
 
-export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProps) {
+export function DateTimePicker({ value, onChange, disabled, className, variant }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
@@ -74,10 +76,11 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant={'outline'}
+          variant={variant || 'outline'}
           className={cn(
             'w-full justify-start text-left font-normal',
-            !value && 'text-muted-foreground'
+            !value && 'text-muted-foreground',
+            className
           )}
           disabled={disabled}
         >
@@ -86,7 +89,7 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <div className="flex divide-x overflow-hidden rounded-md border bg-background">
+        <div className="flex divide-x overflow-hidden rounded-md bg-background">
             <Calendar 
               mode="single" 
               onSelect={handleDateSelect} 
@@ -94,11 +97,11 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
               disabled={disabled}
             />
             <div className="relative w-[200px] overflow-hidden">
-                <div className="absolute inset-0 grid gap-4">
+                <div className="absolute inset-0 grid grid-rows-[auto_1fr] gap-2">
                 <div className="space-y-2 px-4 pt-4">
                     <p className="text-center font-medium text-sm">Available Times</p>
                 </div>
-                <ScrollArea className="h-full overflow-y-auto">
+                <ScrollArea className="h-full">
                     <div className="grid grid-cols-1 gap-2 px-4 pb-4">
                     {availableTimes.map(time => (
                         <Button
@@ -153,9 +156,11 @@ interface TimePickerProps {
   value: string | undefined;
   onChange: (time: string | undefined) => void;
   disabled?: boolean;
+  className?: string;
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 }
 
-export function TimePicker({ value, onChange, disabled }: TimePickerProps) {
+export function TimePicker({ value, onChange, disabled, className, variant }: TimePickerProps) {
   const [open, setOpen] = React.useState(false);
 
   const availableTimes = React.useMemo(() => {
@@ -184,10 +189,11 @@ export function TimePicker({ value, onChange, disabled }: TimePickerProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant={'outline'}
+          variant={variant || 'outline'}
           className={cn(
             'w-full justify-start text-left font-normal',
-            !value && 'text-muted-foreground'
+            !value && 'text-muted-foreground',
+            className
           )}
           disabled={disabled}
         >
@@ -196,12 +202,12 @@ export function TimePicker({ value, onChange, disabled }: TimePickerProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" align="start">
-        <div className="relative h-[300px] w-full overflow-hidden bg-background border rounded-md">
-          <div className="absolute inset-0 grid gap-4">
+        <div className="relative h-[300px] w-full overflow-hidden bg-background rounded-md">
+          <div className="absolute inset-0 grid grid-rows-[auto_1fr] gap-2">
             <div className="space-y-2 px-4 pt-4">
               <p className="text-center font-medium text-sm">Available Times</p>
             </div>
-            <ScrollArea className="h-full overflow-y-auto">
+            <ScrollArea className="h-full">
               <div className="grid grid-cols-1 gap-2 px-4 pb-4">
                 {availableTimes.map(time => (
                   <Button

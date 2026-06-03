@@ -27,9 +27,10 @@ interface TaskBoardProps {
     tasks: Task[];
     entityLogoMap?: Map<string, string | undefined>;
     onTaskClick: (task: Task) => void;
+    userMap?: Map<string, any>;
 }
 
-export default function TaskBoard({ tasks, entityLogoMap, onTaskClick }: TaskBoardProps) {
+export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }: TaskBoardProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
@@ -136,6 +137,7 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick }: TaskBoa
                                 tasks={tasksByStatus[status]} 
                                 entityLogoMap={entityLogoMap}
                                 onTaskClick={onTaskClick}
+                                userMap={userMap}
                             />
                         ))}
                     </div>
@@ -150,6 +152,7 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick }: TaskBoa
                             task={activeTask} 
                             entityLogoUrl={activeTask.entityId ? entityLogoMap?.get(activeTask.entityId) : undefined} 
                             isOverlay 
+                            userMap={userMap}
                         />
                     </div>
                 ) : null}

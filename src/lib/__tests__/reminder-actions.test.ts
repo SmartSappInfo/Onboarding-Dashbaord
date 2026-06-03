@@ -386,5 +386,54 @@ describe('scheduleMeetingInvitations', () => {
       templateId: 'tpl-1day'
     }));
   });
+
+  it('uses deterministic doc ID for invitations to prevent duplicate pending schedules', async () => {
+    const registrantDoc = {
+      id: 'reg-456',
+      data: () => ({
+        token: 'token-456',
+        name: 'Guest User 2',
+        email: 'guest2@example.com',
+        status: 'pending'
+      })
+    };
+
+    mocks().get
+      .mockResolvedValueOnce({ empty: false, docs: [registrantDoc] })
+      .mockResolvedValueOnce({ empty: true, docs: [] });
+
+    // Mock adminDb.collection().doc(id)
+    const docMock = vi.fn().mockImplementation((id) => ({
+      id,
+      get: vi.fn().mockResolvedValue({ exists: false })
+    }));
+    vi.spyOn(firebaseAdmin.adminDb, 'collection').mockReturnValue({
+      doc: docMock,
+      where: mocks().where,
+    } as any);
+
+    const meeting = {
+      id: 'meeting-789',
+      meetingTime: new Date(Date.now() + 3600 * 1000 * 48).toISOString(),
+      messagingConfig: {
+        invitationsEnabled: true,
+        invitationSeries: [
+          {
+            id: '1_day_before',
+            enabled: true,
+            channels: ['email'],
+            emailTemplateId: 'tpl-1day',
+            smsTemplateId: 'tpl-1day-sms',
+            offsetMinutes: 1440,
+            anchor: 'before_event'
+          }
+        ]
+      }
+    };
+
+    await scheduleMeetingInvitations(meeting as any, 'org-123');
+
+    expect(docMock).toHaveBeenCalledWith('meeting_inv_meeting-789_reg-456_1_day_before_email');
+  });
 });
 

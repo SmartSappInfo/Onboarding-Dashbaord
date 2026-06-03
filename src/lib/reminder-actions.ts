@@ -94,7 +94,9 @@ export async function scheduleRemindersForMeeting(
       const isEmail = contact.includes('@');
       if ((channel === 'email' && !isEmail) || (channel === 'sms' && isEmail)) continue;
 
-      const docRef = adminDb.collection('scheduled_messages').doc();
+      const safeContact = contact.replace(/[^a-zA-Z0-9]/g, '_');
+      const docId = `meeting_std_${meeting.id}_${safeContact}_${reminderType}`;
+      const docRef = adminDb.collection('scheduled_messages').doc(docId);
       const msg: Omit<ScheduledMessage, 'id'> = {
         organizationId: orgId,
         templateId: templateId!,
@@ -320,7 +322,8 @@ export async function scheduleMeetingInvitations(
         const triggerTime = ch === 'email' ? emailTriggerTime : smsTriggerTime;
         if (triggerTime <= now) continue; // skip if past due
 
-        const docRef = adminDb.collection('scheduled_messages').doc();
+        const docId = `meeting_inv_${meeting.id}_${doc.id}_${slot.id}_${ch}`;
+        const docRef = adminDb.collection('scheduled_messages').doc(docId);
         const msg: Omit<ScheduledMessage, 'id'> = {
           organizationId: orgId,
           templateId,
@@ -484,11 +487,13 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
 
       const result = await sendMessage({
         templateId: msg.templateId,
-        senderProfileId: 'default',
+        senderProfileId: msg.senderProfileId || 'default',
         recipient: msg.recipientContact,
         variables: msg.variables ?? {},
         entityId: msg.recipientEntityId ?? null,
         workspaceId: msg.workspaceId,
+        body: msg.customBody || undefined,
+        subject: msg.customSubject || undefined,
       });
 
       if (result.success) {
@@ -559,7 +564,7 @@ export async function scheduleMessagingConfigReminders(
       status: reg.status || '',
       registrationData: reg.registrationData || {},
     });
-    return { email: reg.email, phone: reg.phone, vars: regVars };
+    return { id: doc.id, email: reg.email, phone: reg.phone, vars: regVars };
   });
 
   // Build meeting base variables once
@@ -582,7 +587,8 @@ export async function scheduleMessagingConfigReminders(
         const contact = ch === 'email' ? reg.email : reg.phone;
         if (!contact) continue;
 
-        const docRef = adminDb.collection('scheduled_messages').doc();
+        const docId = `meeting_rem_${meeting.id}_${reg.id}_${slot.id}_${ch}`;
+        const docRef = adminDb.collection('scheduled_messages').doc(docId);
         const msg: Omit<ScheduledMessage, 'id'> = {
           organizationId: orgId,
           templateId,
@@ -727,7 +733,9 @@ export async function scheduleFacilitatorAlerts(
       // Build per-facilitator variables
       const facilitatorVars = buildFacilitatorVariables(f);
 
-      const docRef = adminDb.collection('scheduled_messages').doc();
+      const safeContact = contact.replace(/[^a-zA-Z0-9]/g, '_');
+      const docId = `meeting_fac_${meeting.id}_${safeContact}_${alertType}_${ch}`;
+      const docRef = adminDb.collection('scheduled_messages').doc(docId);
       const msg: Omit<ScheduledMessage, 'id'> = {
         organizationId: orgId,
         templateId: templateId!,

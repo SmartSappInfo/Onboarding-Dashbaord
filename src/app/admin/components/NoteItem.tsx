@@ -74,7 +74,7 @@ export default function NoteItem({ note, userProfile }: NoteItemProps) {
     return (
         <div className="group relative">
             <div className={cn(
-                "rounded-xl p-4 border-l-4 border-amber-400 bg-amber-50/50 transition-all border-t-0 border-r-0 border-b-0 shadow-sm hover:shadow-md",
+                "rounded-xl p-4 border-l-4 border-amber-400 bg-amber-50/50 transition-shadow duration-200 border-t-0 border-r-0 border-b-0 shadow-sm hover:shadow-md",
                 isEditing && "ring-1 ring-amber-500/20"
             )}>
                 <div className="flex items-center justify-between mb-2 opacity-60">

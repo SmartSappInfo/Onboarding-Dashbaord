@@ -100,6 +100,13 @@ const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; labe
         ],
     },
     {
+        label: 'Automations',
+        options: [
+            { value: 'AUTOMATION_ENTERED', label: 'Automation Entered', icon: PlayIconPlaceholder, desc: 'Fires when a contact enters an automation flow.' },
+            { value: 'AUTOMATION_COMPLETED', label: 'Automation Completed', icon: CheckSquareIconPlaceholder, desc: 'Fires when a contact completes an automation flow (reaches End Action).' },
+        ],
+    },
+    {
         label: 'Integrations',
         options: [
             { value: 'WEBHOOK_RECEIVED', label: 'Webhook Received', icon: GlobeIconPlaceholder, desc: 'Fires when data is POSTed to this automation endpoint.' },
@@ -212,16 +219,29 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
 
     return (
         <div className="flex flex-col h-full text-left min-h-0">
+            {node.type === 'triggerNode' && (
+                <div className="pb-4 mb-4 border-b border-border/50 shrink-0">
+                    <SearchInput
+                        value={triggerSearch}
+                        onChange={setTriggerSearch}
+                        placeholder="Search triggers..."
+                        className="w-full"
+                    />
+                </div>
+            )}
+            {node.type === 'actionNode' && !data.actionType && (
+                <div className="pb-4 mb-4 border-b border-border/50 shrink-0">
+                    <SearchInput
+                        value={actionSearch}
+                        onChange={setActionSearch}
+                        placeholder="Search actions..."
+                        className="w-full"
+                    />
+                </div>
+            )}
+
             <div className="flex-1 overflow-y-auto -mx-4 px-4 scrollbar-thin">
                 <div className="space-y-10 pb-32 pt-2">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-semibold text-[8px] uppercase h-5">Element Config</Badge>
-                            <span className="text-[10px] font-semibold text-muted-foreground opacity-40">ID: {node.id.substring(0, 8)}</span>
-                        </div>
-                    </div>
-
-                    <Separator className="opacity-50" />
 
                     {node.type === 'triggerNode' ? (
                         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -229,12 +249,6 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                 <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
                                     <Zap className="h-3 w-3" /> Event Protocol Entry
                                 </Label>
-                                <SearchInput
-                                    value={triggerSearch}
-                                    onChange={setTriggerSearch}
-                                    placeholder="Search triggers..."
-                                    className="mb-4"
-                                />
                                 <div className="space-y-6">
                                     {filteredTriggerGroups.map((group) => (
                                         <div key={group.label} className="space-y-2">
@@ -283,6 +297,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                                     pipelines={pipelines}
                                                                     stages={stages}
                                                                     webhookUrl={webhookUrl}
+                                                                    automations={automations}
                                                                 />
                                                             </div>
                                                         ) : null}
@@ -309,12 +324,6 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                     <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
                                         <PlusCircle className="h-3 w-3" /> Choose an Action
                                     </Label>
-                                    <SearchInput
-                                        value={actionSearch}
-                                        onChange={setActionSearch}
-                                        placeholder="Search actions..."
-                                        className="mb-4"
-                                    />
                                     <div className="grid grid-cols-1 gap-2">
                                         {filteredActionTypes.map((action) => (
                                             <button

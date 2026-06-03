@@ -426,7 +426,7 @@ export default function EntityNotesTab({ entityId, compact = false }: EntityNote
                         return (
                             <div key={note.id} className="space-y-3">
                                 <div className={cn(
-                                    "rounded-xl p-6 border-l-4 border-amber-400 bg-amber-50/50 transition-all group relative border-t-0 border-r-0 border-b-0",
+                                    "rounded-xl p-6 border-l-4 border-amber-400 bg-amber-50/50 transition-shadow duration-200 group relative border-t-0 border-r-0 border-b-0",
                                     note.isPinned ? "shadow-md ring-1 ring-amber-500/10" : "shadow-sm hover:shadow-md"
                                 )}>
                                     {note.isPinned && (

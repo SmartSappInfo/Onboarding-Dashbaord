@@ -5,8 +5,9 @@ import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus, WorkspaceEntity } from '@/lib/types';
 import { useSortedEntities } from '@/context/EntityCacheContext';
-import { format, isToday, isPast, differenceInDays } from 'date-fns';
+import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, addMonths, addWeeks, startOfDay, endOfDay } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { 
     CheckCircle2, 
     Circle, 
@@ -80,6 +81,10 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubTrigger,
+    DropdownMenuSubContent,
+    DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 import {
     Tooltip,
@@ -90,6 +95,7 @@ import {
 import TaskEditor from './components/TaskEditor';
 import TaskBoard from './components/TaskBoard';
 import TaskCalendar from './components/TaskCalendar';
+import { getProgressValue } from './components/task-utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -155,6 +161,69 @@ export default function TasksClient() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [smartFilter, setSmartFilter] = React.useState<'none' | 'today' | 'overdue'>('none');
 
+    // Date Interval Filter States
+    const [dateFilterType, setDateFilterType] = React.useState<'all' | 'range' | 'month' | 'week'>('all');
+    const [dateRange, setDateRange] = React.useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
+    const [selectedMonth, setSelectedMonth] = React.useState<string>('');
+    const [selectedWeek, setSelectedWeek] = React.useState<string>('');
+
+    // Hydration Safe mounted state
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // Generate Month Options dynamically (12 months in past to 12 months in future)
+    const monthOptions = React.useMemo(() => {
+        const options = [];
+        const now = new Date();
+        for (let i = -12; i <= 12; i++) {
+            const d = addMonths(now, i);
+            options.push({
+                value: format(d, 'yyyy-MM'),
+                label: format(d, 'MMMM yyyy'),
+            });
+        }
+        return options;
+    }, []);
+
+    // Generate Week Options dynamically (8 weeks in past to 24 weeks in future)
+    const weekOptions = React.useMemo(() => {
+        const options = [];
+        const now = new Date();
+        const startOfCurrentWeek = startOfWeek(now, { weekStartsOn: 1 }); // Monday start
+        for (let i = -8; i <= 24; i++) {
+            const d = addWeeks(startOfCurrentWeek, i);
+            const wEnd = endOfWeek(d, { weekStartsOn: 1 });
+            options.push({
+                value: format(d, 'yyyy-MM-dd'),
+                label: `Week of ${format(d, 'MMM d, yyyy')} - ${format(wEnd, 'MMM d, yyyy')}`,
+            });
+        }
+        return options;
+    }, []);
+
+    // Clear and set defaults on filter type change
+    React.useEffect(() => {
+        if (dateFilterType === 'all') {
+            setDateRange({ start: null, end: null });
+            setSelectedMonth('');
+            setSelectedWeek('');
+        } else if (dateFilterType === 'range') {
+            setDateRange({ start: new Date(), end: addDays(new Date(), 7) });
+            setSelectedMonth('');
+            setSelectedWeek('');
+        } else if (dateFilterType === 'month') {
+            setDateRange({ start: null, end: null });
+            setSelectedMonth(format(new Date(), 'yyyy-MM'));
+            setSelectedWeek('');
+        } else if (dateFilterType === 'week') {
+            setDateRange({ start: null, end: null });
+            setSelectedMonth('');
+            setSelectedWeek(format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+        }
+    }, [dateFilterType]);
+
     // Selection State
     const [isSelectionMode, setIsSelectionMode] = React.useState(false);
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
@@ -167,6 +236,17 @@ export default function TasksClient() {
 
     // Confirmation State
     const [taskToComplete, setTaskToComplete] = React.useState<Task | null>(null);
+
+    const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
+        overdue: true,
+        today: true,
+        upcoming: true,
+        completed: false
+    });
+
+    const toggleSection = (section: string) => {
+        setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    };
 
     const tasksQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -200,6 +280,16 @@ export default function TasksClient() {
         return new Map(entities.map(e => [e.entityId, e.logoUrl]));
     }, [entities]);
 
+    const userMap = React.useMemo(() => {
+        if (!users) return new Map<string, UserProfile>();
+        return new Map(users.map(u => [u.id, u]));
+    }, [users]);
+
+    const workspaceUsers = React.useMemo(() => {
+        if (!users || !activeWorkspaceId) return [];
+        return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
+    }, [users, activeWorkspaceId]);
+
     const isLoading = isLoadingTasks || isLoadingFilter;
 
     const filteredTasks = React.useMemo(() => {
@@ -210,8 +300,75 @@ export default function TasksClient() {
             
             let matchesAssigned = true;
             if (assignedUserId) {
-                if (assignedUserId === 'unassigned') matchesAssigned = !task.assignedTo;
-                else matchesAssigned = task.assignedTo === assignedUserId;
+                if (assignedUserId === 'unassigned') {
+                    matchesAssigned = !task.assignedTo || (Array.isArray(task.assignedTo) && task.assignedTo.length === 0);
+                } else {
+                    if (Array.isArray(task.assignedTo)) {
+                        matchesAssigned = task.assignedTo.includes(assignedUserId);
+                    } else {
+                        matchesAssigned = task.assignedTo === assignedUserId;
+                    }
+                }
+            }
+
+            const matchesSearch = searchTerm ? 
+                task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                task.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) 
+                : true;
+
+            let matchesSmart = true;
+            if (smartFilter === 'today') {
+                matchesSmart = isToday(new Date(task.dueDate)) && task.status !== 'done';
+            } else if (smartFilter === 'overdue') {
+                const date = new Date(task.dueDate);
+                matchesSmart = isPast(date) && !isToday(date) && task.status !== 'done';
+            }
+
+            let matchesDate = true;
+            if (dateFilterType === 'range') {
+                const taskDate = new Date(task.dueDate);
+                if (dateRange.start) {
+                    const startVal = startOfDay(dateRange.start);
+                    const taskVal = startOfDay(taskDate);
+                    matchesDate = taskVal >= startVal;
+                }
+                if (matchesDate && dateRange.end) {
+                    const endVal = endOfDay(dateRange.end);
+                    const taskVal = endOfDay(taskDate);
+                    matchesDate = taskVal <= endVal;
+                }
+            } else if (dateFilterType === 'month' && selectedMonth) {
+                const taskDate = new Date(task.dueDate);
+                const [year, month] = selectedMonth.split('-').map(Number);
+                matchesDate = taskDate.getFullYear() === year && (taskDate.getMonth() + 1) === month;
+            } else if (dateFilterType === 'week' && selectedWeek) {
+                const taskDate = new Date(task.dueDate);
+                const weekStart = startOfDay(new Date(selectedWeek));
+                const weekEnd = endOfDay(addDays(weekStart, 6));
+                matchesDate = taskDate >= weekStart && taskDate <= weekEnd;
+            }
+
+            return matchesStatus && matchesPriority && matchesAssigned && matchesSearch && matchesSmart && matchesDate;
+        });
+    }, [allTasks, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter, dateFilterType, dateRange, selectedMonth, selectedWeek]);
+
+    const calendarFilteredTasks = React.useMemo(() => {
+        if (!allTasks) return [];
+        return allTasks.filter(task => {
+            const matchesStatus = statusFilter === 'all' ? true : task.status === statusFilter;
+            const matchesPriority = priorityFilter === 'all' ? true : task.priority === priorityFilter;
+            
+            let matchesAssigned = true;
+            if (assignedUserId) {
+                if (assignedUserId === 'unassigned') {
+                    matchesAssigned = !task.assignedTo || (Array.isArray(task.assignedTo) && task.assignedTo.length === 0);
+                } else {
+                    if (Array.isArray(task.assignedTo)) {
+                        matchesAssigned = task.assignedTo.includes(assignedUserId);
+                    } else {
+                        matchesAssigned = task.assignedTo === assignedUserId;
+                    }
+                }
             }
 
             const matchesSearch = searchTerm ? 
@@ -231,6 +388,31 @@ export default function TasksClient() {
         });
     }, [allTasks, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter]);
 
+    const groupedListTasks = React.useMemo(() => {
+        const overdue: Task[] = [];
+        const today: Task[] = [];
+        const upcoming: Task[] = [];
+        const completed: Task[] = [];
+
+        filteredTasks.forEach(task => {
+            if (task.status === 'done') {
+                completed.push(task);
+                return;
+            }
+
+            const dueDateObj = new Date(task.dueDate);
+            if (isToday(dueDateObj)) {
+                today.push(task);
+            } else if (isPast(dueDateObj)) {
+                overdue.push(task);
+            } else {
+                upcoming.push(task);
+            }
+        });
+
+        return { overdue, today, upcoming, completed };
+    }, [filteredTasks]);
+
     const stats = React.useMemo(() => {
         if (!allTasks) return { active: 0, resolved: 0, overdue: 0, efficiency: 0 };
         const active = allTasks.filter(t => t.status !== 'done').length;
@@ -242,6 +424,60 @@ export default function TasksClient() {
         const efficiency = allTasks.length > 0 ? Math.round((resolved / allTasks.length) * 100) : 100;
         return { active, resolved, overdue, efficiency };
     }, [allTasks]);
+
+    const handleUpdateAssignee = async (task: Task, userId: string) => {
+        if (!currentUser) return;
+        try {
+            const currentAssignees = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
+            const nextAssignees = currentAssignees.includes(userId)
+                ? currentAssignees.filter(id => id !== userId)
+                : [...currentAssignees, userId];
+
+            const res = await updateTaskAction(task.id, { ...task, assignedTo: nextAssignees }, currentUser.uid);
+            if (res.success) {
+                toast({ title: 'Assignees updated successfully' });
+            } else {
+                toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to update assignee' });
+        }
+    };
+
+    const handlePostponeTask = async (task: Task, days: number) => {
+        if (!currentUser) return;
+        try {
+            const currentDueDate = task.dueDate ? new Date(task.dueDate) : new Date();
+            const newDueDate = addDays(currentDueDate, days).toISOString();
+            const res = await updateTaskAction(task.id, { ...task, dueDate: newDueDate }, currentUser.uid);
+            if (res.success) {
+                toast({ title: `Task postponed by ${days} day${days > 1 ? 's' : ''}` });
+            } else {
+                toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to postpone task' });
+        }
+    };
+
+    const handleCalendarTaskUpdate = async (taskId: string, updatedFields: Partial<Task>) => {
+        if (!currentUser) return false;
+        try {
+            const task = allTasks?.find(t => t.id === taskId);
+            if (!task) return false;
+            const res = await updateTaskAction(taskId, { ...task, ...updatedFields }, currentUser.uid);
+            if (res.success) {
+                toast({ title: 'Task rescheduled successfully' });
+                return true;
+            } else {
+                toast({ variant: 'destructive', title: 'Reschedule Failed', description: res.error });
+                return false;
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to reschedule task' });
+            return false;
+        }
+    };
 
     const handleSaveTask = async (payload: any) => {
         if (!currentUser) return;
@@ -357,302 +593,566 @@ export default function TasksClient() {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
-    const getProgressValue = (status: TaskStatus) => {
-        switch(status) {
-            case 'todo': return 0;
-            case 'in_progress': return 45;
-            case 'waiting': return 65;
-            case 'review': return 85;
-            case 'done': return 100;
-            default: return 0;
-        }
-    };
-
     return (
         <PageContainerFluid>
-            <div className="space-y-8 pb-32 w-full">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <Tabs 
+                value={activeTab} 
+                onValueChange={(val) => {
+                    setActiveTab(val);
+                    if (val !== 'list') {
+                        setIsSelectionMode(false);
+                        setSelectedIds([]);
+                    }
+                }} 
+                className="space-y-8 pb-32 w-full"
+            >
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
                     <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold text-foreground">
-                            Operations Hub
-                        </h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-3xl font-bold text-foreground tracking-tight">
+                                Operations Hub
+                            </h1>
+                            <Badge variant="outline" className="text-[10px] font-bold uppercase h-5 px-2 rounded-md bg-blue-500/10 text-blue-500 dark:text-blue-400 border-none">
+                                Tasks
+                            </Badge>
+                        </div>
                         <p className="text-muted-foreground text-sm mt-1">
                             Action items, global workflows, and execution protocols
                         </p>
                     </div>
+                    {/* Header Tabs matching Reference Image */}
+                    <TabsList className="bg-transparent border border-border shadow-sm p-1 h-12 rounded-xl ring-1 ring-border shrink-0">
+                        <TabsTrigger value="list" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
+                            <LayoutList className="h-4 w-4" /> List View ({filteredTasks.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="board" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
+                            <Layers className="h-4 w-4" /> Kanban Board
+                        </TabsTrigger>
+                        <TabsTrigger value="calendar" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
+                            <Calendar className="h-4 w-4" /> Calendar View
+                        </TabsTrigger>
+                    </TabsList>
                 </div>
-                {/* Executive KPI Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard 
-                        label="Active Actions" 
-                        value={isLoading ? '...' : stats.active} 
-                        sub={`${toTitleCase(activeWorkspaceId)} workspace focus`} 
-                        icon={Zap} 
-                        color={activeWorkspaceId === 'prospect' ? "text-emerald-600" : "text-primary"} 
-                        bg={activeWorkspaceId === 'prospect' ? "bg-emerald-50" : "bg-primary/10"} 
-                    />
-                    <StatCard 
-                        label="Resolved Protocols" 
-                        value={isLoading ? '...' : stats.resolved} 
-                        sub="Success archive" 
-                        icon={CheckCircle2} 
-                        color="text-emerald-600" 
-                        bg="bg-emerald-50" 
-                    />
-                    <StatCard 
-                        label="Overdue Alerts" 
-                        value={isLoading ? '...' : stats.overdue} 
-                        sub="SLA breach detection" 
-                        icon={ShieldAlert} 
-                        color="text-rose-600" 
-                        bg="bg-rose-50" 
-                    />
-                    <StatCard 
-                        label="Closure Velocity" 
-                        value={isLoading ? '...' : `${stats.efficiency}%`} 
-                        sub="Efficiency benchmark" 
-                        icon={Target} 
-                        color="text-blue-600" 
-                        bg="bg-blue-50" 
-                    />
-                </div>
-
-                {/* Recommended Categories Grid */}
- <section className="space-y-4">
- <h3 className="text-lg font-bold tracking-tight text-foreground">Recommended Categories</h3>
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {(Object.entries(CATEGORY_MAP) as [TaskCategory, any][]).map(([key, config]) => (
-                            <button 
-                                key={key}
-                                onClick={() => canCreate && handleQuickCategorySelect(key)}
-                                className={cn(
-                                    "group flex items-center gap-4 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all shadow-sm hover:shadow-md",
-                                    !canCreate && "opacity-50 cursor-not-allowed filter grayscale"
-                                )}
-                                disabled={!canCreate}
-                            >
- <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-110 shadow-sm", config.color)}>
- <config.icon className="h-5 w-5" />
-                                </div>
- <span className="font-bold text-sm tracking-tight text-foreground/80">{config.label}</span>
-                            </button>
-                        ))}
+                {activeTab === 'list' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <StatCard 
+                            label="Active Actions" 
+                            value={isLoading ? '...' : stats.active} 
+                            icon={Zap} 
+                            color="text-blue-500" 
+                            bg="bg-blue-500/10" 
+                        />
+                        <StatCard 
+                            label="Resolved Protocols" 
+                            value={isLoading ? '...' : stats.resolved} 
+                            icon={CheckCircle2} 
+                            color="text-emerald-500" 
+                            bg="bg-emerald-500/10" 
+                        />
+                        <StatCard 
+                            label="Overdue Alerts" 
+                            value={isLoading ? '...' : stats.overdue} 
+                            icon={ShieldAlert} 
+                            color="text-rose-500" 
+                            bg="bg-rose-500/10" 
+                        />
+                        <StatCard 
+                            label="Closure Velocity" 
+                            value={isLoading ? '...' : `${stats.efficiency}%`} 
+                            icon={Target} 
+                            color="text-violet-500" 
+                            bg="bg-violet-500/10" 
+                        />
                     </div>
-                </section>
+                )}
+
 
                 {/* Toolbar */}
- <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-card border border-border p-4 rounded-2xl">
- <div className="flex flex-wrap items-center gap-3">
- <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(!isSelectionMode)} className={cn("rounded-xl font-semibold text-[10px] gap-2 h-10 px-4 transition-all", isSelectionMode ? "bg-primary text-white border-primary" : "border-primary/20 text-primary")}>
- {isSelectionMode ? <CheckSquare className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />} Selection
-                        </Button>
- <Button variant="outline" size="sm" className="rounded-xl font-semibold text-[10px] gap-2 h-10 px-4">
- <Filter className="h-3.5 w-3.5" /> Filter <ChevronDown className="h-3 w-3 opacity-40" />
-                        </Button>
-                    </div>
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-card border-none ring-1 ring-border shadow-sm p-5 rounded-2xl">
+                    <h2 className="text-xl font-bold text-foreground tracking-tight">Tasks</h2>
+                    <div className="flex flex-wrap items-center gap-3">
+                        {activeTab === 'list' && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setIsSelectionMode(!isSelectionMode)} 
+                                className={cn(
+                                    "rounded-xl font-semibold text-xs gap-2 h-10 px-4 transition-all border-border bg-background text-foreground hover:bg-muted/30", 
+                                    isSelectionMode && "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                )}
+                            >
+                                {isSelectionMode ? <CheckSquare className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />} Selection
+                            </Button>
+                        )}
+ 
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="h-10 w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                <SelectValue placeholder="All Statuses" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="todo">To Do</SelectItem>
+                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="waiting">Waiting</SelectItem>
+                                <SelectItem value="review">Review</SelectItem>
+                                <SelectItem value="done">Done</SelectItem>
+                            </SelectContent>
+                        </Select>
+ 
+                        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                            <SelectTrigger className="h-10 w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                <SelectValue placeholder="All Priorities" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                <SelectItem value="all">All Priorities</SelectItem>
+                                <SelectItem value="urgent">Urgent</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="low">Low</SelectItem>
+                            </SelectContent>
+                        </Select>
+ 
+                        {/* Date Filter Select */}
+                        <Select value={dateFilterType} onValueChange={(val: any) => setDateFilterType(val)}>
+                            <SelectTrigger className="h-10 w-[140px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                <SelectValue placeholder="All Time" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                <SelectItem value="all">All Time</SelectItem>
+                                <SelectItem value="range">Custom Range</SelectItem>
+                                <SelectItem value="month">By Month</SelectItem>
+                                <SelectItem value="week">By Week</SelectItem>
+                            </SelectContent>
+                        </Select>
 
- <div className="flex items-center gap-4 flex-1 justify-end">
- <div className="relative w-full max-w-sm group">
- <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+                        {/* Date Range Inputs */}
+                        {mounted && dateFilterType === 'range' && (
+                            <div className="flex items-center gap-2">
+                                <DateTimePicker 
+                                    value={dateRange.start || undefined} 
+                                    onChange={(d) => setDateRange(prev => ({ ...prev, start: d || null }))} 
+                                    className="h-10 rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
+                                />
+                                <span className="text-muted-foreground text-xs font-semibold">to</span>
+                                <DateTimePicker 
+                                    value={dateRange.end || undefined} 
+                                    onChange={(d) => setDateRange(prev => ({ ...prev, end: d || null }))} 
+                                    className="h-10 rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
+                                />
+                            </div>
+                        )}
+
+                        {/* Month Selector */}
+                        {mounted && dateFilterType === 'month' && (
+                            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                <SelectTrigger className="h-10 w-[160px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                    <SelectValue placeholder="Select Month" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                    {monthOptions.map((opt) => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+
+                        {/* Week Selector */}
+                        {mounted && dateFilterType === 'week' && (
+                            <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                                <SelectTrigger className="h-10 w-[240px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                    <SelectValue placeholder="Select Week" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                    {weekOptions.map((opt) => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+
+                        <div className="relative w-full sm:w-[240px] group">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
                             <Input 
                                 placeholder="Search tasks..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
- className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+                                className="h-10 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary font-semibold pl-10 text-xs"
                             />
                         </div>
+ 
                         {canCreate && (
-                            <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-semibold h-11 px-8 shadow-xl active:scale-95 text-[10px]">
-                                + New Task
+                            <Button 
+                                onClick={() => setEditorOpen(true)} 
+                                className="rounded-xl font-bold h-10 px-6 shadow-md bg-blue-600 text-white hover:bg-blue-700 active:scale-95 text-xs"
+                            >
+                                + Add Task
                             </Button>
                         )}
                     </div>
                 </div>
-
+ 
                 <AnimatePresence>
                     {isSelectionMode && selectedIds.length > 0 && (
                         <motion.div 
                             initial={{ y: 50, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 50, opacity: 0 }}
- className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
+                            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50"
                         >
-                        <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-white/10">
- <span className="px-4 text-[10px] font-semibold border-r border-white/10">{selectedIds.length} Selected</span>
- <div className="flex gap-1.5 p-1 bg-card/5 rounded-xl">
- {canEdit && <Button size="sm" variant="ghost" onClick={handleBulkComplete} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 font-bold text-[9px] h-9 px-4">Resolve Bulk</Button>}
- {canDelete && <Button size="sm" variant="ghost" onClick={handleBulkDelete} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 font-bold text-[9px] h-9 px-4">Purge Selected</Button>}
- <Separator orientation="vertical" className="h-9 bg-card/10" />
- <Button size="icon" variant="ghost" onClick={() => setSelectedIds([])} className="h-9 w-9 text-white/40 hover:text-white"><X size={16} /></Button>
+                            <div className="p-3 bg-card border border-border rounded-2xl shadow-2xl flex items-center gap-6 min-w-[400px]">
+                                <div className="flex items-center gap-2 pl-2 border-r border-border pr-6">
+                                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <span className="text-[10px] font-bold text-primary">{selectedIds.length}</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-foreground">Items selected</span>
                                 </div>
-                            </Card>
+                                <div className="flex items-center gap-2">
+                                    {canEdit && (
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            onClick={handleBulkComplete} 
+                                            className="h-8 rounded-lg text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20"
+                                        >
+                                            Resolve Bulk
+                                        </Button>
+                                    )}
+                                    {canDelete && (
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            onClick={handleBulkDelete} 
+                                            className="h-8 rounded-lg text-rose-600 hover:bg-rose-500/10 border-rose-500/20"
+                                        >
+                                            Purge Selected
+                                        </Button>
+                                    )}
+                                    <Separator orientation="vertical" className="h-8 bg-border" />
+                                    <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        onClick={() => setSelectedIds([])} 
+                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X size={16} />
+                                    </Button>
+                                </div>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
- <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
- <TabsContent value="list" className="m-0 space-y-12">
-                        {/* Grouped Lists by Status */}
-                        {(['todo', 'in_progress', 'done'] as TaskStatus[]).map(status => {
-                            const groupTasks = filteredTasks.filter(t => 
-                                status === 'in_progress' ? (t.status !== 'todo' && t.status !== 'done') : t.status === status
-                            );
-                            
-                            if (groupTasks.length === 0 && status === 'done') return null;
+                <div className="space-y-12">
+                    <TabsContent value="list" className="m-0 space-y-6">
+                        {/* Grouped Lists by Accordions */}
+                        {(() => {
+                            const categoriesConfig = [
+                                { id: 'today', label: "Today's Tasks", tasks: groupedListTasks.today, count: groupedListTasks.today.length },
+                                { id: 'overdue', label: 'Overdue Tasks', tasks: groupedListTasks.overdue, count: groupedListTasks.overdue.length },
+                                { id: 'upcoming', label: 'Upcoming Tasks', tasks: groupedListTasks.upcoming, count: groupedListTasks.upcoming.length },
+                                { id: 'completed', label: 'Completed Archive', tasks: groupedListTasks.completed, count: groupedListTasks.completed.length },
+                            ];
 
-                            return (
- <section key={status} className="space-y-6">
- <div className="flex items-center justify-between px-2">
- <h2 className="text-xs font-semibold text-muted-foreground">
-                                            {status === 'todo' ? 'Backlog (To Do)' : status === 'done' ? 'Resolved Archive' : 'Active Tasks'}
-                                        </h2>
- <button className="text-muted-foreground opacity-40 hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></button>
-                                    </div>
+                            return categoriesConfig.map(category => {
+                                const isExpanded = expandedSections[category.id];
+                                if (category.id === 'completed' && category.count === 0) return null;
 
- <div className="space-y-3">
-                                        {isLoading ? (
- Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
-                                        ) : groupTasks.length > 0 ? groupTasks.map((task) => {
-                                            const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
-                                            const daysLeft = differenceInDays(new Date(task.dueDate), new Date());
-                                            const isOverdue = daysLeft < 0 && task.status !== 'done';
-                                            const progress = getProgressValue(task.status);
-
-                                            return (
-                                                <div 
-                                                    key={task.id} 
+                                return (
+                                    <div key={category.id} className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+                                        {/* Accordion Trigger */}
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleSection(category.id)}
+                                            className="w-full flex items-center justify-between py-3.5 px-5 bg-card hover:bg-muted/30 border-b border-border transition-all text-left cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <ChevronDown 
                                                     className={cn(
-                                                        "group flex items-center gap-4 p-4 sm:p-5 bg-card border border-border rounded-2xl hover:border-primary/30 shadow-sm",
-                                                        task.status === 'done' && "opacity-60"
-                                                    )}
-                                                >
-                                                    {isSelectionMode && (
-                                                        <Checkbox 
-                                                            checked={selectedIds.includes(task.id)} 
-                                                            onCheckedChange={() => toggleSelect(task.id)}
- className="h-5 w-5 rounded-lg border-2"
-                                                        />
-                                                    )}
-                                                    
- <div className="flex-1 min-w-0">
- <div className="flex flex-col gap-0.5">
- <h4 className={cn("text-base font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
-                                                                {task.title}
-                                                            </h4>
- <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-2">
- {task.category} {task.entityName && (
-                                                                    <>
-                                                                        · <EntityAvatar 
+                                                        "h-5 w-5 text-muted-foreground transition-transform duration-200", 
+                                                        isExpanded ? "transform rotate-0" : "transform -rotate-90"
+                                                    )} 
+                                                />
+                                                <h3 className="text-base font-bold text-foreground tracking-tight">{category.label}</h3>
+                                                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                                    {category.count}
+                                                </span>
+                                            </div>
+                                        </button>
+
+                                        {/* Accordion Content */}
+                                        {isExpanded && (
+                                            <div className="divide-y divide-border">
+                                                {isLoading ? (
+                                                    <div className="p-6 space-y-4">
+                                                        <Skeleton className="h-10 w-full rounded-xl" />
+                                                        <Skeleton className="h-10 w-full rounded-xl" />
+                                                    </div>
+                                                ) : category.tasks.length > 0 ? (
+                                                    category.tasks.map((task) => {
+                                                        const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
+                                                        const daysLeft = differenceInCalendarDays(new Date(task.dueDate), new Date());
+                                                        const isOverdue = daysLeft < 0 && task.status !== 'done';
+                                                        const progress = getProgressValue(task.status);
+
+                                                        return (
+                                                            <div 
+                                                                key={task.id} 
+                                                                className={cn(
+                                                                    "flex items-center gap-4 px-6 py-4 bg-transparent hover:bg-muted/30 transition-all",
+                                                                    task.status === 'done' && "opacity-65"
+                                                                )}
+                                                            >
+                                                                {isSelectionMode ? (
+                                                                    <Checkbox 
+                                                                        checked={selectedIds.includes(task.id)} 
+                                                                        onCheckedChange={() => toggleSelect(task.id)}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="h-5 w-5 rounded-lg border-border data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 shrink-0"
+                                                                    />
+                                                                ) : (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={async (e) => {
+                                                                            e.stopPropagation();
+                                                                            if (!currentUser) return;
+                                                                            const newStatus = task.status === 'done' ? 'todo' : 'done';
+                                                                            await updateTaskAction(task.id, { ...task, status: newStatus }, currentUser.uid);
+                                                                            toast({ title: newStatus === 'done' ? 'Task Completed' : 'Task Reopened' });
+                                                                        }}
+                                                                        className="h-5 w-5 rounded-full border border-border hover:border-emerald-500 hover:bg-emerald-500/10 flex items-center justify-center transition-all shrink-0 group/check cursor-pointer"
+                                                                    >
+                                                                        {task.status === 'done' ? (
+                                                                            <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
+                                                                        ) : (
+                                                                            <div className="h-2.5 w-2.5 rounded-full bg-transparent group-hover/check:bg-emerald-500/40 transition-all shrink-0" />
+                                                                        )}
+                                                                    </button>
+                                                                )}
+
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex flex-col gap-1 text-left">
+                                                                        <h4 className={cn("text-base font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
+                                                                            {task.title}
+                                                                        </h4>
+                                                                        <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-2 flex-wrap text-left">
+                                                                            <span>{toTitleCase(task.category)}</span>
+                                                                            <span className="text-muted-foreground/30 font-normal">·</span>
+                                                                            <span className={cn("font-bold uppercase text-[9px] px-1.5 py-0.5 rounded-sm border-none shadow-xs shrink-0", P.color)}>
+                                                                                {P.label}
+                                                                            </span>
+                                                                            <span className="text-muted-foreground/30 font-normal">·</span>
+                                                                            <span className="font-semibold text-muted-foreground/70 shrink-0">
+                                                                                {format(new Date(task.dueDate), 'MMM d, yyyy h:mm a')}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="hidden md:flex items-center gap-2 min-w-[120px] shrink-0">
+                                                                    <Clock className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
+                                                                    <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
+                                                                        {task.status === 'done' 
+                                                                            ? 'Resolved' 
+                                                                            : isOverdue 
+                                                                                ? 'Overdue' 
+                                                                                : daysLeft === 0 
+                                                                                    ? 'Due Today' 
+                                                                                    : daysLeft === 1 
+                                                                                        ? 'Due Tomorrow' 
+                                                                                        : daysLeft < 0 
+                                                                                            ? `${Math.abs(daysLeft)} Days Overdue` 
+                                                                                            : `${daysLeft} Days Left`
+                                                                        }
+                                                                    </span>
+                                                                </div>
+
+                                                                {task.entityName ? (
+                                                                    <div className="hidden lg:flex items-center gap-1.5 min-w-[140px] max-w-[180px] shrink-0">
+                                                                        <EntityAvatar 
                                                                             src={task.entityId ? entityLogoMap.get(task.entityId) : undefined} 
                                                                             name={task.entityName} 
-                                                                            className="h-4 w-4 rounded-sm shadow-none ring-0 p-0"
+                                                                            className="h-3.5 w-3.5 rounded-sm shadow-none ring-0 p-0 shrink-0"
                                                                             fallbackClassName="text-[6px]"
-                                                                        /> {task.entityName}
-                                                                    </>
+                                                                        />
+                                                                        <span className="text-[10px] font-semibold text-muted-foreground/60 truncate">
+                                                                            {task.entityName}
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="hidden lg:flex min-w-[140px] shrink-0" />
                                                                 )}
-                                                                {task.entityType && (
-                                                                    <Badge variant="outline" className="text-[7px] font-semibold uppercase h-4 px-1.5 rounded-sm border-none bg-primary/10 text-primary ml-1">
-                                                                        {task.entityType}
-                                                                    </Badge>
-                                                                )}
+
+                                                                <div className="hidden xl:flex items-center gap-4 min-w-[180px] shrink-0">
+                                                                    <div className="flex-1 space-y-1">
+                                                                        <Progress value={progress} className="h-1.5" />
+                                                                    </div>
+                                                                    <span className="text-[10px] font-semibold tabular-nums w-8 text-right opacity-40">{progress}%</span>
+                                                                </div>
+
+                                                                <div className="flex items-center justify-end shrink-0 pl-2 gap-3">
+                                                                    <div className="hidden lg:flex items-center gap-2 mr-1 text-muted-foreground">
+                                                                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30">
+                                                                            <Paperclip className="h-3 w-3" />
+                                                                            <span className="text-[10px] font-semibold tabular-nums">{task.attachments?.length || 0}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30">
+                                                                            <MessageSquare className="h-3 w-3" />
+                                                                            <span className="text-[10px] font-semibold tabular-nums">{task.notes?.length || 0}</span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {(() => {
+                                                                        const ids = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
+                                                                        if (ids.length === 0) return null;
+                                                                        return (
+                                                                            <div className="flex items-center -space-x-2 shrink-0 mr-1.5">
+                                                                                {ids.map((id) => {
+                                                                                    const u = userMap.get(id);
+                                                                                    if (!u) return null;
+                                                                                    return (
+                                                                                        <TooltipProvider key={id}>
+                                                                                            <Tooltip>
+                                                                                                <TooltipTrigger asChild>
+                                                                                                    <Avatar className="h-6 w-6 border-2 border-background shadow-xs shrink-0 select-none hover:translate-y-[-2px] transition-transform">
+                                                                                                        <AvatarImage src={u.photoURL || undefined} />
+                                                                                                        <AvatarFallback className="text-[8px] bg-muted/40 font-bold">{getInitials(u.name)}</AvatarFallback>
+                                                                                                    </Avatar>
+                                                                                                </TooltipTrigger>
+                                                                                                <TooltipContent className="bg-card border border-border p-2 rounded-xl text-xs font-bold text-foreground">
+                                                                                                    {u.name}
+                                                                                                </TooltipContent>
+                                                                                            </Tooltip>
+                                                                                        </TooltipProvider>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
+
+                                                                    <DropdownMenu modal={false}>
+                                                                        <DropdownMenuTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-40 group-hover:opacity-100 transition-opacity">
+                                                                                <MoreVertical className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent align="end" className="w-56 rounded-xl p-2 border border-border bg-card text-foreground shadow-2xl">
+                                                                            <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-2">Task Actions</DropdownMenuLabel>
+                                                                            {canEdit && (
+                                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingTask(task); setEditorOpen(true); }} className="rounded-xl p-2.5 gap-3 cursor-pointer">
+                                                                                    <Pencil className="h-4 w-4 text-primary" /> <span className="font-bold text-sm">Update Task</span>
+                                                                                </DropdownMenuItem>
+                                                                            )}
+                                                                            {canEdit && (
+                                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setTaskToComplete(task); }} className="rounded-xl p-2.5 gap-3 cursor-pointer">
+                                                                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> <span className="font-bold text-sm">{task.status === 'done' ? 'Reopen Task' : 'Mark as Resolved'}</span>
+                                                                                </DropdownMenuItem>
+                                                                            )}
+                                                                            <DropdownMenuSeparator className="bg-border" />
+                                                                            
+                                                                            {canEdit && (
+                                                                                <>
+                                                                                    <DropdownMenuSub>
+                                                                                        <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer focus:bg-muted">
+                                                                                            <UserIcon className="h-4 w-4 text-primary" />
+                                                                                            <span className="font-bold text-sm">Change Assignee</span>
+                                                                                        </DropdownMenuSubTrigger>
+                                                                                        <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-48 shadow-2xl text-foreground">
+                                                                                            {workspaceUsers && workspaceUsers.length > 0 ? (
+                                                                                                workspaceUsers.map(u => {
+                                                                                                    const isChecked = Array.isArray(task.assignedTo) ? task.assignedTo.includes(u.id) : task.assignedTo === u.id;
+                                                                                                    return (
+                                                                                                        <DropdownMenuCheckboxItem 
+                                                                                                            key={u.id} 
+                                                                                                            checked={isChecked}
+                                                                                                            onCheckedChange={() => {}}
+                                                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdateAssignee(task, u.id); }}
+                                                                                                            className={cn(
+                                                                                                                "rounded-lg p-2 flex items-center gap-2 cursor-pointer focus:bg-muted",
+                                                                                                                isChecked && "bg-primary/5 text-primary"
+                                                                                                            )}
+                                                                                                        >
+                                                                                                            <Avatar className="h-5 w-5 shrink-0 ml-1.5">
+                                                                                                                <AvatarImage src={u.photoURL || undefined} />
+                                                                                                                <AvatarFallback className="text-[8px] bg-muted/40">{getInitials(u.name)}</AvatarFallback>
+                                                                                                            </Avatar>
+                                                                                                            <span className="text-xs font-semibold truncate">{u.name}</span>
+                                                                                                        </DropdownMenuCheckboxItem>
+                                                                                                    );
+                                                                                                })
+                                                                                            ) : (
+                                                                                                <div className="p-2 text-center text-xs text-muted-foreground">No users found</div>
+                                                                                            )}
+                                                                                        </DropdownMenuSubContent>
+                                                                                    </DropdownMenuSub>
+
+                                                                                    <DropdownMenuSub>
+                                                                                        <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer focus:bg-muted">
+                                                                                            <Clock className="h-4 w-4 text-primary" />
+                                                                                            <span className="font-bold text-sm">Postpone Task</span>
+                                                                                        </DropdownMenuSubTrigger>
+                                                                                        <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-48 shadow-2xl text-foreground">
+                                                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePostponeTask(task, 1); }} className="rounded-lg p-2 cursor-pointer focus:bg-muted">
+                                                                                                <span className="text-xs font-semibold">Postpone 1 Day</span>
+                                                                                            </DropdownMenuItem>
+                                                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePostponeTask(task, 3); }} className="rounded-lg p-2 cursor-pointer focus:bg-muted">
+                                                                                                <span className="text-xs font-semibold">Postpone 3 Days</span>
+                                                                                            </DropdownMenuItem>
+                                                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePostponeTask(task, 7); }} className="rounded-lg p-2 cursor-pointer focus:bg-muted">
+                                                                                                <span className="text-xs font-semibold">Postpone 1 Week</span>
+                                                                                            </DropdownMenuItem>
+                                                                                        </DropdownMenuSubContent>
+                                                                                    </DropdownMenuSub>
+                                                                                    <DropdownMenuSeparator className="bg-border" />
+                                                                                </>
+                                                                            )}
+
+                                                                            {canDelete && (
+                                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10 focus:text-destructive cursor-pointer">
+                                                                                    <Trash2 className="h-4 w-4" /> <span className="font-bold text-sm">Delete Task</span>
+                                                                                </DropdownMenuItem>
+                                                                            )}
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
+                                                                </div>
                                                             </div>
-                                                        </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <div className="p-12 text-center bg-transparent flex flex-col items-center gap-2">
+                                                        <EyeOff className="h-8 w-8 text-muted-foreground opacity-30" />
+                                                        <p className="text-[10px] font-bold text-muted-foreground opacity-40">No tasks in this category</p>
                                                     </div>
-
- <div className="hidden lg:flex items-center gap-6 px-8">
- <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30 text-muted-foreground">
- <Paperclip className="h-3 w-3" />
- <span className="text-[10px] font-semibold tabular-nums">{task.attachments?.length || 0}</span>
-                                                        </div>
- <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30 text-muted-foreground">
- <MessageSquare className="h-3 w-3" />
- <span className="text-[10px] font-semibold tabular-nums">{task.notes?.length || 0}</span>
-                                                        </div>
-                                                    </div>
-
- <div className="hidden sm:flex items-center gap-3 shrink-0">
-                                                        <Badge variant="outline" className="h-6 rounded-lg font-semibold uppercase text-[8px] bg-muted/30 border-none px-2.5">
-                                                            {STATUS_LABELS[task.status] || task.status}
-                                                        </Badge>
-                                                        <Badge variant="outline" className={cn("h-6 rounded-lg font-semibold uppercase text-[8px] border-none px-2.5", P.color)}>
-                                                            {P.label}
-                                                        </Badge>
-                                                    </div>
-
- <div className="hidden md:flex items-center gap-2 min-w-[120px] shrink-0">
- <Clock className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
- <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
-                                                            {isOverdue ? 'Overdue' : daysLeft === 0 ? 'Due Today' : `${daysLeft} Days Left`}
-                                                        </span>
-                                                    </div>
-
- <div className="hidden xl:flex items-center gap-4 min-w-[180px] shrink-0">
- <div className="flex-1 space-y-1">
- <Progress value={progress} className="h-1.5" />
-                                                        </div>
- <span className="text-[10px] font-semibold tabular-nums w-8 text-right opacity-40">{progress}%</span>
-                                                    </div>
-
- <div className="flex items-center justify-end shrink-0 pl-2">
-                                                        <DropdownMenu modal={false}>
-                                                            <DropdownMenuTrigger asChild>
- <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-40 group-hover:opacity-100 transition-opacity">
- <MoreVertical className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
- <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
- <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">Operational Logic</DropdownMenuLabel>
- {canEdit && (<DropdownMenuItem onClick={() => { setEditingTask(task); setEditorOpen(true); }} className="rounded-xl p-2.5 gap-3">
- <Pencil className="h-4 w-4 text-primary" /> <span className="font-bold text-sm ">Modify Blueprint</span>
-                                                                </DropdownMenuItem>)}
-                                                                {canEdit && (<DropdownMenuItem onClick={() => setTaskToComplete(task)} className="rounded-xl p-2.5 gap-3">
- <CheckCircle2 className="h-4 w-4 text-emerald-500" /> <span className="font-bold text-sm ">{task.status === 'done' ? 'Reopen Protocol' : 'Mark Resolved'}</span>
-                                                                </DropdownMenuItem>)}
-                                                                <DropdownMenuSeparator />
- {canDelete && (<DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10">
- <Trash2 className="h-4 w-4" /> <span className="font-bold text-sm ">Purge Protocol</span>
-                                                                </DropdownMenuItem>)}
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                </div>
-                                            );
-                                        }) : (
- <div className="py-12 text-center border-2 border-dashed rounded-2xl bg-background opacity-30 flex flex-col items-center gap-2">
- <EyeOff className="h-8 w-8 text-muted-foreground" />
- <p className="text-[10px] font-semibold ">No matching tasks in this phase</p>
+                                                )}
                                             </div>
                                         )}
-
-                                        {status !== 'done' && canCreate && (
-                                            <button 
-                                                onClick={() => {
-                                                    setEditingTask({ status } as any);
-                                                    setEditorOpen(true);
-                                                }}
-                                                className="w-full py-4 border-2 border-dashed border-border rounded-xl flex items-center justify-center gap-2 text-[10px] font-semibold text-muted-foreground hover:bg-muted/20 hover:border-primary/20 hover:text-primary transition-all group"
-                                            >
-                                                <Plus className="h-4 w-4 transition-transform group-hover:scale-125" /> Add New Task
-                                            </button>
-                                        )}
                                     </div>
-                                </section>
-                            );
-                        })}
+                                );
+                            });
+                        })()}
                     </TabsContent>
 
- <TabsContent value="board" className="m-0 h-[calc(100vh-350px)]">
+                    <TabsContent value="board" className="m-0 h-[calc(100vh-350px)]">
                         <TaskBoard 
                             tasks={filteredTasks} 
                             entityLogoMap={entityLogoMap}
                             onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} 
+                            userMap={userMap}
                         />
                     </TabsContent>
 
- <TabsContent value="calendar" className="m-0">
-                        <TaskCalendar tasks={filteredTasks} onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} />
+                    <TabsContent value="calendar" className="m-0">
+                        <TaskCalendar 
+                            tasks={calendarFilteredTasks} 
+                            onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} 
+                            userMap={userMap}
+                            onTaskUpdate={handleCalendarTaskUpdate}
+                        />
                     </TabsContent>
-                </Tabs>
+                </div>
 
 
             <TaskEditor
@@ -676,7 +1176,7 @@ export default function TasksClient() {
                             </AlertDialogDescription>
                         </div>
                     </div>
- <div className="bg-muted/30 p-6 border-t flex flex-col sm:flex-row gap-3">
+ <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
  <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm">Discard</AlertDialogCancel>
  <AlertDialogAction onClick={handleConfirmComplete} className="rounded-xl font-semibold h-12 flex-1 text-xs">
                             Commit Result
@@ -684,24 +1184,21 @@ export default function TasksClient() {
                     </div>
                 </AlertDialogContent>
             </AlertDialog>
-            </div>
+            </Tabs>
         </PageContainerFluid>
     );
 }
 
-function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
+function StatCard({ label, value, icon: Icon, color, bg }: { label: string, value: string | number, sub?: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-2xl bg-card border-border overflow-hidden group">
-            <CardContent className="p-5 flex items-center gap-4">
- <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
- <Icon className="h-7 w-7" />
-                </div>
- <div className="flex-1 min-w-0">
- <p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p>
- <p className="text-2xl font-semibold tabular-nums tracking-tighter truncate">{value}</p>
- <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tighter mt-1 truncate">{sub}</p>
-                </div>
-            </CardContent>
-        </Card>
+        <div className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200 flex items-center gap-3 group">
+            <div className={cn("p-2.5 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", bg, color)}>
+                <Icon className="h-5 w-5" />
+            </div>
+            <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">{label}</p>
+                <p className="text-2xl font-bold text-foreground tracking-tight tabular-nums">{value}</p>
+            </div>
+        </div>
     );
 }

@@ -17,10 +17,51 @@ export async function traverseNodes(
   let outgoingEdges = automation.edges.filter((e) => e.source === nodeId);
 
   if (currentNode.type === 'conditionNode') {
-    const isTrue = await evaluateConditionNode(currentNode, context.payload, async (audienceId) => {
-      const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
-      return snap.exists ? snap.data() : null;
-    });
+    const isTrue = await evaluateConditionNode(
+      currentNode,
+      context.payload,
+      async (audienceId) => {
+        const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
+        return snap.exists ? snap.data() : null;
+      },
+      async (entityId, automationId, operator) => {
+        if (operator === 'currently_in') {
+          const snap = await adminDb.collection('automation_runs')
+            .where('entityId', '==', entityId)
+            .where('automationId', '==', automationId)
+            .where('status', '==', 'running')
+            .limit(1)
+            .get();
+          return !snap.empty;
+        }
+        if (operator === 'has_entered') {
+          const snap = await adminDb.collection('automation_runs')
+            .where('entityId', '==', entityId)
+            .where('automationId', '==', automationId)
+            .limit(1)
+            .get();
+          return !snap.empty;
+        }
+        if (operator === 'has_completed') {
+          const snap = await adminDb.collection('automation_runs')
+            .where('entityId', '==', entityId)
+            .where('automationId', '==', automationId)
+            .where('status', '==', 'completed')
+            .limit(1)
+            .get();
+          return !snap.empty;
+        }
+        if (operator === 'not_entered') {
+          const snap = await adminDb.collection('automation_runs')
+            .where('entityId', '==', entityId)
+            .where('automationId', '==', automationId)
+            .limit(1)
+            .get();
+          return snap.empty;
+        }
+        return false;
+      }
+    );
     const targetHandle = isTrue ? 'true' : 'false';
     outgoingEdges = outgoingEdges.filter((e) => e.sourceHandle === targetHandle);
   } else if (currentNode.type === 'tagConditionNode') {

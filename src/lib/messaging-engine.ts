@@ -28,6 +28,7 @@ interface SendMessageInput {
   scheduledAt?: string; // ISO string
   // Task 15.1: Allow overriding template content
   body?: string; // Override template body
+  subject?: string; // Override template subject
   tags?: { name: string; value: string }[]; // Optional provider-specific tags (Requirement 7)
   trackLinks?: boolean; // Phase 7: Whether to track URLs in the body
 }
@@ -506,32 +507,36 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // - 'plain_text' / 'html_code': Resolve variables in body, apply style wrapper if present
     // Fallback: if contentMode is missing (legacy), use blocks?.length heuristic
     let resolvedBody = '';
-    const useBlocks = template.contentMode === 'rich_builder'
-        || (!template.contentMode && template.channel === 'email' && template.blocks?.length);
-
-    if (useBlocks && template.blocks?.length) {
-        resolvedBody = renderBlocksToHtml(template.blocks, finalVariables, {
-            wrapper: styleWrapper || undefined,
-            style: activeStyleDoc || undefined
-        });
+    if (input.body !== undefined) {
+        resolvedBody = resolveVariables(input.body, finalVariables);
     } else {
-        resolvedBody = resolveVariables(template.body, finalVariables);
-        if (template.channel === 'email') {
-            if (styleWrapper && styleWrapper.includes('{{content}}')) {
-                let contentHtml = resolvedBody;
-                if (template.contentMode === 'plain_text' || !template.contentMode) {
-                    const escaped = contentHtml
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;');
-                    const withLinks = parseMarkdownLinksToHtml(escaped);
-                    contentHtml = withLinks.replace(/\n/g, '<br>\n');
+        const useBlocks = template.contentMode === 'rich_builder'
+            || (!template.contentMode && template.channel === 'email' && template.blocks?.length);
+
+        if (useBlocks && template.blocks?.length) {
+            resolvedBody = renderBlocksToHtml(template.blocks, finalVariables, {
+                wrapper: styleWrapper || undefined,
+                style: activeStyleDoc || undefined
+            });
+        } else {
+            resolvedBody = resolveVariables(template.body, finalVariables);
+            if (template.channel === 'email') {
+                if (styleWrapper && styleWrapper.includes('{{content}}')) {
+                    let contentHtml = resolvedBody;
+                    if (template.contentMode === 'plain_text' || !template.contentMode) {
+                        const escaped = contentHtml
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;');
+                        const withLinks = parseMarkdownLinksToHtml(escaped);
+                        contentHtml = withLinks.replace(/\n/g, '<br>\n');
+                    }
+                    resolvedBody = resolveVariables(styleWrapper, finalVariables).replace('{{content}}', contentHtml);
+                } else if (template.contentMode === 'plain_text' || !template.contentMode) {
+                    // Plain text emails: convert \n to <br> and wrap in styled HTML container
+                    resolvedBody = plainTextToHtml(resolvedBody);
                 }
-                resolvedBody = resolveVariables(styleWrapper, finalVariables).replace('{{content}}', contentHtml);
-            } else if (template.contentMode === 'plain_text' || !template.contentMode) {
-                // Plain text emails: convert \n to <br> and wrap in styled HTML container
-                resolvedBody = plainTextToHtml(resolvedBody);
             }
         }
     }
@@ -551,7 +556,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         });
     }
 
-    let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
+    let resolvedSubject = input.subject !== undefined
+        ? resolveVariables(input.subject, finalVariables)
+        : (template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null);
     let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
     let resolvedLogTitle = resolveVariables(template.name, finalVariables);
 
@@ -581,6 +588,47 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 error: `Recipient mailbox is marked as ${hygiene.status} (Hygiene Score: ${hygiene.score}). Delivery blocked to protect sender reputation.` 
             };
         }
+    }
+
+    // 7.8 Intercept Scheduling if scheduledAt is provided
+    if (scheduledAt) {
+        const scheduledMsgData = {
+            organizationId: orgId || template.organizationId || 'default',
+            workspaceId: resolvedWorkspaceId,
+            templateId: template.id,
+            channel: template.channel,
+            recipientContact: recipient,
+            recipientEntityId: resolvedEntityId || null,
+            variables: JSON.parse(JSON.stringify(finalVariables)),
+            scheduledAt,
+            status: 'pending' as const,
+            reminderType: variables._reminderType || 'composer',
+            sourceEventId: variables._sourceEventId || variables.campaignId || 'manual',
+            sourceEventType: variables._sourceEventType || 'composer',
+            retryCount: 0,
+            createdAt: new Date().toISOString(),
+            customSubject: resolvedSubject,
+            customBody: resolvedBody,
+            senderProfileId: sender.id || null,
+            senderName: sender.name || null,
+            senderIdentifier: sender.identifier || null,
+        };
+
+        const scheduledRef = await adminDb.collection('scheduled_messages').add(scheduledMsgData);
+        
+        await logActivity({
+            entityId: resolvedEntityId || null,
+            entityType: resolvedEntityType || null,
+            organizationId: orgId || 'default',
+            userId: null, 
+            workspaceId: resolvedWorkspaceId || 'onboarding',
+            type: 'notification_scheduled',
+            source: 'system',
+            description: `Scheduled ${template.channel} "${resolvedLogTitle}" to ${recipient} for ${scheduledAt}`,
+            metadata: { scheduledMessageId: scheduledRef.id, channel: template.channel }
+        });
+
+        return { success: true, logId: scheduledRef.id };
     }
 
     // 8. Gateway Delivery

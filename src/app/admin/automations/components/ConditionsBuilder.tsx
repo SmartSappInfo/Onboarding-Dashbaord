@@ -72,9 +72,10 @@ const CONDITION_FIELDS = [
     ],
   },
   {
-    group: 'Saved Audiences',
+    group: 'Saved Audiences & Automations',
     items: [
       { value: 'saved_audience', label: 'Saved Segment / Audience' },
+      { value: 'automation', label: 'Automation Status' },
     ],
   },
 ];
@@ -103,6 +104,7 @@ const FIELD_TYPE_MAP: Record<string, string> = {
   scanned_qr: 'scanned_qr',
   short_link: 'short_link',
   saved_audience: 'audience',
+  automation: 'automation',
 };
 
 // Operators by Field type
@@ -193,6 +195,12 @@ const OPERATORS_BY_TYPE: Record<string, { value: string; label: string }[]> = {
     { value: 'in_audience', label: 'is in saved segment' },
     { value: 'not_in_audience', label: 'is not in saved segment' },
   ],
+  automation: [
+    { value: 'currently_in', label: 'Currently in' },
+    { value: 'has_entered', label: 'Has entered' },
+    { value: 'has_completed', label: 'Has completed' },
+    { value: 'not_entered', label: 'Has not entered' },
+  ],
 };
 
 interface ConditionsBuilderProps {
@@ -277,6 +285,16 @@ export function ConditionsBuilder({
     );
   }, [firestore, activeWorkspaceId]);
   const { data: allPages } = useCollection<any>(pagesQuery);
+
+  const automationsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'automations'),
+      where('workspaceIds', 'array-contains', activeWorkspaceId),
+      orderBy('name', 'asc')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: allWorkspaceAutomations } = useCollection<any>(automationsQuery);
 
   // Initialize with at least one group and condition if empty
   const activeGroups = React.useMemo(() => {
@@ -1019,6 +1037,28 @@ export function ConditionsBuilder({
                                     ))}
                                     {(!allAudiences || allAudiences.length === 0) && (
                                       <SelectItem value="none" disabled className="text-[10px]">No segments found</SelectItem>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              )}
+
+                              {/* 15.1. Automation Status Selector */}
+                              {valueType === 'automation' && (
+                                <Select 
+                                  value={cond.value || ''} 
+                                  onValueChange={(val) => updateConditionValue(group.id, cond.id, { value: val })}
+                                >
+                                  <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
+                                    <SelectValue placeholder="Select automation..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl">
+                                    {allWorkspaceAutomations?.map((auto: any) => (
+                                      <SelectItem key={auto.id} value={auto.id} className="text-[10px] font-bold">
+                                        {auto.name}
+                                      </SelectItem>
+                                    ))}
+                                    {(!allWorkspaceAutomations || allWorkspaceAutomations.length === 0) && (
+                                      <SelectItem value="none" disabled className="text-[10px]">No automations found</SelectItem>
                                     )}
                                   </SelectContent>
                                 </Select>

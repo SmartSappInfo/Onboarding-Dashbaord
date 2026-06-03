@@ -162,4 +162,46 @@ describe('evaluateConditionNode (Advanced Segment Logic)', () => {
     expect(await evaluateConditionNode(audienceConditionNode, { vip: 'true' }, mockResolveAudience)).toBe(true);
     expect(await evaluateConditionNode(audienceConditionNode, { vip: 'false' }, mockResolveAudience)).toBe(false);
   });
+
+  // Automation Status Checks
+  it('evaluates automation conditions using injected checkAutomationStatus resolver', async () => {
+    const automationConditionNode = {
+      data: {
+        config: {
+          relation: 'AND' as const,
+          groups: [
+            {
+              id: 'g1',
+              relation: 'AND' as const,
+              conditions: [
+                { id: 'c1', field: 'automation', operator: 'currently_in', value: 'auto_welcome_id' }
+              ]
+            }
+          ]
+        }
+      }
+    };
+
+    const mockCheckAutomation = async (entityId: string, automationId: string, operator: string) => {
+      return entityId === 'contact_123' && automationId === 'auto_welcome_id' && operator === 'currently_in';
+    };
+
+    expect(
+      await evaluateConditionNode(
+        automationConditionNode,
+        { id: 'contact_123' },
+        undefined,
+        mockCheckAutomation
+      )
+    ).toBe(true);
+
+    expect(
+      await evaluateConditionNode(
+        automationConditionNode,
+        { id: 'contact_other' },
+        undefined,
+        mockCheckAutomation
+      )
+    ).toBe(false);
+  });
 });

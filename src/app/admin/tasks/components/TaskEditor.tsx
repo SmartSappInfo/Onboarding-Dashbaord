@@ -56,7 +56,8 @@ import {
     Phone,
     MapPin,
     GraduationCap,
-    ChevronLeft
+    ChevronLeft,
+    ChevronDown
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, orderBy, query, where, limit } from 'firebase/firestore';
@@ -69,6 +70,11 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MediaSelect } from '../../entities/components/media-select';
 import { useTerminology } from '@/hooks/use-terminology';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+const getInitials = (name?: string | null) =>
+  name ? name.split(' ').map((n) => n[0]).join('').toUpperCase() : '?';
 
 const taskSchema = z.object({
     title: z.string().min(3, 'Title must be at least 3 characters.'),
@@ -76,7 +82,7 @@ const taskSchema = z.object({
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
     category: z.enum(['call', 'visit', 'document', 'training', 'follow_up', 'general']),
     status: z.enum(['todo', 'in_progress', 'waiting', 'review', 'done']),
-    assignedTo: z.string().min(1, 'Please assign an owner.'),
+    assignedTo: z.array(z.string()).min(1, 'Please assign at least one owner.'),
     entityId: z.string().optional(),
     entityType: z.enum(['institution', 'family', 'person', 'School']).optional(),
     startDate: z.date().optional(),
@@ -211,6 +217,10 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
     }, [open, firestore, activeWorkspaceId]);
     
     const { data: users } = useCollection<UserProfile>(usersQuery);
+    const workspaceUsers = React.useMemo(() => {
+        if (!users || !activeWorkspaceId) return [];
+        return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
+    }, [users, activeWorkspaceId]);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
 
@@ -222,9 +232,10 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
             priority: 'medium',
             category: 'general',
             status: 'todo',
-            assignedTo: '',
+            assignedTo: [],
             entityId: '',
             entityType: undefined,
+            startDate: new Date(),
             dueDate: new Date(),
             reminders: [],
             notes: [],
@@ -259,6 +270,12 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
     const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
     React.useEffect(() => {
+        const normalizeAssignees = (val: any): string[] => {
+            if (!val) return [];
+            if (Array.isArray(val)) return val;
+            return [val];
+        };
+
         if (open) {
             if (task) {
                 if (task.id) {
@@ -269,7 +286,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                         priority: task.priority,
                         category: task.category,
                         status: task.status,
-                        assignedTo: task.assignedTo,
+                        assignedTo: normalizeAssignees(task.assignedTo),
                         entityId: task.entityId || '',
                         entityType: (task.entityType as any) || undefined,
                         startDate: task.startDate ? new Date(task.startDate) : undefined,
@@ -290,10 +307,10 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                             priority: task.priority || 'medium',
                             category: task.category,
                             status: task.status || 'todo',
-                            assignedTo: task.assignedTo || currentUser?.uid || '',
+                            assignedTo: normalizeAssignees(task.assignedTo || currentUser?.uid || ''),
                             entityId: task.entityId || '',
                             entityType: (task.entityType as any) || undefined,
-                            startDate: task.startDate ? new Date(task.startDate) : undefined,
+                            startDate: task.startDate ? new Date(task.startDate) : new Date(),
                             dueDate: task.dueDate ? new Date(task.dueDate) : new Date(),
                             reminders: [],
                             notes: [],
@@ -305,14 +322,14 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                     } else {
                         setActiveStep(1);
                         reset({
-                            title: '', description: '', priority: 'medium', category: 'general', status: task.status || 'todo', assignedTo: currentUser?.uid || '', entityId: '', entityType: undefined, dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
+                            title: '', description: '', priority: 'medium', category: 'general', status: task.status || 'todo', assignedTo: currentUser?.uid ? [currentUser.uid] : [], entityId: '', entityType: undefined, startDate: new Date(), dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
                         });
                     }
                 }
             } else {
                 setActiveStep(1);
                 reset({
-                    title: '', description: '', priority: 'medium', category: 'general', status: 'todo', assignedTo: currentUser?.uid || '', entityId: '', entityType: undefined, dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
+                    title: '', description: '', priority: 'medium', category: 'general', status: 'todo', assignedTo: currentUser?.uid ? [currentUser.uid] : [], entityId: '', entityType: undefined, startDate: new Date(), dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
                 });
             }
         }
@@ -348,6 +365,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
     const onSubmit = async (data: TaskFormValues) => {
         const payload = {
             ...data,
+            entityId: data.entityId === 'none' ? '' : data.entityId,
             workspaceId: activeWorkspaceId, 
             startDate: data.startDate?.toISOString(),
             dueDate: data.dueDate.toISOString(),
@@ -358,16 +376,16 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl text-left bg-background">
+            <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border border-border shadow-2xl text-left bg-card">
                 {activeStep === 1 ? (
-                    <div className="flex flex-col h-full">
-                        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+                    <div className="flex flex-col h-full bg-card">
+                        <DialogHeader className="p-8 bg-card border-b border-border shrink-0 text-left">
                             <div className="flex items-center gap-4 text-left">
-                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                                <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-xl shadow-primary/20">
                                     <Layout className="h-6 w-6" />
                                 </div>
                                 <div className="text-left">
-                                    <DialogTitle className="text-2xl font-semibold tracking-tight text-left">Select a Task Template</DialogTitle>
+                                    <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground text-left">Select a Task Template</DialogTitle>
                                     <DialogDescription className="text-xs font-bold text-muted-foreground text-left">
                                         Choose a pre-configured template or start from scratch.
                                     </DialogDescription>
@@ -375,7 +393,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                             </div>
                         </DialogHeader>
 
-                        <div className="flex-1 overflow-y-auto p-8">
+                        <div className="flex-1 overflow-y-auto p-8 bg-card">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {PRESET_TEMPLATES.map((preset) => {
                                     const Icon = preset.icon;
@@ -384,7 +402,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                             key={preset.id}
                                             type="button"
                                             onClick={() => handleSelectPreset(preset)}
-                                            className="group flex flex-col items-start text-left p-5 rounded-2xl border border-border bg-card hover:border-primary/45 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
+                                            className="group flex flex-col items-start text-left p-5 rounded-2xl border border-border bg-background hover:border-primary/40 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
                                         >
                                             <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-105 mb-4 shadow-inner", preset.color)}>
                                                 <Icon className="h-5 w-5" />
@@ -397,32 +415,32 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                             </div>
                         </div>
 
-                        <DialogFooter className="bg-muted/30 p-8 border-t shrink-0 flex justify-between items-center text-left">
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl h-12 px-10 text-left">Cancel</Button>
-                            <Button type="button" onClick={handleStartFromScratch} className="rounded-2xl font-semibold h-14 px-16 shadow-2xl bg-primary text-white text-sm active:scale-95 transition-all text-left">
+                        <DialogFooter className="bg-card p-8 border-t border-border shrink-0 flex justify-between items-center text-left">
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold text-muted-foreground hover:text-foreground rounded-xl h-12 px-10 text-left">Cancel</Button>
+                            <Button type="button" onClick={handleStartFromScratch} className="rounded-xl font-bold h-14 px-16 shadow-2xl bg-blue-600 text-white hover:bg-blue-700 active:scale-95 transition-all text-sm text-left">
                                 Start From Scratch
                             </Button>
                         </DialogFooter>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full text-left">
-                        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+                    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full text-left bg-card">
+                        <DialogHeader className="p-8 bg-card border-b border-border shrink-0 text-left">
                             <div className="flex items-center gap-4 text-left">
                                 {(!task || !task.id) && (
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         onClick={() => setActiveStep(1)}
-                                        className="h-10 w-10 p-0 rounded-xl border border-border hover:bg-muted"
+                                        className="h-10 w-10 p-0 rounded-xl border border-border bg-background text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                                     >
                                         <ChevronLeft className="h-5 w-5" />
                                     </Button>
                                 )}
-                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                                <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-xl shadow-primary/20">
                                     <Layout className="h-6 w-6" />
                                 </div>
                                 <div className="text-left">
-                                    <DialogTitle className="text-2xl font-semibold tracking-tight text-left">
+                                    <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground text-left">
                                         {task?.id ? 'Edit Task Details' : 'Configure Task Details'}
                                     </DialogTitle>
                                     <DialogDescription className="text-xs font-bold text-muted-foreground text-left">
@@ -432,74 +450,135 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                             </div>
                         </DialogHeader>
 
-                        <div className="flex-1 overflow-hidden bg-background text-left">
+                        <div className="flex-1 overflow-hidden bg-card text-left">
                             <ScrollArea className="h-full text-left">
-                                <div className="p-8 space-y-10 text-left">
-                                    <div className="space-y-6 text-left">
-                                        <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">Task Title</Label>
-                                            <Input {...register('title')} placeholder="Describe what needs to be done..." className="h-14 rounded-2xl bg-muted/20 border-none font-semibold text-2xl px-6 shadow-inner text-left" />
-                                        </div>
-                                        <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">Task Details & Notes</Label>
-                                            <Textarea {...register('description')} placeholder="Provide any additional details or background context..." className="min-h-[100px] rounded-2xl bg-muted/20 border-none p-6 font-medium leading-relaxed shadow-inner text-left" />
-                                        </div>
+                                <div className="p-8 space-y-8 text-left">
+                                    {/* Task Title */}
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-xs font-semibold text-foreground/90 ml-1 text-left">Task Title</Label>
+                                        <Input {...register('title')} placeholder="Describe what needs to be done..." className="h-14 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary font-bold px-6 text-left" />
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-                                        <div className="space-y-4 text-left">
-                                            <Label className="text-[10px] font-semibold text-primary ml-1 text-left">How urgent is this?</Label>
+                                    {/* Urgency & Status */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-xs font-semibold text-foreground/90 ml-1 text-left">How Urgent Is This?</Label>
                                             <Controller name="priority" control={control} render={({ field }) => (
-                                                <div className="grid grid-cols-4 gap-1.5 bg-muted/30 p-1.5 rounded-2xl border shadow-inner text-left">
+                                                <div className="grid grid-cols-4 gap-1.5 bg-background p-1.5 rounded-xl border border-border text-left">
                                                     {(['low', 'medium', 'high', 'urgent'] as const).map(p => (
-                                                        <button key={p} type="button" onClick={() => field.onChange(p)} className={cn("h-10 rounded-xl font-semibold text-[9px] capitalize transition-all text-center px-1", field.value === p ? (p === 'urgent' ? "bg-rose-600 text-white shadow-lg" : p === 'high' ? "bg-orange-500 text-white shadow-lg" : "bg-card shadow-lg text-primary") : "text-muted-foreground opacity-60 hover:opacity-100")}>{p}</button>
+                                                        <button
+                                                            key={p}
+                                                            type="button"
+                                                            onClick={() => field.onChange(p)}
+                                                            className={cn(
+                                                                "h-10 rounded-lg font-bold text-[9px] capitalize transition-all text-center px-1",
+                                                                field.value === p
+                                                                    ? (p === 'low' ? "bg-emerald-600 text-white shadow-md"
+                                                                       : p === 'medium' ? "bg-blue-600 text-white shadow-md"
+                                                                       : p === 'high' ? "bg-orange-500 text-white shadow-md"
+                                                                       : "bg-rose-600 text-white shadow-md")
+                                                                    : (p === 'low' ? "text-emerald-500/70 hover:text-emerald-500 hover:bg-emerald-500/10"
+                                                                       : p === 'medium' ? "text-blue-500/70 hover:text-blue-500 hover:bg-blue-500/10"
+                                                                       : p === 'high' ? "text-orange-500/70 hover:text-orange-500 hover:bg-orange-500/10"
+                                                                       : "text-rose-500/70 hover:text-rose-500 hover:bg-rose-500/10")
+                                                            )}
+                                                        >
+                                                            {p}
+                                                        </button>
                                                     ))}
                                                 </div>
                                             )} />
                                         </div>
-                                        <div className="space-y-4 text-left">
-                                            <Label className="text-[10px] font-semibold text-primary ml-1 text-left">Status</Label>
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-xs font-semibold text-foreground/90 ml-1 text-left">Status</Label>
                                             <Controller name="status" control={control} render={({ field }) => (
                                                 <Select value={field.value} onValueChange={field.onChange}>
-                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left">
+                                                    <SelectTrigger className="h-12 rounded-xl bg-background border border-border text-foreground font-bold focus:ring-2 focus:ring-primary focus:border-primary text-left">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-none shadow-2xl text-left">
+                                                    <SelectContent className="rounded-xl border border-border bg-card text-foreground shadow-2xl text-left">
                                                         <SelectItem value="todo" className="font-bold text-left">To Do</SelectItem>
-                                                        <SelectItem value="in_progress" className="font-bold text-blue-600 text-left">In Progress</SelectItem>
-                                                        <SelectItem value="waiting" className="font-bold text-orange-600 text-left">Waiting</SelectItem>
-                                                        <SelectItem value="review" className="font-bold text-purple-600 text-left">Under Review</SelectItem>
-                                                        <SelectItem value="done" className="font-bold text-emerald-600 text-left">Completed</SelectItem>
+                                                        <SelectItem value="in_progress" className="font-bold text-blue-500 text-left">In Progress</SelectItem>
+                                                        <SelectItem value="waiting" className="font-bold text-orange-500 text-left">Waiting</SelectItem>
+                                                        <SelectItem value="review" className="font-bold text-purple-500 text-left">Under Review</SelectItem>
+                                                        <SelectItem value="done" className="font-bold text-emerald-500 text-left">Completed</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             )} />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                                    {/* Assigned Owners & Link to Campus */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><User className="h-3 w-3" /> Assigned Owner</Label>
-                                            <Controller name="assignedTo" control={control} render={({ field }) => (
-                                                <Select value={field.value} onValueChange={field.onChange}>
-                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left">
-                                                        <SelectValue placeholder="Assign to teammate..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-xl text-left">
-                                                        {users?.map(u => (
-                                                            <SelectItem key={u.id} value={u.id} className="text-left">{u.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            )} />
+                                            <Label className="text-xs font-semibold text-foreground/90 ml-1 flex items-center gap-2 text-left"><User className="h-3.5 w-3.5 text-muted-foreground" /> Assigned Owners</Label>
+                                            <Controller name="assignedTo" control={control} render={({ field }) => {
+                                                const value = Array.isArray(field.value) ? field.value : (field.value ? [field.value] : []);
+                                                const selectedUsers = workspaceUsers.filter(u => value.includes(u.id));
+                                                return (
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button 
+                                                                type="button"
+                                                                variant="outline"
+                                                                className="w-full h-12 rounded-xl bg-background border border-border text-foreground font-bold hover:bg-muted/10 justify-between items-center px-4"
+                                                            >
+                                                                <span className="truncate">
+                                                                    {selectedUsers.length > 0 
+                                                                        ? selectedUsers.map(u => u.name).join(', ') 
+                                                                        : 'Assign to teammates...'}
+                                                                </span>
+                                                                <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[300px] rounded-xl border border-border bg-card text-foreground p-2 shadow-2xl text-left">
+                                                            <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                                                                {workspaceUsers && workspaceUsers.length > 0 ? (
+                                                                    workspaceUsers.map(u => {
+                                                                        const isChecked = value.includes(u.id);
+                                                                        return (
+                                                                            <div 
+                                                                                key={u.id}
+                                                                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/30 cursor-pointer select-none"
+                                                                                onClick={() => {
+                                                                                    const nextValue = isChecked
+                                                                                        ? value.filter(id => id !== u.id)
+                                                                                        : [...value, u.id];
+                                                                                    field.onChange(nextValue);
+                                                                                }}
+                                                                            >
+                                                                                <Checkbox 
+                                                                                    checked={isChecked}
+                                                                                    onCheckedChange={() => {}}
+                                                                                    className="h-4.5 w-4.5 rounded-md border-border"
+                                                                                />
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <Avatar className="h-5 w-5">
+                                                                                        <AvatarImage src={u.photoURL || undefined} />
+                                                                                        <AvatarFallback className="text-[10px] bg-muted/40 font-bold">{getInitials(u.name)}</AvatarFallback>
+                                                                                    </Avatar>
+                                                                                    <span className="text-xs font-semibold">{u.name}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })
+                                                                ) : (
+                                                                    <div className="text-center py-4 text-xs text-muted-foreground">No teammates found</div>
+                                                                )}
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                );
+                                            }} />
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><Building2 className="h-3 w-3" /> Link to {singular}</Label>
+                                            <Label className="text-xs font-semibold text-foreground/90 ml-1 flex items-center gap-2 text-left"><Building2 className="h-3.5 w-3.5 text-muted-foreground" /> Link to {singular}</Label>
                                             <Controller name="entityId" control={control} render={({ field }) => (
                                                 <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left">
+                                                    <SelectTrigger className="h-12 rounded-xl bg-background border border-border text-foreground font-bold focus:ring-2 focus:ring-primary focus:border-primary text-left">
                                                         <SelectValue placeholder="General (Unlinked)" />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl text-left">
+                                                    <SelectContent className="rounded-xl border border-border bg-card text-foreground shadow-2xl text-left">
                                                         <SelectItem value="none" className="text-left">General / Unlinked</SelectItem>
                                                         {entities?.map(s => (
                                                             <SelectItem key={s.id} value={s.entityId} className="text-left">{s.displayName}</SelectItem>
@@ -510,79 +589,85 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                                    {/* Starts On & Due Date */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><Calendar className="h-3 w-3" /> Starts On</Label>
+                                            <Label className="text-xs font-semibold text-foreground/90 ml-1 flex items-center gap-2 text-left"><Calendar className="h-3.5 w-3.5 text-muted-foreground" /> Starts On</Label>
                                             <Controller name="startDate" control={control} render={({ field }) => (
-                                                <DateTimePicker value={field.value} onChange={field.onChange} />
+                                                <DateTimePicker value={field.value} onChange={field.onChange} variant="ghost" className="h-12 rounded-xl bg-background border border-border text-foreground font-bold hover:bg-muted/10 px-4" />
                                             )} />
                                         </div>
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2 text-left"><Target className="h-3 w-3" /> Due Date</Label>
+                                            <Label className="text-xs font-semibold text-foreground/90 ml-1 flex items-center gap-2 text-left"><Target className="h-3.5 w-3.5 text-muted-foreground" /> Due Date</Label>
                                             <Controller name="dueDate" control={control} render={({ field }) => (
-                                                <DateTimePicker value={field.value} onChange={field.onChange} />
+                                                <DateTimePicker value={field.value} onChange={field.onChange} variant="ghost" className="h-12 rounded-xl bg-background border border-border text-foreground font-bold hover:bg-muted/10 px-4" />
                                             )} />
                                         </div>
                                     </div>
 
-                                    <Separator className="opacity-50" />
+                                    {/* Task Details & Notes (At the bottom) */}
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-xs font-semibold text-foreground/90 ml-1 text-left">Task Details & Notes</Label>
+                                        <Textarea {...register('description')} placeholder="Provide any additional details or background context..." className="min-h-[100px] rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary p-6 font-medium leading-relaxed text-left" />
+                                    </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
-                                        <div className="space-y-8 text-left">
+                                    <Separator className="border-border" />
+
+                                    <div className="space-y-8 text-left">
+                                        {/* Attached Files */}
+                                        <div className="space-y-4 text-left">
                                             <div className="flex items-center justify-between px-1 text-left">
                                                 <div className="flex items-center gap-2 text-left">
-                                                    <StickyNote className="h-4 w-4 text-primary" />
-                                                    <h4 className="text-xs font-semibold uppercase text-left">Notes & Comments</h4>
+                                                    <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                                    <h4 className="text-xs font-semibold text-foreground/90 text-left">Attached Files</h4>
                                                 </div>
-                                                <Badge variant="secondary">{notes.length}</Badge>
+                                                <Badge variant="secondary" className="bg-background border border-border text-muted-foreground">{attachments.length}</Badge>
                                             </div>
-                                            <div className="space-y-4 text-left">
-                                                <div className="flex gap-2 text-left">
-                                                    <Textarea value={newNoteContent} onChange={e => setNewNoteContent(e.target.value)} placeholder="Type a note..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner text-xs text-left" />
-                                                    <Button type="button" onClick={handleAddNote} disabled={!newNoteContent.trim()} size="icon" className="h-auto w-12 rounded-xl shrink-0 bg-primary text-white shadow-lg text-left">
-                                                        <Plus className="h-5 w-5" />
-                                                    </Button>
-                                                </div>
-                                                <div className="space-y-3 text-left">
-                                                    {notes.map((note, idx) => (
-                                                        <div key={note.id} className="p-4 rounded-xl bg-background border relative group/note text-left">
-                                                            <div className="flex items-center justify-between mb-1.5 text-left">
-                                                                <p className="text-[9px] font-semibold text-primary/60 text-left">{note.authorName} · {format(new Date(note.createdAt), 'MMM d')}</p>
-                                                                <button type="button" onClick={() => removeNote(idx)} className="opacity-0 group-hover/note:opacity-100 transition-opacity text-destructive text-left">
-                                                                    <X size={12} />
-                                                                </button>
-                                                            </div>
-                                                            <p className="text-xs font-medium text-left">{note.content}</p>
+                                            <div className="p-1.5 rounded-2xl bg-background border-2 border-dashed border-border flex items-center justify-center text-left">
+                                                <MediaSelect onValueChange={handleAddAttachment} className="border-none shadow-none bg-transparent text-muted-foreground" />
+                                            </div>
+                                            <div className="space-y-2 text-left">
+                                                {attachments.map((att, idx) => (
+                                                    <div key={att.id} className="flex items-center justify-between p-3 rounded-xl bg-background border border-border shadow-sm group text-left">
+                                                        <div className="flex items-center gap-3 min-w-0 text-left">
+                                                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-muted-foreground truncate hover:underline text-left">{att.name}</a>
                                                         </div>
-                                                    ))}
-                                                </div>
+                                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg text-left" onClick={() => removeAttachment(idx)}>
+                                                            <X className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="space-y-8 text-left">
+
+                                        {/* Notes & Comments */}
+                                        <div className="space-y-4 text-left">
                                             <div className="flex items-center justify-between px-1 text-left">
                                                 <div className="flex items-center gap-2 text-left">
-                                                    <Paperclip className="h-4 w-4 text-primary" />
-                                                    <h4 className="text-xs font-semibold uppercase text-left">Attached Files</h4>
+                                                    <StickyNote className="h-4 w-4 text-muted-foreground" />
+                                                    <h4 className="text-xs font-semibold text-foreground/90 text-left">Notes & Comments</h4>
                                                 </div>
-                                                <Badge variant="secondary">{attachments.length}</Badge>
+                                                <Badge variant="secondary" className="bg-background border border-border text-muted-foreground">{notes.length}</Badge>
                                             </div>
-                                            <div className="space-y-4 text-left">
-                                                <div className="p-1.5 rounded-2xl bg-muted/20 border-2 border-dashed border-border flex items-center justify-center text-left">
-                                                    <MediaSelect onValueChange={handleAddAttachment} className="border-none shadow-none bg-transparent" />
-                                                </div>
-                                                <div className="space-y-2 text-left">
-                                                    {attachments.map((att, idx) => (
-                                                        <div key={att.id} className="flex items-center justify-between p-3 rounded-xl bg-card border shadow-sm group text-left">
-                                                            <div className="flex items-center gap-3 min-w-0 text-left">
-                                                                <FileText className="h-4 w-4 text-primary shrink-0" />
-                                                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold truncate hover:underline text-left">{att.name}</a>
-                                                            </div>
-                                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-lg text-left" onClick={() => removeAttachment(idx)}>
-                                                                <X className="h-3.5 w-3.5" />
-                                                            </Button>
+                                            <div className="flex gap-2 text-left">
+                                                <Textarea value={newNoteContent} onChange={e => setNewNoteContent(e.target.value)} placeholder="Type a note..." className="min-h-[80px] rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 text-xs text-left" />
+                                                <Button type="button" onClick={handleAddNote} disabled={!newNoteContent.trim()} size="icon" className="h-auto w-12 rounded-xl shrink-0 bg-blue-600 text-white hover:bg-blue-700 shadow-lg text-left">
+                                                    <Plus className="h-5 w-5" />
+                                                </Button>
+                                            </div>
+                                            <div className="space-y-3 text-left">
+                                                {notes.map((note, idx) => (
+                                                    <div key={note.id} className="p-4 rounded-xl bg-background border border-border relative group/note text-left">
+                                                        <div className="flex items-center justify-between mb-1.5 text-left">
+                                                            <p className="text-[9px] font-semibold text-muted-foreground text-left">{note.authorName} · {format(new Date(note.createdAt), 'MMM d')}</p>
+                                                            <button type="button" onClick={() => removeNote(idx)} className="opacity-0 group-hover/note:opacity-100 transition-opacity text-rose-500 text-left">
+                                                                <X size={12} />
+                                                            </button>
                                                         </div>
-                                                    ))}
-                                                </div>
+                                                        <p className="text-xs font-medium text-foreground text-left">{note.content}</p>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
@@ -590,12 +675,30 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                             </ScrollArea>
                         </div>
 
-                        <DialogFooter className="bg-muted/30 p-8 border-t shrink-0 flex justify-between text-left">
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl h-12 px-10 text-left">Discard</Button>
-                            <Button type="submit" disabled={isSaving} className="rounded-2xl font-semibold h-14 px-16 shadow-2xl bg-primary text-white text-sm gap-2 active:scale-95 transition-all text-left">
-                                {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                                {task?.id ? 'Save Changes' : 'Create Task'}
-                            </Button>
+                        <DialogFooter className="bg-card p-8 border-t border-border shrink-0 flex justify-between text-left">
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold text-muted-foreground hover:text-foreground rounded-xl h-12 px-10 text-left">Discard</Button>
+                            <div className="flex gap-3">
+                                {task?.id && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={async () => {
+                                            const currentStatus = form.getValues('status');
+                                            const newStatus = currentStatus === 'done' ? 'todo' : 'done';
+                                            setValue('status', newStatus);
+                                            // Submit task state updates immediately
+                                            handleSubmit(onSubmit)();
+                                        }}
+                                        className="font-bold rounded-xl h-12 px-6 border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                                    >
+                                        {form.watch('status') === 'done' ? 'Reopen Task' : 'Mark Completed'}
+                                    </Button>
+                                )}
+                                <Button type="submit" disabled={isSaving} className="rounded-xl font-bold h-12 px-16 shadow-2xl bg-blue-600 text-white hover:bg-blue-700 active:scale-95 text-sm gap-2 transition-all text-left">
+                                    {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                                    {task?.id ? 'Save Changes' : 'Create Task'}
+                                </Button>
+                            </div>
                         </DialogFooter>
                     </form>
                 )}

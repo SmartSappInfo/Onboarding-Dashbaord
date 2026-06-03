@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import type { Tag as TagType, Pipeline, OnboardingStage, AutomationTrigger } from '@/lib/types';
+import type { Tag as TagType, Pipeline, OnboardingStage, AutomationTrigger, Automation } from '@/lib/types';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
@@ -35,6 +35,7 @@ interface TriggerConfigPanelProps {
   pipelines: Pipeline[];
   stages: OnboardingStage[];
   webhookUrl: string;
+  automations?: Automation[];
 }
 
 export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
@@ -47,6 +48,7 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
   pipelines,
   stages,
   webhookUrl,
+  automations = [],
 }: TriggerConfigPanelProps) {
   const { toast } = useToast();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
@@ -402,6 +404,33 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
           />
           <p className="text-[9px] text-muted-foreground font-medium pl-1 leading-relaxed">
             Fires when a custom telemetry log matches this exact name.
+          </p>
+        </div>
+      ) : null}
+
+      {trigger === 'AUTOMATION_ENTERED' || trigger === 'AUTOMATION_COMPLETED' ? (
+        <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-violet-500/5 p-6 rounded-[2rem] border border-violet-500/20 shadow-inner text-left">
+          <Label className="text-[10px] font-semibold text-violet-600 flex items-center gap-2">
+            <Settings2 className="h-3 w-3" /> Target Automation to Watch
+          </Label>
+          <Select
+            value={config.watchAutomationId || 'all'}
+            onValueChange={(v) => updateConfig({ watchAutomationId: v })}
+          >
+            <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4 text-left">
+              <SelectValue placeholder="All automations" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
+              <SelectItem value="all" className="rounded-lg p-2 font-semibold">Any/All Automations</SelectItem>
+              {(automations || []).map((a) => (
+                <SelectItem key={a.id} value={a.id} className="rounded-lg p-2 font-semibold">
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-[9px] text-muted-foreground font-medium pl-1 leading-relaxed">
+            Fires when a contact {trigger === 'AUTOMATION_ENTERED' ? 'enters' : 'completes'} the chosen workflow.
           </p>
         </div>
       ) : null}

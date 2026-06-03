@@ -154,3 +154,46 @@ export async function sendTestMessageAction(
     return { success: false, error: err.message };
   }
 }
+
+export async function rescheduleMessageAction(id: string, dateIsoString: string) {
+  try {
+    const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
+    await ScheduledMessageRepository.updateSchedule(id, new Date(dateIsoString));
+    return { success: true };
+  } catch (err: any) {
+    console.error('[rescheduleMessageAction]', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function cancelMessageAction(id: string) {
+  try {
+    const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
+    await ScheduledMessageRepository.cancel(id);
+    return { success: true };
+  } catch (err: any) {
+    console.error('[cancelMessageAction]', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function sendMessageNowAction(id: string) {
+  try {
+    const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
+    return await ScheduledMessageRepository.sendNow(id);
+  } catch (err: any) {
+    console.error('[sendMessageNowAction]', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateScheduledMessageContentAction(id: string, subject: string | null, body: string | null) {
+  try {
+    const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
+    await ScheduledMessageRepository.updateContent(id, subject, body);
+    return { success: true };
+  } catch (err: any) {
+    console.error('[updateScheduledMessageContentAction]', err);
+    return { success: false, error: err.message };
+  }
+}

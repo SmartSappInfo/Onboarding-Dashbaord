@@ -224,7 +224,9 @@ export type AutomationTrigger =
   | 'EMAIL_BOUNCED'
   | 'SCORE_CHANGED'
   | 'DEAL_OWNER_CHANGED'
-  | 'ENTITY_INACTIVE';
+  | 'ENTITY_INACTIVE'
+  | 'AUTOMATION_ENTERED'
+  | 'AUTOMATION_COMPLETED';
 
 /**
  * Configuration for tag-based automation triggers (TAG_ADDED / TAG_REMOVED).
@@ -1929,8 +1931,9 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   category: TaskCategory;
-  assignedTo: string;
+  assignedTo: string | string[];
   assignedToName?: string;
+  assignedToNames?: string[];
   entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity
   dueDate: string;
@@ -2244,6 +2247,19 @@ export interface ScheduledMessage {
   sentAt?: string;
   error?: string;
   createdAt: string;
+
+  // Snapshot content overrides
+  customSubject?: string | null;
+  customBody?: string | null;
+  
+  // Custom sender profile configuration
+  senderProfileId?: string | null;
+  senderName?: string | null;
+  senderIdentifier?: string | null;
+
+  // Provider tracking info (for gateway/cancellation sync)
+  providerId?: string | null;
+  providerStatus?: string | null;
 }
 
 export interface ComposerContext {

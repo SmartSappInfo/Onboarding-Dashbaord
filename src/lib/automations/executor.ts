@@ -31,6 +31,21 @@ export async function executeAutomation(
     chainDepth: (triggerPayload._chainDepth as number | undefined) ?? chainDepth,
   };
 
+  // Trigger the AUTOMATION_ENTERED protocol event asynchronously
+  try {
+    const { triggerAutomationProtocols } = await import('../automation-processor');
+    triggerAutomationProtocols('AUTOMATION_ENTERED', {
+      automationId: automation.id,
+      automationName: automation.name,
+      entityId: context.entityId,
+      entityType: context.entityType,
+      workspaceId: context.workspaceId,
+      startedAt: timestamp,
+    }).catch((e) => console.error('Failed to trigger AUTOMATION_ENTERED protocols:', e));
+  } catch (err) {
+    console.error('Failed to import triggerAutomationProtocols:', err);
+  }
+
   try {
     const triggerNode = automation.nodes.find((n) => n.type === 'triggerNode');
     if (!triggerNode) throw new Error('Entry point not found in blueprint.');
