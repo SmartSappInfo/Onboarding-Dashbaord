@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useParams } from 'next/navigation';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
+import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
 
 /**
  * @fileOverview High-fidelity Condition Node for Automation Canvas.
@@ -19,6 +20,7 @@ export function ConditionNode({ id, data, selected }: any) {
     const params = useParams();
     const automationId = params?.id as string;
     const firestore = useFirestore();
+    const { allTags } = useWorkspaceScopedQueries();
 
     const jobsQuery = useMemoFirebase(() => {
         if (!firestore || !automationId || !id) return null;
@@ -36,17 +38,31 @@ export function ConditionNode({ id, data, selected }: any) {
     const groups = config.groups || [];
     
     const getConditionDescription = () => {
+        const getFormattedValue = (field: string, val: any) => {
+            if (field === 'tags' && Array.isArray(val)) {
+                return val.map((id: string) => {
+                    const tag = allTags?.find((t) => t.id === id);
+                    return tag ? tag.name : id;
+                }).join(', ');
+            }
+            if (field === 'tags' && typeof val === 'string') {
+                const tag = allTags?.find((t) => t.id === val);
+                return tag ? tag.name : val;
+            }
+            return val ?? '';
+        };
+
         if (groups.length === 0) {
             const legacyConditions = config.conditions || [];
             if (legacyConditions.length === 0) {
                 if (config.field && config.operator) {
-                    return `If "${config.field}" ${config.operator.replace('_', ' ')} "${config.value ?? ''}"`;
+                    return `If "${config.field}" ${config.operator.replace('_', ' ')} "${getFormattedValue(config.field, config.value)}"`;
                 }
                 return 'Awaiting condition rules';
             }
             if (legacyConditions.length === 1) {
                 const c = legacyConditions[0];
-                return `If "${c.field}" ${c.operator?.replace('_', ' ') || ''} "${c.value ?? ''}"`;
+                return `If "${c.field}" ${c.operator?.replace('_', ' ') || ''} "${getFormattedValue(c.field, c.value)}"`;
             }
             return `If ${legacyConditions.length} rules match (${(config.relation || 'and').toUpperCase()})`;
         }
@@ -58,7 +74,7 @@ export function ConditionNode({ id, data, selected }: any) {
 
         if (totalConditions === 1) {
             const firstCond = groups[0]?.conditions?.[0] || {};
-            return `If "${firstCond.field}" ${firstCond.operator?.replace('_', ' ') || ''} "${firstCond.value ?? ''}"`;
+            return `If "${firstCond.field}" ${firstCond.operator?.replace('_', ' ') || ''} "${getFormattedValue(firstCond.field, firstCond.value)}"`;
         }
 
         const relation = (config.relation || 'and').toUpperCase();

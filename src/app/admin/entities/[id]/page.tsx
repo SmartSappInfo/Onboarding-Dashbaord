@@ -83,6 +83,7 @@ import { useIndustry } from '@/context/IndustryContext';
 import EntityNotesTab from '../components/EntityNotesTab';
 import EntityNotesWidget from '../components/EntityNotesWidget';
 import EntityContactDirectory from '../components/EntityContactDirectory';
+import EntityAutomationsTab from '../components/EntityAutomationsTab';
 import { PageContainerFluid } from '@/components/ui/page-container';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
@@ -402,6 +403,9 @@ export default function EntityDetailPage() {
                         <TabsTrigger value="notes" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <MessageSquarePlus className="h-3 w-3" /> Notes
                         </TabsTrigger>
+                        <TabsTrigger value="automations" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+                            <Zap className="h-3 w-3" /> Automations
+                        </TabsTrigger>
                     </TabsList>
 
   <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
@@ -550,6 +554,9 @@ export default function EntityDetailPage() {
                     
                     <TabsContent value="notes" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityNotesTab entityId={entityId} />
+                    </TabsContent>
+                    <TabsContent value="automations" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                        <EntityAutomationsTab entityId={entityId} />
                     </TabsContent>
                 </Tabs>
               </Card>

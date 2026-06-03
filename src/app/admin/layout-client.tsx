@@ -50,6 +50,7 @@ import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
 import type { AppFeatureId, Role } from '@/lib/types';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useBackofficeAccess } from '@/hooks/use-backoffice-access';
+import { UnsavedChangesProvider } from '@/context/UnsavedChangesContext';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
@@ -249,15 +250,17 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 export default function AdminLayoutClient({ children }: { children: ReactNode }) {
   return (
       <NavigationProvider>
-        <TenantProvider>
-          <EntityCacheProvider>
-            <GlobalFilterProvider>
-              <IndustryProvider>
-                <AdminLayoutContent>{children}</AdminLayoutContent>
-              </IndustryProvider>
-            </GlobalFilterProvider>
-          </EntityCacheProvider>
-        </TenantProvider>
+        <UnsavedChangesProvider>
+          <TenantProvider>
+            <EntityCacheProvider>
+              <GlobalFilterProvider>
+                <IndustryProvider>
+                  <AdminLayoutContent>{children}</AdminLayoutContent>
+                </IndustryProvider>
+              </GlobalFilterProvider>
+            </EntityCacheProvider>
+          </TenantProvider>
+        </UnsavedChangesProvider>
       </NavigationProvider>
   );
 }

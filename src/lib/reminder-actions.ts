@@ -286,7 +286,7 @@ export async function scheduleMeetingInvitations(
         email: reg.email || '',
         phone: reg.phone || '',
         personalizedMeetingUrl: reg.personalizedMeetingUrl || '',
-        status: reg.status || '',
+        status: reg.status || 'pending',
         registrationData: reg.registrationData || {},
       });
 
@@ -312,7 +312,8 @@ export async function scheduleMeetingInvitations(
 
         // Skip if this invitation channel was already sent to this registrant
         const stageKey = `${slot.id}_${ch}`;
-        if (reg.sentInvitations?.[stageKey] || reg.sentInvitations?.[slot.id]) {
+        const wasSent = reg.sentInvitations?.[stageKey] || reg.sentInvitations?.[slot.id];
+        if (wasSent && slot.id === 'initial') {
           continue;
         }
 

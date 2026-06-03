@@ -714,6 +714,14 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           </div>
         </div>
       ) : null}
+
+      {actionType === 'END_AUTOMATION' ? (
+        <div className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-2 text-center text-xs">
+          <CheckSquare className="h-8 w-8 text-primary mx-auto opacity-60" />
+          <p className="font-bold text-sm">End/Complete Flow Step</p>
+          <p className="text-[10px] text-muted-foreground">Flow execution ends here. The workflow run status will update to "completed".</p>
+        </div>
+      ) : null}
     </div>
   );
 });

@@ -17,6 +17,8 @@ export async function executeAutomation(
     triggerData: triggerPayload,
     status: 'running',
     startedAt: timestamp,
+    entityId: triggerPayload.entityId as string | undefined,
+    workspaceId: triggerPayload.workspaceId as string | undefined,
   });
 
   const context: ExecutionContext = {

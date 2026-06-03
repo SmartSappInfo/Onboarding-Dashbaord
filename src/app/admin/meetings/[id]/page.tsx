@@ -558,13 +558,17 @@ export default function MeetingDetailPage() {
                 <Tabs defaultValue="participants" className="w-full">
                   <TabsList className="grid grid-cols-3 mb-6 bg-muted/50 rounded-xl p-1">
                     <TabsTrigger value="participants" className="rounded-lg text-xs font-bold py-2">
-                      Participants
+                      Participants ({participantSlots.length})
                     </TabsTrigger>
                     <TabsTrigger value="facilitators" className="rounded-lg text-xs font-bold py-2">
-                      Facilitators
+                      Facilitators ({facilitatorSlots.length})
                     </TabsTrigger>
                     <TabsTrigger value="invitations" className="rounded-lg text-xs font-bold py-2">
-                      Invitations
+                      Invitations ({meeting?.messagingConfig?.invitationsEnabled ? (
+                        meeting?.messagingConfig?.invitationSeries?.some(s => s.enabled) ? (
+                          meeting.messagingConfig.invitationSeries.filter(s => s.enabled).length
+                        ) : 1
+                      ) : 0})
                     </TabsTrigger>
                   </TabsList>
                   

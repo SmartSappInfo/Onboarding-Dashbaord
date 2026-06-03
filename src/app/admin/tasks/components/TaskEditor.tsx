@@ -52,7 +52,11 @@ import {
     StickyNote,
     Paperclip,
     Trash2,
-    PlusCircle
+    PlusCircle,
+    Phone,
+    MapPin,
+    GraduationCap,
+    ChevronLeft
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, orderBy, query, where, limit } from 'firebase/firestore';
@@ -110,16 +114,76 @@ interface TaskEditorProps {
     isSaving: boolean;
 }
 
-/**
- * TaskEditor - Protocol Blueprint Designer
- * 
- * Refactored to bind tasks to WorkspaceEntities and respect track terminology.
- */
+const PRESET_TEMPLATES = [
+    {
+        id: 'call',
+        title: 'Phone Call',
+        description: 'Log details of an outbound or inbound phone conversation.',
+        icon: Phone,
+        category: 'call' as const,
+        defaultTitle: 'Phone Call',
+        defaultPriority: 'medium' as const,
+        color: 'text-orange-500 bg-orange-500/10'
+    },
+    {
+        id: 'visit',
+        title: 'Site Visit',
+        description: 'Record an in-person meeting or facility check-in.',
+        icon: MapPin,
+        category: 'visit' as const,
+        defaultTitle: 'Site Visit',
+        defaultPriority: 'high' as const,
+        color: 'text-blue-500 bg-blue-500/10'
+    },
+    {
+        id: 'document',
+        title: 'Documentation',
+        description: 'Prepare, inspect, or sign official onboarding files.',
+        icon: FileText,
+        category: 'document' as const,
+        defaultTitle: 'Document Review',
+        defaultPriority: 'medium' as const,
+        color: 'text-emerald-500 bg-emerald-500/10'
+    },
+    {
+        id: 'training',
+        title: 'Training Session',
+        description: 'Schedule or track onboarding instruction / tutorials.',
+        icon: GraduationCap,
+        category: 'training' as const,
+        defaultTitle: 'Training Session',
+        defaultPriority: 'high' as const,
+        color: 'text-purple-500 bg-purple-500/10'
+    },
+    {
+        id: 'follow_up',
+        title: 'Follow Up',
+        description: 'Send follow-up messages or check progress feedback.',
+        icon: Clock,
+        category: 'follow_up' as const,
+        defaultTitle: 'Follow Up',
+        defaultPriority: 'medium' as const,
+        color: 'text-indigo-500 bg-indigo-500/10'
+    },
+    {
+        id: 'general',
+        title: 'General Task',
+        description: 'Standard checklist item with custom settings.',
+        icon: CheckCircle2,
+        category: 'general' as const,
+        defaultTitle: 'New Task',
+        defaultPriority: 'medium' as const,
+        color: 'text-slate-500 bg-muted/10'
+    }
+];
+
 export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving }: TaskEditorProps) {
     const firestore = useFirestore();
     const { user: currentUser } = useUser();
     const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
     const { singular, plural } = useTerminology();
+
+    const [activeStep, setActiveStep] = React.useState<1 | 2>(1);
     
     const usersQuery = useMemoFirebase(() => 
         open && firestore && activeOrganizationId ? query(
@@ -147,7 +211,6 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
     }, [open, firestore, activeWorkspaceId]);
     
     const { data: users } = useCollection<UserProfile>(usersQuery);
-    // Removed duplicate entities subscription
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
 
@@ -198,31 +261,76 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
     React.useEffect(() => {
         if (open) {
             if (task) {
-                reset({
-                    title: task.title,
-                    description: task.description,
-                    priority: task.priority,
-                    category: task.category,
-                    status: task.status,
-                    assignedTo: task.assignedTo,
-                    entityId: task.entityId || '',
-                    entityType: (task.entityType as any) || undefined,
-                    startDate: task.startDate ? new Date(task.startDate) : undefined,
-                    dueDate: new Date(task.dueDate),
-                    reminders: (task.reminders || []).map(r => ({ ...r, reminderTime: new Date(r.reminderTime) })),
-                    notes: task.notes || [],
-                    attachments: task.attachments || [],
-                    relatedEntityType: task.relatedEntityType || null,
-                    relatedParentId: task.relatedParentId || null,
-                    relatedEntityId: task.relatedEntityId || null,
-                });
+                if (task.id) {
+                    setActiveStep(2);
+                    reset({
+                        title: task.title,
+                        description: task.description,
+                        priority: task.priority,
+                        category: task.category,
+                        status: task.status,
+                        assignedTo: task.assignedTo,
+                        entityId: task.entityId || '',
+                        entityType: (task.entityType as any) || undefined,
+                        startDate: task.startDate ? new Date(task.startDate) : undefined,
+                        dueDate: new Date(task.dueDate),
+                        reminders: (task.reminders || []).map(r => ({ ...r, reminderTime: new Date(r.reminderTime) })),
+                        notes: task.notes || [],
+                        attachments: task.attachments || [],
+                        relatedEntityType: task.relatedEntityType || null,
+                        relatedParentId: task.relatedParentId || null,
+                        relatedEntityId: task.relatedEntityId || null,
+                    });
+                } else {
+                    if (task.category) {
+                        setActiveStep(2);
+                        reset({
+                            title: task.title || '',
+                            description: task.description || '',
+                            priority: task.priority || 'medium',
+                            category: task.category,
+                            status: task.status || 'todo',
+                            assignedTo: task.assignedTo || currentUser?.uid || '',
+                            entityId: task.entityId || '',
+                            entityType: (task.entityType as any) || undefined,
+                            startDate: task.startDate ? new Date(task.startDate) : undefined,
+                            dueDate: task.dueDate ? new Date(task.dueDate) : new Date(),
+                            reminders: [],
+                            notes: [],
+                            attachments: [],
+                            relatedEntityType: null,
+                            relatedParentId: null,
+                            relatedEntityId: null,
+                        });
+                    } else {
+                        setActiveStep(1);
+                        reset({
+                            title: '', description: '', priority: 'medium', category: 'general', status: task.status || 'todo', assignedTo: currentUser?.uid || '', entityId: '', entityType: undefined, dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
+                        });
+                    }
+                }
             } else {
+                setActiveStep(1);
                 reset({
-                    title: '', description: '', priority: 'medium', category: 'general', status: 'todo', assignedTo: '', entityId: '', entityType: undefined, dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
+                    title: '', description: '', priority: 'medium', category: 'general', status: 'todo', assignedTo: currentUser?.uid || '', entityId: '', entityType: undefined, dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
                 });
             }
         }
-    }, [open, task, reset]);
+    }, [open, task, reset, currentUser]);
+
+    const handleSelectPreset = (preset: typeof PRESET_TEMPLATES[number]) => {
+        setValue('category', preset.category);
+        setValue('title', preset.defaultTitle);
+        setValue('priority', preset.defaultPriority);
+        setActiveStep(2);
+    };
+
+    const handleStartFromScratch = () => {
+        setValue('category', 'general');
+        setValue('title', '');
+        setValue('priority', 'medium');
+        setActiveStep(2);
+    };
 
     const handleAddNote = () => {
         if (!newNoteContent.trim() || !currentUser) return;
@@ -250,91 +358,251 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl text-left bg-background">
- <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full text-left">
- <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
- <div className="flex items-center gap-4 text-left">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Layout className="h-6 w-6" /></div>
- <div className="text-left">
- <DialogTitle className="text-2xl font-semibold tracking-tight text-left">Task Studio</DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground text-left">Define objectives contexts for {activeWorkspaceId}.</DialogDescription>
+            <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl text-left bg-background">
+                {activeStep === 1 ? (
+                    <div className="flex flex-col h-full">
+                        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+                            <div className="flex items-center gap-4 text-left">
+                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                                    <Layout className="h-6 w-6" />
+                                </div>
+                                <div className="text-left">
+                                    <DialogTitle className="text-2xl font-semibold tracking-tight text-left">Select a Task Template</DialogTitle>
+                                    <DialogDescription className="text-xs font-bold text-muted-foreground text-left">
+                                        Choose a pre-configured template or start from scratch.
+                                    </DialogDescription>
+                                </div>
+                            </div>
+                        </DialogHeader>
+
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {PRESET_TEMPLATES.map((preset) => {
+                                    const Icon = preset.icon;
+                                    return (
+                                        <button
+                                            key={preset.id}
+                                            type="button"
+                                            onClick={() => handleSelectPreset(preset)}
+                                            className="group flex flex-col items-start text-left p-5 rounded-2xl border border-border bg-card hover:border-primary/45 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
+                                        >
+                                            <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-105 mb-4 shadow-inner", preset.color)}>
+                                                <Icon className="h-5 w-5" />
+                                            </div>
+                                            <span className="font-bold text-base text-foreground tracking-tight mb-1">{preset.title}</span>
+                                            <span className="text-xs text-muted-foreground font-medium line-clamp-2">{preset.description}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
-                    </DialogHeader>
 
- <div className="flex-1 overflow-hidden bg-background text-left">
- <ScrollArea className="h-full text-left">
- <div className="p-8 space-y-10 text-left">
- <div className="space-y-6 text-left">
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">Task Title</Label>
- <Input {...register('title')} placeholder="e.g. Conduct operational audit" className="h-14 rounded-2xl bg-muted/20 border-none font-semibold text-2xl px-6 shadow-inner text-left" />
-                                    </div>
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">Execution Brief</Label>
- <Textarea {...register('description')} placeholder="Provide detailed context..." className="min-h-[100px] rounded-2xl bg-muted/20 border-none p-6 font-medium leading-relaxed shadow-inner text-left" />
-                                    </div>
+                        <DialogFooter className="bg-muted/30 p-8 border-t shrink-0 flex justify-between items-center text-left">
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl h-12 px-10 text-left">Cancel</Button>
+                            <Button type="button" onClick={handleStartFromScratch} className="rounded-2xl font-semibold h-14 px-16 shadow-2xl bg-primary text-white text-sm active:scale-95 transition-all text-left">
+                                Start From Scratch
+                            </Button>
+                        </DialogFooter>
+                    </div>
+                ) : (
+                    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full text-left">
+                        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+                            <div className="flex items-center gap-4 text-left">
+                                {(!task || !task.id) && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={() => setActiveStep(1)}
+                                        className="h-10 w-10 p-0 rounded-xl border border-border hover:bg-muted"
+                                    >
+                                        <ChevronLeft className="h-5 w-5" />
+                                    </Button>
+                                )}
+                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                                    <Layout className="h-6 w-6" />
                                 </div>
-
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
- <div className="space-y-4 text-left">
- <Label className="text-[10px] font-semibold text-primary ml-1 text-left">1. Priority Protocol</Label>
-                                        <Controller name="priority" control={control} render={({ field }) => (
- <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-2xl border shadow-inner text-left">
-                                                {(['low', 'medium', 'high', 'urgent'] as const).map(p => (
- <button key={p} type="button" onClick={() => field.onChange(p)} className={cn("h-10 rounded-xl font-semibold text-[9px] transition-all text-left px-2", field.value === p ? (p === 'urgent' ? "bg-rose-600 text-white shadow-lg" : p === 'high' ? "bg-orange-500 text-white shadow-lg" : "bg-card shadow-lg text-primary") : "text-muted-foreground opacity-60 hover:opacity-100")}>{p}</button>
-                                                ))}
-                                            </div>
-                                        )} />
-                                    </div>
- <div className="space-y-4 text-left">
- <Label className="text-[10px] font-semibold text-primary ml-1 text-left">2. Workflow Status</Label>
-                                        <Controller name="status" control={control} render={({ field }) => (
- <Select value={field.value} onValueChange={field.onChange}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-none shadow-2xl text-left"><SelectItem value="todo" className="font-bold text-left">To Do (Backlog)</SelectItem><SelectItem value="in_progress" className="font-bold text-blue-600 text-left">In Progress</SelectItem><SelectItem value="waiting" className="font-bold text-orange-600 text-left">Waiting</SelectItem><SelectItem value="review" className="font-bold text-purple-600 text-left">Review</SelectItem><SelectItem value="done" className="font-bold text-emerald-600 text-left">Done (Resolved)</SelectItem></SelectContent></Select>
-                                        )} />
-                                    </div>
-                                </div>
-
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><User className="h-3 w-3" /> Owner</Label>
- <Controller name="assignedTo" control={control} render={({ field }) => (<Select value={field.value} onValueChange={field.onChange}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left"><SelectValue placeholder="Assign..." /></SelectTrigger><SelectContent className="rounded-xl text-left">{users?.map(u => (<SelectItem key={u.id} value={u.id} className="text-left">{u.name}</SelectItem>))}</SelectContent></Select>)} />
-                                    </div>
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><Building2 className="h-3 w-3" /> {singular} Binding</Label>
- <Controller name="entityId" control={control} render={({ field }) => (<Select value={field.value || 'none'} onValueChange={field.onChange}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left"><SelectValue placeholder="General" /></SelectTrigger><SelectContent className="rounded-xl text-left"><SelectItem value="none" className="text-left">General / Non-Specific</SelectItem>{entities?.map(s => (<SelectItem key={s.id} value={s.entityId} className="text-left">{s.displayName}</SelectItem>))}</SelectContent></Select>)} />
-                                    </div>
-                                </div>
-
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
- <div className="space-y-2 text-left"><Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><Calendar className="h-3 w-3" /> Implementation Start</Label><Controller name="startDate" control={control} render={({ field }) => (<DateTimePicker value={field.value} onChange={field.onChange} />)} /></div>
- <div className="space-y-2 text-left"><Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2 text-left"><Target className="h-3 w-3" /> Dead-line</Label><Controller name="dueDate" control={control} render={({ field }) => (<DateTimePicker value={field.value} onChange={field.onChange} />)} /></div>
-                                </div>
-
- <Separator className="opacity-50" />
-
- <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
- <div className="space-y-8 text-left">
-                                        <div className="flex items-center justify-between px-1 text-left"><div className="flex items-center gap-2 text-left"><StickyNote className="h-4 w-4 text-primary" /><h4 className="text-xs font-semibold uppercase  text-left">Protocol Ledger</h4></div><Badge variant="secondary">{notes.length}</Badge></div>
- <div className="space-y-4 text-left">
- <div className="flex gap-2 text-left"><Textarea value={newNoteContent} onChange={e => setNewNoteContent(e.target.value)} placeholder="Context note..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner text-xs text-left" /><Button type="button" onClick={handleAddNote} disabled={!newNoteContent.trim()} size="icon" className="h-auto w-12 rounded-xl shrink-0 bg-primary text-white shadow-lg text-left"><Plus className="h-5 w-5" /></Button></div>
- <div className="space-y-3 text-left">{notes.map((note, idx) => (<div key={note.id} className="p-4 rounded-xl bg-background border relative group/note text-left"><div className="flex items-center justify-between mb-1.5 text-left"><p className="text-[9px] font-semibold text-primary/60 text-left">{note.authorName} · {format(new Date(note.createdAt), 'MMM d')}</p><button type="button" onClick={() => removeNote(idx)} className="opacity-0 group-hover/note:opacity-100 transition-opacity text-destructive text-left"><X size={12} /></button></div><p className="text-xs font-medium text-left">{note.content}</p></div>))}</div>
-                                        </div>
-                                    </div>
- <div className="space-y-8 text-left">
-                                        <div className="flex items-center justify-between px-1 text-left"><div className="flex items-center gap-2 text-left"><Paperclip className="h-4 w-4 text-primary" /><h4 className="text-xs font-semibold uppercase  text-left">Asset Binding</h4></div><Badge variant="secondary">{attachments.length}</Badge></div>
- <div className="space-y-4 text-left"><div className="p-1.5 rounded-2xl bg-muted/20 border-2 border-dashed border-border flex items-center justify-center text-left"><MediaSelect onValueChange={handleAddAttachment} className="border-none shadow-none bg-transparent" /></div><div className="space-y-2 text-left">{attachments.map((att, idx) => (<div key={att.id} className="flex items-center justify-between p-3 rounded-xl bg-card border shadow-sm group text-left"><div className="flex items-center gap-3 min-w-0 text-left"><FileText className="h-4 w-4 text-primary shrink-0" /><a href={att.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold truncate hover:underline text-left">{att.name}</a></div><Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-lg text-left" onClick={() => removeAttachment(idx)}><X className="h-3.5 w-3.5" /></Button></div>))}</div></div>
-                                    </div>
+                                <div className="text-left">
+                                    <DialogTitle className="text-2xl font-semibold tracking-tight text-left">
+                                        {task?.id ? 'Edit Task Details' : 'Configure Task Details'}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-xs font-bold text-muted-foreground text-left">
+                                        Fill in the fields below to customize your task.
+                                    </DialogDescription>
                                 </div>
                             </div>
-                        </ScrollArea>
-                    </div>
+                        </DialogHeader>
 
- <DialogFooter className="bg-muted/30 p-8 border-t shrink-0 flex justify-between text-left">
- <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl h-12 px-10 text-left">Discard</Button>
- <Button type="submit" disabled={isSaving} className="rounded-2xl font-semibold h-14 px-16 shadow-2xl bg-primary text-white text-sm gap-2 active:scale-95 transition-all text-left">{isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}Commit Blueprint</Button>
-                    </DialogFooter>
-                </form>
+                        <div className="flex-1 overflow-hidden bg-background text-left">
+                            <ScrollArea className="h-full text-left">
+                                <div className="p-8 space-y-10 text-left">
+                                    <div className="space-y-6 text-left">
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">Task Title</Label>
+                                            <Input {...register('title')} placeholder="Describe what needs to be done..." className="h-14 rounded-2xl bg-muted/20 border-none font-semibold text-2xl px-6 shadow-inner text-left" />
+                                        </div>
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">Task Details & Notes</Label>
+                                            <Textarea {...register('description')} placeholder="Provide any additional details or background context..." className="min-h-[100px] rounded-2xl bg-muted/20 border-none p-6 font-medium leading-relaxed shadow-inner text-left" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                                        <div className="space-y-4 text-left">
+                                            <Label className="text-[10px] font-semibold text-primary ml-1 text-left">How urgent is this?</Label>
+                                            <Controller name="priority" control={control} render={({ field }) => (
+                                                <div className="grid grid-cols-4 gap-1.5 bg-muted/30 p-1.5 rounded-2xl border shadow-inner text-left">
+                                                    {(['low', 'medium', 'high', 'urgent'] as const).map(p => (
+                                                        <button key={p} type="button" onClick={() => field.onChange(p)} className={cn("h-10 rounded-xl font-semibold text-[9px] capitalize transition-all text-center px-1", field.value === p ? (p === 'urgent' ? "bg-rose-600 text-white shadow-lg" : p === 'high' ? "bg-orange-500 text-white shadow-lg" : "bg-card shadow-lg text-primary") : "text-muted-foreground opacity-60 hover:opacity-100")}>{p}</button>
+                                                    ))}
+                                                </div>
+                                            )} />
+                                        </div>
+                                        <div className="space-y-4 text-left">
+                                            <Label className="text-[10px] font-semibold text-primary ml-1 text-left">Status</Label>
+                                            <Controller name="status" control={control} render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-none shadow-2xl text-left">
+                                                        <SelectItem value="todo" className="font-bold text-left">To Do</SelectItem>
+                                                        <SelectItem value="in_progress" className="font-bold text-blue-600 text-left">In Progress</SelectItem>
+                                                        <SelectItem value="waiting" className="font-bold text-orange-600 text-left">Waiting</SelectItem>
+                                                        <SelectItem value="review" className="font-bold text-purple-600 text-left">Under Review</SelectItem>
+                                                        <SelectItem value="done" className="font-bold text-emerald-600 text-left">Completed</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><User className="h-3 w-3" /> Assigned Owner</Label>
+                                            <Controller name="assignedTo" control={control} render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left">
+                                                        <SelectValue placeholder="Assign to teammate..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl text-left">
+                                                        {users?.map(u => (
+                                                            <SelectItem key={u.id} value={u.id} className="text-left">{u.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )} />
+                                        </div>
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><Building2 className="h-3 w-3" /> Link to {singular}</Label>
+                                            <Controller name="entityId" control={control} render={({ field }) => (
+                                                <Select value={field.value || 'none'} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left">
+                                                        <SelectValue placeholder="General (Unlinked)" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl text-left">
+                                                        <SelectItem value="none" className="text-left">General / Unlinked</SelectItem>
+                                                        {entities?.map(s => (
+                                                            <SelectItem key={s.id} value={s.entityId} className="text-left">{s.displayName}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><Calendar className="h-3 w-3" /> Starts On</Label>
+                                            <Controller name="startDate" control={control} render={({ field }) => (
+                                                <DateTimePicker value={field.value} onChange={field.onChange} />
+                                            )} />
+                                        </div>
+                                        <div className="space-y-2 text-left">
+                                            <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2 text-left"><Target className="h-3 w-3" /> Due Date</Label>
+                                            <Controller name="dueDate" control={control} render={({ field }) => (
+                                                <DateTimePicker value={field.value} onChange={field.onChange} />
+                                            )} />
+                                        </div>
+                                    </div>
+
+                                    <Separator className="opacity-50" />
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
+                                        <div className="space-y-8 text-left">
+                                            <div className="flex items-center justify-between px-1 text-left">
+                                                <div className="flex items-center gap-2 text-left">
+                                                    <StickyNote className="h-4 w-4 text-primary" />
+                                                    <h4 className="text-xs font-semibold uppercase text-left">Notes & Comments</h4>
+                                                </div>
+                                                <Badge variant="secondary">{notes.length}</Badge>
+                                            </div>
+                                            <div className="space-y-4 text-left">
+                                                <div className="flex gap-2 text-left">
+                                                    <Textarea value={newNoteContent} onChange={e => setNewNoteContent(e.target.value)} placeholder="Type a note..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner text-xs text-left" />
+                                                    <Button type="button" onClick={handleAddNote} disabled={!newNoteContent.trim()} size="icon" className="h-auto w-12 rounded-xl shrink-0 bg-primary text-white shadow-lg text-left">
+                                                        <Plus className="h-5 w-5" />
+                                                    </Button>
+                                                </div>
+                                                <div className="space-y-3 text-left">
+                                                    {notes.map((note, idx) => (
+                                                        <div key={note.id} className="p-4 rounded-xl bg-background border relative group/note text-left">
+                                                            <div className="flex items-center justify-between mb-1.5 text-left">
+                                                                <p className="text-[9px] font-semibold text-primary/60 text-left">{note.authorName} · {format(new Date(note.createdAt), 'MMM d')}</p>
+                                                                <button type="button" onClick={() => removeNote(idx)} className="opacity-0 group-hover/note:opacity-100 transition-opacity text-destructive text-left">
+                                                                    <X size={12} />
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-xs font-medium text-left">{note.content}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-8 text-left">
+                                            <div className="flex items-center justify-between px-1 text-left">
+                                                <div className="flex items-center gap-2 text-left">
+                                                    <Paperclip className="h-4 w-4 text-primary" />
+                                                    <h4 className="text-xs font-semibold uppercase text-left">Attached Files</h4>
+                                                </div>
+                                                <Badge variant="secondary">{attachments.length}</Badge>
+                                            </div>
+                                            <div className="space-y-4 text-left">
+                                                <div className="p-1.5 rounded-2xl bg-muted/20 border-2 border-dashed border-border flex items-center justify-center text-left">
+                                                    <MediaSelect onValueChange={handleAddAttachment} className="border-none shadow-none bg-transparent" />
+                                                </div>
+                                                <div className="space-y-2 text-left">
+                                                    {attachments.map((att, idx) => (
+                                                        <div key={att.id} className="flex items-center justify-between p-3 rounded-xl bg-card border shadow-sm group text-left">
+                                                            <div className="flex items-center gap-3 min-w-0 text-left">
+                                                                <FileText className="h-4 w-4 text-primary shrink-0" />
+                                                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold truncate hover:underline text-left">{att.name}</a>
+                                                            </div>
+                                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-lg text-left" onClick={() => removeAttachment(idx)}>
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ScrollArea>
+                        </div>
+
+                        <DialogFooter className="bg-muted/30 p-8 border-t shrink-0 flex justify-between text-left">
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl h-12 px-10 text-left">Discard</Button>
+                            <Button type="submit" disabled={isSaving} className="rounded-2xl font-semibold h-14 px-16 shadow-2xl bg-primary text-white text-sm gap-2 active:scale-95 transition-all text-left">
+                                {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                                {task?.id ? 'Save Changes' : 'Create Task'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}>
             </DialogContent>
         </Dialog>
     );

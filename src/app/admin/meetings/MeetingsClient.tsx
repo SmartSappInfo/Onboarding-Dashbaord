@@ -99,6 +99,39 @@ const getInitials = (name?: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
+function MeetingStats({ meetingId }: { meetingId: string }) {
+  const firestore = useFirestore();
+  const registrantsQuery = useMemoFirebase(() => {
+    if (!firestore || !meetingId) return null;
+    return collection(firestore, `meetings/${meetingId}/registrants`);
+  }, [firestore, meetingId]);
+
+  const { data: registrants, isLoading } = useCollection<any>(registrantsQuery);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground/60 animate-pulse">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <span>Loading stats...</span>
+      </div>
+    );
+  }
+
+  const invited = registrants?.filter(r => r.source === 'invite' || r.source === 'one-click').length ?? 0;
+  const registrantsCount = registrants?.filter(r => r.status === 'approved' || r.status === 'attended' || r.status === 'registered').length ?? 0;
+  const attendees = registrants?.filter(r => r.status === 'attended').length ?? 0;
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold">
+      <span className="text-primary">{invited} Invited</span>
+      <span className="text-muted-foreground/30">•</span>
+      <span className="text-emerald-600 dark:text-emerald-400">{registrantsCount} Registrants</span>
+      <span className="text-muted-foreground/30">•</span>
+      <span className="text-blue-600 dark:text-blue-400">{attendees} Attendees</span>
+    </div>
+  );
+}
+
 /**
  * @fileOverview High-fidelity Meetings Hub Client.
  * Upgraded with Multi-Workspace Sharing logic and server-side array filtering.
@@ -126,7 +159,10 @@ export default function MeetingsHubClient() {
     setIsUpdating(true);
     try {
       const docRef = doc(firestore, 'meetings', meetingId);
-      await updateDoc(docRef, { entityName: editingName.trim() });
+      await updateDoc(docRef, { 
+        title: editingName.trim(),
+        entityName: editingName.trim() 
+      });
       toast({
         title: 'Meeting updated',
         description: 'Meeting internal name has been successfully updated.',
@@ -287,17 +323,17 @@ export default function MeetingsHubClient() {
     const publicUrl = `/meetings/${type.slug}/${meeting.meetingSlug || meeting.entitySlug}`;
 
     return (
- <div className="flex items-center justify-end gap-1">
+  <div className="flex items-center justify-end gap-1">
         <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
- className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+  className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
               onClick={() => {
                 if (typeof window !== 'undefined') {
-                  const url = `${window.location.origin}${publicUrl}`;
+                   const url = `${window.location.origin}${publicUrl}`;
                   navigator.clipboard.writeText(url);
                   toast({
                     title: "Link Copied",
@@ -306,21 +342,21 @@ export default function MeetingsHubClient() {
                 }
               }}
             >
- <Copy className="h-4 w-4" />
- <span className="sr-only">Copy link</span>
+  <Copy className="h-4 w-4" />
+  <span className="sr-only">Copy link</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
             <p>Copy Public Link</p>
           </TooltipContent>
         </Tooltip>
-
+ 
         <Tooltip>
           <TooltipTrigger asChild>
- <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" asChild>
+  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" asChild>
               <a href={publicUrl} target="_blank" rel="noopener noreferrer">
- <ExternalLink className="h-4 w-4" />
- <span className="sr-only">View public page</span>
+  <ExternalLink className="h-4 w-4" />
+  <span className="sr-only">View public page</span>
               </a>
             </Button>
           </TooltipTrigger>
@@ -328,18 +364,18 @@ export default function MeetingsHubClient() {
             <p>View Public Page</p>
           </TooltipContent>
         </Tooltip>
-
+ 
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
- className="h-8 w-8 text-primary hover:bg-primary/5 transition-colors"
+  className="h-8 w-8 text-primary hover:bg-primary/5 transition-colors"
               asChild
             >
               <Link href={`/admin/meetings/${meeting.id}/results`}>
- <BarChart3 className="h-4 w-4" />
- <span className="sr-only">View reports</span>
+  <BarChart3 className="h-4 w-4" />
+  <span className="sr-only">View reports</span>
               </Link>
             </Button>
           </TooltipTrigger>
@@ -348,16 +384,16 @@ export default function MeetingsHubClient() {
           </TooltipContent>
         </Tooltip>
         </TooltipProvider>
-
+ 
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
- <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary transition-colors">
- <span className="sr-only">Open menu</span>
- <MoreHorizontal className="h-4 w-4" />
+  <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary transition-colors">
+  <span className="sr-only">Open menu</span>
+  <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
- <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3">Management</DropdownMenuLabel>
+  <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3">Management</DropdownMenuLabel>
             <DropdownMenuItem asChild>
                 <Link href={`/admin/meetings/${meeting.id}`}>
                     <ExternalLink className="mr-2 h-4 w-4" />
@@ -379,7 +415,7 @@ export default function MeetingsHubClient() {
             {meeting.registrationEnabled && (
                 <DropdownMenuItem asChild>
                     <Link href={`/admin/meetings/${meeting.id}/registrants`}>
- <Users className="mr-2 h-4 w-4" />
+  <Users className="mr-2 h-4 w-4" />
                         <span>View Registrants</span>
                     </Link>
                 </DropdownMenuItem>
@@ -406,11 +442,11 @@ export default function MeetingsHubClient() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
- className="text-destructive focus:text-destructive-foreground focus:bg-destructive/10"
+  className="text-destructive focus:text-destructive-foreground focus:bg-destructive/10"
               onClick={() => setMeetingToDelete(meeting)}
             >
- <Trash2 className="mr-2 h-4 w-4" />
-              <span>Delete Session</span>
+  <Trash2 className="mr-2 h-4 w-4" />
+               <span>Delete Session</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -443,7 +479,7 @@ export default function MeetingsHubClient() {
                     </div>
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
- <Tabs value={activeView} onValueChange={setActiveView} className="w-fit">
+  <Tabs value={activeView} onValueChange={setActiveView} className="w-fit">
             <TabsList className="bg-transparent border border-border shadow-sm p-1 h-12 rounded-xl ring-1 ring-border">
                 <TabsTrigger value="list" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
                     <LayoutList className="h-4 w-4" /> Hub Registry
@@ -457,10 +493,10 @@ export default function MeetingsHubClient() {
         <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex-1 min-w-[280px] max-w-sm border border-border bg-transparent shadow-sm rounded-3xl p-4 ring-1 ring-border">
                         <Select value={typeFilter} onValueChange={setTypeFilter}>
- <SelectTrigger className="h-10 rounded-lg bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+  <SelectTrigger className="h-10 rounded-lg bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
                                 <SelectValue placeholder="Filter by category..." />
                             </SelectTrigger>
- <SelectContent className="rounded-xl">
+  <SelectContent className="rounded-xl">
                                 <SelectItem value="all">All Meeting Categories</SelectItem>
                                 {MEETING_TYPES.map(type => (
                                 <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
@@ -471,37 +507,37 @@ export default function MeetingsHubClient() {
             </div>
             </div>
             
- <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
- <TabsContent value="list" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
- <div className="rounded-2xl border border-border bg-transparent text-card-foreground shadow-sm overflow-hidden ring-1 ring-border">
+  <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
+  <TabsContent value="list" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
+  <div className="rounded-2xl border border-border bg-transparent text-card-foreground shadow-sm overflow-hidden ring-1 ring-border">
                         <Table>
- <TableHeader className="bg-muted/30">
+  <TableHeader className="bg-muted/30">
                             <TableRow>
- <TableHead className="w-[80px]"></TableHead>
- <TableHead className="text-[10px] font-semibold py-4">{singular} Context</TableHead>
- <TableHead className="text-[10px] font-semibold py-4">Protocol Type</TableHead>
- <TableHead className="w-[250px] text-[10px] font-semibold py-4">Target Window</TableHead>
- <TableHead className="text-[10px] font-semibold py-4">Portal Status</TableHead>
- <TableHead className="w-[160px] text-right pr-6 text-[10px] font-semibold py-4">Actions</TableHead>
+  <TableHead className="w-[80px]"></TableHead>
+  <TableHead className="text-[10px] font-semibold py-4">{singular} Context</TableHead>
+  <TableHead className="w-[220px] text-[10px] font-semibold py-4">Meeting Schedule</TableHead>
+  <TableHead className="text-[10px] font-semibold py-4">Response Stats</TableHead>
+  <TableHead className="w-[160px] text-right pr-6 text-[10px] font-semibold py-4">Actions</TableHead>
                             </TableRow>
                             </TableHeader>
                             <TableBody>
                             {isLoading ? (
                                 Array.from({ length: 3 }).map((_, i) => (
                                 <TableRow key={i}>
- <TableCell className="pl-6"><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
- <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
- <TableCell><Skeleton className="h-6 w-24" /></TableCell>
- <TableCell><Skeleton className="h-5 w-full" /></TableCell>
- <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
- <TableCell className="text-right pr-6"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
+  <TableCell className="pl-6"><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
+  <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+  <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+  <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+  <TableCell className="text-right pr-6"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
                                 </TableRow>
                                 ))
                             ) : filteredMeetings && filteredMeetings.length > 0 ? (
                                 filteredMeetings.map((meeting) => {
                                  const type = meeting.type || MEETING_TYPES[0];
                                  const logoUrl = meeting.entityId ? entityLogoMap.get(meeting.entityId) : undefined;
-                                 const safeEntityName = meeting.entityName || (meeting.entityId ? entities?.find(e => e.entityId === meeting.entityId)?.displayName : null) || meeting.heroTitle || 'Standalone Session';
+                                 const safeEntityName = meeting.title || meeting.entityName || (meeting.entityId ? entities?.find(e => e.entityId === meeting.entityId)?.displayName : null) || meeting.heroTitle || 'Standalone Session';
+                                 
+                                 const isActive = meeting.status !== 'ended' && meeting.status !== 'cancelled';
                                 return (
                                 <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
                                     <TableCell className="pl-6">
@@ -512,71 +548,86 @@ export default function MeetingsHubClient() {
                                             className="h-10 w-10 ring-2 ring-border/50 shadow-sm"
                                         />
                                     </TableCell>
-                                    <TableCell className="font-semibold text-sm text-foreground tracking-tight">
-                                        {editingMeetingId === meeting.id ? (
-                                            <div className="flex items-center gap-2 max-w-xs">
-                                                <input
-                                                    type="text"
-                                                    value={editingName}
-                                                    onChange={(e) => setEditingName(e.target.value)}
-                                                    className="h-8 px-2 border rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-primary bg-background"
-                                                    disabled={isUpdating}
-                                                    autoFocus
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') handleSaveName(meeting.id);
-                                                        if (e.key === 'Escape') setEditingMeetingId(null);
-                                                    }}
-                                                />
-                                                <Button 
-                                                    size="icon" 
-                                                    variant="ghost" 
-                                                    className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
-                                                    onClick={() => handleSaveName(meeting.id)}
-                                                    disabled={isUpdating}
-                                                >
-                                                    {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-4 w-4" />}
-                                                </Button>
-                                                <Button 
-                                                    size="icon" 
-                                                    variant="ghost" 
-                                                    className="h-7 w-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50 shrink-0"
-                                                    onClick={() => setEditingMeetingId(null)}
-                                                    disabled={isUpdating}
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </Button>
+                                    <TableCell className="font-semibold text-sm text-foreground tracking-tight py-4">
+                                        <div className="flex flex-col gap-1.5">
+                                            {/* Pills row */}
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="secondary" className="text-[9px] font-semibold uppercase px-2 py-0.5">
+                                                    {type.name}
+                                                </Badge>
+                                                {isActive ? (
+                                                    <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                        Active
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                        {meeting.status === 'ended' ? 'Ended' : 'Paused'}
+                                                    </span>
+                                                )}
                                             </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2 group/title">
-                                                <Link href={`/admin/meetings/${meeting.id}`} className="hover:text-primary hover:underline transition-colors">
-                                                    {safeEntityName}
-                                                </Link>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-6 w-6 opacity-0 group-hover/title:opacity-100 transition-opacity rounded-md hover:bg-muted"
-                                                    onClick={() => {
-                                                        setEditingMeetingId(meeting.id);
-                                                        setEditingName(meeting.entityName || safeEntityName);
-                                                    }}
-                                                >
-                                                    <Edit3 className="h-3 w-3 text-muted-foreground" />
-                                                </Button>
-                                            </div>
-                                        )}
+                                            
+                                            {/* Editable internal name */}
+                                            {editingMeetingId === meeting.id ? (
+                                                <div className="flex items-center gap-2 max-w-xs">
+                                                    <input
+                                                        type="text"
+                                                        value={editingName}
+                                                        onChange={(e) => setEditingName(e.target.value)}
+                                                        className="h-8 px-2 border rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-primary bg-background"
+                                                        disabled={isUpdating}
+                                                        autoFocus
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleSaveName(meeting.id);
+                                                            if (e.key === 'Escape') setEditingMeetingId(null);
+                                                        }}
+                                                    />
+                                                    <Button 
+                                                        size="icon" 
+                                                        variant="ghost" 
+                                                        className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
+                                                        onClick={() => handleSaveName(meeting.id)}
+                                                        disabled={isUpdating}
+                                                    >
+                                                        {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-4 w-4" />}
+                                                    </Button>
+                                                    <Button 
+                                                        size="icon" 
+                                                        variant="ghost" 
+                                                        className="h-7 w-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50 shrink-0"
+                                                        onClick={() => setEditingMeetingId(null)}
+                                                        disabled={isUpdating}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 group/title">
+                                                    <Link href={`/admin/meetings/${meeting.id}`} className="hover:text-primary hover:underline transition-colors text-sm font-semibold">
+                                                        {safeEntityName}
+                                                    </Link>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-6 w-6 opacity-0 group-hover/title:opacity-100 transition-opacity rounded-md hover:bg-muted"
+                                                        onClick={() => {
+                                                            setEditingMeetingId(meeting.id);
+                                                            setEditingName(meeting.title || meeting.entityName || safeEntityName);
+                                                        }}
+                                                    >
+                                                        <Edit3 className="h-3 w-3 text-muted-foreground" />
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </TableCell>
 
-                                    <TableCell><Badge variant="secondary" className="text-[9px] font-semibold uppercase ">{type.name}</Badge></TableCell>
- <TableCell className="text-xs font-bold text-muted-foreground tracking-tighter tabular-nums">
+                                    <TableCell className="text-xs font-bold text-muted-foreground tracking-tighter tabular-nums">
                                         {meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP · p") : 'Not set'}
                                     </TableCell>
                                     <TableCell>
- <div className="flex items-center gap-2">
- <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
- <span className="text-[10px] font-semibold text-muted-foreground tracking-tighter">Gateway Authorized</span>
-                                        </div>
+                                        <MeetingStats meetingId={meeting.id} />
                                     </TableCell>
- <TableCell className="text-right pr-6">
+                                    <TableCell className="text-right pr-6">
                                         {renderActions(meeting)}
                                     </TableCell>
                                     </TableRow>
@@ -584,12 +635,12 @@ export default function MeetingsHubClient() {
                                 })
                             ) : (
                                 <TableRow>
- <TableCell colSpan={6} className="h-64 text-center">
- <div className="flex flex-col items-center justify-center gap-3 opacity-20">
- <CalendarIcon className="h-12 w-12" />
- <p className="text-xs font-semibold ">No meetings recorded</p>
-                                    </div>
-                                </TableCell>
+                                    <TableCell colSpan={5} className="h-64 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-3 opacity-20">
+                                            <CalendarIcon className="h-12 w-12" />
+                                            <p className="text-xs font-semibold ">No meetings recorded</p>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
                             )}
                             </TableBody>

@@ -43,6 +43,7 @@ import {
   cancelRemindersForMeeting,
   processScheduledMessages,
   rescheduleRemindersForMeeting,
+  scheduleMeetingInvitations,
 } from '../reminder-actions';
 import { computeScheduledAt } from '../template-variable-utils';
 import * as firebaseAdmin from '../firebase-admin';
@@ -319,3 +320,71 @@ describe('rescheduleRemindersForMeeting', () => {
     expect(mocks().commit).toHaveBeenCalled();
   });
 });
+
+describe('scheduleMeetingInvitations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks().where.mockReturnValue({ where: mocks().where, get: mocks().get });
+    mocks().commit.mockResolvedValue(undefined);
+    mocks().docGet.mockResolvedValue({ exists: false });
+  });
+
+  it('skips initial slot if sent, but schedules other reminder slots even if sent', async () => {
+    const registrantDoc = {
+      data: () => ({
+        token: 'token-123',
+        name: 'Guest User',
+        email: 'guest@example.com',
+        status: 'pending',
+        sentInvitations: {
+          'initial_email': '2026-06-01T10:00:00Z',
+          '1_day_before_email': '2026-06-02T10:00:00Z',
+        }
+      })
+    };
+
+    mocks().get
+      .mockResolvedValueOnce({ empty: false, docs: [registrantDoc] }) // first get for pending registrants
+      .mockResolvedValueOnce({ empty: true, docs: [] }); // second get for existing pending scheduled messages
+
+    const meeting = {
+      id: 'meeting-123',
+      meetingTime: new Date(Date.now() + 3600 * 1000 * 48).toISOString(), // 2 days in the future
+      messagingConfig: {
+        invitationsEnabled: true,
+        invitationSeries: [
+          {
+            id: 'initial',
+            enabled: true,
+            channels: ['email'],
+            emailTemplateId: 'tpl-initial',
+            smsTemplateId: 'tpl-initial-sms',
+            offsetMinutes: 0,
+            anchor: 'after_registration'
+          },
+          {
+            id: '1_day_before',
+            enabled: true,
+            channels: ['email'],
+            emailTemplateId: 'tpl-1day',
+            smsTemplateId: 'tpl-1day-sms',
+            offsetMinutes: 1440,
+            anchor: 'before_event'
+          }
+        ]
+      }
+    };
+
+    await scheduleMeetingInvitations(meeting as any, 'org-123');
+
+    // We expect one message to be set in batch: 1_day_before (since initial was sent and slot.id is 'initial')
+    // Wait, let's verify that batch.set was called only for the non-initial slot
+    expect(mocks().set).toHaveBeenCalledTimes(1);
+    const setCall = mocks().set.mock.calls[0];
+    expect(setCall[1]).toEqual(expect.objectContaining({
+      reminderType: 'meeting_invitation_1_day_before',
+      templateId: 'tpl-1day'
+    }));
+  });
+});
+

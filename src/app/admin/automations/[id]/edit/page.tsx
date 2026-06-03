@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { saveAutomationAction, testAutomationFlowAction } from '@/lib/automation-actions';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ export default function EditAutomationPage() {
   const { toast } = useToast();
   const { user } = useUser();
   const { activeWorkspaceId } = useWorkspace();
+  const { registerUnsavedChanges, unregisterUnsavedChanges } = useUnsavedChanges();
   const firestore = useFirestore();
   const automationId = params.id as string;
 
@@ -68,6 +70,15 @@ export default function EditAutomationPage() {
     }
   }, [automation]);
 
+  const isDirty = React.useMemo(() => {
+    if (!automation) return false;
+    const nameChanged = currentData.name !== undefined && currentData.name !== automation.name;
+    const descChanged = currentData.description !== undefined && currentData.description !== (automation.description || '');
+    const nodesChanged = currentData.nodes !== undefined && JSON.stringify(currentData.nodes) !== JSON.stringify(automation.nodes);
+    const edgesChanged = currentData.edges !== undefined && JSON.stringify(currentData.edges) !== JSON.stringify(automation.edges);
+    return nameChanged || descChanged || nodesChanged || edgesChanged;
+  }, [automation, currentData]);
+
   const testWorkspaceId =
     automation?.workspaceIds?.[0] || activeWorkspaceId || '';
 
@@ -83,21 +94,29 @@ export default function EditAutomationPage() {
     });
   }, []);
 
-  const handleSave = async () => {
-    if (!user) return;
+  const handleSaveAndReturn = React.useCallback(async (): Promise<boolean> => {
+    if (!user) return false;
     setIsSaving(true);
-    // Sanitize node and edge state by deep cloning to plain JSON primitives.
-    // This strips functions, symbols, and non-serializable client references attached by ReactFlow
-    // to prevent Next.js from throwing serialization errors during Server Action transmission.
     const cleanData = JSON.parse(JSON.stringify(currentData));
     const res = await saveAutomationAction(automationId, cleanData, user.uid);
+    setIsSaving(false);
     if (res.success) {
       toast({ title: 'Logic Synchronized', description: 'Automation blueprint updated.' });
+      return true;
     } else {
       toast({ variant: 'destructive', title: 'Save Failed', description: res.error });
+      return false;
     }
-    setIsSaving(false);
+  }, [user, currentData, automationId, toast]);
+
+  const handleSave = async () => {
+    await handleSaveAndReturn();
   };
+
+  React.useEffect(() => {
+    registerUnsavedChanges('automation-builder', isDirty, handleSaveAndReturn);
+    return () => unregisterUnsavedChanges('automation-builder');
+  }, [isDirty, handleSaveAndReturn, registerUnsavedChanges, unregisterUnsavedChanges]);
 
   const handleTestFlow = async () => {
     if (!user?.uid) return;

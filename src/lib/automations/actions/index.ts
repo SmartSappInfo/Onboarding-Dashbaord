@@ -12,6 +12,7 @@ import { handleUpdateEntity, handleAssignEntity, handleAddNote } from './entity-
 import { handleTriggerOutboundWebhook } from './webhook-actions';
 import { handleRunAutomation } from './run-automation';
 import { handleSendNotification } from './notification-actions';
+import { logAutomationEvent } from '../../automation-log';
 
 export async function processActionNode(
   node: { data?: { actionType?: string; config?: Record<string, unknown> } },
@@ -65,6 +66,14 @@ export async function processActionNode(
       break;
     case 'UPDATE_DEAL_STATUS':
       await handleUpdateDealStatus(resolvedConfig, context);
+      break;
+    case 'END_AUTOMATION':
+      await logAutomationEvent('info', 'automation_completed_action', {
+        automationId: context.automationId,
+        runId: context.runId,
+        workspaceId: context.workspaceId,
+        entityId: context.entityId,
+      });
       break;
   }
 }

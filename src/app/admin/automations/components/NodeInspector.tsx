@@ -141,6 +141,7 @@ const ACTION_TYPES = [
     { value: 'SEND_NOTIFICATION_SMS', label: 'Send Notification (SMS)', icon: SmartphoneIconPlaceholder, desc: 'Send an SMS notification to workspace users, assignees or custom numbers.' },
     { value: 'SEND_NOTIFICATION_IN_APP', label: 'Send Notification (In-App)', icon: BellIconPlaceholder, desc: 'Trigger an in-app workspace notification.' },
     { value: 'SEND_NOTIFICATION_PUSH', label: 'Send Notification (Push)', icon: SmartphoneIconPlaceholder, desc: 'Send a mobile push notification.' },
+    { value: 'END_AUTOMATION', label: 'End Automation', icon: CheckSquareIconPlaceholder, desc: 'Mark this automation as completed for the contact.' },
 ];
 
 export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {

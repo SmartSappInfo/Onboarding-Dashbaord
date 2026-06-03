@@ -184,6 +184,9 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
           );
         }
         break;
+      case 'END_AUTOMATION':
+        // No validation configuration is required for terminal node. Safe pass.
+        break;
       default:
         break;
     }

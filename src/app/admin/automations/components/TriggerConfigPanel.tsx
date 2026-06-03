@@ -20,6 +20,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import type { Tag as TagType, Pipeline, OnboardingStage, AutomationTrigger } from '@/lib/types';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { useUser } from '@/firebase';
+import { createTagAction } from '@/lib/tag-actions';
 
 interface TriggerConfigPanelProps {
   trigger: AutomationTrigger;
@@ -45,6 +49,8 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
   webhookUrl,
 }: TriggerConfigPanelProps) {
   const { toast } = useToast();
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+  const { user } = useUser();
   const [hasCopied, setHasCopied] = React.useState(false);
 
   const copyWebhookUrl = () => {
@@ -58,6 +64,34 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
   const updateConfig = (updates: Record<string, any>) => {
     onUpdateConfig(updates);
   };
+
+  const handleCreateInlineTag = async (tagName: string) => {
+    if (!tagName.trim() || !user || !activeWorkspaceId || !activeOrganizationId) return;
+    try {
+      const result = await createTagAction({
+        name: tagName.trim(),
+        workspaceId: activeWorkspaceId,
+        organizationId: activeOrganizationId,
+        category: 'custom',
+        color: '#10B981',
+        userId: user.uid,
+      });
+
+      if (result.success && result.data) {
+        toast({ title: 'Tag created', description: `"${tagName}" is now available and watched.` });
+        const current = config.tagIds || [];
+        updateConfig({ tagIds: [...current, result.data.id] });
+      } else {
+        toast({ variant: 'destructive', title: 'Failed to create tag', description: result.error || 'Could not create tag.' });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    }
+  };
+
+  const tagOptions = React.useMemo(() => {
+    return (allTags || []).map((t) => ({ label: t.name, value: t.id }));
+  }, [allTags]);
 
   return (
     <div className="w-full pt-1">
@@ -83,53 +117,20 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
       ) : null}
 
       {trigger === 'TAG_ADDED' || trigger === 'TAG_REMOVED' ? (
-        <div className="space-y-6 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">
+        <div className="space-y-6 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner text-left">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
                 <Tag className="h-3 w-3" /> Filter by Tags
               </Label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {(config.tagIds || []).map((id: string) => {
-                  const tag = allTags?.find((t: TagType) => t.id === id);
-                  return (
-                    <Badge key={id} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 border-none group animate-in zoom-in-95 duration-150">
-                      <span className="text-[10px] font-bold tracking-tight">{tag?.name || id}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-4 w-4 rounded-md hover:bg-emerald-500/20"
-                        onClick={() => updateConfig({ tagIds: config.tagIds.filter((t: string) => t !== id) })}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  );
-                })}
-              </div>
-              <Select 
-                value="" 
-                onValueChange={(v) => {
-                  const current = config.tagIds || [];
-                  if (!current.includes(v)) {
-                    updateConfig({ tagIds: [...current, v] });
-                  }
-                }}
-              >
-                <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
-                  <SelectValue placeholder="Add tags to watch..." />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
-                  {(allTags || []).map((tag: TagType) => (
-                    <SelectItem key={tag.id} value={tag.id} className="rounded-lg p-2">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
-                        <span className="font-bold text-xs">{tag.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MultiSelect
+                options={tagOptions}
+                value={config.tagIds || []}
+                onChange={(val) => updateConfig({ tagIds: val })}
+                onCreate={handleCreateInlineTag}
+                placeholder="Select or type to create tags to watch..."
+                className="rounded-xl border-none shadow-inner"
+              />
             </div>
           </div>
         </div>
