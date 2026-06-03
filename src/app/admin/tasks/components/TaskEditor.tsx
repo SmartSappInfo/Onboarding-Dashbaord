@@ -602,9 +602,5 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
             </DialogContent>
         </Dialog>
     );
-}>
-            </DialogContent>
-        </Dialog>
-    );
 }
 
