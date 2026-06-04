@@ -77,6 +77,11 @@ export async function logMeetingAttendance(
         registrantId,
         registrantToken: metadata.registrantToken,
       });
+    } else {
+      const docId = existingAttendeeSnap.docs[0].id;
+      await adminDb.collection('attendees').doc(docId).update({
+        lastRejoinedAt: now,
+      });
     }
 
     return { success: true };

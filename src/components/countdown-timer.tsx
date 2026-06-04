@@ -64,7 +64,11 @@ const CountdownTimer = ({ targetDate }: CountdownTimerProps) => {
   }
   
   if (Object.values(timeLeft).every(v => v === 0)) {
-    return <div className="text-center text-2xl font-bold p-4 bg-blue-500/10 dark:bg-white/20 text-slate-900 dark:text-white rounded-lg backdrop-blur-sm">The meeting has started!</div>
+    return (
+      <div className="text-center text-2xl font-black text-slate-900 dark:text-white animate-pulse tracking-tight py-2">
+        The meeting has started!
+      </div>
+    );
   }
 
   return (

@@ -82,9 +82,10 @@ export default function MeetingRegisteredState({
       setLaunchCountdown(count);
       if (count <= 0) {
         clearInterval(interval);
-        setState('redirected');
         if (meeting.meetingLink) {
-          window.open(meeting.meetingLink, '_blank');
+          window.location.href = meeting.meetingLink;
+        } else {
+          setState('redirected');
         }
       }
     }, 1000);

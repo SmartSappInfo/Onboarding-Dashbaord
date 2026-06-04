@@ -241,9 +241,10 @@ export default function JoiningPageClient({ typeSlug, entitySlug, token }: Joini
       setLaunchCountdown(count);
       if (count <= 0) {
         clearInterval(interval);
-        setPageState('redirected');
         if (meeting.meetingLink) {
-          window.open(meeting.meetingLink, '_blank');
+          window.location.href = meeting.meetingLink;
+        } else {
+          setPageState('redirected');
         }
       }
     }, 1000);

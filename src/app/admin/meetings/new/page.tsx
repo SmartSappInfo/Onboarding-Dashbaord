@@ -550,7 +550,8 @@ export default function NewMeetingPage() {
         // Consolidated robust scheduling of all meeting alerts, reminders and invitations
         rescheduleRemindersForMeeting(
             { id: docRef.id, ...meetingData } as any,
-            activeOrganizationId
+            activeOrganizationId,
+            true
         ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
 
         router.push('/admin/meetings');

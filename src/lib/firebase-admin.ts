@@ -59,7 +59,24 @@ function getAdminApp(): App {
 
 const app = getAdminApp();
 
-export const adminDb = getFirestore(app);
+const firestoreInstance = getFirestore(app);
+
+// settings() can only be called once per instance before any other operations.
+// We guard it with a global check and try/catch to prevent Next.js build-time re-evaluation failures.
+if (!(globalThis as any)._firestoreSettingsApplied) {
+  try {
+    firestoreInstance.settings({ ignoreUndefinedProperties: true });
+    (globalThis as any)._firestoreSettingsApplied = true;
+  } catch (e: any) {
+    if (e.message && e.message.includes('already been initialized')) {
+      (globalThis as any)._firestoreSettingsApplied = true;
+    } else {
+      throw e;
+    }
+  }
+}
+
+export const adminDb = firestoreInstance;
 export const adminAuth = getAuth(app);
 export const adminStorage = getStorage(app).bucket();
 export { FieldValue };
