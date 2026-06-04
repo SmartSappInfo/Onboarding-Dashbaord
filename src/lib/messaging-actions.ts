@@ -11,6 +11,7 @@ import { buildMeetingBaseVariables, buildFacilitatorVariables } from './meeting-
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
 import { evaluateConditionNode } from './automation-condition';
 import { getBaseUrl } from './utils/url-helpers';
+import { getPersonalizedMeetingUrl } from './meeting-tokens';
 
 /**
  * @fileOverview Server-side actions for the Variable Registry.
@@ -1158,11 +1159,23 @@ export async function getSimulationVariablesAction(params: {
       const { generateCalendarLinkFromMeeting } = await import('./calendar-utils');
       variables.calendar_link = generateCalendarLinkFromMeeting(meeting);
 
-      const typeSlug = meeting.type?.slug || 'webinar';
-      const meetingSlug = meeting.slug || meeting.id;
+      let typeSlug = 'parent-engagement';
+      const mType = meeting.type as any;
+      if (mType) {
+        if (typeof mType === 'string') {
+          typeSlug = mType === 'parent' ? 'parent-engagement' : mType;
+        } else if (mType.slug) {
+          typeSlug = mType.slug;
+        } else if (mType.id) {
+          typeSlug = mType.id === 'parent' ? 'parent-engagement' : mType.id;
+        }
+      }
+      const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meeting.id;
       const baseUrl = getBaseUrl();
       variables.meeting_registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=simulated_rsvp_token`;
-      variables.registrant_join_link = `${baseUrl}/meetings/join/${meeting.id}?token=simulated_join_token`;
+      variables.registrant_one_click_link = variables.meeting_registrant_one_click_link;
+      variables.registrant_join_link = getPersonalizedMeetingUrl(baseUrl, meeting, 'simulated_join_token');
+      variables.meeting_registrant_join_link = variables.registrant_join_link;
 
       if (meeting.facilitators?.length) {
         const facVars = buildFacilitatorVariables(meeting.facilitators[0]);

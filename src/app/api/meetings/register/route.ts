@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { generateRegistrantToken } from '@/lib/meeting-tokens';
+import { generateRegistrantToken, getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 import { sendMessage } from '@/lib/messaging-engine';
 import { buildMeetingBaseVariables, buildRegistrantVariables } from '@/lib/meeting-variable-helpers';
 import { createEntityFromRegistration } from '@/app/actions/meeting-lead-capture-action';
 import { dispatchRegistrationWebhook, type RegistrationWebhookPayload } from '@/lib/outbound-webhook-service';
 import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
+import { scheduleRemindersForNewRegistrant } from '@/lib/reminder-actions';
 
 /**
  * POST /api/meetings/register
@@ -84,6 +85,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           registeredAt: now,
           registrationData: formData,
         });
+        void scheduleRemindersForNewRegistrant(meeting, existingSnap.id, orgId).catch(err => {
+          console.warn('[REGISTER] Failed to schedule reminders on conversion:', err?.message);
+        });
         return NextResponse.json({
           token: existing.token,
           status: 'registered',
@@ -122,9 +126,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const baseUrl = getBaseUrl();
 
   // Reconstruct the public path from meeting slug + type slug
-  const typeSlug = meeting.type?.id || 'meeting';
-  const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meeting.id;
-  const personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+  const personalizedMeetingUrl = getPersonalizedMeetingUrl(baseUrl, meeting as any, token);
 
   const registrantName = String(formData.name || formData.full_name || '');
 
@@ -144,6 +146,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const docRef = await registrantsRef.add(registrantData);
   const registrantId = docRef.id;
+
+  void scheduleRemindersForNewRegistrant(meeting, registrantId, orgId).catch(err => {
+    console.warn('[REGISTER] Failed to schedule reminders for new registrant:', err?.message);
+  });
 
   const workspaceId = meeting.workspaceIds?.[0] || '';
   if (workspaceId) {

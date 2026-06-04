@@ -44,6 +44,7 @@ import {
   processScheduledMessages,
   rescheduleRemindersForMeeting,
   scheduleMeetingInvitations,
+  scheduleRemindersForNewRegistrant,
 } from '../reminder-actions';
 import { computeScheduledAt } from '../template-variable-utils';
 import * as firebaseAdmin from '../firebase-admin';
@@ -434,6 +435,69 @@ describe('scheduleMeetingInvitations', () => {
     await scheduleMeetingInvitations(meeting as any, 'org-123');
 
     expect(docMock).toHaveBeenCalledWith('meeting_inv_meeting-789_reg-456_1_day_before_email');
+  });
+});
+
+describe('scheduleRemindersForNewRegistrant', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('correctly schedules reminders for approved/registered guest and creates correct deterministic IDs', async () => {
+    const registrantDoc = {
+      exists: true,
+      id: 'reg-new-123',
+      data: () => ({
+        token: 'token-new',
+        name: 'New Registered Guest',
+        email: 'newguest@example.com',
+        status: 'approved'
+      })
+    };
+
+    mocks().get
+      .mockResolvedValueOnce(registrantDoc); // Fetch registrant doc
+
+    const docMock = vi.fn().mockImplementation((id) => ({
+      id,
+      collection: vi.fn().mockReturnValue({
+        doc: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue(registrantDoc)
+        })
+      }),
+      get: vi.fn().mockResolvedValue({ exists: false })
+    }));
+    vi.spyOn(firebaseAdmin.adminDb, 'collection').mockReturnValue({
+      doc: docMock,
+      where: mocks().where,
+    } as any);
+
+    const meeting = {
+      id: 'meeting-abc',
+      meetingTime: new Date(Date.now() + 3600 * 1000 * 48).toISOString(),
+      messagingConfig: {
+        reminders: [
+          {
+            id: 'reminder_1_day',
+            enabled: true,
+            channels: ['email'],
+            emailTemplateId: 'tpl-rem-1day',
+            smsTemplateId: 'tpl-rem-sms-1day',
+            offsetMinutes: 1440,
+            anchor: 'before_event'
+          }
+        ]
+      }
+    };
+
+    await scheduleRemindersForNewRegistrant(meeting as any, 'reg-new-123', 'org-abc');
+
+    expect(docMock).toHaveBeenCalledWith('meeting_rem_meeting-abc_reg-new-123_reminder_1_day_email');
+    expect(mocks().set).toHaveBeenCalledTimes(1);
+    expect(mocks().set.mock.calls[0][1]).toEqual(expect.objectContaining({
+      reminderType: 'messaging_slot_reminder_1_day',
+      templateId: 'tpl-rem-1day'
+    }));
   });
 });
 

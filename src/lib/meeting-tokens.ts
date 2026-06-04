@@ -64,3 +64,27 @@ export function getDefaultRegistrationFields() {
     },
   ];
 }
+
+/**
+ * Builds the personalized meeting join URL for a registrant.
+ * Resolves the meeting type slug safely, handling nested types and legacy overrides.
+ */
+export function getPersonalizedMeetingUrl(
+  origin: string,
+  meeting: { type?: { slug?: string; id?: string } | string; meetingSlug?: string; entitySlug?: string; id: string },
+  token: string,
+): string {
+  let typeSlug = 'parent-engagement';
+  if (meeting.type) {
+    if (typeof meeting.type === 'string') {
+      typeSlug = meeting.type === 'parent' ? 'parent-engagement' : meeting.type;
+    } else if (meeting.type.slug) {
+      typeSlug = meeting.type.slug;
+    } else if (meeting.type.id) {
+      typeSlug = meeting.type.id === 'parent' ? 'parent-engagement' : meeting.type.id;
+    }
+  }
+  const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meeting.id;
+  return `${origin}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+}
+

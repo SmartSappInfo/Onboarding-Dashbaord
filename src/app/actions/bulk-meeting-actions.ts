@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
-import { generateRegistrantToken } from '@/lib/meeting-tokens';
+import { generateRegistrantToken, getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
 import type { WorkspaceEntity, MeetingRegistrant } from '@/lib/types';
 import { getBaseUrl, getRequestBaseUrl } from '@/lib/utils/url-helpers';
@@ -30,7 +30,16 @@ export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData
       throw new Error('Meeting not found');
     }
     const meeting = meetingSnap.data()!;
-    const typeSlug = meeting.type?.id || 'meeting';
+    let typeSlug = 'parent-engagement';
+    if (meeting.type) {
+      if (typeof meeting.type === 'string') {
+        typeSlug = meeting.type === 'parent' ? 'parent-engagement' : meeting.type;
+      } else if (meeting.type.slug) {
+        typeSlug = meeting.type.slug;
+      } else if (meeting.type.id) {
+        typeSlug = meeting.type.id === 'parent' ? 'parent-engagement' : meeting.type.id;
+      }
+    }
     const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingSnap.id;
     const meetingTitle = meeting.title || 'Onboarding Session';
 
@@ -78,7 +87,7 @@ export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData
 
           const name = contact.name || 'Participant';
           const token = generateRegistrantToken();
-          const personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+          const personalizedMeetingUrl = getPersonalizedMeetingUrl(baseUrl, { id: meetingSnap.id, ...meeting } as any, token);
 
           const registrantDocRef = registrantsRef.doc();
           const registrantData: Omit<MeetingRegistrant, 'id'> = {

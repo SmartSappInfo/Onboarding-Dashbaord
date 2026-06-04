@@ -1,9 +1,10 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
-import { generateRegistrantToken } from '@/lib/meeting-tokens';
+import { generateRegistrantToken, getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
 import { ensureAbsoluteUrl, getBaseUrl, getRequestBaseUrl } from '@/lib/utils/url-helpers';
+import { scheduleRemindersForNewRegistrant } from '@/lib/reminder-actions';
 
 export async function deleteRegistrantAction(meetingId: string, registrantId: string) {
   try {
@@ -159,9 +160,7 @@ export async function adminRegisterParticipantAction(
 
     const token = generateRegistrantToken();
     const baseUrl = await getRequestBaseUrl();
-    const typeSlug = meeting.type?.id || 'meeting';
-    const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingSnap.id;
-    const personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+    const personalizedMeetingUrl = getPersonalizedMeetingUrl(baseUrl, { id: meetingSnap.id, ...meeting } as any, token);
 
     const now = new Date().toISOString();
 
@@ -181,6 +180,11 @@ export async function adminRegisterParticipantAction(
     };
 
     const docRef = await registrantsRef.add(registrantData);
+
+    const orgId = meeting.organizationId || 'default';
+    void scheduleRemindersForNewRegistrant({ id: meetingId, ...meeting } as any, docRef.id, orgId).catch(err => {
+      console.warn('[ADMIN-REGISTER] Failed to schedule reminders:', err?.message);
+    });
 
     const workspaceId = meeting.workspaceIds?.[0] || '';
     if (workspaceId) {
@@ -234,7 +238,17 @@ async function dispatchSingleRecipient(
   baseUrl?: string
 ): Promise<SingleRecipientResult> {
   const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
-  const typeSlug = meeting.type?.id || 'meeting';
+  let typeSlug = 'parent-engagement';
+  const mType = meeting.type as any;
+  if (mType) {
+    if (typeof mType === 'string') {
+      typeSlug = mType === 'parent' ? 'parent-engagement' : mType;
+    } else if (mType.slug) {
+      typeSlug = mType.slug;
+    } else if (mType.id) {
+      typeSlug = mType.id === 'parent' ? 'parent-engagement' : mType.id;
+    }
+  }
   const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingId;
   const now = new Date().toISOString();
   const isScheduled = !!scheduleTime && new Date(scheduleTime) > new Date();
@@ -311,7 +325,7 @@ async function dispatchSingleRecipient(
       }
     } else {
       token = generateRegistrantToken();
-      personalizedMeetingUrl = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+      personalizedMeetingUrl = getPersonalizedMeetingUrl(baseUrl || '', { id: meetingId, ...meeting } as any, token);
 
       const docRef = await registrantsRef.add({
         meetingId,
@@ -709,11 +723,16 @@ export async function submitRsvpResponseAction(
 
     await regDoc.ref.update(updatedFields);
 
-    // If accepted going, trigger registrant activity tracking
+    // If accepted going, trigger registrant activity tracking and reminders scheduling
     if (responseStatus === 'going') {
       const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
       if (meetingSnap.exists) {
         const meeting = meetingSnap.data()!;
+        const orgId = meeting.organizationId || 'default';
+        void scheduleRemindersForNewRegistrant({ id: meetingId, ...meeting } as any, regDoc.id, orgId).catch(err => {
+          console.warn('[RSVP-GOING] Failed to schedule reminders:', err?.message);
+        });
+
         const workspaceId = meeting.workspaceIds?.[0] || regData.workspaceIds?.[0] || '';
         if (workspaceId) {
           const { emitMeetingRegistrantActivity } = await import('@/lib/meeting-automation-events');
@@ -727,6 +746,39 @@ export async function submitRsvpResponseAction(
             registrantEmail: updatedFields.email || regData.email,
             meetingTypeId: meeting.type?.id,
           });
+        }
+      }
+    } else if (responseStatus === 'not_going') {
+      // Clear pending scheduled messages for this registrant
+      const email = regData.email?.toLowerCase().trim();
+      const phone = regData.phone;
+      const batch = adminDb.batch();
+      const queryPromises = [];
+      if (email) {
+        queryPromises.push(
+          adminDb.collection('scheduled_messages')
+            .where('sourceEventId', '==', meetingId)
+            .where('sourceEventType', '==', 'meeting')
+            .where('recipientContact', '==', email)
+            .get()
+        );
+      }
+      if (phone) {
+        queryPromises.push(
+          adminDb.collection('scheduled_messages')
+            .where('sourceEventId', '==', meetingId)
+            .where('sourceEventType', '==', 'meeting')
+            .where('recipientContact', '==', phone)
+            .get()
+        );
+      }
+      if (queryPromises.length > 0) {
+        try {
+          const snaps = await Promise.all(queryPromises);
+          snaps.forEach(s => s.docs.forEach(d => batch.delete(d.ref)));
+          await batch.commit();
+        } catch (err: any) {
+          console.warn('[RSVP-DECLINE] Failed to clear scheduled reminders:', err?.message);
         }
       }
     }
@@ -768,6 +820,53 @@ export async function manuallyUpdateGuestStatusAction(
     }
 
     await adminDb.collection(`meetings/${meetingId}/registrants`).doc(registrantId).update(updateFields);
+
+    if (targetState === 'going') {
+      const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
+      if (meetingSnap.exists) {
+        const meeting = meetingSnap.data()!;
+        const orgId = meeting.organizationId || 'default';
+        void scheduleRemindersForNewRegistrant({ id: meetingId, ...meeting } as any, registrantId, orgId).catch(err => {
+          console.warn('[MANUAL-STATUS-GOING] Failed to schedule reminders:', err?.message);
+        });
+      }
+    } else if (targetState === 'cancelled') {
+      const regSnap = await adminDb.collection(`meetings/${meetingId}/registrants`).doc(registrantId).get();
+      if (regSnap.exists) {
+        const regData = regSnap.data()!;
+        const email = regData.email?.toLowerCase().trim();
+        const phone = regData.phone;
+        const batch = adminDb.batch();
+        const queryPromises = [];
+        if (email) {
+          queryPromises.push(
+            adminDb.collection('scheduled_messages')
+              .where('sourceEventId', '==', meetingId)
+              .where('sourceEventType', '==', 'meeting')
+              .where('recipientContact', '==', email)
+              .get()
+          );
+        }
+        if (phone) {
+          queryPromises.push(
+            adminDb.collection('scheduled_messages')
+              .where('sourceEventId', '==', meetingId)
+              .where('sourceEventType', '==', 'meeting')
+              .where('recipientContact', '==', phone)
+              .get()
+          );
+        }
+        if (queryPromises.length > 0) {
+          try {
+            const snaps = await Promise.all(queryPromises);
+            snaps.forEach(s => s.docs.forEach(d => batch.delete(d.ref)));
+            await batch.commit();
+          } catch (err: any) {
+            console.warn('[MANUAL-STATUS-CANCEL] Failed to clear scheduled reminders:', err?.message);
+          }
+        }
+      }
+    }
     return { success: true };
   } catch (error: any) {
     console.error('[manuallyUpdateGuestStatusAction]', error);

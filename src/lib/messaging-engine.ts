@@ -362,7 +362,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
                 if (meetingSnap.exists) {
                     const mData = meetingSnap.data();
-                    typeSlug = mData?.type?.id || 'meeting';
+                    typeSlug = mData?.type?.slug || (mData?.type?.id === 'parent' ? 'parent-engagement' : mData?.type?.id) || 'parent-engagement';
                     meetingSlug = mData?.meetingSlug || mData?.entitySlug || meetingId;
                 }
             } catch { /* ignore */ }

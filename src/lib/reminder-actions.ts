@@ -9,6 +9,7 @@ import type { Meeting, ScheduledMessage, TemplateCategory, MeetingMessagingConfi
 import { REMINDER_OFFSETS } from './types';
 import { calculateChannelTriggerTime } from './invitation-utils';
 import { getBaseUrl, getRequestBaseUrl } from './utils/url-helpers';
+import { getPersonalizedMeetingUrl } from './meeting-tokens';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -257,7 +258,17 @@ export async function scheduleMeetingInvitations(
   if (enabledSlots.length === 0) return;
 
   const baseUrl = await getRequestBaseUrl();
-  const typeSlug = meeting.type?.id || 'meeting';
+  let typeSlug = 'parent-engagement';
+  const mType = meeting.type as any;
+  if (mType) {
+    if (typeof mType === 'string') {
+      typeSlug = mType === 'parent' ? 'parent-engagement' : mType;
+    } else if (mType.slug) {
+      typeSlug = mType.slug;
+    } else if (mType.id) {
+      typeSlug = mType.id === 'parent' ? 'parent-engagement' : mType.id;
+    }
+  }
   const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meeting.id;
 
   const meetingTime = new Date(meeting.meetingTime);
@@ -968,3 +979,78 @@ export async function schedulePostEventMessages(
 
   return { thankYouCount, absenteeCount };
 }
+
+/**
+ * Schedules custom messaging config reminders for a single newly registered participant.
+ * Fetches the registrant details, checks if status is registered/approved,
+ * and schedules all enabled reminders for the user deterministically.
+ */
+export async function scheduleRemindersForNewRegistrant(
+  meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
+  registrantId: string,
+  orgId: string,
+): Promise<void> {
+  const config = meeting.messagingConfig;
+  if (!config?.reminders?.length || !meeting.meetingTime) return;
+
+  const enabledSlots = config.reminders.filter(s => s.enabled && s.channels.length > 0);
+  if (enabledSlots.length === 0) return;
+
+  // Fetch the registrant doc
+  const regSnap = await adminDb
+    .collection('meetings').doc(meeting.id).collection('registrants').doc(registrantId)
+    .get();
+
+  if (!regSnap.exists) return;
+  const reg = regSnap.data()!;
+
+  // Skip if they are not approved or registered
+  if (reg.status !== 'registered' && reg.status !== 'approved') return;
+
+  const regVars = buildRegistrantVariables({
+    name: reg.name || '',
+    email: reg.email || '',
+    phone: reg.phone || '',
+    personalizedMeetingUrl: reg.personalizedMeetingUrl || '',
+    status: reg.status || '',
+    registrationData: reg.registrationData || {},
+  });
+
+  const meetingVars = buildMeetingBaseVariables(meeting);
+  const now = new Date().toISOString();
+  const batch = adminDb.batch();
+
+  for (const slot of enabledSlots) {
+    const scheduledAt = computeScheduledAt(meeting.meetingTime, slot.offsetMinutes);
+    if (new Date(scheduledAt) <= new Date()) continue;
+
+    for (const ch of slot.channels) {
+      const templateId = ch === 'email' ? slot.emailTemplateId : slot.smsTemplateId;
+      if (!templateId) continue;
+
+      const contact = ch === 'email' ? reg.email : reg.phone;
+      if (!contact) continue;
+
+      const docId = `meeting_rem_${meeting.id}_${registrantId}_${slot.id}_${ch}`;
+      const docRef = adminDb.collection('scheduled_messages').doc(docId);
+      const msg: Omit<ScheduledMessage, 'id'> = {
+        organizationId: orgId,
+        templateId,
+        channel: ch,
+        recipientContact: contact,
+        variables: { ...meetingVars, ...regVars },
+        scheduledAt,
+        status: 'pending',
+        reminderType: `messaging_slot_${slot.id}`,
+        sourceEventId: meeting.id,
+        sourceEventType: 'meeting',
+        retryCount: 0,
+        createdAt: now,
+      };
+      batch.set(docRef, msg);
+    }
+  }
+
+  await batch.commit();
+}
+
