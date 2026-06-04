@@ -169,6 +169,7 @@ export async function cancelRemindersForMeeting(meetingId: string): Promise<void
 export async function rescheduleRemindersForMeeting(
   meeting: Meeting & { messagingConfig?: MeetingMessagingConfig; enabledReminders?: string[] },
   orgId: string,
+  meetingTimeChanged = false
 ): Promise<void> {
   // 1. Cancel all pending scheduled messages linked to this meeting
   await cancelRemindersForMeeting(meeting.id);
@@ -180,8 +181,12 @@ export async function rescheduleRemindersForMeeting(
     promises.push(scheduleRemindersForMeeting(meeting, meeting.enabledReminders, orgId));
   }
 
-  // 3. Schedule facilitator pre-event alerts if enabled
-  if (meeting.messagingConfig?.facilitatorRemindersEnabled) {
+  // 3. Schedule facilitator pre-event alerts if enabled or templates are selected
+  const hasFacilitatorTemplates = !!(
+    meeting.messagingConfig?.facilitatorRemindersEmailTemplateId ||
+    meeting.messagingConfig?.facilitatorRemindersSmsTemplateId
+  );
+  if (meeting.messagingConfig?.facilitatorRemindersEnabled || hasFacilitatorTemplates) {
     promises.push(scheduleFacilitatorAlerts(meeting, orgId, 'pre_event'));
   }
 
@@ -192,7 +197,7 @@ export async function rescheduleRemindersForMeeting(
 
   // 5. Schedule custom invitations if enabled
   if (meeting.messagingConfig?.invitationsEnabled) {
-    promises.push(scheduleMeetingInvitations(meeting, orgId));
+    promises.push(scheduleMeetingInvitations(meeting, orgId, meetingTimeChanged));
   }
 
   await Promise.all(promises);
@@ -204,7 +209,8 @@ export async function rescheduleRemindersForMeeting(
  */
 export async function scheduleMeetingInvitations(
   meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
-  orgId: string
+  orgId: string,
+  meetingTimeChanged = false
 ): Promise<void> {
   const config = meeting.messagingConfig;
   if (!config?.invitationsEnabled || !config.invitationSeries || config.invitationSeries.length === 0 || !meeting.meetingTime) {
@@ -326,8 +332,10 @@ export async function scheduleMeetingInvitations(
         // Skip if this invitation channel was already sent to this registrant
         const stageKey = `${slot.id}_${ch}`;
         const wasSent = reg.sentInvitations?.[stageKey] || reg.sentInvitations?.[slot.id];
-        if (wasSent && slot.id === 'initial') {
-          continue;
+        if (wasSent) {
+          if (slot.id === 'initial' || !meetingTimeChanged) {
+            continue;
+          }
         }
 
         const triggerTime = ch === 'email' ? emailTriggerTime : smsTriggerTime;
@@ -457,6 +465,7 @@ const MAX_RETRIES = 3;
  */
 export async function processScheduledMessages(): Promise<{ sent: number; failed: number }> {
   const nowIso = new Date().toISOString();
+  const now = new Date();
 
   const snap = await adminDb
     .collection('scheduled_messages')
@@ -466,12 +475,45 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
 
   let sent = 0;
   let failed = 0;
+  const meetingCache = new Map<string, Meeting | null>();
 
   for (const doc of snap.docs) {
     const msg = { id: doc.id, ...doc.data() } as ScheduledMessage;
 
     try {
       const meetingId = msg.variables?.meetingId || (msg.sourceEventType === 'meeting' ? msg.sourceEventId : null);
+      
+      let meetingData: Meeting | null = null;
+      if (meetingId) {
+        if (!meetingCache.has(meetingId)) {
+          const mSnap = await adminDb.collection('meetings').doc(meetingId).get();
+          meetingCache.set(meetingId, mSnap.exists ? (mSnap.data() as Meeting) : null);
+        }
+        meetingData = meetingCache.get(meetingId) || null;
+      }
+
+      if (meetingData) {
+        if (meetingData.status === 'cancelled' || meetingData.status === 'ended') {
+          await doc.ref.update({ status: 'cancelled', cancelledAt: new Date().toISOString() });
+          continue;
+        }
+
+        const isPreEvent = msg.reminderType === 'meeting_invitation' ||
+                           msg.reminderType?.startsWith('meeting_invitation_') ||
+                           msg.reminderType === 'meeting_reminder' ||
+                           msg.reminderType?.startsWith('meeting_reminder_') ||
+                           (msg.scheduledAt && new Date(msg.scheduledAt) <= new Date(meetingData.meetingTime));
+
+        if (isPreEvent) {
+          const duration = meetingData.durationMinutes ?? 60;
+          const meetingEndTime = new Date(new Date(meetingData.meetingTime).getTime() + duration * 60 * 1000);
+          if (now > meetingEndTime) {
+            await doc.ref.update({ status: 'cancelled', cancelledAt: new Date().toISOString() });
+            continue;
+          }
+        }
+      }
+
       if (meetingId && msg.recipientContact) {
         const isEmail = msg.recipientContact.includes('@');
         const regSnap = await adminDb
@@ -698,9 +740,15 @@ export async function scheduleFacilitatorAlerts(
   const facilitators = meeting.facilitators || [];
   if (!facilitators.length || !config) return;
 
-  // Check if the requested alert type is enabled
-  if (alertType === 'pre_event' && !config.facilitatorRemindersEnabled) return;
-  if (alertType === 'post_event' && !config.facilitatorPostEventEnabled) return;
+  // Check if the requested alert type is enabled or templates are selected
+  const hasPreEventTemplates = !!(config.facilitatorRemindersEmailTemplateId || config.facilitatorRemindersSmsTemplateId);
+  const isPreEventEnabled = config.facilitatorRemindersEnabled || hasPreEventTemplates;
+
+  const hasPostEventTemplates = !!(config.facilitatorPostEventEmailTemplateId || config.facilitatorPostEventSmsTemplateId);
+  const isPostEventEnabled = config.facilitatorPostEventEnabled || hasPostEventTemplates;
+
+  if (alertType === 'pre_event' && !isPreEventEnabled) return;
+  if (alertType === 'post_event' && !isPostEventEnabled) return;
 
   if (facilitators.length === 0) return;
 
@@ -720,21 +768,31 @@ export async function scheduleFacilitatorAlerts(
 
   const batch = adminDb.batch();
 
-    for (const ch of channels) {
-    const templateType = alertType === 'pre_event'
-      ? 'meeting_facilitator_pre_event'
-      : 'meeting_facilitator_post_event';
-
+  for (const ch of channels) {
     let templateId: string | undefined;
-    try {
-      const { resolveTemplateForOrg } = await import('./template-resolver');
-      const tpl = await resolveTemplateForOrg('meetings' as TemplateCategory, templateType, orgId);
-      // Only use templates matching this channel
-      if (tpl.channel !== ch) continue;
-      templateId = tpl.id;
-    } catch {
-      // No template found for this channel — skip
-      continue;
+    
+    // Try explicitly configured templates first
+    if (alertType === 'pre_event') {
+      templateId = ch === 'email' ? config.facilitatorRemindersEmailTemplateId : config.facilitatorRemindersSmsTemplateId;
+    } else {
+      templateId = ch === 'email' ? config.facilitatorPostEventEmailTemplateId : config.facilitatorPostEventSmsTemplateId;
+    }
+
+    if (!templateId) {
+      const templateType = alertType === 'pre_event'
+        ? 'meeting_facilitator_pre_event'
+        : 'meeting_facilitator_post_event';
+
+      try {
+        const { resolveTemplateForOrg } = await import('./template-resolver');
+        const tpl = await resolveTemplateForOrg('meetings' as TemplateCategory, templateType, orgId);
+        // Only use templates matching this channel
+        if (tpl.channel !== ch) continue;
+        templateId = tpl.id;
+      } catch {
+        // No template found for this channel — skip
+        continue;
+      }
     }
 
     for (const f of facilitators) {

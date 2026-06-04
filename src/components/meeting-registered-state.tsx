@@ -35,41 +35,43 @@ export default function MeetingRegisteredState({
     if (!firestore || state === 'redirected') return;
     setState('launching');
 
-    try {
-      // Update registrant status to attended
-      const registrantRef = doc(firestore, `meetings/${meeting.id}/registrants`, registrant.id);
-      await updateDoc(registrantRef, {
-        status: 'attended',
-        attendedAt: new Date().toISOString(),
-      });
+    if (registrant.status !== 'attended') {
+      try {
+        // Update registrant status to attended
+        const registrantRef = doc(firestore, `meetings/${meeting.id}/registrants`, registrant.id);
+        await updateDoc(registrantRef, {
+          status: 'attended',
+          attendedAt: new Date().toISOString(),
+        });
 
-      // Extract children from registration data if available (look for various potential keys)
-      const registrationData = registrant.registrationData || {};
-      const childrenFromData = registrationData.children || 
-                               registrationData.childrenNames || 
-                               registrationData['Children Names'] || 
-                               registrationData['Child Names'] || [];
-      
-      const childrenArray = Array.isArray(childrenFromData) 
-        ? childrenFromData 
-        : typeof childrenFromData === 'string' 
-          ? childrenFromData.split(',').map(s => s.trim()).filter(Boolean)
-          : [];
+        // Extract children from registration data if available (look for various potential keys)
+        const registrationData = registrant.registrationData || {};
+        const childrenFromData = registrationData.children || 
+                                 registrationData.childrenNames || 
+                                 registrationData['Children Names'] || 
+                                 registrationData['Child Names'] || [];
+        
+        const childrenArray = Array.isArray(childrenFromData) 
+          ? childrenFromData 
+          : typeof childrenFromData === 'string' 
+            ? childrenFromData.split(',').map(s => s.trim()).filter(Boolean)
+            : [];
 
-      // Create attendees collection reference
-      const attendeesRef = collection(firestore, 'attendees');
-      
-      await addDoc(attendeesRef, {
-        meetingId: meeting.id,
-        entityId: meeting.entityId || '',
-        parentName: registrant.name,
-        childrenNames: childrenArray,
-        joinedAt: new Date().toISOString(),
-        registrantId: registrant.id,
-        registrantToken: registrant.token,
-      });
-    } catch (error) {
-      console.error('Failed to mark attendance:', error);
+        // Create attendees collection reference
+        const attendeesRef = collection(firestore, 'attendees');
+        
+        await addDoc(attendeesRef, {
+          meetingId: meeting.id,
+          entityId: meeting.entityId || '',
+          parentName: registrant.name,
+          childrenNames: childrenArray,
+          joinedAt: new Date().toISOString(),
+          registrantId: registrant.id,
+          registrantToken: registrant.token,
+        });
+      } catch (error) {
+        console.error('Failed to mark attendance:', error);
+      }
     }
 
     // Countdown before redirect
@@ -92,7 +94,13 @@ export default function MeetingRegisteredState({
 
   // Check if meeting time has arrived
   useEffect(() => {
-    if (registrant.status === 'attended') {
+    const meetingTime = new Date(meeting.meetingTime);
+    const duration = meeting.durationMinutes ?? 60;
+    const endTime = new Date(meetingTime.getTime() + duration * 60 * 1000);
+    const now = new Date();
+    const isMeetingOver = meeting.recordingUrl || now >= endTime;
+
+    if (registrant.status === 'attended' && isMeetingOver) {
       setState('ended');
       return;
     }
@@ -102,7 +110,8 @@ export default function MeetingRegisteredState({
       const now = new Date();
       // Allow entry 5 minutes before meeting time
       const entryTime = new Date(meetingTime.getTime() - 5 * 60 * 1000);
-      const endTime = new Date(meetingTime.getTime() + 2 * 60 * 60 * 1000);
+      const duration = meeting.durationMinutes ?? 60;
+      const endTime = new Date(meetingTime.getTime() + duration * 60 * 1000);
 
       if (meeting.recordingUrl) {
         setState('ended');
@@ -116,7 +125,7 @@ export default function MeetingRegisteredState({
     checkTime();
     const interval = setInterval(checkTime, 1000);
     return () => clearInterval(interval);
-  }, [meeting.meetingTime, meeting.recordingUrl, registrant.status, state, markAttendedAndRedirect]);
+  }, [meeting.meetingTime, meeting.recordingUrl, meeting.durationMinutes, registrant.status, state, markAttendedAndRedirect]);
 
   const firstName = registrant.name.split(' ')[0];
 

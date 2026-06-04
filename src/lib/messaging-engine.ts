@@ -14,7 +14,7 @@ import { resolveContact } from './contact-adapter';
 import { buildMeetingBaseVariables, buildFacilitatorVariables, buildRegistrantVariables } from './meeting-variable-helpers';
 import { getRecipientContact } from './migration-status-utils';
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
-import { getBaseUrl, getRequestBaseUrl } from './utils/url-helpers';
+import { getBaseUrl, getRequestBaseUrl, cleanPersonalizedMeetingUrl } from './utils/url-helpers';
 
 interface SendMessageInput {
   templateId: string;
@@ -309,9 +309,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                     // Parse slugs from personalizedMeetingUrl
                     let typeSlug = 'meeting';
                     let meetingSlug = meetingId;
-                    if (rDocData.personalizedMeetingUrl) {
+                    const rawPersonalizedUrl = rDocData.personalizedMeetingUrl || '';
+                    const cleanPersonalizedUrl = cleanPersonalizedMeetingUrl(rawPersonalizedUrl);
+                    if (cleanPersonalizedUrl) {
                         try {
-                            const urlObj = new URL(rDocData.personalizedMeetingUrl);
+                            const urlObj = new URL(cleanPersonalizedUrl);
                             const paths = urlObj.pathname.split('/').filter(Boolean);
                             if (paths.length >= 3) {
                                 typeSlug = paths[1];
@@ -331,10 +333,10 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                         finalVariables.rsvp_later_url = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/respond?token=${token}&response=later`;
                     }
                     if (finalVariables.registrant_join_link === undefined) {
-                        finalVariables.registrant_join_link = rDocData.personalizedMeetingUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+                        finalVariables.registrant_join_link = cleanPersonalizedUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
                     }
                     if (finalVariables.meeting_registrant_join_link === undefined) {
-                        finalVariables.meeting_registrant_join_link = rDocData.personalizedMeetingUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
+                        finalVariables.meeting_registrant_join_link = cleanPersonalizedUrl || `${baseUrl}/meetings/${typeSlug}/${meetingSlug}/join?token=${token}`;
                     }
                     if (finalVariables.meeting_registrant_one_click_link === undefined) {
                         finalVariables.meeting_registrant_one_click_link = `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`;
@@ -695,9 +697,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       sentAt: scheduledAt || new Date().toISOString(),
       variables: JSON.parse(JSON.stringify(finalVariables)),
       workspaceIds: workspaceIds, // Bind to institutional track(s)
-      workspaceId: resolvedWorkspaceId || undefined, // Primary workspace context (Requirement 11)
+      ...(resolvedWorkspaceId ? { workspaceId: resolvedWorkspaceId } : {}),
       entityId: resolvedEntityId || null, // New unified entity reference
-      entityType: (resolvedEntityType || undefined) as EntityType | undefined, // Entity type
+      ...(resolvedEntityType ? { entityType: resolvedEntityType as EntityType } : {}),
       providerId: providerId || null,
       providerStatus: providerStatus || null,
       hasAttachments: !!(attachments && attachments.length > 0),

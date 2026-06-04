@@ -24,6 +24,7 @@ import {
   Loader2 
 } from 'lucide-react';
 import { format } from 'date-fns';
+import type { Meeting } from '@/lib/types';
 
 interface RecipientLogDrawerProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ interface RecipientLogDrawerProps {
   meetingId: string;
   reminderType: string;
   onPreviewMessage: (messageId: string) => void;
+  meeting?: Meeting;
 }
 
 export function RecipientLogDrawer({
@@ -38,7 +40,8 @@ export function RecipientLogDrawer({
   onClose,
   meetingId,
   reminderType,
-  onPreviewMessage
+  onPreviewMessage,
+  meeting
 }: RecipientLogDrawerProps) {
   const { logs, isLoading, error, hasMore, loadMore } = usePaginatedReminders(meetingId, reminderType);
 
@@ -74,30 +77,46 @@ export function RecipientLogDrawer({
     };
     if (labels[type]) return labels[type];
 
-    if (type.startsWith('messaging_slot_reminder_')) {
-      const parts = type.split('_');
-      const offsetMinutesStr = parts[3];
-      if (offsetMinutesStr) {
-        const offset = parseInt(offsetMinutesStr, 10);
-        if (!isNaN(offset)) {
-          if (offset === 0) return 'At meeting start';
-          
-          const absOffset = Math.abs(offset);
-          const days = Math.floor(absOffset / 1440);
-          const hours = Math.floor((absOffset % 1440) / 60);
-          const mins = absOffset % 60;
-          const timeParts = [];
-          if (days > 0) timeParts.push(`${days} day${days > 1 ? 's' : ''}`);
-          if (hours > 0) timeParts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
-          if (mins > 0) timeParts.push(`${mins} min${mins > 1 ? 's' : ''}`);
-          
-          return `${timeParts.join(' ')} ${offset > 0 ? 'before' : 'after'} meeting`;
+    if (type.startsWith('messaging_slot_')) {
+      const slotId = type.replace('messaging_slot_', '');
+      const slot = meeting?.messagingConfig?.reminders?.find(s => s.id === slotId);
+      if (slot) {
+        if (slot.offsetMinutes === 0) return 'Reminder (At meeting start)';
+        
+        const absOffset = Math.abs(slot.offsetMinutes);
+        const days = Math.floor(absOffset / 1440);
+        const hours = Math.floor((absOffset % 1440) / 60);
+        const mins = absOffset % 60;
+        const timeParts = [];
+        if (days > 0) timeParts.push(`${days} day${days > 1 ? 's' : ''}`);
+        if (hours > 0) timeParts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+        if (mins > 0) timeParts.push(`${mins} min${mins > 1 ? 's' : ''}`);
+        
+        return `Reminder (${timeParts.join(' ')} ${slot.offsetMinutes > 0 ? 'before' : 'after'} meeting)`;
+      }
+
+      // Safety check fallback for legacy strings
+      if (type.startsWith('messaging_slot_reminder_')) {
+        const parts = type.split('_');
+        const offsetMinutesStr = parts[3];
+        if (offsetMinutesStr) {
+          const offset = parseInt(offsetMinutesStr, 10);
+          if (!isNaN(offset) && offset < 100000) {
+            if (offset === 0) return 'At meeting start';
+            
+            const absOffset = Math.abs(offset);
+            const days = Math.floor(absOffset / 1440);
+            const hours = Math.floor((absOffset % 1440) / 60);
+            const mins = absOffset % 60;
+            const timeParts = [];
+            if (days > 0) timeParts.push(`${days} day${days > 1 ? 's' : ''}`);
+            if (hours > 0) timeParts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+            if (mins > 0) timeParts.push(`${mins} min${mins > 1 ? 's' : ''}`);
+            
+            return `Reminder (${timeParts.join(' ')} ${offset > 0 ? 'before' : 'after'} meeting)`;
+          }
         }
       }
-    }
-
-    if (type.startsWith('messaging_slot_')) {
-      return 'Scheduled Reminder';
     }
 
     return type;

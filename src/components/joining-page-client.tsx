@@ -164,8 +164,11 @@ export default function JoiningPageClient({ typeSlug, entitySlug, token }: Joini
           registrationData: regData.registrationData || {},
         });
 
-        // Check if already attended
-        if (regData.status === 'attended') {
+        // Check if already attended AND meeting is completed
+        const duration = meetingDoc.durationMinutes ?? 60;
+        const endTime = new Date(new Date(meetingDoc.meetingTime).getTime() + duration * 60 * 1000);
+
+        if (regData.status === 'attended' && (meetingDoc.recordingUrl || now >= endTime)) {
           setPageState('ended');
         } else {
           setPageState('waiting');
@@ -188,7 +191,8 @@ export default function JoiningPageClient({ typeSlug, entitySlug, token }: Joini
       const now = new Date();
       // Allow entry 5 minutes early
       const entryTime = new Date(meetingTime.getTime() - 5 * 60 * 1000);
-      const endTime = new Date(meetingTime.getTime() + 2 * 60 * 60 * 1000);
+      const duration = meeting.durationMinutes ?? 60;
+      const endTime = new Date(meetingTime.getTime() + duration * 60 * 1000);
 
       if (meeting.recordingUrl || isAfter(now, endTime)) {
         setPageState('ended');

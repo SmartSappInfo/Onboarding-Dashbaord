@@ -518,10 +518,15 @@ export default function EditMeetingPage() {
             metadata: { meetingId }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
+        const meetingTimeChanged = meeting?.meetingTime && data.meetingTime
+            ? new Date(meeting.meetingTime).getTime() !== data.meetingTime.getTime()
+            : false;
+
         // Consolidated robust scheduling of all meeting alerts, reminders and invitations
         rescheduleRemindersForMeeting(
             { id: meetingId, ...meetingData } as any,
-            activeOrganizationId
+            activeOrganizationId,
+            meetingTimeChanged
         ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
 
         router.push(`/admin/meetings/${meetingId}`);

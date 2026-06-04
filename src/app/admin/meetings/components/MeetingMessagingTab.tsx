@@ -155,6 +155,10 @@ export default function MeetingMessagingTab() {
     setValue('messagingConfig', { ...config, [key]: value }, { shouldDirty: true });
   }, [config, setValue]);
 
+  const updateConfigs = React.useCallback((updates: Partial<MeetingMessagingConfig>) => {
+    setValue('messagingConfig', { ...config, ...updates }, { shouldDirty: true });
+  }, [config, setValue]);
+
 
 
   const warnings = React.useMemo(() => {
@@ -543,10 +547,20 @@ export default function MeetingMessagingTab() {
                 category="meetings"
                 recipientType="internal_alert"
                 templateTypePrefix="meeting_facilitator_pre_event"
-                emailValue={config.facilitatorRemindersEmailTemplateId || ''}
-                onEmailChange={(v) => updateConfig('facilitatorRemindersEmailTemplateId', v)}
+                 emailValue={config.facilitatorRemindersEmailTemplateId || ''}
+                onEmailChange={(v) => {
+                  updateConfigs({
+                    facilitatorRemindersEmailTemplateId: v,
+                    ...(v ? { facilitatorRemindersEnabled: true } : {})
+                  });
+                }}
                 smsValue={config.facilitatorRemindersSmsTemplateId || ''}
-                onSmsChange={(v) => updateConfig('facilitatorRemindersSmsTemplateId', v)}
+                onSmsChange={(v) => {
+                  updateConfigs({
+                    facilitatorRemindersSmsTemplateId: v,
+                    ...(v ? { facilitatorRemindersEnabled: true } : {})
+                  });
+                }}
                 placeholderEmail="Select pre-event template..."
                 showChannelsToggle={false}
               />
@@ -562,10 +576,20 @@ export default function MeetingMessagingTab() {
                 category="meetings"
                 recipientType="internal_alert"
                 templateTypePrefix="meeting_facilitator_post_event"
-                emailValue={config.facilitatorPostEventEmailTemplateId || ''}
-                onEmailChange={(v) => updateConfig('facilitatorPostEventEmailTemplateId', v)}
+                 emailValue={config.facilitatorPostEventEmailTemplateId || ''}
+                onEmailChange={(v) => {
+                  updateConfigs({
+                    facilitatorPostEventEmailTemplateId: v,
+                    ...(v ? { facilitatorPostEventEnabled: true } : {})
+                  });
+                }}
                 smsValue={config.facilitatorPostEventSmsTemplateId || ''}
-                onSmsChange={(v) => updateConfig('facilitatorPostEventSmsTemplateId', v)}
+                onSmsChange={(v) => {
+                  updateConfigs({
+                    facilitatorPostEventSmsTemplateId: v,
+                    ...(v ? { facilitatorPostEventEnabled: true } : {})
+                  });
+                }}
                 placeholderEmail="Select debrief template..."
                 showChannelsToggle={false}
               />

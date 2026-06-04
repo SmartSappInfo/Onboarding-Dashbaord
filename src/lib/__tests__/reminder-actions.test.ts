@@ -330,7 +330,7 @@ describe('scheduleMeetingInvitations', () => {
     mocks().docGet.mockResolvedValue({ exists: false });
   });
 
-  it('skips initial slot if sent, but schedules other reminder slots even if sent', async () => {
+  it('skips initial slot if sent, but schedules other reminder slots even if sent (when meeting time changed / rescheduled)', async () => {
     const registrantDoc = {
       data: () => ({
         token: 'token-123',
@@ -376,7 +376,7 @@ describe('scheduleMeetingInvitations', () => {
       }
     };
 
-    await scheduleMeetingInvitations(meeting as any, 'org-123');
+    await scheduleMeetingInvitations(meeting as any, 'org-123', true);
 
     // We expect one message to be set in batch: 1_day_before (since initial was sent and slot.id is 'initial')
     // Wait, let's verify that batch.set was called only for the non-initial slot
@@ -386,6 +386,58 @@ describe('scheduleMeetingInvitations', () => {
       reminderType: 'meeting_invitation_1_day_before',
       templateId: 'tpl-1day'
     }));
+  });
+
+  it('skips all slots if sent and meeting time did NOT change', async () => {
+    const registrantDoc = {
+      data: () => ({
+        token: 'token-123',
+        name: 'Guest User',
+        email: 'guest@example.com',
+        status: 'pending',
+        sentInvitations: {
+          'initial_email': '2026-06-01T10:00:00Z',
+          '1_day_before_email': '2026-06-02T10:00:00Z',
+        }
+      })
+    };
+
+    mocks().get
+      .mockResolvedValueOnce({ empty: false, docs: [registrantDoc] })
+      .mockResolvedValueOnce({ empty: true, docs: [] });
+
+    const meeting = {
+      id: 'meeting-123',
+      meetingTime: new Date(Date.now() + 3600 * 1000 * 48).toISOString(),
+      messagingConfig: {
+        invitationsEnabled: true,
+        invitationSeries: [
+          {
+            id: 'initial',
+            enabled: true,
+            channels: ['email'],
+            emailTemplateId: 'tpl-initial',
+            smsTemplateId: 'tpl-initial-sms',
+            offsetMinutes: 0,
+            anchor: 'after_registration'
+          },
+          {
+            id: '1_day_before',
+            enabled: true,
+            channels: ['email'],
+            emailTemplateId: 'tpl-1day',
+            smsTemplateId: 'tpl-1day-sms',
+            offsetMinutes: 1440,
+            anchor: 'before_event'
+          }
+        ]
+      }
+    };
+
+    await scheduleMeetingInvitations(meeting as any, 'org-123', false);
+
+    // Both initial and 1_day_before are marked sent and meetingTimeChanged is false, so it should schedule 0 messages.
+    expect(mocks().set).toHaveBeenCalledTimes(0);
   });
 
   it('uses deterministic doc ID for invitations to prevent duplicate pending schedules', async () => {

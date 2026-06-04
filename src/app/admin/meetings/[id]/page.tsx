@@ -307,7 +307,7 @@ export default function MeetingDetailPage() {
   const participantSlots = React.useMemo(() => {
     return activeSlots.filter(s => 
       s.type === 'registration_ack' || 
-      s.type.startsWith('messaging_slot_reminder_') || 
+      s.type.startsWith('messaging_slot_') || 
       s.type === 'post_event_thankyou' || 
       s.type === 'post_event_absentee'
     );
@@ -1027,6 +1027,7 @@ export default function MeetingDetailPage() {
           meetingId={meetingId}
           reminderType={selectedReminderType}
           onPreviewMessage={handleOpenPreview}
+          meeting={meeting}
         />
       )}
     </div>

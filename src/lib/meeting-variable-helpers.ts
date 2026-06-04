@@ -8,7 +8,7 @@
  */
 
 import type { Meeting, MeetingFacilitator, MeetingRegistrant } from './types';
-import { ensureAbsoluteUrl } from './utils/url-helpers';
+import { ensureAbsoluteUrl, cleanPersonalizedMeetingUrl } from './utils/url-helpers';
 import { generateCalendarLinkFromMeeting } from './calendar-utils';
 
 // ---------------------------------------------------------------------------
@@ -90,12 +90,12 @@ export function buildRegistrantVariables(
     registrant_name: registrant.name || '',
     registrant_email: registrant.email || '',
     registrant_phone: registrant.phone || '',
-    registrant_join_link: ensureAbsoluteUrl(registrant.personalizedMeetingUrl || ''),
+    registrant_join_link: ensureAbsoluteUrl(cleanPersonalizedMeetingUrl(registrant.personalizedMeetingUrl || '')),
     // Backward compat aliases for templates
     contact_name: registrant.name || '',
     contact_email: registrant.email || '',
     contact_phone: registrant.phone || '',
-    join_url: ensureAbsoluteUrl(registrant.personalizedMeetingUrl || ''),
+    join_url: ensureAbsoluteUrl(cleanPersonalizedMeetingUrl(registrant.personalizedMeetingUrl || '')),
     registration_status: registrant.status || '',
   };
 

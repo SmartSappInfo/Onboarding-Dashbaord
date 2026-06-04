@@ -59,16 +59,25 @@ export async function logMeetingAttendance(
       });
     }
 
-    // 2. Create an attendee record for reporting
-    await adminDb.collection('attendees').add({
-      meetingId,
-      entityId: metadata.entityId || '',
-      parentName: metadata.registrantName,
-      childrenNames: metadata.childrenNames || [],
-      joinedAt: now,
-      registrantId,
-      registrantToken: metadata.registrantToken,
-    });
+    // 2. Create an attendee record for reporting (if not already existing to prevent duplicates on rejoin)
+    const existingAttendeeSnap = await adminDb
+      .collection('attendees')
+      .where('meetingId', '==', meetingId)
+      .where('registrantId', '==', registrantId)
+      .limit(1)
+      .get();
+
+    if (existingAttendeeSnap.empty) {
+      await adminDb.collection('attendees').add({
+        meetingId,
+        entityId: metadata.entityId || '',
+        parentName: metadata.registrantName,
+        childrenNames: metadata.childrenNames || [],
+        joinedAt: now,
+        registrantId,
+        registrantToken: metadata.registrantToken,
+      });
+    }
 
     return { success: true };
   } catch (error: any) {

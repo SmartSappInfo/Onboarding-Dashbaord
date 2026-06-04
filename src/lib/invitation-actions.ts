@@ -52,6 +52,13 @@ export async function processMeetingInvitations(): Promise<{ sent: number; skipp
 
       const meetingTime = new Date(meeting.meetingTime);
 
+      // Skip meetings that are fully completed/over
+      const duration = meeting.durationMinutes ?? 60;
+      const meetingEndTime = new Date(meetingTime.getTime() + duration * 60 * 1000);
+      if (now > meetingEndTime) {
+        continue;
+      }
+
       // Fetch pending registrants for this specific meeting subcollection
       const pendingSnap = await adminDb.collection(`meetings/${meetingId}/registrants`)
         .where('status', '==', 'pending')

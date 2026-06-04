@@ -68,3 +68,20 @@ export function ensureAbsoluteUrl(pathOrUrl: string): string {
 
   return `${baseUrl}${cleanPath}`;
 }
+
+const LEGACY_TYPE_MAPPINGS = new Map<string, string>([
+  ['parent', 'parent-engagement']
+]);
+
+export function cleanPersonalizedMeetingUrl(url: string): string {
+  if (!url) return '';
+  let cleaned = url;
+  LEGACY_TYPE_MAPPINGS.forEach((newSlug, oldSlug) => {
+    const target = `/meetings/${oldSlug}/`;
+    const replacement = `/meetings/${newSlug}/`;
+    if (cleaned.includes(target)) {
+      cleaned = cleaned.replace(target, replacement);
+    }
+  });
+  return cleaned;
+}

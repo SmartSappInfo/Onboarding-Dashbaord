@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getPersonalizedMeetingUrl } from '../meeting-tokens';
+import { cleanPersonalizedMeetingUrl } from '../utils/url-helpers';
 
 describe('getPersonalizedMeetingUrl', () => {
   const origin = 'https://go.smartsapp.com';
@@ -53,3 +54,19 @@ describe('getPersonalizedMeetingUrl', () => {
     expect(url).toBe('https://go.smartsapp.com/meetings/parent-engagement/gakd/join?token=_Q70a3GdwLUHKc-3');
   });
 });
+
+describe('cleanPersonalizedMeetingUrl', () => {
+
+  it('translates legacy /meetings/parent/ paths to /meetings/parent-engagement/', () => {
+    const raw = 'https://go.smartsapp.com/meetings/parent/gakd/join?token=_Q70a3GdwLUHKc-3';
+    const cleaned = cleanPersonalizedMeetingUrl(raw);
+    expect(cleaned).toBe('https://go.smartsapp.com/meetings/parent-engagement/gakd/join?token=_Q70a3GdwLUHKc-3');
+  });
+
+  it('keeps other meeting slugs untouched', () => {
+    const raw = 'https://go.smartsapp.com/meetings/staff/123/join';
+    const cleaned = cleanPersonalizedMeetingUrl(raw);
+    expect(cleaned).toBe('https://go.smartsapp.com/meetings/staff/123/join');
+  });
+});
+
