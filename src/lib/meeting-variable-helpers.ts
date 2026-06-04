@@ -10,6 +10,7 @@
 import type { Meeting, MeetingFacilitator, MeetingRegistrant } from './types';
 import { ensureAbsoluteUrl, cleanPersonalizedMeetingUrl } from './utils/url-helpers';
 import { generateCalendarLinkFromMeeting } from './calendar-utils';
+import { getPersonalizedMeetingUrl } from './meeting-tokens';
 
 // ---------------------------------------------------------------------------
 // Meeting base variables (available in ALL meeting templates)
@@ -120,13 +121,19 @@ export function buildRegistrantVariables(
  */
 export function buildFacilitatorVariables(
   facilitator: MeetingFacilitator,
+  meeting?: { type?: { slug?: string; id?: string } | string; meetingSlug?: string; entitySlug?: string; id: string },
+  baseUrl?: string,
 ): Record<string, string> {
+  let link = facilitator.joinLink || '';
+  if (meeting && baseUrl && link && !link.startsWith('http')) {
+    link = getPersonalizedMeetingUrl(baseUrl, meeting, link);
+  }
   return {
     facilitator_name: facilitator.name || '',
     facilitator_email: facilitator.email || '',
     facilitator_phone: facilitator.phone || '',
     facilitator_role: facilitator.role || '',
     facilitator_bio: facilitator.bio || '',
-    facilitator_join_link: facilitator.joinLink || '',
+    facilitator_join_link: link,
   };
 }

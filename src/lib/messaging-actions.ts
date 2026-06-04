@@ -1165,7 +1165,7 @@ export async function getSimulationVariablesAction(params: {
         if (typeof mType === 'string') {
           typeSlug = mType === 'parent' ? 'parent-engagement' : mType;
         } else if (mType.slug) {
-          typeSlug = mType.slug;
+          typeSlug = mType.slug === 'parent' ? 'parent-engagement' : mType.slug;
         } else if (mType.id) {
           typeSlug = mType.id === 'parent' ? 'parent-engagement' : mType.id;
         }
@@ -1178,7 +1178,7 @@ export async function getSimulationVariablesAction(params: {
       variables.meeting_registrant_join_link = variables.registrant_join_link;
 
       if (meeting.facilitators?.length) {
-        const facVars = buildFacilitatorVariables(meeting.facilitators[0]);
+        const facVars = buildFacilitatorVariables(meeting.facilitators[0], meeting, baseUrl);
         Object.assign(variables, facVars);
       }
     }

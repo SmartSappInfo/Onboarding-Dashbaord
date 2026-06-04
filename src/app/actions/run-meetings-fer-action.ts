@@ -97,7 +97,8 @@ export async function runMeetingsFerAction(
       }
 
       // -- C. Process Registrants --
-      const typeSlug = data.type?.slug || 'parent-engagement';
+      let typeSlug = data.type?.slug || 'parent-engagement';
+      if (typeSlug === 'parent') typeSlug = 'parent-engagement';
       const slug = data.meetingSlug || data.entitySlug || '';
 
       if (slug) {

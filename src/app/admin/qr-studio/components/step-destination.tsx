@@ -358,7 +358,8 @@ function SmartSappResourceSelector({
       case 'landing_page': return `${origin}/p/${item.slug || item.id}`;
       case 'doc_signing': return `${origin}/forms/${item.id}`;
       case 'meeting': {
-        const typeSlug = item.type?.slug || 'session';
+        let typeSlug = item.type?.slug || 'session';
+        if (typeSlug === 'parent') typeSlug = 'parent-engagement';
         if (item.meetingSlug) return `${origin}/meetings/${typeSlug}/${item.meetingSlug}`;
         return `${origin}/sessions/${item.entitySlug || item.id}/${typeSlug}`;
       }

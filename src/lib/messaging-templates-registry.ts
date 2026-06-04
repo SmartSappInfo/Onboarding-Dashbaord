@@ -23,6 +23,19 @@ export const MEETING_VARIABLES = {
 } as const;
 
 export const TEMPLATES: TemplateDef[] = [
+  {
+    name: 'Resend Join Link (Email)', category: 'meetings', templateType: 'meeting_resend_join_link', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Your Access Link: {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\nHere is your unique link to join the upcoming meeting: **{{meeting_title}}**.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}} ({{meeting_timezone}})\n\n🔗 Join Link: [Click Here to Join now]({{registrant_join_link}})\n\nBest regards,\n{{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'org_name'],
+  },
+  {
+    name: 'Resend Join Link (SMS)', category: 'meetings', templateType: 'meeting_resend_join_link', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, here is your link to join {{meeting_title}}: {{registrant_join_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'registrant_join_link', 'org_name'],
+  },
   // ══════════════════════════════════════════════════════════════════════════
   // ── MEETING LIFECYCLE TEMPLATES (24 total: 12 email + 12 SMS) ──────────
   // ══════════════════════════════════════════════════════════════════════════

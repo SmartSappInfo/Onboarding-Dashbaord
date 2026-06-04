@@ -80,7 +80,7 @@ export default function MeetingPreviewPanel({ data, className }: MeetingPreviewP
                     <div className="flex-1 bg-slate-900/50 rounded-md px-3 py-1 flex items-center gap-2 border border-slate-700/50">
                         <Lock className="h-2.5 w-2.5 text-emerald-500" />
                         <span className="text-[8px] text-slate-400 font-mono truncate">
-                            smartsapp.com/meetings/{data.type?.slug || 'session'}/...
+                            smartsapp.com/meetings/{data.type?.slug === 'parent' ? 'parent-engagement' : (data.type?.slug || 'session')}/...
                         </span>
                     </div>
                 </div>

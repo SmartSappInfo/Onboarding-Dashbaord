@@ -5,6 +5,7 @@ import { generateRegistrantToken, getPersonalizedMeetingUrl } from '@/lib/meetin
 import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
 import { ensureAbsoluteUrl, getBaseUrl, getRequestBaseUrl } from '@/lib/utils/url-helpers';
 import { scheduleRemindersForNewRegistrant } from '@/lib/reminder-actions';
+import { resolveActiveTemplate } from '@/lib/template-resolver';
 
 export async function deleteRegistrantAction(meetingId: string, registrantId: string) {
   try {
@@ -77,58 +78,140 @@ export async function updateRegistrantStatusAction(meetingId: string, registrant
 export async function sendRegistrantJoinLinkAction(
   meetingId: string,
   meetingTitle: string,
-  registrants: { id: string; name: string; email?: string; personalizedMeetingUrl?: string }[],
+  registrants: { id: string; name: string; email?: string; phone?: string; personalizedMeetingUrl?: string }[],
   workspaceId: string
 ) {
   try {
-    const results = await Promise.allSettled(
-      registrants.map(async (reg) => {
-        if (!reg.email) {
-          throw new Error(`Registrant ${reg.name} has no email address.`);
+    // 1. Fetch meeting configuration
+    const meetingDoc = await adminDb.collection('meetings').doc(meetingId).get();
+    if (!meetingDoc.exists) {
+      throw new Error('Meeting not found.');
+    }
+    const meetingData = meetingDoc.data()!;
+    const orgId = meetingData.organizationId || 'default';
+    const msgConfig = meetingData.messagingConfig || {};
+
+    // 2. Resolve templates (Meeting specific custom bindings OR fall back to trigger resolveActiveTemplate)
+    let emailTemplateId = msgConfig.resendLinkEmailTemplateId;
+    let smsTemplateId = msgConfig.resendLinkSmsTemplateId;
+
+    if (!emailTemplateId) {
+      try {
+        const tpl = await resolveActiveTemplate('meeting_resend_join_link', orgId, 'email');
+        emailTemplateId = tpl.id;
+      } catch (err) {
+        console.warn('[sendRegistrantJoinLinkAction] Email fallback template not resolved:', err);
+      }
+    }
+
+    if (!smsTemplateId) {
+      try {
+        const tpl = await resolveActiveTemplate('meeting_resend_join_link', orgId, 'sms');
+        smsTemplateId = tpl.id;
+      } catch (err) {
+        console.warn('[sendRegistrantJoinLinkAction] SMS fallback template not resolved:', err);
+      }
+    }
+
+    // 3. Chunked processing (concurrency throttle)
+    const CHUNK_SIZE = 15;
+    const finalResults: { id: string; successes: string[]; failures: string[] }[] = [];
+    const errorsList: string[] = [];
+
+    for (let i = 0; i < registrants.length; i += CHUNK_SIZE) {
+      const chunk = registrants.slice(i, i + CHUNK_SIZE);
+      const chunkPromises = chunk.map(async (reg) => {
+        // Fetch registrant doc to get latest contact details
+        const regDoc = await adminDb.collection(`meetings/${meetingId}/registrants`).doc(reg.id).get();
+        if (!regDoc.exists) {
+          throw new Error(`Registrant ${reg.name} not found.`);
         }
-        if (!reg.personalizedMeetingUrl) {
-          throw new Error(`Registrant ${reg.name} has no join link.`);
+        const regData = regDoc.data()!;
+        const email = (regData.email || reg.email)?.toLowerCase().trim();
+        const phone = (regData.phone || reg.phone)?.trim();
+
+        if (!email && !phone) {
+          throw new Error(`Registrant ${reg.name} has no email address or phone number.`);
         }
 
-        const subject = `Your Join Link: ${meetingTitle}`;
-        const body = `
-Hello ${reg.name},
+        const dispatches: Promise<string>[] = [];
 
-You are registered for the upcoming meeting: **${meetingTitle}**.
-
-Please use your unique join link below to access the session:
-[Click Here to Join now](${ensureAbsoluteUrl(reg.personalizedMeetingUrl)})
-
-We look forward to seeing you there!
-`;
-
-        const res = await sendRawMessage({
-          channel: 'email',
-          recipient: reg.email,
-          subject,
-          body,
-          workspaceIds: [workspaceId]
-        });
-
-        if (!res.success) {
-          throw new Error(res.error || 'Failed to send email');
+        // Dispatch Email if email is present and template resolved
+        if (email && emailTemplateId) {
+          dispatches.push(
+            sendMessage({
+              templateId: emailTemplateId,
+              senderProfileId: 'default',
+              recipient: email,
+              variables: {
+                meetingId,
+                contact_name: regData.name || reg.name,
+              },
+              entityId: regData.entityId || null,
+              workspaceId,
+            }).then((res) => {
+              if (!res.success) throw new Error(res.error || 'Email dispatch failed');
+              return 'email';
+            })
+          );
         }
 
-        // Update last invite sent
+        // Dispatch SMS if phone is present and template resolved
+        if (phone && smsTemplateId) {
+          dispatches.push(
+            sendMessage({
+              templateId: smsTemplateId,
+              senderProfileId: 'default',
+              recipient: phone,
+              variables: {
+                meetingId,
+                contact_name: regData.name || reg.name,
+              },
+              entityId: regData.entityId || null,
+              workspaceId,
+            }).then((res) => {
+              if (!res.success) throw new Error(res.error || 'SMS dispatch failed');
+              return 'sms';
+            })
+          );
+        }
+
+        if (dispatches.length === 0) {
+          throw new Error('No valid channel details resolved for recipient.');
+        }
+
+        const dispatchResults = await Promise.allSettled(dispatches);
+        const successes = dispatchResults.filter(d => d.status === 'fulfilled').map(d => (d as PromiseFulfilledResult<string>).value);
+        const failures = dispatchResults.filter(d => d.status === 'rejected').map(d => ((d as PromiseRejectedResult).reason?.message || 'Dispatch error') as string);
+
+        if (successes.length === 0) {
+          throw new Error(`Failed to send link on all channels: ${failures.join(', ')}`);
+        }
+
+        // Update last invite sent time
         await adminDb.collection(`meetings/${meetingId}/registrants`).doc(reg.id).update({
           lastInviteSentAt: new Date().toISOString()
         });
 
-        return { id: reg.id, success: true };
-      })
-    );
+        return { id: reg.id, successes, failures };
+      });
 
-    const successes = results.filter((r) => r.status === 'fulfilled').length;
-    const failures = results.filter((r) => r.status === 'rejected').length;
+      const chunkResults = await Promise.allSettled(chunkPromises);
+      chunkResults.forEach((cResult) => {
+        if (cResult.status === 'fulfilled') {
+          finalResults.push(cResult.value);
+        } else {
+          errorsList.push(cResult.reason?.message || 'Unknown chunk execution error');
+        }
+      });
+    }
+
+    const successes = finalResults.length;
+    const failures = registrants.length - successes;
 
     return {
       success: failures === 0,
-      message: `Sent ${successes} emails successfully. ${failures > 0 ? `${failures} failed.` : ''}`
+      message: `Sent join links successfully to ${successes} registrant(s). ${failures > 0 ? `${failures} failed.` : ''}`
     };
   } catch (error: any) {
     console.error('[sendRegistrantJoinLinkAction]', error);
@@ -244,7 +327,7 @@ async function dispatchSingleRecipient(
     if (typeof mType === 'string') {
       typeSlug = mType === 'parent' ? 'parent-engagement' : mType;
     } else if (mType.slug) {
-      typeSlug = mType.slug;
+      typeSlug = mType.slug === 'parent' ? 'parent-engagement' : mType.slug;
     } else if (mType.id) {
       typeSlug = mType.id === 'parent' ? 'parent-engagement' : mType.id;
     }

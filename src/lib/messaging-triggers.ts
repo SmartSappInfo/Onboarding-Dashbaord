@@ -3,6 +3,15 @@ import type { MessagingTrigger, MessageChannel } from './types';
 export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
   // ── Meetings: Invitations ────────────────────────────────────────────────
   {
+    id: 'meeting_resend_join_link',
+    name: 'Resend Join Link',
+    description: 'Resend meeting registration details and personalized join link.',
+    category: 'meetings',
+    target: 'external_client',
+    recipientType: 'external_alert',
+    supportedChannels: ['email', 'sms'],
+  },
+  {
     id: 'meeting_invitation_initial',
     name: 'Initial Invitation',
     description: 'Initial invitation sent to pending records.',

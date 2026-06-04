@@ -270,7 +270,7 @@ export async function scheduleMeetingInvitations(
     if (typeof mType === 'string') {
       typeSlug = mType === 'parent' ? 'parent-engagement' : mType;
     } else if (mType.slug) {
-      typeSlug = mType.slug;
+      typeSlug = mType.slug === 'parent' ? 'parent-engagement' : mType.slug;
     } else if (mType.id) {
       typeSlug = mType.id === 'parent' ? 'parent-engagement' : mType.id;
     }
@@ -765,6 +765,7 @@ export async function scheduleFacilitatorAlerts(
 
   // Build meeting base variables once
   const meetingVars = buildMeetingBaseVariables(meeting);
+  const baseUrl = await getRequestBaseUrl();
 
   const batch = adminDb.batch();
 
@@ -800,7 +801,7 @@ export async function scheduleFacilitatorAlerts(
       if (!contact) continue;
 
       // Build per-facilitator variables
-      const facilitatorVars = buildFacilitatorVariables(f);
+      const facilitatorVars = buildFacilitatorVariables(f, meeting, baseUrl);
 
       const safeContact = contact.replace(/[^a-zA-Z0-9]/g, '_');
       const docId = `meeting_fac_${meeting.id}_${safeContact}_${alertType}_${ch}`;
@@ -854,6 +855,7 @@ export async function sendFacilitatorNewRegistrationAlert(
 
   // Build meeting base variables once
   const meetingVars = buildMeetingBaseVariables(meeting);
+  const baseUrl = await getRequestBaseUrl();
 
   const batch = adminDb.batch();
 
@@ -876,7 +878,7 @@ export async function sendFacilitatorNewRegistrationAlert(
       if (!contact) continue;
 
       // Per-facilitator + per-registrant context
-      const facilitatorVars = buildFacilitatorVariables(f);
+      const facilitatorVars = buildFacilitatorVariables(f, meeting, baseUrl);
 
       const docRef = adminDb.collection('scheduled_messages').doc();
       const msg: Omit<ScheduledMessage, 'id'> = {
@@ -1110,5 +1112,65 @@ export async function scheduleRemindersForNewRegistrant(
   }
 
   await batch.commit();
+}
+
+/**
+ * Automatically ends any active or scheduled meetings that have been completed
+ * for more than 1 hour (i.e. now >= meetingTime + durationMinutes + 1 Hour).
+ * Triggers their post-event follow-up messages automatically.
+ */
+export async function autoEndCompletedMeetings(): Promise<{ endedCount: number; errors: string[] }> {
+  let endedCount = 0;
+  const errors: string[] = [];
+
+  try {
+    const now = new Date();
+    // Query only active/scheduled meetings
+    const meetingsSnap = await adminDb.collection('meetings')
+      .where('status', 'in', ['scheduled', 'active'])
+      .get();
+
+    if (meetingsSnap.empty) {
+      return { endedCount, errors };
+    }
+
+    for (const meetingDoc of meetingsSnap.docs) {
+      const meetingId = meetingDoc.id;
+      const meeting = meetingDoc.data() as Meeting;
+
+      if (!meeting.meetingTime) {
+        continue;
+      }
+
+      const meetingTime = new Date(meeting.meetingTime);
+      const duration = meeting.durationMinutes ?? 60;
+      // Auto-end trigger is duration + 1 Hour after meeting start time
+      const autoEndCutoff = new Date(meetingTime.getTime() + (duration + 60) * 60 * 1000);
+
+      if (now >= autoEndCutoff) {
+        try {
+          const orgId = meeting.organizationId || 'default';
+          // Dynamically import endMeetingAction to prevent circular dependencies
+          const { endMeetingAction } = await import('@/app/actions/meeting-post-event-action');
+          const result = await endMeetingAction(meetingId, orgId);
+          if (result.success) {
+            endedCount++;
+            console.log(`[AUTO-END] Successfully ended meeting: ${meetingId} (${meeting.entityName || 'Meeting'})`);
+          } else {
+            throw new Error(result.error);
+          }
+        } catch (err: any) {
+          const errMsg = `Failed to end meeting ${meetingId}: ${err.message}`;
+          console.error(`[AUTO-END] ${errMsg}`);
+          errors.push(errMsg);
+        }
+      }
+    }
+
+    return { endedCount, errors };
+  } catch (error: any) {
+    console.error('[AUTO-END] Global error auto-ending meetings:', error);
+    return { endedCount, errors: [error.message || 'Unknown error'] };
+  }
 }
 

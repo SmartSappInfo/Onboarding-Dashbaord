@@ -298,7 +298,8 @@ export default function PortalsClient() {
                                 <SectionHeader title="Meeting Session Rooms" badge={filteredMeetings.length} icon={Calendar} />
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredMeetings.map(m => {
-                                        const typeSlug = m.type?.slug || 'parent-engagement';
+                                        let typeSlug = m.type?.slug || 'parent-engagement';
+                                        if (typeSlug === 'parent') typeSlug = 'parent-engagement';
                                         return (
                                              <PortalCard 
                                                  key={m.id} 

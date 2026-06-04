@@ -17,6 +17,7 @@ import {
   Smartphone, 
   Calendar, 
   ChevronLeft, 
+  ChevronDown, 
   Loader2, 
   CheckCircle2, 
   XCircle, 
@@ -41,7 +42,9 @@ import {
   Trash2,
   Plus,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Copy,
+  CopyCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -77,6 +80,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import { getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle
@@ -170,6 +174,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   const [filterAttendance, setFilterAttendance] = React.useState<string>('all');
   const [filterSignupStatus, setFilterSignupStatus] = React.useState<string>('all');
   const [isRowSending, setIsRowSending] = React.useState<Record<string, boolean>>({});
+  const [copiedRegistrantId, setCopiedRegistrantId] = React.useState<string | null>(null);
 
   // Template Preview Modal states
   const [previewTemplateOpen, setPreviewTemplateOpen] = React.useState(false);
@@ -187,6 +192,12 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   const [isRegistering, setIsRegistering] = React.useState(false);
   const [regForm, setRegForm] = React.useState({ name: '', email: '', phone: '' });
 
+  // Resend Templates configuration states
+  const [isResendTemplatesModalOpen, setIsResendTemplatesModalOpen] = React.useState(false);
+  const [resendEmailTemplateId, setResendEmailTemplateId] = React.useState('');
+  const [resendSmsTemplateId, setResendSmsTemplateId] = React.useState('');
+  const [isSavingResendTemplates, setIsSavingResendTemplates] = React.useState(false);
+
   // Dynamic columns configuration
   const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>([]);
   const [hasCustomizedColumns, setHasCustomizedColumns] = React.useState(false);
@@ -198,6 +209,13 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   }, [firestore, meetingId]);
 
   const { data: meeting, isLoading: isLoadingMeeting, error: meetingError } = useDoc<Meeting>(meetingDocRef);
+
+  React.useEffect(() => {
+    if (meeting?.messagingConfig) {
+      setResendEmailTemplateId(meeting.messagingConfig.resendLinkEmailTemplateId || 'global_meeting_resend_join_link_email');
+      setResendSmsTemplateId(meeting.messagingConfig.resendLinkSmsTemplateId || 'global_meeting_resend_join_link_sms');
+    }
+  }, [meeting]);
 
   // Derived state from active slot configuration
   const invitationSlots = React.useMemo(() => {
@@ -894,6 +912,25 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     }
   };
 
+  // Save Resend Templates
+  const handleSaveResendTemplates = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!meeting || !meetingDocRef) return;
+    setIsSavingResendTemplates(true);
+    try {
+      await updateDoc(meetingDocRef, {
+        'messagingConfig.resendLinkEmailTemplateId': resendEmailTemplateId || null,
+        'messagingConfig.resendLinkSmsTemplateId': resendSmsTemplateId || null,
+      });
+      toast({ title: 'Success', description: 'Resend templates updated successfully.' });
+      setIsResendTemplatesModalOpen(false);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+      setIsSavingResendTemplates(false);
+    }
+  };
+
   // Manual Register
   const handleManualRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -943,6 +980,17 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     const csvContent = [
       headers.join(','),
       ...filteredRegistrants.map((r: any) => {
+        const registrantToken = r.token || r.id;
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        let fullLink = r.personalizedMeetingUrl || '';
+        if (fullLink) {
+          if (!fullLink.startsWith('http')) {
+            fullLink = `${origin}${fullLink.startsWith('/') ? '' : '/'}${fullLink}`;
+          }
+        } else if (meeting) {
+          fullLink = getPersonalizedMeetingUrl(origin, meeting, registrantToken);
+        }
+
         const row = [
           `"${r.name}"`,
           `"${r.email || ''}"`,
@@ -951,7 +999,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
           r.status,
           r.registeredAt ? `"${format(new Date(r.registeredAt), 'yyyy-MM-dd HH:mm:ss')}"` : '""',
           r.status === 'attended' && r.attendedAt ? `"${format(new Date(r.attendedAt), 'yyyy-MM-dd HH:mm:ss')}"` : '""',
-          `"${r.personalizedMeetingUrl || ''}"`,
+          `"${fullLink}"`,
           ...dynamicHeadersArray.map(h => `"${r.registrationData?.[h] || ''}"`)
         ];
         return row.join(',');
@@ -1821,6 +1869,21 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                     {isProcessingBulk ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Trash2 className="h-3 w-3 mr-1" />}
                     Delete
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 text-xs font-bold gap-1" disabled={isProcessingBulk}>
+                        More Actions <ChevronDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="rounded-xl">
+                      <DropdownMenuItem 
+                        className="text-xs font-semibold cursor-pointer"
+                        onClick={() => setIsResendTemplatesModalOpen(true)}
+                      >
+                        <Settings2 className="h-3.5 w-3.5 mr-2" /> Configure Resend Templates
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <div className="w-px h-6 bg-primary/20 mx-1"></div>
                   <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => setSelectedIds(new Set())}>Cancel</Button>
                 </div>
@@ -1935,111 +1998,172 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {registrantsPagination.paginatedItems.map((registrant: any) => (
-                    <TableRow key={registrant.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150" data-state={selectedIds.has(registrant.id) ? "selected" : undefined}>
-                      <TableCell className="pl-4">
-                        <Checkbox 
-                          checked={selectedIds.has(registrant.id)}
-                          onCheckedChange={() => toggleOne(registrant.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-sm text-foreground">{registrant.name}</span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <Mail className="h-3 w-3" /> {registrant.email || 'N/A'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs font-semibold text-muted-foreground">
-                        {registrant.entityName || registrant.entityId || <span className="text-muted-foreground/30 font-normal">—</span>}
-                      </TableCell>
-                      {allAvailableFields.map((field) => {
-                        const isVisible = activeColumns.includes(field.key);
-                        if (!isVisible) return null;
-                        const val = getFormattedFieldValue(registrant, field.key);
-                        return (
-                          <TableCell key={field.key} className="text-xs font-semibold text-foreground/90 max-w-[200px] truncate">
-                            {val ? val : <span className="text-muted-foreground/30 font-normal">—</span>}
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell className="text-xs font-medium text-muted-foreground">
-                        {registrant.registeredAt ? format(new Date(registrant.registeredAt), 'MMM d, h:mm a') : 'Unknown'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Checkbox 
-                            checked={registrant.status === 'attended'}
-                            onCheckedChange={() => handleToggleAttendance(registrant)}
-                            disabled={isToggling[registrant.id]}
-                          />
-                          <Badge variant="outline" className={cn(
-                            'text-[9px] font-bold uppercase rounded-lg px-2 h-5 border-none shadow-sm transition-all',
-                            registrant.status === 'attended' 
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/20' 
-                              : 'bg-muted text-muted-foreground'
-                          )}>
-                            {isToggling[registrant.id] ? 'Updating...' : registrant.status === 'attended' ? 'Attended' : 'No Show'}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right pr-6 py-3">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Exposed Send Join Link Button */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            disabled={isRowSending[registrant.id]}
-                            onClick={async () => {
-                              setIsRowSending(prev => ({ ...prev, [registrant.id]: true }));
-                              try {
-                                await handleSendLink(registrant);
-                              } finally {
-                                setIsRowSending(prev => ({ ...prev, [registrant.id]: false }));
-                              }
-                            }}
-                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                            title="Send Join Link"
-                          >
-                            {isRowSending[registrant.id] ? (
-                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            ) : (
-                              <Send className="h-4 w-4" />
-                            )}
-                          </Button>
+                  {registrantsPagination.paginatedItems.map((registrant: any) => {
+                    const registrantToken = registrant.token || registrant.id;
+                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                    let fullLink = registrant.personalizedMeetingUrl || '';
+                    if (fullLink) {
+                      if (!fullLink.startsWith('http')) {
+                        fullLink = `${origin}${fullLink.startsWith('/') ? '' : '/'}${fullLink}`;
+                      }
+                    } else if (meeting) {
+                      fullLink = getPersonalizedMeetingUrl(origin, meeting, registrantToken);
+                    }
+                    const whatsappText = `Hello ${registrant.name}, here is your unique joining link for ${meeting?.heroTitle || 'the meeting'}: ${fullLink}`;
+                    const whatsappUrl = registrant.phone
+                      ? `https://api.whatsapp.com/send?phone=${registrant.phone.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(whatsappText)}`
+                      : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 hover:bg-muted">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
-                              <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Quick Actions</p>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleSendLink(registrant)} className="rounded-lg text-xs font-semibold">
-                                <Send className="h-4 w-4 mr-2" /> Send Join Link
-                              </DropdownMenuItem>
-                              {registrant.status === 'cancelled' ? (
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'approved')} className="rounded-lg text-xs font-semibold">
-                                  <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-500" /> Approve Signup
-                                </DropdownMenuItem>
+                    return (
+                      <TableRow key={registrant.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150" data-state={selectedIds.has(registrant.id) ? "selected" : undefined}>
+                        <TableCell className="pl-4">
+                          <Checkbox 
+                            checked={selectedIds.has(registrant.id)}
+                            onCheckedChange={() => toggleOne(registrant.id)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-sm text-foreground">{registrant.name}</span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Mail className="h-3 w-3" /> {registrant.email || 'N/A'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-semibold text-muted-foreground">
+                          {registrant.entityName || registrant.entityId || <span className="text-muted-foreground/30 font-normal">—</span>}
+                        </TableCell>
+                        {allAvailableFields.map((field) => {
+                          const isVisible = activeColumns.includes(field.key);
+                          if (!isVisible) return null;
+                          const val = getFormattedFieldValue(registrant, field.key);
+                          return (
+                            <TableCell key={field.key} className="text-xs font-semibold text-foreground/90 max-w-[200px] truncate">
+                              {val ? val : <span className="text-muted-foreground/30 font-normal">—</span>}
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className="text-xs font-medium text-muted-foreground">
+                          {registrant.registeredAt ? format(new Date(registrant.registeredAt), 'MMM d, h:mm a') : 'Unknown'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Checkbox 
+                              checked={registrant.status === 'attended'}
+                              onCheckedChange={() => handleToggleAttendance(registrant)}
+                              disabled={isToggling[registrant.id]}
+                            />
+                            <Badge variant="outline" className={cn(
+                              'text-[9px] font-bold uppercase rounded-lg px-2 h-5 border-none shadow-sm transition-all',
+                              registrant.status === 'attended' 
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/20' 
+                               : 'bg-muted text-muted-foreground'
+                            )}>
+                              {isToggling[registrant.id] ? 'Updating...' : registrant.status === 'attended' ? 'Attended' : 'No Show'}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-6 py-3">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Exposed Send Join Link Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={isRowSending[registrant.id]}
+                              onClick={async () => {
+                                setIsRowSending(prev => ({ ...prev, [registrant.id]: true }));
+                                try {
+                                  await handleSendLink(registrant);
+                                } finally {
+                                  setIsRowSending(prev => ({ ...prev, [registrant.id]: false }));
+                                }
+                              }}
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                              title="Send Join Link"
+                            >
+                              {isRowSending[registrant.id] ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
                               ) : (
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'cancelled')} className="rounded-lg text-xs font-semibold">
-                                  <XCircle className="h-4 w-4 mr-2 text-rose-500" /> Cancel Signup
-                                </DropdownMenuItem>
+                                <Send className="h-4 w-4" />
                               )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setRegistrantToDelete(registrant)} className="rounded-lg text-xs font-bold text-destructive focus:bg-destructive/5">
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete Roster Entry
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            </Button>
+
+                            {/* Exposed Copy Join Link Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                navigator.clipboard.writeText(fullLink);
+                                setCopiedRegistrantId(registrant.id);
+                                toast({ title: 'Link Copied', description: 'Saved to clipboard.' });
+                                setTimeout(() => setCopiedRegistrantId(null), 2000);
+                              }}
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                              title="Copy Join Link"
+                            >
+                              {copiedRegistrantId === registrant.id ? (
+                                <CopyCheck className="h-4 w-4 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+
+                            {/* Exposed WhatsApp Share Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => window.open(whatsappUrl, '_blank')}
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50/50"
+                              title="Share via WhatsApp"
+                            >
+                              <svg className="h-4 w-4 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.458h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                              </svg>
+                            </Button>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 hover:bg-muted">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
+                                <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Quick Actions</p>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleSendLink(registrant)} className="rounded-lg text-xs font-semibold">
+                                  <Send className="h-4 w-4 mr-2" /> Send Join Link
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  navigator.clipboard.writeText(fullLink);
+                                  toast({ title: 'Link Copied', description: 'Saved to clipboard.' });
+                                }} className="rounded-lg text-xs font-semibold">
+                                  <Copy className="h-4 w-4 mr-2" /> Copy Join Link
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => window.open(whatsappUrl, '_blank')} className="rounded-lg text-xs font-semibold">
+                                  <svg className="h-4 w-4 mr-2 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.458h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                  </svg> Share via WhatsApp
+                                </DropdownMenuItem>
+                                {registrant.status === 'cancelled' ? (
+                                  <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'approved')} className="rounded-lg text-xs font-semibold">
+                                    <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-500" /> Approve Signup
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'cancelled')} className="rounded-lg text-xs font-semibold">
+                                    <XCircle className="h-4 w-4 mr-2 text-rose-500" /> Cancel Signup
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setRegistrantToDelete(registrant)} className="rounded-lg text-xs font-bold text-destructive focus:bg-destructive/5">
+                                  <Trash2 className="h-4 w-4 mr-2" /> Delete Roster Entry
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {!registrants || registrants.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={activeColumns.length + 6} className="h-48 text-center font-sans">
@@ -2287,6 +2411,74 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ========================================================================= */}
+      {/* DIALOG: CONFIGURE RESEND TEMPLATES */}
+      {/* ========================================================================= */}
+      <Dialog open={isResendTemplatesModalOpen} onOpenChange={setIsResendTemplatesModalOpen}>
+        <DialogContent className="sm:max-w-[480px] p-6 rounded-3xl border shadow-2xl bg-background">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Settings2 className="h-5 w-5 text-primary" /> Configure Resend Templates
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              Customize the email and SMS templates used when resending join links for this meeting.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveResendTemplates} className="space-y-5">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Mail className="h-3 w-3 text-muted-foreground" /> Email Template Override
+              </Label>
+              <MessagingTemplateSelector
+                category="meetings"
+                recipientType="external_alert"
+                channel="email"
+                templateTypePrefix="meeting_resend_join_link"
+                value={resendEmailTemplateId}
+                onValueChange={(val) => setResendEmailTemplateId(val)}
+                compact={true}
+                placeholder="Select email template..."
+              />
+              <p className="text-[10px] text-muted-foreground/60 leading-normal">
+                If unconfigured, defaults to the organization's fallback Resend Join Link (Email) template.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Smartphone className="h-3 w-3 text-muted-foreground" /> SMS Template Override
+              </Label>
+              <MessagingTemplateSelector
+                category="meetings"
+                recipientType="external_alert"
+                channel="sms"
+                templateTypePrefix="meeting_resend_join_link"
+                value={resendSmsTemplateId}
+                onValueChange={(val) => setResendSmsTemplateId(val)}
+                compact={true}
+                placeholder="Select SMS template..."
+              />
+              <p className="text-[10px] text-muted-foreground/60 leading-normal">
+                If unconfigured, defaults to the organization's fallback Resend Join Link (SMS) template.
+              </p>
+            </div>
+            <DialogFooter className="pt-4 gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="rounded-xl font-bold text-xs" 
+                onClick={() => setIsResendTemplatesModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSavingResendTemplates} className="rounded-xl font-bold text-xs">
+                {isSavingResendTemplates ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* ========================================================================= */}
       {/* DIALOG: INVITATION ACTION REPORT */}

@@ -79,7 +79,7 @@ export function getPersonalizedMeetingUrl(
     if (typeof meeting.type === 'string') {
       typeSlug = meeting.type === 'parent' ? 'parent-engagement' : meeting.type;
     } else if (meeting.type.slug) {
-      typeSlug = meeting.type.slug;
+      typeSlug = meeting.type.slug === 'parent' ? 'parent-engagement' : meeting.type.slug;
     } else if (meeting.type.id) {
       typeSlug = meeting.type.id === 'parent' ? 'parent-engagement' : meeting.type.id;
     }

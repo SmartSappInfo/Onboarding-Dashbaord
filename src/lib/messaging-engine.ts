@@ -253,7 +253,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                         f => f.email === recipient || f.phone === recipient
                     );
                     if (matchedFac) {
-                        const facVars = buildFacilitatorVariables(matchedFac);
+                        const baseUrl = await getRequestBaseUrl();
+                        const facVars = buildFacilitatorVariables(matchedFac, meeting, baseUrl);
                         Object.entries(facVars).forEach(([k, v]) => {
                             if (finalVariables[k] === undefined) finalVariables[k] = v;
                         });
@@ -317,6 +318,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                             const paths = urlObj.pathname.split('/').filter(Boolean);
                             if (paths.length >= 3) {
                                 typeSlug = paths[1];
+                                if (typeSlug === 'parent') {
+                                    typeSlug = 'parent-engagement';
+                                }
                                 meetingSlug = paths[2];
                             }
                         } catch { /* ignore */ }
@@ -364,7 +368,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
                 if (meetingSnap.exists) {
                     const mData = meetingSnap.data();
-                    typeSlug = mData?.type?.slug || (mData?.type?.id === 'parent' ? 'parent-engagement' : mData?.type?.id) || 'parent-engagement';
+                    const rawSlug = mData?.type?.slug || mData?.type?.id || 'parent-engagement';
+                    typeSlug = rawSlug === 'parent' ? 'parent-engagement' : rawSlug;
                     meetingSlug = mData?.meetingSlug || mData?.entitySlug || meetingId;
                 }
             } catch { /* ignore */ }

@@ -1281,6 +1281,8 @@ export const getDefaultMeetingMessagingConfig = (): MeetingMessagingConfig => ({
   rescheduleChannels: ['email'],
   cancelEnabled: false,
   cancelChannels: ['email'],
+  resendLinkEmailTemplateId: 'global_meeting_resend_join_link_email',
+  resendLinkSmsTemplateId: 'global_meeting_resend_join_link_sms',
 });
 
 // ── Meeting Messaging Config ───────────────────────────────────────────────
@@ -1340,6 +1342,10 @@ export interface MeetingMessagingConfig {
   cancelFacilitatorSmsTemplateId?: string;
   cancelRegistrantEmailTemplateId?: string;
   cancelRegistrantSmsTemplateId?: string;
+
+  // Resend Link Configuration
+  resendLinkEmailTemplateId?: string;
+  resendLinkSmsTemplateId?: string;
 
   // Outbound Registration Webhook
   /** When enabled, a signed JSON POST is sent to registrationWebhookUrl on every new registration */

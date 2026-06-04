@@ -584,12 +584,28 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                                     })}
                                     <TableHead className="text-[10px] font-bold uppercase tracking-wider">Registered</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase tracking-wider">Status</TableHead>
-                                    <TableHead className="w-[150px] text-right text-[10px] font-bold uppercase tracking-wider pr-6">Action</TableHead>
+                                    <TableHead className="w-[300px] text-right text-[10px] font-bold uppercase tracking-wider pr-6">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredRegistrants.map((registrant) => (
-                                    <TableRow key={registrant.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150" data-state={selectedIds.has(registrant.id) ? "selected" : undefined}>
+                                {filteredRegistrants.map((registrant) => {
+                                    const registrantToken = registrant.token || registrant.id;
+                                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                                    let fullLink = registrant.personalizedMeetingUrl || '';
+                                    if (fullLink) {
+                                      if (!fullLink.startsWith('http')) {
+                                        fullLink = `${origin}${fullLink.startsWith('/') ? '' : '/'}${fullLink}`;
+                                      }
+                                    } else if (meeting) {
+                                      fullLink = getPersonalizedMeetingUrl(origin, meeting, registrantToken);
+                                    }
+                                    const whatsappText = `Hello ${registrant.name}, here is your unique joining link for ${meeting?.heroTitle || 'the meeting'}: ${fullLink}`;
+                                    const whatsappUrl = registrant.phone
+                                      ? `https://api.whatsapp.com/send?phone=${registrant.phone.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(whatsappText)}`
+                                      : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
+
+                                    return (
+                                        <TableRow key={registrant.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150" data-state={selectedIds.has(registrant.id) ? "selected" : undefined}>
                                         <TableCell className="pl-4">
                                           <Checkbox 
                                             checked={selectedIds.has(registrant.id)}
@@ -637,13 +653,13 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
-                                            <div className="flex items-center justify-end gap-2">
+                                            <div className="flex items-center justify-end gap-1.5">
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm" 
                                                     onClick={() => toggleAttendance(registrant)}
                                                     disabled={isToggling[registrant.id]}
-                                                    className={`h-8 text-xs font-bold transition-all ${
+                                                    className={`h-8 text-xs font-bold transition-all mr-1 ${
                                                         registrant.status === 'attended'
                                                             ? "hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20" 
                                                             : "bg-primary/5 hover:bg-primary hover:text-white border-primary/20"
@@ -652,26 +668,95 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                                                     {isToggling[registrant.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : registrant.status === 'attended' ? 'Revoke' : 'Mark Attended'}
                                                 </Button>
 
+                                                {/* Exposed Send Join Link Button */}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    disabled={isRowSending[registrant.id]}
+                                                    onClick={async () => {
+                                                        setIsRowSending(prev => ({ ...prev, [registrant.id]: true }));
+                                                        try {
+                                                            await handleSendLink(registrant);
+                                                        } finally {
+                                                            setIsRowSending(prev => ({ ...prev, [registrant.id]: false }));
+                                                        }
+                                                    }}
+                                                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                    title="Send Join Link"
+                                                >
+                                                    {isRowSending[registrant.id] ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                                    ) : (
+                                                        <Send className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+
+                                                {/* Exposed Copy Join Link Button */}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(fullLink);
+                                                        setCopiedRegistrantId(registrant.id);
+                                                        toast({ title: 'Link Copied', description: 'Saved to clipboard.' });
+                                                        setTimeout(() => setCopiedRegistrantId(null), 2000);
+                                                    }}
+                                                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                    title="Copy Join Link"
+                                                >
+                                                    {copiedRegistrantId === registrant.id ? (
+                                                        <CopyCheck className="h-4 w-4 text-emerald-500" />
+                                                    ) : (
+                                                        <Copy className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+
+                                                {/* Exposed WhatsApp Share Button */}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => window.open(whatsappUrl, '_blank')}
+                                                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50/50"
+                                                    title="Share via WhatsApp"
+                                                >
+                                                    <svg className="h-4 w-4 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
+                                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.458h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                                    </svg>
+                                                </Button>
+
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8">
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48 rounded-xl">
-                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'approved')}>
+                                                    <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
+                                                        <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Quick Actions</p>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'approved')} className="rounded-lg text-xs font-semibold">
                                                             <Check className="h-4 w-4 mr-2" /> Approve
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'cancelled')}>
+                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'cancelled')} className="rounded-lg text-xs font-semibold">
                                                             <X className="h-4 w-4 mr-2" /> Disapprove
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
-                                                        <DropdownMenuItem onClick={() => handleSendLink(registrant)}>
+                                                        <DropdownMenuItem onClick={() => handleSendLink(registrant)} className="rounded-lg text-xs font-semibold">
                                                             <Send className="h-4 w-4 mr-2" /> Send Join Link
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => {
+                                                            navigator.clipboard.writeText(fullLink);
+                                                            toast({ title: 'Link Copied', description: 'Saved to clipboard.' });
+                                                        }} className="rounded-lg text-xs font-semibold">
+                                                            <Copy className="h-4 w-4 mr-2" /> Copy Join Link
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => window.open(whatsappUrl, '_blank')} className="rounded-lg text-xs font-semibold">
+                                                            <svg className="h-4 w-4 mr-2 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
+                                                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.458h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                                            </svg> Share via WhatsApp
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem 
-                                                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                                            className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-lg text-xs font-bold"
                                                             onClick={() => setRegistrantToDelete(registrant)}
                                                         >
                                                             <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -681,7 +766,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                )})}
                             </TableBody>
                         </Table>
                     </div>

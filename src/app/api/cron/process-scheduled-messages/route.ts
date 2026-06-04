@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processScheduledMessages } from '@/lib/reminder-actions';
+import { processScheduledMessages, autoEndCompletedMeetings } from '@/lib/reminder-actions';
 import { processMeetingInvitations } from '@/lib/invitation-actions';
 
 /**
@@ -39,19 +39,22 @@ async function processCronRequest(request: NextRequest) {
       );
     }
 
-    // Process scheduled messages
-    const [result, invResult] = await Promise.all([
+    // Process scheduled messages, invitations, and auto-end meetings concurrently
+    const [result, invResult, autoEndResult] = await Promise.all([
       processScheduledMessages(),
-      processMeetingInvitations()
+      processMeetingInvitations(),
+      autoEndCompletedMeetings()
     ]);
 
     console.log(`[CRON] Processed scheduled messages: ${result.sent} sent, ${result.failed} failed`);
     console.log(`[CRON] Processed invitations: ${invResult.sent} sent, ${invResult.skipped} skipped, ${invResult.failed} failed`);
+    console.log(`[CRON] Auto-ended meetings: ${autoEndResult.endedCount} ended, ${autoEndResult.errors.length} errors`);
 
     return NextResponse.json({
       success: true,
       sent: result.sent,
       failed: result.failed,
+      autoEnded: autoEndResult.endedCount,
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {

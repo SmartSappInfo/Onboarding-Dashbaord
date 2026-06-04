@@ -52,6 +52,11 @@ export default function MeetingHero({ entity, meeting, tokenResult, nextSectionI
         return;
       }
       
+      if (meeting.status === 'ended') {
+        setMeetingState('ENDED_NO_RECORDING');
+        return;
+      }
+      
       const meetingEndTime = new Date(new Date(meeting.meetingTime).getTime() + 2 * 60 * 60 * 1000); // 2 hours after start
       if (isAfter(new Date(), meetingEndTime)) {
         setMeetingState('ENDED_NO_RECORDING');
@@ -63,7 +68,7 @@ export default function MeetingHero({ entity, meeting, tokenResult, nextSectionI
     checkMeetingState();
     const interval = setInterval(checkMeetingState, 60000); // Check every minute
     return () => clearInterval(interval);
-  }, [meeting.meetingTime, meeting.recordingUrl]);
+  }, [meeting.meetingTime, meeting.recordingUrl, meeting.status]);
 
   const hasBanner = meeting.bannerType !== 'none' && (
     (meeting.bannerType === 'image' && meeting.bannerImageUrl) ||

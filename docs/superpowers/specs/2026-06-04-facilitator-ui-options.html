@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facilitator UI Options Mockups</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            primary: '#3B5FFF',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0B0E14;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(59, 95, 255, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+    }
+  </style>
+</head>
+<body class="text-slate-100 font-sans min-h-screen py-16 px-4 md:px-8">
+
+  <div class="max-w-6xl mx-auto space-y-16">
+    
+    <!-- Page Header -->
+    <div class="text-center space-y-4">
+      <span class="px-4 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-xs tracking-wider uppercase">Facilitator UI Options</span>
+      <h1 class="text-4xl md:text-5xl font-black font-display tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
+        Facilitator Joining Experience
+      </h1>
+      <p class="text-slate-400 max-w-2xl mx-auto font-medium text-sm md:text-base">
+        A preview of three alternative layout strategies for facilitators editing their profiles before entering the meeting.
+      </p>
+    </div>
+
+    <!-- OPTION 1: SIDE-BY-SIDE CARDS -->
+    <div class="space-y-6">
+      <div class="border-l-4 border-primary pl-4">
+        <h2 class="text-2xl font-extrabold font-display text-white">Option 1: Side-by-Side Cards (Two-Column Layout)</h2>
+        <p class="text-xs text-slate-400 mt-1">A two-column grid showcasing profile updates on the left and meeting status/joining on the right. Perfect for large screens.</p>
+      </div>
+
+      <div class="p-8 md:p-12 rounded-[2.5rem] bg-slate-900/40 border border-slate-800/80 backdrop-blur-md shadow-2xl">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          <!-- Left Column: Profile Editor -->
+          <div class="lg:col-span-7 space-y-6">
+            <div class="space-y-2">
+              <span class="text-[10px] font-extrabold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full">Profile Setup</span>
+              <h3 class="text-2xl font-black font-display text-white">Welcome, Dr. Kojo Chapman!</h3>
+              <p class="text-xs text-slate-400 font-medium">Verify or adjust your presenter details before launching the webinar room.</p>
+            </div>
+
+            <!-- Profile Form -->
+            <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-6">
+              <div class="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+                
+                <!-- Avatar Upload Button -->
+                <div class="relative group cursor-pointer shrink-0">
+                  <div class="w-24 h-24 rounded-2xl overflow-hidden ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all bg-slate-800 flex items-center justify-center">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop" alt="Avatar" class="w-full h-full object-cover">
+                  </div>
+                  <div class="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                  </div>
+                </div>
+
+                <!-- Fields -->
+                <div class="flex-grow w-full space-y-4">
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Presenter Name</label>
+                    <input type="text" value="Dr. Kojo Chapman" class="w-full h-11 bg-slate-950/50 border border-slate-800 rounded-xl px-4 text-sm font-semibold text-white focus:outline-none focus:border-primary/50">
+                  </div>
+                  
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Short Bio / Credentials</label>
+                    <textarea class="w-full h-20 bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-sm font-medium text-slate-300 focus:outline-none focus:border-primary/50 resize-none">Senior Onboarding Consultant at SmartSapp. Helping parents transition smoothly into the student ecosystem.</textarea>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="flex justify-end pt-2">
+                <button class="px-5 py-2.5 bg-slate-850 hover:bg-slate-800 text-white rounded-xl text-xs font-bold border border-slate-700/50 transition-all flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Save Profile Changes
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right Column: Meeting Info -->
+          <div class="lg:col-span-5 space-y-6">
+            <div class="p-6 rounded-[2rem] bg-white/5 border border-white/10 shadow-xl space-y-6">
+              
+              <!-- Date/Time Display -->
+              <div class="space-y-2 text-center">
+                <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-extrabold text-[10px] tracking-widest uppercase animate-pulse">Meeting Active</span>
+                <h4 class="text-lg font-bold text-white mt-2">SmartSapp Kickoff Session</h4>
+                <p class="text-xs text-slate-400">June 4, 2026 at 4:15 PM</p>
+              </div>
+
+              <!-- Action button -->
+              <div class="space-y-3">
+                <button class="w-full h-14 bg-primary hover:bg-primary/95 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2.5 3.19-2.5 5.5s1 4.24 2.5 5.5"/><path d="M19.5 16.5c1.5 1.26 2.5 3.19 2.5 5.5s-1 4.24-2.5 5.5"/><path d="m12 2-9 9 9 9 9-9-9-9Z"/></svg>
+                  Join Meeting Now
+                </button>
+                <p class="text-[10px] text-center text-slate-400 font-semibold uppercase tracking-wider">Always open for facilitators</p>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTION 2: ALL-IN-ONE CARD -->
+    <div class="space-y-6">
+      <div class="border-l-4 border-indigo-500 pl-4">
+        <h2 class="text-2xl font-extrabold font-display text-white">Option 2: All-in-One Embedded Card Layout</h2>
+        <p class="text-xs text-slate-400 mt-1">A single, centered container that organizes the facilitator welcome, profile editing, and join triggers sequentially.</p>
+      </div>
+
+      <div class="p-8 rounded-[2.5rem] bg-slate-900/40 border border-slate-800/80 backdrop-blur-md shadow-2xl max-w-xl mx-auto">
+        <div class="space-y-8">
+          
+          <!-- Welcome and Badge -->
+          <div class="text-center space-y-3">
+            <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-extrabold text-[10px] tracking-widest uppercase">Facilitator Hub</span>
+            <h3 class="text-3xl font-black font-display text-white">Your presenter profile is ready.</h3>
+            <p class="text-xs text-slate-400 font-medium">Verify your details before launching the meeting room.</p>
+          </div>
+
+          <!-- Profile Info Form -->
+          <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-6">
+            <div class="flex flex-col items-center gap-4 text-center">
+              
+              <!-- Avatar Upload Circular Button -->
+              <div class="relative group cursor-pointer">
+                <div class="w-20 h-20 rounded-full overflow-hidden ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all bg-slate-800 flex items-center justify-center">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop" alt="Avatar" class="w-full h-full object-cover">
+                </div>
+                <div class="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+              </div>
+              
+              <div class="w-full space-y-3">
+                <div class="space-y-1 text-left">
+                  <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Display Name</label>
+                  <input type="text" value="Dr. Kojo Chapman" class="w-full h-10 bg-slate-950/50 border border-slate-800 rounded-xl px-4 text-xs font-semibold text-white focus:outline-none focus:border-primary/50">
+                </div>
+                
+                <div class="space-y-1 text-left">
+                  <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Bio / Role Details</label>
+                  <textarea class="w-full h-16 bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-xs font-medium text-slate-300 focus:outline-none focus:border-primary/50 resize-none">Senior Onboarding Consultant at SmartSapp. Helping parents transition smoothly into the student ecosystem.</textarea>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Join Action Button -->
+          <div class="space-y-4">
+            <button class="w-full h-14 bg-primary hover:bg-primary/95 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.886L4 9l5.886 1.912L12 21l1.912-5.886L20 15l-5.886-1.912L12 3Z"/></svg>
+              Save & Join Meeting
+            </button>
+            <p class="text-[10px] text-center text-slate-400 font-semibold uppercase tracking-wider">Saves changes in the meeting card prior to redirecting</p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTION 3: MODAL DIALOG OVERLAY -->
+    <div class="space-y-6">
+      <div class="border-l-4 border-violet-500 pl-4">
+        <h2 class="text-2xl font-extrabold font-display text-white">Option 3: Modal Dialog Overlay Layout</h2>
+        <p class="text-xs text-slate-400 mt-1">Facilitators see a standard meeting dashboard wait page. Clicking a dedicated "Edit Presenter Profile" button opens a popup modal.</p>
+      </div>
+
+      <div class="relative p-8 rounded-[2.5rem] bg-slate-900/40 border border-slate-800/80 backdrop-blur-md shadow-2xl overflow-hidden min-h-[500px] flex items-center justify-center">
+        
+        <!-- Background Page (Behind Modal) -->
+        <div class="w-full max-w-md opacity-25 filter blur-[1px] pointer-events-none transition-all space-y-6 text-center">
+          <h3 class="text-3xl font-black text-white">SmartSapp Kickoff Session</h3>
+          <div class="p-6 bg-slate-800/20 border border-slate-700/50 rounded-2xl">
+            <p class="text-sm font-semibold">Webinar is Active</p>
+          </div>
+          <button class="w-full h-12 bg-primary/20 text-primary rounded-xl font-bold text-sm">Join Session</button>
+        </div>
+
+        <!-- Floating Modal Overlay -->
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div class="w-full max-w-md p-6 rounded-[2rem] bg-slate-900 border border-slate-800 shadow-2xl space-y-6">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-[9px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded-full">Identity</span>
+                <h4 class="text-xl font-black text-white mt-1">Verify Presenter Profile</h4>
+              </div>
+              <button class="text-slate-400 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            <!-- Form -->
+            <div class="space-y-4">
+              <div class="flex items-center gap-4">
+                <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-800 cursor-pointer group shrink-0">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop" alt="Avatar" class="w-full h-full object-cover">
+                  <div class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </div>
+                </div>
+                <div class="flex-grow">
+                  <label class="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Presenter Name</label>
+                  <input type="text" value="Dr. Kojo Chapman" class="w-full h-9 bg-slate-950/50 border border-slate-800 rounded-lg px-3 text-xs font-semibold text-white focus:outline-none focus:border-primary/50">
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Short Bio / Speaker Credentials</label>
+                <textarea class="w-full h-16 bg-slate-950/50 border border-slate-800 rounded-lg p-3 text-xs font-medium text-slate-300 focus:outline-none focus:border-primary/50 resize-none">Senior Onboarding Consultant at SmartSapp.</textarea>
+              </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="flex justify-end gap-2 pt-2">
+              <button class="px-4 h-10 bg-slate-850 hover:bg-slate-800 border border-slate-700/50 rounded-xl text-xs font-bold text-slate-300">
+                Cancel
+              </button>
+              <button class="px-5 h-10 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold shadow-lg shadow-primary/20">
+                Apply & Save
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
