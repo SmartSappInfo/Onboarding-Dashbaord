@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useParams } from 'next/navigation';
+import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
@@ -81,11 +82,19 @@ export function ConditionNode({ id, data, selected }: any) {
         return `If ${totalConditions} rules match (${relation})`;
     };
 
+    const overlay = useExecutionOverlay(data);
+
     return (
         <div className={cn(
             "relative transition-all duration-300",
-            selected ? "scale-[1.02]" : "scale-100"
+            selected ? "scale-[1.02]" : "scale-100",
+            overlay.opacityClass
         )}>
+            {overlay.badgeIcon && (
+                <div className="absolute -top-2.5 -right-2.5 z-50">
+                    <ExecutionBadge icon={overlay.badgeIcon} status={data.executionStatus} />
+                </div>
+            )}
             <Handle 
                 type="target" 
                 position={Position.Top} 
@@ -95,7 +104,9 @@ export function ConditionNode({ id, data, selected }: any) {
             
             <Card className={cn(
                 "w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center",
-                selected ? "border-amber-500 shadow-md ring-2 ring-amber-500/20" : "border-amber-200"
+                selected ? "border-amber-500 shadow-md ring-2 ring-amber-500/20" : "border-amber-200",
+                overlay.borderClass,
+                overlay.glowClass
             )}>
                 {/* Left Colored Accent Block */}
                 <div className="w-12 h-full bg-amber-500 flex items-center justify-center flex-shrink-0 animate-fade-in">

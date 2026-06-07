@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
+import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 
 const TRIGGER_ICONS: Record<string, any> = {
     ENTITY_CREATED: Building,
@@ -93,10 +94,22 @@ const TRIGGER_NAMES: Record<string, string> = {
 /**
  * @fileOverview High-fidelity Trigger Node for Automation Canvas.
  * Represents the entry point of an institutional protocol.
+ * Reads data.triggers[] (multi-trigger model) with fallback to data.trigger (legacy).
  */
 export function TriggerNode({ id, data, selected }: any) {
-    const trigger = data.trigger;
-    const config = data.config || {};
+    // Multi-trigger model: data.triggers[] is source of truth
+    // Fall back to legacy data.trigger for canvas nodes not yet synced
+    const triggers: any[] = data.triggers?.length
+        ? data.triggers
+        : data.trigger
+        ? [{ id: 'primary', type: data.trigger, config: data.config ?? {} }]
+        : [];
+
+    const primary = triggers[0];
+    const trigger = primary?.type ?? null;
+    const config = primary?.config ?? data.config ?? {};
+    const overflowCount = triggers.length - 1;
+
     const Icon = TRIGGER_ICONS[trigger] || Zap;
 
     const { allTags, forms, surveys, pipelines, stages } = useWorkspaceScopedQueries();
@@ -239,14 +252,24 @@ export function TriggerNode({ id, data, selected }: any) {
         }
     };
 
+    const overlay = useExecutionOverlay(data);
+
     return (
         <div className={cn(
             "relative transition-all duration-300",
-            selected ? "scale-[1.02]" : "scale-100"
+            selected ? "scale-[1.02]" : "scale-100",
+            overlay.opacityClass
         )}>
+            {overlay.badgeIcon && (
+                <div className="absolute -top-2.5 -right-2.5 z-50">
+                    <ExecutionBadge icon={overlay.badgeIcon} status={data.executionStatus} />
+                </div>
+            )}
             <Card className={cn(
                 "w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center",
-                selected ? "border-emerald-500 shadow-md ring-2 ring-emerald-500/20" : "border-emerald-200"
+                selected ? "border-emerald-500 shadow-md ring-2 ring-emerald-500/20" : "border-emerald-200",
+                overlay.borderClass,
+                overlay.glowClass
             )}>
                 {/* Left Colored Accent Block */}
                 <div className="w-12 h-full bg-emerald-500 flex items-center justify-center flex-shrink-0 animate-fade-in">
@@ -263,6 +286,11 @@ export function TriggerNode({ id, data, selected }: any) {
                             {getTriggerDescription()}
                         </p>
                     </div>
+                    {triggers.length > 1 && (
+                        <div className="shrink-0 ml-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold whitespace-nowrap min-w-[18px] text-center shadow-sm animate-fade-in">
+                            {triggers.length}
+                        </div>
+                    )}
                 </div>
             </Card>
             <Handle 

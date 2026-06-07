@@ -6,6 +6,7 @@ import { TagIcon, PlusCircle, MinusCircle, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
+import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 
 /**
  * TagActionNode — visual node for the automation canvas.
@@ -45,8 +46,15 @@ export function TagActionNode({ id, data, selected }: any) {
       : `${isAdd ? 'Apply' : 'Remove'} tags to contact`;
   };
 
+  const overlay = useExecutionOverlay(data);
+
   return (
-    <div className={cn('relative transition-all duration-300', selected ? 'scale-[1.02]' : 'scale-100')}>
+    <div className={cn('relative transition-all duration-300', selected ? 'scale-[1.02]' : 'scale-100', overlay.opacityClass)}>
+      {overlay.badgeIcon && (
+        <div className="absolute -top-2.5 -right-2.5 z-50">
+          <ExecutionBadge icon={overlay.badgeIcon} status={data.executionStatus} />
+        </div>
+      )}
       <Handle
         type="target"
         position={Position.Top}
@@ -57,7 +65,9 @@ export function TagActionNode({ id, data, selected }: any) {
       <Card
         className={cn(
           'w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center',
-          colorScheme.border
+          colorScheme.border,
+          overlay.borderClass,
+          overlay.glowClass
         )}
       >
         {/* Left Colored Accent Block */}

@@ -18,7 +18,7 @@ export async function findActiveAutomationsByTrigger(
 ): Promise<Automation[]> {
   const snap = await adminDb
     .collection(AUTOMATIONS)
-    .where('trigger', '==', trigger)
+    .where('triggerTypes', 'array-contains', trigger)
     .where('isActive', '==', true)
     .get();
 

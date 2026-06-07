@@ -31,6 +31,14 @@ export async function handleSendMessage(
           : (context.payload.email || context.payload.contactEmail);
         if (triggerContactVal) {
           recipients.add(String(triggerContactVal));
+        } else {
+          const primary = entityContacts.find(ec => ec.isPrimary);
+          const primaryVal = channel === 'sms' ? primary?.phone : primary?.email;
+          if (primaryVal) {
+            recipients.add(primaryVal);
+          } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
+            recipients.add(contact.contacts[0].email);
+          }
         }
       }
 

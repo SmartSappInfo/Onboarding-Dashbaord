@@ -457,7 +457,7 @@ export async function processFormSubmissionAction(input: {
         const { applyTagsAction } = await import('./tag-actions');
         await applyTagsAction(
           resolvedEntityId,
-          form.contactScope === 'institution' ? 'school' : 'prospect',
+          'workspace_entity',
           form.actions.tags,
           'system-form-engine',
           'Form Submission Engine'

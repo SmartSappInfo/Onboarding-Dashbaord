@@ -3,7 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { revalidatePath } from 'next/cache';
-import type { School, OnboardingStage, EntityType, EntityContact } from './types';
+import type { School, OnboardingStage, EntityType, EntityContact, IndustryVertical } from './types';
 import crypto from 'crypto';
 import {
   enforceContactConstraints,
@@ -17,6 +17,7 @@ import { validateIndustryData } from './industry-schemas';
 import { normalizePhoneNumber } from './phone-utils';
 import { after } from 'next/server';
 import { BulkVerificationService } from './bulk-verifier';
+import { applyIndustryDataDefaults } from './entity-utils';
 
 /**
  * @fileOverview Server actions for entity lifecycle management.
@@ -128,6 +129,7 @@ export async function lockWorkspaceScope(
   });
 }
 
+
 /**
  * Creates a new Entity record across 'entities' and 'workspace_entities'.
  * Uses server-side Firebase Admin SDK to bypass client-side security rules.
@@ -167,6 +169,8 @@ export async function createEntityAction(
        if (!data.industryData.industry) {
          data.industryData.industry = workspaceIndustry;
        }
+
+       data.industryData = applyIndustryDataDefaults(data.industryData, workspaceIndustry, entityType);
     }
 
     // 2. Validate industryData against workspace industry if provided (Requirement 3.9)
@@ -604,9 +608,10 @@ export async function updateEntityAction(
       if (!indData.industry) {
         indData.industry = workspaceIndustry;
       }
-      validateIndustryData(indData, workspaceIndustry);
+      const defaultedIndData = applyIndustryDataDefaults(indData, workspaceIndustry, entityType);
+      validateIndustryData(defaultedIndData, workspaceIndustry);
       
-      entityUpdate.industryData = indData;
+      entityUpdate.industryData = defaultedIndData;
     }
 
     // Custom data

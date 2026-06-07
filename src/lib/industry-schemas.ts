@@ -49,7 +49,8 @@ export const SaaSInstitutionDataSchema = z.object({
   industry: z.literal('SaaS'),
   capacity: z.number().int().nonnegative(),
   activeUsers: z.number().int().nonnegative().optional(),
-  accountStatus: z.enum(['lead', 'trial', 'active', 'suspended', 'churned']),
+  /** @deprecated Use lifecycleStatus on the WorkspaceEntity instead. */
+  accountStatus: z.enum(['lead', 'trial', 'active', 'suspended', 'churned']).optional(),
   trialIds: OptionalStringArraySchema,
   onboardingIds: OptionalStringArraySchema,
   supportTicketIds: OptionalStringArraySchema,

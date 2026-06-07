@@ -160,17 +160,26 @@ export default function TasksClient() {
     const [priorityFilter, setPriorityFilter] = React.useState<string>('all');
     const [searchTerm, setSearchTerm] = React.useState('');
     const [smartFilter, setSmartFilter] = React.useState<'none' | 'today' | 'overdue'>('none');
+    const [isSimpleView, setIsSimpleView] = React.useState(true);
 
     // Date Interval Filter States
-    const [dateFilterType, setDateFilterType] = React.useState<'all' | 'range' | 'month' | 'week'>('all');
+    const [dateFilterType, setDateFilterType] = React.useState<'all' | 'range' | 'month' | 'week' | 'day'>('all');
     const [dateRange, setDateRange] = React.useState<{ start: Date | null, end: Date | null }>({ start: null, end: null });
     const [selectedMonth, setSelectedMonth] = React.useState<string>('');
     const [selectedWeek, setSelectedWeek] = React.useState<string>('');
+    const [selectedDayType, setSelectedDayType] = React.useState<'today' | 'yesterday' | 'tomorrow' | 'custom'>('today');
+    const [selectedCustomDay, setSelectedCustomDay] = React.useState<Date | null>(null);
 
     // Hydration Safe mounted state
     const [mounted, setMounted] = React.useState(false);
     React.useEffect(() => {
         setMounted(true);
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('task_simple_view');
+            if (saved !== null) {
+                setIsSimpleView(saved === 'true');
+            }
+        }
     }, []);
 
     // Generate Month Options dynamically (12 months in past to 12 months in future)
@@ -209,18 +218,32 @@ export default function TasksClient() {
             setDateRange({ start: null, end: null });
             setSelectedMonth('');
             setSelectedWeek('');
+            setSelectedDayType('today');
+            setSelectedCustomDay(null);
         } else if (dateFilterType === 'range') {
             setDateRange({ start: new Date(), end: addDays(new Date(), 7) });
             setSelectedMonth('');
             setSelectedWeek('');
+            setSelectedDayType('today');
+            setSelectedCustomDay(null);
         } else if (dateFilterType === 'month') {
             setDateRange({ start: null, end: null });
             setSelectedMonth(format(new Date(), 'yyyy-MM'));
             setSelectedWeek('');
+            setSelectedDayType('today');
+            setSelectedCustomDay(null);
         } else if (dateFilterType === 'week') {
             setDateRange({ start: null, end: null });
             setSelectedMonth('');
             setSelectedWeek(format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
+            setSelectedDayType('today');
+            setSelectedCustomDay(null);
+        } else if (dateFilterType === 'day') {
+            setDateRange({ start: null, end: null });
+            setSelectedMonth('');
+            setSelectedWeek('');
+            setSelectedDayType('today');
+            setSelectedCustomDay(new Date());
         }
     }, [dateFilterType]);
 
@@ -346,11 +369,22 @@ export default function TasksClient() {
                 const weekStart = startOfDay(new Date(selectedWeek));
                 const weekEnd = endOfDay(addDays(weekStart, 6));
                 matchesDate = taskDate >= weekStart && taskDate <= weekEnd;
+            } else if (dateFilterType === 'day') {
+                const taskDate = new Date(task.dueDate);
+                let targetDate = new Date();
+                if (selectedDayType === 'yesterday') {
+                    targetDate = addDays(new Date(), -1);
+                } else if (selectedDayType === 'tomorrow') {
+                    targetDate = addDays(new Date(), 1);
+                } else if (selectedDayType === 'custom' && selectedCustomDay) {
+                    targetDate = selectedCustomDay;
+                }
+                matchesDate = differenceInCalendarDays(taskDate, targetDate) === 0;
             }
 
             return matchesStatus && matchesPriority && matchesAssigned && matchesSearch && matchesSmart && matchesDate;
         });
-    }, [allTasks, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter, dateFilterType, dateRange, selectedMonth, selectedWeek]);
+    }, [allTasks, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter, dateFilterType, dateRange, selectedMonth, selectedWeek, selectedDayType, selectedCustomDay]);
 
     const calendarFilteredTasks = React.useMemo(() => {
         if (!allTasks) return [];
@@ -441,6 +475,20 @@ export default function TasksClient() {
             }
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to update assignee' });
+        }
+    };
+
+    const handleUpdateStatus = async (task: Task, newStatus: TaskStatus) => {
+        if (!currentUser) return;
+        try {
+            const res = await updateTaskAction(task.id, { ...task, status: newStatus }, currentUser.uid);
+            if (res.success) {
+                toast({ title: `Status updated to ${STATUS_LABELS[newStatus]}` });
+            } else {
+                toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to update status' });
         }
     };
 
@@ -571,16 +619,94 @@ export default function TasksClient() {
     };
 
     const handleBulkDelete = async () => {
-        if (!currentUser || selectedIds.length === 0 || !confirm(`Purge ${selectedIds.length} protocols?`)) return;
+        if (!currentUser || selectedIds.length === 0 || !confirm(`Delete ${selectedIds.length} tasks?`)) return;
         setIsBulkProcessing(true);
         try {
             const res = await bulkDeleteTasksAction(selectedIds, currentUser.uid, activeWorkspaceId);
             if (res.success) {
-                toast({ title: 'Bulk Purge Success' });
+                toast({ title: 'Bulk Delete Success' });
                 setSelectedIds([]);
                 setIsSelectionMode(false);
             } else {
                 toast({ variant: 'destructive', title: 'Bulk Action Failed', description: res.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } finally {
+            setIsBulkProcessing(false);
+        }
+    };
+
+    const handleBulkAssign = async (userId: string) => {
+        if (!currentUser || selectedIds.length === 0 || !allTasks) return;
+        setIsBulkProcessing(true);
+        try {
+            const userObj = workspaceUsers?.find(u => u.id === userId);
+            const promises = selectedIds.map(id => {
+                const task = allTasks.find(t => t.id === id);
+                if (!task) return Promise.resolve({ success: true });
+                return updateTaskAction(id, { ...task, assignedTo: [userId] }, currentUser.uid);
+            });
+            const results = await Promise.all(promises);
+            const failures = results.filter(r => !r.success);
+            if (failures.length === 0) {
+                toast({ title: 'Bulk Assignment Success', description: `${selectedIds.length} tasks assigned to ${userObj?.name || 'user'}.` });
+                setSelectedIds([]);
+                setIsSelectionMode(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Bulk Assignment Failed', description: `${failures.length} tasks failed to assign.` });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } finally {
+            setIsBulkProcessing(false);
+        }
+    };
+
+    const handleBulkChangeStatus = async (status: TaskStatus) => {
+        if (!currentUser || selectedIds.length === 0 || !allTasks) return;
+        setIsBulkProcessing(true);
+        try {
+            const promises = selectedIds.map(id => {
+                const task = allTasks.find(t => t.id === id);
+                if (!task) return Promise.resolve({ success: true });
+                return updateTaskAction(id, { ...task, status }, currentUser.uid);
+            });
+            const results = await Promise.all(promises);
+            const failures = results.filter(r => !r.success);
+            if (failures.length === 0) {
+                toast({ title: 'Bulk Status Update Success', description: `${selectedIds.length} tasks updated to ${STATUS_LABELS[status]}.` });
+                setSelectedIds([]);
+                setIsSelectionMode(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Bulk Status Update Failed', description: `${failures.length} tasks failed to update.` });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } finally {
+            setIsBulkProcessing(false);
+        }
+    };
+
+    const handleBulkPostpone = async (days: number) => {
+        if (!currentUser || selectedIds.length === 0 || !allTasks) return;
+        setIsBulkProcessing(true);
+        try {
+            const promises = selectedIds.map(id => {
+                const task = allTasks.find(t => t.id === id);
+                if (!task || !task.dueDate) return Promise.resolve({ success: true });
+                const currentDueDate = new Date(task.dueDate);
+                const newDueDate = new Date(currentDueDate.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+                return updateTaskAction(id, { ...task, dueDate: newDueDate }, currentUser.uid);
+            });
+            const results = await Promise.all(promises);
+            const failures = results.filter(r => !r.success);
+            if (failures.length === 0) {
+                toast({ title: 'Bulk Postpone Success', description: `${selectedIds.length} tasks postponed by ${days} days.` });
+                setSelectedIds([]);
+                setIsSelectionMode(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Bulk Postpone Failed', description: `${failures.length} tasks failed to update.` });
             }
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -722,6 +848,7 @@ export default function TasksClient() {
                                 <SelectItem value="range">Custom Range</SelectItem>
                                 <SelectItem value="month">By Month</SelectItem>
                                 <SelectItem value="week">By Week</SelectItem>
+                                <SelectItem value="day">By Day</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -774,6 +901,31 @@ export default function TasksClient() {
                             </Select>
                         )}
 
+                        {/* Day Selector */}
+                        {mounted && dateFilterType === 'day' && (
+                            <div className="flex items-center gap-2">
+                                <Select value={selectedDayType} onValueChange={(val: any) => setSelectedDayType(val)}>
+                                    <SelectTrigger className="h-10 w-[150px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                        <SelectValue placeholder="Select Day" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                        <SelectItem value="today">Today</SelectItem>
+                                        <SelectItem value="yesterday">Yesterday</SelectItem>
+                                        <SelectItem value="tomorrow">Tomorrow</SelectItem>
+                                        <SelectItem value="custom">Specific Date...</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                {selectedDayType === 'custom' && (
+                                    <DateTimePicker 
+                                        value={selectedCustomDay || undefined} 
+                                        onChange={(d) => setSelectedCustomDay(d || null)} 
+                                        className="h-10 rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
+                                    />
+                                )}
+                            </div>
+                        )}
+
                         <div className="relative w-full sm:w-[240px] group">
                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-60" />
                             <Input 
@@ -783,6 +935,30 @@ export default function TasksClient() {
                                 className="h-10 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/45 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary font-semibold pl-10 text-xs"
                             />
                         </div>
+
+                        {activeTab === 'list' && (
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setIsSimpleView(prev => {
+                                        const next = !prev;
+                                        if (typeof window !== 'undefined') {
+                                            localStorage.setItem('task_simple_view', String(next));
+                                        }
+                                        return next;
+                                    });
+                                }}
+                                className={cn(
+                                    "h-10 rounded-xl px-4 gap-2 font-bold text-xs transition-all border-none ring-1 shrink-0",
+                                    isSimpleView 
+                                        ? "bg-blue-500/10 text-blue-600 ring-blue-500/30 hover:bg-blue-500/15" 
+                                        : "bg-background text-foreground ring-border hover:bg-muted/50"
+                                )}
+                            >
+                                <LayoutList className={cn("h-4 w-4 transition-transform", isSimpleView && "text-blue-500")} />
+                                <span>{isSimpleView ? "Simple View" : "Detailed View"}</span>
+                            </Button>
+                        )}
  
                         {canCreate && (
                             <Button 
@@ -816,19 +992,105 @@ export default function TasksClient() {
                                             size="sm" 
                                             variant="outline" 
                                             onClick={handleBulkComplete} 
-                                            className="h-8 rounded-lg text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20"
+                                            className="h-8 rounded-lg text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20 text-xs font-bold"
                                         >
-                                            Resolve Bulk
+                                            Resolve Selected
                                         </Button>
                                     )}
+
+                                    {canEdit && (
+                                        <DropdownMenu modal={false}>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button size="sm" variant="outline" className="h-8 rounded-lg text-xs font-bold gap-1 text-primary hover:bg-primary/5 border-primary/20">
+                                                    Bulk Actions <ChevronDown size={14} />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5 border border-border bg-card text-foreground shadow-2xl">
+                                                <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground px-3 py-1.5 uppercase tracking-wider">Bulk Update</DropdownMenuLabel>
+                                                <DropdownMenuSeparator className="bg-border" />
+                                                
+                                                {/* Bulk Assign Submenu */}
+                                                <DropdownMenuSub>
+                                                    <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer">
+                                                        <UserIcon className="h-4 w-4 text-primary" /> <span className="font-bold text-xs">Assign To...</span>
+                                                    </DropdownMenuSubTrigger>
+                                                    <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-48 shadow-2xl text-foreground">
+                                                        {workspaceUsers && workspaceUsers.length > 0 ? (
+                                                            workspaceUsers.map(u => (
+                                                                <DropdownMenuItem 
+                                                                    key={u.id} 
+                                                                    onClick={() => handleBulkAssign(u.id)}
+                                                                    className="rounded-lg p-2 flex items-center gap-2 cursor-pointer focus:bg-muted"
+                                                                >
+                                                                    <Avatar className="h-5 w-5 shrink-0 ml-1.5">
+                                                                        <AvatarImage src={u.photoURL || undefined} />
+                                                                        <AvatarFallback className="text-[8px] bg-muted/40">{getInitials(u.name)}</AvatarFallback>
+                                                                    </Avatar>
+                                                                    <span className="text-xs font-semibold truncate">{u.name}</span>
+                                                                </DropdownMenuItem>
+                                                            ))
+                                                        ) : (
+                                                            <div className="p-2 text-center text-xs text-muted-foreground">No users found</div>
+                                                        )}
+                                                    </DropdownMenuSubContent>
+                                                </DropdownMenuSub>
+
+                                                {/* Bulk Status Submenu */}
+                                                <DropdownMenuSub>
+                                                    <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer">
+                                                        <Layers className="h-4 w-4 text-primary" /> <span className="font-bold text-xs">Change Status...</span>
+                                                    </DropdownMenuSubTrigger>
+                                                    <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-48 shadow-2xl text-foreground">
+                                                        {(['todo', 'in_progress', 'waiting', 'review', 'done'] as const).map(status => (
+                                                            <DropdownMenuItem
+                                                                key={status}
+                                                                onClick={() => handleBulkChangeStatus(status)}
+                                                                className="rounded-lg p-2 flex items-center gap-2 cursor-pointer focus:bg-muted"
+                                                            >
+                                                                <span className={cn(
+                                                                    "text-xs font-semibold truncate",
+                                                                    status === 'todo' && "text-foreground",
+                                                                    status === 'in_progress' && "text-blue-500",
+                                                                    status === 'waiting' && "text-orange-500",
+                                                                    status === 'review' && "text-purple-500",
+                                                                    status === 'done' && "text-emerald-500"
+                                                                )}>
+                                                                    {STATUS_LABELS[status]}
+                                                                </span>
+                                                            </DropdownMenuItem>
+                                                        ))}
+                                                    </DropdownMenuSubContent>
+                                                </DropdownMenuSub>
+
+                                                {/* Bulk Postpone Submenu */}
+                                                <DropdownMenuSub>
+                                                    <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer">
+                                                        <Clock className="h-4 w-4 text-primary" /> <span className="font-bold text-xs">Postpone...</span>
+                                                    </DropdownMenuSubTrigger>
+                                                    <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-48 shadow-2xl text-foreground">
+                                                        <DropdownMenuItem onClick={() => handleBulkPostpone(1)} className="rounded-lg p-2.5 cursor-pointer">
+                                                            Postpone 1 Day
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleBulkPostpone(3)} className="rounded-lg p-2.5 cursor-pointer">
+                                                            Postpone 3 Days
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleBulkPostpone(7)} className="rounded-lg p-2.5 cursor-pointer">
+                                                            Postpone 1 Week
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuSubContent>
+                                                </DropdownMenuSub>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
+
                                     {canDelete && (
                                         <Button 
                                             size="sm" 
                                             variant="outline" 
                                             onClick={handleBulkDelete} 
-                                            className="h-8 rounded-lg text-rose-600 hover:bg-rose-500/10 border-rose-500/20"
+                                            className="h-8 rounded-lg text-rose-600 hover:bg-rose-500/10 border-rose-500/20 text-xs font-bold"
                                         >
-                                            Purge Selected
+                                            Delete Selected
                                         </Button>
                                     )}
                                     <Separator orientation="vertical" className="h-8 bg-border" />
@@ -902,7 +1164,9 @@ export default function TasksClient() {
                                                             <div 
                                                                 key={task.id} 
                                                                 className={cn(
-                                                                    "flex items-center gap-4 px-6 py-4 bg-transparent hover:bg-muted/30 transition-all",
+                                                                    isSimpleView 
+                                                                        ? "flex items-center gap-3 px-6 py-2 sm:py-2.5 bg-transparent hover:bg-muted/30 transition-all"
+                                                                        : "flex items-center gap-4 px-6 py-4 bg-transparent hover:bg-muted/30 transition-all",
                                                                     task.status === 'done' && "opacity-65"
                                                                 )}
                                                             >
@@ -933,77 +1197,120 @@ export default function TasksClient() {
                                                                     </button>
                                                                 )}
 
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex flex-col gap-1 text-left">
-                                                                        <h4 className={cn("text-base font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
-                                                                            {task.title}
-                                                                        </h4>
-                                                                        <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-2 flex-wrap text-left">
-                                                                            <span>{toTitleCase(task.category)}</span>
-                                                                            <span className="text-muted-foreground/30 font-normal">·</span>
+                                                                {isSimpleView ? (
+                                                                    <>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <h4 className={cn("text-sm font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
+                                                                                {task.title}
+                                                                            </h4>
+                                                                        </div>
+
+                                                                        <div className="flex items-center min-w-[70px] sm:min-w-[90px] shrink-0">
                                                                             <span className={cn("font-bold uppercase text-[9px] px-1.5 py-0.5 rounded-sm border-none shadow-xs shrink-0", P.color)}>
                                                                                 {P.label}
                                                                             </span>
-                                                                            <span className="text-muted-foreground/30 font-normal">·</span>
-                                                                            <span className="font-semibold text-muted-foreground/70 shrink-0">
-                                                                                {format(new Date(task.dueDate), 'MMM d, yyyy h:mm a')}
+                                                                        </div>
+
+                                                                        <div className="flex items-center gap-1.5 min-w-[95px] sm:min-w-[110px] shrink-0">
+                                                                            <Clock className={cn("h-3 w-3", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
+                                                                            <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
+                                                                                {task.status === 'done' 
+                                                                                    ? 'Resolved' 
+                                                                                    : isOverdue 
+                                                                                        ? 'Overdue' 
+                                                                                        : daysLeft === 0 
+                                                                                            ? 'Today' 
+                                                                                            : daysLeft === 1 
+                                                                                                ? 'Tomorrow' 
+                                                                                                : daysLeft < 0 
+                                                                                                    ? `${Math.abs(daysLeft)}d overdue` 
+                                                                                                    : `${daysLeft}d left`
+                                                                                }
                                                                             </span>
                                                                         </div>
-                                                                    </div>
-                                                                </div>
 
-                                                                <div className="hidden md:flex items-center gap-2 min-w-[120px] shrink-0">
-                                                                    <Clock className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
-                                                                    <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
-                                                                        {task.status === 'done' 
-                                                                            ? 'Resolved' 
-                                                                            : isOverdue 
-                                                                                ? 'Overdue' 
-                                                                                : daysLeft === 0 
-                                                                                    ? 'Due Today' 
-                                                                                    : daysLeft === 1 
-                                                                                        ? 'Due Tomorrow' 
-                                                                                        : daysLeft < 0 
-                                                                                            ? `${Math.abs(daysLeft)} Days Overdue` 
-                                                                                            : `${daysLeft} Days Left`
-                                                                        }
-                                                                    </span>
-                                                                </div>
-
-                                                                {task.entityName ? (
-                                                                    <div className="hidden lg:flex items-center gap-1.5 min-w-[140px] max-w-[180px] shrink-0">
-                                                                        <EntityAvatar 
-                                                                            src={task.entityId ? entityLogoMap.get(task.entityId) : undefined} 
-                                                                            name={task.entityName} 
-                                                                            className="h-3.5 w-3.5 rounded-sm shadow-none ring-0 p-0 shrink-0"
-                                                                            fallbackClassName="text-[6px]"
-                                                                        />
-                                                                        <span className="text-[10px] font-semibold text-muted-foreground/60 truncate">
-                                                                            {task.entityName}
-                                                                        </span>
-                                                                    </div>
+                                                                        <div className="hidden sm:flex items-center gap-2.5 min-w-[100px] sm:min-w-[120px] shrink-0">
+                                                                            <Progress value={progress} className="h-1 flex-1" />
+                                                                            <span className="text-[9px] font-semibold tabular-nums w-6 text-right opacity-45">{progress}%</span>
+                                                                        </div>
+                                                                    </>
                                                                 ) : (
-                                                                    <div className="hidden lg:flex min-w-[140px] shrink-0" />
+                                                                    <>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex flex-col gap-1 text-left">
+                                                                                <h4 className={cn("text-base font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
+                                                                                    {task.title}
+                                                                                </h4>
+                                                                                <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-2 flex-wrap text-left">
+                                                                                    <span>{toTitleCase(task.category)}</span>
+                                                                                    <span className="text-muted-foreground/30 font-normal">·</span>
+                                                                                    <span className={cn("font-bold uppercase text-[9px] px-1.5 py-0.5 rounded-sm border-none shadow-xs shrink-0", P.color)}>
+                                                                                        {P.label}
+                                                                                    </span>
+                                                                                    <span className="text-muted-foreground/30 font-normal">·</span>
+                                                                                    <span className="font-semibold text-muted-foreground/70 shrink-0">
+                                                                                        {format(new Date(task.dueDate), 'MMM d, yyyy h:mm a')}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="hidden md:flex items-center gap-2 min-w-[120px] shrink-0">
+                                                                            <Clock className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
+                                                                            <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
+                                                                                {task.status === 'done' 
+                                                                                    ? 'Resolved' 
+                                                                                    : isOverdue 
+                                                                                        ? 'Overdue' 
+                                                                                        : daysLeft === 0 
+                                                                                            ? 'Due Today' 
+                                                                                            : daysLeft === 1 
+                                                                                                ? 'Due Tomorrow' 
+                                                                                                : daysLeft < 0 
+                                                                                                    ? `${Math.abs(daysLeft)} Days Overdue` 
+                                                                                                    : `${daysLeft} Days Left`
+                                                                                }
+                                                                            </span>
+                                                                        </div>
+
+                                                                        {task.entityName ? (
+                                                                            <div className="hidden lg:flex items-center gap-1.5 min-w-[140px] max-w-[180px] shrink-0">
+                                                                                <EntityAvatar 
+                                                                                    src={task.entityId ? entityLogoMap.get(task.entityId) : undefined} 
+                                                                                    name={task.entityName} 
+                                                                                    className="h-3.5 w-3.5 rounded-sm shadow-none ring-0 p-0 shrink-0"
+                                                                                    fallbackClassName="text-[6px]"
+                                                                                />
+                                                                                <span className="text-[10px] font-semibold text-muted-foreground/60 truncate">
+                                                                                    {task.entityName}
+                                                                                </span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="hidden lg:flex min-w-[140px] shrink-0" />
+                                                                        )}
+
+                                                                        <div className="hidden xl:flex items-center gap-4 min-w-[180px] shrink-0">
+                                                                            <div className="flex-1 space-y-1">
+                                                                                <Progress value={progress} className="h-1.5" />
+                                                                            </div>
+                                                                            <span className="text-[10px] font-semibold tabular-nums w-8 text-right opacity-40">{progress}%</span>
+                                                                        </div>
+                                                                    </>
                                                                 )}
 
-                                                                <div className="hidden xl:flex items-center gap-4 min-w-[180px] shrink-0">
-                                                                    <div className="flex-1 space-y-1">
-                                                                        <Progress value={progress} className="h-1.5" />
-                                                                    </div>
-                                                                    <span className="text-[10px] font-semibold tabular-nums w-8 text-right opacity-40">{progress}%</span>
-                                                                </div>
-
                                                                 <div className="flex items-center justify-end shrink-0 pl-2 gap-3">
-                                                                    <div className="hidden lg:flex items-center gap-2 mr-1 text-muted-foreground">
-                                                                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30">
-                                                                            <Paperclip className="h-3 w-3" />
-                                                                            <span className="text-[10px] font-semibold tabular-nums">{task.attachments?.length || 0}</span>
+                                                                    {!isSimpleView && (
+                                                                        <div className="hidden lg:flex items-center gap-2 mr-1 text-muted-foreground">
+                                                                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30">
+                                                                                <Paperclip className="h-3 w-3" />
+                                                                                <span className="text-[10px] font-semibold tabular-nums">{task.attachments?.length || 0}</span>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30">
+                                                                                <MessageSquare className="h-3 w-3" />
+                                                                                <span className="text-[10px] font-semibold tabular-nums">{task.notes?.length || 0}</span>
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30">
-                                                                            <MessageSquare className="h-3 w-3" />
-                                                                            <span className="text-[10px] font-semibold tabular-nums">{task.notes?.length || 0}</span>
-                                                                        </div>
-                                                                    </div>
+                                                                    )}
 
                                                                     {(() => {
                                                                         const ids = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
@@ -1017,9 +1324,16 @@ export default function TasksClient() {
                                                                                         <TooltipProvider key={id}>
                                                                                             <Tooltip>
                                                                                                 <TooltipTrigger asChild>
-                                                                                                    <Avatar className="h-6 w-6 border-2 border-background shadow-xs shrink-0 select-none hover:translate-y-[-2px] transition-transform">
+                                                                                                    <Avatar className={cn(
+                                                                                                        isSimpleView 
+                                                                                                            ? "h-5 w-5 border border-background shadow-xs shrink-0 select-none hover:translate-y-[-1px] transition-transform"
+                                                                                                            : "h-6 w-6 border-2 border-background shadow-xs shrink-0 select-none hover:translate-y-[-2px] transition-transform"
+                                                                                                    )}>
                                                                                                         <AvatarImage src={u.photoURL || undefined} />
-                                                                                                        <AvatarFallback className="text-[8px] bg-muted/40 font-bold">{getInitials(u.name)}</AvatarFallback>
+                                                                                                        <AvatarFallback className={cn(
+                                                                                                            isSimpleView ? "text-[7px]" : "text-[8px]",
+                                                                                                            "bg-muted/40 font-bold"
+                                                                                                        )}>{getInitials(u.name)}</AvatarFallback>
                                                                                                     </Avatar>
                                                                                                 </TooltipTrigger>
                                                                                                 <TooltipContent className="bg-card border border-border p-2 rounded-xl text-xs font-bold text-foreground">
@@ -1091,6 +1405,38 @@ export default function TasksClient() {
 
                                                                                     <DropdownMenuSub>
                                                                                         <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer focus:bg-muted">
+                                                                                            <Layers className="h-4 w-4 text-primary" />
+                                                                                            <span className="font-bold text-sm">Change Status</span>
+                                                                                        </DropdownMenuSubTrigger>
+                                                                                        <DropdownMenuSubContent className="bg-card border border-border rounded-xl p-1 w-48 shadow-2xl text-foreground">
+                                                                                            {(['todo', 'in_progress', 'waiting', 'review', 'done'] as const).map(status => (
+                                                                                                <DropdownMenuCheckboxItem
+                                                                                                    key={status}
+                                                                                                    checked={task.status === status}
+                                                                                                    onCheckedChange={() => {}}
+                                                                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdateStatus(task, status); }}
+                                                                                                    className={cn(
+                                                                                                        "rounded-lg p-2 flex items-center gap-2 cursor-pointer focus:bg-muted",
+                                                                                                        task.status === status && "bg-primary/5 text-primary"
+                                                                                                    )}
+                                                                                                >
+                                                                                                    <span className={cn(
+                                                                                                        "text-xs font-semibold truncate",
+                                                                                                        status === 'todo' && "text-foreground",
+                                                                                                        status === 'in_progress' && "text-blue-500",
+                                                                                                        status === 'waiting' && "text-orange-500",
+                                                                                                        status === 'review' && "text-purple-500",
+                                                                                                        status === 'done' && "text-emerald-500"
+                                                                                                    )}>
+                                                                                                        {STATUS_LABELS[status]}
+                                                                                                    </span>
+                                                                                                </DropdownMenuCheckboxItem>
+                                                                                            ))}
+                                                                                        </DropdownMenuSubContent>
+                                                                                    </DropdownMenuSub>
+
+                                                                                    <DropdownMenuSub>
+                                                                                        <DropdownMenuSubTrigger className="rounded-xl p-2.5 gap-3 cursor-pointer focus:bg-muted">
                                                                                             <Clock className="h-4 w-4 text-primary" />
                                                                                             <span className="font-bold text-sm">Postpone Task</span>
                                                                                         </DropdownMenuSubTrigger>
@@ -1150,6 +1496,19 @@ export default function TasksClient() {
                             onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} 
                             userMap={userMap}
                             onTaskUpdate={handleCalendarTaskUpdate}
+                            onDateClick={(date) => {
+                                setEditingTask({
+                                    title: '',
+                                    description: '',
+                                    priority: 'medium',
+                                    category: 'general',
+                                    status: 'todo',
+                                    assignedTo: currentUser?.uid ? [currentUser.uid] : [],
+                                    startDate: date.toISOString(),
+                                    dueDate: new Date(date.getTime() + 60 * 60 * 1000).toISOString()
+                                } as any);
+                                setEditorOpen(true);
+                            }}
                         />
                     </TabsContent>
                 </div>

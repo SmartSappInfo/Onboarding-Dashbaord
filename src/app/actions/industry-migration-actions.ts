@@ -180,7 +180,6 @@ export async function enrichSchoolsWithSaaSIndustry(): Promise<IndustryMigration
           planType: planType,
           features: institutionData.modules?.map((m: any) => m.name || m.abbreviation || m.id) || [],
           signupDate: institutionData.implementationDate || entity.createdAt || new Date().toISOString(),
-          accountStatus: entity.status === 'active' ? 'active' : 'lead',
           trialIds: [],
           onboardingIds: [],
           subscriptionIds: [],
@@ -299,7 +298,8 @@ export async function restoreSaaSMigration(): Promise<IndustryMigrationResult> {
 
         // Validate required SaaS fields
         const saasData = entity.industryData as any;
-        const requiredFields = ['industry', 'entityType', 'companySize', 'planType', 'features', 'signupDate', 'accountStatus'];
+        // accountStatus is optional — lifecycleStatus on WorkspaceEntity is authoritative
+        const requiredFields = ['industry', 'entityType', 'companySize', 'planType', 'features', 'signupDate'];
         const missingFields = requiredFields.filter(field => saasData[field] === undefined);
         
         if (missingFields.length > 0) {

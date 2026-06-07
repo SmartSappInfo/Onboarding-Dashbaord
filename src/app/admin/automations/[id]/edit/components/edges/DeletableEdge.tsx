@@ -25,6 +25,8 @@ export function DeletableEdge({
   sourcePosition,
   targetPosition,
   selected,
+  animated,
+  style,
   data,
 }: EdgeProps) {
   const [isHovered, setIsHovered] = React.useState(false);
@@ -50,11 +52,13 @@ export function DeletableEdge({
   // ─── Visual state ───────────────────────────────────────────────────
   const stroke = selected
     ? 'hsl(var(--primary))'
-    : isHovered
+    : (style?.stroke || (isHovered
       ? '#64748b'   // slate-500 on hover
-      : '#94a3b8';  // slate-400 default
+      : '#94a3b8'));  // slate-400 default
 
-  const strokeWidth = selected ? 3 : isHovered ? 2.5 : 1.5;
+  const strokeWidth = selected ? 3 : isHovered ? 2.5 : (style?.strokeWidth || 1.5);
+  const opacity = style?.opacity ?? 1;
+  const isAnimated = selected || animated;
 
   const markerEnd = selected
     ? 'url(#arrowhead-selected)'
@@ -112,9 +116,11 @@ export function DeletableEdge({
         style={{
           stroke,
           strokeWidth,
-          strokeDasharray: '5,5',
-          animation: 'flowDash 0.5s linear infinite',
+          strokeDasharray: isAnimated ? '5,5' : undefined,
+          animation: isAnimated ? 'flowDash 0.5s linear infinite' : undefined,
           transition: 'stroke 0.2s ease, stroke-width 0.15s ease',
+          opacity,
+          ...style,
         }}
         interactionWidth={24}
       />

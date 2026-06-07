@@ -122,7 +122,7 @@ export async function processMeetingsFer(jobId: string, actor: AuditActor): Prom
 
           // -- C. Process Registrants via Cursor Pagination --
           let typeSlug = data.type?.slug || 'parent-engagement';
-          if (typeSlug === 'parent') typeSlug = 'parent-engagement';
+          if ((typeSlug as string) === 'parent') typeSlug = 'parent-engagement';
           const slug = data.meetingSlug || data.entitySlug || '';
 
           if (slug) {

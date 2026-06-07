@@ -12,7 +12,7 @@ import { applyTagsAction, removeTagsAction } from './tag-actions';
 export async function executeTagAction(
   node: TagActionNode,
   contactId: string,
-  contactType: 'school' | 'prospect',
+  contactType: 'school' | 'prospect' | 'workspace_entity' | 'entity',
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
   const { action, tagIds } = node.data;

@@ -3,61 +3,96 @@ import { sendMessage } from '../../messaging-engine';
 import { resolveContact } from '../../contact-adapter';
 import type { ExecutionContext } from '../execution-types';
 
+/**
+ * Compiles a template string by replacing {{variable}} placeholders with
+ * values from the provided payload. Unresolved placeholders are left as-is.
+ */
+function compileTemplate(tmpl: string, payload: Record<string, unknown>): string {
+  return tmpl.replace(/\{\{([^}]+)\}\}/g, (_match, key) => {
+    const trimmed = (key as string).trim();
+    return trimmed in payload ? String(payload[trimmed]) : `{{${trimmed}}}`;
+  });
+}
+
 export async function handleSendNotification(
   actionType: string,
   config: Record<string, unknown>,
-  context: ExecutionContext
+  context: ExecutionContext,
 ): Promise<void> {
-  const targets = (config.notificationTargets || []) as string[];
-  const userIds = (config.notificationUserIds || []) as string[];
-  const customRec = config.customRecipient as string | undefined;
-  const bodyTemplate = (config.notificationBody || '') as string;
-  const subjectTemplate = (config.notificationSubject || 'Notification Alert') as string;
+  const templateId = config.templateId as string | undefined;
+
+  // Guard: templateId is required and validated at save time. This is defence-in-depth.
+  if (!templateId) {
+    console.error(
+      `[notification-actions] No templateId on ${actionType} node — skipping. automationId=${context.automationId}`,
+    );
+    return;
+  }
+
+  const targets    = (config.notificationTargets  || []) as string[];
+  const userIds    = (config.notificationUserIds   || []) as string[];
+  const customRec  = config.customRecipient as string | undefined;
 
   if (targets.length === 0) return;
 
-  // Resolve recipient destinations
-  const emails: string[] = [];
-  const phones: string[] = [];
-  const targetUserIds: string[] = [];
+  // ── Fetch the user-selected template (subject + body) ─────────────────────
+  const templateSnap = await adminDb.collection('message_templates').doc(templateId).get();
+  if (!templateSnap.exists) {
+    console.error(
+      `[notification-actions] Template ${templateId} not found — skipping notification.`,
+    );
+    return;
+  }
+  const templateData = templateSnap.data()!;
+  const resolvedSubject = compileTemplate(
+    (templateData.subject as string | undefined) || 'Notification',
+    context.payload,
+  );
+  const resolvedBody = compileTemplate(
+    (templateData.body as string | undefined) || '',
+    context.payload,
+  );
 
-  // Get workspace context details
+  // ── Fetch workspace context ────────────────────────────────────────────────
   const workspaceSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
   if (!workspaceSnap.exists) {
     throw new Error(`Workspace ${context.workspaceId} not found`);
   }
-  const workspaceData = workspaceSnap.data()!;
-  const orgId = workspaceData.organizationId;
+  const orgId = (workspaceSnap.data()!.organizationId as string) || '';
 
-  // 1. Resolve Workspace Assignee
+  // ── Resolve recipient destinations ─────────────────────────────────────────
+  const emails:        string[] = [];
+  const phones:        string[] = [];
+  const targetUserIds: string[] = [];
+
+  // 1. Workspace Assignee
   if (targets.includes('assignee') && context.entityId) {
     const contact = await resolveContact(context.entityId, context.workspaceId);
     if (contact?.assignedTo?.userId) {
       targetUserIds.push(contact.assignedTo.userId);
-      // Fetch assignee user profile details
       const userSnap = await adminDb.collection('users').doc(contact.assignedTo.userId).get();
       if (userSnap.exists) {
         const u = userSnap.data()!;
-        if (u.email) emails.push(u.email);
-        if (u.phone) phones.push(u.phone);
+        if (u.email) emails.push(u.email as string);
+        if (u.phone) phones.push(u.phone as string);
       }
     }
   }
 
-  // 2. Resolve Selected Workspace Team Members
+  // 2. Selected Team Members
   if (targets.includes('users') && userIds.length > 0) {
     for (const uid of userIds) {
       targetUserIds.push(uid);
       const userSnap = await adminDb.collection('users').doc(uid).get();
       if (userSnap.exists) {
         const u = userSnap.data()!;
-        if (u.email) emails.push(u.email);
-        if (u.phone) phones.push(u.phone);
+        if (u.email) emails.push(u.email as string);
+        if (u.phone) phones.push(u.phone as string);
       }
     }
   }
 
-  // 3. Resolve Custom Destination
+  // 3. Custom Destination
   if (targets.includes('custom') && customRec) {
     if (actionType === 'SEND_NOTIFICATION_SMS') {
       phones.push(customRec);
@@ -66,36 +101,22 @@ export async function handleSendNotification(
     }
   }
 
-  // Helper to compile dynamic templates using variables
-  const compileTemplate = (tmpl: string, payload: any) => {
-    return tmpl.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-      const trimmed = key.trim();
-      return payload[trimmed] !== undefined ? String(payload[trimmed]) : match;
-    });
-  };
+  const uniqueEmails    = Array.from(new Set(emails));
+  const uniquePhones    = Array.from(new Set(phones));
+  const uniqueUserIds   = Array.from(new Set(targetUserIds));
+  const now             = new Date().toISOString();
 
-  const resolvedBody = compileTemplate(bodyTemplate, context.payload);
-  const resolvedSubject = compileTemplate(subjectTemplate, context.payload);
+  // ── Dispatch per channel ───────────────────────────────────────────────────
 
-  const uniqueEmails = Array.from(new Set(emails));
-  const uniquePhones = Array.from(new Set(phones));
-  const uniqueUserIds = Array.from(new Set(targetUserIds));
-
-  // Dispatch notification channel actions
   if (actionType === 'SEND_NOTIFICATION_EMAIL') {
     for (const email of uniqueEmails) {
       await sendMessage({
-        templateId: 'administrative-notification-email',
+        templateId,
         senderProfileId: 'system-alerts',
         recipient: email,
-        variables: {
-          ...context.payload,
-          subject: resolvedSubject,
-          body: resolvedBody
-        },
+        variables: { ...context.payload, subject: resolvedSubject, body: resolvedBody },
         entityId: context.entityId,
         workspaceId: context.workspaceId,
-        body: resolvedBody
       });
     }
   }
@@ -103,48 +124,44 @@ export async function handleSendNotification(
   if (actionType === 'SEND_NOTIFICATION_SMS') {
     for (const phone of uniquePhones) {
       await sendMessage({
-        templateId: 'administrative-notification-sms',
+        templateId,
         senderProfileId: 'system-alerts',
         recipient: phone,
-        variables: {
-          ...context.payload,
-          body: resolvedBody
-        },
+        variables: { ...context.payload, body: resolvedBody },
         entityId: context.entityId,
         workspaceId: context.workspaceId,
-        body: resolvedBody
       });
     }
   }
 
   if (actionType === 'SEND_NOTIFICATION_IN_APP') {
-    // Record in-app notification doc in Firestore
     for (const uid of uniqueUserIds) {
       await adminDb.collection('notifications').add({
         organizationId: orgId,
-        workspaceId: context.workspaceId,
-        userId: uid,
-        entityId: context.entityId || null,
-        title: resolvedSubject,
-        message: resolvedBody,
-        status: 'unread',
-        createdAt: new Date().toISOString(),
-        actionType: 'system_alert'
+        workspaceId:    context.workspaceId,
+        userId:         uid,
+        entityId:       context.entityId || null,
+        title:          resolvedSubject,
+        message:        resolvedBody,
+        templateId,                    // stored for traceability / re-render
+        status:         'unread',
+        createdAt:      now,
+        actionType:     'system_alert',
       });
     }
   }
 
   if (actionType === 'SEND_NOTIFICATION_PUSH') {
-    // Save push request alert to collection for dispatching
     for (const uid of uniqueUserIds) {
       await adminDb.collection('push_queue').add({
         organizationId: orgId,
-        workspaceId: context.workspaceId,
-        userId: uid,
-        title: resolvedSubject,
-        body: resolvedBody,
-        status: 'pending',
-        createdAt: new Date().toISOString()
+        workspaceId:    context.workspaceId,
+        userId:         uid,
+        title:          resolvedSubject,
+        body:           resolvedBody,
+        templateId,                    // stored for traceability
+        status:         'pending',
+        createdAt:      now,
       });
     }
   }

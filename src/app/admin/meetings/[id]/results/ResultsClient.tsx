@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import type { Meeting, Attendee, School } from '@/lib/types';
+import { useMeetingContext } from '../layout';
 import {
     Users,
     Baby,
@@ -68,17 +69,12 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
 
     const [isExporting, setIsExporting] = React.useState(false);
 
-    // Data Subscriptions
-    const meetingRef = useMemoFirebase(() =>
-        firestore ? doc(firestore, 'meetings', meetingId) : null,
-        [firestore, meetingId]);
-
-    const attendeesQuery = useMemoFirebase(() =>
-        firestore ? query(collection(firestore, `meetings/${meetingId}/attendees`), orderBy('joinedAt', 'desc')) : null,
-        [firestore, meetingId]);
-
-    const { data: meeting, isLoading: isLoadingMeeting, error: meetingError } = useDoc<Meeting>(meetingRef);
-    const { data: attendees, isLoading: isLoadingAttendees, error: attendeesError } = useCollection<Attendee>(attendeesQuery);
+    // Consume shared workspace context
+    const { meeting, registrants, attendees, isLoading } = useMeetingContext();
+    const isLoadingMeeting = isLoading;
+    const isLoadingAttendees = isLoading;
+    const meetingError = null;
+    const attendeesError = null;
 
     const metrics = React.useMemo(() => {
         if (!attendees) return { families: 0, children: 0, avgChildren: 0 };
@@ -140,7 +136,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
     }
 
     if (meetingError || attendeesError) {
-        const error = meetingError || attendeesError;
+        const error = (meetingError || attendeesError) as any;
         return (
  <div className="p-8 ">
  <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
@@ -160,40 +156,14 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
  if (!meeting) return <div className="p-20 text-center font-semibold opacity-20">Session Not Found</div>;
 
     return (
- <div className="h-full overflow-y-auto text-left">
- <div className=" space-y-10 pb-32">
-
-                {/* Executive Header */}
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
- <div className="flex items-center gap-5">
-                        <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0">
-                            <Link href={`/admin/meetings/${meetingId}`}>
-                                <ChevronLeft className="h-5 w-5" />
-                            </Link>
-                        </Button>
- <div className="text-left">
- <div className="flex items-center gap-3 mb-1">
-                                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold text-[9px] uppercase  px-2.5 h-5">{meeting.type.name}</Badge>
- <span className="text-[10px] font-bold text-muted-foreground opacity-40">Session Intelligence</span>
-                            </div>
- <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none">{meeting.entityName}</h1>
-                        </div>
-                    </div>
- <div className="flex items-center gap-3">
- <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/edit`)} className="rounded-xl font-bold h-11 border-primary/20 text-primary bg-card/50 backdrop-blur-sm shadow-sm">
- <Settings2 className="mr-2 h-4 w-4" /> Edit Architecture
-                        </Button>
-                        {meeting.registrationEnabled && (
-                            <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/invitations?tab=registrants`)} className="rounded-xl font-bold h-11 border-violet-500/20 text-violet-600 bg-violet-500/5 shadow-sm">
-                                <Users className="mr-2 h-4 w-4" /> View Registrants
-                            </Button>
-                        )}
- <Button onClick={handleExport} disabled={isExporting || !attendees?.length} className="rounded-xl font-semibold shadow-xl shadow-primary/20 h-11 px-8 text-[10px] gap-2">
- {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-                            Export Attendance
-                        </Button>
-                    </div>
-                </div>
+        <div className="w-full space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Session Intelligence</h2>
+                <Button onClick={handleExport} disabled={isExporting || !attendees?.length} className="rounded-xl font-semibold shadow-xl shadow-primary/20 h-10 px-5 text-xs gap-2">
+                    {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                    Export Attendance
+                </Button>
+            </div>
 
                 {/* KPI Tier */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -351,7 +321,6 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                     </CardContent>
                 </Card>
             </div>
-        </div>
     );
 }
 

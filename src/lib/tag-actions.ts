@@ -7,8 +7,7 @@ import type { Tag, TagCategory, TagAuditLog } from './types';
 import { logActivity } from './activity-logger';
 import { userHasTagPermission } from './tag-permissions';
 
-// Polyfill for unstable_after - run async work after response
-const after = (fn: () => Promise<void>) => { fn().catch(console.error); };
+
 import {
   CreateTagSchema,
   UpdateTagSchema,
@@ -572,12 +571,21 @@ export async function applyTagsAction(
 
   try {
     // Permission check: requires tags_apply or tags_manage
-    const [canApply, canManage] = await Promise.all([
-      userHasTagPermission(userId, 'tags_apply'),
-      userHasTagPermission(userId, 'tags_manage'),
-    ]);
-    if (!canApply && !canManage) {
-      throw new TagPermissionError('You do not have permission to apply tags.');
+    // System/automation callers get implicit permission — they already operate
+    // server-side with admin SDK access and don't have a users/ doc to look up.
+    const isSystemCaller =
+      userId.startsWith('automation:') ||
+      userId.startsWith('system-') ||
+      userId === 'system';
+
+    if (!isSystemCaller) {
+      const [canApply, canManage] = await Promise.all([
+        userHasTagPermission(userId, 'tags_apply'),
+        userHasTagPermission(userId, 'tags_manage'),
+      ]);
+      if (!canApply && !canManage) {
+        throw new TagPermissionError('You do not have permission to apply tags.');
+      }
     }
 
     const collection = contactType === 'school' ? 'schools' : 
@@ -639,25 +647,40 @@ export async function applyTagsAction(
         userName
       });
 
-      // Fire TAG_ADDED automation trigger via unified activity bus
-      if (tag?.workspaceId) {
-        after(async () => {
-          await logActivity({
-            organizationId: tag.organizationId,
-            workspaceId: tag.workspaceId,
-            entityId: contactId,
-            entityType: contactType as any,
-            type: 'tag_added',
-            source: 'activity', 
-            userId,
-            description: `Tag "${tag.name}" applied to ${contactType}.`,
-            metadata: {
-              tagId,
-              tagName: tag.name,
-              contactType,
-              appliedBy: userId,
-            }
-          });
+      // Fire TAG_ADDED automation trigger via unified activity bus.
+      // IMPORTANT: for workspace_entity contacts, contactId is the compound doc ID
+      // (e.g. "ws_abc_entity_xyz") — NOT the real entity ID. We must pass the
+      // real entityId so resolveContact can find it and the automation engine
+      // gets a valid entity reference.
+      //
+      // NOTE: Do NOT wrap logActivity in after() here. logActivity already
+      // schedules its own after() for the automation dispatch internally.
+      // Nesting after(after()) defers the trigger to the *next* request
+      // lifecycle — causing it to silently never fire.
+      const resolvedEntityId =
+        contactType === 'workspace_entity' ? (contactData.entityId || contactId) : contactId;
+      const resolvedWorkspaceId =
+        contactType === 'workspace_entity' ? (contactData.workspaceId || tag?.workspaceId) : tag?.workspaceId;
+      const resolvedOrganizationId =
+        contactType === 'workspace_entity' ? (contactData.organizationId || tag?.organizationId) : tag?.organizationId;
+
+      if (resolvedWorkspaceId) {
+        await logActivity({
+          organizationId: resolvedOrganizationId,
+          workspaceId: resolvedWorkspaceId,
+          entityId: resolvedEntityId,
+          entityType: contactType === 'workspace_entity' ? (contactData.entityType || 'institution') : contactType as any,
+          displayName: contactData.displayName || contactData.name,
+          type: 'tag_added',
+          source: 'activity',
+          userId,
+          description: `Tag "${tag?.name}" applied.`,
+          metadata: {
+            tagId,
+            tagName: tag?.name,
+            contactType,
+            appliedBy: userId,
+          }
         });
       }
     }
@@ -688,12 +711,20 @@ export async function removeTagsAction(
 
   try {
     // Permission check: requires tags_apply or tags_manage
-    const [canApply, canManage] = await Promise.all([
-      userHasTagPermission(userId, 'tags_apply'),
-      userHasTagPermission(userId, 'tags_manage'),
-    ]);
-    if (!canApply && !canManage) {
-      throw new TagPermissionError('You do not have permission to apply tags.');
+    // System/automation callers get implicit permission — same as applyTagsAction.
+    const isSystemCaller =
+      userId.startsWith('automation:') ||
+      userId.startsWith('system-') ||
+      userId === 'system';
+
+    if (!isSystemCaller) {
+      const [canApply, canManage] = await Promise.all([
+        userHasTagPermission(userId, 'tags_apply'),
+        userHasTagPermission(userId, 'tags_manage'),
+      ]);
+      if (!canApply && !canManage) {
+        throw new TagPermissionError('You do not have permission to apply tags.');
+      }
     }
 
     const collection = contactType === 'school' ? 'schools' : 
@@ -749,25 +780,35 @@ export async function removeTagsAction(
         userName
       });
 
-      // Fire TAG_REMOVED automation trigger via unified activity bus
-      if (tag?.workspaceId) {
-        after(async () => {
-          await logActivity({
-            organizationId: tag.organizationId,
-            workspaceId: tag.workspaceId,
-            entityId: contactId,
-            entityType: contactType as any,
-            type: 'tag_removed',
-            source: 'activity',
-            userId,
-            description: `Tag "${tag.name}" removed from ${contactType}.`,
-            metadata: {
-              tagId,
-              tagName: tag.name,
-              contactType,
-              appliedBy: userId,
-            }
-          });
+      // Fire TAG_REMOVED automation trigger via unified activity bus.
+      // NOTE: Do NOT wrap logActivity in after() here — same reason as
+      // applyTagsAction: logActivity already schedules its own after().
+      // Nesting after(after()) silently defers the trigger to the next
+      // request lifecycle and the automation never fires.
+      const resolvedEntityId =
+        contactType === 'workspace_entity' ? (contactData.entityId || contactId) : contactId;
+      const resolvedWorkspaceId =
+        contactType === 'workspace_entity' ? (contactData.workspaceId || tag?.workspaceId) : tag?.workspaceId;
+      const resolvedOrganizationId =
+        contactType === 'workspace_entity' ? (contactData.organizationId || tag?.organizationId) : tag?.organizationId;
+
+      if (resolvedWorkspaceId) {
+        await logActivity({
+          organizationId: resolvedOrganizationId,
+          workspaceId: resolvedWorkspaceId,
+          entityId: resolvedEntityId,
+          entityType: contactType === 'workspace_entity' ? (contactData.entityType || 'institution') : contactType as any,
+          displayName: contactData.displayName || contactData.name,
+          type: 'tag_removed',
+          source: 'activity',
+          userId,
+          description: `Tag "${tag?.name}" removed.`,
+          metadata: {
+            tagId,
+            tagName: tag?.name,
+            contactType,
+            appliedBy: userId,
+          }
         });
       }
     }

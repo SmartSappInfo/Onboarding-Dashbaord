@@ -322,7 +322,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                     } else {
                         setActiveStep(1);
                         reset({
-                            title: '', description: '', priority: 'medium', category: 'general', status: task.status || 'todo', assignedTo: currentUser?.uid ? [currentUser.uid] : [], entityId: '', entityType: undefined, startDate: new Date(), dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
+                            title: '', description: '', priority: 'medium', category: 'general', status: task.status || 'todo', assignedTo: currentUser?.uid ? [currentUser.uid] : [], entityId: '', entityType: undefined, startDate: task.startDate ? new Date(task.startDate) : new Date(), dueDate: task.dueDate ? new Date(task.dueDate) : new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
                         });
                     }
                 }
@@ -376,7 +376,10 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border border-border shadow-2xl text-left bg-card">
+            <DialogContent className={cn(
+                "sm:max-w-3xl flex flex-col p-0 overflow-hidden border border-border shadow-2xl text-left bg-card transition-all duration-300 ease-in-out",
+                activeStep === 1 ? "h-fit max-h-[90vh]" : "h-[90vh]"
+            )}>
                 {activeStep === 1 ? (
                     <div className="flex flex-col h-full bg-card">
                         <DialogHeader className="p-8 bg-card border-b border-border shrink-0 text-left">
@@ -398,18 +401,20 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                 {PRESET_TEMPLATES.map((preset) => {
                                     const Icon = preset.icon;
                                     return (
-                                        <button
-                                            key={preset.id}
-                                            type="button"
-                                            onClick={() => handleSelectPreset(preset)}
-                                            className="group flex flex-col items-start text-left p-5 rounded-2xl border border-border bg-background hover:border-primary/40 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
-                                        >
-                                            <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-105 mb-4 shadow-inner", preset.color)}>
-                                                <Icon className="h-5 w-5" />
-                                            </div>
-                                            <span className="font-bold text-base text-foreground tracking-tight mb-1">{preset.title}</span>
-                                            <span className="text-xs text-muted-foreground font-medium line-clamp-2">{preset.description}</span>
-                                        </button>
+                                         <button
+                                             key={preset.id}
+                                             type="button"
+                                             onClick={() => handleSelectPreset(preset)}
+                                             className="group flex flex-row items-center gap-4 text-left p-4 rounded-xl border border-border bg-background hover:border-primary/40 transition-all shadow-sm hover:shadow-md active:scale-[0.98] w-full min-w-0"
+                                         >
+                                             <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-105 shadow-inner shrink-0", preset.color)}>
+                                                 <Icon className="h-5 w-5" />
+                                             </div>
+                                             <div className="flex flex-col min-w-0">
+                                                 <span className="font-bold text-sm text-foreground tracking-tight mb-0.5">{preset.title}</span>
+                                                 <span className="text-[11px] text-muted-foreground font-medium line-clamp-2 leading-snug">{preset.description}</span>
+                                             </div>
+                                         </button>
                                     );
                                 })}
                             </div>
@@ -594,7 +599,17 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                         <div className="space-y-2 text-left">
                                             <Label className="text-xs font-semibold text-foreground/90 ml-1 flex items-center gap-2 text-left"><Calendar className="h-3.5 w-3.5 text-muted-foreground" /> Starts On</Label>
                                             <Controller name="startDate" control={control} render={({ field }) => (
-                                                <DateTimePicker value={field.value} onChange={field.onChange} variant="ghost" className="h-12 rounded-xl bg-background border border-border text-foreground font-bold hover:bg-muted/10 px-4" />
+                                                <DateTimePicker 
+                                                    value={field.value} 
+                                                    onChange={(date) => {
+                                                        field.onChange(date);
+                                                        if (date) {
+                                                            setValue('dueDate', new Date(date.getTime() + 60 * 60 * 1000));
+                                                        }
+                                                    }} 
+                                                    variant="ghost" 
+                                                    className="h-12 rounded-xl bg-background border border-border text-foreground font-bold hover:bg-muted/10 px-4" 
+                                                />
                                             )} />
                                         </div>
                                         <div className="space-y-2 text-left">

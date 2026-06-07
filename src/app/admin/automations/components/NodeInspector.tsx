@@ -8,7 +8,10 @@ import {
     Timer, 
     PlusCircle,
     Tag,
-    X
+    X,
+    ChevronLeft,
+    Trash2,
+    Search
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -29,6 +32,8 @@ import { SearchInput } from './SearchInput';
 interface NodeInspectorProps {
     node: any;
     onUpdate: (data: any) => void;
+    triggers?: import('@/lib/types').AutomationTriggerDef[];
+    onTriggersChange?: (triggers: import('@/lib/types').AutomationTriggerDef[]) => void;
 }
 
 const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; label: string; icon: typeof Building; desc: string }[] }[] = [
@@ -151,7 +156,288 @@ const ACTION_TYPES = [
     { value: 'END_AUTOMATION', label: 'End Automation', icon: CheckSquareIconPlaceholder, desc: 'Mark this automation as completed for the contact.' },
 ];
 
-export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
+// Pure helpers for trigger icon + label lookup (used in summary view)
+const TRIGGER_ICON_MAP_NI: Record<string, React.ElementType> = {
+    ENTITY_CREATED: Building, ENTITY_UPDATED: Building, ENTITY_ASSIGNED: Building,
+    ENTITY_STAGE_CHANGED: Zap, ENTITY_LINKED: Building, ENTITY_UNLINKED: Building,
+    WORKSPACE_ENTITY_UPDATED: Building, ENTITY_FIELD_CHANGED: Settings2IconPlaceholder,
+    DATE_REACHED: ClockIconPlaceholder, SCORE_CHANGED: ActivityIconPlaceholder,
+    ENTITY_INACTIVE: ClockIconPlaceholder,
+    DEAL_CREATED: TargetIconPlaceholder, DEAL_STAGE_CHANGED: ArrowRightLeft,
+    DEAL_STATUS_CHANGED: Zap, DEAL_VALUE_CHANGED: DollarSignIconPlaceholder,
+    DEAL_OWNER_CHANGED: TargetIconPlaceholder,
+    FORM_SUBMITTED: DatabaseIconPlaceholder, SURVEY_SUBMITTED: DatabaseIconPlaceholder,
+    PDF_SIGNED: TargetIconPlaceholder, CAMPAIGN_PAGE_SUBMITTED: GlobeIconPlaceholder,
+    WEBPAGE_VISITED: GlobeIconPlaceholder, EVENT_RECORDED: ActivityIconPlaceholder,
+    MEETING_CREATED: PlayIconPlaceholder, MEETING_REGISTRANT_ADDED: PlayIconPlaceholder,
+    MEETING_REGISTRANT_ATTENDED: PlayIconPlaceholder, MEETING_REGISTRANT_NO_SHOW: PlayIconPlaceholder,
+    TASK_CREATED: CheckSquareIconPlaceholder, TASK_COMPLETED: CheckSquareIconPlaceholder,
+    TASK_OVERDUE: ShieldAlertIconPlaceholder, TAG_ADDED: Tag, TAG_REMOVED: Tag,
+    CAMPAIGN_DELIVERED: MailIconPlaceholder, CAMPAIGN_FAILED: MailIconPlaceholder,
+    CAMPAIGN_NOT_DELIVERED: MailIconPlaceholder, CAMPAIGN_OPENED: MailIconPlaceholder,
+    CAMPAIGN_CLICKED: MailIconPlaceholder, EMAIL_BOUNCED: ShieldAlertIconPlaceholder,
+    AUTOMATION_ENTERED: PlayIconPlaceholder, AUTOMATION_COMPLETED: CheckSquareIconPlaceholder,
+    WEBHOOK_RECEIVED: GlobeIconPlaceholder,
+};
+
+const TRIGGER_LABEL_MAP_NI: Record<string, string> = {
+    ENTITY_CREATED: 'Entity Created', ENTITY_UPDATED: 'Entity Updated',
+    ENTITY_ASSIGNED: 'Entity Assigned', ENTITY_STAGE_CHANGED: 'Pipeline Stage Changed',
+    ENTITY_LINKED: 'Entity Linked', ENTITY_UNLINKED: 'Entity Unlinked',
+    WORKSPACE_ENTITY_UPDATED: 'Workspace Entity Updated',
+    ENTITY_FIELD_CHANGED: 'Entity Field Changed', DATE_REACHED: 'Date Field Reached',
+    SCORE_CHANGED: 'Health Score Changed', ENTITY_INACTIVE: 'Contact Inactivity',
+    DEAL_CREATED: 'Deal Created', DEAL_STAGE_CHANGED: 'Deal Stage Changed',
+    DEAL_STATUS_CHANGED: 'Deal Status Changed', DEAL_VALUE_CHANGED: 'Deal Value Changed',
+    DEAL_OWNER_CHANGED: 'Deal Owner Changed', FORM_SUBMITTED: 'Form Submitted',
+    SURVEY_SUBMITTED: 'Survey Submitted', PDF_SIGNED: 'Document Signed',
+    CAMPAIGN_PAGE_SUBMITTED: 'Campaign Page Conversion', WEBPAGE_VISITED: 'Webpage Visited',
+    EVENT_RECORDED: 'Custom Event Recorded', MEETING_CREATED: 'Meeting Scheduled',
+    MEETING_REGISTRANT_ADDED: 'Registrant Added',
+    MEETING_REGISTRANT_ATTENDED: 'Registrant Attended',
+    MEETING_REGISTRANT_NO_SHOW: 'Registrant No-Show',
+    TASK_CREATED: 'Task Created', TASK_COMPLETED: 'Task Completed',
+    TASK_OVERDUE: 'Task Overdue', TAG_ADDED: 'Tag Added', TAG_REMOVED: 'Tag Removed',
+    CAMPAIGN_DELIVERED: 'Campaign Delivered', CAMPAIGN_FAILED: 'Campaign Failed',
+    CAMPAIGN_NOT_DELIVERED: 'Campaign Not Delivered', CAMPAIGN_OPENED: 'Campaign Opened',
+    CAMPAIGN_CLICKED: 'Campaign Clicked', EMAIL_BOUNCED: 'Email Bounced',
+    AUTOMATION_ENTERED: 'Automation Entered', AUTOMATION_COMPLETED: 'Automation Completed',
+    WEBHOOK_RECEIVED: 'Webhook Received',
+};
+
+function triggerIcon(type: string): React.ElementType {
+    return TRIGGER_ICON_MAP_NI[type] ?? Zap;
+}
+
+function triggerLabel(type: string): string {
+    return TRIGGER_LABEL_MAP_NI[type] ?? type.replace(/_/g, ' ');
+}
+
+function getTriggerDescriptionDetail(
+    type: string,
+    config: any,
+    allTags: any[] | undefined,
+    forms: any[] | undefined,
+    surveys: any[] | undefined,
+    pipelines: any[] | undefined,
+    stages: any[] | undefined
+): string {
+    if (!type) return 'Awaiting event signal';
+    switch (type) {
+        case 'ENTITY_CREATED':
+            return 'Fires when a new entity is created';
+        case 'ENTITY_UPDATED':
+            return 'Fires when entity fields are updated';
+        case 'ENTITY_ASSIGNED':
+            return 'Fires when entity is assigned';
+        case 'ENTITY_STAGE_CHANGED': {
+            const stage = stages?.find((s: any) => s.id === config.stageId);
+            const pipeline = pipelines?.find((p: any) => p.id === config.pipelineId);
+            if (stage && pipeline) return `Stage changed to "${stage.name}" in "${pipeline.name}"`;
+            if (pipeline) return `Stage changed in "${pipeline.name}"`;
+            return 'Fires when pipeline stage changes';
+        }
+        case 'FORM_SUBMITTED': {
+            const form = forms?.find((f: any) => f.id === config.formId);
+            return form ? `Form: "${form.name || form.title}"` : 'Any form submitted';
+        }
+        case 'SURVEY_SUBMITTED': {
+            const survey = surveys?.find((s: any) => s.id === config.surveyId);
+            return survey ? `Survey: "${survey.internalName || survey.title}"` : 'Any survey completed';
+        }
+        case 'TAG_ADDED': {
+            const watchedTags = (config.tagIds || []).map((tid: string) => {
+                const tag = allTags?.find((t: any) => t.id === tid);
+                return tag ? tag.name : tid;
+            });
+            return watchedTags.length > 0 
+                ? `Tags: ${watchedTags.join(', ')}` 
+                : 'Any tag added';
+        }
+        case 'TAG_REMOVED': {
+            const watchedTags = (config.tagIds || []).map((tid: string) => {
+                const tag = allTags?.find((t: any) => t.id === tid);
+                return tag ? tag.name : tid;
+            });
+            return watchedTags.length > 0 
+                ? `Tags: ${watchedTags.join(', ')}` 
+                : 'Any tag removed';
+        }
+        case 'WEBHOOK_RECEIVED':
+            return 'Fires when webhook payload received';
+        case 'MEETING_CREATED':
+            return config.meetingTypeId ? `Meeting ID: "${config.meetingTypeId}"` : 'Any meeting created';
+        case 'MEETING_REGISTRANT_ADDED':
+            return config.meetingTypeId ? `Registrant added to "${config.meetingTypeId}"` : 'Registrant added';
+        case 'MEETING_REGISTRANT_ATTENDED':
+            return config.meetingTypeId ? `Attended meeting: "${config.meetingTypeId}"` : 'Attended meeting';
+        case 'MEETING_REGISTRANT_NO_SHOW':
+            return config.meetingTypeId ? `No-show for: "${config.meetingTypeId}"` : 'No-show for meeting';
+        case 'ENTITY_FIELD_CHANGED':
+            return config.fieldPath ? `Field "${config.fieldPath}" changed` : 'Field changed';
+        case 'DATE_REACHED':
+            if (config.dateField) {
+                const offset = config.offsetDays || 0;
+                if (offset === 0) return `When "${config.dateField}" is reached`;
+                if (offset < 0) return `${Math.abs(offset)} days before "${config.dateField}"`;
+                return `${offset} days after "${config.dateField}"`;
+            }
+            return 'Date field reached';
+        case 'SCORE_CHANGED': {
+            const scoreType = config.scoreType || 'overallScore';
+            const scoreLabel = scoreType.replace('Score', '');
+            const op = config.operator || 'any_change';
+            if (op === 'any_change') return `${scoreLabel} score changed`;
+            const threshold = config.threshold ?? 50;
+            const opSymbol = op === 'greater_than' ? '>' : '<';
+            return `${scoreLabel} score ${opSymbol} ${threshold}`;
+        }
+        case 'ENTITY_INACTIVE':
+            return `Inactive for ${config.inactivityDays || 30} days`;
+        case 'WEBPAGE_VISITED':
+            return config.urlPattern ? `URL matching "${config.urlPattern}"` : 'Page URL visited';
+        case 'EVENT_RECORDED':
+            return config.eventName ? `Event: "${config.eventName}"` : 'Event recorded';
+        case 'DEAL_CREATED':
+            return 'Fires when deal is created';
+        case 'DEAL_STAGE_CHANGED': {
+            const stage = stages?.find((s: any) => s.id === config.stageId);
+            const pipeline = pipelines?.find((p: any) => p.id === config.pipelineId);
+            if (stage && pipeline) return `Stage: "${stage.name}" in "${pipeline.name}"`;
+            if (pipeline) return `Stage changed in "${pipeline.name}"`;
+            return 'Fires when deal stage changes';
+        }
+        case 'DEAL_STATUS_CHANGED':
+            return 'Fires when deal status changes';
+        case 'DEAL_VALUE_CHANGED':
+            return 'Fires when deal value changes';
+        case 'DEAL_OWNER_CHANGED':
+            return 'Fires when deal owner changes';
+        case 'TASK_CREATED':
+            return 'Fires when task is created';
+        case 'TASK_COMPLETED':
+            return 'Fires when task is completed';
+        case 'TASK_OVERDUE':
+            return 'Fires when task is overdue';
+        default:
+            return type.replace(/_/g, ' ');
+    }
+}
+
+const TriggerListItem = React.memo(function TriggerListItem({
+    trigger,
+    isPrimary,
+    index,
+    allTags,
+    forms,
+    surveys,
+    pipelines,
+    stages,
+    canRemove,
+    onRemove,
+    onClick
+}: {
+    trigger: any;
+    isPrimary: boolean;
+    index: number;
+    allTags: any[] | undefined;
+    forms: any[] | undefined;
+    surveys: any[] | undefined;
+    pipelines: any[] | undefined;
+    stages: any[] | undefined;
+    canRemove: boolean;
+    onRemove: (id: string, e: React.MouseEvent) => void;
+    onClick: () => void;
+}) {
+    const Icon = triggerIcon(trigger.type);
+    const label = triggerLabel(trigger.type);
+    const detail = getTriggerDescriptionDetail(trigger.type, trigger.config ?? {}, allTags, forms, surveys, pipelines, stages);
+
+    return (
+        <div
+            role="button"
+            tabIndex={0}
+            onClick={onClick}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+            className={cn(
+                'w-full flex items-center justify-between gap-3 p-3 rounded-xl border text-left transition-all hover:bg-muted/30 group/item cursor-pointer',
+                isPrimary ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border/60 bg-card/40',
+            )}
+        >
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-lg bg-emerald-500 text-white shadow-sm shrink-0">
+                    <Icon className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-semibold text-foreground truncate">{label}</p>
+                        {isPrimary && (
+                            <Badge className="text-[8px] px-1.5 py-0 h-4 bg-emerald-500/15 text-emerald-600 border-emerald-500/30 border font-bold shrink-0">
+                                Primary
+                            </Badge>
+                        )}
+                    </div>
+                    <p className="text-[9px] text-muted-foreground truncate mt-0.5">{detail}</p>
+                </div>
+            </div>
+
+            {canRemove && (
+                <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onRemove(trigger.id, e); }}
+                    className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover/item:opacity-100 transition-all shrink-0"
+                    title="Remove trigger"
+                >
+                    <Trash2 className="h-3 w-3" />
+                </button>
+            )}
+        </div>
+    );
+});
+
+
+const TriggerPickerItem = React.memo(function TriggerPickerItem({
+    opt,
+    isDisabled,
+    onSelect
+}: {
+    opt: any;
+    isDisabled: boolean;
+    onSelect: () => void;
+}) {
+    const Icon = opt.icon ?? Zap;
+    return (
+        <button
+            type="button"
+            disabled={isDisabled}
+            onClick={onSelect}
+            className={cn(
+                'w-full flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all',
+                isDisabled
+                    ? 'border-transparent opacity-40 cursor-not-allowed'
+                    : 'border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/5 cursor-pointer bg-card/50',
+            )}
+        >
+            <div className={cn(
+                'p-2 rounded-lg shadow-sm shrink-0',
+                isDisabled ? 'bg-muted text-muted-foreground' : 'bg-card text-muted-foreground',
+            )}>
+                <Icon className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                    <p className="text-xs font-semibold text-foreground">{opt.label}</p>
+                    {isDisabled && (
+                        <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5">Added</Badge>
+                    )}
+                </div>
+                <p className="text-[9px] text-muted-foreground mt-0.5 leading-relaxed">{opt.desc}</p>
+            </div>
+        </button>
+    );
+});
+
+export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange }: NodeInspectorProps) {
     const { singular } = useTerminology();
     const params = useParams();
     const automationId = params.id as string;
@@ -160,11 +446,15 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
 
     const [triggerSearch, setTriggerSearch] = React.useState('');
     const [actionSearch, setActionSearch] = React.useState('');
+    const [viewMode, setViewMode] = React.useState<'list' | 'add' | 'edit'>('list');
+    const [activeTriggerId, setActiveTriggerId] = React.useState<string | null>(null);
 
-    // Reset search when node ID changes
+    // Reset search and view states when node ID changes
     React.useEffect(() => {
         setTriggerSearch('');
         setActionSearch('');
+        setViewMode('list');
+        setActiveTriggerId(null);
     }, [node.id]);
 
     const deferredTriggerSearch = React.useDeferredValue(triggerSearch);
@@ -244,75 +534,193 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                 <div className="space-y-10 pb-32 pt-2">
 
                     {node.type === 'triggerNode' ? (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                            <div className="space-y-4">
-                                <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
-                                    <Zap className="h-3 w-3" /> Event Protocol Entry
-                                </Label>
-                                <div className="space-y-6">
-                                    {filteredTriggerGroups.map((group) => (
-                                        <div key={group.label} className="space-y-2">
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-1">{group.label}</p>
-                                            <div className="grid grid-cols-1 gap-2">
-                                                {group.options.map((trigger) => (
-                                                    <React.Fragment key={trigger.value}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => onUpdate({
-                                                                trigger: trigger.value,
-                                                                label: trigger.value === 'ENTITY_CREATED' ? `${singular} Created` : trigger.label
-                                                            })}
-                                                            className={cn(
-                                                                "flex items-start gap-4 p-3 rounded-2xl border-2 transition-all text-left group w-full",
-                                                                data.trigger === trigger.value ? "border-emerald-500 bg-emerald-500/10 shadow-md" : "border-transparent bg-background hover:bg-card/50"
-                                                            )}
-                                                        >
-                                                            <div className={cn(
-                                                                "p-2 rounded-xl transition-all shadow-sm shrink-0",
-                                                                data.trigger === trigger.value ? "bg-emerald-500 text-white" : "bg-card text-muted-foreground"
-                                                            )}>
-                                                                <trigger.icon className="h-4 w-4" />
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="font-semibold text-xs tracking-tight leading-none mb-1">{trigger.label}</p>
-                                                                <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">{trigger.desc}</p>
-                                                            </div>
-                                                        </button>
-                                                        {data.trigger === trigger.value ? (
-                                                            <div 
-                                                                ref={(el) => {
-                                                                    if (el) {
-                                                                        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                                                                    }
-                                                                }}
-                                                                className="w-full my-2 animate-in slide-in-from-top-2 duration-300"
-                                                            >
-                                                                <TriggerConfigPanel
-                                                                    trigger={data.trigger}
-                                                                    config={config}
-                                                                    onUpdateConfig={updateConfig}
-                                                                    allTags={allTags}
-                                                                    forms={forms}
-                                                                    surveys={surveys}
-                                                                    pipelines={pipelines}
-                                                                    stages={stages}
-                                                                    webhookUrl={webhookUrl}
-                                                                    automations={automations}
-                                                                />
-                                                            </div>
-                                                        ) : null}
-                                                    </React.Fragment>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                {filteredTriggerGroups.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center p-8 text-center bg-card/30 rounded-2xl border border-dashed border-border">
-                                        <p className="text-xs font-bold text-muted-foreground">No triggers match your search</p>
+                        <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+                            {viewMode === 'list' && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
+                                            <Zap className="h-3 w-3" /> Entry Triggers
+                                            <Badge className="ml-1 text-[8px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20 border font-bold">
+                                                {triggers.length}
+                                            </Badge>
+                                        </Label>
                                     </div>
-                                ) : null}
-                            </div>
+
+                                    {triggers.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center p-8 text-center bg-card/30 rounded-2xl border border-dashed border-border animate-fade-in">
+                                            <Zap className="h-8 w-8 text-muted-foreground/20 mb-2" />
+                                            <p className="text-xs font-bold text-muted-foreground">No triggers configured</p>
+                                            <p className="text-[10px] text-muted-foreground/60 mt-1">Configure entry events to fire this flow.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {triggers.map((t, i) => (
+                                                <TriggerListItem
+                                                    key={t.id}
+                                                    trigger={t}
+                                                    isPrimary={i === 0}
+                                                    index={i}
+                                                    allTags={allTags}
+                                                    forms={forms}
+                                                    surveys={surveys}
+                                                    pipelines={pipelines}
+                                                    stages={stages}
+                                                    canRemove={triggers.length > 1}
+                                                    onRemove={(id, e) => {
+                                                        e.stopPropagation();
+                                                        if (triggers.length <= 1) return;
+                                                        const next = triggers.filter(item => item.id !== id);
+                                                        onTriggersChange?.(next);
+                                                    }}
+                                                    onClick={() => {
+                                                        setActiveTriggerId(t.id);
+                                                        setViewMode('edit');
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('add')}
+                                        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 text-primary font-semibold text-xs transition-all"
+                                    >
+                                        <PlusCircle className="h-3.5 w-3.5" />
+                                        Add Trigger
+                                    </button>
+                                </div>
+                            )}
+
+                            {viewMode === 'add' && (
+                                <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewMode('list')}
+                                        className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors mb-2"
+                                    >
+                                        <ChevronLeft className="h-3.5 w-3.5" /> Back to Triggers
+                                    </button>
+                                    <div className="flex flex-col gap-3">
+                                        <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
+                                            <Zap className="h-3 w-3" /> Add entry trigger
+                                        </Label>
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                            <Input
+                                                value={triggerSearch}
+                                                onChange={e => setTriggerSearch(e.target.value)}
+                                                placeholder="Search triggers..."
+                                                className="pl-9 h-9 text-xs bg-muted/40 rounded-xl"
+                                                autoFocus
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6 max-h-[450px] overflow-y-auto pr-1 scrollbar-thin">
+                                        {filteredTriggerGroups.map(group => {
+                                            const usedTypes = new Set(triggers.map(t => t.type));
+                                            return (
+                                                <div key={group.label} className="space-y-2">
+                                                    <p className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground px-1">
+                                                        {group.label}
+                                                    </p>
+                                                    <div className="space-y-1.5">
+                                                        {group.options.map(opt => (
+                                                            <TriggerPickerItem
+                                                                key={opt.value}
+                                                                opt={opt}
+                                                                isDisabled={usedTypes.has(opt.value)}
+                                                                onSelect={() => {
+                                                                    const newId = `trigger_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+                                                                    const next = [...triggers, { id: newId, type: opt.value, config: {} }];
+                                                                    onTriggersChange?.(next);
+                                                                    setActiveTriggerId(newId);
+                                                                    setViewMode('edit');
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {filteredTriggerGroups.length === 0 && (
+                                            <div className="flex flex-col items-center justify-center py-8 text-center bg-card/30 rounded-2xl border border-dashed">
+                                                <p className="text-xs font-bold text-muted-foreground">No triggers match search</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {viewMode === 'edit' && activeTriggerId && (() => {
+                                const activeTrigger = triggers.find(t => t.id === activeTriggerId);
+                                if (!activeTrigger) return null;
+                                const Icon = triggerIcon(activeTrigger.type);
+                                const label = triggerLabel(activeTrigger.type);
+                                return (
+                                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                                        <button
+                                            type="button"
+                                            onClick={() => setViewMode('list')}
+                                            className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors mb-2"
+                                        >
+                                            <ChevronLeft className="h-3.5 w-3.5" /> Back to Triggers
+                                        </button>
+
+                                        <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/8 border border-emerald-500/25">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="p-2 rounded-xl bg-emerald-500 text-white shadow-sm shrink-0">
+                                                    <Icon className="h-3.5 w-3.5" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-foreground truncate">{label}</p>
+                                                    <p className="text-[9px] font-medium text-muted-foreground truncate font-mono">{activeTrigger.type}</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                disabled={triggers.length <= 1}
+                                                onClick={() => {
+                                                    const next = triggers.filter(t => t.id !== activeTriggerId);
+                                                    onTriggersChange?.(next);
+                                                    setViewMode('list');
+                                                }}
+                                                className={cn(
+                                                    "shrink-0 ml-2 h-7 w-7 rounded-xl flex items-center justify-center border transition-all",
+                                                    triggers.length <= 1
+                                                        ? "border-muted/30 text-muted-foreground/30 cursor-not-allowed bg-transparent"
+                                                        : "border-destructive/20 bg-destructive/5 hover:bg-destructive/10 text-destructive"
+                                                )}
+                                                title="Delete this trigger"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+
+                                        <Separator className="opacity-40" />
+
+                                        <TriggerConfigPanel
+                                            triggerId={activeTrigger.id}
+                                            trigger={activeTrigger.type}
+                                            config={(activeTrigger.config ?? {}) as Record<string, any>}
+                                            onUpdateConfig={(updates) => {
+                                                const next = triggers.map(t =>
+                                                    t.id === activeTriggerId ? { ...t, config: { ...(t.config ?? {}), ...updates } } : t
+                                                );
+                                                onTriggersChange?.(next);
+                                            }}
+                                            allTags={allTags}
+                                            forms={forms}
+                                            surveys={surveys}
+                                            pipelines={pipelines}
+                                            stages={stages}
+                                            webhookUrl={webhookUrl}
+                                            automations={automations}
+                                        />
+                                    </div>
+                                );
+                            })()}
                         </div>
                     ) : null}
 

@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useParams } from 'next/navigation';
+import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 
@@ -56,11 +57,19 @@ export function DelayNode({ id, data, selected }: any) {
         return 'Awaiting wait time';
     };
 
+    const overlay = useExecutionOverlay(data);
+
     return (
         <div className={cn(
             "relative transition-all duration-300",
-            selected ? "scale-[1.02]" : "scale-100"
+            selected ? "scale-[1.02]" : "scale-100",
+            overlay.opacityClass
         )}>
+            {overlay.badgeIcon && (
+                <div className="absolute -top-2.5 -right-2.5 z-50">
+                    <ExecutionBadge icon={overlay.badgeIcon} status={data.executionStatus} />
+                </div>
+            )}
             <Handle 
                 type="target" 
                 position={Position.Top} 
@@ -70,7 +79,9 @@ export function DelayNode({ id, data, selected }: any) {
             
             <Card className={cn(
                 "w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center",
-                selected ? "border-purple-500 shadow-md ring-2 ring-purple-500/20" : "border-purple-200"
+                selected ? "border-purple-500 shadow-md ring-2 ring-purple-500/20" : "border-purple-200",
+                overlay.borderClass,
+                overlay.glowClass
             )}>
                 {/* Left Colored Accent Block */}
                 <div className="w-12 h-full bg-purple-500 flex items-center justify-center flex-shrink-0 animate-fade-in">

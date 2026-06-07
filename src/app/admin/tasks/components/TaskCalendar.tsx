@@ -59,6 +59,7 @@ interface TaskCalendarProps {
     onTaskClick: (task: Task) => void;
     userMap: Map<string, UserProfile>;
     onTaskUpdate: (taskId: string, updatedFields: Partial<Task>) => Promise<boolean>;
+    onDateClick?: (date: Date) => void;
 }
 
 type DropTarget = 
@@ -82,7 +83,115 @@ const SEGMENT_TOP_CLASS: Record<number, string> = {
     45: 'top-3/4'
 };
 
-export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate }: TaskCalendarProps) {
+interface TaskCalendarCardProps {
+    task: Task;
+    onTaskClick: (task: Task) => void;
+    userMap: Map<string, UserProfile>;
+    onDragStart: (e: React.DragEvent, task: Task) => void;
+    onDragEnd: () => void;
+}
+
+function TaskCalendarCard({ task, onTaskClick, userMap, onDragStart, onDragEnd }: TaskCalendarCardProps) {
+    const isDone = task.status === 'done';
+    const P = PRIORITY_ICONS[task.priority];
+    const pColor = PRIORITY_COLORS[task.priority];
+    
+    // Parse assignees
+    const assignees = React.useMemo(() => {
+        const raw = task.assignedTo;
+        if (!raw) return [];
+        const ids = Array.isArray(raw) ? raw : [raw];
+        return ids.map(id => userMap.get(id)).filter(Boolean) as UserProfile[];
+    }, [task.assignedTo, userMap]);
+
+    const taskTime = React.useMemo(() => {
+        try {
+            const date = new Date(task.dueDate);
+            // Check if it's midnight (untimed)
+            if (date.getHours() === 0 && date.getMinutes() === 0) {
+                return null;
+            }
+            return format(date, 'h:mm a');
+        } catch {
+            return null;
+        }
+    }, [task.dueDate]);
+
+    return (
+        <div
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+                e.stopPropagation();
+                onTaskClick(task);
+            }}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onTaskClick(task);
+                }
+            }}
+            draggable={true}
+            onDragStart={(e) => onDragStart(e, task)}
+            onDragEnd={onDragEnd}
+            className={cn(
+                "w-full text-left p-2 rounded-xl border shadow-sm transition-all hover:scale-[1.01] active:scale-99 hover:shadow-md bg-card/60 hover:bg-card flex flex-col gap-1 group/card border-border/50 hover:border-primary/20 cursor-pointer select-none",
+                isDone && "opacity-60 bg-emerald-500/[0.02] border-emerald-500/10 hover:border-emerald-500/20"
+            )}
+        >
+            <div className="flex items-start justify-between gap-2 w-full">
+                <div className="min-w-0 flex-1">
+                    <p className={cn(
+                        "text-xs font-bold text-foreground leading-snug break-words group-hover/card:text-primary transition-colors",
+                        isDone && "line-through text-muted-foreground"
+                    )}>
+                        {task.title}
+                    </p>
+                    {task.entityName && (
+                        <p className="text-[9px] font-bold text-muted-foreground/60 truncate mt-0.5">
+                            {task.entityName}
+                        </p>
+                    )}
+                </div>
+                {taskTime && (
+                    <span className="text-[9px] font-bold text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded-md shrink-0">
+                        {taskTime}
+                    </span>
+                )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 mt-0.5 w-full border-t border-border/20 pt-1.5">
+                <div className="flex items-center gap-1">
+                    <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", isDone ? "bg-emerald-500" : pColor)} />
+                    <span className="text-[9px] font-bold text-muted-foreground capitalize">
+                        {task.priority}
+                    </span>
+                </div>
+
+                {assignees.length > 0 && (
+                    <div className="flex -space-x-1.5 overflow-hidden">
+                        {assignees.slice(0, 3).map((u, i) => (
+                            <Avatar key={u.id} className="h-4 w-4 ring-1 ring-card border-none shrink-0 transition-transform group-hover/card:scale-105" style={{ zIndex: 3 - i }}>
+                                <AvatarImage src={u.photoURL || undefined} />
+                                <AvatarFallback className="text-[7px] font-black bg-muted text-muted-foreground">
+                                    {getInitials(u.name)}
+                                </AvatarFallback>
+                            </Avatar>
+                        ))}
+                        {assignees.length > 3 && (
+                            <div className="h-4 w-4 rounded-full bg-muted/80 ring-1 ring-card flex items-center justify-center text-[7px] font-black text-muted-foreground shrink-0 z-0">
+                                +{assignees.length - 3}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate, onDateClick }: TaskCalendarProps) {
     const [view, setView] = React.useState<'month' | 'week' | 'day'>('month');
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [mounted, setMounted] = React.useState(false);
@@ -351,102 +460,7 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
         }
     }, [view, currentDate]);
 
-    // Reusable Task Card inside detailed views
-    const TaskCalendarCard = React.useCallback(({ task, onTaskClick, userMap }: { task: Task; onTaskClick: (task: Task) => void; userMap: Map<string, UserProfile> }) => {
-        const isDone = task.status === 'done';
-        const P = PRIORITY_ICONS[task.priority];
-        const pColor = PRIORITY_COLORS[task.priority];
-        
-        // Parse assignees
-        const assignees = React.useMemo(() => {
-            const raw = task.assignedTo;
-            if (!raw) return [];
-            const ids = Array.isArray(raw) ? raw : [raw];
-            return ids.map(id => userMap.get(id)).filter(Boolean) as UserProfile[];
-        }, [task.assignedTo, userMap]);
 
-        const taskTime = React.useMemo(() => {
-            try {
-                const date = new Date(task.dueDate);
-                // Check if it's midnight (untimed)
-                if (date.getHours() === 0 && date.getMinutes() === 0) {
-                    return null;
-                }
-                return format(date, 'h:mm a');
-            } catch {
-                return null;
-            }
-        }, [task.dueDate]);
-
-        return (
-            <div
-                role="button"
-                tabIndex={0}
-                onClick={() => onTaskClick(task)}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onTaskClick(task);
-                    }
-                }}
-                draggable={true}
-                onDragStart={(e) => handleDragStart(e, task)}
-                onDragEnd={handleDragEnd}
-                className={cn(
-                    "w-full text-left p-2 rounded-xl border shadow-sm transition-all hover:scale-[1.01] active:scale-99 hover:shadow-md bg-card/60 hover:bg-card flex flex-col gap-1 group/card border-border/50 hover:border-primary/20 cursor-pointer select-none",
-                    isDone && "opacity-60 bg-emerald-500/[0.02] border-emerald-500/10 hover:border-emerald-500/20"
-                )}
-            >
-                <div className="flex items-start justify-between gap-2 w-full">
-                    <div className="min-w-0 flex-1">
-                        <p className={cn(
-                            "text-xs font-bold text-foreground leading-snug break-words group-hover/card:text-primary transition-colors",
-                            isDone && "line-through text-muted-foreground"
-                        )}>
-                            {task.title}
-                        </p>
-                        {task.entityName && (
-                            <p className="text-[9px] font-bold text-muted-foreground/60 truncate mt-0.5">
-                                {task.entityName}
-                            </p>
-                        )}
-                    </div>
-                    {taskTime && (
-                        <span className="text-[9px] font-bold text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded-md shrink-0">
-                            {taskTime}
-                        </span>
-                    )}
-                </div>
-
-                <div className="flex items-center justify-between gap-2 mt-0.5 w-full border-t border-border/20 pt-1.5">
-                    <div className="flex items-center gap-1">
-                        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", isDone ? "bg-emerald-500" : pColor)} />
-                        <span className="text-[9px] font-bold text-muted-foreground capitalize">
-                            {task.priority}
-                        </span>
-                    </div>
-
-                    {assignees.length > 0 && (
-                        <div className="flex -space-x-1.5 overflow-hidden">
-                            {assignees.slice(0, 3).map((u, i) => (
-                                <Avatar key={u.id} className="h-4 w-4 ring-1 ring-card border-none shrink-0 transition-transform group-hover/card:scale-105" style={{ zIndex: 3 - i }}>
-                                    <AvatarImage src={u.photoURL || undefined} />
-                                    <AvatarFallback className="text-[7px] font-black bg-muted text-muted-foreground">
-                                        {getInitials(u.name)}
-                                    </AvatarFallback>
-                                </Avatar>
-                            ))}
-                            {assignees.length > 3 && (
-                                <div className="h-4 w-4 rounded-full bg-muted/80 ring-1 ring-card flex items-center justify-center text-[7px] font-black text-muted-foreground shrink-0 z-0">
-                                    +{assignees.length - 3}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    }, []);
 
     const renderMonthView = () => {
         const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 });
@@ -475,9 +489,15 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
                                 onDragOver={(e) => e.preventDefault()}
                                 onDragEnter={(e) => { e.preventDefault(); setActiveDropTarget({ type: 'day', date: day }); }}
                                 onDrop={(e) => handleDrop(e, { type: 'day', date: day })}
+                                onClick={() => {
+                                    if (isSelectedMonth) {
+                                        onDateClick?.(day);
+                                    }
+                                }}
                                 className={cn(
                                     "min-h-[120px] p-2 transition-colors flex flex-col gap-2 group border-border/40 relative",
                                     !isSelectedMonth && "bg-muted/10 opacity-30",
+                                    isSelectedMonth && "cursor-pointer hover:bg-muted/[0.02]",
                                     isTodayDate && "bg-primary/[0.01] ring-1 ring-inset ring-primary/5",
                                     idx % 7 === 6 && "border-r-0"
                                 )}
@@ -514,9 +534,13 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
                                                 key={task.id}
                                                 role="button"
                                                 tabIndex={0}
-                                                onClick={() => onTaskClick(task)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onTaskClick(task);
+                                                }}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.stopPropagation();
                                                         e.preventDefault();
                                                         onTaskClick(task);
                                                     }
@@ -592,8 +616,9 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
                                 onDragOver={(e) => e.preventDefault()}
                                 onDragEnter={(e) => { e.preventDefault(); setActiveDropTarget({ type: 'day', date: day }); }}
                                 onDrop={(e) => handleDrop(e, { type: 'day', date: day })}
+                                onClick={() => onDateClick?.(day)}
                                 className={cn(
-                                    "p-3 flex flex-col gap-2 min-h-[450px] relative",
+                                    "p-3 flex flex-col gap-2 min-h-[450px] relative cursor-pointer hover:bg-muted/[0.02] transition-colors",
                                     isToday(day) && "bg-primary/[0.005]"
                                 )}
                             >
@@ -606,7 +631,14 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
                                 )}
                                 <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                                     {dayTasks.map(task => (
-                                        <TaskCalendarCard key={task.id} task={task} onTaskClick={onTaskClick} userMap={userMap} />
+                                        <TaskCalendarCard 
+                                            key={task.id} 
+                                            task={task} 
+                                            onTaskClick={onTaskClick} 
+                                            userMap={userMap} 
+                                            onDragStart={handleDragStart}
+                                            onDragEnd={handleDragEnd}
+                                        />
                                     ))}
                                     {dayTasks.length === 0 && (
                                         <div className="h-full flex items-center justify-center py-24 text-center opacity-30 select-none">
@@ -662,7 +694,13 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
                         <div className="flex-1 flex flex-wrap gap-2">
                             {allDayTasks.map(task => (
                                 <div key={task.id} className="w-[260px]">
-                                    <TaskCalendarCard task={task} onTaskClick={onTaskClick} userMap={userMap} />
+                                    <TaskCalendarCard 
+                                        task={task} 
+                                        onTaskClick={onTaskClick} 
+                                        userMap={userMap} 
+                                        onDragStart={handleDragStart}
+                                        onDragEnd={handleDragEnd}
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -688,7 +726,14 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
                                         <div 
                                             onDragOver={(e) => handleDragOverHour(e, hour)}
                                             onDrop={(e) => handleDrop(e, { type: 'hour', date: currentDate, hour, minutes: (activeDropTarget?.type === 'hour' ? activeDropTarget.minutes : 0) })}
-                                            className="flex-1 border-l border-border/40 relative"
+                                            onClick={(e) => {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                const minutes = calculate15MinSlot(e.clientY, rect.top, rect.height);
+                                                const targetDate = new Date(currentDate);
+                                                targetDate.setHours(hour, minutes, 0, 0);
+                                                onDateClick?.(targetDate);
+                                            }}
+                                            className="flex-1 border-l border-border/40 relative cursor-pointer hover:bg-primary/[0.01] transition-colors"
                                         >
                                             {isTargetHour(hour) && activeDropTarget?.type === 'hour' && (
                                                 <div className={cn(

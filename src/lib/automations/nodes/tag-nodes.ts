@@ -1,5 +1,3 @@
-import { adminDb } from '../../firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
 import { resolveContact } from '../../contact-adapter';
 import { evaluateTagCondition } from '../../tag-condition';
 import type { TagConditionNode } from '../../types';
@@ -29,18 +27,38 @@ export async function processTagActionNode(
     throw new Error('Tag action failed: Workspace entity not found.');
   }
 
-  const timestamp = new Date().toISOString();
-  const weRef = adminDb.collection('workspace_entities').doc(contact.workspaceEntityId);
+  // Route through applyTagsAction / removeTagsAction so that:
+  //   1. logActivity is called → TAG_ADDED / TAG_REMOVED automation trigger fires
+  //   2. logTagAudit is written for the audit trail
+  //   3. Tag usage counts are updated
+  //   4. Chained automations (automation triggers another automation via tag) work correctly
+  //
+  // Previously this wrote directly to Firestore via FieldValue.arrayUnion which
+  // bypassed the entire event pipeline — no triggers ever fired from automation nodes.
+  const { applyTagsAction, removeTagsAction } = await import('../../tag-actions');
+  const userId = `automation:${context.automationId}`;
 
   if (action === 'add_tags') {
-    await weRef.update({
-      workspaceTags: FieldValue.arrayUnion(...tagIds),
-      updatedAt: timestamp,
-    });
+    const result = await applyTagsAction(
+      contact.workspaceEntityId,
+      'workspace_entity',
+      tagIds,
+      userId,
+      'Automation Engine'
+    );
+    if (!result.success) {
+      throw new Error(`Tag action (add) failed: ${result.error}`);
+    }
   } else if (action === 'remove_tags') {
-    await weRef.update({
-      workspaceTags: FieldValue.arrayRemove(...tagIds),
-      updatedAt: timestamp,
-    });
+    const result = await removeTagsAction(
+      contact.workspaceEntityId,
+      'workspace_entity',
+      tagIds,
+      userId,
+      'Automation Engine'
+    );
+    if (!result.success) {
+      throw new Error(`Tag action (remove) failed: ${result.error}`);
+    }
   }
 }

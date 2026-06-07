@@ -26,7 +26,11 @@ export interface AutomationActionResult {
 }
 
 function revalidateAutomationsHub(): void {
-  revalidatePath('/admin/automations');
+  try {
+    revalidatePath('/admin/automations');
+  } catch (e) {
+    console.warn('revalidatePath ignored (expected outside Next.js request context):', e);
+  }
 }
 
 /**
@@ -42,16 +46,17 @@ export async function saveAutomation(
 
     const normalized = serializeBlueprint(data);
 
-    if (normalized.nodes?.length && !normalized.trigger) {
+    if (normalized.nodes?.length && !normalized.triggers?.length) {
       throw new AutomationValidationError(
-        'Automation blueprint must include a trigger node with a selected event type.'
+        'Automation blueprint must have at least one trigger configured.'
       );
     }
 
     const workspaceIds = normalized.workspaceIds || data.workspaceIds;
 
+    const existing = id ? await getAutomationById(id) : null;
+
     if (id) {
-      const existing = await getAutomationById(id);
       if (!existing) throw new AutomationNotFoundError();
       await assertAutomationManagePermission(
         userId,
@@ -78,6 +83,39 @@ export async function saveAutomation(
       workspaceIds || ['onboarding']
     );
 
+    if (id && existing) {
+      // Compare delay node configs to trigger rescheduling
+      const oldDelayNodes = existing.nodes?.filter((n: any) => n.type === 'delayNode') || [];
+      const newDelayNodes = normalized.nodes?.filter((n: any) => n.type === 'delayNode') || [];
+
+      const newNodesMap = new Map<string, any>(newDelayNodes.map((n: any) => [n.id, n]));
+      const oldNodesMap = new Map<string, any>(oldDelayNodes.map((n: any) => [n.id, n]));
+
+      const { reschedulePendingJobs, purgePendingJobsForNode } = await import('./reschedule');
+
+      // Reschedule changed nodes
+      for (const newNode of newDelayNodes) {
+        const oldNode = oldNodesMap.get(newNode.id);
+        if (oldNode) {
+          const newConfig = newNode.data?.config || {};
+          const oldConfig = oldNode.data?.config || {};
+          const newHasChanged =
+            newConfig.value !== oldConfig.value || newConfig.unit !== oldConfig.unit;
+
+          if (newHasChanged) {
+            await reschedulePendingJobs(id, newNode.id, newConfig, oldConfig);
+          }
+        }
+      }
+
+      // Clean up deleted delay nodes
+      for (const oldNode of oldDelayNodes) {
+        if (!newNodesMap.has(oldNode.id)) {
+          await purgePendingJobsForNode(id, oldNode.id);
+        }
+      }
+    }
+
     revalidateAutomationsHub();
     return { success: true, id: savedId };
   } catch (error) {
@@ -99,6 +137,10 @@ export async function removeAutomation(
     const existing = await getAutomationById(id);
     if (!existing) throw new AutomationNotFoundError();
     await assertAutomationManagePermission(userId, existing.workspaceIds, 'delete');
+
+    // Clean up all pending scheduled jobs for the deleted automation
+    const { purgeAllPendingJobsForAutomation } = await import('./reschedule');
+    await purgeAllPendingJobsForAutomation(id);
 
     await deleteAutomation(id);
     revalidateAutomationsHub();
@@ -142,7 +184,7 @@ export async function seedDefaultDealAutomation(
     const existingSnap = await adminDb
       .collection('automations')
       .where('workspaceIds', 'array-contains', workspaceId)
-      .where('trigger', '==', 'ENTITY_CREATED')
+      .where('triggerTypes', 'array-contains', 'ENTITY_CREATED')
       .get();
 
     const exists = existingSnap.docs.some((doc) => {
@@ -161,7 +203,10 @@ export async function seedDefaultDealAutomation(
       name: 'Auto-Create Initial Deal',
       description:
         'Automatically creates a deal in the default pipeline when a new entity is created.',
-      trigger: 'ENTITY_CREATED',
+      triggers: [
+        { id: 'trigger_0', type: 'ENTITY_CREATED', config: {} },
+      ],
+      triggerTypes: ['ENTITY_CREATED'],
       workspaceIds: [workspaceId],
       organizationId,
       isActive: true,

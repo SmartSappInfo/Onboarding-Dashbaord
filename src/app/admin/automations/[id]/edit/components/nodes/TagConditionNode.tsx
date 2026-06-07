@@ -10,6 +10,7 @@ import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQ
 import { useParams } from 'next/navigation';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
+import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 
 /**
  * TagConditionNode — visual node for the automation canvas.
@@ -50,8 +51,15 @@ export function TagConditionNode({ id, data, selected }: any) {
       : 'Check contact tags';
   };
 
+  const overlay = useExecutionOverlay(data);
+
   return (
-    <div className={cn('relative transition-all duration-300', selected ? 'scale-[1.02]' : 'scale-100')}>
+    <div className={cn('relative transition-all duration-300', selected ? 'scale-[1.02]' : 'scale-100', overlay.opacityClass)}>
+      {overlay.badgeIcon && (
+        <div className="absolute -top-2.5 -right-2.5 z-50">
+          <ExecutionBadge icon={overlay.badgeIcon} status={data.executionStatus} />
+        </div>
+      )}
       <Handle
         type="target"
         position={Position.Top}
@@ -64,7 +72,9 @@ export function TagConditionNode({ id, data, selected }: any) {
           'w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center',
           selected
             ? 'border-violet-500 shadow-md ring-2 ring-violet-500/20'
-            : 'border-violet-200'
+            : 'border-violet-200',
+          overlay.borderClass,
+          overlay.glowClass
         )}
       >
         {/* Left Colored Accent Block */}

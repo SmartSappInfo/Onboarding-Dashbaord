@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
+import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 
 /**
  * @fileOverview Refined Action Node for Automation Canvas.
@@ -103,11 +104,11 @@ export function ActionNode({ id, data, selected }: any) {
                     if (t === 'custom') return config.customRecipient || 'Custom Address';
                     return t;
                 }).join(', ');
-                const bodyPreview = config.notificationBody 
-                    ? `"${config.notificationBody.substring(0, 20)}${config.notificationBody.length > 20 ? '...' : ''}"`
-                    : 'Awaiting message';
-                return `Notify (${channel}) ${targets || 'team'}: ${bodyPreview}`;
+                const templateLabel = config.templateName
+                    || (config.templateId ? 'Template Selected' : 'Select Template');
+                return `Notify (${channel}) ${targets || 'team'}: ${templateLabel}`;
             }
+
             case 'CREATE_TASK':
                 return `Create task: "${config.title || 'Untitled Task'}"`;
             case 'ADD_NOTE':
@@ -158,11 +159,19 @@ export function ActionNode({ id, data, selected }: any) {
         }
     };
 
+    const overlay = useExecutionOverlay(data);
+
     return (
         <div className={cn(
             "relative transition-all duration-300",
-            selected ? "scale-[1.02]" : "scale-100"
+            selected ? "scale-[1.02]" : "scale-100",
+            overlay.opacityClass
         )}>
+            {overlay.badgeIcon && (
+                <div className="absolute -top-2.5 -right-2.5 z-50">
+                    <ExecutionBadge icon={overlay.badgeIcon} status={data.executionStatus} />
+                </div>
+            )}
             <Handle 
                 type="target" 
                 position={Position.Top} 
@@ -171,7 +180,9 @@ export function ActionNode({ id, data, selected }: any) {
             />
             <Card className={cn(
                 "w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center",
-                selected ? "border-blue-500 shadow-md ring-2 ring-blue-500/20" : "border-blue-200"
+                selected ? "border-blue-500 shadow-md ring-2 ring-blue-500/20" : "border-blue-200",
+                overlay.borderClass,
+                overlay.glowClass
             )}>
                 {/* Left Colored Accent Block */}
                 <div className="w-12 h-full bg-blue-500 flex items-center justify-center flex-shrink-0 animate-fade-in">

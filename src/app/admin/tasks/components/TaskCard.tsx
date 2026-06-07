@@ -102,6 +102,19 @@ export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, user
                             {task.title}
                         </h4>
                     </div>
+                    {interlinkUrl && (
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 rounded-lg text-primary opacity-0 group-hover:opacity-100 transition-opacity bg-primary/5 border border-primary/10 shrink-0 self-start"
+                            asChild
+                            onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking link
+                        >
+                            <Link href={interlinkUrl}>
+                                <ArrowRight className="h-3 w-3" />
+                            </Link>
+                        </Button>
+                    )}
                 </div>
 
                 <div className="flex flex-col gap-2 pt-1">
@@ -124,35 +137,12 @@ export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, user
                             )}
                         </div>
                     )}
-                    <div className="flex items-center justify-between">
-                        <div className={cn(
-                            "flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-tighter transition-colors",
-                            isOverdue ? "text-rose-600 animate-pulse" : isToday(new Date(task.dueDate)) ? "text-orange-600" : "text-muted-foreground/60"
-                        )}>
-                            <Clock className="h-2.5 w-2.5" />
-                            {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d')}
-                        </div>
-                        
-                        {interlinkUrl && (
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 rounded-lg text-primary opacity-0 group-hover:opacity-100 transition-opacity bg-primary/5 border border-primary/10"
-                                asChild
-                                onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking link
-                            >
-                                <Link href={interlinkUrl}>
-                                    <ArrowRight className="h-3 w-3" />
-                                </Link>
-                            </Button>
-                        )}
-                    </div>
                     
                     {(() => {
                         const ids = Array.isArray(task.assignedTo) ? task.assignedTo : (task.assignedTo ? [task.assignedTo] : []);
-                        const hasAttachments = task.attachments && task.attachments.length > 0;
-                        const hasNotes = task.notes && task.notes.length > 0;
-                        if (ids.length === 0 && !hasAttachments && !hasNotes) return null;
+                        const commentsCount = task.notes?.length || 0;
+                        const attachmentsCount = task.attachments?.length || 0;
+
                         return (
                             <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-border/40 w-full">
                                 {ids.length > 0 ? (
@@ -173,19 +163,22 @@ export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick, user
                                     <div />
                                 )}
 
-                                <div className="flex items-center gap-1.5 text-muted-foreground/60 shrink-0">
-                                    {hasAttachments && (
-                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/40 text-[9px] font-semibold">
-                                            <Paperclip className="h-3 w-3 opacity-60" />
-                                            <span className="tabular-nums">{task.attachments!.length}</span>
-                                        </div>
-                                    )}
-                                    {hasNotes && (
-                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/40 text-[9px] font-semibold">
-                                            <MessageSquare className="h-3 w-3 opacity-60" />
-                                            <span className="tabular-nums">{task.notes!.length}</span>
-                                        </div>
-                                    )}
+                                <div className="flex items-center gap-2 text-muted-foreground/60 shrink-0">
+                                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/30 text-[9px] font-semibold" title="Comments">
+                                        <MessageSquare className="h-3 w-3 opacity-60" />
+                                        <span className="tabular-nums">{commentsCount}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/30 text-[9px] font-semibold" title="Attachments">
+                                        <Paperclip className="h-3 w-3 opacity-60" />
+                                        <span className="tabular-nums">{attachmentsCount}</span>
+                                    </div>
+                                    <div className={cn(
+                                        "flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-tighter transition-colors ml-1",
+                                        isOverdue ? "text-rose-600 animate-pulse font-bold" : isToday(new Date(task.dueDate)) ? "text-orange-600 font-bold" : "text-muted-foreground/60"
+                                    )}>
+                                        <Clock className="h-3 w-3" />
+                                        {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d')}
+                                    </div>
                                 </div>
                             </div>
                         );

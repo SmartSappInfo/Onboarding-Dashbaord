@@ -3,50 +3,39 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { doc, collection, query, where, orderBy, limit, updateDoc } from 'firebase/firestore';
-import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, limit } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { endMeetingAction } from '@/app/actions/meeting-post-event-action';
-import type { Meeting, ScheduledMessage, QRCode, MeetingFacilitator, MeetingReminderSlot } from '@/lib/types';
-import { resendFacilitatorLinksAction } from '@/app/actions/meeting-facilitator-actions';
-import { REMINDER_OFFSETS } from '@/lib/types';
+import type { ScheduledMessage, QRCode, MeetingReminderSlot } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { 
   Calendar, 
-  Clock, 
   Video, 
-  Edit, 
-  ExternalLink, 
   Users,
   Bell,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
   Send,
   Flag,
   QrCode,
-  Download,
   CopyCheck,
   Copy,
-  BarChart3,
   Link as LinkIcon,
   Eye,
   Mail,
   MessageSquare,
   Loader2,
-  ChevronLeft,
   X,
   Check,
-  Edit3,
-  MoreHorizontal
+  Edit
 } from 'lucide-react';
 import { format } from 'date-fns';
 import dynamic from 'next/dynamic';
+import { useMeetingContext } from './layout';
 
 const CreateQRButton = dynamic(() => import('@/components/qr-studio/create-qr-button'), {
   loading: () => <Skeleton className="h-10 w-full rounded-xl" />
@@ -55,22 +44,13 @@ const CreateQRButton = dynamic(() => import('@/components/qr-studio/create-qr-bu
 const QRPreview = dynamic(() => import('@/app/admin/qr-studio/components/qr-preview'), {
   loading: () => <Skeleton className="h-[160px] w-[160px] rounded-xl mx-auto" />
 });
-import { cn } from '@/lib/utils';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  DropdownMenu, 
-  DropdownMenuTrigger, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator 
-} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { renderScheduledMessageAction, sendTestMessageAction } from '@/app/actions/scheduled-message-actions';
-import { useUser } from '@/firebase';
 import { RecipientLogDrawer } from './components/RecipientLogDrawer';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 
 export default function MeetingDetailPage() {
   const params = useParams();
@@ -81,7 +61,6 @@ export default function MeetingDetailPage() {
   const { toast } = useToast();
   const [isEnding, startTransition] = React.useTransition();
   const [copiedLink, setCopiedLink] = React.useState<'short' | 'long' | string | null>(null);
-  const [isSendingLinks, setIsSendingLinks] = React.useState(false);
   const { user } = useUser();
   const [previewModalOpen, setPreviewModalOpen] = React.useState(false);
   const [previewContent, setPreviewContent] = React.useState<any>(null);
@@ -91,32 +70,15 @@ export default function MeetingDetailPage() {
   const [logDrawerOpen, setLogDrawerOpen] = React.useState(false);
   const [selectedReminderType, setSelectedReminderType] = React.useState<string | null>(null);
   const [isTogglingRegistration, setIsTogglingRegistration] = React.useState(false);
-  const [isEditingName, setIsEditingName] = React.useState(false);
-  const [editingName, setEditingName] = React.useState('');
-  const [isSavingName, setIsSavingName] = React.useState(false);
+
+  // Consume shared workspace data from context
+  const { meeting, registrants, attendees, meetingDocRef } = useMeetingContext();
 
   const handleCopy = (text: string, type: 'short' | 'long' | string) => {
     navigator.clipboard.writeText(text);
     setCopiedLink(type);
     toast({ title: "Link Copied!", description: "Saved to clipboard." });
     setTimeout(() => setCopiedLink(null), 2000);
-  };
-
-  const handleBatchResendLinks = async (facilitators: MeetingFacilitator[]) => {
-    if (!meeting) return;
-    setIsSendingLinks(true);
-    try {
-      const result = await resendFacilitatorLinksAction(meeting.id, meeting.entityName || 'Meeting', facilitators, activeWorkspaceId || 'onboarding');
-      if (result.success) {
-        toast({ title: 'Emails Sent', description: result.message });
-      } else {
-        toast({ variant: 'destructive', title: 'Error sending emails', description: result.message });
-      }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
-    } finally {
-      setIsSendingLinks(false);
-    }
   };
 
   const handleOpenPreview = async (messageId: string) => {
@@ -165,30 +127,40 @@ export default function MeetingDetailPage() {
     }
   };
 
-  const meetingDocRef = useMemoFirebase(() => {
-    if (!firestore || !meetingId) return null;
-    return doc(firestore, 'meetings', meetingId);
-  }, [firestore, meetingId]);
+  // Safe derivation of counts and conversion rates from context
+  const invitedGuestsCount = React.useMemo(() => {
+    return registrants.filter((r: any) => r.source === 'invite' || r.source === 'one-click').length;
+  }, [registrants]);
 
-  const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
+  const registeredCount = React.useMemo(() => {
+    return registrants.filter((r: any) => r.status === 'registered' || r.status === 'approved' || r.status === 'attended').length;
+  }, [registrants]);
 
-  // Fetch registrants for real-time count
-  const registrantsColRef = useMemoFirebase(() => {
-    if (!firestore || !meetingId) return null;
-    return collection(firestore, `meetings/${meetingId}/registrants`);
-  }, [firestore, meetingId]);
+  const attendedCount = React.useMemo(() => {
+    return attendees.length;
+  }, [attendees]);
 
-  const { data: registrants } = useCollection<any>(registrantsColRef);
+  const facilitatorsCount = React.useMemo(() => {
+    return meeting.facilitators?.length || 0;
+  }, [meeting.facilitators]);
 
-  // Derive count safely in render (zero-effect derivation)
-  const registrantsCount = registrants?.filter(r => r.status === 'registered' || r.status === 'approved' || r.status === 'attended').length ?? 0;
+  const conversionRate = React.useMemo(() => {
+    const invitedRegisteredCount = registrants.filter((r: any) => 
+      (r.source === 'invite' || r.source === 'one-click') && 
+      (r.status === 'registered' || r.status === 'approved' || r.status === 'attended')
+    ).length;
+    return invitedGuestsCount > 0 
+      ? Math.round((invitedRegisteredCount / invitedGuestsCount) * 100) 
+      : 0;
+  }, [registrants, invitedGuestsCount]);
 
-  // Toggle registration status with race-condition protection
+  // Toggle registration status using docRef from context
   const handleToggleRegistration = async () => {
     if (!meeting || !meetingDocRef || isTogglingRegistration) return;
     setIsTogglingRegistration(true);
     const newStatus = !(meeting.registrationEnabled ?? false);
     try {
+      const { updateDoc } = await import('firebase/firestore');
       await updateDoc(meetingDocRef, { registrationEnabled: newStatus });
       toast({
         title: newStatus ? 'Registration Enabled' : 'Registration Disabled',
@@ -200,27 +172,6 @@ export default function MeetingDetailPage() {
       toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
     } finally {
       setIsTogglingRegistration(false);
-    }
-  };
-
-  const handleSaveName = async () => {
-    if (!firestore || !meetingDocRef || !editingName.trim()) return;
-    setIsSavingName(true);
-    try {
-      await updateDoc(meetingDocRef, { entityName: editingName.trim() });
-      toast({
-        title: 'Meeting updated',
-        description: 'Meeting internal name has been successfully updated.',
-      });
-      setIsEditingName(false);
-    } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Update failed',
-        description: err.message || 'An error occurred.',
-      });
-    } finally {
-      setIsSavingName(false);
     }
   };
 
@@ -343,8 +294,6 @@ export default function MeetingDetailPage() {
   const { data: qrCodes, isLoading: isLoadingQR } = useCollection<QRCode>(qrQuery);
   const qrCode = qrCodes && qrCodes.length > 0 ? qrCodes[0] : null;
 
-
-
   const handleEndMeeting = () => {
     if (!meeting || meeting.status === 'ended') return;
     
@@ -371,605 +320,430 @@ export default function MeetingDetailPage() {
     }
   };
 
-  if (isLoadingMeeting) {
-    return (
-      <div className="h-full overflow-y-auto p-8">
-        <div className="max-w-5xl mx-auto space-y-8">
-          <Skeleton className="h-12 w-1/3" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!meeting) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold mb-2">Meeting not found</h2>
-          <Button onClick={() => router.push('/admin/meetings')}>Back to Meetings</Button>
-        </div>
-      </div>
-    );
-  }
-
-  const publicTypeSlug = meeting.type.slug === 'parent' ? 'parent-engagement' : meeting.type.slug;
+  const publicTypeSlug = (meeting.type?.slug as string) === 'parent' ? 'parent-engagement' : meeting.type?.slug;
   const publicUrl = `/meetings/${publicTypeSlug}/${meeting.meetingSlug || meeting.entitySlug}`;
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-background p-8">
-      <div className="w-full space-y-8">
-        
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0">
-              <Link href="/admin/meetings">
-                <ChevronLeft className="h-5 w-5" />
-              </Link>
-            </Button>
-            <div>
-              {isEditingName ? (
-                <div className="flex items-center gap-2 mb-1">
-                  <input
-                    type="text"
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    className="h-10 px-3 border rounded-xl text-lg font-semibold w-72 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
-                    disabled={isSavingName}
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveName();
-                      if (e.key === 'Escape') setIsEditingName(false);
-                    }}
-                  />
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-9 w-9 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl shrink-0"
-                    onClick={handleSaveName}
-                    disabled={isSavingName}
-                  >
-                    {isSavingName ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-5 w-5" />}
-                  </Button>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-9 w-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl shrink-0"
-                    onClick={() => setIsEditingName(false)}
-                    disabled={isSavingName}
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 mb-1 group/title">
-                  <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none">
-                    {meeting.entityName}
-                  </h1>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 opacity-0 group-hover/title:opacity-100 transition-opacity rounded-xl hover:bg-muted"
-                    onClick={() => {
-                      setIsEditingName(true);
-                      setEditingName(meeting.entityName || '');
-                    }}
-                  >
-                    <Edit3 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </div>
-              )}
-              <p className="text-sm text-muted-foreground">
-                {meeting.type.name} • {format(new Date(meeting.meetingTime), 'PPP p')}
-              </p>
+    <div className="w-full space-y-6">
+      {/* Bento Statistics Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl bg-card">
+          <CardContent className="p-5 flex flex-col justify-between h-full min-h-[100px]">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Invited</span>
+            <div className="flex items-baseline gap-2 mt-2">
+              <span className="text-3xl font-bold text-slate-900 dark:text-white">{invitedGuestsCount}</span>
+              <span className="text-xs text-muted-foreground">guests</span>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button asChild variant="outline" size="sm" className="rounded-full gap-2">
-              <Link href={publicUrl} target="_blank">
-                <ExternalLink className="h-4 w-4" /> View Public Page
-              </Link>
-            </Button>
-            <Button asChild size="sm" className="rounded-full gap-2">
-              <Link href={`/admin/meetings/${meetingId}/edit`}>
-                <Edit className="h-4 w-4" /> Edit
-              </Link>
-            </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl bg-card">
+          <CardContent className="p-5 flex flex-col justify-between h-full min-h-[100px]">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Registrants</span>
+            <div className="flex items-baseline gap-2 mt-2">
+              <span className="text-3xl font-bold text-slate-900 dark:text-white">{registeredCount}</span>
+              {meeting.capacityLimit && meeting.capacityLimit > 0 && (
+                <span className="text-xs text-muted-foreground">/ {meeting.capacityLimit}</span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl bg-card">
+          <CardContent className="p-5 flex flex-col justify-between h-full min-h-[100px]">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Attended</span>
+            <div className="flex items-baseline gap-2 mt-2">
+              <span className="text-3xl font-bold text-slate-900 dark:text-white">{attendedCount}</span>
+              <span className="text-xs text-muted-foreground">joined</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl bg-card">
+          <CardContent className="p-5 flex flex-col justify-between h-full min-h-[100px]">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Facilitators</span>
+            <div className="flex items-baseline gap-2 mt-2">
+              <span className="text-3xl font-bold text-slate-900 dark:text-white">{facilitatorsCount}</span>
+              <span className="text-xs text-muted-foreground">active</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl bg-card col-span-2 lg:col-span-1 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 border-emerald-500/10">
+          <CardContent className="p-5 flex flex-col justify-between h-full min-h-[100px]">
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Conversion</span>
+            <div className="flex items-baseline gap-2 mt-2">
+              <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{conversionRate}%</span>
+              <span className="text-[10px] font-semibold text-emerald-600/70 dark:text-emerald-400/70 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded">RSVP</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Meeting Details */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
-              <CardHeader className="bg-muted/30 border-b">
-                <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  Meeting Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">Date & Time</p>
-                    <p className="text-sm font-medium">{format(new Date(meeting.meetingTime), 'PPP p')}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">Type</p>
-                    <Badge variant="outline">{meeting.type.name}</Badge>
-                  </div>
-                </div>
-                
-                <Separator />
-                
+      {/* Meeting Details Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
+            <CardHeader className="bg-muted/30 border-b">
+              <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Meeting Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">Meeting Link</p>
-                  <a 
-                    href={meeting.meetingLink} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline flex items-center gap-2"
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">Date & Time</p>
+                  <p className="text-sm font-medium">{format(new Date(meeting.meetingTime), 'PPP p')}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">Type</p>
+                  <Badge variant="outline">{meeting.type.name}</Badge>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Meeting Link</p>
+                <a 
+                  href={meeting.meetingLink} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-2"
+                >
+                  <Video className="h-4 w-4" />
+                  {meeting.meetingLink}
+                </a>
+              </div>
+
+              <Separator />
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Registration</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleToggleRegistration}
+                    disabled={isTogglingRegistration}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed ring-1 ${
+                      (meeting.registrationEnabled ?? false)
+                        ? 'bg-blue-600/10 text-blue-600 dark:text-blue-400 ring-blue-500/20 hover:bg-blue-600/20'
+                        : 'bg-muted/80 text-muted-foreground ring-border/60 hover:bg-muted'
+                    }`}
                   >
-                    <Video className="h-4 w-4" />
-                    {meeting.meetingLink}
-                  </a>
-                </div>
-
-                <Separator />
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">Registration</p>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={handleToggleRegistration}
-                      disabled={isTogglingRegistration}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed ring-1 ${
-                        (meeting.registrationEnabled ?? false)
-                          ? 'bg-blue-600/10 text-blue-600 dark:text-blue-400 ring-blue-500/20 hover:bg-blue-600/20'
-                          : 'bg-muted/80 text-muted-foreground ring-border/60 hover:bg-muted'
-                      }`}
-                    >
-                      {isTogglingRegistration ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Users className="h-3 w-3" />
-                      )}
-                      {(meeting.registrationEnabled ?? false) ? 'Enabled' : 'Disabled'}
-                    </button>
-
-                    <Link
-                      href={`/admin/meetings/${meetingId}/invitations?tab=registrants`}
-                      className="inline-flex items-center gap-1.5 text-sm font-bold text-foreground hover:text-primary transition-colors duration-150 hover:underline underline-offset-4"
-                    >
-                      {registrantsCount}
-                      <span className="text-xs font-medium text-muted-foreground">registrants</span>
-                    </Link>
-
-                    {meeting.capacityLimit && meeting.capacityLimit > 0 ? (
-                      <span className="text-xs font-medium text-muted-foreground">
-                        / {meeting.capacityLimit} capacity
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Task 12.5: Scheduled Reminders Display */}
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
-              <CardHeader className="bg-muted/30 border-b py-4">
-                <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-blue-600" />
-                  Scheduled Messages
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <Tabs defaultValue="participants" className="w-full">
-                  <TabsList className="grid grid-cols-3 mb-6 bg-muted/50 rounded-xl p-1">
-                    <TabsTrigger value="participants" className="rounded-lg text-xs font-bold py-2">
-                      Participants ({participantSlots.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="facilitators" className="rounded-lg text-xs font-bold py-2">
-                      Facilitators ({facilitatorSlots.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="invitations" className="rounded-lg text-xs font-bold py-2">
-                      Invitations ({meeting?.messagingConfig?.invitationsEnabled ? (
-                        meeting?.messagingConfig?.invitationSeries?.some(s => s.enabled) ? (
-                          meeting.messagingConfig.invitationSeries.filter(s => s.enabled).length
-                        ) : 1
-                      ) : 0})
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="participants" className="space-y-3 focus-visible:outline-none">
-                    {participantSlots.length > 0 ? (
-                      <div className="space-y-3">
-                        {participantSlots.map((slot) => (
-                          <div 
-                            key={slot.id}
-                            className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
-                            onClick={() => {
-                              setSelectedReminderType(slot.type);
-                              setLogDrawerOpen(true);
-                            }}
-                          >
-                            <div className="flex-1 text-left">
-                              <p className="text-sm font-semibold group-hover:text-primary transition-colors">
-                                {slot.label}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {slot.description}
-                              </p>
-                            </div>
-                            <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
-                              {slot.channel}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
+                    {isTogglingRegistration ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-medium">No active participant messages</p>
-                        <p className="text-xs">Reminders will appear here once configured in settings</p>
-                      </div>
+                      <Users className="h-3 w-3" />
                     )}
-                  </TabsContent>
+                    {(meeting.registrationEnabled ?? false) ? 'Enabled' : 'Disabled'}
+                  </button>
 
-                  <TabsContent value="facilitators" className="space-y-3 focus-visible:outline-none">
-                    {facilitatorSlots.length > 0 ? (
-                      <div className="space-y-3">
-                        {facilitatorSlots.map((slot) => (
-                          <div 
-                            key={slot.id}
-                            className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
-                            onClick={() => {
-                              setSelectedReminderType(slot.type);
-                              setLogDrawerOpen(true);
-                            }}
-                          >
-                            <div className="flex-1 text-left">
-                              <p className="text-sm font-semibold group-hover:text-primary transition-colors">
-                                {slot.label}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {slot.description}
-                              </p>
-                            </div>
-                            <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
-                              {slot.channel}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-medium">No active facilitator messages</p>
-                        <p className="text-xs">Facilitator alerts will appear here once configured</p>
-                      </div>
-                    )}
-                  </TabsContent>
+                  <Link
+                    href={`/admin/meetings/${meetingId}/registrants`}
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-foreground hover:text-primary transition-colors duration-150 hover:underline underline-offset-4"
+                  >
+                    {registeredCount}
+                    <span className="text-xs font-medium text-muted-foreground">registrants</span>
+                  </Link>
 
-                  <TabsContent value="invitations" className="space-y-3 focus-visible:outline-none">
-                    {meeting?.messagingConfig?.invitationsEnabled ? (
+                  {meeting.capacityLimit && meeting.capacityLimit > 0 ? (
+                    <span className="text-xs font-medium text-muted-foreground">
+                      / {meeting.capacityLimit} capacity
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Scheduled Reminders Display */}
+          <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
+            <CardHeader className="bg-muted/30 border-b py-4">
+              <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                <Bell className="h-5 w-5 text-blue-600" />
+                Scheduled Messages
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <Tabs defaultValue="participants" className="w-full">
+                <TabsList className="grid grid-cols-3 mb-6 bg-muted/50 rounded-xl p-1">
+                  <TabsTrigger value="participants" className="rounded-lg text-xs font-bold py-2">
+                    Participants ({participantSlots.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="facilitators" className="rounded-lg text-xs font-bold py-2">
+                    Facilitators ({facilitatorSlots.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="invitations" className="rounded-lg text-xs font-bold py-2">
+                    Invitations ({meeting?.messagingConfig?.invitationsEnabled ? (
                       meeting?.messagingConfig?.invitationSeries?.some(s => s.enabled) ? (
-                        <div className="space-y-3">
-                          {meeting.messagingConfig.invitationSeries
-                            .filter(s => s.enabled)
-                            .map((slot) => (
-                              <div 
-                                key={slot.id}
-                                className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
-                                onClick={() => {
-                                  setSelectedReminderType(`meeting_invitation_${slot.id}`);
-                                  setLogDrawerOpen(true);
-                                }}
-                              >
-                                <div className="flex-1 text-left">
-                                  <p className="text-sm font-semibold group-hover:text-primary transition-colors">
-                                    {slot.label}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    Automated invitation messages sent to the invited guest roster.
-                                  </p>
-                                </div>
-                                <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
-                                  {slot.channels?.join(', ') || 'email'}
-                                </Badge>
-                              </div>
-                            ))}
-                        </div>
-                      ) : (
+                        meeting.messagingConfig.invitationSeries.filter(s => s.enabled).length
+                      ) : 1
+                    ) : 0})
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="participants" className="space-y-3 focus-visible:outline-none">
+                  {participantSlots.length > 0 ? (
+                    <div className="space-y-3">
+                      {participantSlots.map((slot) => (
                         <div 
+                          key={slot.id}
                           className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
                           onClick={() => {
-                            setSelectedReminderType('meeting_invitation');
+                            setSelectedReminderType(slot.type);
                             setLogDrawerOpen(true);
                           }}
                         >
                           <div className="flex-1 text-left">
                             <p className="text-sm font-semibold group-hover:text-primary transition-colors">
-                              Guest Invitation Blast
+                              {slot.label}
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              Automated and manual invitation blasts sent to the invited guest roster.
+                              {slot.description}
                             </p>
                           </div>
                           <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
-                            email, sms
+                            {slot.channel}
                           </Badge>
                         </div>
-                      )
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Mail className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-medium">No active scheduled invitations</p>
-                        <p className="text-xs">Configure invitations in the session setup page to enable scheduling</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p className="text-sm font-medium">No active participant messages</p>
+                      <p className="text-xs">Reminders will appear here once configured in settings</p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="facilitators" className="space-y-3 focus-visible:outline-none">
+                  {facilitatorSlots.length > 0 ? (
+                    <div className="space-y-3">
+                      {facilitatorSlots.map((slot) => (
+                        <div 
+                          key={slot.id}
+                          className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
+                          onClick={() => {
+                            setSelectedReminderType(slot.type);
+                            setLogDrawerOpen(true);
+                          }}
+                        >
+                          <div className="flex-1 text-left">
+                            <p className="text-sm font-semibold group-hover:text-primary transition-colors">
+                              {slot.label}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {slot.description}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
+                            {slot.channel}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p className="text-sm font-medium">No active facilitator messages</p>
+                      <p className="text-xs">Facilitator alerts will appear here once configured</p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="invitations" className="space-y-3 focus-visible:outline-none">
+                  {meeting?.messagingConfig?.invitationsEnabled ? (
+                    meeting?.messagingConfig?.invitationSeries?.some(s => s.enabled) ? (
+                      <div className="space-y-3">
+                        {meeting.messagingConfig.invitationSeries
+                          .filter(s => s.enabled)
+                          .map((slot) => (
+                            <div 
+                              key={slot.id}
+                              className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
+                              onClick={() => {
+                                setSelectedReminderType(`meeting_invitation_${slot.id}`);
+                                setLogDrawerOpen(true);
+                              }}
+                            >
+                              <div className="flex-1 text-left">
+                                <p className="text-sm font-semibold group-hover:text-primary transition-colors">
+                                  {slot.label}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Automated invitation messages sent to the invited guest roster.
+                                </p>
+                              </div>
+                              <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
+                                {slot.channels?.join(', ') || 'email'}
+                              </Badge>
+                            </div>
+                          ))}
                       </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
+                    ) : (
+                      <div 
+                        className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-all cursor-pointer group"
+                        onClick={() => {
+                          setSelectedReminderType('meeting_invitation');
+                          setLogDrawerOpen(true);
+                        }}
+                      >
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-semibold group-hover:text-primary transition-colors">
+                            Guest Invitation Blast
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Automated and manual invitation blasts sent to the invited guest roster.
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="ml-4 uppercase text-[10px]">
+                          email, sms
+                        </Badge>
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Mail className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p className="text-sm font-medium">No active scheduled invitations</p>
+                      <p className="text-xs">Configure invitations in the session setup page to enable scheduling</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
-              <CardHeader className="bg-muted/30 border-b">
-                <CardTitle className="text-sm font-semibold tracking-tight">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 space-y-2">
-                <Button asChild variant="outline" size="sm" className="w-full justify-start rounded-xl">
-                  <Link href={`/admin/meetings/${meetingId}/invitations`}>
-                    <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                    Invitations & Registrants
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="sm" className="w-full justify-start rounded-xl">
-                  <Link href={`/admin/meetings/${meetingId}/results`}>
-                    <BarChart3 className="h-4 w-4 mr-2 text-muted-foreground" />
-                    View Intelligence
-                  </Link>
-                </Button>
-                
-                <Separator className="my-4" />
-                
-                <Button 
-                  variant={meeting.status === 'ended' ? "secondary" : "destructive"} 
-                  size="sm" 
-                  className="w-full justify-start font-semibold transition-all rounded-xl shadow-sm"
-                  onClick={handleEndMeeting}
-                  disabled={isEnding || meeting.status === 'ended'}
-                >
-                  <Flag className="h-4 w-4 mr-2" />
-                  {isEnding ? 'Ending...' : meeting.status === 'ended' ? 'Meeting Ended' : 'End Meeting & Follow-ups'}
-                </Button>
-              </CardContent>
-            </Card>
-            {meeting.heroImageUrl && (
-              <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                <img 
-                  src={meeting.heroImageUrl} 
-                  alt="Meeting hero" 
-                  className="w-full h-48 object-cover"
-                />
-              </Card>
-            )}
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Session Controls */}
+          <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
+            <CardHeader className="bg-muted/30 border-b">
+              <CardTitle className="text-sm font-semibold tracking-tight">Session Controls</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <Button 
+                variant={meeting.status === 'ended' ? "secondary" : "destructive"} 
+                size="sm" 
+                className="w-full justify-center font-bold transition-all rounded-xl shadow-sm h-10 text-xs"
+                onClick={handleEndMeeting}
+                disabled={isEnding || meeting.status === 'ended'}
+              >
+                <Flag className="h-4 w-4 mr-2" />
+                {isEnding ? 'Ending...' : meeting.status === 'ended' ? 'Session Ended' : 'End Session & Trigger Follow-ups'}
+              </Button>
+            </CardContent>
+          </Card>
 
-            {/* Distribution & Access */}
+          {meeting.heroImageUrl && (
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-              <CardHeader className="bg-muted/30 border-b py-4">
-                <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2">
-                  <LinkIcon className="h-4 w-4 text-primary" />
-                  Distribution & Access
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="p-4 space-y-4">
-                  {/* Long Link */}
+              <img 
+                src={meeting.heroImageUrl} 
+                alt="Meeting hero" 
+                className="w-full h-48 object-cover"
+              />
+            </Card>
+          )}
+
+          {/* Distribution & Access */}
+          <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+            <CardHeader className="bg-muted/30 border-b py-4">
+              <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2">
+                <LinkIcon className="h-4 w-4 text-primary" />
+                Distribution & Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="p-4 space-y-4">
+                {/* Long Link */}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Public Link</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 overflow-hidden bg-muted/40 border border-border/60 rounded-xl px-3 py-2 flex items-center">
+                      <span className="truncate text-xs font-mono text-muted-foreground">
+                        {typeof window !== 'undefined' ? `${window.location.host}${publicUrl}` : publicUrl}
+                      </span>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg shrink-0 transition-all hover:bg-primary/10 hover:text-primary"
+                      onClick={() => handleCopy(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : publicUrl, 'long')}
+                    >
+                      {copiedLink === 'long' ? <CopyCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Short Link (If Dynamic QR exists) */}
+                {qrCode && qrCode.mode === 'dynamic' && qrCode.shortPath && (
                   <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Public Link</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Short Link</p>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 overflow-hidden bg-muted/40 border border-border/60 rounded-xl px-3 py-2 flex items-center">
-                        <span className="truncate text-xs font-mono text-muted-foreground">
-                          {typeof window !== 'undefined' ? `${window.location.host}${publicUrl}` : publicUrl}
+                      <div className="flex-1 overflow-hidden bg-primary/5 border border-primary/20 rounded-xl px-3 py-2 flex items-center">
+                        <span className="truncate text-xs font-mono font-medium text-primary">
+                          {typeof window !== 'undefined' ? window.location.host : 'go.smartsapp.com'}/q/{qrCode.shortPath}
                         </span>
                       </div>
                       <Button
                         variant="secondary"
                         size="icon"
                         className="h-8 w-8 rounded-lg shrink-0 transition-all hover:bg-primary/10 hover:text-primary"
-                        onClick={() => handleCopy(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : publicUrl, 'long')}
+                        onClick={() => handleCopy(`${typeof window !== 'undefined' ? window.location.origin : 'https://go.smartsapp.com'}/q/${qrCode.shortPath}`, 'short')}
                       >
-                        {copiedLink === 'long' ? <CopyCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                        {copiedLink === 'short' ? <CopyCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>
                   </div>
+                )}
 
-                  {/* Short Link (If Dynamic QR exists) */}
-                  {qrCode && qrCode.mode === 'dynamic' && qrCode.shortPath && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Short Link</p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 overflow-hidden bg-primary/5 border border-primary/20 rounded-xl px-3 py-2 flex items-center">
-                          <span className="truncate text-xs font-mono font-medium text-primary">
-                            {typeof window !== 'undefined' ? window.location.host : 'go.smartsapp.com'}/q/{qrCode.shortPath}
-                          </span>
-                        </div>
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-8 w-8 rounded-lg shrink-0 transition-all hover:bg-primary/10 hover:text-primary"
-                          onClick={() => handleCopy(`${typeof window !== 'undefined' ? window.location.origin : 'https://go.smartsapp.com'}/q/${qrCode.shortPath}`, 'short')}
-                        >
-                          {copiedLink === 'short' ? <CopyCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                <Separator className="my-2" />
+
+                {/* QR Code Module */}
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">QR Code</p>
+                  
+                  {isLoadingQR ? (
+                    <Skeleton className="h-[160px] w-full rounded-xl" />
+                  ) : qrCode ? (
+                    <div className="flex flex-col items-center p-5 bg-gradient-to-b from-muted/20 to-transparent border rounded-xl relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative z-10 bg-white p-3 rounded-xl shadow-sm border mb-4">
+                        <QRPreview 
+                          data={typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : publicUrl} 
+                          design={qrCode.design} 
+                          size={140} 
+                        />
+                      </div>
+                      <div className="flex w-full gap-2 relative z-10">
+                        <Button asChild variant="outline" size="sm" className="w-full text-[10px] font-bold rounded-lg">
+                          <Link href={`/admin/qr-studio/${qrCode.id}`}>
+                            <Edit className="h-3 w-3 mr-1.5" /> Studio
+                          </Link>
                         </Button>
                       </div>
                     </div>
+                  ) : (
+                    <div className="p-5 border border-dashed rounded-xl flex flex-col items-center justify-center text-center gap-3 bg-muted/10">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <QrCode className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">No QR Code</p>
+                        <p className="text-[10px] text-muted-foreground">Generate a trackable QR code for this session.</p>
+                      </div>
+                      <div className="w-full mt-2">
+                        <CreateQRButton 
+                          resourceType="meeting"
+                          resourceId={meeting.id}
+                          resourceName={meeting.entityName || meeting.heroTitle || 'Meeting'}
+                          destinationUrl={typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : publicUrl}
+                        />
+                      </div>
+                    </div>
                   )}
-
-                  <Separator className="my-2" />
-
-                  {/* QR Code Module */}
-                  <div className="space-y-3">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">QR Code</p>
-                    
-                    {isLoadingQR ? (
-                      <Skeleton className="h-[160px] w-full rounded-xl" />
-                    ) : qrCode ? (
-                      <div className="flex flex-col items-center p-5 bg-gradient-to-b from-muted/20 to-transparent border rounded-xl relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="relative z-10 bg-white p-3 rounded-xl shadow-sm border mb-4">
-                          <QRPreview 
-                            data={typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : publicUrl} 
-                            design={qrCode.design} 
-                            size={140} 
-                          />
-                        </div>
-                        <div className="flex w-full gap-2 relative z-10">
-                          <Button asChild variant="outline" size="sm" className="w-full text-[10px] font-bold rounded-lg">
-                            <Link href={`/admin/qr-studio/${qrCode.id}`}>
-                              <Edit className="h-3 w-3 mr-1.5" /> Studio
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-5 border border-dashed rounded-xl flex flex-col items-center justify-center text-center gap-3 bg-muted/10">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <QrCode className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-foreground">No QR Code</p>
-                          <p className="text-[10px] text-muted-foreground">Generate a trackable QR code for this session.</p>
-                        </div>
-                        <div className="w-full mt-2">
-                          <CreateQRButton 
-                            resourceType="meeting"
-                            resourceId={meeting.id}
-                            resourceName={meeting.entityName || meeting.heroTitle || 'Meeting'}
-                            destinationUrl={typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : publicUrl}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Facilitators Card */}
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-              <CardHeader className="bg-muted/30 border-b flex flex-row items-center justify-between py-4">
-                <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Meeting Facilitators
-                </CardTitle>
-                {meeting.facilitators && meeting.facilitators.length > 0 && (
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="gap-2 rounded-xl"
-                    onClick={() => handleBatchResendLinks(meeting.facilitators!)}
-                    disabled={isSendingLinks}
-                  >
-                    <Send className="h-4 w-4" />
-                    Resend All Links
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent className="p-0">
-                {meeting.facilitators && meeting.facilitators.length > 0 ? (
-                  <div className="divide-y divide-border/50">
-                    {meeting.facilitators.map((fac) => (
-                      <div key={fac.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-muted/30 transition-colors gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary shrink-0">
-                            {fac.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold">{fac.name}</p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                              <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{fac.role || 'Facilitator'}</Badge>
-                              <span>{fac.email}</span>
-                            </div>
-                          </div>
-                        </div>
-                         <div className="flex items-center gap-2 sm:self-auto self-end">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
-                              <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Presenter Actions</p>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                                  const fullLink = getPersonalizedMeetingUrl(origin, meeting, fac.joinLink);
-                                  handleCopy(fullLink, 'join_' + fac.id);
-                                }}
-                                className="rounded-lg text-xs font-semibold"
-                              >
-                                {copiedLink === ('join_' + fac.id) ? (
-                                  <CopyCheck className="h-4 w-4 mr-2 text-emerald-500" />
-                                ) : (
-                                  <Copy className="h-4 w-4 mr-2" />
-                                )}
-                                Copy Link
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                                  const fullLink = getPersonalizedMeetingUrl(origin, meeting, fac.joinLink);
-                                  const whatsappText = `Hello ${fac.name}, here is your unique presenter joining link for ${meeting?.heroTitle || 'the meeting'}: ${fullLink}`;
-                                  const whatsappUrl = fac.phone
-                                    ? `https://api.whatsapp.com/send?phone=${fac.phone.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(whatsappText)}`
-                                    : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
-                                  window.open(whatsappUrl, '_blank');
-                                }}
-                                className="rounded-lg text-xs font-semibold"
-                              >
-                                <svg className="h-4 w-4 mr-2 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
-                                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.458h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                                </svg>
-                                Share via WhatsApp
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleBatchResendLinks([fac])}
-                                disabled={isSendingLinks}
-                                className="rounded-lg text-xs font-semibold text-primary focus:text-primary focus:bg-primary/5"
-                              >
-                                <Send className="h-4 w-4 mr-2" />
-                                Send Link
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-8 text-center text-muted-foreground flex flex-col items-center gap-2">
-                    <Users className="h-8 w-8 opacity-20" />
-                    <p className="text-sm font-medium">No facilitators assigned to this meeting.</p>
-                    <p className="text-xs">Add facilitators by editing the meeting architecture.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
       

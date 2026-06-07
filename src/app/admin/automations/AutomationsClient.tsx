@@ -66,6 +66,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { StepTimeline } from './components/StepTimeline';
 import {
     Table,
     TableBody,
@@ -96,32 +97,59 @@ const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => 
         if (y > maxY) maxY = y;
     });
 
-    const pad = 8;
-    const width = 110;
+    const pad = 10;
+    const width = 48;
     const height = 48;
 
-    const scaleX = maxX === minX ? 1 : (width - pad * 2) / (maxX - minX);
-    const scaleY = maxY === minY ? 1 : (height - pad * 2) / (maxY - minY);
+    const rangeX = maxX - minX;
+    const rangeY = maxY - minY;
+    const maxRange = Math.max(rangeX, rangeY);
+    const scale = maxRange === 0 ? 1 : (width - pad * 2) / maxRange;
 
     const getCoords = (n: any) => {
         const x = n.position?.x ?? 0;
         const y = n.position?.y ?? 0;
-        const px = maxX === minX ? width / 2 : pad + (x - minX) * scaleX;
-        const py = maxY === minY ? height / 2 : pad + (y - minY) * scaleY;
+        const px = maxRange === 0 ? width / 2 : pad + (x - minX) * scale + (width - pad * 2 - rangeX * scale) / 2;
+        const py = maxRange === 0 ? height / 2 : pad + (y - minY) * scale + (height - pad * 2 - rangeY * scale) / 2;
         return { x: px, y: py };
     };
 
-    const nodeColors: Record<string, string> = {
-        triggerNode: 'bg-emerald-500 shadow-emerald-500/30',
-        actionNode: 'bg-blue-500 shadow-blue-500/30',
-        conditionNode: 'bg-amber-500 shadow-amber-500/30',
-        delayNode: 'bg-purple-500 shadow-purple-500/30',
-        tagConditionNode: 'bg-violet-500 shadow-violet-500/30',
-        tagActionNode: 'bg-emerald-600 shadow-emerald-600/30',
+    const getNodeVisual = (node: any) => {
+        const type = node.type;
+        const actionType = node.data?.actionType;
+
+        let IconComponent = Settings2;
+        let colorClasses = "bg-muted border-muted-foreground/20 text-muted-foreground";
+
+        if (type === 'triggerNode') {
+            IconComponent = Zap;
+            colorClasses = "bg-emerald-500/10 border-emerald-500/50 text-emerald-600 dark:text-emerald-400";
+        } else if (type === 'conditionNode' || type === 'tagConditionNode') {
+            IconComponent = ArrowRightLeft;
+            colorClasses = "bg-amber-500/10 border-amber-500/50 text-amber-600 dark:text-amber-400";
+        } else if (type === 'delayNode') {
+            IconComponent = Clock;
+            colorClasses = "bg-purple-500/10 border-purple-500/50 text-purple-600 dark:text-purple-400";
+        } else if (type === 'actionNode' || type === 'tagActionNode') {
+            colorClasses = "bg-blue-500/10 border-blue-500/50 text-blue-600 dark:text-blue-400";
+            if (actionType === 'SEND_MESSAGE') {
+                IconComponent = Mail;
+            } else if (actionType === 'ADD_TAG' || actionType === 'REMOVE_TAG') {
+                IconComponent = Tag;
+            } else if (actionType === 'CREATE_DEAL' || actionType === 'UPDATE_DEAL_STAGE') {
+                IconComponent = Target;
+            } else if (actionType === 'CREATE_TASK' || actionType === 'UPDATE_TASK') {
+                IconComponent = CheckSquare;
+            } else if (actionType === 'END_AUTOMATION') {
+                IconComponent = CheckCircle2;
+            }
+        }
+
+        return { IconComponent, colorClasses };
     };
 
     return (
-        <div className="relative w-[110px] h-[48px] rounded-lg border border-border/40 bg-muted/20 overflow-hidden shadow-inner shrink-0 transition-colors">
+        <div className="relative w-12 h-12 rounded-xl border border-border/40 bg-muted/15 overflow-hidden shadow-inner shrink-0 transition-all hover:bg-muted/25 hover:border-border/60">
             {/* Render Edges */}
             {Array.isArray(edges) && edges.map((edge) => {
                 const sourceNode = nodes.find(n => n.id === edge.source);
@@ -148,22 +176,25 @@ const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => 
             {/* Render Nodes */}
             {nodes.map((node) => {
                 const { x, y } = getCoords(node);
-                const colorClass = nodeColors[node.type] || 'bg-muted-foreground/50';
+                const { IconComponent, colorClasses } = getNodeVisual(node);
+                
                 return (
                     <TooltipProvider key={node.id} delayDuration={100}>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <div 
                                     className={cn(
-                                        "absolute w-2.5 h-2.5 rounded-full border border-background shadow-sm hover:scale-150 transition-transform cursor-pointer",
-                                        colorClass
+                                        "absolute w-[18px] h-[18px] rounded-md border flex items-center justify-center shadow-xs hover:scale-125 hover:shadow-md transition-all cursor-pointer bg-background z-10",
+                                        colorClasses
                                     )}
                                     style={{ 
                                         left: `${x}px`, 
                                         top: `${y}px`,
                                         transform: 'translate(-50%, -50%)'
                                     }}
-                                />
+                                >
+                                    <IconComponent className="h-2.5 w-2.5 stroke-[2.5]" />
+                                </div>
                             </TooltipTrigger>
                             <TooltipContent className="text-[9px] font-semibold py-1 px-2">
                                 {node.data?.label || node.type}
@@ -354,7 +385,9 @@ export default function AutomationsClient() {
 
     const uniqueTriggers = React.useMemo(() => {
         if (!automations) return [];
-        const set = new Set(automations.map(a => a.trigger));
+        const set = new Set(
+            automations.flatMap(a => a.triggerTypes ?? (a.triggers?.map((t: any) => t.type) ?? []))
+        );
         return Array.from(set).sort();
     }, [automations]);
 
@@ -365,7 +398,8 @@ export default function AutomationsClient() {
             const matchesStatus = statusFilter === 'all' || 
                 (statusFilter === 'active' && a.isActive) || 
                 (statusFilter === 'paused' && !a.isActive);
-            const matchesTrigger = triggerFilter === 'all' || a.trigger === triggerFilter;
+            const matchesTrigger = triggerFilter === 'all' ||
+                (a.triggerTypes ?? a.triggers?.map((t: any) => t.type) ?? []).includes(triggerFilter);
             return matchesSearch && matchesStatus && matchesTrigger;
         });
     }, [automations, searchTerm, statusFilter, triggerFilter]);
@@ -606,7 +640,12 @@ export default function AutomationsClient() {
                                                 </div>
                                                 <div className="mt-4 space-y-1">
                                                     <CardTitle className="text-lg font-semibold tracking-tight truncate">{auth.name}</CardTitle>
-                                                    <CardDescription className="text-[10px] font-bold opacity-60 text-left capitalize">Trigger: {auth.trigger.replace(/_/g, ' ').toLowerCase()}</CardDescription>
+                                                    <CardDescription className="text-[10px] font-bold opacity-60 text-left capitalize">
+                                                        {(auth.triggers?.length
+                                                            ? auth.triggers.map((t: any) => (t.type ?? '').replace(/_/g, ' ').toLowerCase()).join(' · ')
+                                                            : (auth.triggerTypes ?? []).map((t: string) => t.replace(/_/g, ' ').toLowerCase()).join(' · ')
+                                                        ) || 'No trigger set'}
+                                                    </CardDescription>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-6 flex-1 flex flex-col justify-between gap-6">
@@ -788,10 +827,20 @@ export default function AutomationsClient() {
                                                                      <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-1 max-w-[280px] sm:max-w-xs md:max-w-md">
                                                                          {auth.description || 'No description provided.'}
                                                                      </p>
-                                                                     <div className="flex items-center gap-2 pt-1">
-                                                                         <Badge variant="outline" className="text-[8px] font-semibold bg-accent/20 text-muted-foreground border-border rounded-md px-1.5 py-0 tracking-wider uppercase">
-                                                                             {auth.trigger.replace(/_/g, ' ')}
-                                                                         </Badge>
+                                                                     <div className="flex items-center gap-2 pt-1 flex-wrap">
+                                                                         {(auth.triggers?.length
+                                                                             ? auth.triggers.map((t: any) => t.type)
+                                                                             : auth.triggerTypes ?? []
+                                                                         ).map((type: string) => (
+                                                                             <Badge key={type} variant="outline" className="text-[8px] font-semibold bg-accent/20 text-muted-foreground border-border rounded-md px-1.5 py-0 tracking-wider uppercase">
+                                                                                 {type.replace(/_/g, ' ')}
+                                                                             </Badge>
+                                                                         ))}
+                                                                         {(!auth.triggers?.length && !auth.triggerTypes?.length) && (
+                                                                             <Badge variant="outline" className="text-[8px] font-semibold bg-accent/20 text-muted-foreground border-border rounded-md px-1.5 py-0 tracking-wider uppercase">
+                                                                                 No trigger
+                                                                             </Badge>
+                                                                         )}
                                                                      </div>
                                                                  </div>
                                                              </div>
@@ -980,15 +1029,31 @@ export default function AutomationsClient() {
 
                             {/* Failure Stack */}
                             {selectedRun?.error && (
- <Card className="border-rose-500/20 bg-rose-500/10 overflow-hidden rounded-2xl shadow-sm animate-pulse">
- <div className="p-4 bg-rose-500/20 flex items-center gap-2 border-b border-rose-500/30">
- <ShieldAlert size={14} className="text-rose-500" />
- <span className="text-[10px] font-semibold text-rose-400">Logical Termination Fault</span>
+                                <Card className="border-rose-500/20 bg-rose-500/10 overflow-hidden rounded-2xl shadow-sm animate-pulse">
+                                    <div className="p-4 bg-rose-500/20 flex items-center gap-2 border-b border-rose-500/30">
+                                        <ShieldAlert size={14} className="text-rose-500" />
+                                        <span className="text-[10px] font-semibold text-rose-400">Logical Termination Fault</span>
                                     </div>
- <CardContent className="p-4">
- <pre className="text-xs font-mono font-bold text-rose-400 whitespace-pre-wrap leading-relaxed">{selectedRun.error}</pre>
+                                    <CardContent className="p-4">
+                                        <pre className="text-xs font-mono font-bold text-rose-400 whitespace-pre-wrap leading-relaxed">{selectedRun.error}</pre>
                                     </CardContent>
                                 </Card>
+                            )}
+
+                            {/* Step Execution Timeline */}
+                            {selectedRun?.steps && Object.keys(selectedRun.steps).length > 0 && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 px-1">
+                                        <Activity size={14} className="text-primary" />
+                                        <h4 className="text-[10px] font-semibold text-primary uppercase tracking-wider">
+                                            Execution Path ({Object.keys(selectedRun.steps).filter(k => k !== '__overflow').length} steps)
+                                        </h4>
+                                    </div>
+                                    <StepTimeline
+                                        steps={selectedRun.steps}
+                                        nodes={[]}
+                                    />
+                                </div>
                             )}
 
                             {/* Entity context (P2-7) */}
@@ -1066,7 +1131,7 @@ export default function AutomationsClient() {
  <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex items-center justify-between sm:justify-between">
  <Button variant="ghost" onClick={() => setSelectedRun(null)} className="rounded-xl font-bold px-8">Close Trace</Button>
  <Button variant="outline" asChild className="rounded-xl font-semibold gap-2 border-primary/20 text-primary text-[10px] bg-card h-11 px-8 shadow-lg transition-all active:scale-95">
-                            <Link href={`/admin/automations/${selectedRun?.automationId}/edit`}>
+                            <Link href={`/admin/automations/${selectedRun?.automationId}/edit?runId=${selectedRun?.id}`}>
                                 View Logic Blueprint <ArrowRight size={14} />
                             </Link>
                         </Button>

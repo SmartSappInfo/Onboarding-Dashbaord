@@ -4,15 +4,18 @@
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import type { Automation } from '@/lib/types';
-import { Loader2, ArrowLeft, Save, Play, AlertCircle } from 'lucide-react';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, doc, orderBy, query, where } from 'firebase/firestore';
+import type { Automation, AutomationTriggerDef } from '@/lib/types';
+import { ArrowLeft, CheckCircle2, Loader2, Pencil, Play, Save, AlertCircle, Search, X, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { saveAutomationAction, testAutomationFlowAction } from '@/lib/automation-actions';
+import { saveAutomationAction, testAutomationFlowAction, toggleAutomationStatusAction } from '@/lib/automation-actions';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
 import {
@@ -23,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 const AutomationBuilder = dynamic(() => import('../../components/AutomationBuilder'), {
   ssr: false,
@@ -47,10 +51,17 @@ export default function EditAutomationPage() {
   const automationId = params.id as string;
 
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isTogglingStatus, setIsTogglingStatus] = React.useState(false);
   const [isTesting, setIsTesting] = React.useState(false);
   const [testDialogOpen, setTestDialogOpen] = React.useState(false);
   const [testEntityId, setTestEntityId] = React.useState('');
+  const [testEntityName, setTestEntityName] = React.useState('');
+  const [entitySearch, setEntitySearch] = React.useState('');
+  const [entityDropdownOpen, setEntityDropdownOpen] = React.useState(false);
   const [currentData, setCurrentData] = React.useState<Partial<Automation>>({});
+  // Pencil editor state
+  const [isEditingMeta, setIsEditingMeta] = React.useState(false);
+  const [editDraft, setEditDraft] = React.useState({ name: '', description: '' });
 
   const docRef = useMemoFirebase(
     () => (firestore ? doc(firestore, 'automations', automationId) : null),
@@ -65,6 +76,8 @@ export default function EditAutomationPage() {
         const next = { ...prev };
         if (next.name === undefined) next.name = automation.name;
         if (next.description === undefined) next.description = automation.description || '';
+        // Initialise triggers from Firestore on first load
+        if (next.triggers === undefined) next.triggers = automation.triggers ?? [];
         return next;
       });
     }
@@ -76,11 +89,40 @@ export default function EditAutomationPage() {
     const descChanged = currentData.description !== undefined && currentData.description !== (automation.description || '');
     const nodesChanged = currentData.nodes !== undefined && JSON.stringify(currentData.nodes) !== JSON.stringify(automation.nodes);
     const edgesChanged = currentData.edges !== undefined && JSON.stringify(currentData.edges) !== JSON.stringify(automation.edges);
-    return nameChanged || descChanged || nodesChanged || edgesChanged;
+    const triggersChanged = currentData.triggers !== undefined && JSON.stringify(currentData.triggers) !== JSON.stringify(automation.triggers ?? []);
+    return nameChanged || descChanged || nodesChanged || edgesChanged || triggersChanged;
   }, [automation, currentData]);
 
   const testWorkspaceId =
     automation?.workspaceIds?.[0] || activeWorkspaceId || '';
+
+  // ── Entity search query ──────────────────────────────────────────────────────
+  // Entities don't store workspaceIds on the root document. The join collection
+  // `workspace_entities` is the correct scoped source with displayName denormalized.
+  const entitiesQuery = useMemoFirebase(() => {
+    if (!firestore || !testDialogOpen || !testWorkspaceId) return null;
+    return query(
+      collection(firestore, 'workspace_entities'),
+      where('workspaceId', '==', testWorkspaceId),
+      orderBy('displayName', 'asc'),
+    );
+  }, [firestore, testDialogOpen, testWorkspaceId]);
+
+  const { data: rawEntities } = useCollection<{
+    id: string;
+    entityId: string;
+    displayName: string;
+    entityType?: string;
+  }>(entitiesQuery);
+
+  const filteredEntities = React.useMemo(() => {
+    if (!rawEntities) return [];
+    const q = entitySearch.trim().toLowerCase();
+    if (!q) return rawEntities.slice(0, 50);
+    return rawEntities
+      .filter((e) => (e.displayName || '').toLowerCase().includes(q))
+      .slice(0, 50);
+  }, [rawEntities, entitySearch]);
 
   const handleStateChange = React.useCallback((nodes: unknown[], edges: unknown[]) => {
     setCurrentData((prev) => {
@@ -94,6 +136,13 @@ export default function EditAutomationPage() {
     });
   }, []);
 
+  const handleTriggersChange = React.useCallback((triggers: AutomationTriggerDef[]) => {
+    setCurrentData((prev) => ({ ...prev, triggers }));
+  }, []);
+
+  // Resolved triggers: prefer in-flight edits, fall back to saved data
+  const activeTriggers: AutomationTriggerDef[] = currentData.triggers ?? automation?.triggers ?? [];
+
   const handleSaveAndReturn = React.useCallback(async (): Promise<boolean> => {
     if (!user) return false;
     setIsSaving(true);
@@ -101,7 +150,7 @@ export default function EditAutomationPage() {
     const res = await saveAutomationAction(automationId, cleanData, user.uid);
     setIsSaving(false);
     if (res.success) {
-      toast({ title: 'Logic Synchronized', description: 'Automation blueprint updated.' });
+      toast({ title: 'Automation Saved', description: 'Blueprint updated successfully.' });
       return true;
     } else {
       toast({ variant: 'destructive', title: 'Save Failed', description: res.error });
@@ -111,6 +160,31 @@ export default function EditAutomationPage() {
 
   const handleSave = async () => {
     await handleSaveAndReturn();
+  };
+
+  const handleToggleActive = async (active: boolean) => {
+    if (!user?.uid) return;
+    setIsTogglingStatus(true);
+    const res = await toggleAutomationStatusAction(automationId, active, user.uid);
+    setIsTogglingStatus(false);
+    if (res.success) {
+      toast({
+        title: active ? 'Automation Activated' : 'Automation Paused',
+        description: active ? 'This automation will now run on triggers.' : 'No new runs will be started.',
+      });
+    } else {
+      toast({ variant: 'destructive', title: 'Toggle failed', description: (res as any).error });
+    }
+  };
+
+  const openEditMeta = () => {
+    setEditDraft({ name: currentData.name ?? automation?.name ?? '', description: currentData.description ?? automation?.description ?? '' });
+    setIsEditingMeta(true);
+  };
+
+  const commitEditMeta = () => {
+    setCurrentData((prev) => ({ ...prev, name: editDraft.name, description: editDraft.description }));
+    setIsEditingMeta(false);
   };
 
   React.useEffect(() => {
@@ -124,7 +198,7 @@ export default function EditAutomationPage() {
       toast({
         variant: 'destructive',
         title: 'Entity required',
-        description: 'Enter an entity ID to run the test against.',
+        description: 'Select an entity from the list to run the test against.',
       });
       return;
     }
@@ -136,6 +210,9 @@ export default function EditAutomationPage() {
     setIsTesting(false);
     if (res.success) {
       setTestDialogOpen(false);
+      setTestEntityId('');
+      setTestEntityName('');
+      setEntitySearch('');
       toast({
         title: 'Test run started',
         description: res.message || 'Check the Automation Hub run ledger.',
@@ -173,25 +250,99 @@ export default function EditAutomationPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="min-w-0 flex-1 flex flex-col justify-center max-w-xl">
-            <input
-              type="text"
-              value={currentData.name ?? ''}
-              onChange={(e) => setCurrentData((prev) => ({ ...prev, name: e.target.value }))}
-              placeholder="Automation Title"
-              className="text-sm font-semibold tracking-tight text-foreground bg-transparent border-0 border-b border-transparent hover:border-muted-foreground/30 focus:border-primary focus:ring-0 focus:outline-none p-0 pb-0.5 h-6 w-full transition-colors"
-            />
-            <input
-              type="text"
-              value={currentData.description ?? ''}
-              onChange={(e) => setCurrentData((prev) => ({ ...prev, description: e.target.value }))}
-              placeholder="Add a description for this workflow blueprint..."
-              className="text-[10px] font-medium text-muted-foreground bg-transparent border-0 border-b border-transparent hover:border-muted-foreground/30 focus:border-primary focus:ring-0 focus:outline-none p-0 pb-0.5 h-4 w-full transition-colors"
-            />
+
+          {/* Title / description — inline editable on pencil click */}
+          <div className="min-w-0 flex-1">
+            {isEditingMeta ? (
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                  <input
+                    type="text"
+                    value={editDraft.name}
+                    onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitEditMeta();
+                      if (e.key === 'Escape') setIsEditingMeta(false);
+                    }}
+                    placeholder="Automation name"
+                    autoFocus
+                    className="text-sm font-semibold tracking-tight text-foreground bg-muted/40 border border-primary/40 rounded-lg px-2 py-0.5 h-6 w-full focus:outline-none focus:ring-1 focus:ring-primary/60 transition-all"
+                  />
+                  <input
+                    type="text"
+                    value={editDraft.description}
+                    onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setIsEditingMeta(false);
+                    }}
+                    placeholder="Add a description…"
+                    className="text-[10px] font-medium text-muted-foreground bg-muted/40 border border-border/50 rounded-lg px-2 py-0.5 h-4 w-full focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+                  />
+                </div>
+                {/* Confirm */}
+                <button
+                  type="button"
+                  title="Save"
+                  onClick={commitEditMeta}
+                  disabled={!editDraft.name.trim()}
+                  className="h-7 w-7 rounded-lg flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-all shrink-0"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </button>
+                {/* Cancel */}
+                <button
+                  type="button"
+                  title="Cancel"
+                  onClick={() => setIsEditingMeta(false)}
+                  className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all shrink-0"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 min-w-0 group/meta">
+                <div className="min-w-0 flex flex-col justify-center">
+                  <p className="text-sm font-semibold tracking-tight text-foreground truncate leading-snug">
+                    {currentData.name || automation.name || 'Untitled Workflow'}
+                  </p>
+                  <p className="text-[10px] font-medium text-muted-foreground truncate leading-snug">
+                    {currentData.description || automation.description || 'Add a description…'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  title="Edit name & description"
+                  onClick={openEditMeta}
+                  className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 opacity-0 group-hover/meta:opacity-100 transition-all shrink-0"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Active / Inactive toggle */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border/60 bg-card/50">
+            <Switch
+              id="automation-active-toggle"
+              checked={automation.isActive ?? false}
+              onCheckedChange={handleToggleActive}
+              disabled={isTogglingStatus}
+              className="data-[state=checked]:bg-emerald-500"
+            />
+            <Label
+              htmlFor="automation-active-toggle"
+              className={cn(
+                'text-[11px] font-semibold cursor-pointer select-none transition-colors',
+                automation.isActive ? 'text-emerald-600' : 'text-muted-foreground',
+              )}
+            >
+              {isTogglingStatus ? 'Updating…' : automation.isActive ? 'Active' : 'Inactive'}
+            </Label>
+          </div>
+
           <Button
             variant="outline"
             className="rounded-xl font-bold h-10 gap-2 border-primary/20 text-primary"
@@ -202,10 +353,10 @@ export default function EditAutomationPage() {
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-xl font-semibold h-10 px-8 shadow-xl shadow-primary/20 gap-2 text-[10px]"
+            className="rounded-xl font-semibold h-10 px-6 shadow-xl shadow-primary/20 gap-2 text-xs"
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Commit Logic
+            Save Automation
           </Button>
         </div>
       </header>
@@ -224,11 +375,23 @@ export default function EditAutomationPage() {
         <AutomationBuilder
           initialNodes={automation.nodes}
           initialEdges={automation.edges}
+          triggers={activeTriggers}
           onStateChange={handleStateChange}
+          onTriggersChange={handleTriggersChange}
+          automationId={automationId}
         />
       </div>
 
-      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+      <Dialog
+        open={testDialogOpen}
+        onOpenChange={(open) => {
+          setTestDialogOpen(open);
+          if (!open) {
+            setEntitySearch('');
+            setEntityDropdownOpen(false);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle>Test automation flow</DialogTitle>
@@ -237,32 +400,117 @@ export default function EditAutomationPage() {
               Automation Hub run ledger.
             </DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4 py-2">
+            {/* Workspace (read-only) */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Workspace</Label>
               <Input value={testWorkspaceId} disabled className="font-mono text-xs" />
             </div>
+
+            {/* Entity search picker */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold">Entity ID</Label>
-              <Input
-                value={testEntityId}
-                onChange={(e) => setTestEntityId(e.target.value)}
-                placeholder="Entity to target for this test"
-                className="font-mono text-xs"
-              />
+              <Label className="text-xs font-semibold">Target Entity</Label>
+
+              {/* Selected entity badge */}
+              {testEntityId && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 animate-in fade-in duration-200">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-xs font-semibold text-primary flex-1 truncate">{testEntityName}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTestEntityId('');
+                      setTestEntityName('');
+                      setEntitySearch('');
+                    }}
+                    className="text-primary/60 hover:text-primary transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+
+              {/* Search input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={entitySearch}
+                  onChange={(e) => {
+                    setEntitySearch(e.target.value);
+                    setEntityDropdownOpen(true);
+                    if (testEntityId) {
+                      setTestEntityId('');
+                      setTestEntityName('');
+                    }
+                  }}
+                  onFocus={() => setEntityDropdownOpen(true)}
+                  placeholder="Search by name…"
+                  className="pl-8 text-xs h-10 rounded-xl"
+                />
+              </div>
+
+              {/* Results dropdown */}
+              {entityDropdownOpen && entitySearch.trim() && (
+                <div className="border border-border/60 rounded-xl bg-card shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                  {filteredEntities.length === 0 ? (
+                    <div className="px-4 py-6 text-center">
+                      <p className="text-xs font-semibold text-muted-foreground">No entities found</p>
+                    </div>
+                  ) : (
+                    <ul className="max-h-52 overflow-y-auto divide-y divide-border/30">
+                      {filteredEntities.map((entity) => {
+                        const label = entity.displayName || entity.id;
+                        const entityId = entity.entityId || entity.id;
+                        return (
+                          <li key={entity.id}>
+                            <button
+                              type="button"
+                              className={cn(
+                                'w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-primary/5 transition-colors group',
+                                testEntityId === entityId && 'bg-primary/10',
+                              )}
+                              onClick={() => {
+                                setTestEntityId(entityId);
+                                setTestEntityName(label);
+                                setEntitySearch('');
+                                setEntityDropdownOpen(false);
+                              }}
+                            >
+                              <div className="h-6 w-6 rounded-lg bg-muted flex items-center justify-center shrink-0 text-[9px] font-black text-muted-foreground uppercase">
+                                {label.charAt(0)}
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-semibold text-foreground truncate">{label}</span>
+                                <span className="text-[9px] text-muted-foreground/50 truncate">{entity.entityType || 'entity'}</span>
+                              </div>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => setTestDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleTestFlow} disabled={isTesting} className="gap-2">
+            <Button
+              onClick={handleTestFlow}
+              disabled={isTesting || !testEntityId}
+              className="gap-2"
+            >
               {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               Run test
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

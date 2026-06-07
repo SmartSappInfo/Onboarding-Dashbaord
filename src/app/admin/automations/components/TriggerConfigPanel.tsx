@@ -26,6 +26,8 @@ import { useUser } from '@/firebase';
 import { createTagAction } from '@/lib/tag-actions';
 
 interface TriggerConfigPanelProps {
+  /** Stable ID of the AutomationTriggerDef this panel is configuring. */
+  triggerId: string;
   trigger: AutomationTrigger;
   config: Record<string, any>;
   onUpdateConfig: (updates: Record<string, any>) => void;
@@ -39,6 +41,7 @@ interface TriggerConfigPanelProps {
 }
 
 export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
+  triggerId: _triggerId, // stored for parent routing; unused internally
   trigger,
   config,
   onUpdateConfig,

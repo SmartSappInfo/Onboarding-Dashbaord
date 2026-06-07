@@ -20,8 +20,11 @@ import {
     Activity,
     PlusCircle,
     UserCheck,
-    RefreshCw
+    RefreshCw,
+    ChevronDown,
+    ChevronRight
 } from 'lucide-react';
+import { StepTimeline } from '@/app/admin/automations/components/StepTimeline';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -36,6 +39,14 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
 
     const [isMutating, setIsMutating] = React.useState<string | null>(null);
     const [selectedAutomationId, setSelectedAutomationId] = React.useState<string>('');
+    const [expandedRunIds, setExpandedRunIds] = React.useState<Record<string, boolean>>({});
+
+    const toggleRunExpanded = (runId: string) => {
+        setExpandedRunIds(prev => ({
+            ...prev,
+            [runId]: !prev[runId]
+        }));
+    };
 
     // 1. Fetch all automations in this workspace (for enrolling)
     const automationsQuery = useMemoFirebase(() => {
@@ -208,39 +219,64 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                 </h4>
                 {activeRuns.length > 0 ? (
                     <div className="grid grid-cols-1 gap-3">
-                        {activeRuns.map((run: any) => (
-                            <Card key={run.id} className="border-emerald-100 bg-emerald-50/10 dark:bg-emerald-950/5 rounded-2xl shadow-sm hover:shadow-md transition-all text-left">
-                                <CardContent className="p-4 flex items-center justify-between gap-4 text-left">
-                                    <div className="flex items-center gap-3 text-left">
-                                        <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl">
-                                            <Activity className="h-5 w-5 animate-pulse" />
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="text-sm font-bold text-foreground leading-tight">{run.automationName || 'Unnamed Automation'}</p>
-                                            <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-semibold mt-1 flex-wrap">
-                                                <span>Enrolled {run.startedAt ? new Date(run.startedAt).toLocaleString() : 'recently'}</span>
-                                                <span>•</span>
-                                                <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-none font-bold text-[8px] h-4.5 px-2">Active</Badge>
+                        {activeRuns.map((run: any) => {
+                            const isExpanded = !!expandedRunIds[run.id];
+                            return (
+                                <Card key={run.id} className="border-emerald-100 bg-emerald-50/10 dark:bg-emerald-950/5 rounded-2xl shadow-sm hover:shadow-md transition-all text-left">
+                                    <CardContent className="p-4 flex flex-col gap-4 text-left">
+                                        <div 
+                                            onClick={() => toggleRunExpanded(run.id)}
+                                            className="flex items-center justify-between gap-4 text-left cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-3 text-left">
+                                                <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl">
+                                                    <Activity className="h-5 w-5 animate-pulse" />
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className="text-sm font-bold text-foreground leading-tight">{run.automationName || 'Unnamed Automation'}</p>
+                                                    <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-semibold mt-1 flex-wrap">
+                                                        <span>Enrolled {run.startedAt ? new Date(run.startedAt).toLocaleString() : 'recently'}</span>
+                                                        <span>•</span>
+                                                        <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-none font-bold text-[8px] h-4.5 px-2">Active</Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCancel(run.id);
+                                                    }}
+                                                    disabled={isMutating !== null}
+                                                    className="rounded-xl border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400 h-9 font-bold text-xs shrink-0 flex items-center gap-1"
+                                                >
+                                                    {isMutating === run.id ? (
+                                                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                                    ) : (
+                                                        <XCircle className="h-3.5 w-3.5" />
+                                                    )}
+                                                    Cancel Flow
+                                                </Button>
+                                                {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                                             </div>
                                         </div>
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleCancel(run.id)}
-                                        disabled={isMutating !== null}
-                                        className="rounded-xl border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400 h-9 font-bold text-xs shrink-0 flex items-center gap-1"
-                                    >
-                                        {isMutating === run.id ? (
-                                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                        ) : (
-                                            <XCircle className="h-3.5 w-3.5" />
+                                        {isExpanded && (
+                                            <div className="pt-2 border-t border-emerald-100/50 text-left">
+                                                {run.steps && Object.keys(run.steps).length > 0 ? (
+                                                    <StepTimeline steps={run.steps} nodes={[]} />
+                                                ) : (
+                                                    <p className="text-[10px] text-muted-foreground italic">
+                                                        No step execution logs available for this run.
+                                                    </p>
+                                                )}
+                                            </div>
                                         )}
-                                        Cancel Flow
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
                 ) : (
                     <div className="py-10 text-center border border-dashed rounded-2xl bg-muted/5 opacity-50 flex flex-col items-center justify-center gap-2">
@@ -261,47 +297,67 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                             const isCompleted = run.status === 'completed';
                             const isCancelled = run.status === 'cancelled';
                             const isFailed = run.status === 'failed';
+                            const isExpanded = !!expandedRunIds[run.id];
 
                             return (
-                                <div key={run.id} className="p-4 flex items-center justify-between gap-4 hover:bg-muted/5 transition-colors text-left">
-                                    <div className="flex items-center gap-3 min-w-0 text-left">
-                                        <div className={cn(
-                                            "p-2 rounded-xl shrink-0",
-                                            isCompleted ? "bg-emerald-500/10 text-emerald-600" :
-                                            isCancelled ? "bg-slate-500/10 text-slate-600" : "bg-rose-500/10 text-rose-600"
-                                        )}>
-                                            {isCompleted ? <CheckCircle2 className="h-4 w-4" /> :
-                                             isCancelled ? <XCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                                        </div>
-                                        <div className="min-w-0 text-left">
-                                            <p className="text-xs font-bold text-foreground truncate leading-tight">{run.automationName || 'Unnamed Automation'}</p>
-                                            <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-semibold mt-1 flex-wrap">
-                                                <span>Ran {run.startedAt ? new Date(run.startedAt).toLocaleString() : 'recently'}</span>
-                                                {run.finishedAt && (
-                                                    <>
-                                                        <span>•</span>
-                                                        <span>Took {Math.max(1, Math.round((new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime()) / 1000))}s</span>
-                                                    </>
-                                                )}
-                                                {run.error && (
-                                                    <>
-                                                        <span>•</span>
-                                                        <span className="text-rose-500 truncate max-w-[200px]">Error: {run.error}</span>
-                                                    </>
-                                                )}
+                                <div key={run.id} className="border-b last:border-b-0">
+                                    <div 
+                                        onClick={() => toggleRunExpanded(run.id)}
+                                        className="p-4 flex items-center justify-between gap-4 hover:bg-muted/5 transition-colors text-left cursor-pointer"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0 text-left">
+                                            <div className={cn(
+                                                "p-2 rounded-xl shrink-0",
+                                                isCompleted ? "bg-emerald-500/10 text-emerald-600" :
+                                                isCancelled ? "bg-slate-500/10 text-slate-600" : "bg-rose-500/10 text-rose-600"
+                                            )}>
+                                                {isCompleted ? <CheckCircle2 className="h-4 w-4" /> :
+                                                 isCancelled ? <XCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                                            </div>
+                                            <div className="min-w-0 text-left">
+                                                <p className="text-xs font-bold text-foreground truncate leading-tight">{run.automationName || 'Unnamed Automation'}</p>
+                                                <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-semibold mt-1 flex-wrap">
+                                                    <span>Ran {run.startedAt ? new Date(run.startedAt).toLocaleString() : 'recently'}</span>
+                                                    {run.finishedAt && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span>Took {Math.max(1, Math.round((new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime()) / 1000))}s</span>
+                                                        </>
+                                                    )}
+                                                    {run.error && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="text-rose-500 truncate max-w-[200px]">Error: {run.error}</span>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <Badge 
+                                                variant="outline" 
+                                                className={cn(
+                                                    "text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border shrink-0",
+                                                    isCompleted ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" :
+                                                    isCancelled ? "text-slate-500 bg-slate-500/10 border-slate-500/20" : "text-rose-500 bg-rose-500/10 border-rose-500/20"
+                                                )}
+                                            >
+                                                {run.status}
+                                            </Badge>
+                                            {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                        </div>
                                     </div>
-                                    <Badge 
-                                        variant="outline" 
-                                        className={cn(
-                                            "text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border shrink-0",
-                                            isCompleted ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" :
-                                            isCancelled ? "text-slate-500 bg-slate-500/10 border-slate-500/20" : "text-rose-500 bg-rose-500/10 border-rose-500/20"
-                                        )}
-                                    >
-                                        {run.status}
-                                    </Badge>
+                                    {isExpanded && (
+                                        <div className="px-6 pb-6 pt-2 bg-muted/10 border-t border-border/40 text-left">
+                                            {run.steps && Object.keys(run.steps).length > 0 ? (
+                                                <StepTimeline steps={run.steps} nodes={[]} />
+                                            ) : (
+                                                <p className="text-[10px] text-muted-foreground italic">
+                                                    No step execution logs available for this run.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}

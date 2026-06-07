@@ -97,26 +97,27 @@ export function DateTimePicker({ value, onChange, disabled, className, variant }
               disabled={disabled}
             />
             <div className="relative w-[200px] overflow-hidden">
-                <div className="absolute inset-0 grid grid-rows-[auto_1fr] gap-2">
-                <div className="space-y-2 px-4 pt-4">
-                    <p className="text-center font-medium text-sm">Available Times</p>
+              <div className="absolute inset-0 flex flex-col min-h-0">
+                <div className="space-y-2 px-4 pt-4 pb-2 shrink-0 text-center">
+                  <p className="font-semibold text-sm text-foreground">Available Times</p>
                 </div>
-                <ScrollArea className="h-full">
-                    <div className="grid grid-cols-1 gap-2 px-4 pb-4">
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="grid grid-cols-1 gap-2 px-4 pb-4">
                     {availableTimes.map(time => (
-                        <Button
-                          key={time}
-                          onClick={() => handleTimeSelect(time)}
-                          size="sm"
-                          variant={selectedTime === time ? "default" : "outline"}
-                          disabled={!value || disabled}
-                        >
-                          {time}
-                        </Button>
+                      <Button
+                        key={time}
+                        onClick={() => handleTimeSelect(time)}
+                        size="sm"
+                        variant={selectedTime === time ? "default" : "outline"}
+                        disabled={!value || disabled}
+                        className="font-semibold rounded-lg"
+                      >
+                        {time}
+                      </Button>
                     ))}
-                    </div>
+                  </div>
                 </ScrollArea>
-                </div>
+              </div>
             </div>
         </div>
       </PopoverContent>

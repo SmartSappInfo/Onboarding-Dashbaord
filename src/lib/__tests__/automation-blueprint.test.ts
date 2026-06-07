@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { deriveTriggerFromNodes, serializeBlueprint } from '../automation-blueprint';
+import { deriveTriggerDefsFromNodes, serializeBlueprint } from '../automation-blueprint';
 
 describe('serializeBlueprint', () => {
-  it('derives top-level trigger from triggerNode.data.trigger', () => {
+  it('derives triggers and triggerTypes from triggerNode.data.trigger', () => {
     const result = serializeBlueprint({
       name: 'Test',
       nodes: [
@@ -22,29 +22,31 @@ describe('serializeBlueprint', () => {
       edges: [],
     });
 
-    expect(result.trigger).toBe('TAG_ADDED');
+    expect(result.triggers?.[0]?.type).toBe('TAG_ADDED');
+    expect(result.triggerTypes).toContain('TAG_ADDED');
     const triggerNode = result.nodes?.find((n) => n.id === 't1');
     expect(triggerNode?.data?.trigger).toBe('TAG_ADDED');
   });
 
   it('falls back to triggerType on legacy nodes', () => {
-    expect(
-      deriveTriggerFromNodes([
-        { id: 't1', type: 'triggerNode', data: { triggerType: 'ENTITY_CREATED' } },
-      ])
-    ).toBe('ENTITY_CREATED');
+    const result = deriveTriggerDefsFromNodes([
+      { id: 't1', type: 'triggerNode', data: { triggerType: 'ENTITY_CREATED' } },
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('ENTITY_CREATED');
   });
 
-  it('preserves explicit top-level trigger when nodes omit trigger node', () => {
+  it('preserves explicit triggers when nodes omit trigger node', () => {
     const result = serializeBlueprint({
-      trigger: 'TASK_COMPLETED',
+      triggers: [{ id: 't1', type: 'TASK_COMPLETED', config: {} }],
       nodes: [],
       edges: [],
     });
-    expect(result.trigger).toBe('TASK_COMPLETED');
+    expect(result.triggers?.[0]?.type).toBe('TASK_COMPLETED');
+    expect(result.triggerTypes).toContain('TASK_COMPLETED');
   });
 
-  it('P5-1: mirrors saveAutomationAction normalization (nodes-only → top-level trigger)', () => {
+  it('P5-1: mirrors saveAutomationAction normalization (nodes-only → triggers)', () => {
     const nodesOnly = {
       name: 'Tag Follow-up',
       nodes: [
@@ -59,7 +61,8 @@ describe('serializeBlueprint', () => {
     };
 
     const saved = serializeBlueprint(nodesOnly);
-    expect(saved.trigger).toBe('MEETING_REGISTRANT_ADDED');
+    expect(saved.triggers?.[0]?.type).toBe('MEETING_REGISTRANT_ADDED');
+    expect(saved.triggerTypes).toContain('MEETING_REGISTRANT_ADDED');
     expect(saved.nodes?.[0]?.data?.trigger).toBe('MEETING_REGISTRANT_ADDED');
   });
 });

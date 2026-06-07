@@ -560,7 +560,7 @@ export default function NewMeetingPage() {
     }
   };
 
-  const publicTypeSlug = watchedType?.slug === 'parent' ? 'parent-engagement' : watchedType?.slug;
+  const publicTypeSlug = (watchedType?.slug as string) === 'parent' ? 'parent-engagement' : watchedType?.slug;
   const publicUrl = watchedType && watchedSlug ? `/meetings/${publicTypeSlug}/${watchedSlug}` : null;
 
   const handleNext = async () => {

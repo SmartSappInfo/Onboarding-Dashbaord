@@ -726,10 +726,9 @@ function buildIndustryDefaults(
 
     case 'SaaS':
       if (entityType === 'institution') {
-        // SaaSInstitutionDataSchema requires: capacity, accountStatus
+        // SaaSInstitutionDataSchema requires: capacity only (accountStatus is optional/deprecated)
         return {
           capacity: d.capacity ?? 0,
-          accountStatus: d.accountStatus ?? 'lead',
           ...(d.activeUsers !== undefined && { activeUsers: d.activeUsers }),
         };
       } else {

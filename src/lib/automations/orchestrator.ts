@@ -30,11 +30,15 @@ export async function triggerAutomationProtocols(
         continue;
       }
 
-      if (!evaluateTriggerConfig(automation, payload)) {
+      // Enrich payload with the currently-firing trigger type so
+      // evaluateTriggerConfig can look up the correct AutomationTriggerDef
+      const enrichedPayload = { ...payload, _firingTrigger: trigger };
+
+      if (!evaluateTriggerConfig(automation, enrichedPayload)) {
         continue;
       }
 
-      await executeAutomation(automation, payload);
+      await executeAutomation(automation, enrichedPayload);
     }
 
     after(async () => {

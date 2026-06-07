@@ -20,6 +20,12 @@ function nodeLabel(node: BlueprintNode): string {
 export async function validateAutomationBlueprint(automation: Partial<Automation>): Promise<void> {
   if (!automation.nodes?.length) return;
 
+  if (!automation.triggers?.length) {
+    throw new AutomationValidationError(
+      'At least one trigger must be configured before saving.'
+    );
+  }
+
   const nodes = automation.nodes as BlueprintNode[];
   const actionNodes = nodes.filter((n) => n.type === 'actionNode');
 
@@ -112,7 +118,7 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
       case 'SEND_NOTIFICATION_EMAIL':
       case 'SEND_NOTIFICATION_SMS':
       case 'SEND_NOTIFICATION_IN_APP':
-      case 'SEND_NOTIFICATION_PUSH':
+      case 'SEND_NOTIFICATION_PUSH': {
         const targets = config.notificationTargets as string[] | undefined;
         if (!targets || targets.length === 0) {
           throw new AutomationValidationError(
@@ -129,12 +135,13 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
             `Notification action "${label}" has "Custom Destination Address" active but no custom recipient value is set.`
           );
         }
-        if (!config.notificationBody) {
+        if (!config.templateId) {
           throw new AutomationValidationError(
-            `Notification action "${label}" requires a message body.`
+            `Notification action "${label}" requires a notification template to be selected.`
           );
         }
         break;
+      }
       case 'CREATE_TASK':
         if (!config.title || typeof config.title !== 'string') {
           throw new AutomationValidationError(`Create task in "${label}" requires a title.`);
@@ -244,8 +251,16 @@ async function validateAutomationTemplatesBatch(actionNodes: BlueprintNode[]): P
     label: string;
   }[] = [];
 
+  const TEMPLATE_DRIVEN_ACTIONS = new Set([
+    'SEND_MESSAGE',
+    'SEND_NOTIFICATION_EMAIL',
+    'SEND_NOTIFICATION_SMS',
+    'SEND_NOTIFICATION_IN_APP',
+    'SEND_NOTIFICATION_PUSH',
+  ]);
+
   for (const node of actionNodes) {
-    if (node.data?.actionType !== 'SEND_MESSAGE') continue;
+    if (!TEMPLATE_DRIVEN_ACTIONS.has(node.data?.actionType as string)) continue;
     const config = (node.data?.config || {}) as Record<string, unknown>;
     const label = nodeLabel(node);
 

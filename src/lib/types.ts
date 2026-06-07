@@ -229,6 +229,22 @@ export type AutomationTrigger =
   | 'AUTOMATION_COMPLETED';
 
 /**
+ * A single trigger entry within an automation's trigger list.
+ * Each def has its own isolated config (e.g. which specific form, tag, or survey to watch).
+ * The automation fires if ANY of its trigger defs matches the incoming event.
+ */
+export interface AutomationTriggerDef {
+  /** Stable local ID for this entry (nanoid). Used to route config changes back to the correct def. */
+  id: string;
+  /** The event type this trigger listens for. */
+  type: AutomationTrigger;
+  /** Per-trigger configuration (e.g. tagIds, formId, surveyId, stageId). */
+  config?: Record<string, unknown>;
+  /** Optional user-facing label override. Defaults to the trigger type's display name. */
+  label?: string;
+}
+
+/**
  * Configuration for tag-based automation triggers (TAG_ADDED / TAG_REMOVED).
  * Specifies which tags to watch and optionally filters by contact type or
  * how the tag was applied.
@@ -1988,7 +2004,21 @@ export interface Automation {
   workspaceIds: string[]; // Shared
   name: string;
   description?: string;
-  trigger: AutomationTrigger;
+
+  /**
+   * First-class multi-trigger array.
+   * Each entry has its own type and isolated config.
+   * The automation fires if ANY trigger def matches the incoming event.
+   */
+  triggers: AutomationTriggerDef[];
+
+  /**
+   * Denormalized flat array of trigger type strings for Firestore array-contains queries.
+   * Always kept in sync with triggers[].type by serializeBlueprint.
+   * Example: ['TAG_ADDED', 'FORM_SUBMITTED']
+   */
+  triggerTypes: string[];
+
   nodes: any[];
   edges: any[];
   isActive: boolean;
@@ -2068,8 +2098,17 @@ export interface AutomationAction {
   notificationTargets?: ('assignee' | 'users' | 'custom')[];
   notificationUserIds?: string[];
   customRecipient?: string;
+  /**
+   * @deprecated Replaced by templateId. The selected notification template carries
+   * the subject. Kept for backward compatibility with existing Firestore documents.
+   */
   notificationSubject?: string;
+  /**
+   * @deprecated Replaced by templateId. The selected notification template carries
+   * the message body. Kept for backward compatibility with existing Firestore documents.
+   */
   notificationBody?: string;
+
 }
 
 export interface CampaignSession {
@@ -2087,6 +2126,23 @@ export interface CampaignSession {
   updatedAt?: string;
 }
 
+export interface StepExecution {
+  nodeId: string;
+  nodeType: string;
+  nodeLabel: string;
+  status: 'success' | 'failed' | 'waiting' | 'skipped';
+  executedAt: string;
+  durationMs?: number;
+  error?: string;
+  metadata?: {
+    evaluation?: 'true' | 'false';
+    actionType?: string;
+    delayUntil?: string;
+    resumedAt?: string;
+    output?: Record<string, unknown>;
+  };
+}
+
 export interface AutomationRun {
   id: string;
   automationId: string;
@@ -2098,6 +2154,8 @@ export interface AutomationRun {
   error?: string;
   entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity
+  workspaceId?: string;
+  steps?: Record<string, StepExecution>;
 }
 
 export interface AutomationJob {
@@ -3340,7 +3398,8 @@ export interface SaaSInstitutionData {
   industry: 'SaaS';
   capacity: number; // Renamed from companySize
   activeUsers?: number;
-  accountStatus: 'lead' | 'trial' | 'active' | 'suspended' | 'churned';
+  /** @deprecated Use lifecycleStatus on WorkspaceEntity. Retained for SaaS billing integrations only. */
+  accountStatus?: 'lead' | 'trial' | 'active' | 'suspended' | 'churned';
   trialIds?: string[];
   onboardingIds?: string[];
   supportTicketIds?: string[];

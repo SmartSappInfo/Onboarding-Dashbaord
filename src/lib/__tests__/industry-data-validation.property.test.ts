@@ -51,6 +51,7 @@ function minimalIndustryData(industry: IndustryVertical): object {
         
         gradeOfferings: ['K'],
         academicYear: '2024-2025',
+        capacity: 10,
       };
     case 'Law':
       return {
@@ -78,7 +79,7 @@ function minimalIndustryData(industry: IndustryVertical): object {
         industry: 'Consultancy',
         
         clientIndustry: 'finance',
-        capacity: {},
+        capacity: 10,
       };
   }
 }

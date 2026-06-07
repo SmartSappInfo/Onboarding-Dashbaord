@@ -324,7 +324,6 @@ export async function mapSchoolToSaaSEntity(school: School): Promise<Entity> {
   const saasIndustryData: import('./types').SaaSInstitutionData = {
     industry: 'SaaS',
     capacity: school.nominalRoll || 0,
-    accountStatus: inferAccountStatus(school),
     trialIds: [],
     onboardingIds: [],
     supportTicketIds: [],
@@ -368,28 +367,7 @@ export async function mapSchoolToSaaSEntity(school: School): Promise<Entity> {
   return entity;
 }
 
-/**
- * Infers SaaS account status from legacy school data.
- */
-function inferAccountStatus(school: School): 'lead' | 'trial' | 'active' | 'suspended' | 'churned' {
-  if (school.status === 'Inactive' || school.status === 'archived') {
-    return 'churned';
-  }
-  if (school.lifecycleStatus === 'Lead') {
-    return 'lead';
-  }
-  if (school.lifecycleStatus === 'Onboarding') {
-    return 'trial';
-  }
-  if (school.lifecycleStatus === 'Active') {
-    return 'active';
-  }
-  if (school.lifecycleStatus === 'Churned') {
-    return 'churned';
-  }
-  // Default to active for legacy data
-  return 'active';
-}
+
 
 /**
  * Infers customer tier from legacy school data.

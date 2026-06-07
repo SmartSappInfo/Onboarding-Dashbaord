@@ -37,7 +37,7 @@ export async function testAutomationFlow(
       return { success: false, error: 'Workspace ID and entity ID are required for test runs.' };
     }
 
-    const trigger = automation.trigger;
+    const trigger = automation.triggers?.[0]?.type;
     if (!trigger) {
       return { success: false, error: 'Automation has no top-level trigger configured.' };
     }

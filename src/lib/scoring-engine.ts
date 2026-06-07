@@ -3,6 +3,7 @@ import { firestore as db } from '@/firebase/config';
 import { triggerAutomationProtocols } from './automation-processor';
 import { buildAutomationPayload } from './automation-payload';
 import type { HealthScore, Entity } from './types';
+import { createMinimalIndustryData } from './industry-defaults';
 
 /**
  * Helper to update entity healthScoreIds reference array.
@@ -16,15 +17,7 @@ async function associateHealthScoreWithEntity(entityId: string, healthScoreId: s
   }
 
   const entity = { id: entitySnap.id, ...entitySnap.data() } as Entity;
-  const industryData = entity.industryData || {
-    industry: 'SaaS',
-    entityType: 'institution',
-    companySize: 0,
-    planType: '',
-    features: [],
-    signupDate: new Date().toISOString(),
-    accountStatus: 'active' as const,
-  };
+  const industryData = entity.industryData || createMinimalIndustryData('SaaS', 'institution');
 
   const updatedIndustryData = {
     ...industryData,

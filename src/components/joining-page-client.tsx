@@ -919,11 +919,11 @@ export default function JoiningPageClient({ typeSlug, entitySlug, token }: Joini
                   >
                     <p>
                       Registered as:{' '}
-                      <span className="text-foreground/60">{registrant.name}</span>
+                      <span className="text-foreground/60">{registrant?.name}</span>
                     </p>
-                    {registrant.email && (
+                    {registrant?.email && (
                       <p>
-                        Email: <span className="text-foreground/60">{registrant.email}</span>
+                        Email: <span className="text-foreground/60">{registrant?.email}</span>
                       </p>
                     )}
                     <p className="mt-4">

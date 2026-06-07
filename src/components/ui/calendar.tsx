@@ -19,15 +19,50 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  month: controlledMonth,
+  onMonthChange: controlledOnMonthChange,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
 
+  const getInitialMonth = () => {
+    if (controlledMonth) return controlledMonth;
+    if (props.defaultMonth) return props.defaultMonth;
+    const selected = (props as any).selected;
+    if (selected instanceof Date) return selected;
+    if (Array.isArray(selected) && selected[0] instanceof Date) return selected[0];
+    if (selected && typeof selected === 'object' && 'from' in selected && selected.from instanceof Date) return selected.from;
+    return new Date();
+  };
+
+  const [internalMonth, setInternalMonth] = React.useState<Date>(getInitialMonth);
+
+  // Sync internal month with parent controlled props
+  React.useEffect(() => {
+    if (controlledMonth) {
+      setInternalMonth(controlledMonth);
+    }
+  }, [controlledMonth]);
+
+  const handleMonthChange = (newMonth: Date) => {
+    setInternalMonth(newMonth);
+    controlledOnMonthChange?.(newMonth);
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    const direction = e.deltaY > 0 ? 1 : -1;
+    const nextMonth = new Date(internalMonth.getFullYear(), internalMonth.getMonth() + direction, 1);
+    handleMonthChange(nextMonth);
+  };
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      month={internalMonth}
+      onMonthChange={handleMonthChange}
       className={cn(
         "bg-background group/calendar p-3 [--cell-size:2rem] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
@@ -131,6 +166,7 @@ function Calendar({
               data-slot="calendar"
               ref={rootRef}
               className={cn(className)}
+              onWheel={handleWheel}
               {...props}
             />
           )

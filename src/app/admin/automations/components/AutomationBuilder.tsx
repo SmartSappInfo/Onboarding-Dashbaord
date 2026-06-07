@@ -38,13 +38,18 @@ import {
     TagIcon,
     PlusCircle,
     Undo2,
-    Redo2
+    Redo2,
+    Activity
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { NodeInspector } from './NodeInspector';
+import type { AutomationTriggerDef, AutomationRun } from '@/lib/types';
+import { useFirestore } from '@/firebase';
+import { useSearchParams } from 'next/navigation';
+import { DiagnosticsPanel } from './DiagnosticsPanel';
 
 const nodeTypes = {
     triggerNode: TriggerNode,
@@ -71,7 +76,10 @@ interface HistoryEntry {
 interface AutomationBuilderProps {
     initialNodes: any[];
     initialEdges: any[];
+    triggers: AutomationTriggerDef[];
     onStateChange: (nodes: any[], edges: any[]) => void;
+    onTriggersChange: (triggers: AutomationTriggerDef[]) => void;
+    automationId: string;
 }
 
 /**
@@ -79,7 +87,7 @@ interface AutomationBuilderProps {
  * Features: drag-and-drop canvas, node inspector, automation step library,
  * custom deletable edges, and undo/redo history.
  */
-export default function AutomationBuilder({ initialNodes, initialEdges, onStateChange }: AutomationBuilderProps) {
+export default function AutomationBuilder({ initialNodes, initialEdges, triggers, onStateChange, onTriggersChange, automationId }: AutomationBuilderProps) {
     const healedEdges = React.useMemo(() => {
         if (!initialEdges) return [];
         return initialEdges.map((edge: any) => {
@@ -100,6 +108,54 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
     const [selectedEdgeId, setSelectedEdgeId] = React.useState<string | null>(null);
     const [isLibraryOpen, setIsLibraryOpen] = React.useState(false);
     const [librarySourceHandle, setLibrarySourceHandle] = React.useState<string | undefined>(undefined);
+
+    // Diagnostics panel states
+    const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false);
+    const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
+
+    const firestore = useFirestore();
+    const searchParams = useSearchParams();
+    const queryRunId = searchParams?.get('runId');
+
+    // Auto-open run diagnostics if runId is in search params
+    React.useEffect(() => {
+        if (queryRunId && firestore) {
+            import('firebase/firestore').then(({ doc, getDoc }) => {
+                getDoc(doc(firestore, 'automation_runs', queryRunId)).then((snap) => {
+                    if (snap.exists()) {
+                        setSelectedRun({ id: snap.id, ...snap.data() } as AutomationRun);
+                        setDiagnosticsOpen(true);
+                    }
+                });
+            });
+        }
+    }, [queryRunId, firestore]);
+
+    const toggleDiagnostics = () => {
+        setDiagnosticsOpen((prev) => {
+            if (!prev) {
+                setSelectedNodeId(null);
+                setSelectedEdgeId(null);
+            }
+            return !prev;
+        });
+    };
+    // Keep nodes state in sync when triggers prop changes from outside (e.g. from the inspector updates)
+    React.useEffect(() => {
+        setNodes(nds => nds.map(node => {
+            if (node.type !== 'triggerNode') return node;
+            if (JSON.stringify(node.data?.triggers) === JSON.stringify(triggers)) return node;
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    triggers,
+                    trigger: triggers[0]?.type ?? null,
+                    config: triggers[0]?.config ?? {}
+                }
+            };
+        }));
+    }, [triggers, setNodes]);
 
     // ─── Undo / Redo ──────────────────────────────────────────────────────
     const historyRef = React.useRef<HistoryEntry[]>([
@@ -244,6 +300,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
     const onNodeClick = (_: React.MouseEvent, node: Node) => {
         setSelectedNodeId(node.id);
         setSelectedEdgeId(null);
+        setDiagnosticsOpen(false);
     };
 
     const onPaneClick = () => {
@@ -453,21 +510,48 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
     };
 
     // Inject onDelete + upgrade legacy edge types for ALL edges
-    const edgesWithCallbacks = React.useMemo(
-        () => edges.map(e => ({
-            ...e,
-            type: e.type === 'smoothstep' || !e.type ? 'deletable' : e.type,
-            animated: false,
-            data: { ...e.data, onDelete: deleteEdge },
-        })),
-        [edges, deleteEdge]
-    );
+    const edgesWithCallbacks = React.useMemo(() => {
+        return edges.map(e => {
+            // Determine if this edge was traversed in the selected run
+            let edgeExecutionStatus: 'traversed' | 'not-traversed' | null = null;
+            if (selectedRun?.steps) {
+                const sourceStep = selectedRun.steps[e.source];
+                const targetStep = selectedRun.steps[e.target];
+                if (sourceStep && targetStep) {
+                    // For condition nodes, check if the correct handle was taken
+                    if (sourceStep.metadata?.evaluation && e.sourceHandle) {
+                        edgeExecutionStatus = sourceStep.metadata.evaluation === e.sourceHandle
+                            ? 'traversed' : 'not-traversed';
+                    } else {
+                        edgeExecutionStatus = 'traversed';
+                    }
+                } else if (sourceStep && !targetStep) {
+                    edgeExecutionStatus = 'not-traversed';
+                }
+            }
+
+            return {
+                ...e,
+                type: e.type === 'smoothstep' || !e.type ? 'deletable' : e.type,
+                animated: edgeExecutionStatus === 'traversed',
+                style: edgeExecutionStatus === 'traversed'
+                    ? { stroke: '#10b981', strokeWidth: 2.5 }
+                    : edgeExecutionStatus === 'not-traversed'
+                    ? { stroke: '#d1d5db', strokeWidth: 1, opacity: 0.3 }
+                    : undefined,
+                data: { ...e.data, onDelete: deleteEdge },
+            };
+        });
+    }, [edges, deleteEdge, selectedRun]);
 
     const nodesWithCallbacks = React.useMemo(() => {
+        const stepMap = selectedRun?.steps || {};
         return nodes.map(node => {
             const hasTrueConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'true');
             const hasFalseConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'false');
             const hasDefaultConnection = edges.some(e => e.source === node.id && (!e.sourceHandle || e.sourceHandle === 'default' || e.sourceHandle === ''));
+
+            const stepData = stepMap[node.id];
 
             return {
                 ...node,
@@ -476,6 +560,12 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                     isDefaultConnected: hasDefaultConnection,
                     isTrueConnected: hasTrueConnection,
                     isFalseConnected: hasFalseConnection,
+                    // Execution overlay data
+                    ...(selectedRun ? {
+                        executionStatus: stepData?.status || null,
+                        executionError: stepData?.error || null,
+                        executionMeta: stepData?.metadata || null,
+                    } : {}),
                     onAddStep: (nodeId: string, sourceHandle?: string) => {
                         setSelectedNodeId(nodeId);
                         setLibrarySourceHandle(sourceHandle);
@@ -484,7 +574,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                 }
             };
         });
-    }, [nodes, edges]);
+    }, [nodes, edges, selectedRun]);
 
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
@@ -518,13 +608,23 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
             <Card className="rounded-2xl border-none shadow-2xl p-1.5 flex flex-col gap-1.5 bg-background/95 backdrop-blur-md ring-1 ring-black/5">
                         <TooltipProvider>
                             <ToolBtn 
+                                icon={Zap} 
+                                label={`Configure Triggers (${triggers.length} active)`} 
+                                color="text-emerald-600 bg-emerald-50 font-bold border border-emerald-200" 
+                                onClick={() => {
+                                    const triggerNode = nodes.find(n => n.type === 'triggerNode');
+                                    if (triggerNode) {
+                                        setSelectedNodeId(triggerNode.id);
+                                    }
+                                }} 
+                            />
+                            <ToolBtn 
                                 icon={PlusCircle} 
                                 label="Open Automation Step Library" 
                                 color="text-violet-600 bg-violet-50 font-bold border border-violet-100 animate-pulse" 
                                 onClick={() => setIsLibraryOpen(true)} 
                             />
                             <div className="h-px bg-border/50 mx-1" />
-                            <ToolBtn icon={Zap} label="Add Trigger" color="text-emerald-600 bg-emerald-50" onClick={() => addNode('triggerNode')} />
                             <ToolBtn icon={Play} label="Add Action" color="text-blue-600 bg-blue-50" onClick={() => addNode('actionNode')} />
                             <ToolBtn icon={ArrowRightLeft} label="Add Condition" color="text-amber-600 bg-amber-50" onClick={() => addNode('conditionNode')} />
                             <ToolBtn icon={Tag} label="Add Tag Condition" color="text-violet-600 bg-violet-50" onClick={() => addNode('tagConditionNode')} />
@@ -544,6 +644,15 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                                 onClick={redo} 
                             />
                             <div className="h-px bg-border/50 mx-1" />
+                            <ToolBtn 
+                                icon={Activity} 
+                                label="Diagnostics Panel" 
+                                color={diagnosticsOpen
+                                    ? "text-white bg-primary font-bold border border-primary shadow-sm"
+                                    : "text-orange-600 bg-orange-50 font-bold border border-orange-100"
+                                } 
+                                onClick={toggleDiagnostics} 
+                            />
                             <ToolBtn 
                                 icon={isFullScreen ? Minimize2 : Maximize2} 
                                 label={isFullScreen ? "Exit Hub" : "Zen View"} 
@@ -577,36 +686,50 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
 
             {/* Sidebar Inspector Context */}
             <div className="absolute top-6 right-6 bottom-6 z-20 w-[380px] pointer-events-none flex flex-col">
-                <Card className={cn(
-                    "rounded-2xl border border-border shadow-sm bg-card p-6 pointer-events-auto transition-all duration-500 h-full flex flex-col overflow-hidden",
-                    selectedNodeId ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"
-                )}>
- <div className="flex items-center justify-between mb-6 shrink-0">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl text-primary shadow-sm"><Settings2 className="h-4 w-4" /></div>
- <h4 className="text-[10px] font-semibold ">Logic Inspector</h4>
-                        </div>
- <Button variant="ghost" size="icon" onClick={() => setSelectedNodeId(null)} className="h-8 w-8 rounded-lg hover:bg-muted">
- <X className="h-4 w-4" />
-                        </Button>
+                {diagnosticsOpen ? (
+                    <div className="h-full pointer-events-auto">
+                        <DiagnosticsPanel
+                            automationId={automationId}
+                            nodes={nodes}
+                            onSelectRun={setSelectedRun}
+                            selectedRun={selectedRun}
+                            onClose={() => setDiagnosticsOpen(false)}
+                        />
                     </div>
-                    
- <div className="flex-1 overflow-hidden min-h-0">
-                        {selectedNode ? (
-                            <NodeInspector 
-                                node={selectedNode} 
-                                onUpdate={(data) => handleUpdateNodeData(selectedNode.id, data)} 
-                            />
-                        ) : (
- <div className="py-20 text-center border-2 border-dashed rounded-2xl border-border/50 bg-background">
- <MousePointer2 className="h-10 w-10 mx-auto mb-4 text-muted-foreground opacity-20" />
- <p className="text-[10px] font-semibold text-muted-foreground opacity-40">
-                                    Select an architecture node<br/>to configure operational logic
-                                </p>
+                ) : (
+                    <Card className={cn(
+                        "rounded-2xl border border-border shadow-sm bg-card p-6 pointer-events-auto transition-all duration-500 h-full flex flex-col overflow-hidden",
+                        selectedNodeId ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"
+                    )}>
+                        <div className="flex items-center justify-between mb-6 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-xl text-primary shadow-sm"><Settings2 className="h-4 w-4" /></div>
+                                <h4 className="text-[10px] font-semibold ">Logic Inspector</h4>
                             </div>
-                        )}
-                    </div>
-                </Card>
+                            <Button variant="ghost" size="icon" onClick={() => setSelectedNodeId(null)} className="h-8 w-8 rounded-lg hover:bg-muted">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-hidden min-h-0">
+                            {selectedNode ? (
+                                <NodeInspector 
+                                    node={selectedNode} 
+                                    onUpdate={(data) => handleUpdateNodeData(selectedNode.id, data)}
+                                    triggers={triggers}
+                                    onTriggersChange={onTriggersChange}
+                                />
+                            ) : (
+                                <div className="py-20 text-center border-2 border-dashed rounded-2xl border-border/50 bg-background">
+                                    <MousePointer2 className="h-10 w-10 mx-auto mb-4 text-muted-foreground opacity-20" />
+                                    <p className="text-[10px] font-semibold text-muted-foreground opacity-40">
+                                        Select an architecture node<br/>to configure operational logic
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+                )}
             </div>
 
             <AutomationStepLibraryModal 

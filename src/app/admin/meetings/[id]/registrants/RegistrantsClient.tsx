@@ -1,17 +1,18 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { collection, query, orderBy, doc } from 'firebase/firestore';
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import type { Meeting, MeetingRegistrant } from '@/lib/types';
 import { format } from 'date-fns';
 import { 
     Users, ArrowLeft, ChevronLeft, CheckCircle2, Clock, Download, Mail, Search,
     UserCheck, ClipboardCheck, Calendar, AlertCircle, Loader2,
     MoreHorizontal, Check, X, Trash2, Plus, UsersRound, Send,
-    SlidersHorizontal
+    SlidersHorizontal, Copy, CopyCheck
 } from 'lucide-react';
 import Link from 'next/link';
+import { useMeetingContext } from '../layout';
+import { getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 
 import { toggleRegistrantAttendance } from '@/app/actions/meeting-attendance-actions';
 import { 
@@ -62,6 +63,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   const [registrantToDelete, setRegistrantToDelete] = useState<MeetingRegistrant | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRowSending, setIsRowSending] = useState<Record<string, boolean>>({});
+  const [copiedRegistrantId, setCopiedRegistrantId] = useState<string | null>(null);
   
   // Manual Registration state
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -73,23 +76,14 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>([]);
   const [hasCustomizedColumns, setHasCustomizedColumns] = useState(false);
 
-  // Fetch Meeting
-  const meetingDocRef = useMemoFirebase(() => {
-    if (!firestore || !meetingId) return null;
-    return doc(firestore, 'meetings', meetingId);
-  }, [firestore, meetingId]);
-  
-  const { data: meeting, isLoading: isLoadingMeeting, error: meetingError } = useDoc<Meeting>(meetingDocRef);
+  // Consume shared workspace context
+  const { meeting, registrants, isLoading, meetingDocRef } = useMeetingContext();
+  const isLoadingMeeting = isLoading;
+  const isLoadingRegistrants = isLoading;
+  const meetingError = null;
+  const registrantsError = null;
 
   useSetBreadcrumb(meeting?.entityName, `/admin/meetings/${meetingId}/registrants`);
-
-  // Fetch Registrants
-  const registrantsColRef = useMemoFirebase(() => {
-    if (!firestore || !meetingId) return null;
-    return query(collection(firestore, `meetings/${meetingId}/registrants`), orderBy('registeredAt', 'desc'));
-  }, [firestore, meetingId]);
-
-  const { data: registrants, isLoading: isLoadingRegistrants, error: registrantsError } = useCollection<MeetingRegistrant>(registrantsColRef);
 
   // Compute all available custom registration fields safely and efficiently
   const allAvailableFields = useMemo(() => {
@@ -343,7 +337,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   }
 
   if (meetingError || registrantsError) {
-      const error = meetingError || registrantsError;
+      const error = (meetingError || registrantsError) as any;
       return (
           <div className="p-8">
               <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
@@ -361,40 +355,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   }
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="space-y-8 text-left pb-24">
-          
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-                <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0">
-                    <Link href={`/admin/meetings/${meetingId}`}>
-                        <ChevronLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <div>
-                    <div className="flex items-center gap-3 mb-1">
-                        <Badge variant="outline" className="font-semibold uppercase text-[10px] bg-background">
-                            {meeting?.type?.name || 'Meeting'}
-                        </Badge>
-                    </div>
-                    <h1 className="text-3xl font-semibold tracking-tight leading-none">{meeting?.entityName} Registrants</h1>
-                    <p className="text-sm font-medium text-muted-foreground mt-2 flex items-center gap-2">
-                        <Calendar className="h-4 w-4" /> {meeting?.meetingTime ? format(new Date(meeting.meetingTime), 'PPPP') : 'Date TBD'}
-                    </p>
-                </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-                <Button variant="outline" className="font-bold gap-2 rounded-xl h-10" onClick={handleExportCSV} disabled={!filteredRegistrants.length}>
-                    <Download className="h-4 w-4" /> Export CSV
-                </Button>
-                <Button className="font-bold gap-2 rounded-xl h-10" onClick={() => setIsRegisterOpen(true)}>
-                    <Plus className="h-4 w-4" /> Add Registrant
-                </Button>
-            </div>
-        </div>
-
+    <div className="h-full">
+      <div className="space-y-6 text-left pb-24">
         {/* Stats Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-background">
@@ -474,19 +436,19 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
               </div>
             )}
 
-            <CardHeader className="bg-muted/30 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6">
+            <CardHeader className="bg-muted/30 border-b flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6">
                 <div>
                     <CardTitle className="text-lg font-semibold tracking-tight">Registration Roster</CardTitle>
                     <CardDescription className="text-xs font-medium">Manage and review all signups for this session.</CardDescription>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                    <div className="relative w-full sm:w-72">
+                    <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Search by name or email..." 
+                            placeholder="Search by name..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 h-10 rounded-xl bg-background border-none ring-1 ring-border shadow-sm focus-visible:ring-primary w-full"
+                            className="pl-9 h-10 rounded-xl bg-background border-none ring-1 ring-border shadow-sm focus-visible:ring-primary w-full text-xs font-medium"
                         />
                     </div>
                     {allAvailableFields.length > 0 ? (
@@ -494,53 +456,42 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                             <DropdownMenuTrigger asChild>
                                 <Button 
                                     variant="outline" 
-                                    className="font-bold gap-2 rounded-xl h-10 bg-background/95 backdrop-blur-md border-none ring-1 ring-border hover:bg-muted/50 transition-all duration-200"
+                                    className="font-bold gap-2 rounded-xl h-10 bg-background border-none ring-1 ring-border hover:bg-muted/50 transition-all duration-200 text-xs"
                                 >
                                     <SlidersHorizontal className="h-4 w-4" />
                                     <span>Columns</span>
-                                    {activeColumns.length < allAvailableFields.length ? (
-                                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] bg-primary/10 text-primary border-none font-bold">
-                                            {activeColumns.length}/{allAvailableFields.length}
-                                        </Badge>
-                                    ) : null}
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 rounded-xl bg-background/95 backdrop-blur-md border-none ring-1 ring-border shadow-lg p-1 animate-in fade-in-50 slide-in-from-top-2 duration-200 z-[100]">
-                                <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                    Visible Columns
-                                </div>
-                                <DropdownMenuSeparator className="bg-border/60" />
-                                {allAvailableFields.map((field) => {
-                                    const isChecked = activeColumns.includes(field.key);
+                            <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                                <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Show Columns</p>
+                                <DropdownMenuSeparator />
+                                {allAvailableFields.map(f => {
+                                    const isVisible = activeColumns.includes(f.key);
                                     return (
                                         <DropdownMenuCheckboxItem
-                                            key={field.key}
-                                            checked={isChecked}
+                                            key={f.key}
+                                            checked={isVisible}
                                             onCheckedChange={(checked) => {
-                                                startTransition(() => {
-                                                    setHasCustomizedColumns(true);
+                                                setHasCustomizedColumns(true);
+                                                setVisibleColumnKeys(prev => {
                                                     if (checked) {
-                                                        setVisibleColumnKeys((prev) => [...prev, field.key]);
+                                                        return [...prev, f.key];
                                                     } else {
-                                                        setVisibleColumnKeys((prev) =>
-                                                            prev.filter((k) => k !== field.key)
-                                                        );
+                                                        return prev.filter(k => k !== f.key);
                                                     }
                                                 });
                                             }}
-                                            className="rounded-lg text-xs py-2 px-2.5 font-medium focus:bg-muted focus:text-foreground cursor-pointer transition-colors duration-150"
+                                            className="rounded-lg text-xs font-semibold"
                                         >
-                                            {field.label}
+                                            {f.label}
                                         </DropdownMenuCheckboxItem>
                                     );
                                 })}
-                                <DropdownMenuSeparator className="bg-border/60" />
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     onClick={() => {
-                                        startTransition(() => {
-                                            setHasCustomizedColumns(false);
-                                            setVisibleColumnKeys([]);
-                                        });
+                                        setHasCustomizedColumns(false);
+                                        setVisibleColumnKeys([]);
                                     }}
                                     className="rounded-lg text-xs py-2 px-2.5 font-bold text-primary focus:bg-primary/5 focus:text-primary cursor-pointer text-center justify-center transition-colors duration-150"
                                 >
@@ -549,6 +500,12 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                             </DropdownMenuContent>
                         </DropdownMenu>
                     ) : null}
+                    <Button variant="outline" className="font-bold gap-2 rounded-xl h-10 bg-background border-none ring-1 ring-border text-xs" onClick={handleExportCSV} disabled={!filteredRegistrants.length}>
+                        <Download className="h-4 w-4" /> Export CSV
+                    </Button>
+                    <Button className="font-bold gap-2 rounded-xl h-10 text-xs" onClick={() => setIsRegisterOpen(true)}>
+                        <Plus className="h-4 w-4" /> Add Registrant
+                    </Button>
                 </div>
             </CardHeader>
             <CardContent className="p-0 bg-background">

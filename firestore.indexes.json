@@ -263,8 +263,8 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "trigger",
-          "order": "ASCENDING"
+          "fieldPath": "triggerTypes",
+          "arrayConfig": "CONTAINS"
         },
         {
           "fieldPath": "isActive",
@@ -272,6 +272,7 @@
         }
       ]
     },
+
     {
       "collectionGroup": "automations",
       "queryScope": "COLLECTION",
@@ -286,20 +287,7 @@
         }
       ]
     },
-    {
-      "collectionGroup": "automations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "workspaceIds",
-          "arrayConfig": "CONTAINS"
-        },
-        {
-          "fieldPath": "trigger",
-          "order": "ASCENDING"
-        }
-      ]
-    },
+
     {
       "collectionGroup": "automations",
       "queryScope": "COLLECTION",
@@ -706,6 +694,7 @@
         }
       ]
     },
+
     {
       "collectionGroup": "entity_audit_logs",
       "queryScope": "COLLECTION",

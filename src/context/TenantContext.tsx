@@ -124,8 +124,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             initialOrgId = profile.organizationId; // Force non-super-admins to their assigned org
         }
 
-        if (isSuperAdmin && !initialOrgId && organizations.length > 0) {
-            initialOrgId = organizations[0].id;
+        if (isSuperAdmin && !initialOrgId) {
+            if (profile.organizationId && organizations.find(o => o.id === profile.organizationId)) {
+                initialOrgId = profile.organizationId;
+            } else if (organizations.length > 0) {
+                initialOrgId = organizations[0].id;
+            }
         }
 
         setActiveOrganizationIdState(initialOrgId || '');

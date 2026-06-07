@@ -98,7 +98,7 @@ export async function runMeetingsFerAction(
 
       // -- C. Process Registrants --
       let typeSlug = data.type?.slug || 'parent-engagement';
-      if (typeSlug === 'parent') typeSlug = 'parent-engagement';
+      if ((typeSlug as string) === 'parent') typeSlug = 'parent-engagement';
       const slug = data.meetingSlug || data.entitySlug || '';
 
       if (slug) {

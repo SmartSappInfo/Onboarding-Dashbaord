@@ -320,7 +320,7 @@ export default function MeetingsHubClient() {
   const renderActions = (meeting: Meeting) => {
     const type = meeting.type || MEETING_TYPES[0];
     const entityEmail = meeting.entityId ? entityEmailMap.get(meeting.entityId) : undefined;
-    const typeSlug = type.slug === 'parent' ? 'parent-engagement' : (type.slug || 'session');
+    const typeSlug = (type.slug as string) === 'parent' ? 'parent-engagement' : (type.slug || 'session');
     const publicUrl = `/meetings/${typeSlug}/${meeting.meetingSlug || meeting.entitySlug}`;
 
     return (
@@ -677,8 +677,8 @@ export default function MeetingsHubClient() {
                 onOpenChange={(open) => !open && setMeetingForQR(null)}
                 meetingTitle={meetingForQR.heroTitle || meetingForQR.entityName || meetingForQR.type.name}
                 publicUrl={meetingForQR.meetingSlug 
-                    ? `/meetings/${meetingForQR.type?.slug === 'parent' ? 'parent-engagement' : (meetingForQR.type?.slug || 'session')}/${meetingForQR.meetingSlug}` 
-                    : `/sessions/${meetingForQR.entitySlug || meetingForQR.id}/${meetingForQR.type?.slug === 'parent' ? 'parent-engagement' : (meetingForQR.type?.slug || 'session')}`
+                    ? `/meetings/${(meetingForQR.type?.slug as string) === 'parent' ? 'parent-engagement' : (meetingForQR.type?.slug || 'session')}/${meetingForQR.meetingSlug}` 
+                    : `/sessions/${meetingForQR.entitySlug || meetingForQR.id}/${(meetingForQR.type?.slug as string) === 'parent' ? 'parent-engagement' : (meetingForQR.type?.slug || 'session')}`
                 }
             />
         )}

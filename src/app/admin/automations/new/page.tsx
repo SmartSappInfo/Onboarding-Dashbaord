@@ -26,7 +26,14 @@ export default function NewAutomationPage() {
         const init = async () => {
             const res = await saveAutomationAction(null, {
                 name: 'Untitled Workflow',
-                trigger: 'ENTITY_CREATED',
+                triggers: [
+                    {
+                        id: 'trigger_0',
+                        type: 'ENTITY_CREATED',
+                        config: {}
+                    }
+                ],
+                triggerTypes: ['ENTITY_CREATED'],
                 workspaceIds: [activeWorkspaceId], 
                 nodes: [
                     {

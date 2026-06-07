@@ -10,6 +10,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useEntityCache } from '@/context/EntityCacheContext';
 import { useAudiences } from '@/lib/audience-hooks';
 import { useToast } from '@/hooks/use-toast';
+import { useMeetingContext } from '../layout';
 import { 
   Users, 
   Send, 
@@ -156,7 +157,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
 
   const [isSending, setIsSending] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<string>('registrants');
+  const [activeTab, setActiveTab] = React.useState<string>('invited');
   const [isAddingToSchedule, setIsAddingToSchedule] = React.useState(false);
   const [reportModalOpen, setReportModalOpen] = React.useState(false);
   const [reportData, setReportData] = React.useState<{
@@ -202,20 +203,12 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>([]);
   const [hasCustomizedColumns, setHasCustomizedColumns] = React.useState(false);
 
-  // Fetch meeting details
-  const meetingDocRef = useMemoFirebase(() => {
-    if (!firestore || !meetingId) return null;
-    return doc(firestore, 'meetings', meetingId);
-  }, [firestore, meetingId]);
-
-  const { data: meeting, isLoading: isLoadingMeeting, error: meetingError } = useDoc<Meeting>(meetingDocRef);
-
-  React.useEffect(() => {
-    if (meeting?.messagingConfig) {
-      setResendEmailTemplateId(meeting.messagingConfig.resendLinkEmailTemplateId || 'global_meeting_resend_join_link_email');
-      setResendSmsTemplateId(meeting.messagingConfig.resendLinkSmsTemplateId || 'global_meeting_resend_join_link_sms');
-    }
-  }, [meeting]);
+  // Consume shared workspace context
+  const { meeting, registrants, isLoading, meetingDocRef } = useMeetingContext();
+  const isLoadingMeeting = isLoading;
+  const isLoadingRegistrants = isLoading;
+  const meetingError = null;
+  const registrantsError = null;
 
   // Derived state from active slot configuration
   const invitationSlots = React.useMemo(() => {
@@ -235,14 +228,6 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     if (selectedChannels.includes('sms') && !smsTemplateId) return true;
     return false;
   }, [selectedChannels, emailTemplateId, smsTemplateId]);
-
-  // Fetch all current registrants/invites
-  const registrantsColRef = useMemoFirebase(() => {
-    if (!firestore || !meetingId) return null;
-    return query(collection(firestore, `meetings/${meetingId}/registrants`), orderBy('registeredAt', 'desc'));
-  }, [firestore, meetingId]);
-
-  const { data: registrants, isLoading: isLoadingRegistrants, error: registrantsError } = useCollection<any>(registrantsColRef);
 
   // Fetch all workspace entities for live client-side filtering
 
@@ -1036,39 +1021,19 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   }
 
   return (
-    <div className="w-full h-full p-8 space-y-8 overflow-y-auto bg-background">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-8">
-      
-      {/* Executive Combined Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="outline" size="icon" className="rounded-xl h-10 w-10 shrink-0">
-            <Link href={`/admin/meetings/${meetingId}`}>
-              <ChevronLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div className="flex flex-col justify-center">
-            <h1 className="text-2xl font-black tracking-tight text-foreground leading-none flex items-center gap-2">
-              Session Management Hub
-            </h1>
-            <div className="text-xs text-muted-foreground font-bold uppercase tracking-wider mt-1.5 flex items-center gap-2">
-              <Badge variant="secondary" className="px-2 py-0 h-5 font-bold">{meeting.type.name}</Badge>
-              <span>{meeting.entityName}</span>
-            </div>
-          </div>
+    <div className="w-full h-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Guests & Outreach</h2>
+          <TabsList className="grid w-full sm:w-[320px] grid-cols-2 bg-muted/50 p-1.5 h-11 rounded-2xl">
+            <TabsTrigger value="invited" className="rounded-xl font-bold text-xs gap-2">
+              <Send className="h-4 w-4" /> Guests List ({stats.invited})
+            </TabsTrigger>
+            <TabsTrigger value="invite" className="rounded-xl font-bold text-xs gap-2">
+              <Mail className="h-4 w-4" /> Invite Guests
+            </TabsTrigger>
+          </TabsList>
         </div>
-        <TabsList className="grid w-full lg:w-[580px] grid-cols-3 bg-muted/50 p-1.5 h-11 rounded-2xl">
-          <TabsTrigger value="registrants" className="rounded-xl font-bold text-xs gap-2">
-            <Users className="h-4 w-4" /> Registrants & Attendance ({stats.total})
-          </TabsTrigger>
-          <TabsTrigger value="invited" className="rounded-xl font-bold text-xs gap-2">
-            <Send className="h-4 w-4" /> Invited Guests ({stats.invited})
-          </TabsTrigger>
-          <TabsTrigger value="invite" className="rounded-xl font-bold text-xs gap-2">
-            <Mail className="h-4 w-4" /> Invite Guests
-          </TabsTrigger>
-        </TabsList>
-      </div>
 
         {/* ========================================================================= */}
         {/* TABS CONTENT: INVITE GUESTS WORKSPACE */}
@@ -1592,8 +1557,24 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invitesPagination.paginatedItems.map((invitee: any) => (
-                    <TableRow key={invitee.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150">
+                  {invitesPagination.paginatedItems.map((invitee: any) => {
+                    const inviteeToken = invitee.token || invitee.id;
+                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                    let fullLink = invitee.personalizedMeetingUrl || '';
+                    if (fullLink) {
+                      if (!fullLink.startsWith('http')) {
+                        fullLink = `${origin}${fullLink.startsWith('/') ? '' : '/'}${fullLink}`;
+                      }
+                    } else if (meeting) {
+                      fullLink = getPersonalizedMeetingUrl(origin, meeting, inviteeToken);
+                    }
+                    const whatsappText = `Hello ${invitee.name}, here is your unique joining link for ${meeting?.heroTitle || 'the meeting'}: ${fullLink}`;
+                    const whatsappUrl = invitee.phone
+                      ? `https://api.whatsapp.com/send?phone=${invitee.phone.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(whatsappText)}`
+                      : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
+
+                    return (
+                      <TableRow key={invitee.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150">
                       <TableCell className="pl-6">
                         <div className="flex flex-col">
                           <span className="font-bold text-sm text-foreground font-sans">{invitee.name}</span>
@@ -1624,6 +1605,39 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                       </TableCell>
                       <TableCell className="text-right pr-6 py-3">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Exposed Copy Join Link Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              navigator.clipboard.writeText(fullLink);
+                              setCopiedRegistrantId(invitee.id);
+                              toast({ title: 'Link Copied', description: 'Saved to clipboard.' });
+                              setTimeout(() => setCopiedRegistrantId(null), 2000);
+                            }}
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                            title="Copy Join Link"
+                          >
+                            {copiedRegistrantId === invitee.id ? (
+                              <CopyCheck className="h-4 w-4 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+
+                          {/* Exposed WhatsApp Share Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => window.open(whatsappUrl, '_blank')}
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50/50"
+                            title="Share via WhatsApp"
+                          >
+                            <svg className="h-4 w-4 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.458h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                          </Button>
+
                           {/* Exposed Resend Icon Button */}
                           <Button
                             variant="ghost"
@@ -1694,6 +1708,25 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                                 <Clock className="h-4 w-4 mr-2 text-slate-500" /> Mark as Pending
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => window.open(whatsappUrl, '_blank')}
+                                className="rounded-lg text-xs font-semibold font-sans"
+                              >
+                                <svg className="h-4 w-4 mr-2 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
+                                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.458h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                </svg>
+                                Share via WhatsApp
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(fullLink);
+                                  toast({ title: 'Link Copied', description: 'Saved to clipboard.' });
+                                }}
+                                className="rounded-lg text-xs font-semibold font-sans"
+                              >
+                                <Copy className="h-4 w-4 mr-2" /> Copy Unique Link
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => setRegistrantToDelete(invitee)} className="rounded-lg text-xs font-bold text-destructive focus:bg-destructive/5 font-sans">
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete Guest Invite
                               </DropdownMenuItem>
@@ -1702,7 +1735,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                   {invitedGuests.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="h-48 text-center font-sans">
@@ -1790,468 +1824,6 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
             )}
           </Card>
         </TabsContent>
-
-        {/* ========================================================================= */}
-        {/* TABS CONTENT: REGISTRANTS LEDGER */}
-        {/* ========================================================================= */}
-        <TabsContent value="registrants" className="space-y-8 animate-in fade-in duration-300">
-          
-          {/* Registrants KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-background">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total Registrants</p>
-                    <p className="text-3xl font-semibold">{stats.total}</p>
-                  </div>
-                  <div className="p-3 bg-primary/10 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-background">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Attended</p>
-                    <p className="text-3xl font-semibold text-emerald-600 dark:text-emerald-500">{stats.attended}</p>
-                  </div>
-                  <div className="p-3 bg-emerald-500/10 rounded-xl"><UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-500" /></div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-background">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Pending/No Show</p>
-                    <p className="text-3xl font-semibold text-amber-600 dark:text-amber-500">{stats.pendingRegistrants}</p>
-                  </div>
-                  <div className="p-3 bg-amber-500/10 rounded-xl"><Clock className="h-5 w-5 text-amber-600 dark:text-amber-500" /></div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-background">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Attendance Rate</p>
-                    <p className="text-3xl font-semibold">{stats.attendanceRate}%</p>
-                  </div>
-                  <div className="p-3 bg-violet-500/10 rounded-xl"><ClipboardCheck className="h-5 w-5 text-violet-600 dark:text-violet-500" /></div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Roster & Table Card */}
-          <Card className="rounded-2xl border-none overflow-hidden ring-1 ring-border shadow-sm relative bg-card">
-            {/* Bulk Toolbar overlay */}
-            {selectedIds.size > 0 && (
-              <div className="absolute top-0 left-0 right-0 z-20 bg-primary/5 border-b border-primary/20 p-4 flex items-center justify-between animate-in slide-in-from-top-2">
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline" className="bg-primary text-primary-foreground border-none font-bold">
-                    {selectedIds.size} Selected
-                  </Badge>
-                  <span className="text-xs font-semibold text-primary/80">Apply bulk action:</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={() => handleBulkAction('approve')} disabled={isProcessingBulk}>
-                    <Check className="h-3 w-3 mr-1" /> Approve
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={() => handleBulkAction('cancel')} disabled={isProcessingBulk}>
-                    <X className="h-3 w-3 mr-1" /> Disapprove
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={() => handleBulkAction('sendLinks')} disabled={isProcessingBulk}>
-                    <Send className="h-3 w-3 mr-1" /> Send Links
-                  </Button>
-                  <Button variant="destructive" size="sm" className="h-8 text-xs font-bold" onClick={() => handleBulkAction('delete')} disabled={isProcessingBulk}>
-                    {isProcessingBulk ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Trash2 className="h-3 w-3 mr-1" />}
-                    Delete
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8 text-xs font-bold gap-1" disabled={isProcessingBulk}>
-                        More Actions <ChevronDown className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-xl">
-                      <DropdownMenuItem 
-                        className="text-xs font-semibold cursor-pointer"
-                        onClick={() => setIsResendTemplatesModalOpen(true)}
-                      >
-                        <Settings2 className="h-3.5 w-3.5 mr-2" /> Configure Resend Templates
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <div className="w-px h-6 bg-primary/20 mx-1"></div>
-                  <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => setSelectedIds(new Set())}>Cancel</Button>
-                </div>
-              </div>
-            )}
-
-            <CardHeader className="bg-muted/30 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6">
-              <div>
-                <CardTitle className="text-lg font-bold">Registration Roster</CardTitle>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                {/* Attendance Filter Select */}
-                <Select value={filterAttendance} onValueChange={(val) => { setFilterAttendance(val); registrantsPagination.setCurrentPage(1); }}>
-                  <SelectTrigger className="h-10 w-full sm:w-40 rounded-xl text-xs font-bold bg-background border-none ring-1 ring-border shadow-sm">
-                    <SelectValue placeholder="All Attendance" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="all" className="text-xs font-semibold">All Attendance</SelectItem>
-                    <SelectItem value="attended" className="text-xs font-semibold">Attended</SelectItem>
-                    <SelectItem value="no-show" className="text-xs font-semibold">No Show</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* Signup Status Filter Select */}
-                <Select value={filterSignupStatus} onValueChange={(val) => { setFilterSignupStatus(val); registrantsPagination.setCurrentPage(1); }}>
-                  <SelectTrigger className="h-10 w-full sm:w-36 rounded-xl text-xs font-bold bg-background border-none ring-1 ring-border shadow-sm">
-                    <SelectValue placeholder="All Statuses" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="all" className="text-xs font-semibold font-sans">All Statuses</SelectItem>
-                    <SelectItem value="approved" className="text-xs font-semibold font-sans">Approved</SelectItem>
-                    <SelectItem value="cancelled" className="text-xs font-semibold font-sans">Cancelled</SelectItem>
-                    <SelectItem value="pending" className="text-xs font-semibold font-sans">Pending</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <div className="relative w-full sm:w-60">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search by name, email, or school..." 
-                    value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); registrantsPagination.setCurrentPage(1); }}
-                    className="pl-9 h-10 rounded-xl bg-background border-none ring-1 ring-border shadow-sm focus-visible:ring-primary w-full text-xs font-semibold"
-                  />
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {/* Columns Customizer */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-none ring-1 ring-border shadow-sm shrink-0">
-                        <SlidersHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 rounded-xl p-2">
-                      <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Customize Columns</p>
-                      <DropdownMenuSeparator />
-                      {allAvailableFields.map((field) => {
-                        const isChecked = activeColumns.includes(field.key);
-                        return (
-                          <DropdownMenuCheckboxItem
-                            key={field.key}
-                            checked={isChecked}
-                            onCheckedChange={(checked) => {
-                              setHasCustomizedColumns(true);
-                              setVisibleColumnKeys(prev => {
-                                if (checked) return [...prev, field.key];
-                                return prev.filter(k => k !== field.key);
-                              });
-                            }}
-                            className="rounded-lg text-xs font-semibold"
-                          >
-                            {field.label}
-                          </DropdownMenuCheckboxItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <Button variant="outline" className="font-bold gap-2 rounded-xl h-10 border-none ring-1 ring-border shadow-sm text-xs" onClick={handleExportCSV} disabled={!filteredRegistrants.length}>
-                    <Download className="h-4 w-4" /> Export CSV
-                  </Button>
-                  <Button className="font-bold gap-2 rounded-xl h-10 text-xs" onClick={() => setIsRegisterOpen(true)}>
-                    <Plus className="h-4 w-4" /> Add Registrant
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/10 border-b border-border/40">
-                    <TableHead className="w-12 pl-4">
-                      <Checkbox 
-                        checked={filteredRegistrants.length > 0 && selectedIds.size === filteredRegistrants.length}
-                        onCheckedChange={toggleAll}
-                      />
-                    </TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4">Registrant Details</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4">Associated Entity</TableHead>
-                    {allAvailableFields.map((field) => {
-                      const isVisible = activeColumns.includes(field.key);
-                      if (!isVisible) return null;
-                      return (
-                        <TableHead key={field.key} className="text-[10px] font-bold uppercase tracking-wider py-4">{field.label}</TableHead>
-                      );
-                    })}
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4">Signup Date</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4 w-32">Attendance</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider py-4 w-12 text-right pr-6"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {registrantsPagination.paginatedItems.map((registrant: any) => {
-                    const registrantToken = registrant.token || registrant.id;
-                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                    let fullLink = registrant.personalizedMeetingUrl || '';
-                    if (fullLink) {
-                      if (!fullLink.startsWith('http')) {
-                        fullLink = `${origin}${fullLink.startsWith('/') ? '' : '/'}${fullLink}`;
-                      }
-                    } else if (meeting) {
-                      fullLink = getPersonalizedMeetingUrl(origin, meeting, registrantToken);
-                    }
-                    const whatsappText = `Hello ${registrant.name}, here is your unique joining link for ${meeting?.heroTitle || 'the meeting'}: ${fullLink}`;
-                    const whatsappUrl = registrant.phone
-                      ? `https://api.whatsapp.com/send?phone=${registrant.phone.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(whatsappText)}`
-                      : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`;
-
-                    return (
-                      <TableRow key={registrant.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors duration-150" data-state={selectedIds.has(registrant.id) ? "selected" : undefined}>
-                        <TableCell className="pl-4">
-                          <Checkbox 
-                            checked={selectedIds.has(registrant.id)}
-                            onCheckedChange={() => toggleOne(registrant.id)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-sm text-foreground">{registrant.name}</span>
-                            <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Mail className="h-3 w-3" /> {registrant.email || 'N/A'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs font-semibold text-muted-foreground">
-                          {registrant.entityName || registrant.entityId || <span className="text-muted-foreground/30 font-normal">—</span>}
-                        </TableCell>
-                        {allAvailableFields.map((field) => {
-                          const isVisible = activeColumns.includes(field.key);
-                          if (!isVisible) return null;
-                          const val = getFormattedFieldValue(registrant, field.key);
-                          return (
-                            <TableCell key={field.key} className="text-xs font-semibold text-foreground/90 max-w-[200px] truncate">
-                              {val ? val : <span className="text-muted-foreground/30 font-normal">—</span>}
-                            </TableCell>
-                          );
-                        })}
-                        <TableCell className="text-xs font-medium text-muted-foreground">
-                          {registrant.registeredAt ? format(new Date(registrant.registeredAt), 'MMM d, h:mm a') : 'Unknown'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Checkbox 
-                              checked={registrant.status === 'attended'}
-                              onCheckedChange={() => handleToggleAttendance(registrant)}
-                              disabled={isToggling[registrant.id]}
-                            />
-                            <Badge variant="outline" className={cn(
-                              'text-[9px] font-bold uppercase rounded-lg px-2 h-5 border-none shadow-sm transition-all',
-                              registrant.status === 'attended' 
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/20' 
-                               : 'bg-muted text-muted-foreground'
-                            )}>
-                              {isToggling[registrant.id] ? 'Updating...' : registrant.status === 'attended' ? 'Attended' : 'No Show'}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right pr-6 py-3">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {/* Exposed Send Join Link Button */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              disabled={isRowSending[registrant.id]}
-                              onClick={async () => {
-                                setIsRowSending(prev => ({ ...prev, [registrant.id]: true }));
-                                try {
-                                  await handleSendLink(registrant);
-                                } finally {
-                                  setIsRowSending(prev => ({ ...prev, [registrant.id]: false }));
-                                }
-                              }}
-                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                              title="Send Join Link"
-                            >
-                              {isRowSending[registrant.id] ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                              ) : (
-                                <Send className="h-4 w-4" />
-                              )}
-                            </Button>
-
-                            {/* Exposed Copy Join Link Button */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                navigator.clipboard.writeText(fullLink);
-                                setCopiedRegistrantId(registrant.id);
-                                toast({ title: 'Link Copied', description: 'Saved to clipboard.' });
-                                setTimeout(() => setCopiedRegistrantId(null), 2000);
-                              }}
-                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                              title="Copy Join Link"
-                            >
-                              {copiedRegistrantId === registrant.id ? (
-                                <CopyCheck className="h-4 w-4 text-emerald-500" />
-                              ) : (
-                                <Copy className="h-4 w-4" />
-                              )}
-                            </Button>
-
-                            {/* Exposed WhatsApp Share Button */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => window.open(whatsappUrl, '_blank')}
-                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50/50"
-                              title="Share via WhatsApp"
-                            >
-                              <svg className="h-4 w-4 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.458h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                              </svg>
-                            </Button>
-
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 hover:bg-muted">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
-                                <p className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Quick Actions</p>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleSendLink(registrant)} className="rounded-lg text-xs font-semibold">
-                                  <Send className="h-4 w-4 mr-2" /> Send Join Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => {
-                                  navigator.clipboard.writeText(fullLink);
-                                  toast({ title: 'Link Copied', description: 'Saved to clipboard.' });
-                                }} className="rounded-lg text-xs font-semibold">
-                                  <Copy className="h-4 w-4 mr-2" /> Copy Join Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => window.open(whatsappUrl, '_blank')} className="rounded-lg text-xs font-semibold">
-                                  <svg className="h-4 w-4 mr-2 text-emerald-500 fill-emerald-500" viewBox="0 0 24 24">
-                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.458 5.705 1.458h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                                  </svg> Share via WhatsApp
-                                </DropdownMenuItem>
-                                {registrant.status === 'cancelled' ? (
-                                  <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'approved')} className="rounded-lg text-xs font-semibold">
-                                    <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-500" /> Approve Signup
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem onClick={() => handleUpdateStatus(registrant, 'cancelled')} className="rounded-lg text-xs font-semibold">
-                                    <XCircle className="h-4 w-4 mr-2 text-rose-500" /> Cancel Signup
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setRegistrantToDelete(registrant)} className="rounded-lg text-xs font-bold text-destructive focus:bg-destructive/5">
-                                  <Trash2 className="h-4 w-4 mr-2" /> Delete Roster Entry
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {!registrants || registrants.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={activeColumns.length + 6} className="h-48 text-center font-sans">
-                        <div className="flex flex-col items-center justify-center gap-3 py-6">
-                          <span className="text-xs text-muted-foreground/60 italic font-sans">No registrants or attendants registered for this session yet.</span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setActiveTab('invite')}
-                            className="rounded-xl font-bold font-sans text-xs gap-1 border-dashed hover:border-primary hover:text-primary transition-all"
-                          >
-                            <Plus className="h-4 w-4" /> Invite Guests
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredRegistrants.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={activeColumns.length + 6} className="h-32 text-center text-muted-foreground/60 text-xs italic font-sans">
-                        No registrants match your filter/search criteria.
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-            </CardContent>
-            {filteredRegistrants.length > 0 && (
-              <div className="border-t p-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5 font-sans">
-                {/* Total and range indicator */}
-                <span className="text-xs text-muted-foreground font-medium">
-                  Showing <span className="font-semibold text-foreground">{Math.min(filteredRegistrants.length, (registrantsPagination.currentPage - 1) * registrantsPagination.pageSize + 1)}</span> to{' '}
-                  <span className="font-semibold text-foreground">{Math.min(filteredRegistrants.length, registrantsPagination.currentPage * registrantsPagination.pageSize)}</span> of{' '}
-                  <span className="font-semibold text-foreground">{filteredRegistrants.length}</span> registrants
-                </span>
-
-                <div className="flex items-center gap-4">
-                  {/* Page Size Select */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">Rows per page:</span>
-                    <Select
-                      value={String(registrantsPagination.pageSize)}
-                      onValueChange={(val) => {
-                        registrantsPagination.setPageSize(Number(val));
-                        registrantsPagination.setCurrentPage(1);
-                      }}
-                    >
-                      <SelectTrigger className="h-8 w-16 rounded-lg text-xs font-bold bg-background border-border/50">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-lg">
-                        <SelectItem value="10" className="text-xs font-medium">10</SelectItem>
-                        <SelectItem value="25" className="text-xs font-medium">25</SelectItem>
-                        <SelectItem value="50" className="text-xs font-medium">50</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Previous / Next buttons */}
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => registrantsPagination.setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={registrantsPagination.currentPage === 1}
-                      className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 transition-all border-border/40 hover:bg-muted"
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-xs font-semibold text-muted-foreground px-2">
-                      Page {registrantsPagination.currentPage} of {registrantsPagination.totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => registrantsPagination.setCurrentPage(prev => Math.min(registrantsPagination.totalPages, prev + 1))}
-                      disabled={registrantsPagination.currentPage === registrantsPagination.totalPages}
-                      className="h-8 px-2.5 rounded-lg text-xs font-bold gap-1 transition-all border-border/40 hover:bg-muted"
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </Card>
-        </TabsContent>
-
 
       {/* ========================================================================= */}
       {/* MODAL: PREMIUM MINIMAL TEMPLATE PREVIEW */}

@@ -1,19 +1,20 @@
 import { adminDb } from '../firebase-admin';
 import { triggerAutomationProtocols } from '../automation-processor';
 import { buildAutomationPayload } from '../automation-payload';
-import type { Automation } from '../types';
+import type { Automation, AutomationTrigger } from '../types';
 
 export async function evaluateHeartbeatTriggers() {
   try {
     const snap = await adminDb.collection('automations')
-      .where('status', '==', 'active')
+      .where('isActive', '==', true)
       .get();
     
     const automations = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Automation));
 
-    const dateReachedAutos = automations.filter(a => a.trigger === 'DATE_REACHED');
-    const taskOverdueAutos = automations.filter(a => a.trigger === 'TASK_OVERDUE');
-    const inactiveAutos = automations.filter(a => a.trigger === 'ENTITY_INACTIVE');
+    const dateReachedAutos = automations.filter(a => a.triggerTypes?.includes('DATE_REACHED'));
+    const taskOverdueAutos = automations.filter(a => a.triggerTypes?.includes('TASK_OVERDUE'));
+    const inactiveAutos = automations.filter(a => a.triggerTypes?.includes('ENTITY_INACTIVE'));
+
 
     if (dateReachedAutos.length > 0) {
       await evaluateDateReached(dateReachedAutos);
@@ -29,9 +30,14 @@ export async function evaluateHeartbeatTriggers() {
   }
 }
 
-function getTriggerConfig(auto: Automation): any {
+function getTriggerConfig(auto: Automation, triggerType: AutomationTrigger): Record<string, unknown> {
+  // Look up the matching AutomationTriggerDef to get its isolated config
+  const def = auto.triggers?.find((t) => t.type === triggerType);
+  if (def?.config) return def.config;
+
+  // Fallback to canvas triggerNode config for safety
   const triggerNode = auto.nodes?.find((n) => n.type === 'triggerNode');
-  return triggerNode?.data?.config || {};
+  return (triggerNode?.data?.config as Record<string, unknown>) ?? {};
 }
 
 async function evaluateDateReached(automations: Automation[]) {
@@ -48,9 +54,9 @@ async function evaluateDateReached(automations: Automation[]) {
     const entity = entityDoc.data();
     
     for (const auto of automations) {
-      const config = getTriggerConfig(auto);
-      const dateField = config.dateField;
-      const offsetDays = config.offsetDays ?? 0;
+      const config = getTriggerConfig(auto, 'DATE_REACHED');
+      const dateField = config.dateField as string | undefined;
+      const offsetDays = (config.offsetDays as number | undefined) ?? 0;
       if (!dateField) continue;
 
       const rawVal = getNestedValue(entity, dateField);
@@ -139,8 +145,9 @@ async function evaluateEntityInactive(automations: Automation[]) {
     const inactiveDays = Math.floor(inactiveMs / (1000 * 60 * 60 * 24));
 
     for (const auto of automations) {
-      const config = getTriggerConfig(auto);
-      const targetInactivity = config.inactivityDays ?? 30;
+      const config = getTriggerConfig(auto, 'ENTITY_INACTIVE');
+
+      const targetInactivity = (config.inactivityDays as number | undefined) ?? 30;
       if (inactiveDays >= targetInactivity) {
         const runIdKey = `entity_inactive_${auto.id}_${entity.id}_${lastActive.toISOString().split('T')[0]}`;
         const existingRun = await adminDb.collection('automation_runs')

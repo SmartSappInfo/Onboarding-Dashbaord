@@ -31,6 +31,7 @@ import {
 } from 'firebase/firestore';
 import { firestore as db } from '@/firebase/config';
 import { recalculateEntityScore } from './scoring-engine';
+import { createMinimalIndustryData } from './industry-defaults';
 import type {
   Trial,
   Onboarding,
@@ -88,15 +89,7 @@ async function addCollectionReferenceToEntity(
   const entity = { id: entitySnap.id, ...entitySnap.data() } as Entity;
 
   // Initialize industryData if it doesn't exist
-  const industryData = entity.industryData || {
-    industry: 'SaaS',
-    entityType: 'institution',
-    companySize: 0,
-    planType: '',
-    features: [],
-    signupDate: new Date().toISOString(),
-    accountStatus: 'active' as const,
-  };
+  const industryData = entity.industryData || createMinimalIndustryData('SaaS', 'institution');
 
   // Add the reference ID to the appropriate array
   const updatedIndustryData = {
