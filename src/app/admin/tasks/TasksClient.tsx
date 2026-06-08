@@ -1550,22 +1550,102 @@ export default function TasksClient() {
             />
 
             <AlertDialog open={!!taskToComplete} onOpenChange={(o) => !o && setTaskToComplete(null)}>
- <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
- <div className="p-10 text-center space-y-6">
- <div className="mx-auto bg-primary/10 w-20 h-20 rounded-2xl flex items-center justify-center">
- <CheckCircle2 className="h-10 w-10 text-primary" />
+                <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
+                    <div className="p-10 text-center space-y-6">
+                        <div className="mx-auto bg-primary/10 w-20 h-20 rounded-2xl flex items-center justify-center">
+                            <CheckCircle2 className="h-10 w-10 text-primary" />
                         </div>
- <div className="space-y-2">
- <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Resolve Task?</AlertDialogTitle>
- <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
- Confirming execution of <span className="font-bold text-foreground">"{taskToComplete?.title}"</span>. This will move the record to the archive.
+                        <div className="space-y-2">
+                            <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Resolve Task?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
+                                Confirming execution of <span className="font-bold text-foreground">"{taskToComplete?.title}"</span>. This will move the record to the archive.
                             </AlertDialogDescription>
                         </div>
                     </div>
- <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
- <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm">Discard</AlertDialogCancel>
- <AlertDialogAction onClick={handleConfirmComplete} className="rounded-xl font-semibold h-12 flex-1 text-xs">
+                    <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
+                        <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm">Discard</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmComplete} className="rounded-xl font-semibold h-12 flex-1 text-xs">
                             Commit Result
+                        </AlertDialogAction>
+                    </div>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Single Task Delete Modal */}
+            <AlertDialog open={!!taskToDelete} onOpenChange={(o) => !o && setTaskToDelete(null)}>
+                <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
+                    <div className="p-10 text-center space-y-6">
+                        <div className="mx-auto bg-rose-500/10 w-20 h-20 rounded-2xl flex items-center justify-center">
+                            <Trash2 className="h-10 w-10 text-rose-500" />
+                        </div>
+                        <div className="space-y-2">
+                            <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Delete Task?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
+                                Confirming permanent deletion of <span className="font-bold text-foreground">"{taskToDelete?.title}"</span>. This action cannot be undone.
+                            </AlertDialogDescription>
+                        </div>
+                    </div>
+                    <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
+                        <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm">Discard</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={() => taskToDelete && handleDelete(taskToDelete)} 
+                            className="rounded-xl font-semibold h-12 flex-1 text-xs bg-rose-600 hover:bg-rose-700 text-white border-none shadow-sm"
+                        >
+                            Purge Record
+                        </AlertDialogAction>
+                    </div>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Bulk Delete Modal */}
+            <AlertDialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
+                <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
+                    <div className="p-10 text-center space-y-6">
+                        <div className="mx-auto bg-rose-500/10 w-20 h-20 rounded-2xl flex items-center justify-center">
+                            <Trash2 className="h-10 w-10 text-rose-500" />
+                        </div>
+                        <div className="space-y-2">
+                            <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Delete Selected Tasks?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
+                                Confirming permanent deletion of <span className="font-bold text-foreground">{selectedIds.length} tasks</span>. This action cannot be undone.
+                            </AlertDialogDescription>
+                        </div>
+                    </div>
+                    <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
+                        <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm" disabled={isBulkProcessing}>Discard</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={(e) => { e.preventDefault(); handleBulkDelete(); }} 
+                            disabled={isBulkProcessing}
+                            className="rounded-xl font-semibold h-12 flex-1 text-xs bg-rose-600 hover:bg-rose-700 text-white border-none shadow-sm"
+                        >
+                            {isBulkProcessing ? 'Processing...' : 'Purge Records'}
+                        </AlertDialogAction>
+                    </div>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Bulk Resolve Modal */}
+            <AlertDialog open={isBulkResolveOpen} onOpenChange={setIsBulkResolveOpen}>
+                <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
+                    <div className="p-10 text-center space-y-6">
+                        <div className="mx-auto bg-emerald-500/10 w-20 h-20 rounded-2xl flex items-center justify-center">
+                            <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+                        </div>
+                        <div className="space-y-2">
+                            <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Resolve Selected Tasks?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
+                                Confirming execution of <span className="font-bold text-foreground">{selectedIds.length} tasks</span>. This will move the records to the archive.
+                            </AlertDialogDescription>
+                        </div>
+                    </div>
+                    <div className="bg-muted/30 p-6 border-t border-border flex flex-col sm:flex-row gap-3">
+                        <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm" disabled={isBulkProcessing}>Discard</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={(e) => { e.preventDefault(); handleBulkComplete(); }} 
+                            disabled={isBulkProcessing}
+                            className="rounded-xl font-semibold h-12 flex-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-sm"
+                        >
+                            {isBulkProcessing ? 'Processing...' : 'Commit Results'}
                         </AlertDialogAction>
                     </div>
                 </AlertDialogContent>
