@@ -74,7 +74,7 @@ export function DelayNode({ id, data, selected }: any) {
                 type="target" 
                 position={Position.Top} 
                 className="bg-purple-500 border-2 border-white shadow-lg transition-colors hover:bg-purple-600" 
-                style={{ width: '11px', height: '11px', top: '-5.5px' }}
+                style={{ width: '12px', height: '12px', top: '-6px' }}
             />
             
             <Card className={cn(
@@ -111,10 +111,10 @@ export function DelayNode({ id, data, selected }: any) {
                 type="source" 
                 position={Position.Bottom} 
                 className={cn(
-                    "border-2 border-white shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer",
+                    "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
                     data.isDefaultConnected ? "bg-purple-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
                 )}
-                style={{ width: '15px', height: '15px', bottom: '-7.5px' }}
+                style={{ width: '12px', height: '12px', bottom: '-6px' }}
                 onClick={(e) => {
                     if (!data.isDefaultConnected && data.onAddStep) {
                         e.stopPropagation();

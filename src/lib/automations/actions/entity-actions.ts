@@ -1,6 +1,18 @@
 import { adminDb } from '../../firebase-admin';
 import { resolveContact } from '../../contact-adapter';
+import { logActivity } from '../../activity-logger';
 import type { ExecutionContext } from '../execution-types';
+
+/**
+ * Resolves the workspace's organizationId.
+ * Fast path: reads from ExecutionContext (populated once at run start in executor.ts).
+ * Fallback: Firestore read (used when context is rebuilt in resume.ts without orgId).
+ */
+async function resolveOrgId(context: ExecutionContext): Promise<string> {
+  if (context.organizationId) return context.organizationId;
+  const snap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
+  return (snap.data()?.organizationId as string) || '';
+}
 
 export async function handleUpdateEntity(
   config: Record<string, unknown>,
@@ -12,7 +24,7 @@ export async function handleUpdateEntity(
   if (!contact?.entityId) throw new Error('Cannot update entity: Contact not found.');
 
   const timestamp = new Date().toISOString();
-  const identityFields = ['name', 'slug', 'displayName', 'lifecycleStatus'];
+  const identityFields = ['name', 'slug', 'displayName'];
   const identityUpdates: Record<string, unknown> = { updatedAt: timestamp };
   const workspaceUpdates: Record<string, unknown> = { updatedAt: timestamp };
   const customDataUpdates: Record<string, unknown> = {};
@@ -21,7 +33,7 @@ export async function handleUpdateEntity(
   if (config.pipelineId) workspaceUpdates.pipelineId = config.pipelineId;
   if (config.stageId) workspaceUpdates.stageId = config.stageId;
   if (config.assignedTo) workspaceUpdates.assignedTo = config.assignedTo;
-  if (config.lifecycleStatus) identityUpdates.lifecycleStatus = config.lifecycleStatus;
+
 
   if (updates && typeof updates === 'object') {
     for (const [key, value] of Object.entries(updates)) {
@@ -29,7 +41,12 @@ export async function handleUpdateEntity(
         identityUpdates[key] = value;
       } else if (['pipelineId', 'stageId', 'assignedTo', 'workspaceTags'].includes(key)) {
         workspaceUpdates[key] = value;
-      } else if (key !== 'updates' && key !== 'pipelineId' && key !== 'stageId' && key !== 'assignedTo' && key !== 'lifecycleStatus') {
+      } else if (
+        key !== 'updates' &&
+        key !== 'pipelineId' &&
+        key !== 'stageId' &&
+        key !== 'assignedTo'
+      ) {
         customDataUpdates[key] = value;
       }
     }
@@ -50,6 +67,33 @@ export async function handleUpdateEntity(
       .collection('workspace_entities')
       .doc(contact.workspaceEntityId)
       .update(workspaceUpdates);
+  }
+
+  // Log to activity feed — exclude the auto-added updatedAt so we only surface real field changes
+  const changedFields = Object.keys({
+    ...identityUpdates,
+    ...workspaceUpdates,
+    ...customDataUpdates,
+  }).filter((k) => k !== 'updatedAt');
+
+  if (changedFields.length > 0) {
+    const organizationId = await resolveOrgId(context);
+    await logActivity({
+      type: 'entity_updated',
+      description: `Automation updated: ${changedFields.join(', ')}`,
+      source: 'automation',
+      organizationId,
+      workspaceId: context.workspaceId,
+      entityId: contact.entityId!,
+      userId: `automation:${context.automationId}`,
+      displayName: 'System Core',
+      metadata: {
+        // CRITICAL: prevents activity-logger from re-firing an automation trigger loop
+        isAutomation: true,
+        updatedFields: changedFields,
+        automationId: context.automationId,
+      },
+    });
   }
 }
 
@@ -82,13 +126,38 @@ export async function handleAddNote(
   if (!context.entityId || !config.content) {
     throw new Error('Add note action requires entityId and content.');
   }
-  await adminDb.collection('notes').add({
+
+  await adminDb.collection('entity_notes').add({
     entityId: context.entityId,
     workspaceId: context.workspaceId,
     content: config.content,
-    authorId: (config.authorId as string) || 'system',
+    createdBy: (config.authorId as string) || 'system',
+    createdByName: 'System Core',
+    noteType: 'general',
+    isPinned: false,
     source: 'automation',
     automationId: context.automationId,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  // Log to activity feed so the note is visible in the contact timeline
+  const organizationId = await resolveOrgId(context);
+  await logActivity({
+    type: 'note_added',
+    description: 'Automation added a note',
+    source: 'automation',
+    organizationId,
+    workspaceId: context.workspaceId,
+    entityId: context.entityId!,
+    userId: `automation:${context.automationId}`,
+    displayName: 'System Core',
+    metadata: {
+      // CRITICAL: prevents activity-logger from re-firing an automation trigger loop
+      isAutomation: true,
+      noteType: 'general',
+      contentPreview: String(config.content).slice(0, 120),
+      automationId: context.automationId,
+    },
   });
 }

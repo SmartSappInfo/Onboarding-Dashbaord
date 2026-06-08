@@ -357,7 +357,6 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           { key: 'displayName', label: 'Display Name', type: 'text' },
           { key: 'primaryEmail', label: 'Primary Email', type: 'text' },
           { key: 'primaryPhone', label: 'Primary Phone', type: 'text' },
-          { key: 'lifecycleStatus', label: 'Operational State', type: 'select', options: (stages || []).map(s => ({ value: s.id || s.name, label: s.name })) },
           { key: 'assignedTo', label: 'Account Manager', type: 'select', options: (users || []).map(u => ({ value: u.id, label: u.name })) },
           { key: 'pipelineId', label: 'Pipeline', type: 'select', options: (pipelines || []).map(p => ({ value: p.id, label: p.name })) },
           { key: 'stageId', label: 'Pipeline Stage', type: 'select', options: (stages || []).filter(s => !config.pipelineId || s.pipelineId === config.pipelineId).map(s => ({ value: s.id, label: `${s.name} (${(pipelines || []).find(p => p.id === s.pipelineId)?.name || 'Default'})` })) }
@@ -384,7 +383,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           };
 
           const nextConfig: Record<string, any> = { updates: nextUpdates };
-          if (['pipelineId', 'stageId', 'assignedTo', 'lifecycleStatus'].includes(fieldKey)) {
+          if (['pipelineId', 'stageId', 'assignedTo'].includes(fieldKey)) {
             nextConfig[fieldKey] = nextUpdates[fieldKey];
           }
           updateConfig(nextConfig);
@@ -396,7 +395,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             [fieldKey]: val
           };
           const nextConfig: Record<string, any> = { updates: nextUpdates };
-          if (['pipelineId', 'stageId', 'assignedTo', 'lifecycleStatus'].includes(fieldKey)) {
+          if (['pipelineId', 'stageId', 'assignedTo'].includes(fieldKey)) {
             nextConfig[fieldKey] = val;
           }
           if (fieldKey === 'pipelineId') {
@@ -410,7 +409,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           const nextUpdates = { ...updates };
           delete nextUpdates[fieldKey];
           const nextConfig: Record<string, any> = { updates: nextUpdates };
-          if (['pipelineId', 'stageId', 'assignedTo', 'lifecycleStatus'].includes(fieldKey)) {
+          if (['pipelineId', 'stageId', 'assignedTo'].includes(fieldKey)) {
             nextConfig[fieldKey] = '';
           }
           updateConfig(nextConfig);

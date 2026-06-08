@@ -198,7 +198,6 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
             workspaceId: workspaceId,
             displayName: result.name,
             status: 'active' as const,
-            lifecycleStatus: 'Onboarding' as const,
             assignedTo: { 
                 userId: user.uid, 
                 name: user.displayName || 'Architect', 

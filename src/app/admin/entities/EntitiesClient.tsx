@@ -63,7 +63,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import AssignUserModal from './components/AssignUserModal';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import ChangeStatusModal from './components/ChangeStatusModal';
+
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -138,7 +138,7 @@ export default function EntitiesClient() {
   const [entityToPermanentDelete, setEntityToPermanentDelete] = useState<WorkspaceEntity | null>(null);
   const [isPermanentDeleting, setIsPermanentDeleting] = useState(false);
   const [assigningEntity, setAssigningEntity] = useState<WorkspaceEntity | null>(null);
-  const [changingStatusEntity, setChangingStatusEntity] = useState<WorkspaceEntity | null>(null);
+
   const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
   const [managingWorkspacesEntity, setManagingWorkspacesEntity] = useState<WorkspaceEntity | null>(null);
   const [isBulkArchiveOpen, setIsBulkArchiveOpen] = useState(false);
@@ -261,14 +261,12 @@ export default function EntitiesClient() {
   const statusFilter = filterState.status;
   const locationFilter = filterState.location;
   const tagFilterState = filterState.tags;
-  const lifecycleFilter = filterState.lifecycle;
   const dateAddedFilter = filterState.dateRange;
   const interestFilter = filterState.interests || [];
 
   const setSearchTerm = useCallback((v: string) => setFilterState(prev => ({ ...prev, search: v })), []);
   const setStatusFilter = useCallback((v: string) => setFilterState(prev => ({ ...prev, status: v })), []);
   const setLocationFilter = useCallback((v: LocationValue) => setFilterState(prev => ({ ...prev, location: v })), []);
-  const setLifecycleFilter = useCallback((v: string[]) => setFilterState(prev => ({ ...prev, lifecycle: v })), []);
   const setDateAddedFilter = useCallback((v: string) => setFilterState(prev => ({ ...prev, dateRange: v })), []);
   const setInterestFilter = useCallback((v: string[]) => setFilterState(prev => ({ ...prev, interests: v })), []);
   
@@ -339,14 +337,7 @@ export default function EntitiesClient() {
         });
       }
       
-      if (filterState.lifecycle && filterState.lifecycle.length > 0) {
-        filters.push({
-          id: `lifecycle_${Date.now()}`,
-          field: 'lifecycleStatus',
-          operator: 'any_of',
-          value: filterState.lifecycle,
-        });
-      }
+
       
       if (filterState.interests && filterState.interests.length > 0) {
         filters.push({
@@ -729,15 +720,7 @@ export default function EntitiesClient() {
     savedAudiences: allAudiences,
   });
 
-  // Extract unique lifecycle stages from RAW unfiltered entities (prevents options disappearing)
-  const availableLifecycleStages = useMemo(() => {
-    if (!entities) return [];
-    const stages = new Set<string>();
-    for (const e of entities) {
-      if (e.lifecycleStatus) stages.add(e.lifecycleStatus);
-    }
-    return Array.from(stages).sort();
-  }, [entities]);
+
   
   const sortedEntities = useMemo(() => {
     let sortable = [...filteredEntities];
@@ -1279,39 +1262,7 @@ export default function EntitiesClient() {
                                     </div>
                                 </div>
 
-                                {/* Row 3: Lifecycle Stage capsules — inline */}
-                                {availableLifecycleStages.length > 0 && (
-                                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                                        <div className="flex items-center justify-between h-5">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                                                <Clock className="h-2.5 w-2.5" /> Lifecycle Stage
-                                            </label>
-                                            {lifecycleFilter.length > 0 && (
-                                                <button type="button" onClick={() => setLifecycleFilter([])} className="text-[9px] font-bold text-muted-foreground hover:text-foreground transition-colors animate-in fade-in">Clear</button>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {availableLifecycleStages.map(stage => {
-                                                const isActive = lifecycleFilter.includes(stage);
-                                                return (
-                                                    <button
-                                                        key={stage}
-                                                        type="button"
-                                                        onClick={() => setLifecycleFilter(isActive ? lifecycleFilter.filter(s => s !== stage) : [...lifecycleFilter, stage])}
-                                                        className={cn(
-                                                            "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border cursor-pointer",
-                                                            isActive
-                                                                ? "bg-violet-600 text-white border-violet-600 shadow-sm"
-                                                                : "bg-background/50 text-muted-foreground border-border hover:border-violet-400/40 hover:text-foreground"
-                                                        )}
-                                                    >
-                                                        {stage}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
+
                             </div>
                         </Card>
                     )}
@@ -1448,11 +1399,6 @@ export default function EntitiesClient() {
                                         </Button>
                                     </TableHead>
                                     <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-center">Status</TableHead>
-                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
-                                        <Button variant="ghost" onClick={() => handleSort('lifecycleStatus')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
-                                            Lifecycle <ArrowUpDown className="ml-2 h-3 w-3" />
-                                        </Button>
-                                    </TableHead>
                                     <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">Contacts</TableHead>
                                     <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
                                         <Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
@@ -1498,9 +1444,6 @@ export default function EntitiesClient() {
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 <Badge variant={getStatusBadgeVariant(entity.status)} className="rounded-full text-[10px] font-semibold uppercase px-2.5 h-5">{entity.status}</Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge className="text-[10px] font-bold uppercase border-none h-6 bg-primary/10 text-primary">{entity.lifecycleStatus || 'Welcome'}</Badge>
                                             </TableCell>
                                             <TableCell>
                                                 <CompactContactList 
@@ -1561,10 +1504,7 @@ export default function EntitiesClient() {
                                                             <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">Management</DropdownMenuLabel>
                                                             <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{viewConsole}</span></Link></DropdownMenuItem>
                                                             
-                                                            <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusEntity(entity)}>
-                                                                <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500"><ShieldCheck className="h-3.5 w-3.5" /></div>
-                                                                <span className="font-bold text-sm">{updateStatus}</span>
-                                                            </DropdownMenuItem>
+
 
 
                                                             <DropdownMenuSeparator className="my-2" />
@@ -1702,7 +1642,7 @@ export default function EntitiesClient() {
             />
 
             {/* Handled by AssignUserModal under Bulk Action Modal Section */}
-            <ChangeStatusModal entity={changingStatusEntity} open={!!changingStatusEntity} onOpenChange={(open) => !open && setChangingStatusEntity(null)} />
+
             
             {taggingEntity && (
                 <AlertDialog open={!!taggingEntity} onOpenChange={(open) => !open && setTaggingEntity(null)}>

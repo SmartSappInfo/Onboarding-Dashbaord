@@ -645,7 +645,6 @@ async function processRow(
     const companyValue = getValue('company');
     const sourceForInitials = companyValue ? String(companyValue).trim() : name;
     const _initials = getValue('initials') || sourceForInitials.split(' ').map(w => w[0]).join('').toUpperCase();
-    const _lifecycleStatus = getValue('lifecycleStatus') || 'Onboarding';
 
     // Fuzzy matching Locations
     const selectedRegion = fuzzyMatch(context.regions, String(getValue('locationRegion') || ''));

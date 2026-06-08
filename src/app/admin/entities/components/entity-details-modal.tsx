@@ -124,10 +124,10 @@ export default function EntityDetailsModal({ entity, open, onOpenChange, onNavig
                         {/* Left Column */}
  <div className="space-y-6 text-left">
                         <DetailItem icon={User} label="Primary Owner" value={entity.assignedTo?.name || 'Unassigned'} />
-                        <DetailItem icon={Workflow} label="Lifecycle Status">
-                            {entity.lifecycleStatus ? (
+                        <DetailItem icon={Workflow} label="Status">
+                            {entity.status ? (
                                 <Badge variant="outline" className="text-[10px] font-semibold uppercase  bg-primary/5 text-primary border-primary/20 mt-1">
-                                    {entity.lifecycleStatus}
+                                    {entity.status}
                                 </Badge>
                             ) : (
  <p className="text-base text-foreground font-bold">N/A</p>

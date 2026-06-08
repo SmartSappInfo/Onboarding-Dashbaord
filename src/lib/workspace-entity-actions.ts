@@ -179,7 +179,6 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       entityType: entity.entityType,
       assignedTo: input.assignedTo,
       status: 'active',
-      lifecycleStatus: currentStageName, // Use lifecycle status instead of pipeline stage
       workspaceTags: [],
       addedAt: timestamp,
       updatedAt: timestamp,
@@ -860,7 +859,6 @@ export async function getFilteredEntityIdsAction(
       'locationRegionId',
       'locationDistrictId',
       'workspaceTags',
-      'lifecycleStatus',
       'addedAt',
       'interests',
       'assignedTo',

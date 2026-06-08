@@ -15,7 +15,6 @@ export interface FamilyImportRow {
   child1_firstName?: string;
   child1_lastName?: string;
   child1_gradeLevel?: string;
-  lifecycleStatus?: string;
   leadSource?: string;
 }
 
@@ -32,7 +31,6 @@ export const FAMILY_CSV_COLUMNS = [
   'child1_firstName',
   'child1_lastName',
   'child1_gradeLevel',
-  'lifecycleStatus',
   'leadSource',
 ] as const;
 
@@ -47,7 +45,6 @@ export const FAMILY_SAMPLE_ROW = [
   'Emma',
   'Smith',
   'Grade 5',
-  'Onboarding',
   'Referral',
 ].join(',');
 
@@ -61,6 +58,5 @@ export const FAMILY_FIELD_INSTRUCTIONS = [
   { field: 'child1_firstName', description: 'First child first name' },
   { field: 'child1_lastName', description: 'First child last name' },
   { field: 'child1_gradeLevel', description: 'First child grade level' },
-  { field: 'lifecycleStatus', description: 'Lead status, e.g. Onboarding, Active' },
   { field: 'leadSource', description: 'How the family was acquired' },
 ];

@@ -89,16 +89,16 @@ describe('evaluateConditionNode (Advanced Segment Logic)', () => {
             {
               id: 'g2',
               relation: 'AND' as const,
-              conditions: [{ id: 'c2', field: 'lifecycleStatus', operator: 'is', value: 'Onboarding' }]
+              conditions: [{ id: 'c2', field: 'entityType', operator: 'is', value: 'institution' }]
             }
           ]
         }
       }
     };
 
-    expect(await evaluateConditionNode(multiGroupNode, { status: 'active', lifecycleStatus: 'Lead' })).toBe(true);
-    expect(await evaluateConditionNode(multiGroupNode, { status: 'inactive', lifecycleStatus: 'Onboarding' })).toBe(true);
-    expect(await evaluateConditionNode(multiGroupNode, { status: 'inactive', lifecycleStatus: 'Lead' })).toBe(false);
+    expect(await evaluateConditionNode(multiGroupNode, { status: 'active', entityType: 'person' })).toBe(true);
+    expect(await evaluateConditionNode(multiGroupNode, { status: 'inactive', entityType: 'institution' })).toBe(true);
+    expect(await evaluateConditionNode(multiGroupNode, { status: 'inactive', entityType: 'person' })).toBe(false);
   });
 
   // Tag Operators Evaluation

@@ -130,7 +130,6 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           industryData: {
             industry: 'SaaS',
             capacity: 500,
-            accountStatus: 'active',
           },
         }
       });
@@ -223,7 +222,6 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           industryData: {
             industry: 'SaaS',
             capacity: 500,
-            accountStatus: 'active',
           }
         },
         'user_1',
@@ -249,7 +247,6 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           industryData: expect.objectContaining({
             industry: 'SaaS',
             capacity: 500,
-            accountStatus: 'active',
           }),
         })
       );

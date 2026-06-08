@@ -689,7 +689,6 @@ export async function updateEntityAction(
           if (data.assignedTo !== undefined) weUpdate.assignedTo = data.assignedTo;
           if (data.status) weUpdate.status = data.status.toLowerCase();
           if (data.workspaceTags) weUpdate.workspaceTags = data.workspaceTags;
-          if (data.lifecycleStatus) weUpdate.lifecycleStatus = data.lifecycleStatus;
         }
         
         await doc.ref.update(weUpdate);

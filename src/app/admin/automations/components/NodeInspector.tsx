@@ -34,6 +34,10 @@ interface NodeInspectorProps {
     onUpdate: (data: any) => void;
     triggers?: import('@/lib/types').AutomationTriggerDef[];
     onTriggersChange?: (triggers: import('@/lib/types').AutomationTriggerDef[]) => void;
+    onDirtyChange?: (isDirty: boolean) => void;
+    onApply?: (nodeId: string, nodeData: any, nextTriggers?: import('@/lib/types').AutomationTriggerDef[]) => void;
+    onTest?: (nodeId: string, nodeData: any) => void;
+    onCancel?: () => void;
 }
 
 const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; label: string; icon: typeof Building; desc: string }[] }[] = [
@@ -437,25 +441,66 @@ const TriggerPickerItem = React.memo(function TriggerPickerItem({
     );
 });
 
-export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange }: NodeInspectorProps) {
+export function NodeInspector({ 
+    node, 
+    onUpdate, 
+    triggers = [], 
+    onTriggersChange,
+    onDirtyChange,
+    onApply,
+    onTest,
+    onCancel
+}: NodeInspectorProps) {
     const { singular } = useTerminology();
     const params = useParams();
     const automationId = params.id as string;
-    const data = node.data || {};
-    const config = data.config || {};
+
+    // Draft state for normal node data
+    const [draftData, setDraftData] = React.useState<any>(null);
+    // Draft state for triggers array (for triggerNode)
+    const [draftTriggers, setDraftTriggers] = React.useState<import('@/lib/types').AutomationTriggerDef[]>([]);
 
     const [triggerSearch, setTriggerSearch] = React.useState('');
     const [actionSearch, setActionSearch] = React.useState('');
     const [viewMode, setViewMode] = React.useState<'list' | 'add' | 'edit'>('list');
     const [activeTriggerId, setActiveTriggerId] = React.useState<string | null>(null);
 
-    // Reset search and view states when node ID changes
+    // Initialize/sync draft states on node.id change
     React.useEffect(() => {
+        setDraftData(node.data ? JSON.parse(JSON.stringify(node.data)) : {});
+        setDraftTriggers(triggers ? JSON.parse(JSON.stringify(triggers)) : []);
         setTriggerSearch('');
         setActionSearch('');
         setViewMode('list');
         setActiveTriggerId(null);
-    }, [node.id]);
+    }, [node.id, node.data, triggers]);
+
+    // Track dirty state
+    const isDirty = React.useMemo(() => {
+        if (!draftData) return false;
+        
+        // Node data diff
+        const originalDataStr = JSON.stringify(node.data || {});
+        const draftDataStr = JSON.stringify(draftData);
+        if (originalDataStr !== draftDataStr) return true;
+
+        // Triggers diff (if triggerNode)
+        if (node.type === 'triggerNode') {
+            const originalTriggersStr = JSON.stringify(triggers);
+            const draftTriggersStr = JSON.stringify(draftTriggers);
+            if (originalTriggersStr !== draftTriggersStr) return true;
+        }
+
+        return false;
+    }, [node.data, node.type, triggers, draftData, draftTriggers]);
+
+    // Notify parent of dirty status changes
+    React.useEffect(() => {
+        onDirtyChange?.(isDirty);
+    }, [isDirty, onDirtyChange]);
+
+    const data = draftData || node.data || {};
+    const config = data.config || {};
 
     const deferredTriggerSearch = React.useDeferredValue(triggerSearch);
     const deferredActionSearch = React.useDeferredValue(actionSearch);
@@ -494,11 +539,20 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
     } = useWorkspaceScopedQueries();
 
     const updateConfig = (updates: any) => {
-        onUpdate({ config: { ...config, ...updates } });
+        setDraftData((prev: any) => ({
+            ...(prev || {}),
+            config: {
+                ...((prev || {}).config || {}),
+                ...updates
+            }
+        }));
     };
 
     const updateTagNodeData = (updates: Record<string, unknown>) => {
-        onUpdate(updates);
+        setDraftData((prev: any) => ({
+            ...(prev || {}),
+            ...updates
+        }));
     };
 
     const webhookUrl = React.useMemo(() => {
@@ -546,7 +600,7 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                         </Label>
                                     </div>
 
-                                    {triggers.length === 0 ? (
+                                    {draftTriggers.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center p-8 text-center bg-card/30 rounded-2xl border border-dashed border-border animate-fade-in">
                                             <Zap className="h-8 w-8 text-muted-foreground/20 mb-2" />
                                             <p className="text-xs font-bold text-muted-foreground">No triggers configured</p>
@@ -554,7 +608,7 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                         </div>
                                     ) : (
                                         <div className="space-y-2">
-                                            {triggers.map((t, i) => (
+                                            {draftTriggers.map((t, i) => (
                                                 <TriggerListItem
                                                     key={t.id}
                                                     trigger={t}
@@ -565,12 +619,12 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                                     surveys={surveys}
                                                     pipelines={pipelines}
                                                     stages={stages}
-                                                    canRemove={triggers.length > 1}
+                                                    canRemove={draftTriggers.length > 1}
                                                     onRemove={(id, e) => {
                                                         e.stopPropagation();
-                                                        if (triggers.length <= 1) return;
-                                                        const next = triggers.filter(item => item.id !== id);
-                                                        onTriggersChange?.(next);
+                                                        if (draftTriggers.length <= 1) return;
+                                                        const next = draftTriggers.filter(item => item.id !== id);
+                                                        setDraftTriggers(next);
                                                     }}
                                                     onClick={() => {
                                                         setActiveTriggerId(t.id);
@@ -619,7 +673,7 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
 
                                     <div className="space-y-6 max-h-[450px] overflow-y-auto pr-1 scrollbar-thin">
                                         {filteredTriggerGroups.map(group => {
-                                            const usedTypes = new Set(triggers.map(t => t.type));
+                                            const usedTypes = new Set(draftTriggers.map(t => t.type));
                                             return (
                                                 <div key={group.label} className="space-y-2">
                                                     <p className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground px-1">
@@ -633,8 +687,8 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                                                 isDisabled={usedTypes.has(opt.value)}
                                                                 onSelect={() => {
                                                                     const newId = `trigger_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-                                                                    const next = [...triggers, { id: newId, type: opt.value, config: {} }];
-                                                                    onTriggersChange?.(next);
+                                                                    const next = [...draftTriggers, { id: newId, type: opt.value, config: {} }];
+                                                                    setDraftTriggers(next);
                                                                     setActiveTriggerId(newId);
                                                                     setViewMode('edit');
                                                                 }}
@@ -654,7 +708,7 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                             )}
 
                             {viewMode === 'edit' && activeTriggerId && (() => {
-                                const activeTrigger = triggers.find(t => t.id === activeTriggerId);
+                                const activeTrigger = draftTriggers.find(t => t.id === activeTriggerId);
                                 if (!activeTrigger) return null;
                                 const Icon = triggerIcon(activeTrigger.type);
                                 const label = triggerLabel(activeTrigger.type);
@@ -680,15 +734,15 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                             </div>
                                             <button
                                                 type="button"
-                                                disabled={triggers.length <= 1}
+                                                disabled={draftTriggers.length <= 1}
                                                 onClick={() => {
-                                                    const next = triggers.filter(t => t.id !== activeTriggerId);
-                                                    onTriggersChange?.(next);
+                                                    const next = draftTriggers.filter(t => t.id !== activeTriggerId);
+                                                    setDraftTriggers(next);
                                                     setViewMode('list');
                                                 }}
                                                 className={cn(
                                                     "shrink-0 ml-2 h-7 w-7 rounded-xl flex items-center justify-center border transition-all",
-                                                    triggers.length <= 1
+                                                    draftTriggers.length <= 1
                                                         ? "border-muted/30 text-muted-foreground/30 cursor-not-allowed bg-transparent"
                                                         : "border-destructive/20 bg-destructive/5 hover:bg-destructive/10 text-destructive"
                                                 )}
@@ -705,10 +759,10 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                             trigger={activeTrigger.type}
                                             config={(activeTrigger.config ?? {}) as Record<string, any>}
                                             onUpdateConfig={(updates) => {
-                                                const next = triggers.map(t =>
+                                                const next = draftTriggers.map(t =>
                                                     t.id === activeTriggerId ? { ...t, config: { ...(t.config ?? {}), ...updates } } : t
                                                 );
-                                                onTriggersChange?.(next);
+                                                setDraftTriggers(next);
                                             }}
                                             allTags={allTags}
                                             forms={forms}
@@ -737,10 +791,11 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                             <button
                                                 key={action.value}
                                                 type="button"
-                                                onClick={() => onUpdate({
+                                                onClick={() => setDraftData((prev: any) => ({
+                                                    ...prev,
                                                     actionType: action.value,
                                                     label: action.label
-                                                })}
+                                                }))}
                                                 className="flex items-start gap-4 p-3 rounded-2xl border-2 border-transparent bg-background hover:bg-card/50 hover:border-primary/20 transition-all text-left group"
                                             >
                                                 <div className="p-2 rounded-xl transition-all shadow-sm shrink-0 bg-card text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
@@ -783,7 +838,12 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                         </div>
                                         <button
                                             type="button"
-                                            onClick={() => onUpdate({ actionType: '', label: 'New Action', config: {} })}
+                                            onClick={() => setDraftData((prev: any) => ({
+                                                ...prev,
+                                                actionType: '',
+                                                label: 'New Action',
+                                                config: {}
+                                            }))}
                                             className="shrink-0 ml-2 h-7 px-2.5 rounded-xl border border-border/60 bg-background hover:bg-muted/40 text-[9px] font-bold text-muted-foreground hover:text-foreground transition-all"
                                             title="Change action type"
                                         >
@@ -831,9 +891,10 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                 }] : [])} 
                                 relation={config.relation || config.matchType || 'and'} 
                                 onChange={(rel: 'and' | 'or', grps: any[]) => {
-                                    onUpdate({
+                                    setDraftData((prev: any) => ({
+                                        ...prev,
                                         config: {
-                                            ...config,
+                                            ...(prev?.config || {}),
                                             relation: rel,
                                             groups: grps,
                                             // Fallback fields for backwards-compatibility
@@ -842,7 +903,7 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                             operator: grps[0]?.conditions?.[0]?.operator || '',
                                             value: grps[0]?.conditions?.[0]?.value || ''
                                         }
-                                    });
+                                    }));
                                 }}
                                 accentColor="amber"
                             />
@@ -864,10 +925,11 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                         if (v === 'specific_date') defaultLabel = 'Wait Until Specific Date';
                                         if (v === 'date_field') defaultLabel = 'Wait Until Date Field';
                                         if (v === 'conditions_met') defaultLabel = 'Wait Until Conditions';
-                                        onUpdate({
+                                        setDraftData((prev: any) => ({
+                                            ...prev,
                                             label: defaultLabel,
-                                            config: { ...config, waitType: v }
-                                        });
+                                            config: { ...(prev?.config || {}), waitType: v }
+                                        }));
                                     }}
                                 >
                                     <SelectTrigger className="h-11 rounded-xl bg-background border-none font-bold shadow-inner px-4">
@@ -1022,9 +1084,10 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                         }] : [])} 
                                         relation={config.relation || config.matchType || 'and'} 
                                         onChange={(rel: 'and' | 'or', grps: any[]) => {
-                                            onUpdate({
+                                            setDraftData((prev: any) => ({
+                                                ...prev,
                                                 config: {
-                                                    ...config,
+                                                    ...(prev?.config || {}),
                                                     relation: rel,
                                                     groups: grps,
                                                     // Fallback fields for backwards-compatibility
@@ -1035,7 +1098,7 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                                                     emailTemplateId: grps[0]?.conditions?.[0]?.emailTemplateId,
                                                     linkUrl: grps[0]?.conditions?.[0]?.linkUrl
                                                 }
-                                            });
+                                            }));
                                         }}
                                         accentColor="purple"
                                     />
@@ -1203,6 +1266,47 @@ export function NodeInspector({ node, onUpdate, triggers = [], onTriggersChange 
                             </div>
                         </div>
                     ) : null}
+                </div>
+            </div>
+
+            {/* Sticky Action Footer */}
+            <div className="pt-4 mt-auto border-t border-border/50 shrink-0 bg-card flex items-center justify-between gap-3">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 rounded-xl font-bold flex-1 text-xs text-orange-600 bg-orange-500/5 hover:bg-orange-500/10 border-orange-500/20"
+                    onClick={() => onTest?.(node.id, data)}
+                >
+                    Test Step
+                </Button>
+                <div className="flex items-center gap-2 flex-[2]">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-10 rounded-xl font-bold flex-1 text-xs"
+                        onClick={onCancel}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        type="button"
+                        disabled={!isDirty}
+                        className={cn(
+                            "h-10 rounded-xl font-bold flex-1 text-xs transition-all",
+                            isDirty 
+                                ? "bg-primary text-white hover:bg-primary/95" 
+                                : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                        )}
+                        onClick={() => {
+                            if (node.type === 'triggerNode') {
+                                onApply?.(node.id, data, draftTriggers);
+                            } else {
+                                onApply?.(node.id, data);
+                            }
+                        }}
+                    >
+                        Apply
+                    </Button>
                 </div>
             </div>
         </div>

@@ -164,7 +164,6 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
           !config.pipelineId &&
           !config.stageId &&
           !config.assignedTo &&
-          !config.lifecycleStatus &&
           !(config.updates && Object.keys(config.updates as object).length)
         ) {
           throw new AutomationValidationError(

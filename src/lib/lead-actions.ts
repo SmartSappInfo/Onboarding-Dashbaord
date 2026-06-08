@@ -225,7 +225,6 @@ export async function processLeadCaptureAction(params: {
                 entityId,
                 entityType: 'person',
                 status: 'active',
-                lifecycleStatus: 'Lead',
                 workspaceTags: [],
                 displayName: name,
                 primaryEmail: email,

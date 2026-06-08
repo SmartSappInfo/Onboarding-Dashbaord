@@ -40,7 +40,6 @@ const PERSON_FIELDS: FieldDef[] = [
   { value: 'company', label: 'Company Name' },
   { value: 'jobTitle', label: 'Job Title' },
   { value: 'leadSource', label: 'Lead Source' },
-  { value: 'lifecycleStatus', label: 'Lifecycle Status' },
 ];
 
 const FAMILY_FIELDS: FieldDef[] = [
@@ -52,7 +51,6 @@ const FAMILY_FIELDS: FieldDef[] = [
   { value: 'child1_firstName', label: 'Child First Name', industries: ['SchoolEnrollment'] },
   { value: 'child1_lastName', label: 'Child Last Name', industries: ['SchoolEnrollment'] },
   { value: 'child1_gradeLevel', label: 'Child Grade Level', industries: ['SchoolEnrollment'] },
-  { value: 'lifecycleStatus', label: 'Lifecycle Status' },
   { value: 'leadSource', label: 'Lead Source' },
 ];
 
@@ -67,7 +65,6 @@ const INSTITUTION_FIELDS: FieldDef[] = [
   { value: 'currency', label: 'Currency' },
   { value: 'subscriptionPackageId', label: 'Package ID', industries: ['SaaS', 'SchoolEnrollment'] },
   { value: 'locationString', label: 'Location' },
-  { value: 'lifecycleStatus', label: 'Lifecycle Status' },
   { value: 'leadSource', label: 'Lead Source' },
 ];
 

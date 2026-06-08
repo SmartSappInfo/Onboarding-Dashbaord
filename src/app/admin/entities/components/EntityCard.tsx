@@ -35,7 +35,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
-import ChangeStatusModal from '../../entities/components/ChangeStatusModal';
+
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { AsyncEntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
@@ -50,7 +50,6 @@ interface EntityCardProps {
  * Updated to use dynamic Entity Status labels and independent workspace lifecycles.
  */
 export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
-    const [statusModalOpen, setStatusModalOpen] = React.useState(false);
     const { activeWorkspace } = useWorkspace();
     const { singular } = useTerminology();
 
@@ -71,10 +70,7 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
 
     const entityTitle = toTitleCase(entity.displayName);
 
-    // Resolve status color from active workspace config
-    const statusMeta = React.useMemo(() => {
-        return activeWorkspace?.statuses?.find(s => s.value === entity.lifecycleStatus);
-    }, [activeWorkspace, entity.lifecycleStatus]);
+
 
     return (
         <TooltipProvider>
@@ -82,8 +78,7 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
                 <Card
                     className={cn(
                         "w-full max-w-full mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card overflow-hidden text-left",
-                        isOverlay ? "ring-primary shadow-2xl scale-105 rotate-1" : "ring-border shadow-sm hover:shadow-lg hover:ring-primary/20",
-                        entity.lifecycleStatus === 'Churned' && "grayscale opacity-60"
+                        isOverlay ? "ring-primary shadow-2xl scale-105 rotate-1" : "ring-border shadow-sm hover:shadow-lg hover:ring-primary/20"
                     )}
                 >
                     <CardHeader
@@ -100,7 +95,7 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
                                     initials={entity.initials}
                                     className="h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105 text-left"
                                 />
-                                <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-sm" style={{ backgroundColor: statusMeta?.color || '#cbd5e1' }} />
+                                <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-sm" style={{ backgroundColor: entity.status === 'active' ? '#10b981' : '#cbd5e1' }} />
                             </div>
                             <div className="min-w-0 flex-1 text-left">
                                 <Tooltip>
@@ -136,10 +131,7 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
                                     </Link>
                                 </DropdownMenuItem>
 
-                                <DropdownMenuItem className="rounded-lg p-2 gap-2.5 text-left" onClick={() => setStatusModalOpen(true)}>
-                                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                                    <span className="font-bold text-xs text-left">Lifecycle State</span>
-                                </DropdownMenuItem>
+
 
 
                                 <DropdownMenuSeparator className="my-1" />
@@ -178,9 +170,9 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
                             <Badge
                                 variant="outline"
                                 className="h-4 text-[7px] font-semibold border-none px-1.5 rounded-sm shadow-inner shrink-0 text-left"
-                                style={{ backgroundColor: `${statusMeta?.color || '#cbd5e1'}15`, color: statusMeta?.color || '#64748b' }}
+                                style={{ backgroundColor: entity.status === 'active' ? '#10b98115' : '#cbd5e115', color: entity.status === 'active' ? '#10b981' : '#64748b' }}
                             >
-                                {entity.lifecycleStatus}
+                                {entity.status}
                             </Badge>
                         </div>
 
@@ -231,11 +223,6 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
                 </Card>
             </div>
 
-            <ChangeStatusModal
-                entity={entity}
-                open={statusModalOpen}
-                onOpenChange={setStatusModalOpen}
-            />
         </TooltipProvider>
     );
 }

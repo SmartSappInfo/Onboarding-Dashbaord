@@ -25,7 +25,7 @@ export function applyIndustryDataDefaults(
   if (industry === 'SaaS') {
     if (entityType === 'institution') {
       if (result.capacity === undefined || result.capacity === null) result.capacity = 0;
-      // accountStatus intentionally NOT defaulted — lifecycleStatus is authoritative
+      // accountStatus intentionally NOT defaulted — status field is authoritative
       if (!result.trialIds) result.trialIds = [];
       if (!result.onboardingIds) result.onboardingIds = [];
       if (!result.supportTicketIds) result.supportTicketIds = [];

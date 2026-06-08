@@ -117,7 +117,6 @@ describe('SaaS Actions - Workspace Industry Validation', () => {
           // planType: 'Enterprise',
           // features: [],
           // signupDate: '2024-01-01T00:00:00Z',
-          accountStatus: 'active',
           trialIds: [],
         },
       };
@@ -317,7 +316,6 @@ describe('SaaS Actions - Workspace Industry Validation', () => {
           // planType: 'Enterprise',
           // features: [],
           // signupDate: '2024-01-01T00:00:00Z',
-          accountStatus: 'active',
           healthScoreIds: [],
         },
       };

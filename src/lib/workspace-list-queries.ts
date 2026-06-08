@@ -21,7 +21,6 @@ export interface WorkspaceListItem {
   displayName: string;
   primaryEmail?: string;
   primaryPhone?: string;
-  lifecycleStatus?: string;
   assignedTo?: {
     userId: string | null;
     name: string | null;
@@ -39,7 +38,6 @@ export interface WorkspaceListItem {
 export interface WorkspaceListQueryOptions {
   workspaceId: string;
   status?: 'active' | 'archived';
-  lifecycleStatus?: string;
   assignedTo?: string;
   includeEntityData?: boolean; // If true, performs second fetch to hydrate entity data
   limit?: number;
@@ -68,10 +66,6 @@ export async function queryWorkspaceContacts(
 
     if (options.status) {
       query = query.where('status', '==', options.status);
-    }
-
-    if (options.lifecycleStatus) {
-      query = query.where('lifecycleStatus', '==', options.lifecycleStatus);
     }
 
     if (options.assignedTo) {
@@ -106,7 +100,6 @@ export async function queryWorkspaceContacts(
         displayName: data.displayName,
         primaryEmail: data.primaryEmail,
         primaryPhone: data.primaryPhone,
-        lifecycleStatus: data.lifecycleStatus,
         assignedTo: data.assignedTo,
         status: data.status,
         workspaceTags: data.workspaceTags,
@@ -171,7 +164,6 @@ export async function countWorkspaceContacts(
   workspaceId: string,
   filters?: {
     status?: 'active' | 'archived';
-    lifecycleStatus?: string;
     assignedTo?: string;
   }
 ): Promise<number> {
@@ -182,10 +174,6 @@ export async function countWorkspaceContacts(
 
     if (filters?.status) {
       query = query.where('status', '==', filters.status);
-    }
-
-    if (filters?.lifecycleStatus) {
-      query = query.where('lifecycleStatus', '==', filters.lifecycleStatus);
     }
 
     if (filters?.assignedTo) {

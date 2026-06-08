@@ -21,7 +21,6 @@ export interface ContactFilters {
   status?: string;
   entityType?: EntityType;
   tags?: string[];
-  lifecycleStatus?: string;
 }
 
 /**
@@ -70,9 +69,6 @@ export async function getWorkspaceContacts(
       .collection('workspace_entities')
       .where('workspaceId', '==', workspaceId);
 
-    if (filters?.lifecycleStatus) {
-      weQuery = weQuery.where('lifecycleStatus', '==', filters.lifecycleStatus);
-    }
     if (filters?.status) {
       weQuery = weQuery.where('status', '==', filters.status);
     }
@@ -207,7 +203,7 @@ async function resolveFromEntity(
         logoUrl: entity.logoUrl || (entity as any).institutionData?.logoUrl || '', 
         workspaceIds: [workspaceId],
         status: (workspaceEntity?.status || 'active') as any,
-        schoolStatus: workspaceEntity?.lifecycleStatus || 'Lead',
+        schoolStatus: workspaceEntity?.status || 'active',
         entityContacts, // Canonical contacts
         nominalRoll: ind.capacity || (entity as any).institutionData?.nominalRoll || 0,
         subscriptionPackageId: fin.planType || (entity as any).institutionData?.subscriptionPackageId,

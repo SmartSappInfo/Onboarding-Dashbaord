@@ -27,7 +27,7 @@ export function resolveFieldStorageBucket(
   // 1. Root Fields (Common to all entities)
   const rootFields = [
     'name', 'slug', 'initials', 'logoUrl', 'referee', 
-    'status', 'lifecycleStatus', 'location', 'locationString',
+    'status', 'location', 'locationString',
     'school_name', 'company_name', 'engagement_name', 'campaign_name', 'property_address'
   ];
   if (rootFields.includes(variableName)) return 'root';
@@ -55,7 +55,7 @@ export function resolveFieldStorageBucket(
   // 4. Industry Data (Standard schemas)
   // These are often industry-specific capacity or status metrics
   const industryFields = [
-    'capacity', 'activeUsers', 'accountStatus', 'account_status', 'employee_count', 'industry_sector',
+    'capacity', 'activeUsers', 'employee_count', 'industry_sector',
     'case_number', 'matter_type', 'court_name', 'filing_deadline', 'judge_name',
     'leads_generated', 'target_cpa', 'total_budget', 'current_spend',
     'property_type', 'square_footage', 'year_built', 'mls_number', 'listing_status',

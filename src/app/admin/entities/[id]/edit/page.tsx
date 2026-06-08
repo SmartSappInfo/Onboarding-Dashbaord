@@ -49,7 +49,6 @@ const entityEditSchema = z.object({
   initials: z.string().optional(),
   slogan: z.string().optional(),
   status: z.enum(['active', 'inactive', 'archived']),
-  lifecycleStatus: z.string().min(1, 'Status is required.'),
   logoUrl: z.string().url().optional().or(z.literal('')),
   heroImageUrl: z.string().url().optional().or(z.literal('')),
   zone: z.object({
@@ -207,7 +206,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
   const methods = useForm<EntityEditValues>({
     resolver: zodResolver(entityEditSchema),
     defaultValues: {
-      name: '', initials: '', slogan: '', status: 'active', lifecycleStatus: 'Onboarding',
+      name: '', initials: '', slogan: '', status: 'active',
       capacity: 0, entityContacts: [], modules: [],
       assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
@@ -233,7 +232,6 @@ function EditEntityForm({ entityId }: EditFormProps) {
         initials: entityData.initials || '',
         slogan: (entityData as any).slogan || '',
         status: (weData.status as any) || 'active',
-        lifecycleStatus: weData.lifecycleStatus || 'Onboarding',
         logoUrl: entityData.logoUrl || '',
         heroImageUrl: (entityData as any).heroImageUrl || '',
         zone: entityData.location?.zone || undefined,
@@ -316,7 +314,6 @@ function EditEntityForm({ entityId }: EditFormProps) {
     const updatePayload = {
         name: data.name,
         status: data.status,
-        lifecycleStatus: data.lifecycleStatus,
         entityContacts: data.entityContacts,
         assignedTo,
         // Root identity fields
@@ -468,24 +465,6 @@ function EditEntityForm({ entityId }: EditFormProps) {
                           <SelectItem value="active" className="font-bold">Active</SelectItem>
                           <SelectItem value="inactive" className="font-bold">Inactive</SelectItem>
                           <SelectItem value="archived" className="font-bold">Archived</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={methods.control} name="lifecycleStatus" render={({ field }) => (
-                    <FormItem className="text-left">
-                      <FormLabel className="text-[10px] font-semibold text-primary ml-1">Operational State</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-semibold text-primary">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="rounded-xl shadow-2xl border-none">
-                          {(activeWorkspace?.statuses || []).map(s => (
-                            <SelectItem key={s.value} value={s.value} className="font-semibold">{s.label}</SelectItem>
-                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />

@@ -3,7 +3,7 @@ import type { IndustryVertical, EntityType } from './types';
 /**
  * Returns a minimal, valid industryData object for the given industry/entityType.
  * Used as a fallback when an entity has no industryData yet.
- * accountStatus is intentionally NOT included — lifecycleStatus is authoritative.
+ * accountStatus is intentionally NOT included — status field is authoritative.
  */
 export function createMinimalIndustryData(
   industry: IndustryVertical,

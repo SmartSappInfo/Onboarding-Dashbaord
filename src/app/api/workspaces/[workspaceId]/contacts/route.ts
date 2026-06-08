@@ -58,7 +58,6 @@ export async function GET(
         displayName: data.displayName,
         primaryEmail: data.primaryEmail,
         primaryPhone: data.primaryPhone,
-        lifecycleStatus: data.lifecycleStatus,
         status: data.status,
         workspaceTags: data.workspaceTags,
         assignedTo: data.assignedTo,

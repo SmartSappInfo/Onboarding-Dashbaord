@@ -52,7 +52,7 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
   return (
     <div className="relative pl-10 group/item">
       {/* Icon on the timeline */}
-      <div className="absolute -left-[18px] top-0 transform z-10">
+      <div className="absolute left-4 top-0 -translate-x-1/2 z-10">
         <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm ring-4 ring-background transition-all group-hover/item:scale-110 group-hover/item:bg-primary group-hover/item:text-white">
           {isSystemEvent ? (
             <Bot className="h-4 w-4" />
@@ -63,7 +63,7 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
       </div>
       
       {/* Main Content */}
-      <div className="ml-6 flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5">
         {/* Header Line */}
         <div className="flex items-center flex-wrap gap-x-2 text-[11px] font-bold uppercase tracking-tight">
             {!isSystemEvent && user ? (

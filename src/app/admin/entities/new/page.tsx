@@ -81,7 +81,6 @@ const formSchema = z.object({
   slogan: z.string().optional(),
   workspaceIds: z.array(z.string()).min(1, 'Select at least one workspace.'),
   status: z.enum(['active', 'inactive', 'archived']),
-  lifecycleStatus: z.string().optional().default('Onboarding'),
   logoUrl: z.string().url().optional().or(z.literal('')),
   heroImageUrl: z.string().url().optional().or(z.literal('')),
   zone: z.object({
@@ -277,7 +276,6 @@ export default function NewEntityPage() {
       slogan: '',
       workspaceIds: [activeWorkspaceId],
       status: 'active',
-      lifecycleStatus: 'Onboarding',
       location: {},
       locationString: '',
       workspaceTags: [],
@@ -500,7 +498,6 @@ export default function NewEntityPage() {
         name: data.name,
         entityContacts: data.entityContacts || [],
         status: data.status,
-        lifecycleStatus: data.lifecycleStatus || 'Onboarding',
         location: { ...data.location, locationString: data.locationString },
         workspaceTags: data.workspaceTags || [],
         assignedTo,
@@ -709,18 +706,6 @@ export default function NewEntityPage() {
  <SelectItem value="active" className="font-bold">Active</SelectItem>
  <SelectItem value="inactive" className="font-bold">Inactive</SelectItem>
  <SelectItem value="archived" className="font-bold">Archived</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            <FormMessage /></FormItem>
-                        )} />
-                        <FormField control={methods.control} name="lifecycleStatus" render={({ field }) => (
- <FormItem className="text-left"><FormLabel className="text-[10px] font-semibold text-primary ml-1">Operational State</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
- <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-semibold text-primary"><SelectValue /></SelectTrigger></FormControl>
- <SelectContent className="rounded-xl shadow-2xl border-none">
-                                        {(activeWorkspace?.statuses || []).map(s => (
- <SelectItem key={s.value} value={s.value} className="font-semibold">{s.label}</SelectItem>
-                                        ))}
                                     </SelectContent>
                                 </Select>
                             <FormMessage /></FormItem>

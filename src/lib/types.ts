@@ -36,7 +36,6 @@ export type SchoolStatusState = 'Active' | 'Inactive' | 'Archived' | 'archived';
 
 export type SchoolStatus = SchoolStatusState; // Alias for backward compatibility
 
-export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned' | 'Lead' | 'Lost' | string;
 
 /**
  * Tag Category Types
@@ -760,7 +759,6 @@ export interface School {
     color?: string;
   };
   track?: string;
-  lifecycleStatus?: LifecycleStatus;
   createdAt: string;
   updatedAt?: string; // ISO timestamp
   // Tagging fields
@@ -932,7 +930,7 @@ export interface OnlinePresence {
 
 /**
  * WorkspaceEntity - represents the operational relationship between an entity and a workspace
- * Stores workspace-specific state: assignee, workspace tags, lifecycle status
+ * Stores workspace-specific state: assignee, workspace tags
  * 
  * Tag Storage (Requirement 7):
  * - workspaceTags: Operational tags scoped to this specific workspace (e.g., "hot-lead", "billing-issue")
@@ -953,7 +951,6 @@ export interface WorkspaceEntity {
     email: string | null;
   } | null;
   status: 'active' | 'archived';
-  lifecycleStatus?: string; // Dynamic workspace-defined status (e.g., "Onboarding", "Active", "Churned")
   workspaceTags: string[]; // Workspace-scoped operational tags (Requirement 7)
   taggedAt?: { [tagId: string]: string }; // Tag assignment timestamps
   taggedBy?: { [tagId: string]: string }; // Tag assignment user IDs
@@ -1538,8 +1535,7 @@ export interface SurveyEntityDefaults {
   capacity?: number;
   currentEnrollment?: number;
 
-  // SaaS institution
-  accountStatus?: 'lead' | 'trial' | 'active' | 'suspended' | 'churned';
+
   activeUsers?: number;
 
   // SaaS / Consultancy / Marketing person
@@ -2548,7 +2544,6 @@ export type AudienceFilterField =
   | 'locationCountry'
   | 'locationRegion'
   | 'locationDistrict'
-  | 'lifecycleStatus'
   | 'lastContactedAt'
   | 'dealPipeline'
   | 'dealStage'
@@ -3398,8 +3393,7 @@ export interface SaaSInstitutionData {
   industry: 'SaaS';
   capacity: number; // Renamed from companySize
   activeUsers?: number;
-  /** @deprecated Use lifecycleStatus on WorkspaceEntity. Retained for SaaS billing integrations only. */
-  accountStatus?: 'lead' | 'trial' | 'active' | 'suspended' | 'churned';
+
   trialIds?: string[];
   onboardingIds?: string[];
   supportTicketIds?: string[];

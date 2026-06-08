@@ -11,6 +11,10 @@ export async function executeAutomation(
 ): Promise<void> {
   const timestamp = new Date().toISOString();
 
+  // Resolve organizationId once here so action steps don't each make a separate Firestore read
+  const wsSnap = await adminDb.collection('workspaces').doc(triggerPayload.workspaceId as string).get();
+  const organizationId: string = (wsSnap.data()?.organizationId as string) || '';
+
   const runRef = await adminDb.collection('automation_runs').add({
     automationId: automation.id,
     automationName: automation.name,
@@ -25,6 +29,7 @@ export async function executeAutomation(
     entityId: triggerPayload.entityId as string | undefined,
     entityType: triggerPayload.entityType as ExecutionContext['entityType'],
     workspaceId: triggerPayload.workspaceId as string,
+    organizationId,
     payload: triggerPayload,
     automationId: automation.id,
     runId: runRef.id,

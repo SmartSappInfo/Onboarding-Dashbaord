@@ -73,13 +73,12 @@ export default function LocationHierarchyEditor() {
 
   // Queries
   const regionsQuery = useMemoFirebase(() => {
-    if (!firestore || !activeOrganizationId) return null;
+    if (!firestore) return null;
     return query(
       collection(firestore, 'regions'),
-      where('organizationId', '==', activeOrganizationId),
       orderBy('name', 'asc'),
     );
-  }, [firestore, activeOrganizationId]);
+  }, [firestore]);
   const { data: allRegions, isLoading: isLoadingRegions } = useCollection<Region>(regionsQuery);
 
   const districtsQuery = useMemoFirebase(() => {

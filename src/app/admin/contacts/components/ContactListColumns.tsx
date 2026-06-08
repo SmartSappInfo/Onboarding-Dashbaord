@@ -74,9 +74,9 @@ function InstitutionColumns({ contacts }: { contacts: ContactListItem[] }) {
 
           {/* Stage */}
  <div className="flex items-center">
-            {contact.lifecycleStatus ? (
+            {contact.status ? (
               <Badge variant="secondary" className="text-xs">
-                {contact.lifecycleStatus}
+                {contact.status}
               </Badge>
             ) : (
  <span className="text-xs text-muted-foreground">No status</span>
@@ -138,9 +138,9 @@ function FamilyColumns({ contacts }: { contacts: ContactListItem[] }) {
 
           {/* Admissions Stage */}
  <div className="flex items-center">
-            {contact.lifecycleStatus ? (
+            {contact.status ? (
               <Badge variant="secondary" className="text-xs">
-                {contact.lifecycleStatus}
+                {contact.status}
               </Badge>
             ) : (
  <span className="text-xs text-muted-foreground">No status</span>
@@ -211,16 +211,8 @@ function PersonColumns({ contacts }: { contacts: ContactListItem[] }) {
             </Badge>
           </div>
 
-          {/* Stage */}
- <div className="flex items-center">
-            {contact.lifecycleStatus ? (
-              <Badge variant="secondary" className="text-xs">
-                {contact.lifecycleStatus}
-              </Badge>
-            ) : (
- <span className="text-xs text-muted-foreground">No status</span>
-            )}
-          </div>
+
+
         </div>
       ))}
     </div>

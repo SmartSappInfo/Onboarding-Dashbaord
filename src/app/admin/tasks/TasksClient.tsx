@@ -259,6 +259,9 @@ export default function TasksClient() {
 
     // Confirmation State
     const [taskToComplete, setTaskToComplete] = React.useState<Task | null>(null);
+    const [taskToDelete, setTaskToDelete] = React.useState<Task | null>(null);
+    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = React.useState(false);
+    const [isBulkResolveOpen, setIsBulkResolveOpen] = React.useState(false);
 
     const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
         overdue: true,
@@ -588,15 +591,19 @@ export default function TasksClient() {
         setTaskToComplete(null);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!currentUser || !confirm('Permanently remove this protocol?')) return;
+    const handleDelete = async (task: Task) => {
+        if (!currentUser) return;
         try {
-            const res = await deleteTaskAction(id, currentUser.uid);
-            if (res.success) toast({ title: 'Record Purged' });
-            else toast({ variant: 'destructive', title: 'Delete Failed', description: res.error });
+            const res = await deleteTaskAction(task.id, currentUser.uid);
+            if (res.success) {
+                toast({ title: 'Record Purged', description: `Task "${task.title}" deleted.` });
+            } else {
+                toast({ variant: 'destructive', title: 'Delete Failed', description: res.error });
+            }
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Error', description: e.message });
         }
+        setTaskToDelete(null);
     };
 
     const handleBulkComplete = async () => {
@@ -615,16 +622,17 @@ export default function TasksClient() {
             toast({ variant: 'destructive', title: 'Error', description: e.message });
         } finally {
             setIsBulkProcessing(false);
+            setIsBulkResolveOpen(false);
         }
     };
 
     const handleBulkDelete = async () => {
-        if (!currentUser || selectedIds.length === 0 || !confirm(`Delete ${selectedIds.length} tasks?`)) return;
+        if (!currentUser || selectedIds.length === 0) return;
         setIsBulkProcessing(true);
         try {
             const res = await bulkDeleteTasksAction(selectedIds, currentUser.uid, activeWorkspaceId);
             if (res.success) {
-                toast({ title: 'Bulk Delete Success' });
+                toast({ title: 'Bulk Delete Success', description: `${selectedIds.length} tasks permanently deleted.` });
                 setSelectedIds([]);
                 setIsSelectionMode(false);
             } else {
@@ -634,6 +642,7 @@ export default function TasksClient() {
             toast({ variant: 'destructive', title: 'Error', description: e.message });
         } finally {
             setIsBulkProcessing(false);
+            setIsBulkDeleteOpen(false);
         }
     };
 
@@ -991,7 +1000,7 @@ export default function TasksClient() {
                                         <Button 
                                             size="sm" 
                                             variant="outline" 
-                                            onClick={handleBulkComplete} 
+                                            onClick={() => setIsBulkResolveOpen(true)} 
                                             className="h-8 rounded-lg text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/20 text-xs font-bold"
                                         >
                                             Resolve Selected
@@ -1087,7 +1096,7 @@ export default function TasksClient() {
                                         <Button 
                                             size="sm" 
                                             variant="outline" 
-                                            onClick={handleBulkDelete} 
+                                            onClick={() => setIsBulkDeleteOpen(true)} 
                                             className="h-8 rounded-lg text-rose-600 hover:bg-rose-500/10 border-rose-500/20 text-xs font-bold"
                                         >
                                             Delete Selected
@@ -1211,6 +1220,23 @@ export default function TasksClient() {
                                                                             </span>
                                                                         </div>
 
+                                                                        {/* Entity Display Name - Swapped and brought into Simple View */}
+                                                                        {task.entityName ? (
+                                                                            <div className="hidden md:flex items-center gap-1.5 min-w-[120px] max-w-[160px] shrink-0">
+                                                                                <EntityAvatar 
+                                                                                    src={task.entityId ? entityLogoMap.get(task.entityId) : undefined} 
+                                                                                    name={task.entityName} 
+                                                                                    className="h-3.5 w-3.5 rounded-sm shadow-none ring-0 p-0 shrink-0"
+                                                                                    fallbackClassName="text-[6px]"
+                                                                                />
+                                                                                <span className="text-[10px] font-semibold text-muted-foreground/60 truncate">
+                                                                                    {task.entityName}
+                                                                                </span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="hidden md:flex min-w-[120px] shrink-0" />
+                                                                        )}
+
                                                                         <div className="flex items-center gap-1.5 min-w-[95px] sm:min-w-[110px] shrink-0">
                                                                             <Clock className={cn("h-3 w-3", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
                                                                             <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
@@ -1255,6 +1281,23 @@ export default function TasksClient() {
                                                                             </div>
                                                                         </div>
 
+                                                                        {/* Entity Display Name - Swapped to come before Clock/Due Status */}
+                                                                        {task.entityName ? (
+                                                                            <div className="hidden lg:flex items-center gap-1.5 min-w-[140px] max-w-[180px] shrink-0">
+                                                                                <EntityAvatar 
+                                                                                    src={task.entityId ? entityLogoMap.get(task.entityId) : undefined} 
+                                                                                    name={task.entityName} 
+                                                                                    className="h-3.5 w-3.5 rounded-sm shadow-none ring-0 p-0 shrink-0"
+                                                                                    fallbackClassName="text-[6px]"
+                                                                                />
+                                                                                <span className="text-[10px] font-semibold text-muted-foreground/60 truncate">
+                                                                                    {task.entityName}
+                                                                                </span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="hidden lg:flex min-w-[140px] shrink-0" />
+                                                                        )}
+
                                                                         <div className="hidden md:flex items-center gap-2 min-w-[120px] shrink-0">
                                                                             <Clock className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
                                                                             <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
@@ -1272,22 +1315,6 @@ export default function TasksClient() {
                                                                                 }
                                                                             </span>
                                                                         </div>
-
-                                                                        {task.entityName ? (
-                                                                            <div className="hidden lg:flex items-center gap-1.5 min-w-[140px] max-w-[180px] shrink-0">
-                                                                                <EntityAvatar 
-                                                                                    src={task.entityId ? entityLogoMap.get(task.entityId) : undefined} 
-                                                                                    name={task.entityName} 
-                                                                                    className="h-3.5 w-3.5 rounded-sm shadow-none ring-0 p-0 shrink-0"
-                                                                                    fallbackClassName="text-[6px]"
-                                                                                />
-                                                                                <span className="text-[10px] font-semibold text-muted-foreground/60 truncate">
-                                                                                    {task.entityName}
-                                                                                </span>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="hidden lg:flex min-w-[140px] shrink-0" />
-                                                                        )}
 
                                                                         <div className="hidden xl:flex items-center gap-4 min-w-[180px] shrink-0">
                                                                             <div className="flex-1 space-y-1">

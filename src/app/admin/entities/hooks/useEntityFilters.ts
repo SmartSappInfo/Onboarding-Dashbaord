@@ -12,7 +12,6 @@ export interface DirectoryFilterState {
   status: string;
   location: LocationValue;
   tags: TagFilterState;
-  lifecycle: string[];
   dateRange: string;
   interests?: string[];
   contactRoles?: string[];
@@ -25,7 +24,6 @@ export const DEFAULT_FILTERS: DirectoryFilterState = {
   status: 'active',
   location: {},
   tags: { tagIds: [], logic: 'OR' },
-  lifecycle: [],
   dateRange: 'all',
   interests: [],
   contactRoles: [],
@@ -116,7 +114,6 @@ export function useEntityFilters({
               firstName: entity.primaryContactName?.split(' ')[0] || '',
               lastName: entity.primaryContactName?.split(' ').slice(1).join(' ') || '',
               status: entity.status,
-              lifecycleStatus: entity.lifecycleStatus,
               locationCountryId: entity.locationCountryId,
               locationRegionId: entity.locationRegionId,
               locationDistrictId: entity.locationDistrictId,
@@ -162,10 +159,6 @@ export function useEntityFilters({
     if (!entities || entities.length === 0) return [];
 
     const query = filterState.search.toLowerCase().trim();
-    // Pre-build Set for O(1) lifecycle matching (js-set-map-lookups)
-    const lifecycleSet = filterState.lifecycle.length > 0
-      ? new Set(filterState.lifecycle)
-      : null;
     const dateBoundary = getDateBoundary(filterState.dateRange);
 
     return entities.filter(entity => {
@@ -218,8 +211,7 @@ export function useEntityFilters({
       // 5. Tag Filter — server-side IDs restriction
       if (tagFilteredIds !== null && !tagFilteredIds.has(entity.entityId)) return false;
 
-      // 6. Lifecycle Stage Filter
-      if (lifecycleSet && (!entity.lifecycleStatus || !lifecycleSet.has(entity.lifecycleStatus))) return false;
+
 
       // 7. Date Added Range Filter
       if (dateBoundary !== null) {
@@ -289,7 +281,6 @@ export function useEntityFilters({
     if (filterState.status !== 'active') count++;
     if (filterState.location.country) count++;
     if (filterState.tags.tagIds.length > 0) count++;
-    if (filterState.lifecycle.length > 0) count++;
     if (filterState.dateRange !== 'all') count++;
     if (filterState.interests && filterState.interests.length > 0) count++;
     if (filterState.contactRoles && filterState.contactRoles.length > 0) count++;
@@ -350,14 +341,7 @@ export function useEntityFilters({
       });
     }
 
-    if (filterState.lifecycle.length > 0) {
-      capsules.push({
-        id: 'lifecycle',
-        label: 'Lifecycle',
-        value: filterState.lifecycle.join(', '),
-        onClear: () => ({ ...filterState, lifecycle: [] }),
-      });
-    }
+
 
     if (filterState.dateRange !== 'all') {
       const labels: Record<string, string> = {

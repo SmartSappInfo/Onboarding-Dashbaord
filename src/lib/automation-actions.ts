@@ -45,6 +45,17 @@ export async function testAutomationFlowAction(
   return testAutomationFlow(automationId, userId, input);
 }
 
+export async function testAutomationStepAction(
+  automationId: string,
+  nodeId: string,
+  entityId: string,
+  nodeDataOverride: any,
+  userId: string
+) {
+  const { testAutomationStep } = await import('./automations/test-step');
+  return testAutomationStep(automationId, nodeId, entityId, nodeDataOverride, userId);
+}
+
 export async function pulseAutomationEngineAction() {
   const { processScheduledJobsAction } = await import('./automations/processor');
   return processScheduledJobsAction();

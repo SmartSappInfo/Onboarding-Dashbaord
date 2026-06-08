@@ -73,9 +73,9 @@ export default function EntityContextPanel({ entityId }: EntityContextPanelProps
           </p>
         )}
         
-        {entity.lifecycleStatus && (
+        {entity.status && (
           <Badge variant="outline" className="mt-3 text-[10px] uppercase font-bold px-2 py-0.5 bg-primary/5 text-primary border-primary/20">
-            {entity.lifecycleStatus}
+            {entity.status}
           </Badge>
         )}
       </div>

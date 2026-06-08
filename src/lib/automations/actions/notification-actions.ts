@@ -4,6 +4,20 @@ import { resolveContact } from '../../contact-adapter';
 import type { ExecutionContext } from '../execution-types';
 
 /**
+ * Normalizes the `assignedTo` field from workspace_entities.
+ * The field may be stored as a plain string (userId) or as an object { userId: string | null }.
+ * Both shapes are valid — this function resolves them uniformly and always returns
+ * `string | undefined` (null is coerced to undefined).
+ */
+function resolveAssigneeUserId(
+  assignedTo: string | { userId?: string | null } | null | undefined
+): string | undefined {
+  if (!assignedTo) return undefined;
+  if (typeof assignedTo === 'string') return assignedTo || undefined;
+  return assignedTo.userId ?? undefined;
+}
+
+/**
  * Compiles a template string by replacing {{variable}} placeholders with
  * values from the provided payload. Unresolved placeholders are left as-is.
  */
@@ -66,11 +80,14 @@ export async function handleSendNotification(
   const targetUserIds: string[] = [];
 
   // 1. Workspace Assignee
+  // resolveAssigneeUserId normalizes assignedTo regardless of storage shape
+  // (plain string userId or { userId: string } object — both are stored in the wild)
   if (targets.includes('assignee') && context.entityId) {
     const contact = await resolveContact(context.entityId, context.workspaceId);
-    if (contact?.assignedTo?.userId) {
-      targetUserIds.push(contact.assignedTo.userId);
-      const userSnap = await adminDb.collection('users').doc(contact.assignedTo.userId).get();
+    const assigneeUserId = resolveAssigneeUserId(contact?.assignedTo);
+    if (assigneeUserId) {
+      targetUserIds.push(assigneeUserId);
+      const userSnap = await adminDb.collection('users').doc(assigneeUserId).get();
       if (userSnap.exists) {
         const u = userSnap.data()!;
         if (u.email) emails.push(u.email as string);

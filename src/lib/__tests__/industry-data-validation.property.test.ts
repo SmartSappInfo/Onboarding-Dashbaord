@@ -43,7 +43,6 @@ function minimalIndustryData(industry: IndustryVertical): object {
         // planType: 'basic',
         // features: [],
         // signupDate: '2024-01-01',
-        accountStatus: 'active',
       };
     case 'SchoolEnrollment':
       return {

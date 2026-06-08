@@ -23,6 +23,24 @@ import { ConditionNode } from '../[id]/edit/components/nodes/ConditionNode';
 import { DelayNode } from '../[id]/edit/components/nodes/DelayNode';
 import { TagConditionNode } from '../[id]/edit/components/nodes/TagConditionNode';
 import { TagActionNode } from '../[id]/edit/components/nodes/TagActionNode';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { 
     Zap, 
     Play, 
@@ -39,7 +57,10 @@ import {
     PlusCircle,
     Undo2,
     Redo2,
-    Activity
+    Activity,
+    Search,
+    LayoutGrid,
+    LayoutList,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -113,9 +134,56 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
     const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false);
     const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
 
+    // Dirty/Confirmation states
+    const [isInspectorDirty, setIsInspectorDirty] = React.useState(false);
+    const [confirmModalOpen, setConfirmModalOpen] = React.useState(false);
+    const [skipConfirm, setSkipConfirm] = React.useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('skipInspectorConfirmations') === 'true';
+        }
+        return false;
+    });
+    
+    // Store target operations when switching nodes or pane click
+    const nextActionRef = React.useRef<{
+        type: 'select' | 'pane' | 'close';
+        nodeId?: string;
+    } | null>(null);
+
+    // NodeInspector temporary draft data (used to save on exit confirm)
+    const activeDraftRef = React.useRef<{
+        nodeId: string;
+        nodeData: any;
+        nextTriggers?: AutomationTriggerDef[];
+    } | null>(null);
+
+    // Test step dialog state
+    const [testDialogOpen, setTestDialogOpen] = React.useState(false);
+    const [testTargetNode, setTestTargetNode] = React.useState<{ id: string; data: any } | null>(null);
+    const [testEntitySearch, setTestEntitySearch] = React.useState('');
+    const [testEntities, setTestEntities] = React.useState<any[]>([]);
+    const [testingEntityId, setTestingEntityId] = React.useState<string>('');
+    const [isTestingStep, setIsTestingStep] = React.useState(false);
+    const [testResult, setTestResult] = React.useState<{ success: boolean; message?: string; evaluation?: boolean; error?: string } | null>(null);
+
     const firestore = useFirestore();
     const searchParams = useSearchParams();
     const queryRunId = searchParams?.get('runId');
+
+    // Fetch test entities from workspace_entities
+    React.useEffect(() => {
+        if (testDialogOpen && firestore) {
+            import('firebase/firestore').then(({ collection, getDocs, limit, query }) => {
+                getDocs(query(collection(firestore, 'workspace_entities'), limit(15))).then((snap) => {
+                    const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setTestEntities(list);
+                    if (list.length > 0 && !testingEntityId) {
+                        setTestingEntityId((list[0] as any).entityId || list[0].id);
+                    }
+                });
+            });
+        }
+    }, [testDialogOpen, firestore, testingEntityId]);
 
     // Auto-open run diagnostics if runId is in search params
     React.useEffect(() => {
@@ -246,6 +314,125 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         requestAnimationFrame(() => { isRestoringRef.current = false; });
     }, [setNodes, setEdges]);
 
+    // ─── Automatic Layout ──────────────────────────────────────────────────
+    const applyAutoLayout = React.useCallback((direction: 'vertical' | 'horizontal') => {
+        if (nodes.length === 0) return;
+
+        // 1. Build adjacency list representation of the graph
+        const adj: Record<string, { target: string; handle: string | null }[]> = {};
+        const inDegree: Record<string, number> = {};
+
+        nodes.forEach(n => {
+            adj[n.id] = [];
+            inDegree[n.id] = 0;
+        });
+
+        edges.forEach(e => {
+            if (adj[e.source] && adj[e.target] !== undefined) {
+                adj[e.source].push({ target: e.target, handle: e.sourceHandle || null });
+                inDegree[e.target] = (inDegree[e.target] || 0) + 1;
+            }
+        });
+
+        // 2. Identify root nodes (nodes with 0 in-degree or triggers)
+        let roots = nodes.filter(n => n.type === 'triggerNode');
+        if (roots.length === 0) {
+            roots = nodes.filter(n => (inDegree[n.id] || 0) === 0);
+        }
+        if (roots.length === 0 && nodes.length > 0) {
+            roots = [nodes[0]];
+        }
+
+        // We will layout each disconnected component/tree
+        const visited = new Set<string>();
+        const positions: Record<string, { x: number; y: number }> = {};
+
+        // Configuration spacing constants
+        const siblingSpacing = 320; // horizontal gap between siblings in vertical layout, or vertical gap in horizontal layout
+        const levelSpacing = 180;   // gap between parent and child
+
+        // Layout subtree starting at node
+        const layoutSubtree = (nodeId: string, level: number, offset: number): number => {
+            visited.add(nodeId);
+
+            const children = adj[nodeId] || [];
+            // Sort children so that 'true' or default branches come first consistently
+            const unvisitedChildren = children
+                .filter(c => !visited.has(c.target))
+                .sort((a, b) => {
+                    const ha = a.handle || '';
+                    const hb = b.handle || '';
+                    if (ha === 'true' && hb === 'false') return -1;
+                    if (ha === 'false' && hb === 'true') return 1;
+                    return ha.localeCompare(hb);
+                });
+
+            let width = 0;
+            const childOffsets: number[] = [];
+
+            if (unvisitedChildren.length > 0) {
+                let currentOffset = offset;
+                unvisitedChildren.forEach((c) => {
+                    const childWidth = layoutSubtree(c.target, level + 1, currentOffset);
+                    childOffsets.push(currentOffset + childWidth / 2);
+                    currentOffset += childWidth;
+                });
+                width = currentOffset - offset;
+            } else {
+                width = siblingSpacing;
+            }
+
+            // Node position coordinate
+            const nodeOffset = unvisitedChildren.length > 0
+                ? (childOffsets[0] + childOffsets[childOffsets.length - 1]) / 2
+                : offset + siblingSpacing / 2;
+
+            if (direction === 'vertical') {
+                positions[nodeId] = {
+                    x: nodeOffset,
+                    y: level * levelSpacing + 80
+                };
+            } else {
+                positions[nodeId] = {
+                    x: level * levelSpacing + 100,
+                    y: nodeOffset
+                };
+            }
+
+            return width;
+        };
+
+        // Run layout for all root components
+        let totalOffset = 0;
+        roots.forEach(root => {
+            if (!visited.has(root.id)) {
+                const componentWidth = layoutSubtree(root.id, 0, totalOffset);
+                totalOffset += componentWidth + siblingSpacing * 0.5;
+            }
+        });
+
+        // Layout any orphan nodes not reachable from roots
+        nodes.forEach(n => {
+            if (!visited.has(n.id)) {
+                const componentWidth = layoutSubtree(n.id, 0, totalOffset);
+                totalOffset += componentWidth + siblingSpacing * 0.5;
+            }
+        });
+
+        // 3. Apply calculated positions to the node state
+        const layoutedNodes = nodes.map(n => {
+            const pos = positions[n.id] || n.position;
+            return {
+                ...n,
+                position: { ...pos }
+            };
+        });
+
+        // Update state and record in undo history immediately
+        setNodes(layoutedNodes);
+        pushHistory(layoutedNodes, edges);
+    }, [nodes, edges, setNodes, pushHistory]);
+
     // ─── Edge deletion ────────────────────────────────────────────────────
     const deleteEdge = React.useCallback(
         (edgeId: string) => {
@@ -298,14 +485,35 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
     );
 
     const onNodeClick = (_: React.MouseEvent, node: Node) => {
-        setSelectedNodeId(node.id);
-        setSelectedEdgeId(null);
-        setDiagnosticsOpen(false);
+        if (node.id === selectedNodeId) return;
+
+        if (isInspectorDirty && !skipConfirm) {
+            nextActionRef.current = { type: 'select', nodeId: node.id };
+            setConfirmModalOpen(true);
+            
+            // Programmatically force-keep visual outline selection on active dirty node inside React Flow
+            setNodes(nds => nds.map(n => n.id === selectedNodeId ? { ...n, selected: true } : { ...n, selected: false }));
+        } else {
+            // If skipConfirm is checked, discard changes immediately and select new node
+            setSelectedNodeId(node.id);
+            setSelectedEdgeId(null);
+            setDiagnosticsOpen(false);
+        }
     };
 
     const onPaneClick = () => {
-        setSelectedNodeId(null);
-        setSelectedEdgeId(null);
+        if (!selectedNodeId) return;
+
+        if (isInspectorDirty && !skipConfirm) {
+            nextActionRef.current = { type: 'pane' };
+            setConfirmModalOpen(true);
+            
+            // Programmatically force-keep visual outline selection on active dirty node inside React Flow
+            setNodes(nds => nds.map(n => n.id === selectedNodeId ? { ...n, selected: true } : { ...n, selected: false }));
+        } else {
+            setSelectedNodeId(null);
+            setSelectedEdgeId(null);
+        }
     };
 
     // Keyboard shortcuts: Delete/Backspace for deletion, Cmd/Ctrl+Z for undo, Cmd/Ctrl+Shift+Z / Cmd/Ctrl+Y for redo
@@ -645,6 +853,19 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                             />
                             <div className="h-px bg-border/50 mx-1" />
                             <ToolBtn 
+                                icon={LayoutGrid} 
+                                label="Auto Arrange Vertically" 
+                                color="text-teal-600 bg-teal-50 border border-teal-100" 
+                                onClick={() => applyAutoLayout('vertical')} 
+                            />
+                            <ToolBtn 
+                                icon={LayoutList} 
+                                label="Auto Arrange Horizontally" 
+                                color="text-teal-600 bg-teal-50 border border-teal-100" 
+                                onClick={() => applyAutoLayout('horizontal')} 
+                            />
+                            <div className="h-px bg-border/50 mx-1" />
+                            <ToolBtn 
                                 icon={Activity} 
                                 label="Diagnostics Panel" 
                                 color={diagnosticsOpen
@@ -685,7 +906,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             </ReactFlow>
 
             {/* Sidebar Inspector Context */}
-            <div className="absolute top-6 right-6 bottom-6 z-20 w-[380px] pointer-events-none flex flex-col">
+            <div className="absolute top-6 right-6 bottom-6 z-20 w-[456px] pointer-events-none flex flex-col">
                 {diagnosticsOpen ? (
                     <div className="h-full pointer-events-auto">
                         <DiagnosticsPanel
@@ -706,7 +927,19 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                                 <div className="p-2 bg-primary/10 rounded-xl text-primary shadow-sm"><Settings2 className="h-4 w-4" /></div>
                                 <h4 className="text-[10px] font-semibold ">Logic Inspector</h4>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => setSelectedNodeId(null)} className="h-8 w-8 rounded-lg hover:bg-muted">
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => {
+                                    if (isInspectorDirty && !skipConfirm) {
+                                        nextActionRef.current = { type: 'close' };
+                                        setConfirmModalOpen(true);
+                                    } else {
+                                        setSelectedNodeId(null);
+                                    }
+                                }} 
+                                className="h-8 w-8 rounded-lg hover:bg-muted"
+                            >
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
@@ -718,6 +951,27 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                                     onUpdate={(data) => handleUpdateNodeData(selectedNode.id, data)}
                                     triggers={triggers}
                                     onTriggersChange={onTriggersChange}
+                                    onDirtyChange={setIsInspectorDirty}
+                                    onApply={(nodeId, nodeData, nextTriggers) => {
+                                        handleUpdateNodeData(nodeId, nodeData);
+                                        if (nextTriggers && selectedNode?.type === 'triggerNode') {
+                                            onTriggersChange(nextTriggers);
+                                        }
+                                        setIsInspectorDirty(false);
+                                    }}
+                                    onCancel={() => {
+                                        if (isInspectorDirty && !skipConfirm) {
+                                            nextActionRef.current = { type: 'close' };
+                                            setConfirmModalOpen(true);
+                                        } else {
+                                            setSelectedNodeId(null);
+                                        }
+                                    }}
+                                    onTest={(nodeId, nodeData) => {
+                                        setTestTargetNode({ id: nodeId, data: nodeData });
+                                        setTestResult(null);
+                                        setTestDialogOpen(true);
+                                    }}
                                 />
                             ) : (
                                 <div className="py-20 text-center border-2 border-dashed rounded-2xl border-border/50 bg-background">
@@ -738,6 +992,204 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                 onSelect={addLibraryNode} 
                 hasParentSelected={!!selectedNodeId} 
             />
+
+            {/* Exit Confirmation Dialog */}
+            {(() => {
+                const handleProceed = (save: boolean) => {
+                    if (save && selectedNode) {
+                        // Gather what NodeInspector was working on
+                        const finalData = activeDraftRef.current?.nodeData || selectedNode.data;
+                        handleUpdateNodeData(selectedNode.id, finalData);
+                        if (selectedNode.type === 'triggerNode' && activeDraftRef.current?.nextTriggers) {
+                            onTriggersChange(activeDraftRef.current.nextTriggers);
+                        }
+                    }
+                    setIsInspectorDirty(false);
+                    setConfirmModalOpen(false);
+
+                    // Complete selection or pane transitions
+                    const action = nextActionRef.current;
+                    if (action) {
+                        if (action.type === 'select' && action.nodeId) {
+                            setSelectedNodeId(action.nodeId);
+                            setSelectedEdgeId(null);
+                            setDiagnosticsOpen(false);
+                        } else if (action.type === 'pane') {
+                            setSelectedNodeId(null);
+                            setSelectedEdgeId(null);
+                        } else if (action.type === 'close') {
+                            setSelectedNodeId(null);
+                        }
+                    }
+                    nextActionRef.current = null;
+                };
+
+                return (
+                    <Dialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
+                        <DialogContent className="rounded-2xl max-w-sm border-none shadow-2xl p-6 bg-background/95 backdrop-blur-md">
+                            <DialogHeader className="text-left space-y-2">
+                                <DialogTitle className="text-sm font-bold">Unsaved Inspector Changes</DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                                    You have unsaved changes in the Logic Inspector. Would you like to save and apply them or discard them before exiting?
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="flex items-center gap-2 py-3">
+                                <input
+                                    type="checkbox"
+                                    id="skipConfirmCheckbox"
+                                    checked={skipConfirm}
+                                    onChange={(e) => {
+                                        const val = e.target.checked;
+                                        setSkipConfirm(val);
+                                        localStorage.setItem('skipInspectorConfirmations', String(val));
+                                    }}
+                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                                />
+                                <label htmlFor="skipConfirmCheckbox" className="text-[10px] font-semibold text-muted-foreground cursor-pointer select-none">
+                                    Skip this confirmation next time
+                                </label>
+                            </div>
+
+                            <DialogFooter className="flex flex-row items-center gap-2 pt-2">
+                                <Button
+                                    variant="ghost"
+                                    className="h-9 rounded-xl text-xs flex-1"
+                                    onClick={() => {
+                                        setConfirmModalOpen(false);
+                                        nextActionRef.current = null;
+                                    }}
+                                >
+                                    Cancel & Keep Editing
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="h-9 rounded-xl text-xs flex-1 border-destructive/20 text-destructive bg-destructive/5 hover:bg-destructive/10"
+                                    onClick={() => handleProceed(false)}
+                                >
+                                    Discard Changes
+                                </Button>
+                                <Button
+                                    className="h-9 rounded-xl text-xs flex-1 bg-primary text-white hover:bg-primary/95 font-bold"
+                                    onClick={() => handleProceed(true)}
+                                >
+                                    Save & Apply
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                );
+            })()}
+
+            {/* Test Step QA Selector Dialog */}
+            {(() => {
+                const runStepTest = async () => {
+                    if (!testingEntityId || !testTargetNode) return;
+                    setIsTestingStep(true);
+                    setTestResult(null);
+                    try {
+                        const { testAutomationStepAction } = await import('@/lib/automation-actions');
+                        const res = await testAutomationStepAction(
+                            automationId,
+                            testTargetNode.id,
+                            testingEntityId,
+                            testTargetNode.data,
+                            'admin_user_id' // Mock actor ID or load from user context if available
+                        );
+                        setTestResult(res);
+                    } catch (err: any) {
+                        setTestResult({ success: false, error: err.message });
+                    } finally {
+                        setIsTestingStep(false);
+                    }
+                };
+
+                const filteredEntities = testEntities.filter(e => 
+                    String(e.displayName || e.name || e.id).toLowerCase().includes(testEntitySearch.toLowerCase())
+                );
+
+                return (
+                    <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+                        <DialogContent className="rounded-3xl max-w-md border-none shadow-2xl p-6 bg-background/95 backdrop-blur-md">
+                            <DialogHeader className="text-left space-y-2">
+                                <DialogTitle className="text-sm font-bold flex items-center gap-2 text-orange-600">
+                                    <Activity className="h-4 w-4 animate-pulse" /> Test Automation Step
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                                    Perform an isolated test execution of this step logic. Select a mock or active entity in the workspace to evaluate the step parameters against.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="space-y-4 my-2">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Search & Select Entity</Label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input
+                                            value={testEntitySearch}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTestEntitySearch(e.target.value)}
+                                            placeholder="Search active pipeline entities..."
+                                            className="pl-9 h-9 text-xs bg-muted/40 rounded-xl"
+                                        />
+                                    </div>
+                                    <Select value={testingEntityId} onValueChange={setTestingEntityId}>
+                                        <SelectTrigger className="h-10 rounded-xl bg-card text-xs font-semibold">
+                                            <SelectValue placeholder="Select target contact..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {filteredEntities.map((e) => (
+                                                <SelectItem key={e.id} value={e.entityId || e.id} className="text-xs">
+                                                    {e.displayName || e.name || e.id} ({(e as any).entityType || 'Contact'})
+                                                </SelectItem>
+                                            ))}
+                                            {filteredEntities.length === 0 && (
+                                                <SelectItem value="none" disabled>No entities found</SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {testResult && (
+                                    <div className={cn(
+                                        "p-4 rounded-2xl border text-xs font-medium space-y-1 animate-in zoom-in-95 duration-200",
+                                        testResult.success 
+                                            ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20" 
+                                            : "bg-rose-500/5 text-rose-600 border-rose-500/20"
+                                    )}>
+                                        <p className="font-bold">{testResult.success ? "Test Succeeded" : "Test Failed"}</p>
+                                        <p className="opacity-90 leading-relaxed">{testResult.message || testResult.error}</p>
+                                        {testResult.evaluation !== undefined && (
+                                            <Badge variant="outline" className={cn(
+                                                "mt-1 bg-background text-[10px] font-mono",
+                                                testResult.evaluation ? "text-emerald-600 border-emerald-500/30" : "text-amber-600 border-amber-500/30"
+                                            )}>
+                                                Branch Taken: {testResult.evaluation ? "TRUE" : "FALSE"}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <DialogFooter className="flex flex-row items-center gap-2 pt-2">
+                                <Button
+                                    variant="ghost"
+                                    className="h-9 rounded-xl text-xs flex-1"
+                                    onClick={() => setTestDialogOpen(false)}
+                                >
+                                    Close Dialog
+                                </Button>
+                                <Button
+                                    className="h-9 rounded-xl text-xs flex-1 bg-orange-600 text-white hover:bg-orange-500 font-bold"
+                                    disabled={!testingEntityId || isTestingStep}
+                                    onClick={runStepTest}
+                                >
+                                    {isTestingStep ? "Testing..." : "Execute Test"}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                );
+            })()}
         </div>
     );
 }

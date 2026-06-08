@@ -17,7 +17,6 @@ export interface InstitutionImportRow {
   currency?: string;
   subscriptionPackageId?: string;
   locationString?: string;
-  lifecycleStatus?: string;
   leadSource?: string;
 }
 
@@ -36,7 +35,6 @@ export const INSTITUTION_CSV_COLUMNS = [
   'currency',
   'subscriptionPackageId',
   'locationString',
-  'lifecycleStatus',
   'leadSource',
 ] as const;
 
@@ -53,7 +51,6 @@ export const INSTITUTION_SAMPLE_ROW = [
   'USD',
   'premium',
   'Accra Ghana',
-  'Onboarding',
   'Website',
 ].join(',');
 
@@ -69,6 +66,5 @@ export const INSTITUTION_FIELD_INSTRUCTIONS = [
   { field: 'currency', description: 'Currency code, e.g. GHS, USD' },
   { field: 'subscriptionPackageId', description: 'Package ID for subscription' },
   { field: 'locationString', description: 'Physical location description' },
-  { field: 'lifecycleStatus', description: 'Lead status, e.g. Onboarding, Active' },
   { field: 'leadSource', description: 'How the lead was acquired' },
 ];

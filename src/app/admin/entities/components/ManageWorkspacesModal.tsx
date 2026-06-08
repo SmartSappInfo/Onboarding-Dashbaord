@@ -215,11 +215,6 @@ export default function ManageWorkspacesModal({
                       <div className="min-w-0">
                         <p className="font-semibold text-sm truncate">{wsName}</p>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          {m.lifecycleStatus && (
-                            <Badge className="text-[8px] h-4 font-bold bg-primary/10 text-primary border-none px-2 uppercase tracking-wide">
-                              {m.lifecycleStatus}
-                            </Badge>
-                          )}
                           {m.assignedTo?.name && (
                             <span className="text-[9px] text-muted-foreground font-medium">
                               → {m.assignedTo.name}

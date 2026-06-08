@@ -39,6 +39,8 @@ export function DeletableEdge({
     targetX,
     targetY,
     targetPosition,
+    borderRadius: 16,   // smaller border radius for cleaner curves
+    offset: 20,         // smaller offset prevents wide looping/zig-zagging
   });
 
   const onDelete = React.useCallback(

@@ -6,6 +6,7 @@ import { handleDelayNode } from './delay';
 import { evaluateTagConditionNode, processTagActionNode } from './tag-nodes';
 import { adminDb } from '../../firebase-admin';
 import { logStepExecution } from '../step-logger';
+import { fetchLiveEntityTags, nodeChecksTags } from '../tag-enrichment';
 
 export async function traverseNodes(
   nodeId: string,
@@ -41,9 +42,19 @@ export async function traverseNodes(
   let outgoingEdges = automation.edges.filter((e) => e.source === nodeId);
 
   if (currentNode.type === 'conditionNode') {
+    // Enrich payload with live Firestore tags when the node checks tag fields.
+    // This bypasses the contact-adapter cache so we always see the entity's
+    // current tag state — not a snapshot from earlier in the same run.
+    let evalPayload = context.payload;
+    if (context.entityId && context.workspaceId && nodeChecksTags(currentNode)) {
+      const liveTags = await fetchLiveEntityTags(context.entityId, context.workspaceId);
+      // __liveTags (double-underscore) signals internal enrichment, never collides with user data
+      evalPayload = { ...context.payload, __liveTags: liveTags };
+    }
+
     const isTrue = await evaluateConditionNode(
       currentNode,
-      context.payload,
+      evalPayload,
       async (audienceId) => {
         const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
         return snap.exists ? snap.data() : null;

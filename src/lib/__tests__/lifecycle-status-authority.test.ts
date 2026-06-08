@@ -3,19 +3,8 @@ import { SaaSInstitutionDataSchema, validateIndustryData } from '../industry-sch
 import { applyIndustryDataDefaults } from '../entity-utils';
 import { createMinimalIndustryData } from '../industry-defaults';
 
-describe('lifecycleStatus is authoritative — accountStatus is optional', () => {
-  it('SaaSInstitutionDataSchema parses successfully without accountStatus', () => {
-    const result = SaaSInstitutionDataSchema.safeParse({
-      industry: 'SaaS',
-      capacity: 10,
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.accountStatus).toBeUndefined();
-    }
-  });
-
-  it('SaaSInstitutionDataSchema parses successfully with accountStatus', () => {
+describe('accountStatus removal verification', () => {
+  it('SaaSInstitutionDataSchema parses successfully and ignores/strips accountStatus', () => {
     const result = SaaSInstitutionDataSchema.safeParse({
       industry: 'SaaS',
       capacity: 10,
@@ -23,7 +12,7 @@ describe('lifecycleStatus is authoritative — accountStatus is optional', () =>
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.accountStatus).toBe('active');
+      expect((result.data as any).accountStatus).toBeUndefined();
     }
   });
 
@@ -33,10 +22,11 @@ describe('lifecycleStatus is authoritative — accountStatus is optional', () =>
     expect(result.capacity).toBe(0);
   });
 
-  it('validateIndustryData passes for a SaaS entity without accountStatus', () => {
+  it('validateIndustryData passes for a SaaS entity and strips accountStatus if present', () => {
     const data = {
       industry: 'SaaS',
       capacity: 5,
+      accountStatus: 'active',
     };
     const validated = validateIndustryData(data, 'SaaS');
     expect(validated.industry).toBe('SaaS');

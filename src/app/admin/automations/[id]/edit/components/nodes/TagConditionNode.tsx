@@ -63,8 +63,8 @@ export function TagConditionNode({ id, data, selected }: any) {
       <Handle
         type="target"
         position={Position.Top}
-        className="bg-violet-500 border-2 border-white shadow-lg hover:scale-110 active:scale-95 transition-transform"
-        style={{ width: '11px', height: '11px', top: '-5.5px' }}
+        className="bg-violet-500 border-2 border-white shadow-lg hover:bg-violet-600 transition-colors"
+        style={{ width: '12px', height: '12px', top: '-6px' }}
       />
 
       <Card
@@ -107,10 +107,10 @@ export function TagConditionNode({ id, data, selected }: any) {
         position={Position.Bottom}
         id="true"
         className={cn(
-          "border-2 border-white shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer",
+          "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
           data.isTrueConnected ? "bg-emerald-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
         )}
-        style={{ width: '15px', height: '15px', bottom: '-7.5px', left: '25%' }}
+        style={{ width: '12px', height: '12px', bottom: '-6px', left: '25%' }}
         onClick={(e) => {
           if (!data.isTrueConnected && data.onAddStep) {
             e.stopPropagation();
@@ -130,10 +130,10 @@ export function TagConditionNode({ id, data, selected }: any) {
         position={Position.Bottom}
         id="false"
         className={cn(
-          "border-2 border-white shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer",
+          "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
           data.isFalseConnected ? "bg-rose-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
         )}
-        style={{ width: '15px', height: '15px', bottom: '-7.5px', left: '75%' }}
+        style={{ width: '12px', height: '12px', bottom: '-6px', left: '75%' }}
         onClick={(e) => {
           if (!data.isFalseConnected && data.onAddStep) {
             e.stopPropagation();

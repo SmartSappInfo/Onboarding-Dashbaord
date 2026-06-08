@@ -503,7 +503,6 @@ export async function previewCampaignAudience(params: {
       locationCountry: 'locationCountryId',
       locationRegion: 'locationRegionId',
       locationDistrict: 'locationDistrictId',
-      lifecycleStatus: 'lifecycleStatus',
     };
 
     for (const f of equalityFilters) {
@@ -642,18 +641,6 @@ export async function previewCampaignAudience(params: {
         }
       }
 
-      // JS Filtering for lifecycleStatus (if operator is any_of or is/is_not)
-      const lifecycleStatusFilters = filters.filter(f => f.field === 'lifecycleStatus');
-      for (const f of lifecycleStatusFilters) {
-        if (f.operator === 'any_of' && Array.isArray(f.value)) {
-          const valSet = new Set(f.value);
-          results = results.filter(c => c.data.lifecycleStatus && valSet.has(c.data.lifecycleStatus));
-        } else if (f.operator === 'is') {
-          results = results.filter(c => c.data.lifecycleStatus === f.value);
-        } else if (f.operator === 'is_not') {
-          results = results.filter(c => c.data.lifecycleStatus !== f.value);
-        }
-      }
 
       // JS Filtering for interests (any_of)
       const interestFilters = filters.filter(f => f.field === 'interests');

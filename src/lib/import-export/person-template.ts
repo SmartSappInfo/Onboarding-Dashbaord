@@ -14,7 +14,6 @@ export interface PersonImportRow {
   company?: string;
   jobTitle?: string;
   leadSource?: string;
-  lifecycleStatus?: string;
   contactName?: string;
 }
 
@@ -31,7 +30,6 @@ export const PERSON_CSV_COLUMNS = [
   'company',
   'jobTitle',
   'leadSource',
-  'lifecycleStatus',
 ] as const;
 
 export const PERSON_TEMPLATE_HEADER = PERSON_CSV_COLUMNS.join(',');
@@ -45,7 +43,6 @@ export const PERSON_SAMPLE_ROW = [
   'Acme Corp',
   'Sales Manager',
   'Website',
-  'Onboarding',
 ].join(',');
 
 /** Field-level instructions for the import instructions panel */
@@ -58,5 +55,4 @@ export const PERSON_FIELD_INSTRUCTIONS = [
   { field: 'company', description: 'Company or organization name' },
   { field: 'jobTitle', description: 'Job title or role' },
   { field: 'leadSource', description: 'How the lead was acquired' },
-  { field: 'lifecycleStatus', description: 'Lead status, e.g. Onboarding, Active' },
 ];

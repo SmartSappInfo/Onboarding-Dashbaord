@@ -393,27 +393,6 @@ export const DefaultValueRow = React.memo(({
                     </div>
                 );
             }
-            case 'lifecycleStatus': {
-                const statuses = workspaceStatuses.length > 0 ? workspaceStatuses : [
-                    { value: 'Onboarding', label: 'Onboarding' },
-                    { value: 'Active', label: 'Active' },
-                    { value: 'Churned', label: 'Churned' }
-                ];
-                return (
-                    <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>
-                        <SelectTrigger className="h-9 text-xs bg-background rounded-xl border border-border/40 backdrop-blur-md shadow-sm hover:border-border/80 transition-all">
-                            <SelectValue placeholder="Select operational state..." />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl bg-background/95 backdrop-blur-md border border-border/40 shadow-lg">
-                            {statuses.map((s: any) => (
-                                <SelectItem key={s.value} value={s.value} className="font-semibold text-xs py-2">
-                                    {s.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                );
-            }
             case 'status': {
                 return (
                     <Select value={value || undefined} onValueChange={val => onValueChange(fieldKey, val)}>

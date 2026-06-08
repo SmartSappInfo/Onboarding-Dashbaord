@@ -726,7 +726,7 @@ function buildIndustryDefaults(
 
     case 'SaaS':
       if (entityType === 'institution') {
-        // SaaSInstitutionDataSchema requires: capacity only (accountStatus is optional/deprecated)
+        // SaaSInstitutionDataSchema requires: capacity only
         return {
           capacity: d.capacity ?? 0,
           ...(d.activeUsers !== undefined && { activeUsers: d.activeUsers }),

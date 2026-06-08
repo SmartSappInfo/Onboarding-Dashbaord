@@ -110,11 +110,7 @@ export function filterAndSortEntities(
     // 6. Tag Filter
     if (tagFilteredIds !== undefined && tagFilteredIds !== null && !tagFilteredIds.has(entity.entityId)) return false;
 
-    // 7. Lifecycle Stage Filter
-    if (filterState.lifecycle && filterState.lifecycle.length > 0) {
-      const lifecycleSet = new Set(filterState.lifecycle);
-      if (!entity.lifecycleStatus || !lifecycleSet.has(entity.lifecycleStatus)) return false;
-    }
+    // 7. (Removed — lifecycleStatus purged. Stage tracking managed via deals.)
 
     // 8. Date Added Range Filter
     const dateBoundary = getDateBoundary(filterState.dateRange);

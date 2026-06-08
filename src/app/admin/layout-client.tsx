@@ -61,7 +61,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
-  const { plural, dealPlural } = useTerminology();
+  const { singular, plural, dealPlural } = useTerminology();
   const { activeWorkspaceId } = useTenant();
   const { isFeatureEnabled } = useFeatures();
   
@@ -197,7 +197,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
                 variant="outline"
                 className="text-[8px] uppercase font-bold tracking-[0.15em] px-2.5 h-5 bg-primary/10 border-primary/20 text-primary hidden sm:flex"
               >
-                Workspace
+                {plural}
               </Badge>
               <ThemeToggle />
               <QuickComposeButton />

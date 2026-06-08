@@ -180,8 +180,19 @@ async function evaluateSingleCondition(
   }
 
   // Case B: Tag checking logic
+  // Build a unified tag set from all available sources.
+  // __liveTags is injected by traverse.ts with fresh Firestore data, bypassing the
+  // contact-adapter cache — it always reflects the entity's current tag state.
+  // The || chain was replaced with a union so a condition checking "Hot Leads" always
+  // sees all of the entity's tags, not just the single tag that triggered the automation.
   if (field === 'tags' || field === 'tag') {
-    const contactTags = (payload.tagIds || payload.tags || payload.workspaceTags || []) as string[];
+    const liveTags    = Array.isArray(payload.__liveTags)    ? (payload.__liveTags    as string[]) : [];
+    const wsTags      = Array.isArray(payload.workspaceTags) ? (payload.workspaceTags as string[]) : [];
+    const legacyTags  = Array.isArray(payload.tags)          ? (payload.tags          as string[]) : [];
+    const triggerTags = Array.isArray(payload.tagIds)        ? (payload.tagIds        as string[]) : [];
+    // De-duplicate; live Firestore state is authoritative but all sources are considered
+    const contactTags = Array.from(new Set([...liveTags, ...wsTags, ...legacyTags, ...triggerTags]));
+
     const checkTags = Array.isArray(value) ? value : (value ? [String(value)] : []);
     if (checkTags.length === 0) {
       if (operator === 'exists') return contactTags.length > 0;

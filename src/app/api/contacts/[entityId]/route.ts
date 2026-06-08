@@ -53,7 +53,6 @@ export async function GET(
       const workspaceEntity = workspaceEntityDoc.data() as WorkspaceEntity;
       workspaceData = {
         workspaceId: workspaceEntity.workspaceId,
-        lifecycleStatus: workspaceEntity.lifecycleStatus,
         assignedTo: workspaceEntity.assignedTo,
         workspaceTags: workspaceEntity.workspaceTags,
         lastContactedAt: workspaceEntity.lastContactedAt,
@@ -182,7 +181,6 @@ export async function PATCH(
       const workspaceEntity = workspaceEntityDoc.data() as WorkspaceEntity;
       workspaceData = {
         workspaceId: workspaceEntity.workspaceId,
-        lifecycleStatus: workspaceEntity.lifecycleStatus,
         assignedTo: workspaceEntity.assignedTo,
         workspaceTags: workspaceEntity.workspaceTags,
         status: workspaceEntity.status

@@ -20,9 +20,9 @@ export default function PipelineAutomationsTab({ weData }: { weData: WorkspaceEn
                 </CardHeader>
                 <CardContent className="p-8 space-y-5">
                     <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Lifecycle Status</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Pipeline Stage</p>
                         <h3 className="text-2xl font-bold tracking-tight text-primary">
-                            {weData.lifecycleStatus || 'Not Set'}
+                            Managed via Deals
                         </h3>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">

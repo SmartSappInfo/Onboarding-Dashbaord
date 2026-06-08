@@ -98,11 +98,28 @@ export function StepTimeline({ steps, nodes = [], className }: StepTimelineProps
 
   const isOverflowed = (steps as any)?.__overflow === true || (steps as any)?.__overflow === 'true';
 
-  // Filter out the sentinel and convert steps to an array
+  // Filter out the sentinel and convert steps to an array.
+  // For wait/delay steps that have already resumed, we use resumedAt as the
+  // effective sort timestamp so the wait entry appears between the step before
+  // it started and the step that executed after it resumed — matching canvas order.
   const stepList = Object.entries(steps)
     .filter(([key]) => key !== '__overflow')
     .map(([_, step]) => step)
-    .sort((a, b) => new Date(a.executedAt).getTime() - new Date(b.executedAt).getTime());
+    .sort((a, b) => {
+      const tsA = a.metadata?.resumedAt
+        ? new Date(a.metadata.resumedAt).getTime() - 1   // place just before the next step
+        : new Date(a.executedAt).getTime();
+      const tsB = b.metadata?.resumedAt
+        ? new Date(b.metadata.resumedAt).getTime() - 1
+        : new Date(b.executedAt).getTime();
+      
+      if (tsA === tsB) {
+        // If timestamps are identical, make sure a 'waiting' delayNode is placed last
+        if (a.status === 'waiting' && b.status !== 'waiting') return 1;
+        if (b.status === 'waiting' && a.status !== 'waiting') return -1;
+      }
+      return tsA - tsB;
+    });
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -171,7 +188,7 @@ export function StepTimeline({ steps, nodes = [], className }: StepTimelineProps
 
                     {step.status === 'waiting' && step.metadata?.delayUntil && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 font-medium">
-                        Wait until {new Date(step.metadata.delayUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        Wait until {new Date(step.metadata.delayUntil).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(step.metadata.delayUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
 

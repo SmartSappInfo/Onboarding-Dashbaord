@@ -70,16 +70,6 @@ const FIELD_CONFIG: Record<string, FieldConfig> = {
             { value: 'family', label: 'Family' },
         ],
     },
-    lifecycleStatus: {
-        label: 'Lifecycle Stage',
-        group: 'Contact',
-        operators: [
-            { value: 'is', label: 'is' },
-            { value: 'is_not', label: 'is not' },
-            { value: 'is_empty', label: 'is empty' },
-        ],
-        valueType: 'text',
-    },
     locationCountry: {
         label: 'Country',
         group: 'Location',

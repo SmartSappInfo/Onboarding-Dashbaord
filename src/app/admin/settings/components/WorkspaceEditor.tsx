@@ -1051,9 +1051,9 @@ export default function WorkspaceEditor() {
                                             };
 
                                             const SUGGESTED_KEYS: Record<string, string[]> = {
-                                                institution: ['currency', 'lifecycleStatus', 'leadSource', 'billingAddress', 'subscriptionPackageName'],
-                                                family: ['lifecycleStatus', 'leadSource', 'relationship'],
-                                                person: ['jobTitle', 'leadSource', 'company', 'lifecycleStatus'],
+                                                institution: ['currency', 'leadSource', 'billingAddress', 'subscriptionPackageName'],
+                                                family: ['leadSource', 'relationship'],
+                                                person: ['jobTitle', 'leadSource', 'company'],
                                             };
                                             const suggestedKeys = SUGGESTED_KEYS[scope] || [];
                                             const unusedSuggestions = suggestedKeys.filter(k => !(k in currentDefaults));

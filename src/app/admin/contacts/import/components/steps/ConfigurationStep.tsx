@@ -25,17 +25,14 @@ const DEFAULT_FIELDS: Record<string, Array<{ key: string; label: string; placeho
     { key: 'leadSource', label: 'Default Lead Source', placeholder: 'e.g., File Import, Event 2024...' },
     { key: 'jobTitle', label: 'Default Job Title', placeholder: 'e.g., Prospect' },
     { key: 'company', label: 'Default Company', placeholder: 'e.g., Unknown' },
-    { key: 'lifecycleStatus', label: 'Default Lifecycle Status', placeholder: 'e.g., Onboarding' },
   ],
   family: [
     { key: 'leadSource', label: 'Default Lead Source', placeholder: 'e.g., Open Day, Referral...' },
     { key: 'guardian1_relationship', label: 'Default Guardian Relationship', placeholder: 'e.g., Parent' },
-    { key: 'lifecycleStatus', label: 'Default Lifecycle Status', placeholder: 'e.g., Enquiry' },
   ],
   institution: [
     { key: 'leadSource', label: 'Default Lead Source', placeholder: 'e.g., File Import, Partner Referral...' },
     { key: 'currency', label: 'Default Currency', placeholder: 'e.g., USD, GHS' },
-    { key: 'lifecycleStatus', label: 'Default Lifecycle Status', placeholder: 'e.g., Onboarding' },
   ],
 };
 

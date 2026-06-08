@@ -298,7 +298,7 @@ export async function restoreSaaSMigration(): Promise<IndustryMigrationResult> {
 
         // Validate required SaaS fields
         const saasData = entity.industryData as any;
-        // accountStatus is optional — lifecycleStatus on WorkspaceEntity is authoritative
+        // accountStatus is optional — stage tracking is managed via deals
         const requiredFields = ['industry', 'entityType', 'companySize', 'planType', 'features', 'signupDate'];
         const missingFields = requiredFields.filter(field => saasData[field] === undefined);
         

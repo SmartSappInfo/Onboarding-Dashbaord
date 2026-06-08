@@ -1,6 +1,8 @@
 import FieldsPageClient from './FieldsPageClient';
 import { listNativeFields, listFieldPacks, getContactTypeDefaults } from '@/lib/backoffice/backoffice-field-actions';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Fields & Defaults | Backoffice',
 };

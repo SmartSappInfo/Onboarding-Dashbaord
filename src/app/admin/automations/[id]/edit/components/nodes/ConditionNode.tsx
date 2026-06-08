@@ -99,7 +99,7 @@ export function ConditionNode({ id, data, selected }: any) {
                 type="target" 
                 position={Position.Top} 
                 className="bg-amber-500 border-2 border-white shadow-lg transition-colors hover:bg-amber-600" 
-                style={{ width: '11px', height: '11px', top: '-5.5px' }}
+                style={{ width: '12px', height: '12px', top: '-6px' }}
             />
             
             <Card className={cn(
@@ -138,10 +138,10 @@ export function ConditionNode({ id, data, selected }: any) {
                 position={Position.Bottom} 
                 id="true"
                 className={cn(
-                    "border-2 border-white shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer",
+                    "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
                     data.isTrueConnected ? "bg-emerald-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
                 )}
-                style={{ width: '15px', height: '15px', bottom: '-7.5px', left: '25%' }}
+                style={{ width: '12px', height: '12px', bottom: '-6px', left: '25%' }}
                 onClick={(e) => {
                     if (!data.isTrueConnected && data.onAddStep) {
                         e.stopPropagation();
@@ -161,10 +161,10 @@ export function ConditionNode({ id, data, selected }: any) {
                 position={Position.Bottom} 
                 id="false"
                 className={cn(
-                    "border-2 border-white shadow-lg transition-transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer",
+                    "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
                     data.isFalseConnected ? "bg-rose-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
                 )}
-                style={{ width: '15px', height: '15px', bottom: '-7.5px', left: '75%' }}
+                style={{ width: '12px', height: '12px', bottom: '-6px', left: '75%' }}
                 onClick={(e) => {
                     if (!data.isFalseConnected && data.onAddStep) {
                         e.stopPropagation();

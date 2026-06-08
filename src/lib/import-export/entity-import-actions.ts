@@ -526,7 +526,6 @@ function buildEntityPayload(
     return {
       name: displayName,
       status: 'active',
-      lifecycleStatus: mapped.lifecycleStatus || 'Onboarding',
       location: {
         locationString: mapped.locationString || '',
         ...(mapped.countryId ? { country: { id: mapped.countryId, name: mapped.countryName || '', code: '', flag: '' } } : {}),
@@ -598,7 +597,6 @@ function buildEntityPayload(
     return {
       name: familyName,
       status: 'active',
-      lifecycleStatus: mapped.lifecycleStatus || 'Onboarding',
       location: {
         locationString: mapped.locationString || '',
         ...(mapped.countryId ? { country: { id: mapped.countryId, name: mapped.countryName || '', code: '', flag: '' } } : {}),
@@ -639,7 +637,6 @@ function buildEntityPayload(
     return {
       name: instName,
       status: 'active',
-      lifecycleStatus: mapped.lifecycleStatus || 'Onboarding',
       location: {
         locationString: mapped.locationString || '',
         ...(mapped.countryId ? { country: { id: mapped.countryId, name: mapped.countryName || '', code: '', flag: '' } } : {}),

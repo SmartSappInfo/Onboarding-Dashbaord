@@ -53,9 +53,14 @@ export function resolveTerminologyFromWorkspace(workspace: any): Terminology {
         const industry = workspace.industry as IndustryVertical;
         const industryTerms = INDUSTRY_CONFIG[industry].terminology;
         
-        // Allow workspace-level custom terminology to override industry defaults
-        const s = workspace?.terminology?.singular?.trim() || industryTerms.entitySingular;
-        const p = workspace?.terminology?.plural?.trim() || industryTerms.entityPlural;
+        // Use contactScope defaults (e.g. family/families, person/people) to override industry defaults if no custom terminology is specified
+        const scope = workspace?.contactScope;
+        const useScopeDefault = scope === 'family' || scope === 'person';
+        const scopeDefaults = useScopeDefault ? DEFAULT_TERMINOLOGY[scope] : null;
+
+        // Allow workspace-level custom terminology to override industry/scope defaults
+        const s = workspace?.terminology?.singular?.trim() || scopeDefaults?.singular || industryTerms.entitySingular;
+        const p = workspace?.terminology?.plural?.trim() || scopeDefaults?.plural || industryTerms.entityPlural;
         
         return {
             singular: s,

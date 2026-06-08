@@ -70,7 +70,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import ChangeStatusModal from '../components/ChangeStatusModal';
+
 import ConvertLeadModal from '../components/ConvertLeadModal';
 import ManageWorkspacesModal from '../components/ManageWorkspacesModal';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -128,7 +128,7 @@ export default function EntityDetailPage() {
     const [isUpdatingLogo, setIsUpdatingLogo] = React.useState(false);
     const [isManageWorkspacesOpen, setIsManageWorkspacesOpen] = React.useState(false);
     
-    const [statusModalOpen, setStatusModalOpen] = React.useState(false);
+
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState('overview');
 
@@ -315,33 +315,15 @@ export default function EntityDetailPage() {
                         <div className="space-y-1.5 flex-1">
                             <div className="flex flex-wrap items-center gap-3">
                                 <h2 className="text-3xl font-bold tracking-tight">{displayName}</h2>
-                                <button 
-                                    onClick={() => setStatusModalOpen(true)}
-                                    className="group relative transition-all"
-                                >
-                                    <Badge variant={getStatusBadgeVariant(weData.status)} className="h-6 px-3 text-[10px] font-semibold cursor-pointer group-hover:ring-2 ring-primary/20 transition-all uppercase">
-                                        {weData.status} <RefreshCw className="h-3 w-3 inline ml-1.5 opacity-0 group-[&:hover]:opacity-100 transition-opacity" />
-                                    </Badge>
-                                </button>
-                                {weData.lifecycleStatus && (
-                                    <Badge 
-                                        className={cn(
-                                            "h-6 px-3 text-[10px] font-semibold uppercase border-none text-white",
-                                            weData.lifecycleStatus === 'Active' ? "bg-emerald-500" : 
-                                            weData.lifecycleStatus === 'Onboarding' ? "bg-blue-500" : "bg-muted/100"
-                                        )}
-                                    >
-                                        {weData.lifecycleStatus}
-                                    </Badge>
-                                )}
+                                <Badge variant={getStatusBadgeVariant(weData.status)} className="h-6 px-3 text-[10px] font-semibold uppercase">
+                                    {weData.status}
+                                </Badge>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground font-medium">
                                 <span>
                                   {countryFlag ? <span className="mr-1.5">{countryFlag}</span> : <MapPin className="h-3.5 w-3.5 inline mr-1" />}
                                   {displayLocation}
                                 </span>
-                                <Separator orientation="vertical" className="h-4 mx-1" />
-                                <span className="uppercase text-[10px] tracking-wider font-bold">{entityData.entityType}</span>
                             </div>
                             <div className="pt-2 flex flex-wrap items-center gap-2">
                                 <TagSelector contactId={workspaceEntityId} contactType="workspace_entity" currentTagIds={weData.workspaceTags || []} />
@@ -353,13 +335,6 @@ export default function EntityDetailPage() {
                                         <Users className="h-3.5 w-3.5 text-primary" />
                                         <span className="text-xs font-bold text-primary tabular-nums">{capacity.toLocaleString()}</span>
                                         <span className="text-[10px] font-semibold text-primary/60">Capacity</span>
-                                    </div>
-                                )}
-                                {activeMembershipsCount > 0 && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/5 border border-sky-500/15 rounded-xl">
-                                        <Network className="h-3.5 w-3.5 text-sky-600" />
-                                        <span className="text-xs font-bold text-sky-600 tabular-nums">{activeMembershipsCount}</span>
-                                        <span className="text-[10px] font-semibold text-sky-600/60">{activeMembershipsCount === 1 ? 'Workspace' : 'Workspaces'}</span>
                                     </div>
                                 )}
                             </div>
@@ -589,7 +564,6 @@ export default function EntityDetailPage() {
                                          <p className="font-bold text-xs truncate">{workspaceNameMap.get(m.workspaceId) ?? m.workspaceId}</p>
                                          <div className="flex items-center gap-2 mt-0.5">
                                              <Badge variant={m.status === 'active' ? 'default' : 'outline'} className="text-[7px] h-3.5 uppercase font-bold">{m.status}</Badge>
-                                             {m.lifecycleStatus && <span className="text-[9px] text-muted-foreground font-medium">{m.lifecycleStatus}</span>}
                                          </div>
                                      </div>
                                  </div>
@@ -647,7 +621,7 @@ export default function EntityDetailPage() {
             </Dialog>
 
             <LogActivityModal entity={weData} open={isLogModalOpen} onOpenChange={setIsLogModalOpen} />
-            <ChangeStatusModal entity={weData} open={statusModalOpen} onOpenChange={setStatusModalOpen} />
+
             {entityData && (
                 <ManageWorkspacesModal
                     entityId={entityId}

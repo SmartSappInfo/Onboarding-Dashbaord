@@ -572,3 +572,78 @@ export async function processSaasFieldMigration(
     return { success: false, error: error.message };
   }
 }
+
+// ─────────────────────────────────────────────────
+// Automation Data Cleanup
+// Permanently wipes automation_runs and automation_jobs
+// from Firestore. Intended for pre-launch / staging resets.
+// ─────────────────────────────────────────────────
+
+export interface ClearAutomationResult {
+  success: boolean;
+  deleted?: { automation_runs: number; automation_jobs: number; total: number };
+  error?: string;
+}
+
+/**
+ * Batch-deletes all documents in `automation_runs` and `automation_jobs`.
+ * Requires a verified backoffice idToken. Uses chunks of 499 to stay within
+ * Firestore's 500-operation batch limit.
+ */
+export async function clearAutomationData(
+  idToken: string
+): Promise<ClearAutomationResult> {
+  try {
+    const actor = await resolveActorFromToken(idToken);
+
+    const BATCH_CAP = 499;
+
+    async function deleteCollection(name: string): Promise<number> {
+      const snap = await adminDb.collection(name).get();
+      if (snap.empty) return 0;
+
+      let batch = adminDb.batch();
+      let count = 0;
+      let total = 0;
+
+      for (const doc of snap.docs) {
+        batch.delete(doc.ref);
+        count++;
+        total++;
+        if (count >= BATCH_CAP) {
+          await batch.commit();
+          batch = adminDb.batch();
+          count = 0;
+        }
+      }
+      if (count > 0) await batch.commit();
+      return total;
+    }
+
+    const runsDeleted = await deleteCollection('automation_runs');
+    const jobsDeleted = await deleteCollection('automation_jobs');
+    const total = runsDeleted + jobsDeleted;
+
+    await logBackofficeAction(
+      actor,
+      'automation.clear' as any,
+      'platform',
+      'automation_data',
+      {
+        metadata: {
+          automation_runs: runsDeleted,
+          automation_jobs: jobsDeleted,
+          total,
+        },
+      }
+    );
+
+    return {
+      success: true,
+      deleted: { automation_runs: runsDeleted, automation_jobs: jobsDeleted, total },
+    };
+  } catch (error: any) {
+    console.error('[BACKOFFICE] clearAutomationData failed:', error);
+    return { success: false, error: error.message };
+  }
+}
