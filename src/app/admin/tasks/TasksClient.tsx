@@ -1484,7 +1484,7 @@ export default function TasksClient() {
                                                                             )}
 
                                                                             {canDelete && (
-                                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10 focus:text-destructive cursor-pointer">
+                                                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setTaskToDelete(task); }} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10 focus:text-destructive cursor-pointer">
                                                                                     <Trash2 className="h-4 w-4" /> <span className="font-bold text-sm">Delete Task</span>
                                                                                 </DropdownMenuItem>
                                                                             )}
