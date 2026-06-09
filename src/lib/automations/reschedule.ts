@@ -88,10 +88,31 @@ export async function reschedulePendingJobs(
         newUnit
       );
 
-      batch.update(doc.ref, {
-        executeAt: newExecuteAt.toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+      const now = new Date();
+      if (newExecuteAt.getTime() <= now.getTime()) {
+        // Job is due immediately. Claim and execute it now to avoid cron latency.
+        const { resumeAutomationRun } = await import('./resume');
+        const claimedJob = {
+          ...data,
+          id: doc.id,
+          status: 'processing',
+          claimedAt: now.toISOString(),
+          executeAt: newExecuteAt.toISOString(),
+        } as any;
+
+        const success = await resumeAutomationRun(claimedJob);
+        batch.update(doc.ref, {
+          status: success ? 'completed' : 'failed',
+          executeAt: newExecuteAt.toISOString(),
+          finishedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      } else {
+        batch.update(doc.ref, {
+          executeAt: newExecuteAt.toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
     }
 
     await batch.commit();

@@ -125,7 +125,13 @@ export function ConditionNode({ id, data, selected }: any) {
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-amber-100 bg-amber-50 text-amber-700 truncate max-w-[85px] h-5 flex-shrink-0 flex items-center justify-center"
+                        className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-amber-100 bg-amber-50 text-amber-700 truncate max-w-[85px] h-5 flex-shrink-0 flex items-center justify-center cursor-pointer hover:bg-amber-100/50 transition-colors"
+                        onClick={(e) => {
+                            if (data.onFilterDiagnostics) {
+                                e.stopPropagation();
+                                data.onFilterDiagnostics(id);
+                            }
+                        }}
                     >
                         {waitingCount} {waitingCount === 1 ? 'Contact' : 'Contacts'}
                     </Badge>

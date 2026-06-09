@@ -250,3 +250,100 @@ export async function seedDefaultDealAutomation(
     return { success: false, error: toAutomationClientError(error) };
   }
 }
+
+export async function manuallyReleaseWaitJob(
+  jobId: string,
+  userId: string
+): Promise<AutomationActionResult> {
+  try {
+    assertAutomationUserId(userId);
+
+    const jobSnap = await adminDb.collection('automation_jobs').doc(jobId).get();
+    if (!jobSnap.exists) throw new Error('Target scheduled job does not exist.');
+
+    const job = { id: jobSnap.id, ...jobSnap.data() } as any;
+    if (job.status !== 'pending') throw new Error('Job is already completed or processing.');
+
+    const runSnap = await adminDb.collection('automation_runs').doc(job.runId).get();
+    const runData = runSnap.exists ? runSnap.data() : null;
+    const workspaceIds = runData?.workspaceIds || ['onboarding'];
+
+    await assertAutomationManagePermission(userId, workspaceIds, 'edit');
+
+    // Claim atomically
+    const claimedJob = await adminDb.runTransaction(async (tx) => {
+      const ref = adminDb.collection('automation_jobs').doc(jobId);
+      const snap = await tx.get(ref);
+      const data = snap.data() as any;
+      if (data.status !== 'pending') return null;
+
+      tx.update(ref, {
+        status: 'processing',
+        claimedAt: new Date().toISOString(),
+      });
+      return { ...data, id: snap.id };
+    });
+
+    if (!claimedJob) throw new Error('Job could not be claimed (already running).');
+
+    const { resumeAutomationRun } = await import('./resume');
+    const success = await resumeAutomationRun(claimedJob);
+
+    await adminDb.collection('automation_jobs').doc(jobId).update({
+      status: success ? 'completed' : 'failed',
+      finishedAt: new Date().toISOString(),
+    });
+
+    revalidateAutomationsHub();
+    return { success: true };
+  } catch (error: any) {
+    logAutomationEvent('error', 'manual_release_failed', { jobId, error });
+    return { success: false, error: error.message || String(error) };
+  }
+}
+
+export async function manuallyEndAutomationRun(
+  runId: string,
+  userId: string
+): Promise<AutomationActionResult> {
+  try {
+    assertAutomationUserId(userId);
+
+    const runRef = adminDb.collection('automation_runs').doc(runId);
+    const runSnap = await runRef.get();
+    if (!runSnap.exists) throw new Error('Automation execution run not found.');
+
+    const runData = runSnap.data() as any;
+    const workspaceIds = runData?.workspaceIds || ['onboarding'];
+
+    await assertAutomationManagePermission(userId, workspaceIds, 'edit');
+
+    // Terminate run
+    await runRef.update({
+      status: 'completed',
+      finishedAt: new Date().toISOString(),
+      terminatedManually: true,
+    });
+
+    // Delete all pending scheduled jobs for this run
+    const pendingJobsSnap = await adminDb
+      .collection('automation_jobs')
+      .where('runId', '==', runId)
+      .where('status', '==', 'pending')
+      .get();
+
+    if (!pendingJobsSnap.empty) {
+      const batch = adminDb.batch();
+      pendingJobsSnap.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+    }
+
+    revalidateAutomationsHub();
+    return { success: true };
+  } catch (error: any) {
+    logAutomationEvent('error', 'manual_terminate_failed', { runId, error });
+    return { success: false, error: error.message || String(error) };
+  }
+}

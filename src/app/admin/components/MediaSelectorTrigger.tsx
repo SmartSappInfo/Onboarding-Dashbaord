@@ -106,6 +106,7 @@ export default function MediaSelectorTrigger({
             {/* Selection Dialog */}
             <Dialog open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <DialogContent className="sm:max-w-4xl rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden h-[85vh] flex flex-col">
+                    <DialogTitle className="sr-only">Select Image</DialogTitle>
                     <MediaLibraryBrowser 
                         onSelectAsset={(asset) => {
                             onSelect(asset.url);

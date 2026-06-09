@@ -18,11 +18,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { StepTimeline } from './StepTimeline';
 import type { AutomationRun } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { manuallyReleaseWaitJobAction, manuallyEndAutomationRunAction } from '@/lib/automation-actions';
 
 interface DiagnosticsPanelProps {
   automationId: string;
@@ -30,6 +32,8 @@ interface DiagnosticsPanelProps {
   onSelectRun: (run: AutomationRun | null) => void;
   selectedRun: AutomationRun | null;
   onClose: () => void;
+  filterNodeId?: string | null;
+  onClearFilterNodeId?: () => void;
 }
 
 type FilterStatus = 'ALL' | 'running' | 'completed' | 'failed';
@@ -39,12 +43,17 @@ export function DiagnosticsPanel({
   nodes,
   onSelectRun,
   selectedRun,
-  onClose
+  onClose,
+  filterNodeId = null,
+  onClearFilterNodeId
 }: DiagnosticsPanelProps) {
   const firestore = useFirestore();
+  const { user } = useUser();
+  const { toast } = useToast();
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('ALL');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [jsonExpanded, setJsonExpanded] = React.useState(false);
+  const [isProcessingAction, setIsProcessingAction] = React.useState<string | null>(null);
 
   // Memoized query to fetch automation runs in real-time
   const runsQuery = useMemoFirebase(() => {
@@ -58,6 +67,19 @@ export function DiagnosticsPanel({
   }, [firestore, automationId]);
 
   const { data: runs, isLoading, error } = useCollection<AutomationRun>(runsQuery);
+
+  // Memoized query to fetch pending jobs for filtered node
+  const pendingJobsQuery = useMemoFirebase(() => {
+    if (!firestore || !automationId || !filterNodeId) return null;
+    return query(
+      collection(firestore, 'automation_jobs'),
+      where('automationId', '==', automationId),
+      where('targetNodeId', '==', filterNodeId),
+      where('status', '==', 'pending')
+    );
+  }, [firestore, automationId, filterNodeId]);
+
+  const { data: pendingJobs } = useCollection<any>(pendingJobsQuery);
 
   // Reset selected run on unmount or automationId change
   React.useEffect(() => {
@@ -74,7 +96,20 @@ export function DiagnosticsPanel({
     }
   }, [runs, selectedRun, onSelectRun]);
 
-  // Filter runs based on status and search query
+  // Query jobs for currently selected run to locate wait step ids
+  const selectedRunJobsQuery = useMemoFirebase(() => {
+    if (!firestore || !selectedRun) return null;
+    return query(
+      collection(firestore, 'automation_jobs'),
+      where('runId', '==', selectedRun.id),
+      where('status', '==', 'pending')
+    );
+  }, [firestore, selectedRun]);
+
+  const { data: selectedRunJobs } = useCollection<any>(selectedRunJobsQuery);
+  const activeWaitJob = selectedRunJobs?.find((j: any) => j.status === 'pending');
+
+  // Filter runs based on status, search query, and node filter list
   const filteredRuns = React.useMemo(() => {
     if (!runs) return [];
     return runs.filter(run => {
@@ -89,9 +124,82 @@ export function DiagnosticsPanel({
       ).toLowerCase();
       
       const matchesSearch = displayName.includes(searchQuery.toLowerCase());
-      return matchesStatus && matchesSearch;
+
+      let matchesNodeFilter = true;
+      if (filterNodeId && pendingJobs) {
+        matchesNodeFilter = pendingJobs.some(job => job.runId === run.id);
+      }
+      
+      return matchesStatus && matchesSearch && matchesNodeFilter;
     });
-  }, [runs, statusFilter, searchQuery]);
+  }, [runs, statusFilter, searchQuery, filterNodeId, pendingJobs]);
+
+  const filterNode = React.useMemo(() => {
+    if (!filterNodeId) return null;
+    return nodes.find(n => n.id === filterNodeId);
+  }, [filterNodeId, nodes]);
+
+  const handleForceResume = async (jobId: string) => {
+    if (!user) return;
+    setIsProcessingAction(jobId);
+    try {
+      const res = await manuallyReleaseWaitJobAction(jobId, user.uid);
+      if (res.success) {
+        toast({
+          title: 'Wait Step Resumed',
+          description: 'Contact has been successfully advanced to the next step.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Release Failed',
+          description: res.error || 'Failed to manually advance step.',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'Server action failure.',
+      });
+    } finally {
+      setIsProcessingAction(null);
+    }
+  };
+
+  const handleEndAutomation = async (runId: string) => {
+    if (!user) return;
+    const confirm = window.confirm('Are you sure you want to end this automation run? The contact will be marked as finished and pending steps will be cancelled.');
+    if (!confirm) return;
+
+    setIsProcessingAction(runId);
+    try {
+      const res = await manuallyEndAutomationRunAction(runId, user.uid);
+      if (res.success) {
+        toast({
+          title: 'Automation Terminated',
+          description: 'Execution run successfully completed and scheduled tasks cancelled.',
+        });
+        if (selectedRun?.id === runId) {
+          onSelectRun(null);
+        }
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Termination Failed',
+          description: res.error || 'Failed to cancel automation run.',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'Server action failure.',
+      });
+    } finally {
+      setIsProcessingAction(null);
+    }
+  };
 
   const getStatusBadge = (status: AutomationRun['status']) => {
     switch (status) {
@@ -151,6 +259,20 @@ export function DiagnosticsPanel({
         // LIST VIEW
         <>
           <div className="p-3 border-b border-border/40 space-y-2 shrink-0">
+            {/* Filter Node Warning Tag */}
+            {filterNodeId && (
+              <div className="flex items-center justify-between bg-purple-50 border border-purple-100 rounded-xl p-2 text-[10px] font-semibold text-purple-800">
+                <span>Filtering by: <span className="font-bold text-purple-900">{filterNode?.data?.label || 'Target Node'}</span></span>
+                <button
+                  type="button"
+                  onClick={onClearFilterNodeId}
+                  className="p-1 rounded bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors"
+                >
+                  Clear filter
+                </button>
+              </div>
+            )}
+
             {/* Filter Tabs */}
             <div className="flex items-center gap-1 bg-muted/50 p-0.5 rounded-lg border">
               {(['ALL', 'running', 'completed', 'failed'] as const).map(tab => (
@@ -210,10 +332,10 @@ export function DiagnosticsPanel({
                     `Run #${run.id.slice(0, 6)}`;
                   
                   return (
-                    <button
+                    <div
                       key={run.id}
                       onClick={() => onSelectRun(run)}
-                      className="w-full p-2.5 rounded-xl border border-border/40 hover:border-primary/20 hover:bg-primary/5 hover:shadow-sm transition-all duration-200 flex items-center justify-between gap-3 text-left group"
+                      className="w-full p-2.5 rounded-xl border border-border/40 hover:border-primary/20 hover:bg-primary/5 hover:shadow-sm transition-all duration-200 flex items-center justify-between gap-3 text-left cursor-pointer group"
                     >
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2">
@@ -233,8 +355,25 @@ export function DiagnosticsPanel({
                           )}
                         </div>
                       </div>
-                      <ChevronRight size={13} className="text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                      
+                      <div className="flex items-center gap-1">
+                        {run.status === 'running' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isProcessingAction === run.id}
+                            className="h-7 px-2 text-[9px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEndAutomation(run.id);
+                            }}
+                          >
+                            {isProcessingAction === run.id ? 'Ending...' : 'End'}
+                          </Button>
+                        )}
+                        <ChevronRight size={13} className="text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </div>
                   );
                 })
               )}
@@ -265,7 +404,7 @@ export function DiagnosticsPanel({
 
           {/* Details Scroll Area */}
           <ScrollArea className="flex-1 min-h-0">
-            <div className="p-4 space-y-5 text-left">
+            <div className="p-4 space-y-4 text-left">
               {/* Entity Quick Info */}
               <div className="space-y-1 bg-muted/30 p-3 rounded-xl border border-border/40">
                 <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Contact Context</span>
@@ -282,6 +421,37 @@ export function DiagnosticsPanel({
                   )}
                 </div>
               </div>
+
+              {/* Active Wait Node Actions */}
+              {selectedRun.status === 'running' && (
+                <div className="bg-purple-500/5 border border-purple-500/10 rounded-2xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-purple-700">Automation Running</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={isProcessingAction === selectedRun.id}
+                      onClick={() => handleEndAutomation(selectedRun.id)}
+                      className="h-7 text-[9px] text-rose-600 hover:bg-rose-50 border-rose-200 rounded-lg font-bold"
+                    >
+                      {isProcessingAction === selectedRun.id ? 'Terminating...' : 'End Automation'}
+                    </Button>
+                  </div>
+                  {activeWaitJob && (
+                    <div className="flex items-center justify-between border-t border-purple-500/10 pt-2 mt-1">
+                      <span className="text-muted-foreground font-medium text-[9px]">Contact is currently waiting at step.</span>
+                      <Button 
+                        size="sm" 
+                        disabled={isProcessingAction === activeWaitJob.id}
+                        onClick={() => handleForceResume(activeWaitJob.id)}
+                        className="h-7 text-[9px] bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-sm"
+                      >
+                        {isProcessingAction === activeWaitJob.id ? 'Resuming...' : 'Force Resume / Next Step'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Execution Steps Title */}
               <div className="space-y-3">

@@ -133,6 +133,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
     // Diagnostics panel states
     const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false);
     const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
+    const [diagnosticsFilterNodeId, setDiagnosticsFilterNodeId] = React.useState<string | null>(null);
 
     // Dirty/Confirmation states
     const [isInspectorDirty, setIsInspectorDirty] = React.useState(false);
@@ -778,6 +779,12 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                         setSelectedNodeId(nodeId);
                         setLibrarySourceHandle(sourceHandle);
                         setIsLibraryOpen(true);
+                    },
+                    onFilterDiagnostics: (nodeId: string) => {
+                        setDiagnosticsFilterNodeId(nodeId);
+                        setSelectedNodeId(null);
+                        setSelectedEdgeId(null);
+                        setDiagnosticsOpen(true);
                     }
                 }
             };
@@ -914,7 +921,12 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                             nodes={nodes}
                             onSelectRun={setSelectedRun}
                             selectedRun={selectedRun}
-                            onClose={() => setDiagnosticsOpen(false)}
+                            filterNodeId={diagnosticsFilterNodeId}
+                            onClearFilterNodeId={() => setDiagnosticsFilterNodeId(null)}
+                            onClose={() => {
+                                setDiagnosticsOpen(false);
+                                setDiagnosticsFilterNodeId(null);
+                            }}
                         />
                     </div>
                 ) : (

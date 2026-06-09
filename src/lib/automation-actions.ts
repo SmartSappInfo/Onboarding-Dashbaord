@@ -6,6 +6,8 @@ import {
   saveAutomation,
   seedDefaultDealAutomation,
   setAutomationStatus,
+  manuallyReleaseWaitJob,
+  manuallyEndAutomationRun,
 } from './automations/service';
 import { testAutomationFlow } from './automations/test-flow';
 import type { TestAutomationFlowInput } from './automations/test-flow';
@@ -59,4 +61,12 @@ export async function testAutomationStepAction(
 export async function pulseAutomationEngineAction() {
   const { processScheduledJobsAction } = await import('./automations/processor');
   return processScheduledJobsAction();
+}
+
+export async function manuallyReleaseWaitJobAction(jobId: string, userId: string) {
+  return manuallyReleaseWaitJob(jobId, userId);
+}
+
+export async function manuallyEndAutomationRunAction(runId: string, userId: string) {
+  return manuallyEndAutomationRun(runId, userId);
 }

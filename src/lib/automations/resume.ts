@@ -7,7 +7,7 @@ import { runAutomationById } from './run-by-id';
 
 const HEARTBEAT_BATCH_SIZE = 20;
 
-async function resumeAutomationRun(job: AutomationJob): Promise<boolean> {
+export async function resumeAutomationRun(job: AutomationJob): Promise<boolean> {
   try {
     const [autoSnap, runSnap] = await Promise.all([
       adminDb.collection('automations').doc(job.automationId).get(),
