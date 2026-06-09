@@ -4,6 +4,7 @@
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting, EntityType } from './types';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
+import { resolveOrgBrandingVars } from './messaging-branding';
 import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';

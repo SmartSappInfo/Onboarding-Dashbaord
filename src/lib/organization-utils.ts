@@ -88,3 +88,47 @@ export function isValidOrganizationId(organizationId: string): boolean {
 export function hasOrganizationId(school: School): school is School & { organizationId: string } {
   return typeof school.organizationId === 'string' && school.organizationId.trim() !== '';
 }
+
+/**
+ * Asserts that a user has permission to manage a given organization.
+ * Validates membership in the organization and required roles (typically administrator).
+ * 
+ * @param userId - ID of the user requesting the action
+ * @param organizationId - ID of the target organization
+ * @param requiredRole - Minimum role required (defaults to 'administrator')
+ */
+export async function assertUserTenantPermission(
+  userId: string,
+  organizationId: string,
+  requiredRole: string = 'administrator'
+): Promise<void> {
+  const { adminDb } = await import('./firebase-admin');
+  
+  // 1. Check if user is a designated super admin
+  const userRef = adminDb.collection('users').doc(userId);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new Error('Unauthorized: User profile does not exist.');
+  }
+
+  const userData = userSnap.data();
+  if (!userData) {
+    throw new Error('Unauthorized: User data is empty.');
+  }
+
+  // Check if they have the system_admin permission bypass
+  if (userData.permissions?.includes('system_admin')) {
+    return; // Super admin bypass
+  }
+
+  // 2. Enforce Tenant Isolation
+  if (userData.organizationId !== organizationId) {
+    throw new Error('Unauthorized: Access denied. Cross-tenant parameter tampering detected.');
+  }
+
+  // 3. Verify role requirement
+  const userRoles: string[] = userData.roles || [];
+  if (!userRoles.includes(requiredRole)) {
+    throw new Error(`Unauthorized: This operation requires the "${requiredRole}" role.`);
+  }
+}

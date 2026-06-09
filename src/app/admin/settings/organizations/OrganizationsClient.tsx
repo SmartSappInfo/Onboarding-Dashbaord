@@ -83,7 +83,8 @@ export default function OrganizationsClient() {
     };
 
     const handleArchive = async (org: Organization) => {
-        const result = await archiveOrganizationAction(org.id, org.status !== 'archived');
+        if (!user) return;
+        const result = await archiveOrganizationAction(org.id, org.status !== 'archived', user.uid);
         if (result.success) {
             toast({ title: org.status === 'archived' ? 'Organization Restored' : 'Organization Archived' });
         }
@@ -116,30 +117,38 @@ export default function OrganizationsClient() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {isLoading ? (
                         Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-2xl" />)
-                    ) : organizations?.map(org => (
-                        <Card key={org.id} className={cn(
-                            "rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border text-left group transition-all duration-300",
-                            org.status === 'archived' ? "opacity-50 grayscale" : "hover:shadow-xl hover:ring-primary/20"
-                        )}>
-                            <div className="h-1.5 w-full bg-primary/20 group-hover:bg-primary transition-colors" />
-                            <CardHeader className="p-6 pb-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-4 min-w-0 flex-1">
-                                        {org.logoUrl ? (
-                                            <img 
-                                                src={org.logoUrl} 
-                                                alt={org.name}
-                                                className="h-14 w-14 rounded-2xl object-cover ring-1 ring-border shadow-sm shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                                                onClick={() => handleOpenEdit(org)}
-                                            />
-                                        ) : (
-                                            <div 
-                                                className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20 cursor-pointer hover:bg-primary/20 transition-all"
-                                                onClick={() => handleOpenEdit(org)}
-                                            >
-                                                <Building className="h-7 w-7 text-primary" />
-                                            </div>
-                                        )}
+                    ) : organizations?.map(org => {
+                        const primaryColor = org.brandPrimaryColor || '#3B5FFF';
+                        return (
+                            <Card key={org.id} className={cn(
+                                "rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border text-left group transition-all duration-300",
+                                org.status === 'archived' ? "opacity-50 grayscale" : "hover:shadow-xl hover:ring-primary/20"
+                            )}>
+                                <div className="h-1.5 w-full transition-colors duration-300" style={{ backgroundColor: primaryColor }} />
+                                <CardHeader className="p-6 pb-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                                            {org.logoUrl ? (
+                                                <img 
+                                                    src={org.logoUrl} 
+                                                    alt={org.name}
+                                                    className="h-14 w-14 rounded-2xl object-cover ring-1 ring-border shadow-sm shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                                    onClick={() => handleOpenEdit(org)}
+                                                    style={{ borderColor: primaryColor + '20' }}
+                                                />
+                                            ) : (
+                                                <div 
+                                                    className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 ring-1 cursor-pointer transition-all"
+                                                    onClick={() => handleOpenEdit(org)}
+                                                    style={{ 
+                                                        backgroundColor: primaryColor + '10',
+                                                        borderColor: primaryColor + '30',
+                                                        color: primaryColor
+                                                    }}
+                                                >
+                                                    <Building className="h-7 w-7" />
+                                                </div>
+                                            )}
                                         <div className="min-w-0 flex flex-col gap-0.5">
                                             <CardTitle className="text-lg font-bold tracking-tight truncate">
                                                 {org.name}
@@ -271,14 +280,15 @@ export default function OrganizationsClient() {
                                 <div className="pt-2">
                                     <Button 
                                         onClick={() => handleSelectOrganization(org.id)}
-                                        className="w-full rounded-xl font-semibold bg-primary/10 hover:bg-primary/20 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all gap-2"
+                                        className="w-full rounded-xl font-semibold transition-all gap-2 border-none text-white hover:brightness-95"
+                                        style={{ backgroundColor: primaryColor }}
                                     >
                                         Launch Organization <ArrowRight className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+                    )})}
                 </div>
 
                 {/* Empty State */}

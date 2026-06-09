@@ -203,8 +203,10 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
     const toggleDiagnostics = () => {
         setDiagnosticsOpen((prev) => {
             if (!prev) {
+                // Opening from toolbar — always clear any stale node filter
                 setSelectedNodeId(null);
                 setSelectedEdgeId(null);
+                setDiagnosticsFilterNodeId(null);
             }
             return !prev;
         });

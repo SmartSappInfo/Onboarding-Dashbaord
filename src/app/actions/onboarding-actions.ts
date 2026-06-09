@@ -22,17 +22,33 @@ export async function validateJoinCodeAction(code: string): Promise<{
     const cleanCode = code.trim().toLowerCase();
 
     // 1. Check organizations by slug first
+    // 1. Check organizations by slug prefix (supporting dynamic suffixes) or exact slug match
+    let matchedDoc: any = null;
     const orgsBySlug = await adminDb.collection('organizations')
       .where('slug', '==', cleanCode)
       .limit(1)
       .get();
       
     if (!orgsBySlug.empty) {
-      const doc = orgsBySlug.docs[0];
-      const data = doc.data();
+      matchedDoc = orgsBySlug.docs[0];
+    } else {
+      // Try querying with prefix match (slug starts with baseSlug- and is active)
+      const prefixSnap = await adminDb.collection('organizations')
+        .orderBy('slug')
+        .startAt(cleanCode + '-')
+        .endAt(cleanCode + '-\uf8ff')
+        .limit(1)
+        .get();
+      if (!prefixSnap.empty) {
+        matchedDoc = prefixSnap.docs[0];
+      }
+    }
+
+    if (matchedDoc) {
+      const data = matchedDoc.data();
       return { 
         success: true, 
-        organizationId: doc.id, 
+        organizationId: matchedDoc.id, 
         organizationName: data.name,
         departments: data.departments && data.departments.length > 0 ? data.departments : ['General']
       };

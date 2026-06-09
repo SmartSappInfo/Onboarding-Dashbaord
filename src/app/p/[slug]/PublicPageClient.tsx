@@ -26,11 +26,12 @@ import SUBSCRIPTION_PAYMENT_DATA from './payment-guide-data.json';
 import { sendReceiptAcknowledgementAction } from '@/lib/notification-actions';
 import Link from 'next/link';
 import VideoEmbed from '@/components/video-embed';
+import Image from 'next/image';
 
 
 
 // ─── Trigger Execution Engine ─────────────────────────────────────────────
-function useTriggerEngine(page: CampaignPage | null) {
+function useTriggerEngine(page: CampaignPage | null, orgBranding?: any) {
     const [modalState, setModalState] = useState<{
         type: 'survey' | 'form' | 'agreement';
         targetId: string;
@@ -86,8 +87,8 @@ function useTriggerEngine(page: CampaignPage | null) {
 
     // Typography Hydration
     useEffect(() => {
-        if (!page) return;
-        const font = page.settings.themeOverrides?.typography?.primaryFont || 'Inter';
+        if (!page && !orgBranding) return;
+        const font = page?.settings?.themeOverrides?.typography?.primaryFont || orgBranding?.brandFontFamily || 'Inter';
         if (font && !['Inter', 'Roboto'].includes(font)) {
             let fontLink = document.querySelector(`link[href*="family=${font.replace(' ', '+')}"]`);
             if (!fontLink) {
@@ -98,7 +99,7 @@ function useTriggerEngine(page: CampaignPage | null) {
             }
         }
         document.body.style.fontFamily = font + ', sans-serif';
-    }, [page]);
+    }, [page, orgBranding]);
 
 
     const fireTrigger = useCallback((event: PageTrigger['event'], blockId?: string) => {
@@ -234,16 +235,34 @@ function EmbeddedSurvey({ surveyId, pageId, onClose, isInModal }: { surveyId: st
 
 
 // ─── Main Client Component ───────────────────────────────────────────────
-export default function PublicPageClient({ slug }: { slug: string }) {
+export default function PublicPageClient({ 
+    slug,
+    initialPage = null,
+    initialVersion = null,
+    orgBranding = null
+}: { 
+    slug: string;
+    initialPage?: CampaignPage | null;
+    initialVersion?: CampaignPageVersion | null;
+    orgBranding?: {
+        logoUrl: string;
+        brandPrimaryColor: string;
+        brandSecondaryColor: string;
+        brandFontFamily: string;
+        name: string;
+    } | null;
+}) {
     const db = useFirestore();
     const searchParams = useSearchParams();
-    const [page, setPage] = useState<CampaignPage | null>(null);
-    const [version, setVersion] = useState<CampaignPageVersion | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState<CampaignPage | null>(initialPage);
+    const [version, setVersion] = useState<CampaignPageVersion | null>(initialVersion);
+    const [loading, setLoading] = useState(!initialPage);
     const [receiptFormSuccess, setReceiptFormSuccess] = useState(false);
-    const { modalState, setModalState, fireTrigger } = useTriggerEngine(page);
+    const { modalState, setModalState, fireTrigger } = useTriggerEngine(page, orgBranding);
 
     useEffect(() => {
+        if (page) return; // Skip client-side fetch if resolved server-side
+
         const fetchPage = async () => {
             // Check for static fallback
             if (slug === 'subscription-payment') {
@@ -255,7 +274,7 @@ export default function PublicPageClient({ slug }: { slug: string }) {
             }
 
             try {
-                const q = query(collection(db, 'campaignPages'), where('slug', '==', slug));
+                const q = query(collection(db, 'campaign_pages'), where('slug', '==', slug));
                 const snap = await getDocs(q);
                 if (!snap.empty) {
                     const pageData = { id: snap.docs[0].id, ...snap.docs[0].data() } as CampaignPage;
@@ -263,7 +282,7 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                     
                     // Fetch published version
                     if (pageData.publishedVersionId) {
-                        const vRef = doc(db, 'campaignPages', pageData.id, 'versions', pageData.publishedVersionId);
+                        const vRef = doc(db, 'campaign_pages', pageData.id, 'versions', pageData.publishedVersionId);
                         const vSnap = await getDoc(vRef);
                         if (vSnap.exists()) {
                             setVersion({ id: vSnap.id, ...vSnap.data() } as CampaignPageVersion);
@@ -276,7 +295,7 @@ export default function PublicPageClient({ slug }: { slug: string }) {
             setLoading(false);
         };
         fetchPage();
-    }, [db, slug]);
+    }, [db, slug, page]);
 
     useEffect(() => {
         if (page) {
@@ -320,11 +339,20 @@ export default function PublicPageClient({ slug }: { slug: string }) {
         );
     }
 
+    const primaryColor = page?.settings?.themeOverrides?.primary || orgBranding?.brandPrimaryColor || '#3b82f6';
+    const secondaryColor = orgBranding?.brandSecondaryColor || '#8b5cf6';
+    const brandFont = orgBranding?.brandFontFamily || 'Inter';
+
     const themeStyles = `
         :root {
-            --primary: ${page?.settings?.themeOverrides?.primary || '#3b82f6'};
+            --primary: ${primaryColor};
+            --secondary: ${secondaryColor};
             --primary-foreground: #ffffff;
             --radius: 1rem;
+            transition: --primary 300ms, --secondary 300ms;
+        }
+        body {
+            font-family: ${brandFont}, var(--font-body, Inter), sans-serif;
         }
     `;
 
@@ -352,7 +380,18 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                     <div className="container max-w-4xl mx-auto px-6">
                         <div className="flex items-center justify-between rounded-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-border/50 dark:border-zinc-800 py-1.5 px-6 shadow-lg shadow-black/5 dark:shadow-black/20 transition-all">
                             <div className="flex items-center gap-4">
-                                <SmartSappLogo className="h-8 w-auto" />
+                                {orgBranding?.logoUrl ? (
+                                    <Image
+                                        src={orgBranding.logoUrl}
+                                        alt={`${orgBranding.name || 'Organization'} logo`}
+                                        width={120}
+                                        height={32}
+                                        className="h-8 w-auto object-contain animate-none"
+                                        unoptimized={orgBranding.logoUrl.startsWith('http')}
+                                    />
+                                ) : (
+                                    <SmartSappLogo className="h-8 w-auto" />
+                                )}
                             </div>
                             <div className="flex items-center gap-4">
                                 <span className="hidden md:block text-xs font-bold text-slate-500 dark:text-slate-400">Done Paying?</span>

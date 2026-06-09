@@ -7,6 +7,7 @@ import { sendMessage } from './messaging-engine';
 import { getBaseUrl } from './utils/url-helpers';
 import { sendBatchEmails } from './resend-service';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
+import { resolveOrgBrandingVars } from './messaging-branding';
 import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageStyle } from './types';
 
 const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
@@ -118,26 +119,8 @@ export async function processBulkJobChunk(jobId: string) {
     const sender = senderSnap.data() as SenderProfile;
 
     // Resolve org branding variables once per chunk (not per recipient)
-    const orgBrandingVars: Record<string, string> = {
-        current_year: new Date().getFullYear().toString(),
-    };
     const orgId = template.organizationId || '';
-    if (orgId) {
-        try {
-            const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
-            if (orgSnap.exists) {
-                const org = orgSnap.data() as Record<string, any>;
-                orgBrandingVars.org_name = org.name || '';
-                orgBrandingVars.org_logo_url = org.logoUrl || '';
-                orgBrandingVars.org_email = org.email || '';
-                orgBrandingVars.org_phone = org.phone || '';
-                orgBrandingVars.org_address = org.address || '';
-                orgBrandingVars.org_website = org.website || '';
-            }
-        } catch (e) {
-            console.warn('>>> [BULK] Org branding lookup skipped:', (e as Error).message);
-        }
-    }
+    const orgBrandingVars = await resolveOrgBrandingVars(orgId);
     
     let styleWrapper = '';
     if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {
@@ -421,26 +404,8 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
   const sender = senderSnap.data() as SenderProfile;
 
   // Org branding (resolved once per chunk, not per recipient)
-  const orgBrandingVars: Record<string, string> = {
-    current_year: new Date().getFullYear().toString(),
-  };
   const orgId = template.organizationId || '';
-  if (orgId) {
-    try {
-      const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
-      if (orgSnap.exists) {
-        const org = orgSnap.data() as Record<string, any>;
-        orgBrandingVars.org_name = org.name || '';
-        orgBrandingVars.org_logo_url = org.logoUrl || '';
-        orgBrandingVars.org_email = org.email || '';
-        orgBrandingVars.org_phone = org.phone || '';
-        orgBrandingVars.org_address = org.address || '';
-        orgBrandingVars.org_website = org.website || '';
-      }
-    } catch (e) {
-      console.warn('>>> [BULK-BG] Org branding lookup skipped:', (e as Error).message);
-    }
-  }
+  const orgBrandingVars = await resolveOrgBrandingVars(orgId);
 
   let styleWrapper = '';
   if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {

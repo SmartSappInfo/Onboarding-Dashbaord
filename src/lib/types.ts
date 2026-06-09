@@ -334,6 +334,24 @@ export interface Organization {
   updatedBy?: string;
 }
 
+export interface AISeedResult {
+  name: string;
+  description: string;
+  logoUrl: string;
+  brandPrimaryColor: string;
+  brandSecondaryColor: string;
+  country: string;
+  language: string;
+}
+
+export interface OrgBranding {
+  logoUrl: string;
+  brandPrimaryColor: string;
+  brandSecondaryColor: string;
+  brandFontFamily: string;
+  name: string;
+}
+
 /**
  * Contact scope types for workspaces
  */

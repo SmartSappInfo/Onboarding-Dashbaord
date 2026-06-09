@@ -4,6 +4,16 @@ import { adminDb } from './firebase-admin';
 import type { Organization, AppPermissionId } from './types';
 import { getFullAdminPermissions } from './permissions-engine';
 import { migrateToPermissionsSchema } from './permissions-migration';
+import { assertUserTenantPermission } from './organization-utils';
+
+/**
+ * Generate a random 4-character hex string for slug entropy
+ */
+function generateEntropy(): string {
+    return Math.floor((1 + Math.random()) * 0x10000)
+        .toString(16)
+        .substring(1);
+}
 
 /**
  * Save (create or update) an organization
@@ -20,7 +30,7 @@ export async function saveOrganizationAction(
         }
 
         const timestamp = new Date().toISOString();
-        const slug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const baseSlug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
         // Ensure departments defaults to ['General'] if not provided or empty
         const departments = data.departments && data.departments.length > 0 
@@ -28,10 +38,22 @@ export async function saveOrganizationAction(
             : ['General'];
 
         if (organizationId) {
+            // Assert Edit permissions for this specific tenant (prevent parameter tampering IDOR)
+            await assertUserTenantPermission(userId, organizationId, 'administrator');
+
+            const flatData: Record<string, unknown> = { ...data };
+            if (data.settings) {
+                delete flatData.settings;
+                for (const [k, v] of Object.entries(data.settings)) {
+                    if (v !== undefined) {
+                        flatData[`settings.${k}`] = v;
+                    }
+                }
+            }
+
             // Update existing organization
             await adminDb.collection('organizations').doc(organizationId).update({
-                ...data,
-                slug,
+                ...flatData,
                 departments,
                 updatedAt: timestamp,
                 updatedBy: userId
@@ -39,15 +61,23 @@ export async function saveOrganizationAction(
 
             return { success: true, organizationId };
         } else {
-            // Create new organization - use slug as ID for consistency
+            // To create an organization, user must have system_admin access
+            const userRef = adminDb.collection('users').doc(userId);
+            const userSnap = await userRef.get();
+            if (!userSnap.exists || !userSnap.data()?.permissions?.includes('system_admin')) {
+                return { success: false, error: 'Unauthorized: Only system administrators can build new organizations.' };
+            }
+
+            // Create new organization with high-entropy suffix namespaces
+            const slug = `${baseSlug}-${generateEntropy()}`;
             const newOrgRef = adminDb.collection('organizations').doc(slug);
             
-            // Check if organization with this slug already exists
+            // Check if organization with this exact slug already exists (extremely rare with entropy, but safe)
             const existingOrg = await newOrgRef.get();
             if (existingOrg.exists) {
                 return { 
                     success: false, 
-                    error: 'An organization with this name already exists. Please choose a different name.' 
+                    error: 'An organization namespace conflict occurred. Please try saving again.' 
                 };
             }
 
@@ -63,7 +93,7 @@ export async function saveOrganizationAction(
                 updatedBy: userId
             });
 
-            // Provision defaults for new organization
+            // Provision defaults securely for new organization
             await provisionOrganizationDefaults(slug, userId);
 
             return { success: true, organizationId: slug };
@@ -96,6 +126,9 @@ export async function deleteOrganizationAction(
     userId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        // Assert Admin permissions for this specific tenant (prevent parameter tampering IDOR)
+        await assertUserTenantPermission(userId, organizationId, 'administrator');
+
         // Check if organization has any workspaces
         const workspacesSnapshot = await adminDb
             .collection('workspaces')
@@ -139,9 +172,13 @@ export async function deleteOrganizationAction(
  */
 export async function archiveOrganizationAction(
     organizationId: string,
-    archive: boolean
+    archive: boolean,
+    userId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        // Assert Admin permissions
+        await assertUserTenantPermission(userId, organizationId, 'administrator');
+
         await adminDb.collection('organizations').doc(organizationId).update({
             status: archive ? 'archived' : 'active',
             updatedAt: new Date().toISOString()
@@ -163,6 +200,9 @@ export async function setOrganizationDefaultWorkspaceAction(
     userId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        // Assert Admin permissions
+        await assertUserTenantPermission(userId, organizationId, 'administrator');
+
         await adminDb.collection('organizations').doc(organizationId).update({
             defaultWorkspaceId: workspaceId,
             updatedAt: new Date().toISOString(),
@@ -177,18 +217,21 @@ export async function setOrganizationDefaultWorkspaceAction(
 }
 
 /**
- * Provisions default roles, modules and zones for a new organization
+ * Provisions default roles, modules and zones for a new organization.
+ * Uses a single atomic batch with parallel fetches to prevent waterfalls.
  */
 async function provisionOrganizationDefaults(organizationId: string, userId: string): Promise<void> {
     const timestamp = new Date().toISOString();
-    
+    const batch = adminDb.batch();
+
     // 1. Hardcoded Zones
     const defaultZones = ['Zone 1', 'Zone 2', 'Zone 3'];
     for (const zoneName of defaultZones) {
-        await adminDb.collection('zones').add({
+        const ref = adminDb.collection('zones').doc();
+        batch.set(ref, {
             name: zoneName,
             organizationId,
-            isDefault: false // These are instances, not templates
+            isDefault: false
         });
     }
 
@@ -199,7 +242,8 @@ async function provisionOrganizationDefaults(organizationId: string, userId: str
         { name: 'Product 3', abbreviation: 'P3', color: '#F59E0B', order: 2 }
     ];
     for (const mod of defaultModules) {
-        await adminDb.collection('modules').add({
+        const ref = adminDb.collection('modules').doc();
+        batch.set(ref, {
             ...mod,
             organizationId,
             isDefault: false
@@ -214,10 +258,11 @@ async function provisionOrganizationDefaults(organizationId: string, userId: str
     ];
     for (const role of ferRoles) {
         const perms: AppPermissionId[] = role.name === 'Administrator' 
-            ? ['system_admin'] // Administrator gets broad bypass
-            : ['schools_view', 'activities_view']; // Basic defaults
+            ? ['system_admin']
+            : ['schools_view', 'activities_view'];
         
-        await adminDb.collection('roles').add({
+        const ref = adminDb.collection('roles').doc();
+        batch.set(ref, {
             ...role,
             organizationId,
             workspaceIds: [], 
@@ -229,31 +274,18 @@ async function provisionOrganizationDefaults(organizationId: string, userId: str
         });
     }
 
-    // 4. Clone Global Default Templates
-    // Roles
-    const defaultRolesSnapshot = await adminDb.collection('roles')
-        .where('isDefault', '==', true)
-        .get();
-    
-    for (const doc of defaultRolesSnapshot.docs) {
-        const data = doc.data();
-        await adminDb.collection('roles').add({
-            ...data,
-            organizationId,
-            isDefault: false, // It's no longer a template in the new org
-            createdAt: timestamp,
-            updatedAt: timestamp
-        });
-    }
+    // 4. Clone Global Default Templates (Fetch templates in parallel via Promise.all)
+    const [rolesSnap, modulesSnap, zonesSnap] = await Promise.all([
+        adminDb.collection('roles').where('isDefault', '==', true).get(),
+        adminDb.collection('modules').where('isDefault', '==', true).get(),
+        adminDb.collection('zones').where('isDefault', '==', true).get()
+    ]);
 
-    // Modules
-    const defaultModulesSnapshot = await adminDb.collection('modules')
-        .where('isDefault', '==', true)
-        .get();
-    
-    for (const doc of defaultModulesSnapshot.docs) {
+    // Clone global roles
+    for (const doc of rolesSnap.docs) {
         const data = doc.data();
-        await adminDb.collection('modules').add({
+        const ref = adminDb.collection('roles').doc();
+        batch.set(ref, {
             ...data,
             organizationId,
             isDefault: false,
@@ -262,17 +294,30 @@ async function provisionOrganizationDefaults(organizationId: string, userId: str
         });
     }
 
-    // Zones
-    const defaultZonesSnapshot = await adminDb.collection('zones')
-        .where('isDefault', '==', true)
-        .get();
-    
-    for (const doc of defaultZonesSnapshot.docs) {
+    // Clone global modules
+    for (const doc of modulesSnap.docs) {
         const data = doc.data();
-        await adminDb.collection('zones').add({
+        const ref = adminDb.collection('modules').doc();
+        batch.set(ref, {
+            ...data,
+            organizationId,
+            isDefault: false,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    // Clone global zones
+    for (const doc of zonesSnap.docs) {
+        const data = doc.data();
+        const ref = adminDb.collection('zones').doc();
+        batch.set(ref, {
             ...data,
             organizationId,
             isDefault: false
         });
     }
+
+    // Commit all provisioned items atomically
+    await batch.commit();
 }
