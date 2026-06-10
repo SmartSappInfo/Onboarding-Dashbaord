@@ -103,6 +103,8 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
     };
 }
 
+import { getOrgBranding } from '@/lib/org-branding';
+
 export default async function PublicPdfFormPage({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ entityId?: string }> }) {
     const { pdfId } = await params;
     const sParams = await searchParams;
@@ -110,18 +112,54 @@ export default async function PublicPdfFormPage({ params, searchParams }: { para
 
     if (!data) notFound();
     
-    if (data.pdfForm.passwordProtected && data.pdfForm.password && !data.isLocked) {
-        return <PasswordGatedForm pdfForm={data.pdfForm} entity={data.entity} />;
+    // Resolve organizationId: from pdfForm or fallback to the first workspace's organization
+    let organizationId = data.pdfForm.organizationId;
+    if (!organizationId) {
+        const firstWorkspaceId = data.pdfForm.workspaceIds?.[0];
+        if (firstWorkspaceId) {
+            try {
+                const wsSnap = await adminDb.collection('workspaces').doc(firstWorkspaceId).get();
+                if (wsSnap.exists) {
+                    organizationId = wsSnap.data()?.organizationId;
+                }
+            } catch (err) {
+                console.error('Error fetching workspace for form branding:', err);
+            }
+        }
     }
 
+    const orgBranding = await getOrgBranding(organizationId);
+    const primaryColor = orgBranding?.brandPrimaryColor || '#3B5FFF';
+    const secondaryColor = orgBranding?.brandSecondaryColor || '#8B5CF6';
+    const brandFont = orgBranding?.brandFontFamily || 'Inter';
+
+    const themeStyles = `
+        :root {
+            --primary: ${primaryColor};
+            --secondary: ${secondaryColor};
+            --radius: 1rem;
+        }
+        body {
+            font-family: ${brandFont}, sans-serif;
+        }
+    `;
+
     return (
-        <PdfFormRenderer 
-            pdfForm={data.pdfForm} 
-            entity={data.entity}
-            identity={data.identity}
-            initialData={data.initialData}
-            isLocked={data.isLocked}
-            existingSubmissionId={data.submissionId}
-        />
+        <>
+            <style dangerouslySetInnerHTML={{ __html: themeStyles }} />
+            {data.pdfForm.passwordProtected && data.pdfForm.password && !data.isLocked ? (
+                <PasswordGatedForm pdfForm={data.pdfForm} entity={data.entity} orgBranding={orgBranding} />
+            ) : (
+                <PdfFormRenderer 
+                    pdfForm={data.pdfForm} 
+                    entity={data.entity}
+                    identity={data.identity}
+                    initialData={data.initialData}
+                    isLocked={data.isLocked}
+                    existingSubmissionId={data.submissionId}
+                    orgBranding={orgBranding}
+                />
+            )}
+        </>
     );
 }

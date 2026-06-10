@@ -9,7 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { EntityNote } from '@/lib/types';
-import { MessageSquare, Trash2, Edit2, Check, X, Send, Loader2, Pin, PinOff, Phone, Users, AlertTriangle, Clock, Filter, Reply, CornerDownRight } from 'lucide-react';
+import { MessageSquare, Trash2, Edit2, Check, X, Send, Loader2, Pin, PinOff, Phone, Users, AlertTriangle, Clock, Filter, Reply, CornerDownRight, Briefcase } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Badge } from '@/components/ui/badge';
@@ -20,9 +21,16 @@ interface EntityNotesTabProps {
     entityId: string;
     /** When true, hide the text area until "Add Note" is clicked */
     compact?: boolean;
+    /**
+     * When set, the tab operates in "deal scope": it queries notes for this
+     * deal (not the whole entity) and stamps new notes with the deal link.
+     * Notes still carry `entityId`, so they also appear in the entity panel.
+     */
+    dealId?: string;
+    dealName?: string;
 }
 
-export default function EntityNotesTab({ entityId, compact = false }: EntityNotesTabProps) {
+export default function EntityNotesTab({ entityId, compact = false, dealId, dealName }: EntityNotesTabProps) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
@@ -50,16 +58,29 @@ export default function EntityNotesTab({ entityId, compact = false }: EntityNote
         { id: 'followup', label: 'Follow-up', icon: Clock, color: 'text-amber-500 bg-amber-500/10' },
     ];
 
+    // 'deal' scope shows only this deal's notes; 'entity' scope shows all of
+    // the entity's notes (including deal-linked ones, badged with a deal chip).
+    const scope: 'deal' | 'entity' = dealId ? 'deal' : 'entity';
+
     // Fetch Notes
     const notesQuery = useMemoFirebase(() => {
-        if (!firestore || !entityId || !activeWorkspaceId) return null;
+        if (!firestore || !activeWorkspaceId) return null;
+        if (scope === 'deal') {
+            return query(
+                collection(firestore, 'entity_notes'),
+                where('dealId', '==', dealId),
+                where('workspaceId', '==', activeWorkspaceId),
+                orderBy('createdAt', 'desc')
+            );
+        }
+        if (!entityId) return null;
         return query(
             collection(firestore, 'entity_notes'),
             where('entityId', '==', entityId),
             where('workspaceId', '==', activeWorkspaceId),
             orderBy('createdAt', 'desc')
         );
-    }, [firestore, entityId, activeWorkspaceId]);
+    }, [firestore, entityId, activeWorkspaceId, scope, dealId]);
 
     const { data: notes, isLoading } = useCollection<EntityNote>(notesQuery);
 
@@ -83,6 +104,12 @@ export default function EntityNotesTab({ entityId, compact = false }: EntityNote
 
             if (parentId) {
                 noteData.parentNoteId = parentId;
+            }
+
+            // Stamp the deal link in deal scope (and on replies, which inherit it).
+            if (dealId) {
+                noteData.dealId = dealId;
+                if (dealName) noteData.dealName = dealName;
             }
 
             await addDoc(collection(firestore, 'entity_notes'), noteData);
@@ -446,6 +473,16 @@ export default function EntityNotesTab({ entityId, compact = false }: EntityNote
                                                         <span className="text-[9px] font-medium text-amber-900/50 uppercase tracking-wider">
                                                             • {note.noteType}
                                                         </span>
+                                                    )}
+                                                    {scope === 'entity' && note.dealId && (
+                                                        <Link
+                                                            href={`/admin/deals/${note.dealId}`}
+                                                            className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[8px] font-bold hover:bg-primary/20 transition-colors"
+                                                            title={note.dealName ? `On deal: ${note.dealName}` : 'View deal'}
+                                                        >
+                                                            <Briefcase className="h-2.5 w-2.5 shrink-0" />
+                                                            <span className="truncate max-w-[120px]">{note.dealName || 'Deal'}</span>
+                                                        </Link>
                                                     )}
                                                 </div>
                                                 <p className="text-[9px] text-amber-900/40 mt-0.5">

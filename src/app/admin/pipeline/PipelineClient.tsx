@@ -4,42 +4,32 @@
 import * as React from 'react';
 import KanbanBoard from './components/KanbanBoard';
 import PipelineConfigView from './components/PipelineConfigView';
+import DealsListView from './components/DealsListView';
+import PipelineFilterBar from './components/PipelineFilterBar';
 import CreateDealModal from '../entities/components/CreateDealModal';
-import { 
-    Workflow, 
-    Search, 
-    MapPin, 
-    RotateCcw,
+import {
+    Workflow,
     Settings2,
-    Zap,
     Layout,
-    Filter,
-    X,
     Plus,
-    PlusCircle,
-    Loader2
+    Loader2,
+    List
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import type { Pipeline, Zone, Deal } from '@/lib/types';
+import type { Pipeline, Zone, UserProfile, OnboardingStage, Tag } from '@/lib/types';
+import { KanbanFilters, DEFAULT_FILTERS } from './pipeline-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { 
-    Tooltip, 
-    TooltipContent, 
-    TooltipProvider, 
-    TooltipTrigger 
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
 } from '@/components/ui/tooltip';
-import { Label } from '@/components/ui/label';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { savePipelineAction } from '@/lib/pipeline-actions';
@@ -53,8 +43,7 @@ export default function PipelineClient() {
   const { toast } = useToast();
   const { plural } = useTerminology();
   
-  const [activeView, setActiveView] = React.useState<'board' | 'config'>('board');
-  const [isSearchExpanded, setIsSearchExpanded] = React.useState(false);
+  const [activeView, setActiveView] = React.useState<'board' | 'list' | 'config'>('board');
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
 
@@ -75,8 +64,50 @@ export default function PipelineClient() {
 
   const [currentPipelineId, setCurrentPipelineId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [statusFilter, setStatusFilter] = React.useState<'open' | 'won' | 'lost' | 'all'>('all');
+  const [filters, setFilters] = React.useState<KanbanFilters>(DEFAULT_FILTERS);
   const [columnWidth, setColumnWidth] = React.useState(320);
+
+  // Search has its own expand/collapse UI, so it lives outside the filter object
+  // and is merged in only when handed to the board / list view.
+  const mergedFilters = React.useMemo<KanbanFilters>(
+    () => ({ ...filters, searchTerm }),
+    [filters, searchTerm]
+  );
+
+  // Workspace-scoped users for the "Owner" filter (members of the active workspace)
+  const usersQuery = useMemoFirebase(() =>
+    firestore && activeWorkspaceId
+      ? query(collection(firestore, 'users'), where('workspaceIds', 'array-contains', activeWorkspaceId))
+      : null,
+  [firestore, activeWorkspaceId]);
+  const { data: users } = useCollection<UserProfile>(usersQuery);
+
+  // Workspace-scoped tags for the "Tags" filter
+  const tagsQuery = useMemoFirebase(() =>
+    firestore && activeWorkspaceId
+      ? query(collection(firestore, 'tags'), where('workspaceId', '==', activeWorkspaceId))
+      : null,
+  [firestore, activeWorkspaceId]);
+  const { data: tags } = useCollection<Tag>(tagsQuery);
+
+  // Stages for the current pipeline (stage multi-select filter)
+  const filterStagesQuery = useMemoFirebase(() =>
+    firestore && currentPipelineId ? query(
+      collection(firestore, 'onboardingStages'),
+      where('pipelineId', '==', currentPipelineId),
+      orderBy('order', 'asc')
+    ) : null,
+  [firestore, currentPipelineId]);
+  const { data: filterStages } = useCollection<OnboardingStage>(filterStagesQuery);
+
+  const updateFilter = React.useCallback(<K extends keyof KanbanFilters>(key: K, value: KanbanFilters[K]) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const clearAllFilters = React.useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setSearchTerm('');
+  }, []);
 
   // Track if the user just created a pipeline to prevent the effect from resetting it
   const justCreatedIdRef = React.useRef<string | null>(null);
@@ -142,8 +173,6 @@ export default function PipelineClient() {
     }
   };
 
-  const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all';
-
   return (
     <PageContainerFluid>
     <div className="flex h-full flex-col overflow-hidden w-full">
@@ -180,67 +209,42 @@ export default function PipelineClient() {
                 </div>
 
                 <div className="flex items-center gap-3 flex-1 justify-end">
-                    <AnimatePresence mode="popLayout">
-                        {activeView === 'board' && (
-                            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex items-center gap-2 mr-2">
-                                <div className="relative flex items-center">
-                                    <AnimatePresence>
-                                        {isSearchExpanded ? (
-                                            <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 240, opacity: 1 }} exit={{ width: 0, opacity: 0 }} className="overflow-hidden">
-                                                <Input autoFocus placeholder="Search hubs..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-10 rounded-xl bg-muted/30 border-primary/20 font-bold text-xs pl-4 pr-10 shadow-inner" />
-                                                <button onClick={() => { setIsSearchExpanded(false); setSearchTerm(''); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"><X className="h-3.5 w-3.5" /></button>
-                                            </motion.div>
-                                        ) : (
-                                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-primary/5 text-muted-foreground hover:text-primary" onClick={() => setIsSearchExpanded(true)}><Search className="h-4 w-4" /></Button>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant={hasActiveFilters ? "secondary" : "ghost"} size="icon" className={cn("h-10 w-10 rounded-xl transition-all", hasActiveFilters ? "bg-primary/10 text-primary border-primary/20" : "text-muted-foreground hover:text-primary hover:bg-primary/5")}>
-                                            <Filter className="h-4 w-4" />
-                                            {hasActiveFilters && <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full ring-2 ring-background" />}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-72 p-4 rounded-2xl border-none shadow-2xl space-y-6" align="end">
-                                        <div className="space-y-4">
-                                            <div className="space-y-2 text-left">
-                                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Deal Status</Label>
-                                                <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-                                                    <SelectTrigger className="h-9 rounded-lg bg-muted/20 border-none font-bold text-[10px]"><SelectValue placeholder="Any Status" /></SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
-                                                        <SelectItem value="all" className="text-[10px] font-bold">All Statuses</SelectItem>
-                                                        <SelectItem value="open" className="text-[10px] font-bold text-blue-600">Open</SelectItem>
-                                                        <SelectItem value="won" className="text-[10px] font-bold text-emerald-600">Won</SelectItem>
-                                                        <SelectItem value="lost" className="text-[10px] font-bold text-rose-600">Lost</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        {hasActiveFilters && (<div className="pt-4 border-t border-dashed"><Button variant="ghost" onClick={() => { setSearchTerm(''); setStatusFilter('all'); }} className="w-full h-8 rounded-lg font-semibold text-[9px] text-rose-600 hover:bg-rose-50 gap-2"><RotateCcw className="h-3 w-3" /> Clear All Filters</Button></div>)}
-                                    </PopoverContent>
-                                </Popover>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
                     <Button onClick={() => setIsCreateDealOpen(true)} className="h-9 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-1.5 shadow-md mr-1 px-4 text-xs">
                         <Plus className="h-4 w-4" /> Add Deal
                     </Button>
 
                     <div className="flex items-center gap-1.5 bg-muted/30 p-1 rounded-xl border shadow-inner">
                         <Button variant="ghost" onClick={() => setActiveView('board')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-4 transition-all", activeView === 'board' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100")}><Layout className="mr-1.5 h-3.5 w-3.5" /> Board</Button>
+                        <Button variant="ghost" onClick={() => setActiveView('list')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-4 transition-all", activeView === 'list' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100")}><List className="mr-1.5 h-3.5 w-3.5" /> List</Button>
                         <Button variant="ghost" onClick={() => setActiveView('config')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-4 transition-all", activeView === 'config' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100")}><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Config</Button>
                     </div>
                 </div>
             </div>
         </header>
 
+        {/* Inline workspace-scoped filter card */}
+        {activeView !== 'config' && (
+            <PipelineFilterBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                filters={filters}
+                updateFilter={updateFilter}
+                onClear={clearAllFilters}
+                users={users}
+                tags={tags}
+                stages={filterStages}
+            />
+        )}
+
         <div className="flex-1 overflow-hidden relative">
             <AnimatePresence mode="wait">
                 {activeView === 'board' ? (
                     <motion.div key={`board-${currentPipelineId}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full w-full">
-                        {currentPipelineId ? <KanbanBoard pipelineId={currentPipelineId} customWidth={columnWidth} filters={{ searchTerm, status: statusFilter }} /> : <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20"><Workflow size={120} /><p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p></div>}
+                        {currentPipelineId ? <KanbanBoard pipelineId={currentPipelineId} customWidth={columnWidth} filters={mergedFilters} /> : <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20"><Workflow size={120} /><p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p></div>}
+                    </motion.div>
+                ) : activeView === 'list' ? (
+                    <motion.div key={`list-${currentPipelineId}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full w-full">
+                        {currentPipelineId ? <DealsListView pipelineId={currentPipelineId} filters={mergedFilters} /> : <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20"><Workflow size={120} /><p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p></div>}
                     </motion.div>
                 ) : (
                     <motion.div key={`config-${currentPipelineId}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="h-full w-full overflow-y-auto">

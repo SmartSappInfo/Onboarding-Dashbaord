@@ -507,6 +507,14 @@ export interface EntityNote {
   /** Threading support */
   parentNoteId?: string;
   replyCount?: number;
+  /**
+   * Deal linkage — set when the note was created in a deal's context.
+   * `dealName` is denormalised at write time for display (consistent with the
+   * app's denormalisation pattern, e.g. Deal.stageName). The note still shares
+   * `entityId`, so it surfaces in the entity notes panel with a deal chip.
+   */
+  dealId?: string;
+  dealName?: string;
 }
 
 export interface ContactAttachment {
@@ -1010,6 +1018,20 @@ export interface DealContact {
 }
 
 /**
+ * DealFocalContact — a focal person selected from the deal's OWN entity's
+ * `entityContacts[]`. Distinct from `DealContact` (which links contacts from
+ * OTHER entities). Captured at deal creation; the `id` mirrors the source
+ * `EntityContact.id`.
+ */
+export interface DealFocalContact {
+  id: string;            // Source EntityContact.id within the entity
+  name: string;
+  email?: string;
+  phone?: string;
+  role?: string;         // EntityContact.typeLabel (e.g., 'Decision Maker', 'Primary Parent')
+}
+
+/**
  * Deal (Opportunity) - represents an independent transactional record
  * Multiple deals can be linked to a single Entity within a workspace.
  */
@@ -1026,7 +1048,8 @@ export interface Deal {
   propertyId?: string;        // Optional property reference for real estate deals
   status: 'open' | 'won' | 'lost';
   lostReason?: string | null; // Captures why the deal was closed lost
-  contacts?: DealContact[];   // Associated secondary contacts
+  contacts?: DealContact[];   // Associated secondary contacts (from OTHER entities)
+  focalContacts?: DealFocalContact[]; // Focal persons from THIS deal's entity
   assignedTo?: {
     userId: string | null;
     name: string | null;

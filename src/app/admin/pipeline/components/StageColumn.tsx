@@ -48,10 +48,10 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
     const stageColor = stage.color || '#3B5FFF';
 
     return (
-        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width] duration-300 whitespace-normal overflow-hidden border-none rounded-2xl min-w-0">
-                <Card 
+        <div ref={setNodeRef} style={style} className="flex-shrink-0 flex flex-col group/column transition-[width] duration-300 whitespace-normal overflow-hidden border-none rounded-2xl min-w-0">
+                <Card
                     className={cn(
-                        "h-full flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-500 w-full relative",
+                        "flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-500 w-full relative",
                     isOverlay && "shadow-2xl scale-105 rotate-1",
                     isOver && "bg-primary/[0.03]"
                 )}
@@ -97,7 +97,7 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                     </Badge>
                 </CardHeader>
                 
-                <ScrollArea className="flex-1 w-full min-w-0">
+                <ScrollArea className="w-full min-w-0" style={{ maxHeight: 'min(600px, 70vh)' }}>
                     <CardContent className="px-3 pt-5 pb-8 w-full min-w-0">
                          <SortableContext items={deals.map(d => d.id)} strategy={verticalListSortingStrategy}>
                             <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0 overflow-hidden">

@@ -13,6 +13,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <Suspense fallback={<div className="min-h-screen w-full bg-background" />}>
       <ThemeProvider attribute="class" forcedTheme="dark" enableSystem={false}>
+        <style dangerouslySetInnerHTML={{ __html: `
+          :root {
+            --org-primary: #3B5FFF;
+            --org-secondary: #8B5CF6;
+          }
+        `}} />
         <FirebaseBootstrap />
         <AdminLayoutClient>{children}</AdminLayoutClient>
       </ThemeProvider>

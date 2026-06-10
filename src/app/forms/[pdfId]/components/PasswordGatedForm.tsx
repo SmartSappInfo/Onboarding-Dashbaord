@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { PDFForm, WorkspaceEntity } from '@/lib/types';
+import type { PDFForm, WorkspaceEntity, OrgBranding } from '@/lib/types';
 import PdfFormRenderer from './PdfFormRenderer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -21,9 +21,10 @@ const passwordSchema = z.object({
 interface PasswordGatedFormProps {
   pdfForm: PDFForm;
   entity?: WorkspaceEntity;
+  orgBranding?: OrgBranding | null;
 }
 
-export default function PasswordGatedForm({ pdfForm, entity }: PasswordGatedFormProps) {
+export default function PasswordGatedForm({ pdfForm, entity, orgBranding }: PasswordGatedFormProps) {
   const [isUnlocked, setIsUnlocked] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   
@@ -43,11 +44,11 @@ export default function PasswordGatedForm({ pdfForm, entity }: PasswordGatedForm
   };
 
   if (isUnlocked) {
-    return <PdfFormRenderer pdfForm={pdfForm} entity={entity} />;
+    return <PdfFormRenderer pdfForm={pdfForm} entity={entity} orgBranding={orgBranding} />;
   }
 
   const bgColor = pdfForm.backgroundColor || '#F1F5F9';
-  const logoUrl = entity?.logoUrl || pdfForm.logoUrl;
+  const logoUrl = orgBranding?.logoUrl || entity?.logoUrl || pdfForm.logoUrl;
 
   return (
     <div className="flex flex-col min-h-screen relative overflow-hidden" style={{ backgroundColor: bgColor }}>
@@ -58,7 +59,7 @@ export default function PasswordGatedForm({ pdfForm, entity }: PasswordGatedForm
               <div className="flex justify-center mb-4">
                 {logoUrl ? (
                     <div className="relative h-12 w-48">
-                        <Image src={logoUrl} alt="Logo" fill className="object-contain" />
+                        <Image src={logoUrl} alt="Logo" fill className="object-contain" unoptimized={logoUrl.startsWith('http')} />
                     </div>
                 ) : (
                     <SmartSappIcon className="h-12 w-12 text-primary" />

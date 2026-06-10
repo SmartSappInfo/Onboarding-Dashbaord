@@ -181,6 +181,16 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     orgWorkspaces?.find(w => w.id === activeWorkspaceId),
   [orgWorkspaces, activeWorkspaceId]);
 
+  // Apply brand colors to CSS custom properties for the admin panel
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    const primary = activeOrganization?.brandPrimaryColor || '#3B5FFF';
+    const secondary = activeOrganization?.brandSecondaryColor || '#8B5CF6';
+    root.style.setProperty('--org-primary', primary);
+    root.style.setProperty('--org-secondary', secondary);
+  }, [activeOrganization?.brandPrimaryColor, activeOrganization?.brandSecondaryColor]);
+
   // 6. Final Workspace Correction & URL Sync
   React.useEffect(() => {
     // Only perform fallback/correction once workspaces have finished loading.

@@ -16,12 +16,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Check } from 'lucide-react';
+import { Loader2, Plus, Check, X, UserCircle2, Users } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { createDeal } from '@/app/actions/deal-actions';
+import { createDeal, type AssignmentStrategy } from '@/app/actions/deal-actions';
+import { getEntityDealDefaultsAction, type EntityAssignee } from '@/app/actions/entity-contact-actions';
+import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useSortedEntities } from '@/context/EntityCacheContext';
+import { cn } from '@/lib/utils';
+import type { EntityContact, DealFocalContact } from '@/lib/types';
 
 interface CreateDealModalProps {
     entityId?: string;
@@ -44,7 +48,18 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     const [stageId, setStageId] = React.useState('');
     const [selectedEntityId, setSelectedEntityId] = React.useState('');
     const [entitySearchOpen, setEntitySearchOpen] = React.useState(false);
-    const [assignmentStrategy, setAssignmentStrategy] = React.useState<'direct' | 'round-robin' | 'value-based' | 'unassigned'>('direct');
+
+    // Owner: 'auto' = inherit the entity's assignee via the server 'direct'
+    // strategy, 'unassigned' = explicitly none, otherwise a specific user id.
+    // ('auto' rather than '' because Radix SelectItem forbids empty values.)
+    const [ownerUserId, setOwnerUserId] = React.useState<string>('auto');
+    const [entityAssignee, setEntityAssignee] = React.useState<EntityAssignee>(null);
+    const { data: workspaceUsers } = useWorkspaceUsers(activeWorkspaceId);
+
+    // Focal contacts — persons selected from the deal's own entity
+    const [entityContacts, setEntityContacts] = React.useState<EntityContact[]>([]);
+    const [isLoadingContacts, setIsLoadingContacts] = React.useState(false);
+    const [selectedFocalContactIds, setSelectedFocalContactIds] = React.useState<string[]>([]);
     
     // Fetch pipelines for current workspace
     const pipelinesQuery = useMemoFirebase(() => 
@@ -77,8 +92,11 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
             setName('');
             setValue('');
             setDescription('');
-            setAssignmentStrategy('direct');
-            
+            setOwnerUserId('auto');
+            setEntityAssignee(null);
+            setSelectedFocalContactIds([]);
+            setEntityContacts([]);
+
             if (entityId) {
                 setSelectedEntityId(entityId);
             } else {
@@ -101,12 +119,53 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
         }
     }, [open, entityId, initialStageId, initialPipelineId, pipelines, stages]);
 
+    // Load the entity's focal contacts AND its workspace owner (one round-trip)
+    // so we can pre-fill the deal's default assignee from the entity.
+    const focalEntityId = entityId || selectedEntityId;
+    React.useEffect(() => {
+        if (!open || !focalEntityId || !activeWorkspaceId) {
+            setEntityContacts([]);
+            setEntityAssignee(null);
+            return;
+        }
+        let cancelled = false;
+        setIsLoadingContacts(true);
+        setSelectedFocalContactIds([]);
+        setOwnerUserId('auto'); // reset to Auto (inherit) when the entity changes
+        getEntityDealDefaultsAction(focalEntityId, activeWorkspaceId)
+            .then(({ contacts, assignedTo }) => {
+                if (cancelled) return;
+                setEntityContacts(contacts);
+                setEntityAssignee(assignedTo);
+            })
+            .finally(() => { if (!cancelled) setIsLoadingContacts(false); });
+        return () => { cancelled = true; };
+    }, [open, focalEntityId, activeWorkspaceId]);
+
+    const toggleFocalContact = (id: string) => {
+        setSelectedFocalContactIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const finalEntityId = entityId || selectedEntityId;
         if (!finalEntityId || !name || !pipelineId) {
             toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fill in all required fields.' });
             return;
+        }
+
+        // Resolve the owner choice into a server assignment instruction.
+        // '' → Auto: let the server 'direct' strategy inherit the entity owner.
+        // 'unassigned' → explicitly none. Otherwise → explicit user (overrides).
+        let assignmentStrategy: AssignmentStrategy = 'direct';
+        let explicitAssignedTo: { userId: string | null; name: string | null; email: string | null } | undefined;
+        if (ownerUserId === 'unassigned') {
+            assignmentStrategy = 'unassigned';
+        } else if (ownerUserId !== 'auto') {
+            const u = workspaceUsers?.find(x => x.id === ownerUserId);
+            explicitAssignedTo = { userId: ownerUserId, name: u?.name || u?.email || null, email: u?.email || null };
         }
 
         setIsSubmitting(true);
@@ -121,7 +180,15 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                 value: parseFloat(value) || 0,
                 description: description || null,
                 assignmentStrategy,
-                eligibleUserIds: [], 
+                ...(explicitAssignedTo !== undefined ? { assignedTo: explicitAssignedTo } : {}),
+                eligibleUserIds: [],
+                focalContacts: selectedFocalContactIds
+                    .map<DealFocalContact | null>(id => {
+                        const c = entityContacts.find(ec => ec.id === id);
+                        if (!c) return null;
+                        return { id: c.id, name: c.name, email: c.email, phone: c.phone, role: c.typeLabel };
+                    })
+                    .filter((c): c is DealFocalContact => c !== null),
             });
 
             if (result.error) {
@@ -208,6 +275,73 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                             />
                         </div>
 
+                        {focalEntityId && (
+                            <div className="space-y-2">
+                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Users className="h-3 w-3" /> Focal Contacts (Optional)
+                                </Label>
+                                {isLoadingContacts ? (
+                                    <div className="flex items-center gap-2 h-10 px-3 rounded-xl bg-muted/20 border border-primary/10">
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                        <span className="text-[10px] font-bold text-muted-foreground">Loading contacts…</span>
+                                    </div>
+                                ) : entityContacts.length === 0 ? (
+                                    <p className="text-[10px] font-semibold text-muted-foreground px-3 py-2 rounded-xl bg-muted/20 border border-dashed border-primary/10">
+                                        No contacts found on this entity.
+                                    </p>
+                                ) : (
+                                    <>
+                                        <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto p-1 rounded-xl bg-muted/20 border border-primary/10 shadow-inner">
+                                            {entityContacts.map(c => {
+                                                const selected = selectedFocalContactIds.includes(c.id);
+                                                return (
+                                                    <button
+                                                        key={c.id}
+                                                        type="button"
+                                                        onClick={() => toggleFocalContact(c.id)}
+                                                        className={cn(
+                                                            "flex items-center gap-2 p-2 rounded-lg text-left transition-colors",
+                                                            selected ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-muted/60"
+                                                        )}
+                                                    >
+                                                        <span className={cn(
+                                                            "flex h-4 w-4 items-center justify-center rounded-md border shrink-0 transition-colors",
+                                                            selected ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30"
+                                                        )}>
+                                                            {selected && <Check className="h-3 w-3" />}
+                                                        </span>
+                                                        <UserCircle2 className="h-3.5 w-3.5 text-primary/40 shrink-0" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-[11px] font-bold truncate leading-tight">{c.name || 'Unnamed'}</p>
+                                                            <p className="text-[8px] font-semibold text-muted-foreground truncate">
+                                                                {[c.typeLabel, c.email].filter(Boolean).join(' • ') || 'No details'}
+                                                            </p>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {selectedFocalContactIds.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                                {selectedFocalContactIds.map(id => {
+                                                    const c = entityContacts.find(ec => ec.id === id);
+                                                    if (!c) return null;
+                                                    return (
+                                                        <span key={id} className="inline-flex items-center gap-1 bg-primary/10 text-primary rounded-full pl-2 pr-1 py-0.5 text-[9px] font-bold">
+                                                            {c.name}
+                                                            <button type="button" onClick={() => toggleFocalContact(id)} className="hover:bg-primary/20 rounded-full p-0.5">
+                                                                <X className="h-2.5 w-2.5" />
+                                                            </button>
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Estimated Value ($)</Label>
@@ -250,16 +384,19 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Assignment Routing</Label>
-                                <Select value={assignmentStrategy} onValueChange={(v: any) => setAssignmentStrategy(v)}>
+                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Owner</Label>
+                                <Select value={ownerUserId} onValueChange={setOwnerUserId}>
                                     <SelectTrigger className="h-10 rounded-xl font-bold bg-muted/20 border-primary/10 shadow-inner">
-                                        <SelectValue placeholder="Select Routing Logic" />
+                                        <SelectValue placeholder="Select owner" />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-none shadow-xl">
-                                        <SelectItem value="direct" className="font-bold text-xs">Direct (Match Entity Owner)</SelectItem>
-                                        <SelectItem value="round-robin" className="font-bold text-xs">Round-Robin (Least Active Deals)</SelectItem>
-                                        <SelectItem value="value-based" className="font-bold text-xs">Value-Based (Lowest Pipeline Value)</SelectItem>
-                                        <SelectItem value="unassigned" className="font-bold text-xs">Leave Unassigned</SelectItem>
+                                    <SelectContent className="rounded-xl border-none shadow-xl max-h-[240px]">
+                                        <SelectItem value="auto" className="font-bold text-xs">
+                                            Auto — {entityAssignee?.name || 'Entity owner'}
+                                        </SelectItem>
+                                        <SelectItem value="unassigned" className="font-bold text-xs text-muted-foreground">Leave Unassigned</SelectItem>
+                                        {workspaceUsers?.map(u => (
+                                            <SelectItem key={u.id} value={u.id} className="font-bold text-xs">{u.name || u.email}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>

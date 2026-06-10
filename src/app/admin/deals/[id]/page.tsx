@@ -4,35 +4,29 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
-import type { Deal, UserProfile, OnboardingStage, Pipeline, Task, WorkspaceEntity } from '@/lib/types';
+import type { Deal, UserProfile, OnboardingStage, Pipeline, Task, WorkspaceEntity, EntityContact, DealFocalContact } from '@/lib/types';
+import { getEntityContactsAction } from '@/app/actions/entity-contact-actions';
+import { getForecastUrgency } from '../../pipeline/utils/deal-urgency';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-    ArrowLeft, 
-    Banknote, 
-    Calendar, 
-    Building2, 
-    UserCircle2, 
-    Settings2, 
-    ShieldCheck, 
-    Activity, 
-    Target,
+import {
+    ArrowLeft,
+    Banknote,
+    Calendar,
+    Building2,
+    UserCircle2,
+    Settings2,
+    Activity,
     Plus,
     Trash2,
     CheckCircle2,
     Circle,
     Clock,
-    AlertTriangle,
-    ShieldAlert,
     Check,
-    X,
     Search,
     Link as LinkIcon,
     User,
-    Phone,
-    MapPin,
-    FileText,
-    GraduationCap
+    MessageSquare
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -40,7 +34,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { cn, toTitleCase } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTerminology } from '@/hooks/use-terminology';
+import { mergeById } from './deal-select-utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -57,25 +52,10 @@ import { useTenant } from '@/context/TenantContext';
 import { useEntityCache } from '@/context/EntityCacheContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import dynamic from 'next/dynamic';
+import EntityNotesTab from '../../entities/components/EntityNotesTab';
 import { PageContainer } from '@/components/ui/page-container';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), { ssr: false });
-
-const PRIORITY_CONFIG: Record<string, { label: string, color: string, icon: any }> = {
-    urgent: { label: 'Urgent', color: 'text-rose-600 bg-rose-500/10 border-rose-200/20', icon: ShieldAlert },
-    high: { label: 'High', color: 'text-orange-600 bg-orange-500/10 border-orange-200/20', icon: AlertTriangle },
-    medium: { label: 'Medium', color: 'text-blue-600 bg-blue-500/10 border-blue-200/20', icon: Clock },
-    low: { label: 'Low', color: 'text-slate-500 bg-muted border-slate-200/20', icon: Circle }
-};
-
-const CATEGORY_MAP: Record<string, { label: string, icon: any, color: string }> = {
-    call: { label: 'Phone Call', icon: Phone, color: 'text-orange-500 bg-orange-500/10' },
-    visit: { label: 'Site Visit', icon: MapPin, color: 'text-blue-500 bg-blue-500/10' },
-    document: { label: 'Documentation', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
-    training: { label: 'Training', icon: GraduationCap, color: 'text-purple-500 bg-purple-500/10' },
-    follow_up: { label: 'Follow Up', icon: Clock, color: 'text-indigo-500 bg-indigo-500/10' },
-    general: { label: 'General Task', icon: CheckCircle2, color: 'text-slate-500 bg-muted/10' }
-};
 
 export default function DealDetailsPage() {
     const params = useParams();
@@ -84,7 +64,6 @@ export default function DealDetailsPage() {
     const dealId = params.id as string;
     const firestore = useFirestore();
 
-    const [activeTab, setActiveTab] = React.useState('overview');
 
     const dealDocRef = useMemoFirebase(() => {
         if (!firestore || !dealId) return null;
@@ -105,35 +84,64 @@ export default function DealDetailsPage() {
     const [expectedCloseDate, setExpectedCloseDate] = React.useState('');
     const [isSaving, setIsSaving] = React.useState(false);
 
+    // Focal contacts (persons from the deal's own entity)
+    const [entityContacts, setEntityContacts] = React.useState<EntityContact[]>([]);
+    const [selectedFocalContactIds, setSelectedFocalContactIds] = React.useState<string[]>([]);
+
     // Custom fields state
     const [customKey, setCustomKey] = React.useState('');
     const [customValue, setCustomValue] = React.useState('');
 
-    // Fetch users for assignments
-    const usersQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'users'), orderBy('name', 'asc')) : null, 
-    [firestore]);
+    // Fetch users for assignments — scoped to the deal's workspace (multi-tenant isolation)
+    const usersQuery = useMemoFirebase(() =>
+        firestore && deal?.workspaceId
+            ? query(collection(firestore, 'users'), where('workspaceIds', 'array-contains', deal.workspaceId))
+            : null,
+    [firestore, deal?.workspaceId]);
     const { data: users } = useCollection<UserProfile>(usersQuery);
 
-    // Fetch pipelines
-    const pipelinesQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'pipelines'), orderBy('name', 'asc')) : null, 
-    [firestore]);
+    // Fetch pipelines for the deal's workspace (shared pipelines use workspaceIds array)
+    const pipelinesQuery = useMemoFirebase(() =>
+        firestore && deal?.workspaceId
+            ? query(collection(firestore, 'pipelines'), where('workspaceIds', 'array-contains', deal.workspaceId))
+            : null,
+    [firestore, deal?.workspaceId]);
     const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
 
-    // Fetch stages
-    const stagesQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order', 'asc')) : null, 
-    [firestore]);
+    // Fetch stages for the currently-selected pipeline (populates the Stage select)
+    const stagesQuery = useMemoFirebase(() =>
+        firestore && pipelineId
+            ? query(collection(firestore, 'onboardingStages'), where('pipelineId', '==', pipelineId), orderBy('order', 'asc'))
+            : null,
+    [firestore, pipelineId]);
     const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
+
+    // Directly fetch the deal's CURRENT pipeline/stage by id so the value is
+    // always selectable even if it falls outside the workspace list query
+    // (e.g. a pipeline un-shared from the workspace, or legacy field drift).
+    const currentPipelineRef = useMemoFirebase(() =>
+        firestore && deal?.pipelineId ? doc(firestore, 'pipelines', deal.pipelineId) : null,
+    [firestore, deal?.pipelineId]);
+    const { data: currentPipeline } = useDoc<Pipeline>(currentPipelineRef);
+
+    const currentStageRef = useMemoFirebase(() =>
+        firestore && deal?.stageId ? doc(firestore, 'onboardingStages', deal.stageId) : null,
+    [firestore, deal?.stageId]);
+    const { data: currentStage } = useDoc<OnboardingStage>(currentStageRef);
+
+    // De-duplicated option lists that always include the current value.
+    const pipelineOptions = React.useMemo(
+        () => mergeById(pipelines, currentPipeline),
+        [pipelines, currentPipeline]
+    );
+    const stageOptions = React.useMemo(
+        () => mergeById(stages, currentStage).filter(s => s.pipelineId === pipelineId),
+        [stages, currentStage, pipelineId]
+    );
 
     const { user: currentUser } = useUser();
     const { activeWorkspaceId } = useTenant();
-
-    // Task list filter states
-    const [taskSearchTerm, setTaskSearchTerm] = React.useState('');
-    const [taskStatusFilter, setTaskStatusFilter] = React.useState<string>('all');
-    const [taskPriorityFilter, setTaskPriorityFilter] = React.useState<string>('all');
+    const { singular } = useTerminology();
 
     // Task Creation State
     const [isCreateTaskOpen, setIsCreateTaskOpen] = React.useState(false);
@@ -289,18 +297,18 @@ export default function DealDetailsPage() {
         }
     };
 
-    const filteredTasks = React.useMemo(() => {
+    // Right-panel task list: incomplete tasks first (by soonest due date), completed last.
+    const upcomingTasks = React.useMemo(() => {
         if (!dealTasks) return [];
-        return dealTasks.filter(t => {
-            const matchesSearch = taskSearchTerm ? 
-                t.title.toLowerCase().includes(taskSearchTerm.toLowerCase()) || 
-                t.description?.toLowerCase().includes(taskSearchTerm.toLowerCase())
-                : true;
-            const matchesStatus = taskStatusFilter === 'all' ? true : t.status === taskStatusFilter;
-            const matchesPriority = taskPriorityFilter === 'all' ? true : t.priority === taskPriorityFilter;
-            return matchesSearch && matchesStatus && matchesPriority;
-        }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-    }, [dealTasks, taskSearchTerm, taskStatusFilter, taskPriorityFilter]);
+        return [...dealTasks].sort((a, b) => {
+            const aDone = a.status === 'done' ? 1 : 0;
+            const bDone = b.status === 'done' ? 1 : 0;
+            if (aDone !== bDone) return aDone - bDone;
+            const at = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+            const bt = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+            return at - bt;
+        });
+    }, [dealTasks]);
 
     const filteredEntities = React.useMemo(() => {
         if (!workspaceEntities) return [];
@@ -328,8 +336,25 @@ export default function DealDetailsPage() {
             setStatus(deal.status || 'open');
             setAssignedToUserId(deal.assignedTo?.userId || 'unassigned');
             setExpectedCloseDate(deal.expectedCloseDate ? deal.expectedCloseDate.split('T')[0] : '');
+            setSelectedFocalContactIds((deal.focalContacts ?? []).map(fc => fc.id));
         }
     }, [deal]);
+
+    // Load the entity's contacts so focal persons can be (de)selected.
+    React.useEffect(() => {
+        if (!deal?.entityId) return;
+        let cancelled = false;
+        getEntityContactsAction(deal.entityId).then(contacts => {
+            if (!cancelled) setEntityContacts(contacts);
+        });
+        return () => { cancelled = true; };
+    }, [deal?.entityId]);
+
+    const toggleFocalContact = (id: string) => {
+        setSelectedFocalContactIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
 
     const handleUpdateDeal = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -354,12 +379,21 @@ export default function DealDetailsPage() {
             }
 
             // 1. Update Core Details via updateDealDetailsAction
+            const focalContacts: DealFocalContact[] = selectedFocalContactIds
+                .map<DealFocalContact | null>(id => {
+                    const c = entityContacts.find(ec => ec.id === id);
+                    if (!c) return null;
+                    return { id: c.id, name: c.name, email: c.email, phone: c.phone, role: c.typeLabel };
+                })
+                .filter((c): c is DealFocalContact => c !== null);
+
             const detailsRes = await updateDealDetailsAction(deal.id, {
                 name,
                 value: parseFloat(value) || 0,
                 description: description || null,
                 expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate).toISOString() : null,
-                assignedTo
+                assignedTo,
+                focalContacts
             });
 
             if (detailsRes.error) throw new Error(detailsRes.error);
@@ -442,10 +476,29 @@ export default function DealDetailsPage() {
                                 <span className="flex items-center gap-1.5"><Banknote className="h-4 w-4 text-primary" /> ${(deal.value || 0).toLocaleString()}</span>
                                 <Separator orientation="vertical" className="h-4 hidden sm:block" />
                                 <Link href={`/admin/entities/${deal.entityId}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                                    <Building2 className="h-4 w-4" /> View Linked Entity
+                                    <Building2 className="h-4 w-4" /> View Linked {singular}
                                 </Link>
                                 <Separator orientation="vertical" className="h-4 hidden sm:block" />
                                 <span className="flex items-center gap-1.5"><UserCircle2 className="h-4 w-4" /> {deal.assignedTo?.name || 'Unassigned'}</span>
+                            </div>
+
+                            {/* Key Info — merged from the right-panel card */}
+                            <div className="flex items-center gap-4 text-xs font-semibold text-muted-foreground/80 flex-wrap pt-1">
+                                <span className="flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5 text-primary/50" />
+                                    <span className="uppercase tracking-wider text-[10px] text-muted-foreground/60">Close:</span>
+                                    {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString() : 'TBD'}
+                                    {deal.expectedCloseDate && (() => {
+                                        const u = getForecastUrgency(deal.expectedCloseDate);
+                                        return <span className={cn("font-bold", u.colorClass)}>({u.label})</span>;
+                                    })()}
+                                </span>
+                                <Separator orientation="vertical" className="h-4 hidden sm:block" />
+                                <span className="flex items-center gap-1.5">
+                                    <Clock className="h-3.5 w-3.5 text-primary/50" />
+                                    <span className="uppercase tracking-wider text-[10px] text-muted-foreground/60">Created:</span>
+                                    {new Date(deal.createdAt).toLocaleDateString()}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -453,15 +506,7 @@ export default function DealDetailsPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2">
-                        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                            <TabsList className="bg-card/40 border shadow-sm p-1 rounded-2xl">
-                                <TabsTrigger value="overview" className="rounded-xl font-semibold text-[10px] px-8">Deal Details</TabsTrigger>
-                                <TabsTrigger value="tasks" className="rounded-xl font-semibold text-[10px] px-8">Tasks</TabsTrigger>
-                                <TabsTrigger value="associated-contacts" className="rounded-xl font-semibold text-[10px] px-8">Contacts</TabsTrigger>
-                                <TabsTrigger value="activity" className="rounded-xl font-semibold text-[10px] px-8">Activity Feed</TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="overview" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="space-y-6">
                                 {/* Deal Settings Form */}
                                 <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
                                     <CardHeader className="border-b bg-card/20 pb-4">
@@ -488,7 +533,7 @@ export default function DealDetailsPage() {
                                                             <SelectValue placeholder="Select pipeline..." />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl">
-                                                            {pipelines?.map(p => (
+                                                            {pipelineOptions.map(p => (
                                                                 <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                                                             ))}
                                                         </SelectContent>
@@ -501,7 +546,7 @@ export default function DealDetailsPage() {
                                                             <SelectValue placeholder="Select stage..." />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl">
-                                                            {stages?.filter(s => s.pipelineId === pipelineId).map(s => (
+                                                            {stageOptions.map(s => (
                                                                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                                             ))}
                                                         </SelectContent>
@@ -540,8 +585,46 @@ export default function DealDetailsPage() {
                                                 <div className="space-y-2">
                                                     <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Expected Close Date</Label>
                                                     <Input type="date" value={expectedCloseDate} onChange={e => setExpectedCloseDate(e.target.value)} className="rounded-xl h-11" />
+                                                    {expectedCloseDate && (() => {
+                                                        const u = getForecastUrgency(new Date(expectedCloseDate).toISOString());
+                                                        return <p className={cn("text-[10px] font-bold ml-1", u.colorClass)}>{u.label}</p>;
+                                                    })()}
                                                 </div>
                                             </div>
+
+                                            {entityContacts.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase flex items-center gap-1.5"><User className="h-3 w-3" /> Focal Contacts</Label>
+                                                    <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto p-1.5 rounded-xl bg-muted/20 border border-primary/10">
+                                                        {entityContacts.map(c => {
+                                                            const selected = selectedFocalContactIds.includes(c.id);
+                                                            return (
+                                                                <button
+                                                                    key={c.id}
+                                                                    type="button"
+                                                                    onClick={() => toggleFocalContact(c.id)}
+                                                                    className={cn(
+                                                                        "flex items-center gap-2 p-2 rounded-lg text-left transition-colors",
+                                                                        selected ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-muted/60"
+                                                                    )}
+                                                                >
+                                                                    <span className={cn(
+                                                                        "flex h-4 w-4 items-center justify-center rounded-md border shrink-0 transition-colors",
+                                                                        selected ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30"
+                                                                    )}>
+                                                                        {selected && <Check className="h-3 w-3" />}
+                                                                    </span>
+                                                                    <UserCircle2 className="h-4 w-4 text-primary/40 shrink-0" />
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <p className="text-xs font-bold truncate leading-tight">{c.name || 'Unnamed'}</p>
+                                                                        <p className="text-[9px] font-semibold text-muted-foreground truncate">{[c.typeLabel, c.email].filter(Boolean).join(' • ') || 'No details'}</p>
+                                                                    </div>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Description</Label>
@@ -598,140 +681,7 @@ export default function DealDetailsPage() {
                                         </div>
                                     </CardContent>
                                 </Card>
-                            </TabsContent>
 
-                            <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
-                                    <CardHeader className="border-b bg-card/20 pb-4 flex flex-row items-center justify-between">
-                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                            <CheckCircle2 className="h-4 w-4 text-primary" /> Task Checklist
-                                        </CardTitle>
-                                        <Button size="sm" onClick={() => setIsCreateTaskOpen(true)} className="rounded-xl font-bold text-[10px] px-4 shadow-sm">
-                                            <Plus className="h-3.5 w-3.5 mr-1" /> Add Task
-                                        </Button>
-                                    </CardHeader>
-                                    <CardContent className="p-6 space-y-6">
-                                        {/* Filters toolbar */}
-                                        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-muted/20 p-3 rounded-xl border">
-                                            <div className="relative w-full sm:max-w-xs">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-40" />
-                                                <Input 
-                                                    placeholder="Search tasks..." 
-                                                    value={taskSearchTerm}
-                                                    onChange={e => setTaskSearchTerm(e.target.value)}
-                                                    className="pl-9 h-9 rounded-lg bg-background font-medium text-xs"
-                                                />
-                                            </div>
-                                            <div className="flex gap-3 w-full sm:w-auto animate-in">
-                                                <Select value={taskStatusFilter} onValueChange={setTaskStatusFilter}>
-                                                    <SelectTrigger className="h-9 w-full sm:w-[120px] rounded-lg text-[10px] font-semibold">
-                                                        <SelectValue placeholder="Status" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-lg">
-                                                        <SelectItem value="all">All Status</SelectItem>
-                                                        <SelectItem value="todo">To Do</SelectItem>
-                                                        <SelectItem value="in_progress">In Progress</SelectItem>
-                                                        <SelectItem value="done">Done</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <Select value={taskPriorityFilter} onValueChange={setTaskPriorityFilter}>
-                                                    <SelectTrigger className="h-9 w-full sm:w-[120px] rounded-lg text-[10px] font-semibold">
-                                                        <SelectValue placeholder="Priority" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-lg">
-                                                        <SelectItem value="all">All Priority</SelectItem>
-                                                        <SelectItem value="low">Low</SelectItem>
-                                                        <SelectItem value="medium">Medium</SelectItem>
-                                                        <SelectItem value="high">High</SelectItem>
-                                                        <SelectItem value="urgent">Urgent</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-
-                                        {isTasksLoading ? (
-                                            <div className="space-y-3">
-                                                <Skeleton className="h-16 w-full rounded-xl" />
-                                                <Skeleton className="h-16 w-full rounded-xl" />
-                                            </div>
-                                        ) : filteredTasks.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {filteredTasks.map((t) => {
-                                                    const P = PRIORITY_CONFIG[t.priority] || PRIORITY_CONFIG.medium;
-                                                    const C = CATEGORY_MAP[t.category] || CATEGORY_MAP.general;
-                                                    const isDone = t.status === 'done';
-                                                    const isOverdue = !isDone && t.dueDate && new Date(t.dueDate) < new Date();
-                                                    
-                                                    return (
-                                                        <div 
-                                                            key={t.id} 
-                                                            className={cn(
-                                                                "flex items-start justify-between p-4 rounded-xl border bg-muted/10 transition-all hover:bg-muted/20 hover:border-primary/20",
-                                                                isDone && "opacity-60"
-                                                            )}
-                                                        >
-                                                            <div className="flex items-start gap-3 min-w-0">
-                                                                <button 
-                                                                    onClick={() => handleToggleTaskStatus(t)}
-                                                                    className="mt-0.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
-                                                                >
-                                                                    {isDone ? (
-                                                                        <CheckCircle2 className="h-5 w-5 text-emerald-500 fill-emerald-50" />
-                                                                    ) : (
-                                                                        <Circle className="h-5 w-5" />
-                                                                    )}
-                                                                </button>
-                                                                <div className="min-w-0 space-y-1">
-                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                        <h4 className={cn("text-xs font-bold leading-snug text-foreground", isDone && "line-through text-muted-foreground")}>
-                                                                            {t.title}
-                                                                        </h4>
-                                                                        <Badge variant="outline" className={cn("text-[8px] font-bold h-4 px-1.5 rounded-sm border-none uppercase shadow-xs shrink-0", P.color)}>
-                                                                            <P.icon className="h-2.5 w-2.5 mr-1" /> {t.priority}
-                                                                        </Badge>
-                                                                        <Badge variant="outline" className={cn("text-[8px] font-bold h-4 px-1.5 rounded-sm border-none gap-1 shrink-0", C.color)}>
-                                                                            <C.icon className="h-2.5 w-2.5" /> {C.label}
-                                                                        </Badge>
-                                                                    </div>
-                                                                    {t.description && (
-                                                                        <p className="text-[10px] text-muted-foreground font-semibold leading-relaxed line-clamp-2">
-                                                                            {t.description}
-                                                                        </p>
-                                                                    )}
-                                                                    <div className="flex items-center gap-3 text-[9px] font-semibold text-muted-foreground/60 flex-wrap">
-                                                                        <span className="flex items-center gap-1">
-                                                                            <User className="h-3.5 w-3.5" /> Assigned to: {t.assignedToName || 'Unassigned'}
-                                                                        </span>
-                                                                        <span className="h-1 w-1 bg-muted-foreground/45 rounded-full" />
-                                                                        <span className={cn("flex items-center gap-1 font-bold", isOverdue && "text-rose-500 animate-pulse")}>
-                                                                            <Clock className="h-3.5 w-3.5" /> Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : 'No date'}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="icon" 
-                                                                onClick={() => handleDeleteTask(t.id)}
-                                                                className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 rounded-lg shrink-0 ml-4"
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        ) : (
-                                            <div className="text-center p-8 bg-muted/10 rounded-xl border border-dashed flex flex-col items-center justify-center gap-2">
-                                                <CheckCircle2 className="h-8 w-8 text-muted-foreground/20" />
-                                                <p className="text-xs font-semibold text-muted-foreground">No tasks linked to this deal.</p>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            <TabsContent value="associated-contacts" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                                 <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
                                     <CardHeader className="border-b bg-card/20 pb-4 flex flex-row items-center justify-between">
                                         <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -787,35 +737,70 @@ export default function DealDetailsPage() {
                                         )}
                                     </CardContent>
                                 </Card>
-                            </TabsContent>
 
-                            <TabsContent value="activity" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                <div className="bg-card rounded-2xl p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px]">
-                                    <div className="mb-8 flex items-center gap-3">
-                                        <Activity className="h-6 w-6 text-primary" />
-                                        <h3 className="text-xl font-bold tracking-tight">Deal Activity</h3>
-                                    </div>
-                                    <ActivityTimeline entityId={deal.entityId} limit={20} />
-                                </div>
-                            </TabsContent>
-                        </Tabs>
+                                {/* Deal Notes — scoped to this deal; also surface in the entity notes panel */}
+                                <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
+                                    <CardHeader className="border-b bg-card/20 pb-4">
+                                        <CardTitle className="text-sm font-bold flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Notes</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-4">
+                                        <EntityNotesTab entityId={deal.entityId} dealId={deal.id} dealName={deal.name} compact />
+                                    </CardContent>
+                                </Card>
+                        </div>
                     </div>
 
                     <div className="lg:col-span-1 space-y-6">
+                        {/* Upcoming Tasks */}
                         <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
-                            <CardHeader className="border-b bg-card/20 pb-5 px-6 pt-6">
-                                <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Target className="h-4 w-4" /> Key Info</CardTitle>
+                            <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
+                                <CardTitle className="text-[11px] font-semibold text-primary flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Upcoming Tasks</CardTitle>
+                                <Button size="sm" onClick={() => setIsCreateTaskOpen(true)} className="rounded-lg font-bold text-[9px] h-7 px-3 shadow-sm">
+                                    <Plus className="h-3 w-3 mr-1" /> Add
+                                </Button>
                             </CardHeader>
-                            <CardContent className="p-6 space-y-6">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Expected Close Date</p>
-                                    <p className="font-bold flex items-center gap-2"><Calendar className="h-4 w-4 text-primary/40" /> {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString() : 'TBD'}</p>
-                                </div>
-                                <Separator />
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Created</p>
-                                    <p className="font-bold text-sm">{new Date(deal.createdAt).toLocaleDateString()}</p>
-                                </div>
+                            <CardContent className="p-4 space-y-2">
+                                {isTasksLoading ? (
+                                    <div className="space-y-2"><Skeleton className="h-12 w-full rounded-xl" /><Skeleton className="h-12 w-full rounded-xl" /></div>
+                                ) : upcomingTasks.length > 0 ? (
+                                    upcomingTasks.map(t => {
+                                        const isDone = t.status === 'done';
+                                        const due = getForecastUrgency(t.dueDate);
+                                        return (
+                                            <div key={t.id} className={cn("group flex items-start gap-2.5 p-3 rounded-xl border bg-muted/10 transition-all hover:bg-muted/20 hover:border-primary/20", isDone && "opacity-50")}>
+                                                <button onClick={() => handleToggleTaskStatus(t)} className="mt-0.5 text-muted-foreground hover:text-primary transition-colors shrink-0">
+                                                    {isDone ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4" />}
+                                                </button>
+                                                <div className="min-w-0 flex-1 space-y-0.5">
+                                                    <p className={cn("text-[11px] font-bold leading-snug", isDone && "line-through text-muted-foreground")}>{t.title}</p>
+                                                    <div className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground/70">
+                                                        <Clock className="h-3 w-3" />
+                                                        <span className={cn(!isDone && due.colorClass)}>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : 'No date'}</span>
+                                                        {t.assignedToName && <><span className="h-1 w-1 rounded-full bg-muted-foreground/40" /><span className="truncate">{t.assignedToName}</span></>}
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => handleDeleteTask(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 transition-opacity shrink-0">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="text-center p-6 bg-muted/10 rounded-xl border border-dashed flex flex-col items-center gap-2">
+                                        <CheckCircle2 className="h-7 w-7 text-muted-foreground/20" />
+                                        <p className="text-[11px] font-semibold text-muted-foreground">No upcoming tasks.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Activity Feed */}
+                        <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+                            <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5">
+                                <CardTitle className="text-[11px] font-semibold text-primary flex items-center gap-2"><Activity className="h-4 w-4" /> Activity Feed</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                <ActivityTimeline entityId={deal.entityId} limit={20} />
                             </CardContent>
                         </Card>
                     </div>

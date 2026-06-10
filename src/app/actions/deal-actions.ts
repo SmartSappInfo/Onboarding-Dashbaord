@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { Deal, WorkspaceEntity, DealContact } from '@/lib/types';
+import type { Deal, WorkspaceEntity, DealContact, DealFocalContact } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
 
 export type AssignmentStrategy = 'direct' | 'round-robin' | 'value-based' | 'unassigned';
@@ -86,6 +86,10 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             assignedTo: data.assignedTo !== undefined ? data.assignedTo : assignedTo,
             expectedCloseDate: rest.expectedCloseDate || null,
             description: rest.description || null,
+            // Set explicitly — `rest` is never spread into the document, so this
+            // would be silently dropped if left to the spread. Bulk/automation/import
+            // creation paths have no person context and default this to [].
+            focalContacts: data.focalContacts ?? [],
             customFields: rest.customFields || {},
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -281,12 +285,13 @@ export async function updateDealOwnerAction(
 
 export async function updateDealDetailsAction(
     dealId: string, 
-    updates: { 
-        name?: string; 
-        value?: number; 
-        expectedCloseDate?: string | null; 
-        description?: string | null; 
+    updates: {
+        name?: string;
+        value?: number;
+        expectedCloseDate?: string | null;
+        description?: string | null;
         assignedTo?: { userId: string | null; name: string | null; email: string | null } | null;
+        focalContacts?: DealFocalContact[];
         customFields?: Record<string, any>;
     }
 ): Promise<{ success: boolean; error?: string }> {

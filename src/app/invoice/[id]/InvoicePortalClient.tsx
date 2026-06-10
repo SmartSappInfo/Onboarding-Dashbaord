@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { Invoice } from '@/lib/types';
+import type { Invoice, OrgBranding } from '@/lib/types';
 import { format } from 'date-fns';
 import { 
     Download, 
@@ -19,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { SmartSappLogo, SmartSappIcon } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 /**
  * InvoicePortalClient - Public Invoice Display & PDF Generation
@@ -31,9 +32,10 @@ import { useToast } from '@/hooks/use-toast';
  */
 interface InvoicePortalClientProps {
     invoice: Invoice;
+    orgBranding?: OrgBranding | null;
 }
 
-export default function InvoicePortalClient({ invoice }: InvoicePortalClientProps) {
+export default function InvoicePortalClient({ invoice, orgBranding }: InvoicePortalClientProps) {
     const { toast } = useToast();
     const [isDownloading, setIsDownloading] = React.useState(false);
     const invoiceRef = React.useRef<HTMLDivElement>(null);
@@ -137,7 +139,19 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
                         {/* Branded Header */}
                         <div className="p-12 sm:p-16 border-b flex flex-col sm:flex-row justify-between gap-12 bg-slate-50">
                             <div className="space-y-8">
-                                <SmartSappLogo className="h-10" />
+                                {orgBranding?.logoUrl ? (
+                                    <div className="relative h-10 w-48">
+                                        <Image
+                                            src={orgBranding.logoUrl}
+                                            alt={`${orgBranding.name} logo`}
+                                            fill
+                                            className="object-contain object-left"
+                                            unoptimized={orgBranding.logoUrl.startsWith('http')}
+                                        />
+                                    </div>
+                                ) : (
+                                    <SmartSappLogo className="h-10" />
+                                )}
                                 <div className="space-y-1">
                                     <h1 className="text-4xl font-black tracking-tighter uppercase text-foreground">Invoice</h1>
                                     <p className="text-lg font-black text-primary tracking-tight">{invoice.invoiceNumber}</p>

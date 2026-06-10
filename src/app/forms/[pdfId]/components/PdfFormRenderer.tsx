@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { PDFForm, PDFFormField, WorkspaceEntity, Entity } from '@/lib/types';
+import type { PDFForm, PDFFormField, WorkspaceEntity, Entity, OrgBranding } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import DataEntryModal from './DataEntryModal';
 import AlreadySignedGate from './AlreadySignedGate';
@@ -120,7 +120,25 @@ const DatePicker = ({ value, onChange, disabled, className, style, placeholder }
     );
 }
 
-export default function PdfFormRenderer({ pdfForm, entity, identity, initialData = {}, isLocked = false, isPreview = false, existingSubmissionId }: { pdfForm: PDFForm, entity?: WorkspaceEntity, identity?: Entity, initialData?: Record<string, any>, isLocked?: boolean, isPreview?: boolean, existingSubmissionId?: string }) {
+export default function PdfFormRenderer({ 
+    pdfForm, 
+    entity, 
+    identity, 
+    initialData = {}, 
+    isLocked = false, 
+    isPreview = false, 
+    existingSubmissionId,
+    orgBranding
+}: { 
+    pdfForm: PDFForm, 
+    entity?: WorkspaceEntity, 
+    identity?: Entity, 
+    initialData?: Record<string, any>, 
+    isLocked?: boolean, 
+    isPreview?: boolean, 
+    existingSubmissionId?: string,
+    orgBranding?: OrgBranding | null
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -383,7 +401,7 @@ export default function PdfFormRenderer({ pdfForm, entity, identity, initialData
               <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
               <AlreadySignedGate 
                 entityName={identity?.name || entity?.displayName} 
-                logoUrl={entity?.primaryEmail} // Placeholder for logo until Entity schema handles it
+                logoUrl={orgBranding?.logoUrl || entity?.logoUrl || entity?.primaryEmail || undefined} 
                 pdfName={pdfForm.name} 
                 onView={() => router.push(`/forms/results/${pdfForm.slug || pdfForm.id}/${activeSubmissionId}`)} 
               />
@@ -396,7 +414,21 @@ export default function PdfFormRenderer({ pdfForm, entity, identity, initialData
         <div className="flex flex-col h-[100dvh] overflow-hidden relative" style={{ backgroundColor: pdfForm.backgroundColor || '#F1F5F9' }}>
             <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
             <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0 text-left">
-                {entity?.primaryEmail ? <div className="relative h-9 w-12 shrink-0"><CheckCircle2 className="text-primary h-6 w-6" /></div> : <SmartSappIcon className="h-8 w-8 text-primary" />}
+                {orgBranding?.logoUrl ? (
+                    <div className="relative h-9 w-24 shrink-0">
+                        <Image
+                            src={orgBranding.logoUrl}
+                            alt={`${orgBranding.name} logo`}
+                            fill
+                            className="object-contain"
+                            unoptimized={orgBranding.logoUrl.startsWith('http')}
+                        />
+                    </div>
+                ) : entity?.primaryEmail ? (
+                    <div className="relative h-9 w-12 shrink-0"><CheckCircle2 className="text-primary h-6 w-6" /></div>
+                ) : (
+                    <SmartSappLogo className="h-8 w-auto text-primary" />
+                )}
                 <div className="flex flex-col min-w-0 -ml-1">
                     <h1 className="font-black truncate max-w-[200px] leading-tight text-xs uppercase tracking-tight">
                         {identity?.name || entity?.displayName || pdfForm.publicTitle}

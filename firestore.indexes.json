@@ -786,6 +786,24 @@
       ]
     },
     {
+      "collectionGroup": "entity_notes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "dealId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "field_groups",
       "queryScope": "COLLECTION",
       "fields": [

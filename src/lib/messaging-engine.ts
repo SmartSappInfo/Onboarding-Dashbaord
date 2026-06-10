@@ -404,67 +404,30 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
     }
 
-    // Inject Workspace Name & Organization Branding Variables concurrently (Promise.all)
-    const orgId = template.organizationId || variables.organizationId || '';
+    // Inject Workspace Name & Organization Branding Variables concurrently
+    let finalOrgId = template.organizationId || variables.organizationId || '';
     try {
         const wsPromise = resolvedWorkspaceId ? adminDb.collection('workspaces').doc(resolvedWorkspaceId).get() : Promise.resolve(null);
-        const orgPromise = orgId ? adminDb.collection('organizations').doc(orgId).get() : Promise.resolve(null);
-
-        const [wsSnap, orgSnap] = await Promise.all([wsPromise, orgPromise]);
+        const wsSnap = await wsPromise;
 
         if (wsSnap && wsSnap.exists) {
             const wsData = wsSnap.data()!;
             if (finalVariables.workspace_name === undefined) {
                 finalVariables.workspace_name = wsData.name || '';
             }
-            // If orgId was not provided, but workspace points to an org, fetch it
-            if (!orgId && wsData.organizationId) {
-                const lazyOrgSnap = await adminDb.collection('organizations').doc(wsData.organizationId).get();
-                if (lazyOrgSnap.exists) {
-                    const org = lazyOrgSnap.data()!;
-                    const orgVars: Record<string, string> = {
-                        org_name: org.name || '',
-                        org_logo_url: org.logoUrl || '',
-                        org_email: org.email || '',
-                        org_phone: org.phone || '',
-                        org_address: org.address || '',
-                        org_website: org.website || '',
-                        unsubscribe_copy: org.unsubscribeCopy || 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.',
-                        brand_primary_color: org.brandPrimaryColor || '#3B5FFF',
-                        brand_secondary_color: org.brandSecondaryColor || '#8B5CF6',
-                        brand_font_family: org.brandFontFamily || 'Figtree',
-                        current_year: new Date().getFullYear().toString(),
-                        meeting_timezone: org.settings?.defaultTimezone || 'UTC',
-                    };
-                    Object.entries(orgVars).forEach(([k, v]) => {
-                        if (finalVariables[k] === undefined) finalVariables[k] = v;
-                    });
-                }
+            if (!finalOrgId && wsData.organizationId) {
+                finalOrgId = wsData.organizationId;
             }
         }
 
-        if (orgSnap && orgSnap.exists) {
-            const org = orgSnap.data()!;
-            const orgVars: Record<string, string> = {
-                org_name: org.name || '',
-                org_logo_url: org.logoUrl || '',
-                org_email: org.email || '',
-                org_phone: org.phone || '',
-                org_address: org.address || '',
-                org_website: org.website || '',
-                unsubscribe_copy: org.unsubscribeCopy || 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.',
-                brand_primary_color: org.brandPrimaryColor || '#3B5FFF',
-                brand_secondary_color: org.brandSecondaryColor || '#8B5CF6',
-                brand_font_family: org.brandFontFamily || 'Figtree',
-                current_year: new Date().getFullYear().toString(),
-                meeting_timezone: org.settings?.defaultTimezone || 'UTC',
-            };
+        if (finalOrgId) {
+            const orgVars = await resolveOrgBrandingVars(finalOrgId);
             Object.entries(orgVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;
             });
         }
     } catch (e) {
-        console.error('[MESSAGING_ENGINE] Failed resolving workspace/organization concurrently:', e);
+        console.error('[MESSAGING_ENGINE] Failed resolving workspace/organization branding:', e);
     }
     // Ensure current_year is always available even without an org
     if (finalVariables.current_year === undefined) {
@@ -601,7 +564,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // 7.8 Intercept Scheduling if scheduledAt is provided
     if (scheduledAt) {
         const scheduledMsgData = {
-            organizationId: orgId || template.organizationId || 'default',
+            organizationId: finalOrgId || template.organizationId || 'default',
             workspaceId: resolvedWorkspaceId,
             templateId: template.id,
             channel: template.channel,
@@ -627,7 +590,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         await logActivity({
             entityId: resolvedEntityId || null,
             entityType: resolvedEntityType || null,
-            organizationId: orgId || 'default',
+            organizationId: finalOrgId || 'default',
             userId: null, 
             workspaceId: resolvedWorkspaceId || 'onboarding',
             type: 'notification_scheduled',

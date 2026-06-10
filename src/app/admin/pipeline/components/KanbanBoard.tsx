@@ -31,6 +31,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Workflow } from 'lucide-react';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
+import { useEntityLookup } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { updateDealStageAction, updateDealStatusAction } from '@/app/actions/deal-actions';
@@ -47,14 +48,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StageColumn from './StageColumn';
 import DealCard from './DealCard';
+import type { KanbanFilters } from '../pipeline-types';
+import { applyDealFilters } from '../utils/filter-deals';
 
 interface KanbanBoardProps {
     pipelineId: string;
     customWidth?: number;
-    filters: {
-        searchTerm: string;
-        status: 'open' | 'won' | 'lost' | 'all';
-    };
+    filters: KanbanFilters;
 }
 
 /**
@@ -68,6 +68,11 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { user } = useUser();
+  const { byEntityId } = useEntityLookup();
+  const getEntityTags = React.useCallback(
+    (entityId: string) => byEntityId.get(entityId)?.workspaceTags ?? [],
+    [byEntityId]
+  );
 
   // 1. Fetch Stages for specific Pipeline
   const stagesQuery = useMemoFirebase(
@@ -147,37 +152,11 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
     return deals || [];
   }, [deals]);
 
-  // 4. Apply Multi-Layer Filtering
-  const filteredDeals = React.useMemo(() => {
-    if (!allDeals) return [];
-    let temp = allDeals;
-
-    // A. Global Assignment Filter
-    if (assignedUserId) {
-      if (assignedUserId === 'unassigned') {
-        temp = temp.filter((d) => !d.assignedTo?.userId);
-      } else {
-        temp = temp.filter((d) => d.assignedTo?.userId === assignedUserId);
-      }
-    }
-
-    // B. Search Filter
-    if (filters.searchTerm) {
-        const s = filters.searchTerm.toLowerCase();
-        temp = temp.filter(d => {
-            const nameMatch = d.name?.toLowerCase().includes(s);
-            const assigneeMatch = d.assignedTo?.name?.toLowerCase().includes(s);
-            return nameMatch || assigneeMatch;
-        });
-    }
-
-    // C. Deal Status Filter
-    if (filters.status !== 'all') {
-        temp = temp.filter(d => d.status === filters.status);
-    }
-
-    return temp;
-  }, [allDeals, assignedUserId, filters]);
+  // 4. Apply Multi-Layer Filtering (shared with the list view)
+  const filteredDeals = React.useMemo(
+    () => applyDealFilters(allDeals, filters, assignedUserId, getEntityTags),
+    [allDeals, assignedUserId, filters, getEntityTags]
+  );
 
   // 5. Grouping Logic
   React.useEffect(() => {
@@ -391,7 +370,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
       collisionDetection={closestCorners}
     >
       <ScrollArea className="h-full whitespace-nowrap">
-        <div className="flex h-full gap-8 p-10">
+        <div className="flex items-start gap-8 p-10">
           {stages.map((stage) => (
             <StageColumn
               key={stage.id}

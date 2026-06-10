@@ -12,6 +12,8 @@ import JoinMeetingButton from '@/components/join-meeting-button';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 
+import { getOrgBranding } from '@/lib/org-branding';
+
 // Force dynamic rendering - requires Firebase Admin
 export const dynamic = 'force-dynamic';
 
@@ -38,10 +40,41 @@ export default async function SchoolOnboardingPage({ params }: { params: Promise
     notFound();
   }
 
+  // Resolve organizationId: from school or fallback to first workspace
+  let organizationId = school.organizationId;
+  if (!organizationId && school.workspaceIds?.[0]) {
+    try {
+      const wsSnap = await adminDb.collection('workspaces').doc(school.workspaceIds[0]).get();
+      if (wsSnap.exists) {
+        organizationId = wsSnap.data()?.organizationId || null;
+      }
+    } catch (err) {
+      console.error('Error fetching workspace for school onboarding:', err);
+    }
+  }
+
+  const orgBranding = await getOrgBranding(organizationId);
+  const primaryColor = orgBranding?.brandPrimaryColor || '#3B5FFF';
+  const secondaryColor = orgBranding?.brandSecondaryColor || '#8B5CF6';
+  const brandFont = orgBranding?.brandFontFamily || 'Inter';
+
+  const themeStyles = `
+    :root {
+      --primary: ${primaryColor};
+      --secondary: ${secondaryColor};
+      --radius: 1rem;
+    }
+    body {
+      font-family: ${brandFont}, sans-serif;
+    }
+  `;
+
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <Header />
-      <main className="flex-grow">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: themeStyles }} />
+      <div className="flex flex-col min-h-screen bg-background">
+        <Header />
+        <main className="flex-grow">
         {/* Hero Section */}
         <section className="relative flex min-h-[70vh] items-center py-20 text-white md:py-32">
           {school.heroImageUrl && (
@@ -101,5 +134,6 @@ export default async function SchoolOnboardingPage({ params }: { params: Promise
       </main>
       <Footer />
     </div>
+    </>
   );
 }

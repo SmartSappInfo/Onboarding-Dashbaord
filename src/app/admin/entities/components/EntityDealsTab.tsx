@@ -7,12 +7,13 @@ import type { Deal } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Banknote, Calendar, UserCircle2, ArrowRight, Layers, Trophy, Target } from 'lucide-react';
+import { Plus, Banknote, UserCircle2, ArrowRight, Layers, Trophy, Target, Users } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import CreateDealModal from './CreateDealModal';
 import { cn } from '@/lib/utils';
+import { getForecastUrgency } from '@/app/admin/pipeline/utils/deal-urgency';
 
 interface EntityDealsTabProps {
     entityId: string;
@@ -100,6 +101,8 @@ export default function EntityDealsTab({ entityId }: EntityDealsTabProps) {
                     deals.map(deal => {
                         const cfg = getStatusConfig(deal.status);
                         const StatusIcon = cfg.icon;
+                        const urgency = getForecastUrgency(deal.expectedCloseDate);
+                        const focal = deal.focalContacts ?? [];
                         return (
                             <Card key={deal.id} className="border-border/50 rounded-2xl bg-card shadow-sm hover:shadow-md transition-all text-left group/card">
                                 <CardHeader className="p-4 pb-3 flex flex-row items-start justify-between gap-2">
@@ -134,15 +137,26 @@ export default function EntityDealsTab({ entityId }: EntityDealsTabProps) {
                                             </div>
                                         </div>
                                         <div className="space-y-1 text-left">
-                                            <p className="text-[9px] font-semibold text-muted-foreground ml-1">Close Date</p>
-                                            <div className="flex items-center gap-1.5 font-bold text-sm text-muted-foreground">
-                                                <Calendar className="h-3.5 w-3.5 text-primary/40" />
+                                            <p className="text-[9px] font-semibold text-muted-foreground ml-1">Forecast Date</p>
+                                            <div className={cn("flex items-center gap-1.5 font-bold text-sm", urgency.colorClass)}>
                                                 {deal.expectedCloseDate
-                                                    ? new Date(deal.expectedCloseDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
+                                                    ? <>{new Date(deal.expectedCloseDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })} <span className="text-[10px] font-bold">({urgency.label})</span></>
                                                     : 'TBD'}
                                             </div>
                                         </div>
                                     </div>
+
+                                    {focal.length > 0 && (
+                                        <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                                            <Users className="h-3 w-3 text-primary/40 shrink-0" />
+                                            {focal.slice(0, 3).map(fc => (
+                                                <span key={fc.id} className="inline-flex items-center gap-1 bg-muted/60 rounded-full px-2 py-0.5 max-w-[120px]" title={fc.role ? `${fc.name} · ${fc.role}` : fc.name}>
+                                                    <span className="truncate text-[9px] font-semibold text-foreground/70">{fc.name}</span>
+                                                </span>
+                                            ))}
+                                            {focal.length > 3 && <span className="text-[9px] font-semibold text-muted-foreground">+{focal.length - 3}</span>}
+                                        </div>
+                                    )}
                                     <div className="flex items-center justify-between pt-2 border-t border-dashed border-border/50">
                                         <div className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground">
                                             <UserCircle2 className="h-3.5 w-3.5 text-primary/40" />

@@ -1,3 +1,5 @@
+import type { DealFocalContact } from '@/lib/types';
+
 export interface WriteDealParams {
   entityId: string;
   entityName: string;
@@ -9,6 +11,7 @@ export interface WriteDealParams {
   status?: 'open' | 'won' | 'lost';
   assignedTo?: { userId: string | null; name: string | null; email: string | null } | null;
   expectedCloseDate?: string | null;
+  focalContacts?: DealFocalContact[];
   workspaceId: string;
   organizationId: string;
   source?: 'manual' | 'bulk_import' | 'automation';
@@ -31,6 +34,7 @@ export function buildDealDocument(params: WriteDealParams, dealId: string): Reco
     status: params.status ?? 'open',
     assignedTo: params.assignedTo ?? null,
     expectedCloseDate: params.expectedCloseDate ?? null,
+    focalContacts: params.focalContacts ?? [],
     source: params.source ?? 'manual',
     isBulkImport: params.isBulkImport ?? false,
     createdAt: timestamp,

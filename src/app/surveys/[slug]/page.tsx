@@ -5,8 +5,10 @@ import SurveyUnavailable from '../components/survey-unavailable';
 import { notFound } from 'next/navigation';
 
 import { adminDb } from '@/lib/firebase-admin';
+import { getOrgBranding } from '@/lib/org-branding';
 
 import { cn, stripHtml, safeDecodeURI } from '@/lib/utils';
+
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -110,6 +112,7 @@ export default async function PublicSurveyPage({
 
     let organizationLogoUrl: string | null = null;
     let entityLogoUrl: string | null = null;
+    let orgBranding = null;
     try {
         // Resolve organizationId: direct field → workspace lookup
         let orgId = survey.organizationId;
@@ -120,10 +123,8 @@ export default async function PublicSurveyPage({
             }
         }
         if (orgId) {
-            const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
-            if (orgSnap.exists) {
-                organizationLogoUrl = orgSnap.data()?.logoUrl || null;
-            }
+            orgBranding = await getOrgBranding(orgId);
+            organizationLogoUrl = orgBranding.logoUrl || null;
         }
         if (survey.entityId) {
             const entitySnap = await adminDb.collection('entities').doc(survey.entityId).get();
@@ -140,8 +141,28 @@ export default async function PublicSurveyPage({
     if (survey.status !== 'published' && preview !== 'true') {
         return <SurveyUnavailable status={survey.status as any || 'draft'} survey={survey} logoUrl={survey.logoUrl || entityLogoUrl || organizationLogoUrl} />;
     }
+
+    const primaryColor = orgBranding?.brandPrimaryColor || '#3B5FFF';
+    const secondaryColor = orgBranding?.brandSecondaryColor || '#8B5CF6';
+    const brandFont = orgBranding?.brandFontFamily || 'Inter';
+
+    const themeStyles = `
+        :root {
+            --primary: ${primaryColor};
+            --secondary: ${secondaryColor};
+            --radius: 1rem;
+        }
+        body {
+            font-family: ${brandFont}, sans-serif;
+        }
+    `;
     
-    return <SurveyDisplay survey={survey} sourcePageId={sourcePageId} assignedUserId={ref} organizationLogoUrl={organizationLogoUrl} entityLogoUrl={entityLogoUrl} />;
+    return (
+        <>
+            <style dangerouslySetInnerHTML={{ __html: themeStyles }} />
+            <SurveyDisplay survey={survey} sourcePageId={sourcePageId} assignedUserId={ref} organizationLogoUrl={organizationLogoUrl} entityLogoUrl={entityLogoUrl} />
+        </>
+    );
 }
 
 

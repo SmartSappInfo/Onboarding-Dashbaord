@@ -6,20 +6,20 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Deal } from '@/lib/types';
 import { AsyncEntityAvatar } from '../../components/AsyncEntityAvatar';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { 
-    MoreVertical, 
-    CalendarPlus,
-    PlusCircle,
+import {
+    MoreVertical,
     Eye,
-    ArrowRightLeft,
     Banknote,
-    MapPin,
-    ArrowRight,
     Edit,
-    UserCircle2
+    UserCircle2,
+    AlertCircle,
+    Clock,
+    CalendarCheck,
+    CalendarOff
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn, toTitleCase } from '@/lib/utils';
+import { getForecastUrgency, type UrgencyLevel } from '../utils/deal-urgency';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -32,9 +32,22 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 
+const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: string }>> = {
+    overdue: AlertCircle,
+    today: Clock,
+    soon: Clock,
+    ok: CalendarCheck,
+    none: CalendarOff,
+};
+
 interface DealCardProps {
     deal: Deal;
     isOverlay?: boolean;
+    /**
+     * @deprecated Retained for caller compatibility (StageColumn / DragOverlay).
+     * No longer rendered — task stats were removed from the card per the
+     * pipeline redesign.
+     */
     taskStats?: { total: number; completed: number; hasOverdue: boolean };
 }
 
@@ -69,13 +82,17 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
   };
   const statusColor = getStatusColor(deal.status);
 
+  const urgency = getForecastUrgency(deal.expectedCloseDate);
+  const UrgencyIcon = URGENCY_ICON[urgency.level];
+  const focalContacts = deal.focalContacts ?? [];
+
   return (
     <TooltipProvider>
         <div ref={setNodeRef} style={style}>
         <Card
             className={cn(
-                "w-full max-w-full mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card overflow-hidden text-left",
-                isOverlay ? "ring-primary shadow-2xl scale-105 rotate-1" : "ring-border shadow-sm hover:shadow-lg hover:ring-primary/20",
+                "w-full max-w-full mb-3 touch-manipulation rounded-[1.5rem] border transition-all duration-300 bg-card select-none group/card overflow-hidden text-left",
+                isOverlay ? "border-primary shadow-2xl scale-105 rotate-1" : "border-border shadow-sm hover:shadow-lg hover:border-primary/30",
                 deal.status === 'lost' && "grayscale opacity-60"
             )}
         >
@@ -96,9 +113,15 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
                 <div className="min-w-0 flex-1 text-left">
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <CardTitle className="text-xs font-bold truncate text-foreground group-hover/card:text-primary transition-colors leading-none mb-1 block w-full text-left">
-                                {displayName}
-                            </CardTitle>
+                            <Link
+                                href={`/admin/deals/${deal.id}`}
+                                onPointerDown={e => e.stopPropagation()}
+                                className="block w-full min-w-0"
+                            >
+                                <CardTitle className="text-xs font-bold truncate text-foreground group-hover/card:text-primary transition-colors leading-none mb-1 block w-full text-left hover:underline underline-offset-2 cursor-pointer">
+                                    {displayName}
+                                </CardTitle>
+                            </Link>
                         </TooltipTrigger>
                         <TooltipContent side="top">
                             <p className="font-bold text-xs">{displayName}</p>
@@ -108,6 +131,23 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
                         <UserCircle2 className="h-2 w-2 text-primary/40 shrink-0" />
                         <span className="truncate block flex-1">{toTitleCase(deal.assignedTo?.name || 'Unassigned')}</span>
                     </div>
+                    {focalContacts.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            {focalContacts.slice(0, 2).map(fc => (
+                                <span
+                                    key={fc.id}
+                                    className="inline-flex items-center gap-1 bg-muted/60 rounded-full px-1.5 py-0.5 max-w-[90px]"
+                                    title={fc.role ? `${fc.name} · ${fc.role}` : fc.name}
+                                >
+                                    <UserCircle2 className="h-2 w-2 shrink-0 text-primary/40" />
+                                    <span className="truncate text-[8px] font-semibold text-foreground/70">{fc.name}</span>
+                                </span>
+                            ))}
+                            {focalContacts.length > 2 && (
+                                <span className="text-[8px] font-semibold text-muted-foreground">+{focalContacts.length - 2}</span>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
             
@@ -153,83 +193,22 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
 
                     <div className="flex flex-col text-left min-w-0 flex-1">
                         <div className="flex items-center gap-1 min-w-0">
-                            <MapPin className="h-2.5 w-2.5 text-primary/40 shrink-0" />
-                            <span className="text-[9px] font-bold text-foreground/80 truncate leading-none">{deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString() : 'TBD'}</span>
+                            {UrgencyIcon && <UrgencyIcon className={cn("h-2.5 w-2.5 shrink-0", urgency.colorClass)} />}
+                            <span className={cn("text-[9px] font-bold truncate leading-none", urgency.colorClass)}>{urgency.label}</span>
                         </div>
-                        <span className="text-[7px] font-semibold text-muted-foreground tracking-tighter opacity-40 mt-0.5">Close Date</span>
+                        <span className="text-[7px] font-semibold text-muted-foreground tracking-tighter opacity-40 mt-0.5">Forecast Date</span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {taskStats && taskStats.total > 0 && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Badge 
-                                    variant="outline" 
-                                    className={cn(
-                                        "h-4 text-[8px] font-bold border px-1.5 rounded-sm shrink-0 flex items-center gap-1 transition-colors",
-                                        taskStats.hasOverdue 
-                                            ? "border-destructive/30 bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-red-400 animate-pulse" 
-                                            : taskStats.completed === taskStats.total
-                                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
-                                                : "border-border bg-muted text-muted-foreground"
-                                    )}
-                                >
-                                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: taskStats.hasOverdue ? '#ef4444' : taskStats.completed === taskStats.total ? '#10b981' : '#6b7280' }} />
-                                    <span>{taskStats.completed}/{taskStats.total} Tasks</span>
-                                </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                                <p className="text-xs font-bold">
-                                    {taskStats.hasOverdue 
-                                        ? "Overdue tasks pending!" 
-                                        : `${taskStats.completed} of ${taskStats.total} tasks completed`}
-                                </p>
-                            </TooltipContent>
-                        </Tooltip>
-                    )}
-
-                    <Badge 
-                        variant="outline" 
+                    <Badge
+                        variant="outline"
                         className="h-4 text-[7px] font-semibold border-none px-1.5 rounded-sm shadow-inner shrink-0 uppercase tracking-wider"
                         style={{ backgroundColor: `${statusColor}15`, color: statusColor }}
                     >
                         {deal.status}
                     </Badge>
                 </div>
-            </div>
-
-            {/* Actions Hub */}
-            <div className="flex items-center gap-1.5 pt-3 border-t border-border/50 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
-                            <Link href={`/admin/tasks?dealId=${deal.id}&assignedTo=${deal.assignedTo?.userId || 'all'}`} onPointerDown={e => e.stopPropagation()}>
-                                <PlusCircle className="h-3 w-3" />
-                            </Link>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="text-[8px] font-semibold ">Add Task</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
-                            <Link href={`/admin/meetings/new?dealId=${deal.id}`} onPointerDown={e => e.stopPropagation()}>
-                                <CalendarPlus className="h-3 w-3" />
-                            </Link>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="text-[8px] font-semibold ">Session</TooltipContent>
-                </Tooltip>
-
-                <div className="flex-1" />
-
-                <Button variant="ghost" size="sm" asChild className="h-7 px-2 rounded-lg text-primary hover:bg-primary/5 font-semibold text-[8px] gap-1 group/btn min-w-0 truncate" onPointerDown={e => e.stopPropagation()}>
-                    <Link href={`/admin/deals/${deal.id}`} className="truncate">
-                        <span className="truncate">Open Deal</span> <ArrowRight className="h-2.5 w-2.5 transition-transform group-hover/btn:translate-x-0.5 shrink-0" />
-                    </Link>
-                </Button>
             </div>
         </CardContent>
         </Card>
