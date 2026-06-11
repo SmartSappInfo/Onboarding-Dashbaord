@@ -260,21 +260,44 @@ export async function handleCreateContactForEntity(
     throw new Error('Add contact failed: Either contact phone or email is required.');
   }
 
-  // 1. Search for Entity by Exact Match in workspace_entities
-  const weSnap = await adminDb
-    .collection('workspace_entities')
-    .where('workspaceId', '==', context.workspaceId)
-    .where('displayName', '==', resolvedEntityName)
-    .limit(1)
-    .get();
+  // 1. Search for Entity by Match in workspace_entities
+  let entityId = '';
+  let entityType = '';
 
-  if (weSnap.empty) {
-    throw new Error(`Add contact failed: Target entity with exact name "${resolvedEntityName}" not found in this workspace.`);
+  if (config.caseInsensitive) {
+    const weSnap = await adminDb
+      .collection('workspace_entities')
+      .where('workspaceId', '==', context.workspaceId)
+      .get();
+
+    const matchedDoc = weSnap.docs.find(doc => {
+      const dispName = (doc.data().displayName as string || '').trim();
+      return dispName.toLowerCase() === resolvedEntityName.toLowerCase();
+    });
+
+    if (!matchedDoc) {
+      throw new Error(`Add contact failed: Target entity with name "${resolvedEntityName}" (case-insensitive) not found in this workspace.`);
+    }
+
+    const weData = matchedDoc.data();
+    entityId = weData.entityId;
+    entityType = weData.entityType;
+  } else {
+    const weSnap = await adminDb
+      .collection('workspace_entities')
+      .where('workspaceId', '==', context.workspaceId)
+      .where('displayName', '==', resolvedEntityName)
+      .limit(1)
+      .get();
+
+    if (weSnap.empty) {
+      throw new Error(`Add contact failed: Target entity with exact name "${resolvedEntityName}" not found in this workspace.`);
+    }
+
+    const weData = weSnap.docs[0].data();
+    entityId = weData.entityId;
+    entityType = weData.entityType;
   }
-
-  const weData = weSnap.docs[0].data();
-  const entityId = weData.entityId;
-  const entityType = weData.entityType;
 
   // 2. Fetch parent entity from entities collection
   const entityRef = adminDb.collection('entities').doc(entityId);

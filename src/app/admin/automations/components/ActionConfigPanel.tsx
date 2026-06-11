@@ -867,16 +867,37 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             </h4>
             
             <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity Name (Exact Match, Variable Supported)</Label>
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity Name (Variable Supported)</Label>
               <Input 
                 placeholder="e.g. {{companyName}} or {{contact.company}}" 
                 value={config.entityName || ''} 
                 onChange={(e) => updateConfig({ entityName: e.target.value })} 
                 className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
               />
-              <span className="text-[9px] font-semibold text-muted-foreground leading-relaxed block ml-1 opacity-70">
-                Note: Locates the entity in this workspace with the exact display name matches this field.
+              <span className="text-[9px] font-medium text-muted-foreground leading-relaxed block ml-1 opacity-70">
+                Note: Locates the entity in this workspace with the display name matching this field.
               </span>
+
+              <div className="pt-1">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={!!config.caseInsensitive}
+                    onChange={(e) => updateConfig({ caseInsensitive: e.target.checked })}
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                  />
+                  <div className="flex flex-col text-left">
+                    <span className="text-[11px] font-bold leading-none mb-0.5 text-foreground">Case-Insensitive Match</span>
+                    <span className="text-[9px] font-medium text-muted-foreground leading-none">Allow matching even if capitalization differs</span>
+                  </div>
+                </label>
+              </div>
+
+              {!config.caseInsensitive && (
+                <span className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 leading-relaxed block ml-1 pt-1">
+                  ⚠️ Exact Case Sensitivity: Matching display names will be case-sensitive.
+                </span>
+              )}
             </div>
           </div>
 

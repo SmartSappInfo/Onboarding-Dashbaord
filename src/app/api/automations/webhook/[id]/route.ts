@@ -1,7 +1,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { triggerAutomationProtocols } from '@/lib/automation-processor';
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 
 /**
  * @fileOverview Universal Ingress for External Automation Triggers.
@@ -34,9 +34,17 @@ export async function POST(
 
   console.log(`>>> [WEBHOOK:INGRESS] Payload received for Automation ID: ${automationId}`);
 
+  let rawPayload: any;
   try {
-    const rawPayload = await req.json();
+    rawPayload = await req.json();
+  } catch (parseError: any) {
+    return NextResponse.json(
+      { error: 'Invalid JSON payload', details: parseError.message },
+      { status: 400 }
+    );
+  }
 
+  try {
     // 1. Verify Automation Existence & Status
     const autoRef = adminDb.collection('automations').doc(automationId);
     const autoSnap = await autoRef.get();
@@ -71,10 +79,16 @@ export async function POST(
       source: 'external_webhook'
     };
 
-    // 3. Direct Trigger Call
-    const timestamp = new Date().toISOString();
-    await triggerAutomationProtocols('WEBHOOK_RECEIVED', payload);
+    // 3. Background execution using Next.js after()
+    after(async () => {
+      try {
+        await triggerAutomationProtocols('WEBHOOK_RECEIVED', payload);
+      } catch (err: any) {
+        console.error(`>>> [WEBHOOK:INGRESS] Async trigger failed for ${automationId}:`, err.message);
+      }
+    });
 
+    const timestamp = new Date().toISOString();
     return NextResponse.json({ 
         status: 'accepted', 
         receivedAt: timestamp,
