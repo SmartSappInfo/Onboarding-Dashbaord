@@ -245,8 +245,26 @@ const LIBRARY_ITEMS = [
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Add Note', actionType: 'ADD_NOTE' }
   },
+  {
+    id: 'add_contact_to_entity',
+    title: 'Add Contact to Entity',
+    description: 'Locate an existing business entity via Exact Match and append a secondary contact.',
+    category: 'contacts_data',
+    icon: Tag,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Add Contact to Entity', actionType: 'ADD_CONTACT_TO_ENTITY' }
+  },
 
   // CRM & Sales
+  {
+    id: 'create_entity',
+    title: 'Create Entity',
+    description: 'Create a new CRM contact or business entity using mapped webhook payload attributes.',
+    category: 'crm_sales',
+    icon: Building,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Create Entity', actionType: 'CREATE_ENTITY' }
+  },
   {
     id: 'create_deal',
     title: 'Create Deal',

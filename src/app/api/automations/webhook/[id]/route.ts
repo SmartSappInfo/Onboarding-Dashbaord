@@ -8,6 +8,24 @@ import { NextResponse } from 'next/server';
  * Receives POST requests and initiates SmartSapp flows using the request body as payload.
  */
 
+/**
+ * Recursively flattens an object to dot-notation keys.
+ * Collision-safe: prioritizes deeper nested values over flat keys.
+ */
+function flattenObject(obj: any, prefix = '', res: Record<string, any> = {}): Record<string, any> {
+  if (!obj || typeof obj !== 'object') return res;
+
+  for (const [key, value] of Object.entries(obj)) {
+    const newKey = prefix ? `${prefix}.${key}` : key;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      flattenObject(value, newKey, res);
+    } else {
+      res[newKey] = value;
+    }
+  }
+  return res;
+}
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -17,7 +35,7 @@ export async function POST(
   console.log(`>>> [WEBHOOK:INGRESS] Payload received for Automation ID: ${automationId}`);
 
   try {
-    const payload = await req.json();
+    const rawPayload = await req.json();
 
     // 1. Verify Automation Existence & Status
     const autoRef = adminDb.collection('automations').doc(automationId);
@@ -36,19 +54,26 @@ export async function POST(
       return NextResponse.json({ error: 'This automation is not configured for webhook ingress' }, { status: 400 });
     }
 
-    // 2. Direct Trigger Call
-    // We pass the automation record directly to avoid redundant lookups in the processor
-    // triggerAutomationProtocols normally searches by trigger type, but here we have a specific ID
-    
+    const workspaceId = automation.workspaceIds?.[0] || '';
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Automation is not associated with any workspace' }, { status: 400 });
+    }
+    const organizationId = automation.organizationId || 'default';
+
+    // 2. Flatten and Enrich Payload
+    const flattened = flattenObject(rawPayload);
+    const payload = {
+      ...rawPayload,
+      ...flattened,
+      workspaceId,
+      organizationId,
+      ingressId: automationId,
+      source: 'external_webhook'
+    };
+
+    // 3. Direct Trigger Call
     const timestamp = new Date().toISOString();
-    
-    // We use the triggerAutomationProtocols but with a specific filter for THIS automation only if possible
-    // For now, we utilize the standard event bus logic
-    await triggerAutomationProtocols('WEBHOOK_RECEIVED', {
-        ...payload,
-        ingressId: automationId,
-        source: 'external_webhook'
-    });
+    await triggerAutomationProtocols('WEBHOOK_RECEIVED', payload);
 
     return NextResponse.json({ 
         status: 'accepted', 

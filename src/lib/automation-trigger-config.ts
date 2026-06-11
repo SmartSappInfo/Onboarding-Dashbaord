@@ -154,6 +154,11 @@ export function evaluateTriggerConfig(
     if (config.eventName && config.eventName !== payload.eventName) return false;
   }
 
+  // ── Webhook Received ──────────────────────────────────────────────────────
+  if (firingTrigger === 'WEBHOOK_RECEIVED') {
+    if (payload.ingressId && payload.ingressId !== automation.id) return false;
+  }
+
   // ── Automation Chain Triggers ─────────────────────────────────────────────
   if (
     firingTrigger === 'AUTOMATION_ENTERED' ||

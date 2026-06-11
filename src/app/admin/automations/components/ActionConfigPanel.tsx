@@ -4,7 +4,9 @@ import {
   CheckSquare,
   Mail,
   Bell,
-  X as XIcon
+  X as XIcon,
+  Building,
+  UserPlus
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -710,6 +712,247 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                 <SelectItem value="lost">Lost (Closed Lost)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </div>
+      ) : null}
+
+      {actionType === 'CREATE_ENTITY' ? (() => {
+        const customData = config.customData || {};
+        const availableToAdd = (appFields || []).filter(f => !Object.prototype.hasOwnProperty.call(customData, f.id || f.name));
+
+        const handleAddCustomField = (fieldKey: string) => {
+          if (!fieldKey || fieldKey === 'none') return;
+          const nextCustomData = {
+            ...customData,
+            [fieldKey]: ''
+          };
+          updateConfig({ customData: nextCustomData });
+        };
+
+        const handleUpdateCustomFieldVal = (fieldKey: string, val: string) => {
+          const nextCustomData = {
+            ...customData,
+            [fieldKey]: val
+          };
+          updateConfig({ customData: nextCustomData });
+        };
+
+        const handleRemoveCustomField = (fieldKey: string) => {
+          const nextCustomData = { ...customData };
+          delete nextCustomData[fieldKey];
+          updateConfig({ customData: nextCustomData });
+        };
+
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
+              <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                <Building className="h-4 w-4 text-primary animate-pulse" /> Core Entity Details
+              </h4>
+              
+              <div className="space-y-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity Type</Label>
+                <Select
+                  value={config.entityType || 'institution'}
+                  onValueChange={(v) => updateConfig({ entityType: v })}
+                >
+                  <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="institution">Institution (Business/School)</SelectItem>
+                    <SelectItem value="person">Person (Individual)</SelectItem>
+                    <SelectItem value="family">Family (Household)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity/Contact Name (Tag/Variable Supported)</Label>
+                <Input 
+                  placeholder="e.g. {{contact.name}} or {{name}}" 
+                  value={config.name || ''} 
+                  onChange={(e) => updateConfig({ name: e.target.value })} 
+                  className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Primary Phone (Variable Supported)</Label>
+                  <Input 
+                    placeholder="e.g. {{contact.phone}}" 
+                    value={config.phone || ''} 
+                    onChange={(e) => updateConfig({ phone: e.target.value })} 
+                    className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Primary Email (Variable Supported)</Label>
+                  <Input 
+                    placeholder="e.g. {{contact.email}}" 
+                    value={config.email || ''} 
+                    onChange={(e) => updateConfig({ email: e.target.value })} 
+                    className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-left">
+              <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block mb-2">Custom Fields Mapping</Label>
+              
+              <div className="space-y-2">
+                <Select value="" onValueChange={handleAddCustomField}>
+                  <SelectTrigger className="h-12 rounded-xl bg-card border text-xs font-semibold text-left">
+                    <SelectValue placeholder="+ Map workspace custom field..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px] rounded-xl border bg-card/95 backdrop-blur-md">
+                    {availableToAdd.length > 0 ? (
+                      availableToAdd.map((f) => (
+                        <SelectItem key={f.id || f.name} value={f.id || f.name} className="rounded-lg text-xs font-semibold">
+                          {f.label || f.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled className="text-xs">
+                        All workspace fields mapped
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {Object.keys(customData).length > 0 ? (
+                <div className="space-y-3">
+                  {Object.entries(customData).map(([key, val]) => {
+                    const fieldDef = (appFields || []).find(f => (f.id || f.name) === key) || { name: key, label: key };
+                    return (
+                      <div key={key} className="p-4 rounded-2xl border bg-muted/10 flex flex-col gap-3 relative animate-in fade-in slide-in-from-top-1 duration-150">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-bold text-foreground">{fieldDef.label || fieldDef.name}</Label>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomField(key)}
+                            className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline flex items-center gap-1 transition-all"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <Input
+                          value={String(val ?? '')}
+                          onChange={(e) => handleUpdateCustomFieldVal(key, e.target.value)}
+                          className="h-10 rounded-xl bg-card border text-xs font-semibold"
+                          placeholder={`e.g. {{payload.${key}}} or static value`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-6 text-center border-2 border-dashed rounded-2xl border-border bg-muted/10">
+                  <p className="text-xs font-semibold text-muted-foreground">No custom fields mapped yet. Select a field above to start mapping.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })() : null}
+
+      {actionType === 'ADD_CONTACT_TO_ENTITY' ? (
+        <div className="space-y-6">
+          <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
+            <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+              <Building className="h-4 w-4 text-primary animate-pulse" /> Target Entity Selection
+            </h4>
+            
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity Name (Exact Match, Variable Supported)</Label>
+              <Input 
+                placeholder="e.g. {{companyName}} or {{contact.company}}" 
+                value={config.entityName || ''} 
+                onChange={(e) => updateConfig({ entityName: e.target.value })} 
+                className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
+              />
+              <span className="text-[9px] font-semibold text-muted-foreground leading-relaxed block ml-1 opacity-70">
+                Note: Locates the entity in this workspace with the exact display name matches this field.
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
+            <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-primary" /> Contact Details
+            </h4>
+            
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Name (Variable Supported)</Label>
+              <Input 
+                placeholder="e.g. {{contact.name}}" 
+                value={config.contactName || ''} 
+                onChange={(e) => updateConfig({ contactName: e.target.value })} 
+                className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Phone (Variable Supported)</Label>
+                <Input 
+                  placeholder="e.g. {{contact.phone}}" 
+                  value={config.contactPhone || ''} 
+                  onChange={(e) => updateConfig({ contactPhone: e.target.value })} 
+                  className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Email (Variable Supported)</Label>
+                <Input 
+                  placeholder="e.g. {{contact.email}}" 
+                  value={config.contactEmail || ''} 
+                  onChange={(e) => updateConfig({ contactEmail: e.target.value })} 
+                  className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Role / Type (e.g. Billing, Manager)</Label>
+              <Input 
+                placeholder="e.g. Billing Officer or {{contact.role}}" 
+                value={config.contactRole || ''} 
+                onChange={(e) => updateConfig({ contactRole: e.target.value })} 
+                className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
+              />
+            </div>
+
+            <div className="flex items-center gap-6 pt-2">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!!config.isPrimary}
+                  onChange={(e) => updateConfig({ isPrimary: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold leading-none mb-0.5 text-foreground">Designated Primary</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Make primary contact of this entity</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!!config.isSignatory}
+                  onChange={(e) => updateConfig({ isSignatory: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold leading-none mb-0.5 text-foreground">Designated Signatory</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Make signatory of this entity</span>
+                </div>
+              </label>
+            </div>
           </div>
         </div>
       ) : null}

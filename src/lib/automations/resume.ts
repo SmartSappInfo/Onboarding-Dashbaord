@@ -24,6 +24,7 @@ export async function resumeAutomationRun(job: AutomationJob): Promise<boolean> 
       entityId: job.payload.entityId,
       entityType: job.payload.entityType,
       workspaceId: job.payload.workspaceId,
+      organizationId: job.payload.organizationId,
       payload: job.payload,
       automationId: job.automationId,
       runId: job.runId,

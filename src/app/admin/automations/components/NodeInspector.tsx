@@ -157,6 +157,8 @@ const ACTION_TYPES = [
     { value: 'SEND_NOTIFICATION_SMS', label: 'Send Notification (SMS)', icon: SmartphoneIconPlaceholder, desc: 'Send an SMS notification to workspace users, assignees or custom numbers.' },
     { value: 'SEND_NOTIFICATION_IN_APP', label: 'Send Notification (In-App)', icon: BellIconPlaceholder, desc: 'Trigger an in-app workspace notification.' },
     { value: 'SEND_NOTIFICATION_PUSH', label: 'Send Notification (Push)', icon: SmartphoneIconPlaceholder, desc: 'Send a mobile push notification.' },
+    { value: 'CREATE_ENTITY', label: 'Create Entity', icon: Building, desc: 'Create a new CRM contact or business entity using mapped webhook payload attributes.' },
+    { value: 'ADD_CONTACT_TO_ENTITY', label: 'Add Contact to Entity', icon: Tag, desc: 'Locate an existing business entity via Exact Match and append a secondary contact.' },
     { value: 'END_AUTOMATION', label: 'End Automation', icon: CheckSquareIconPlaceholder, desc: 'Mark this automation as completed for the contact.' },
 ];
 

@@ -536,6 +536,34 @@ describe('evaluateTriggerConfig', () => {
     });
   });
 
+  // ── Webhook Received ──────────────────────────────────────────────────────
+
+  describe('WEBHOOK_RECEIVED', () => {
+    it('allows when ingressId is not in payload', () => {
+      const auto = makeAutomation({
+        id: 'auto-123',
+        triggers: [{ id: 't1', type: 'WEBHOOK_RECEIVED', config: {} }],
+      });
+      expect(evaluateTriggerConfig(auto, payload('WEBHOOK_RECEIVED', {}))).toBe(true);
+    });
+
+    it('allows when ingressId matches automation.id', () => {
+      const auto = makeAutomation({
+        id: 'auto-123',
+        triggers: [{ id: 't1', type: 'WEBHOOK_RECEIVED', config: {} }],
+      });
+      expect(evaluateTriggerConfig(auto, payload('WEBHOOK_RECEIVED', { ingressId: 'auto-123' }))).toBe(true);
+    });
+
+    it('denies when ingressId does not match automation.id', () => {
+      const auto = makeAutomation({
+        id: 'auto-123',
+        triggers: [{ id: 't1', type: 'WEBHOOK_RECEIVED', config: {} }],
+      });
+      expect(evaluateTriggerConfig(auto, payload('WEBHOOK_RECEIVED', { ingressId: 'auto-other' }))).toBe(false);
+    });
+  });
+
   // ── Automation Chain Triggers ──────────────────────────────────────────────
 
   describe('AUTOMATION_ENTERED / AUTOMATION_COMPLETED', () => {

@@ -8,7 +8,7 @@ import { resolveConfigVariables } from '../variables';
 import type { ExecutionContext } from '../execution-types';
 import { handleSendMessage } from './message-actions';
 import { handleCreateTask, handleUpdateTask } from './task-actions';
-import { handleUpdateEntity, handleAssignEntity, handleAddNote } from './entity-actions';
+import { handleUpdateEntity, handleAssignEntity, handleAddNote, handleCreateEntity, handleCreateContactForEntity } from './entity-actions';
 import { handleTriggerOutboundWebhook } from './webhook-actions';
 import { handleRunAutomation } from './run-automation';
 import { handleSendNotification } from './notification-actions';
@@ -64,8 +64,11 @@ export async function processActionNode(
     case 'UPDATE_DEAL_VALUE':
       await handleUpdateDealValue(resolvedConfig, context);
       break;
-    case 'UPDATE_DEAL_STATUS':
-      await handleUpdateDealStatus(resolvedConfig, context);
+    case 'CREATE_ENTITY':
+      await handleCreateEntity(resolvedConfig, context);
+      break;
+    case 'ADD_CONTACT_TO_ENTITY':
+      await handleCreateContactForEntity(resolvedConfig, context);
       break;
     case 'END_AUTOMATION':
       await logAutomationEvent('info', 'automation_completed_action', {

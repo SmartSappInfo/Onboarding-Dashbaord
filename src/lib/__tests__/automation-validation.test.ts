@@ -8,14 +8,28 @@ const { mockGet, mockCollection, mockDocumentsExist } = vi.hoisted(() => {
     limit: vi.fn(() => ({ get: mockGet })),
     get: mockGet,
   }));
-  const mockDoc = vi.fn(() => ({ get: mockGet }));
+  const mockDoc = vi.fn((id) => ({ id, get: mockGet }));
   const mockCollection = vi.fn(() => ({ doc: mockDoc, where: mockWhere }));
   const mockDocumentsExist = vi.fn();
   return { mockGet, mockCollection, mockDocumentsExist };
 });
 
 vi.mock('../firebase-admin', () => ({
-  adminDb: { collection: mockCollection, getAll: vi.fn().mockResolvedValue([]) },
+  adminDb: {
+    collection: mockCollection,
+    getAll: vi.fn(async (...refs) => {
+      return Promise.all(
+        refs.map(async (ref) => {
+          const snap = await ref.get();
+          return {
+            id: ref.id,
+            exists: snap.exists,
+            data: () => snap.data(),
+          };
+        })
+      );
+    }),
+  },
 }));
 
 vi.mock('../automations/repository', () => ({
@@ -60,6 +74,7 @@ describe('validateAutomationBlueprint', () => {
   it('rejects ADD_NOTE without content', async () => {
     await expect(
       validateAutomationBlueprint({
+        triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
         nodes: [
           {
             id: 'a1',
@@ -74,6 +89,7 @@ describe('validateAutomationBlueprint', () => {
   it('rejects condition node without operator', async () => {
     await expect(
       validateAutomationBlueprint({
+        triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
         nodes: [
           {
             id: 'c1',
@@ -90,6 +106,7 @@ describe('validateAutomationBlueprint', () => {
 
     await expect(
       validateAutomationBlueprint({
+        triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
         nodes: [
           {
             id: 'a1',

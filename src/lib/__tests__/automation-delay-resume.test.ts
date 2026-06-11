@@ -75,6 +75,8 @@ describe('Delay job resume (P5)', () => {
           doc: vi.fn(() => ({
             get: vi.fn().mockResolvedValue({ exists: true, id: 'auto-1', data: () => automation }),
           })),
+          where: vi.fn().mockReturnThis(),
+          get: vi.fn().mockResolvedValue({ empty: true, docs: [] }),
         };
       }
       if (name === 'automation_runs') {
@@ -85,7 +87,7 @@ describe('Delay job resume (P5)', () => {
           })),
         };
       }
-      if (name === 'notes') {
+      if (name === 'notes' || name === 'entity_notes' || name === 'activities') {
         return { add: vi.fn().mockResolvedValue({ id: 'note-1' }) };
       }
       if (name === 'automation_jobs') {
