@@ -7,6 +7,15 @@ import { evaluateTagConditionNode, processTagActionNode } from './tag-nodes';
 import { adminDb } from '../../firebase-admin';
 import { logStepExecution } from '../step-logger';
 import { fetchLiveEntityTags, nodeChecksTags } from '../tag-enrichment';
+import crypto from 'crypto';
+
+export function getSplitAssignment(entityId: string, automationId: string, nodeId: string, splitRatio: number, payload: any): 'a' | 'b' {
+  const fallbackId = entityId || payload?.email || payload?.phone || Math.random().toString();
+  const input = `${fallbackId}:${automationId}:${nodeId}`;
+  const hash = crypto.createHash('md5').update(input).digest('hex');
+  const percent = parseInt(hash.substring(0, 8), 16) % 100;
+  return percent < splitRatio ? 'a' : 'b';
+}
 
 export async function traverseNodes(
   nodeId: string,
@@ -120,6 +129,19 @@ export async function traverseNodes(
       status: 'success',
       executedAt: new Date().toISOString(),
       metadata: { evaluation: targetHandle as 'true' | 'false' },
+    });
+  } else if (currentNode.type === 'abSplitNode') {
+    const splitRatio = (currentNode.data?.config?.splitRatio as number) ?? 50;
+    const path = getSplitAssignment(context.entityId || '', context.automationId, currentNode.id, splitRatio, context.payload);
+    outgoingEdges = outgoingEdges.filter((e) => e.sourceHandle === path);
+
+    logStepExecution(context.runId, {
+      nodeId: currentNode.id,
+      nodeType: 'abSplitNode',
+      nodeLabel: currentNode.data?.label || 'A/B Split',
+      status: 'success',
+      executedAt: new Date().toISOString(),
+      metadata: { path, splitRatio },
     });
   }
 

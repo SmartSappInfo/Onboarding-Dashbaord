@@ -8,6 +8,8 @@ import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { MessageCampaign } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { selectCampaignWinnerManual } from '@/lib/campaign-automation-jobs';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,13 +44,30 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
     const { toast } = useToast();
 
     const [stats, setStats] = React.useState<any>(null);
+    const [freshCampaign, setFreshCampaign] = React.useState<MessageCampaign>(campaign);
     const [recipients, setRecipients] = React.useState<any[]>([]);
     const [timeline, setTimeline] = React.useState<any[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isResending, setIsResending] = React.useState(false);
+    const [isEvaluating, setIsEvaluating] = React.useState(false);
 
     const loadData = React.useCallback(async () => {
         setIsLoading(true);
+        
+        let freshCamp = campaign;
+        if (firestore) {
+            try {
+                const { doc, getDoc } = await import('firebase/firestore');
+                const campDoc = await getDoc(doc(firestore, 'message_campaigns', campaign.id));
+                if (campDoc.exists()) {
+                    freshCamp = { id: campDoc.id, ...campDoc.data() } as MessageCampaign;
+                    setFreshCampaign(freshCamp);
+                }
+            } catch (err) {
+                console.error('[loadData] Failed to fetch campaign:', err);
+            }
+        }
+
         const [statsResult, recipientResult, timelineResult] = await Promise.all([
             getCampaignStats(campaign.id),
             getCampaignRecipientBreakdown(campaign.id),
@@ -58,9 +77,22 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
         if (recipientResult.success) setRecipients(recipientResult.recipients || []);
         if (timelineResult.success) setTimeline(timelineResult.timeline || []);
         setIsLoading(false);
-    }, [campaign.id]);
+    }, [campaign.id, firestore]);
 
     React.useEffect(() => { loadData(); }, [loadData]);
+
+    const handleManualEvaluate = async (winnerId: 'A' | 'B') => {
+        setIsEvaluating(true);
+        try {
+            await selectCampaignWinnerManual(campaign.id, winnerId);
+            toast({ title: 'Winner Declared', description: `Variant ${winnerId} was declared the winner early.` });
+            await loadData();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Evaluation Failed', description: err.message });
+        } finally {
+            setIsEvaluating(false);
+        }
+    };
 
     const handleResend = async () => {
         setIsResending(true);
@@ -151,6 +183,57 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                 </div>
             </div>
 
+            {/* A/B Testing Banner for Testing phase */}
+            {freshCampaign.abTestEnabled && freshCampaign.status === 'testing' && (
+                <div className="p-6 rounded-3xl bg-violet-600 text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl shadow-violet-200">
+                    <div className="flex items-center gap-3">
+                        <Clock className="h-6 w-6 text-violet-200 animate-pulse" />
+                        <div>
+                            <h3 className="text-base font-bold">A/B Testing in Progress</h3>
+                            <p className="text-xs text-violet-100 mt-0.5">
+                                Evaluating Variant A vs Variant B. The test runs for {freshCampaign.abTestConfig?.testDurationHours} hours before automatic winner selection.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            onClick={() => handleManualEvaluate('A')}
+                            disabled={isEvaluating}
+                            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl font-bold text-xs h-9 px-4 active:scale-95 transition-all"
+                        >
+                            {isEvaluating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                            Force Variant A Winner
+                        </Button>
+                        <Button
+                            onClick={() => handleManualEvaluate('B')}
+                            disabled={isEvaluating}
+                            className="bg-white hover:bg-slate-50 text-violet-700 border-none rounded-xl font-bold text-xs h-9 px-4 active:scale-95 transition-all shadow-md"
+                        >
+                            {isEvaluating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                            Force Variant B Winner
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* A/B Testing Banner for Winner Selected phase */}
+            {freshCampaign.abTestEnabled && freshCampaign.abTestConfig?.winningVariantId && (
+                <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between gap-4 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <Zap className="h-6 w-6 text-emerald-600" />
+                        <div>
+                            <h3 className="text-base font-bold">Winner Selected: Variant {freshCampaign.abTestConfig.winningVariantId}</h3>
+                            <p className="text-xs text-emerald-700 mt-0.5">
+                                Variant {freshCampaign.abTestConfig.winningVariantId} performed best based on {freshCampaign.abTestConfig.winnerMetric?.replace('_', ' ')}. Remaining audience received the winning template.
+                            </p>
+                        </div>
+                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-800 border-none px-3 py-1 font-bold text-xs">
+                        Completed
+                    </Badge>
+                </div>
+            )}
+
             {/* KPI Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpis.map(kpi => (
@@ -176,6 +259,116 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                     </Card>
                 ))}
             </div>
+
+            {/* A/B Testing Variant Details side-by-side */}
+            {freshCampaign.abTestEnabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
+                    {['A', 'B'].map((varId) => {
+                        const variant = freshCampaign.variants?.find(v => v.id === varId);
+                        const varStats = variant?.stats || { totalTargeted: 0, totalSent: 0, totalFailed: 0, totalOpened: 0, totalClicked: 0, totalUnsubscribed: 0 };
+                        
+                        const openRate = varStats.totalSent > 0 ? (varStats.totalOpened / varStats.totalSent) * 100 : 0;
+                        const clickRate = varStats.totalSent > 0 ? (varStats.totalClicked / varStats.totalSent) * 100 : 0;
+                        const unsubscribeRate = varStats.totalSent > 0 ? ((varStats.totalUnsubscribed || 0) / varStats.totalSent) * 100 : 0;
+                        
+                        const isWinner = freshCampaign.abTestConfig?.winningVariantId === varId;
+                        
+                        return (
+                            <Card 
+                                key={varId} 
+                                className={cn(
+                                    "border-none shadow-sm overflow-hidden bg-white relative",
+                                    isWinner && "ring-2 ring-emerald-500 bg-emerald-500/[0.01]"
+                                )}
+                            >
+                                {isWinner && (
+                                    <div className="absolute top-0 right-0 bg-emerald-500 text-white font-bold text-[9px] uppercase px-3 py-1 rounded-bl-xl shadow-sm tracking-wider flex items-center gap-1">
+                                        <Zap className="h-3 w-3" /> Declared Winner
+                                    </div>
+                                )}
+                                <CardHeader className="p-6 pb-2 border-b border-slate-50">
+                                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
+                                        <span className={cn(
+                                            "w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs",
+                                            varId === 'A' ? "bg-blue-100 text-blue-700" : "bg-violet-100 text-violet-700"
+                                        )}>
+                                            {varId}
+                                        </span>
+                                        Variant {varId}
+                                    </CardTitle>
+                                    <CardDescription className="text-[10px] font-semibold text-slate-400 mt-1 uppercase tracking-wider">
+                                        {variant?.templateName ? `Template: ${variant.templateName}` : 'Custom content overrides'}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="p-6 space-y-6">
+                                    {freshCampaign.channel === 'email' && (
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Subject Line</p>
+                                            <p className="text-xs font-semibold text-slate-700 truncate">{variant?.customSubject || '(No subject override)'}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Targeted</p>
+                                            <p className="text-sm font-extrabold text-slate-800 mt-0.5">{varStats.totalTargeted}</p>
+                                        </div>
+                                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Sent</p>
+                                            <p className="text-sm font-extrabold text-slate-800 mt-0.5">{varStats.totalSent}</p>
+                                        </div>
+                                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Unsubscribes</p>
+                                            <p className="text-sm font-extrabold text-slate-800 mt-0.5">{varStats.totalUnsubscribed || 0}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-bold text-slate-500">Open Rate</span>
+                                                <span className="font-extrabold text-slate-800">{openRate.toFixed(1)}% <span className="text-[10px] text-slate-400 font-semibold">({varStats.totalOpened})</span></span>
+                                            </div>
+                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-violet-500 rounded-full transition-all duration-500" 
+                                                    style={{ width: `${Math.min(100, openRate)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-bold text-slate-500">Click Rate</span>
+                                                <span className="font-extrabold text-slate-800">{clickRate.toFixed(1)}% <span className="text-[10px] text-slate-400 font-semibold">({varStats.totalClicked})</span></span>
+                                            </div>
+                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-amber-500 rounded-full transition-all duration-500" 
+                                                    style={{ width: `${Math.min(100, clickRate)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-bold text-slate-500">Unsubscribe Rate</span>
+                                                <span className="font-extrabold text-slate-800">{unsubscribeRate.toFixed(1)}% <span className="text-[10px] text-slate-400 font-semibold">({varStats.totalUnsubscribed || 0})</span></span>
+                                            </div>
+                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-rose-500 rounded-full transition-all duration-500" 
+                                                    style={{ width: `${Math.min(100, unsubscribeRate)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Main Analytics Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

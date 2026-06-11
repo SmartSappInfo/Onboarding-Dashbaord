@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useEntityCache } from '@/context/EntityCacheContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Contact Scope Selector ───────────────────────────────────────────────────
 
@@ -142,6 +143,14 @@ interface WizardState {
     postSendTagRules: PostSendTagRule[];
     // Phase 7 engagement tracking
     trackLinks: boolean;
+    // A/B testing properties
+    abTestEnabled: boolean;
+    abTestConfig: {
+      testSizePercentage: number;
+      testDurationHours: number;
+      winnerMetric: 'open_rate' | 'click_rate' | 'low_unsubscribe_rate';
+    };
+    variants: any[];
 }
 
 type WizardAction =
@@ -169,6 +178,7 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
 }
 
 function createInitialState(campaign: MessageCampaign | null): WizardState {
+    const defaultStats = { totalTargeted: 0, totalSent: 0, totalFailed: 0, totalOpened: 0, totalClicked: 0, totalUnsubscribed: 0 };
     if (campaign) {
         // R6 fix: migrate legacy tag-based audience to filters if mode is tags
         let filters = campaign.audienceDefinition?.filters || [];
@@ -203,6 +213,16 @@ function createInitialState(campaign: MessageCampaign | null): WizardState {
             savedAudienceId: campaign.audienceDefinition?.savedAudienceId || '',
             postSendTagRules: campaign.postSendTagRules || [],
             trackLinks: campaign.trackLinks !== false, // default to true
+            abTestEnabled: campaign.abTestEnabled || false,
+            abTestConfig: campaign.abTestConfig || {
+                testSizePercentage: 20,
+                testDurationHours: 4,
+                winnerMetric: 'open_rate',
+            },
+            variants: campaign.variants || [
+                { id: 'A', templateId: campaign.templateId || null, templateName: campaign.templateName || null, customSubject: campaign.customSubject || '', customBody: campaign.customBody || '', ratio: 50, stats: { ...defaultStats } },
+                { id: 'B', templateId: null, templateName: null, customSubject: '', customBody: '', ratio: 50, stats: { ...defaultStats } }
+            ],
         };
     }
     return {
@@ -215,6 +235,16 @@ function createInitialState(campaign: MessageCampaign | null): WizardState {
         groups: [],
         postSendTagRules: [],
         trackLinks: true,
+        abTestEnabled: false,
+        abTestConfig: {
+            testSizePercentage: 20,
+            testDurationHours: 4,
+            winnerMetric: 'open_rate',
+        },
+        variants: [
+            { id: 'A', templateId: null, templateName: null, customSubject: '', customBody: '', ratio: 50, stats: { ...defaultStats } },
+            { id: 'B', templateId: null, templateName: null, customSubject: '', customBody: '', ratio: 50, stats: { ...defaultStats } }
+        ],
     };
 }
 
@@ -270,6 +300,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     
     // Quick Create Template state
     const [quickCreateOpen, setQuickCreateOpen] = React.useState(false);
+    const [activeVariantTab, setActiveVariantTab] = React.useState<'A' | 'B'>('A');
 
     const [state, dispatch] = React.useReducer(wizardReducer, campaign, createInitialState);
 
@@ -335,6 +366,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
         dispatch({ type: 'SET_FIELD', field, value });
     };
 
+    const updateActiveVariant = (updates: Record<string, any>) => {
+        const updatedVariants = state.variants.map(v => {
+            if (v.id === activeVariantTab) {
+                return { ...v, ...updates };
+            }
+            return v;
+        });
+        dispatch({ type: 'SET_FIELD', field: 'variants', value: updatedVariants });
+    };
+
     // ── Sender Profiles (R5/R7 fix) ────────────────────────────────────────────
     const profilesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -373,13 +414,25 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     const canAdvance = React.useMemo(() => {
         switch (state.step) {
             case 1: return state.internalName.trim().length >= 3 && !!state.senderProfileId;
-            case 2: return state.customBody.trim().length > 0 || state.customSubject.trim().length > 0;
+            case 2: {
+                if (state.abTestEnabled) {
+                    const varA = state.variants.find(v => v.id === 'A');
+                    const varB = state.variants.find(v => v.id === 'B');
+                    const isEmail = state.channel === 'email';
+                    if (isEmail) {
+                        return !!(varA?.customSubject?.trim() && varA?.customBody?.trim() && varB?.customSubject?.trim() && varB?.customBody?.trim());
+                    } else {
+                        return !!(varA?.customBody?.trim() && varB?.customBody?.trim());
+                    }
+                }
+                return state.customBody.trim().length > 0 || state.customSubject.trim().length > 0;
+            }
             case 3: return state.audienceMode === 'all' || state.tagIds.length > 0 || state.entityIds.length > 0 || (state.audienceMode === 'advanced' && state.filters.length > 0) || (state.audienceMode === 'saved' && !!state.savedAudienceId);
             case 4: return !state.isScheduled || (state.scheduledAt && state.scheduledAt > new Date());
             case 5: return true;
             default: return false;
         }
-    }, [state.step, state.internalName, state.senderProfileId, state.customBody, state.customSubject, state.audienceMode, state.tagIds, state.entityIds, state.isScheduled, state.scheduledAt, state.filters, state.savedAudienceId]);
+    }, [state.step, state.internalName, state.senderProfileId, state.customBody, state.customSubject, state.audienceMode, state.tagIds, state.entityIds, state.isScheduled, state.scheduledAt, state.filters, state.savedAudienceId, state.abTestEnabled, state.variants]);
 
     // ── Save Draft (explicit save, not auto-save — R4 fix) ────────────────────
     const handleSaveDraft = async () => {
@@ -419,6 +472,9 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 createdBy: user.uid,
                 postSendTagRules: state.postSendTagRules,
                 trackLinks: state.trackLinks,
+                abTestEnabled: state.abTestEnabled,
+                abTestConfig: state.abTestConfig,
+                variants: state.variants,
             };
 
             if (campaign?.id) {
@@ -473,6 +529,9 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 lastCompletedStep: 5,
                 postSendTagRules: state.postSendTagRules,
                 trackLinks: state.trackLinks,
+                abTestEnabled: state.abTestEnabled,
+                abTestConfig: state.abTestConfig,
+                variants: state.variants,
             };
 
             let id = campaign?.id;
@@ -598,9 +657,48 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                     </div>
                 );
 
-            case 2:
+            case 2: {
+                const isAb = state.abTestEnabled;
+                const activeVariant = state.variants.find(v => v.id === activeVariantTab) || state.variants[0];
+                const subjectValue = isAb ? (activeVariant.customSubject || '') : state.customSubject;
+                const bodyValue = isAb ? (activeVariant.customBody || '') : state.customBody;
+
                 return (
                     <div className="space-y-6">
+                        {/* A/B Testing Toggle */}
+                        <div className="flex items-center justify-between p-4 rounded-xl border bg-card/60 backdrop-blur-md border-violet-200/50 shadow-sm">
+                            <div>
+                                <p className="text-sm font-bold text-violet-700 flex items-center gap-1.5">
+                                    <Sparkles className="h-4 w-4 text-violet-500" /> A/B Testing
+                                </p>
+                                <p className="text-[9px] font-semibold text-muted-foreground">Test two different variants to optimize engagement</p>
+                            </div>
+                            <Switch
+                                checked={state.abTestEnabled}
+                                onCheckedChange={v => setField('abTestEnabled', v)}
+                            />
+                        </div>
+
+                        {isAb ? (
+                            <div className="flex gap-2 p-1 bg-muted/50 rounded-xl">
+                                {['A', 'B'].map((tab) => (
+                                    <button
+                                        key={tab}
+                                        type="button"
+                                        onClick={() => setActiveVariantTab(tab as 'A' | 'B')}
+                                        className={cn(
+                                            "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
+                                            activeVariantTab === tab
+                                                ? "bg-background text-foreground shadow-sm border border-border/30"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Variant {tab} Content
+                                    </button>
+                                ))}
+                            </div>
+                        ) : null}
+
                         {/* Template Picker Toggle */}
                         <div className="flex items-center justify-between p-4 rounded-xl border bg-card">
                             <div>
@@ -619,12 +717,19 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 <div className="flex items-center justify-between px-1">
                                     <Label className="text-[10px] font-semibold text-muted-foreground">Select a Template</Label>
                                     <div className="flex items-center gap-1">
-                                        {state.templateId ? (
+                                        {((!isAb && state.templateId) || (isAb && activeVariant.templateId)) ? (
                                             <Button type="button" variant="ghost" className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg" onClick={() => setQuickCreateOpen(true)}>
                                                 <Pencil className="h-3 w-3" /> Edit
                                             </Button>
                                         ) : null}
-                                        <Button type="button" variant="ghost" className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg" onClick={() => { setField('templateId', ''); setQuickCreateOpen(true); }}>
+                                        <Button type="button" variant="ghost" className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg" onClick={() => { 
+                                            if (isAb) {
+                                                updateActiveVariant({ templateId: '' });
+                                            } else {
+                                                setField('templateId', '');
+                                            }
+                                            setQuickCreateOpen(true); 
+                                        }}>
                                             <PlusCircle className="h-3 w-3" /> New
                                         </Button>
                                     </div>
@@ -634,24 +739,38 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     category="campaigns"
                                     recipientType={state.target === 'external_client' ? 'entity' : 'internal_alert'}
                                     channel={state.channel}
-                                    value={state.templateId}
+                                    value={isAb ? (activeVariant.templateId || '') : state.templateId}
                                     onValueChange={(val) => {
-                                        setField('templateId', val);
+                                        if (isAb) {
+                                            updateActiveVariant({ templateId: val });
+                                        } else {
+                                            setField('templateId', val);
+                                        }
                                     }}
                                     onSelect={(template) => {
                                         if (template) {
-                                            setField('templateName', template.name);
-                                            setField('customSubject', template.subject || '');
-                                            setField('customBody', template.body || '');
+                                            if (isAb) {
+                                                updateActiveVariant({
+                                                    templateId: template.id,
+                                                    templateName: template.name,
+                                                    customSubject: template.subject || '',
+                                                    customBody: template.body || '',
+                                                    customBlocks: template.blocks || []
+                                                });
+                                            } else {
+                                                setField('templateName', template.name);
+                                                setField('customSubject', template.subject || '');
+                                                setField('customBody', template.body || '');
+                                            }
                                         }
                                     }}
                                     placeholder="Choose campaign blueprint..."
                                     className="rounded-xl bg-card border-border/50 font-bold transition-all text-xs"
                                 />
                                 
-                                {state.templateId ? (
+                                {(!isAb && state.templateId) || (isAb && activeVariant.templateId) ? (
                                     <Badge variant="outline" className="text-[9px] font-bold">
-                                        Using: {state.templateName}
+                                        Using: {isAb ? activeVariant.templateName : state.templateName}
                                     </Badge>
                                 ) : null}
                             </div>
@@ -662,8 +781,14 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line</Label>
                                 <Input
-                                    value={state.customSubject}
-                                    onChange={e => setField('customSubject', e.target.value)}
+                                    value={subjectValue}
+                                    onChange={e => {
+                                        if (isAb) {
+                                            updateActiveVariant({ customSubject: e.target.value });
+                                        } else {
+                                            setField('customSubject', e.target.value);
+                                        }
+                                    }}
                                     placeholder="Enter email subject..."
                                     className="h-12 rounded-xl bg-card border-border/50 font-bold"
                                 />
@@ -676,15 +801,21 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 {state.channel === 'sms' ? 'Message Body' : 'Email Body'}
                             </Label>
                             <Textarea
-                                value={state.customBody}
-                                onChange={e => setField('customBody', e.target.value)}
+                                value={bodyValue}
+                                onChange={e => {
+                                    if (isAb) {
+                                        updateActiveVariant({ customBody: e.target.value });
+                                    } else {
+                                        setField('customBody', e.target.value);
+                                    }
+                                }}
                                 placeholder={state.channel === 'sms' ? 'Type your SMS message...' : 'Type your email content...'}
                                 className="min-h-[250px] rounded-xl bg-card border-border/50 font-semibold text-sm"
                             />
                             {state.channel === 'sms' ? (
                                 <p className="text-[9px] font-bold text-muted-foreground text-right tabular-nums">
-                                    {state.customBody.length} / {state.customBody.length <= 160 ? 160 : Math.ceil(state.customBody.length / 153) * 153} chars
-                                    ({state.customBody.length <= 160 ? 1 : Math.ceil(state.customBody.length / 153)} segment{state.customBody.length > 160 ? 's' : ''})
+                                    {bodyValue.length} / {bodyValue.length <= 160 ? 160 : Math.ceil(bodyValue.length / 153) * 153} chars
+                                    ({bodyValue.length <= 160 ? 1 : Math.ceil(bodyValue.length / 153)} segment{bodyValue.length > 160 ? 's' : ''})
                                 </p>
                             ) : null}
                         </div>
@@ -695,7 +826,12 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                             <div className="flex flex-wrap gap-1.5">
                                 {['entity_name', 'entity_email', 'entity_phone', 'workspace_name', 'sender_name'].map(v => (
                                     <Badge key={v} variant="outline" className="text-[8px] font-mono cursor-pointer hover:bg-primary/10 transition-colors" onClick={() => {
-                                        setField('customBody', state.customBody + `{{${v}}}`);
+                                        const addition = `{{${v}}}`;
+                                        if (isAb) {
+                                            updateActiveVariant({ customBody: bodyValue + addition });
+                                        } else {
+                                            setField('customBody', state.customBody + addition);
+                                        }
                                     }}>
                                         {`{{${v}}}`}
                                     </Badge>
@@ -748,10 +884,18 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                         target: state.target,
                                                         campaignName: state.internalName,
                                                         context: aiPrompt || undefined,
+                                                        organizationId: activeOrganizationId || undefined,
                                                     });
                                                     if (res.success && res.result) {
-                                                        setField('customSubject', res.result.subject);
-                                                        setField('customBody', res.result.body);
+                                                        if (isAb) {
+                                                            updateActiveVariant({
+                                                                customSubject: res.result.subject,
+                                                                customBody: res.result.body
+                                                            });
+                                                        } else {
+                                                            setField('customSubject', res.result.subject);
+                                                            setField('customBody', res.result.body);
+                                                        }
                                                         setAiVariants(res.result.subjectVariants || []);
                                                         toast({ title: 'Content Generated', description: 'AI-generated copy applied. Edit as needed.' });
                                                     } else {
@@ -778,10 +922,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                     <button
                                                         key={i}
                                                         type="button"
-                                                        onClick={() => setField('customSubject', variant)}
+                                                        onClick={() => {
+                                                            if (isAb) {
+                                                                updateActiveVariant({ customSubject: variant });
+                                                            } else {
+                                                                setField('customSubject', variant);
+                                                            }
+                                                        }}
                                                         className={cn(
                                                             "w-full text-left p-2.5 rounded-lg border text-[10px] font-semibold transition-all",
-                                                            state.customSubject === variant
+                                                            (isAb ? activeVariant.customSubject === variant : state.customSubject === variant)
                                                                 ? "border-violet-400 bg-violet-50 text-violet-700"
                                                                 : "border-border/30 hover:border-violet-200 hover:bg-violet-50/50 text-foreground"
                                                         )}
@@ -815,12 +965,17 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                         setIsGenerating(true);
                                                         try {
                                                             const res = await refineCampaignCopy({
-                                                                original: state.customBody,
+                                                                 organizationId: activeOrganizationId || undefined,
+                                                                original: isAb ? activeVariant.customBody : state.customBody,
                                                                 instruction: aiPrompt,
                                                                 field: 'body',
                                                             });
                                                             if (res.success && res.refined) {
-                                                                setField('customBody', res.refined);
+                                                                if (isAb) {
+                                                                    updateActiveVariant({ customBody: res.refined });
+                                                                } else {
+                                                                    setField('customBody', res.refined);
+                                                                }
                                                                 toast({ title: 'Copy Refined' });
                                                             } else {
                                                                 toast({ variant: 'destructive', title: 'AI Error', description: res.error || 'Refinement failed' });
@@ -1029,17 +1184,117 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                         <Separator className="opacity-50" />
 
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between p-4 rounded-xl border bg-card">
-                                <div>
-                                    <p className="text-sm font-bold">Track Link Engagement</p>
-                                    <p className="text-[9px] font-semibold text-muted-foreground">Wraps all URLs to measure click-through rates</p>
-                                </div>
-                                <Switch
-                                    checked={state.trackLinks}
-                                    onCheckedChange={v => setField('trackLinks', v)}
-                                />
-                            </div>
-                        </div>
+                                                            <div className="flex items-center justify-between p-4 rounded-xl border bg-card">
+                                                                <div>
+                                                                    <p className="text-sm font-bold">Track Link Engagement</p>
+                                                                    <p className="text-[9px] font-semibold text-muted-foreground">Wraps all URLs to measure click-through rates</p>
+                                                                </div>
+                                                                <Switch
+                                                                    checked={state.trackLinks}
+                                                                    onCheckedChange={v => setField('trackLinks', v)}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {state.abTestEnabled && (
+                                                            <>
+                                                                <Separator className="opacity-50" />
+                                                                <div className="space-y-6 p-6 rounded-2xl border bg-violet-500/5 border-violet-500/20 animate-in slide-in-from-top-2 duration-300">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Sparkles className="h-5 w-5 text-violet-500" />
+                                                                        <div>
+                                                                            <p className="text-sm font-bold text-violet-900">A/B Testing Configuration</p>
+                                                                            <p className="text-[10px] font-semibold text-violet-600/80">Configure split size, duration, and evaluation criteria</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <Separator className="bg-violet-500/20" />
+                                                                    
+                                                                    <div className="space-y-4">
+                                                                        <div className="space-y-2">
+                                                                            <div className="flex justify-between items-center">
+                                                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                                                    Test Group Size: {state.abTestConfig.testSizePercentage}%
+                                                                                </Label>
+                                                                                <span className="text-[9px] font-bold text-violet-600">
+                                                                                    ({state.abTestConfig.testSizePercentage / 2}% A, {state.abTestConfig.testSizePercentage / 2}% B, {100 - state.abTestConfig.testSizePercentage}% Remainder)
+                                                                                </span>
+                                                                            </div>
+                                                                            <Input
+                                                                                type="range"
+                                                                                min={2}
+                                                                                max={100}
+                                                                                step={2}
+                                                                                value={state.abTestConfig.testSizePercentage}
+                                                                                onChange={e => {
+                                                                                    const val = parseInt(e.target.value) || 20;
+                                                                                    setField('abTestConfig', {
+                                                                                        ...state.abTestConfig,
+                                                                                        testSizePercentage: val
+                                                                                    });
+                                                                                }}
+                                                                                className="h-2 bg-violet-200 rounded-lg appearance-none cursor-pointer"
+                                                                            />
+                                                                        </div>
+
+                                                                        {state.abTestConfig.testSizePercentage < 100 ? (
+                                                                            <>
+                                                                                <div className="space-y-2">
+                                                                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                                                        Test Duration (Hours)
+                                                                                    </Label>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        min={1}
+                                                                                        max={168}
+                                                                                        value={state.abTestConfig.testDurationHours}
+                                                                                        onChange={e => {
+                                                                                            const val = Math.min(168, Math.max(1, parseInt(e.target.value) || 4));
+                                                                                            setField('abTestConfig', {
+                                                                                                ...state.abTestConfig,
+                                                                                                testDurationHours: val
+                                                                                            });
+                                                                                        }}
+                                                                                        placeholder="Hours to wait before declaring winner"
+                                                                                        className="h-10 rounded-xl bg-card border border-border/50 font-semibold text-xs px-3"
+                                                                                    />
+                                                                                    <p className="text-[9px] font-semibold text-muted-foreground ml-1">
+                                                                                        Evaluation job runs after this duration to automatically declare the winner and send the winning variant to the remaining {100 - state.abTestConfig.testSizePercentage}% of the audience.
+                                                                                    </p>
+                                                                                </div>
+
+                                                                                <div className="space-y-2">
+                                                                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                                                        Winner Selection Metric
+                                                                                    </Label>
+                                                                                    <Select
+                                                                                        value={state.abTestConfig.winnerMetric}
+                                                                                        onValueChange={v => {
+                                                                                            setField('abTestConfig', {
+                                                                                                ...state.abTestConfig,
+                                                                                                winnerMetric: v as any
+                                                                                            });
+                                                                                        }}
+                                                                                    >
+                                                                                        <SelectTrigger className="h-10 rounded-xl bg-card border border-border/50 font-bold text-xs">
+                                                                                            <SelectValue placeholder="Select winning metric..." />
+                                                                                        </SelectTrigger>
+                                                                                        <SelectContent className="rounded-xl">
+                                                                                            <SelectItem value="open_rate" className="text-xs font-semibold">Open Rate (Highest percentage of messages opened)</SelectItem>
+                                                                                            <SelectItem value="click_rate" className="text-xs font-semibold">Click-Through Rate (Highest percentage of clicks on tracked links)</SelectItem>
+                                                                                            <SelectItem value="low_unsubscribe_rate" className="text-xs font-semibold">Lowest Unsubscribe Rate (Fewest unsubscriptions)</SelectItem>
+                                                                                        </SelectContent>
+                                                                                    </Select>
+                                                                                </div>
+                                                                            </>
+                                                                        ) : (
+                                                                            <p className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 p-3 rounded-xl">
+                                                                                Test size is 100%. The audience will be split 50/50 between Variant A and Variant B. No remainder dispatch will be scheduled.
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        )}
 
                         <Separator className="opacity-50" />
 
@@ -1091,7 +1346,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 const senderProfile = senderProfiles?.find(p => p.id === state.senderProfileId);
                 return (
                     <div className="space-y-8">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className={cn("grid grid-cols-1 gap-4", state.abTestEnabled ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
                             <Card className="rounded-2xl border-none shadow-sm bg-muted/20">
                                 <CardHeader className="pb-2">
                                     <CardDescription className="text-[9px] font-bold uppercase tracking-widest">Metadata</CardDescription>
@@ -1130,27 +1385,101 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {state.abTestEnabled ? (
+                                <Card className="rounded-2xl border-none shadow-sm bg-violet-500/5 border border-violet-500/10">
+                                    <CardHeader className="pb-2">
+                                        <CardDescription className="text-[9px] font-bold uppercase tracking-widest text-violet-600">A/B Testing</CardDescription>
+                                        <CardTitle className="text-sm font-bold text-violet-900">Winner-Take-All</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        <div className="space-y-1">
+                                            <p className="text-[8px] font-bold text-violet-500 uppercase">Test Group Size</p>
+                                            <p className="text-[10px] font-semibold text-violet-800">{state.abTestConfig.testSizePercentage}% ({state.abTestConfig.testSizePercentage / 2}% A / {state.abTestConfig.testSizePercentage / 2}% B)</p>
+                                        </div>
+                                        {state.abTestConfig.testSizePercentage < 100 ? (
+                                            <>
+                                                <div className="space-y-1">
+                                                    <p className="text-[8px] font-bold text-violet-500 uppercase">Duration</p>
+                                                    <p className="text-[10px] font-semibold text-violet-800">{state.abTestConfig.testDurationHours} hours</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-[8px] font-bold text-violet-500 uppercase">Winning Metric</p>
+                                                    <p className="text-[10px] font-semibold text-violet-800 capitalize">
+                                                        {state.abTestConfig.winnerMetric.replace('_', ' ')}
+                                                    </p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                <p className="text-[8px] font-bold text-amber-600 uppercase">Mode</p>
+                                                <p className="text-[10px] font-semibold text-amber-800">50/50 Split Send</p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            ) : null}
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between px-1">
-                                <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Content Preview</Label>
-                                {state.templateName && <Badge variant="secondary" className="text-[8px] font-bold">Template: {state.templateName}</Badge>}
+                        {state.abTestEnabled ? (
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1">Content Preview (Variants A & B)</Label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {['A', 'B'].map((varId) => {
+                                        const variant = state.variants.find(v => v.id === varId) || { customSubject: '', customBody: '' };
+                                        return (
+                                            <motion.div
+                                                key={varId}
+                                                initial={{ opacity: 0, y: 15 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.4, delay: varId === 'A' ? 0 : 0.1 }}
+                                                className="rounded-2xl border border-violet-200/50 bg-card overflow-hidden flex flex-col h-full shadow-sm"
+                                            >
+                                                <div className="p-3 bg-violet-500/5 border-b border-violet-500/10 flex items-center justify-between">
+                                                    <span className="text-[10px] font-bold text-violet-700">Variant {varId}</span>
+                                                    {variant.templateName && (
+                                                        <Badge variant="secondary" className="text-[8px] font-bold bg-violet-100 text-violet-800">
+                                                            {variant.templateName}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                {state.channel === 'email' ? (
+                                                    <div className="p-3.5 border-b bg-muted/10">
+                                                        <p className="text-[9px] font-bold text-muted-foreground mb-0.5">Subject</p>
+                                                        <p className="text-xs font-bold text-foreground truncate">{variant.customSubject || '(No subject)'}</p>
+                                                    </div>
+                                                ) : null}
+                                                <div className="p-5 flex-1 max-h-[250px] overflow-y-auto bg-card">
+                                                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans text-xs">
+                                                        {variant.customBody || '(No content)'}
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <div className="rounded-2xl border bg-card overflow-hidden">
-                                {state.channel === 'email' ? (
-                                    <div className="p-4 border-b bg-muted/10">
-                                        <p className="text-[10px] font-bold text-muted-foreground mb-1">Subject</p>
-                                        <p className="text-xs font-bold">{state.customSubject || '(No subject)'}</p>
-                                    </div>
-                                ) : null}
-                                <div className="p-6 max-h-[300px] overflow-y-auto">
-                                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans">
-                                        {state.customBody || '(No content)'}
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between px-1">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Content Preview</Label>
+                                    {state.templateName && <Badge variant="secondary" className="text-[8px] font-bold">Template: {state.templateName}</Badge>}
+                                </div>
+                                <div className="rounded-2xl border bg-card overflow-hidden">
+                                    {state.channel === 'email' ? (
+                                        <div className="p-4 border-b bg-muted/10">
+                                            <p className="text-[10px] font-bold text-muted-foreground mb-1">Subject</p>
+                                            <p className="text-xs font-bold">{state.customSubject || '(No subject)'}</p>
+                                        </div>
+                                    ) : null}
+                                    <div className="p-6 max-h-[300px] overflow-y-auto">
+                                        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans">
+                                            {state.customBody || '(No content)'}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         {state.isScheduled ? (
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-3">
@@ -1244,17 +1573,26 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 <TemplateWorkshopSheet 
                     open={quickCreateOpen}
                     onOpenChange={setQuickCreateOpen}
-                    templateId={state.templateId || undefined}
+                    templateId={state.abTestEnabled ? (activeVariant.templateId || undefined) : (state.templateId || undefined)}
                     initialContext={{
                         channel: state.channel,
                         category: 'campaigns',
                         recipientType: state.target === 'external_client' ? 'entity' : 'internal_alert'
                     }}
                     onCreated={(template: any) => {
-                        setField('templateId', template.id);
-                        if (template.name) setField('templateName', template.name);
-                        if (template.subject !== undefined) setField('customSubject', template.subject);
-                        if (template.body !== undefined) setField('customBody', template.body);
+                        if (state.abTestEnabled) {
+                            updateActiveVariant({
+                                templateId: template.id,
+                                templateName: template.name,
+                                customSubject: template.subject || '',
+                                customBody: template.body || '',
+                            });
+                        } else {
+                            setField('templateId', template.id);
+                            if (template.name) setField('templateName', template.name);
+                            if (template.subject !== undefined) setField('customSubject', template.subject);
+                            if (template.body !== undefined) setField('customBody', template.body);
+                        }
                         if (template.contentMode) setField('contentMode', template.contentMode);
                         setQuickCreateOpen(false);
                     }}
