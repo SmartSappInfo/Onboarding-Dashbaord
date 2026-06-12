@@ -15,6 +15,8 @@ import { TagSelector } from '@/components/tags/TagSelector';
 import { ABTestSlider } from './ABTestSlider';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import { previewCampaignAudience } from '@/lib/messaging-actions';
+import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
+import { parseMarkdownLinksToHtml } from '@/lib/utils/markdown-link-parser';
 import { generateCampaignCopy, refineCampaignCopy } from '@/lib/campaign-ai';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +29,7 @@ import { Switch } from '@/components/ui/switch';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Separator } from '@/components/ui/separator';
 import {
-    ArrowLeft, ArrowRight, Check, ChevronRight, Loader2, Mail, Smartphone,
+    ArrowLeft, ArrowRight, Check, ChevronRight, ChevronLeft, Loader2, Mail, Smartphone,
     Users, Save, Send, Tag, Target, FileText, Calendar, Eye, Megaphone, Zap, X, Plus,
     Sparkles, Wand2, Pencil, PlusCircle, Search
 } from 'lucide-react';
@@ -129,6 +131,7 @@ interface WizardState {
     templateName: string;
     customSubject: string;
     customBody: string;
+    customBlocks: Array<any>;
     styleId: string;
     audienceMode: AudienceDefinition['mode'];
     tagIds: string[];
@@ -203,6 +206,7 @@ function createInitialState(campaign: MessageCampaign | null): WizardState {
             templateName: campaign.templateName || '',
             customSubject: campaign.customSubject || '',
             customBody: campaign.customBody || '',
+            customBlocks: (campaign as any).customBlocks || [],
             styleId: campaign.styleId || '',
             audienceMode: campaign.audienceDefinition?.mode || 'all',
             tagIds: campaign.audienceDefinition?.tagIds || [],
@@ -237,7 +241,7 @@ function createInitialState(campaign: MessageCampaign | null): WizardState {
     return {
         step: 1, internalName: '', channel: 'email', target: 'external_client',
         contentMode: 'template', templateId: '', templateName: '', customSubject: '',
-        customBody: '', styleId: '', audienceMode: 'all', tagIds: [], tagLogic: 'any',
+        customBody: '', customBlocks: [], styleId: '', audienceMode: 'all', tagIds: [], tagLogic: 'any',
         excludeTagIds: [], entityIds: [], selectedContacts: [], contactScope: 'primary', senderProfileId: '',
         isScheduled: false, scheduledAt: null, isSaving: false, isSending: false,
         filters: [], filterLogic: 'AND' as const, savedAudienceId: '',
@@ -267,25 +271,51 @@ const STEPS = [
     { num: 5, label: 'Review', icon: Eye },
 ];
 
-function StepIndicator({ current }: { current: number }) {
+function StepIndicator({ 
+    current, 
+    onStepClick,
+    canNavigateToStep 
+}: { 
+    current: number; 
+    onStepClick?: (step: number) => void;
+    canNavigateToStep: (step: number) => boolean;
+}) {
     return (
         <div className="flex items-center gap-1 overflow-x-auto pb-2">
-            {STEPS.map((s, i) => (
-                <React.Fragment key={s.num}>
-                    <div className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold shrink-0 transition-colors",
-                        s.num === current ? "bg-primary text-primary-foreground" :
-                        s.num < current ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                    )}>
-                        {s.num < current ? <Check className="h-3 w-3" /> : <s.icon className="h-3 w-3" />}
-                        {s.label}
-                    </div>
-                    {i < STEPS.length - 1 ? <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" /> : null}
-                </React.Fragment>
-            ))}
+            {STEPS.map((s, i) => {
+                const clickable = canNavigateToStep(s.num);
+                const StepComponent = onStepClick && clickable ? 'button' : 'div';
+                return (
+                    <React.Fragment key={s.num}>
+                        <StepComponent
+                            type={StepComponent === 'button' ? 'button' : undefined}
+                            onClick={onStepClick && clickable ? () => onStepClick(s.num) : undefined}
+                            disabled={StepComponent === 'button' ? !clickable : undefined}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold shrink-0 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                s.num === current ? "bg-primary text-primary-foreground" :
+                                s.num < current ? "bg-primary/10 text-primary hover:bg-primary/25" : "bg-muted text-muted-foreground",
+                                clickable && s.num !== current ? "cursor-pointer" : "cursor-default opacity-80"
+                            )}
+                        >
+                            {s.num < current ? <Check className="h-3 w-3" /> : <s.icon className="h-3 w-3" />}
+                            {s.label}
+                        </StepComponent>
+                        {i < STEPS.length - 1 ? <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" /> : null}
+                    </React.Fragment>
+                );
+            })}
         </div>
     );
 }
+
+const MOCK_VARIABLES = {
+    entity_name: 'John Doe Entity',
+    entity_email: 'john.doe@example.com',
+    entity_phone: '+15551234567',
+    contact_name: 'John Doe',
+    tags: 'New, Active',
+};
 
 // ─── Main Wizard Component ────────────────────────────────────────────────────
 
@@ -368,11 +398,19 @@ export function ManualContactSelector({
 }: ManualContactSelectorProps) {
     const { entities, isLoading } = useEntityCache();
     const [searchQuery, setSearchQuery] = React.useState('');
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const [showSelectedOnly, setShowSelectedOnly] = React.useState(false);
+    const pageSize = 20;
 
     const onChangeRef = React.useRef(onChange);
     onChangeRef.current = onChange;
     const selectedContactsRef = React.useRef(selectedContacts);
     selectedContactsRef.current = selectedContacts;
+
+    // Reset pagination to page 1 on filter, channel, or view changes
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, channel, showSelectedOnly]);
 
     // Extract all available contacts matching the channel
     const workspaceContacts = React.useMemo(() => {
@@ -459,6 +497,25 @@ export function ManualContactSelector({
         return new Set(selectedContacts.map(sc => `${sc.entityId}:${sc.contactId}`));
     }, [selectedContacts]);
 
+    // Filter contactsToDisplay: showSelectedOnly vs all filtered
+    const contactsToDisplay = React.useMemo(() => {
+        let list = filteredContacts;
+        if (showSelectedOnly) {
+            list = list.filter(c => selectedKeysSet.has(`${c.entityId}:${c.id}`));
+        }
+        return list;
+    }, [filteredContacts, showSelectedOnly, selectedKeysSet]);
+
+    // Clamped active page index
+    const totalPages = Math.ceil(contactsToDisplay.length / pageSize);
+    const clampedPage = Math.min(currentPage, totalPages || 1);
+
+    // Derived paginated slice
+    const paginatedContacts = React.useMemo(() => {
+        const start = (clampedPage - 1) * pageSize;
+        return contactsToDisplay.slice(start, start + pageSize);
+    }, [contactsToDisplay, clampedPage, pageSize]);
+
     const handleToggle = React.useCallback((contact: typeof workspaceContacts[0]) => {
         const selected = selectedContactsRef.current;
         const key = `${contact.entityId}:${contact.id}`;
@@ -526,46 +583,65 @@ export function ManualContactSelector({
     return (
         <div className="space-y-3">
             {/* Search and control header */}
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="relative flex-1 w-full">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search by name, email, or entity..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-11 rounded-xl text-xs font-semibold bg-card/50 border-border/50 focus-visible:ring-primary"
-                    />
-                    {searchQuery && (
-                        <button 
-                            onClick={() => setSearchQuery('')}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:underline"
+            <div className="flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search by name, email, or entity..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 h-11 rounded-xl text-xs font-semibold bg-card/50 border-border/50 focus-visible:ring-primary"
+                        />
+                        {searchQuery && (
+                            <button 
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:underline"
+                            >
+                                Clear
+                            </button>
+                        )}
+                    </div>
+
+                    {filteredContacts.length > 0 && (
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={handleSelectAllToggle}
+                            className="w-full sm:w-auto h-11 px-4 rounded-xl text-xs font-bold border-border/50 hover:bg-accent/30"
                         >
-                            Clear
-                        </button>
+                            {filteredSelectedCount === filteredContacts.length ? "Deselect All" : "Select All Match"}
+                        </Button>
                     )}
                 </div>
 
-                {filteredContacts.length > 0 && (
-                    <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={handleSelectAllToggle}
-                        className="w-full sm:w-auto h-11 px-4 rounded-xl text-xs font-bold border-border/50 hover:bg-accent/30"
-                    >
-                        {filteredSelectedCount === filteredContacts.length ? "Deselect All" : "Select All Match"}
-                    </Button>
-                )}
+                {/* View toggles & selected counts */}
+                <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                        <Checkbox 
+                            id="show-selected-chk"
+                            checked={showSelectedOnly}
+                            onCheckedChange={(checked) => setShowSelectedOnly(!!checked)}
+                            className="rounded-md border-border/80 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        />
+                        <Label htmlFor="show-selected-chk" className="text-xs font-bold cursor-pointer select-none">
+                            Show Selected Only ({selectedContacts.length} contacts selected)
+                        </Label>
+                    </div>
+                </div>
             </div>
 
             {/* Contacts list */}
-            {filteredContacts.length === 0 ? (
+            {contactsToDisplay.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-border/50 bg-card/10 rounded-2xl">
-                    <p className="text-xs font-bold text-muted-foreground">No contacts found matching your query</p>
+                    <p className="text-xs font-bold text-muted-foreground">
+                        {showSelectedOnly ? "No selected contacts found" : "No contacts found matching your query"}
+                    </p>
                 </div>
             ) : (
                 <div className="max-h-72 overflow-y-auto pr-1 border border-border/40 bg-card/10 rounded-2xl p-2.5 space-y-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary/10">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {filteredContacts.slice(0, 100).map(c => (
+                        {paginatedContacts.map(c => (
                             <ContactRow 
                                 key={`${c.entityId}-${c.id}`}
                                 contact={c}
@@ -574,11 +650,81 @@ export function ManualContactSelector({
                             />
                         ))}
                     </div>
-                    {filteredContacts.length > 100 && (
-                        <p className="text-[10px] font-semibold text-center text-muted-foreground pt-2">
-                            Showing first 100 of {filteredContacts.length} contacts. Refine search to see others.
-                        </p>
-                    )}
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-border/30 mt-3 text-xs">
+                    <p className="text-muted-foreground font-medium">
+                        Showing <span className="font-bold text-foreground">{(clampedPage - 1) * pageSize + 1}</span> to{" "}
+                        <span className="font-bold text-foreground">
+                            {Math.min(clampedPage * pageSize, contactsToDisplay.length)}
+                        </span>{" "}
+                        of <span className="font-bold text-foreground">{contactsToDisplay.length}</span> contacts
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={clampedPage === 1}
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            className="h-8 w-8 p-0 rounded-lg border-border/50 bg-card/40 hover:bg-accent/30 disabled:opacity-40"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            <span className="sr-only">Previous page</span>
+                        </Button>
+                        <div className="flex items-center gap-1">
+                            {(() => {
+                                const pages: (number | string)[] = [];
+                                if (totalPages <= 5) {
+                                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                                } else {
+                                    pages.push(1);
+                                    if (clampedPage > 3) pages.push('ellipsis-start');
+                                    const start = Math.max(2, clampedPage - 1);
+                                    const end = Math.min(totalPages - 1, clampedPage + 1);
+                                    for (let i = start; i <= end; i++) pages.push(i);
+                                    if (clampedPage < totalPages - 2) pages.push('ellipsis-end');
+                                    pages.push(totalPages);
+                                }
+                                return pages.map((page, idx) => {
+                                    if (typeof page === 'string') {
+                                        return <span key={`ell-${idx}`} className="px-1 text-muted-foreground font-bold text-[10px]">...</span>;
+                                    }
+                                    return (
+                                        <Button
+                                            key={page}
+                                            type="button"
+                                            variant={clampedPage === page ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setCurrentPage(page)}
+                                            className={cn(
+                                                "h-8 w-8 p-0 rounded-lg text-xs font-bold transition-all",
+                                                clampedPage === page
+                                                    ? "bg-primary text-primary-foreground hover:bg-primary/95"
+                                                    : "border-border/50 bg-card/40 hover:bg-accent/30"
+                                            )}
+                                        >
+                                            {page}
+                                        </Button>
+                                    );
+                                });
+                            })()}
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={clampedPage === totalPages}
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            className="h-8 w-8 p-0 rounded-lg border-border/50 bg-card/40 hover:bg-accent/30 disabled:opacity-40"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                            <span className="sr-only">Next page</span>
+                        </Button>
+                    </div>
                 </div>
             )}
         </div>
@@ -610,6 +756,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     // Post-Send Rule Tag Search/Create State
     const [openRuleTagIdx, setOpenRuleTagIdx] = React.useState<number | null>(null);
     const [ruleTagInputValue, setRuleTagInputValue] = React.useState('');
+    const [previewHtml, setPreviewHtml] = React.useState<string | null>(null);
 
     const [state, dispatch] = React.useReducer(wizardReducer, campaign, createInitialState);
     const activeVariant = state.variants.find(v => v.id === activeVariantTab) || state.variants[0];
@@ -656,6 +803,9 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                     channel: state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined,
                     selectedContacts: state.selectedContacts,
                     audienceMode: state.audienceMode,
+                    includeTagIds: state.tagIds,
+                    excludeTagIds: state.excludeTagIds,
+                    includeLogic: state.tagLogic === 'all' ? 'AND' : 'OR',
                 });
                 
                 if (result.success) {
@@ -672,7 +822,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 setIsPreviewing(false);
             }
         }, 800);
-    }, [activeWorkspaceId, state.filters, state.filterLogic, state.contactScope, state.channel, state.audienceMode, state.entityIds, state.selectedContacts]);
+    }, [activeWorkspaceId, state.filters, state.filterLogic, state.contactScope, state.channel, state.audienceMode, state.entityIds, state.selectedContacts, state.tagIds, state.tagLogic, state.excludeTagIds, state.groups]);
 
     React.useEffect(() => {
         // Only run preview on Audience step (step 3)
@@ -781,9 +931,19 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     }, [firestore, activeWorkspaceId]);
     const { data: stages } = useCollection<any>(stagesQuery);
 
-    // ── Step Validation (R6 fix: narrow deps) ─────────────────────────────────
-    const canAdvance = React.useMemo(() => {
-        switch (state.step) {
+    // ── Workspace Styles (for email preview rendering) ───────────────────
+    const stylesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'message_styles'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            orderBy('name', 'asc')
+        );
+    }, [firestore, activeWorkspaceId]);
+    const { data: messageStyles } = useCollection<any>(stylesQuery);
+
+    const isStepValid = React.useCallback((stepNum: number) => {
+        switch (stepNum) {
             case 1: return state.internalName.trim().length >= 3 && !!state.senderProfileId;
             case 2: {
                 if (state.abTestEnabled) {
@@ -793,16 +953,59 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 }
                 return !!state.templateId;
             }
-            case 3: return state.audienceMode === 'all' || 
-                           (state.audienceMode === 'manual' && state.selectedContacts && state.selectedContacts.length > 0) ||
-                           state.tagIds.length > 0 || state.entityIds.length > 0 || 
-                           (state.audienceMode === 'advanced' && state.filters.length > 0) || 
-                           (state.audienceMode === 'saved' && !!state.savedAudienceId);
+            case 3: {
+                if (state.audienceMode === 'all') return true;
+                if (state.audienceMode === 'manual') return !!state.selectedContacts && state.selectedContacts.length > 0;
+                if (state.audienceMode === 'saved') return !!state.savedAudienceId;
+                if (state.audienceMode === 'advanced') return !!state.filters && state.filters.length > 0;
+                return state.tagIds.length > 0 || state.entityIds.length > 0;
+            }
             case 4: return !state.isScheduled || (state.scheduledAt && state.scheduledAt > new Date());
             case 5: return true;
             default: return false;
         }
-    }, [state.step, state.internalName, state.senderProfileId, state.customBody, state.customSubject, state.audienceMode, state.tagIds, state.entityIds, state.selectedContacts, state.isScheduled, state.scheduledAt, state.filters, state.savedAudienceId, state.abTestEnabled, state.variants]);
+    }, [state.internalName, state.senderProfileId, state.customBody, state.customSubject, state.audienceMode, state.tagIds, state.entityIds, state.selectedContacts, state.isScheduled, state.scheduledAt, state.filters, state.savedAudienceId, state.abTestEnabled, state.variants]);
+
+    const canNavigateToStep = React.useCallback((targetStep: number) => {
+        if (targetStep <= state.step) return true;
+        for (let s = 1; s < targetStep; s++) {
+            if (!isStepValid(s)) return false;
+        }
+        return true;
+    }, [state.step, isStepValid]);
+
+    const canAdvance = React.useMemo(() => {
+        return isStepValid(state.step);
+    }, [state.step, isStepValid]);
+
+    const getResolvedHtml = React.useCallback((bodyText: string, blocks: any[], styleIdToUse?: string, isRichBuilder?: boolean) => {
+        const styleDoc = messageStyles?.find((s: any) => s.id === styleIdToUse) || messageStyles?.find((s: any) => s.isDefault);
+        const styleWrapper = styleDoc?.htmlWrapper || '{{content}}';
+        
+        if (isRichBuilder) {
+            return renderBlocksToHtml(blocks || [], MOCK_VARIABLES, {
+                wrapper: styleWrapper || undefined,
+                style: styleDoc || undefined
+            });
+        }
+        
+        let resolved = resolveVariables(bodyText || '', MOCK_VARIABLES);
+        if (styleWrapper && styleWrapper.includes('{{content}}')) {
+            let contentHtml = resolved;
+            const escaped = contentHtml
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+            const withLinks = parseMarkdownLinksToHtml(escaped);
+            contentHtml = withLinks.replace(/\n/g, '<br>\n');
+            
+            resolved = resolveVariables(styleWrapper, MOCK_VARIABLES).replace('{{content}}', contentHtml);
+        } else {
+            resolved = plainTextToHtml(resolved);
+        }
+        return resolved;
+    }, [messageStyles]);
 
     // ── Save Draft (explicit save, not auto-save — R4 fix) ────────────────────
     const handleSaveDraft = async () => {
@@ -832,8 +1035,8 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 contentMode: state.contentMode,
                 templateId: state.templateId || null,
                 templateName: state.templateName || null,
-                customSubject: state.customSubject,
                 customBody: state.customBody,
+                customBlocks: state.customBlocks || [],
                 styleId: state.styleId || null,
                 audienceDefinition,
                 senderProfileId: state.senderProfileId || null,
@@ -891,8 +1094,8 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 contentMode: state.contentMode,
                 templateId: state.templateId || null,
                 templateName: state.templateName || null,
-                customSubject: state.customSubject,
                 customBody: state.customBody,
+                customBlocks: state.customBlocks || [],
                 styleId: state.styleId || null,
                 audienceDefinition,
                 senderProfileId: state.senderProfileId,
@@ -1136,12 +1339,17 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                 templateName: template.name,
                                                 customSubject: template.subject || '',
                                                 customBody: template.body || '',
-                                                customBlocks: template.blocks || []
+                                                customBlocks: template.blocks || [],
+                                                styleId: template.styleId || '',
+                                                contentMode: template.contentMode || 'plain_text'
                                             });
                                         } else {
                                             setField('templateName', template.name);
                                             setField('customSubject', template.subject || '');
                                             setField('customBody', template.body || '');
+                                            setField('customBlocks', template.blocks || []);
+                                            setField('styleId', template.styleId || '');
+                                            setField('contentMode', template.contentMode || 'plain_text');
                                         }
                                     }
                                 }}
@@ -1796,8 +2004,20 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                     </div>
                 );
 
-            case 5:
+            case 5: {
                 const senderProfile = senderProfiles?.find(p => p.id === state.senderProfileId);
+                const resolvedHtml = state.channel === 'email' 
+                    ? getResolvedHtml(state.customBody, state.customBlocks || [], state.styleId, state.contentMode === 'rich_builder')
+                    : '';
+                const variantA = state.variants.find(v => v.id === 'A') || { customBody: '', customBlocks: [], styleId: '', contentMode: 'plain_text', customSubject: '' };
+                const htmlA = state.channel === 'email'
+                    ? getResolvedHtml(variantA.customBody, variantA.customBlocks || [], variantA.styleId || state.styleId, variantA.contentMode === 'rich_builder')
+                    : '';
+                const variantB = state.variants.find(v => v.id === 'B') || { customBody: '', customBlocks: [], styleId: '', contentMode: 'plain_text', customSubject: '' };
+                const htmlB = state.channel === 'email'
+                    ? getResolvedHtml(variantB.customBody, variantB.customBlocks || [], variantB.styleId || state.styleId, variantB.contentMode === 'rich_builder')
+                    : '';
+
                 return (
                     <div className="space-y-8">
                         <div className={cn("grid grid-cols-1 gap-4", state.abTestEnabled ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
@@ -1813,29 +2033,24 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     </div>
                                     <div className="space-y-1">
                                         <p className="text-[8px] font-bold text-muted-foreground uppercase">Sender</p>
-                                        <p className="text-[10px] font-semibold">{senderProfile?.name || 'Not selected'}</p>
+                                        <p className="text-[10px] font-semibold truncate">{senderProfile?.name || 'Not selected'} ({senderProfile?.identifier || state.senderProfileId || 'No ID'})</p>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             <Card className="rounded-2xl border-none shadow-sm bg-muted/20">
                                 <CardHeader className="pb-2">
-                                    <CardDescription className="text-[9px] font-bold uppercase tracking-widest">Audience</CardDescription>
-                                    <CardTitle className="text-sm font-bold">{state.audienceMode.replace('_', ' ').toUpperCase()}</CardTitle>
+                                    <CardDescription className="text-[9px] font-bold uppercase tracking-widest">Audience Summary</CardDescription>
+                                    <CardTitle className="text-sm font-bold">Estimated Recipients</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    <div className="space-y-1">
-                                        <p className="text-[8px] font-bold text-muted-foreground uppercase">Scope</p>
-                                        <p className="text-[10px] font-semibold capitalize">{state.contactScope}</p>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-2xl font-black">{previewResult?.count ?? 0}</span>
+                                        <span className="text-[10px] font-semibold text-muted-foreground">contacts targeted</span>
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-[8px] font-bold text-muted-foreground uppercase">Targeting</p>
-                                        <p className="text-[10px] font-semibold">
-                                            {state.audienceMode === 'all' ? 'All Entities' :
-                                             state.audienceMode === 'advanced' ? `${state.filters.length} rules` :
-                                             state.audienceMode === 'saved' ? state.savedAudienceId :
-                                             `${state.tagIds.length} tags`}
-                                        </p>
+                                        <p className="text-[8px] font-bold text-muted-foreground uppercase">Mode / Scope</p>
+                                        <p className="text-[10px] font-semibold capitalize">{state.audienceMode.replace('_', ' ')} / {state.contactScope}</p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -1889,25 +2104,52 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                 transition={{ duration: 0.4, delay: varId === 'A' ? 0 : 0.1 }}
                                                 className="rounded-2xl border border-violet-200/50 bg-card overflow-hidden flex flex-col h-full shadow-sm"
                                             >
-                                                <div className="p-3 bg-violet-500/5 border-b border-violet-500/10 flex items-center justify-between">
-                                                    <span className="text-[10px] font-bold text-violet-700">Variant {varId}</span>
-                                                    {variant.templateName ? (
-                                                        <Badge variant="secondary" className="text-[8px] font-bold bg-violet-100 text-violet-800">
-                                                            {variant.templateName}
-                                                        </Badge>
-                                                    ) : null}
-                                                </div>
                                                 {state.channel === 'email' ? (
-                                                    <div className="p-3.5 border-b bg-muted/10">
-                                                        <p className="text-[9px] font-bold text-muted-foreground mb-0.5">Subject</p>
-                                                        <p className="text-xs font-bold text-foreground truncate">{variant.customSubject || '(No subject)'}</p>
-                                                    </div>
-                                                ) : null}
-                                                <div className="p-5 flex-1 max-h-[250px] overflow-y-auto bg-card">
-                                                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans text-xs">
-                                                        {variant.customBody || '(No content)'}
-                                                    </div>
-                                                </div>
+                                                    <>
+                                                        <div className="p-3 bg-violet-500/5 border-b border-violet-500/10 flex items-center justify-between">
+                                                            <div>
+                                                                <span className="text-[10px] font-bold text-violet-700">Variant {varId}</span>
+                                                                {variant.templateName && (
+                                                                    <Badge variant="secondary" className="text-[8px] font-bold bg-violet-100 text-violet-800 ml-2">
+                                                                        {variant.templateName}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <Button 
+                                                                type="button" 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                className="rounded-lg h-6 px-2 text-[8px] font-bold text-violet-700 hover:bg-violet-100"
+                                                                onClick={() => setPreviewHtml(varId === 'A' ? htmlA : htmlB)}
+                                                            >
+                                                                <Eye className="h-3 w-3 mr-1" /> Fullscreen
+                                                            </Button>
+                                                        </div>
+                                                        <div className="p-3.5 border-b bg-muted/10">
+                                                            <p className="text-[9px] font-bold text-muted-foreground mb-0.5">Subject</p>
+                                                            <p className="text-xs font-bold text-foreground truncate">{variant.customSubject || '(No subject)'}</p>
+                                                        </div>
+                                                        <div className="p-0 h-[220px] bg-white overflow-hidden">
+                                                            <iframe
+                                                                title={`Variant ${varId} Preview`}
+                                                                srcDoc={varId === 'A' ? htmlA : htmlB}
+                                                                className="w-full h-full border-0 animate-in fade-in"
+                                                                sandbox="allow-popups allow-popups-to-escape-sandbox"
+                                                            />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="p-3 bg-violet-500/5 border-b border-violet-500/10 flex items-center justify-between">
+                                                            <span className="text-[10px] font-bold text-violet-700">Variant {varId}</span>
+                                                        </div>
+                                                        <div className="p-5 flex-1 max-h-[250px] overflow-y-auto bg-card">
+                                                            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans text-xs">
+                                                                {variant.customBody || '(No content)'}
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </motion.div>
                                         );
                                     })}
@@ -1921,16 +2163,38 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 </div>
                                 <div className="rounded-2xl border bg-card overflow-hidden">
                                     {state.channel === 'email' ? (
-                                        <div className="p-4 border-b bg-muted/10">
-                                            <p className="text-[10px] font-bold text-muted-foreground mb-1">Subject</p>
-                                            <p className="text-xs font-bold">{state.customSubject || '(No subject)'}</p>
+                                        <>
+                                            <div className="p-4 border-b bg-muted/10 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-muted-foreground mb-0.5">Subject</p>
+                                                    <p className="text-xs font-bold">{state.customSubject || '(No subject)'}</p>
+                                                </div>
+                                                <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="rounded-xl h-8 text-[10px] font-bold border-border hover:bg-muted/50"
+                                                    onClick={() => setPreviewHtml(resolvedHtml)}
+                                                >
+                                                    <Eye className="h-3.5 w-3.5 mr-1" /> Fullscreen
+                                                </Button>
+                                            </div>
+                                            <div className="p-0 h-[300px] overflow-hidden bg-white">
+                                                <iframe
+                                                    title="Email Preview"
+                                                    srcDoc={resolvedHtml}
+                                                    className="w-full h-full border-0 animate-in fade-in"
+                                                    sandbox="allow-popups allow-popups-to-escape-sandbox"
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="p-6 max-h-[300px] overflow-y-auto">
+                                            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans">
+                                                {state.customBody || '(No content)'}
+                                            </div>
                                         </div>
-                                    ) : null}
-                                    <div className="p-6 max-h-[300px] overflow-y-auto">
-                                        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans">
-                                            {state.customBody || '(No content)'}
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -1948,6 +2212,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                         ) : null}
                     </div>
                 );
+            }
 
             default: return null;
         }
@@ -1968,7 +2233,11 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                             <X className="h-6 w-6" />
                         </Button>
                     </div>
-                    <StepIndicator current={state.step} />
+                    <StepIndicator 
+                        current={state.step} 
+                        onStepClick={(step) => dispatch({ type: 'SET_STEP', step })}
+                        canNavigateToStep={canNavigateToStep}
+                    />
                 </CardHeader>
 
                 <CardContent className="flex-1 overflow-y-auto p-8 pt-6">
@@ -2046,6 +2315,30 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                         setQuickCreateOpen(false);
                     }}
                 />
+            ) : null}
+
+            {previewHtml ? (
+                <AlertDialog open={!!previewHtml} onOpenChange={(open) => { if (!open) setPreviewHtml(null); }}>
+                    <AlertDialogContent className="max-w-5xl w-[90vw] h-[90vh] flex flex-col rounded-[2.5rem] border-none p-6 bg-card">
+                        <AlertDialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
+                            <AlertDialogTitle className="text-base font-bold">Email Preview</AlertDialogTitle>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setPreviewHtml(null)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </AlertDialogHeader>
+                        <div className="flex-1 w-full bg-white rounded-2xl overflow-hidden mt-4 border border-border/50">
+                            <iframe
+                                title="Fullscreen Email Preview"
+                                srcDoc={previewHtml}
+                                className="w-full h-full border-0"
+                                sandbox="allow-popups allow-popups-to-escape-sandbox"
+                            />
+                        </div>
+                        <AlertDialogFooter className="pt-4 border-t border-border/50">
+                            <AlertDialogCancel className="rounded-xl font-bold h-10 px-5" onClick={() => setPreviewHtml(null)}>Close</AlertDialogCancel>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             ) : null}
         </div>
     );
