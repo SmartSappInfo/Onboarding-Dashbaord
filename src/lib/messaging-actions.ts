@@ -510,7 +510,7 @@ export async function previewCampaignAudience(params: {
       locationDistrict: 'locationDistrictId',
     };
 
-    const isManualMode = params.audienceMode === 'manual' || !!params.selectedContacts;
+    const isManualMode = params.audienceMode === 'manual' || (params.audienceMode === undefined && !!params.selectedContacts && params.selectedContacts.length > 0);
     const selectedContacts = params.selectedContacts || [];
 
     interface ContactEntry { id: string; name: string; tags: string[]; data: any; }

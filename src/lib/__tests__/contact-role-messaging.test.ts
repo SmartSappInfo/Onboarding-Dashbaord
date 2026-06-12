@@ -110,6 +110,47 @@ describe('Contact Role Messaging Logic Tests', () => {
       expect(resAdmin.count).toBe(1); // Only Entity 2 matches
       expect(resAdmin.contactCount).toBe(1); // 1 contact (c3)
     });
+
+    it('does not treat empty selectedContacts as manual mode when audienceMode is all', async () => {
+      const mockWorkspaceEntities = [
+        {
+          id: 'we_1',
+          entityId: 'ent_1',
+          workspaceId: 'ws_1',
+          displayName: 'Entity 1',
+          workspaceTags: [],
+          entityContacts: [
+            { id: 'c1', name: 'Primary Cont', email: 'c1@test.com', isPrimary: true, isSignatory: false, typeKey: 'primary' },
+          ]
+        }
+      ];
+
+      const mockCollection = vi.fn((collectionName: string) => {
+        if (collectionName === 'workspace_entities') {
+          return {
+            where: vi.fn().mockReturnThis(),
+            get: vi.fn().mockResolvedValue({
+              docs: mockWorkspaceEntities.map(we => ({
+                id: we.id,
+                data: () => we
+              }))
+            })
+          };
+        }
+        return {};
+      });
+      (adminDb.collection as any) = mockCollection;
+
+      const res = await previewCampaignAudience({
+        workspaceId: 'ws_1',
+        audienceMode: 'all',
+        selectedContacts: [],
+        contactScope: 'all',
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.count).toBe(1);
+    });
   });
 
   describe('resolveRecipientContacts with contactRoles list', () => {
