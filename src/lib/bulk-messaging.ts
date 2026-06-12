@@ -12,6 +12,16 @@ import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageSt
 
 const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
 
+function safeAfter(fn: () => Promise<void>) {
+  try {
+    after(fn);
+  } catch (e) {
+    fn().catch(err => {
+      console.error('[BULK-BG] SafeAfter fallback execution failed:', err.message);
+    });
+  }
+}
+
 interface BulkJobInput {
   templateId: string;
   senderProfileId: string;
@@ -418,7 +428,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
 
     // Fire campaign completion hooks
     if (job.campaignId) {
-      after(async () => {
+      safeAfter(async () => {
         try {
           const { applyCampaignPostSendTags } = await import('./campaign-post-send');
           const { syncCampaignStats } = await import('./campaign-analytics');
@@ -583,33 +593,41 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
       }
     }
 
-    // Send batch — use Resend { data, error } pattern (no try/catch for API errors)
+    // Send batch — use Resend { data, error } pattern with robust request try/catch
     if (batchPayload.length > 0) {
-      const result = await sendBatchEmails(batchPayload);
-      if (result.data) {
-        for (let i = 0; i < result.data.length; i++) {
-          const res = result.data[i];
-          const taskRef = batchPayload[i].taskDocRef;
-          if (res.id) {
-            successIncrement++;
-            await taskRef.update({
-              status: 'sent',
-              providerId: res.id,
-              providerMessageId: res.id,
-              sentAt: new Date().toISOString(),
-            });
-          } else {
-            failedIncrement++;
-            await taskRef.update({ status: 'failed', error: 'Provider rejection in batch' });
+      try {
+        const result = await sendBatchEmails(batchPayload);
+        if (result.data) {
+          for (let i = 0; i < result.data.length; i++) {
+            const res = result.data[i];
+            const taskRef = batchPayload[i].taskDocRef;
+            if (res.id) {
+              successIncrement++;
+              await taskRef.update({
+                status: 'sent',
+                providerId: res.id,
+                providerMessageId: res.id,
+                sentAt: new Date().toISOString(),
+              });
+            } else {
+              failedIncrement++;
+              await taskRef.update({ status: 'failed', error: 'Provider rejection in batch' });
+            }
           }
         }
-      }
-      if (result.error) {
-        console.error('>>> [BULK-BG] Batch send error:', result.error);
-        // Mark remaining un-processed tasks as failed
+        if (result.error) {
+          console.error('>>> [BULK-BG] Batch send error:', result.error);
+          // Mark remaining un-processed tasks as failed
+          for (const payload of batchPayload) {
+            failedIncrement++;
+            await payload.taskDocRef.update({ status: 'failed', error: String(result.error) });
+          }
+        }
+      } catch (e: any) {
+        console.error('>>> [BULK-BG] Batch send API call crashed:', e.message);
+        failedIncrement = batchPayload.length;
         for (const payload of batchPayload) {
-          failedIncrement++;
-          await payload.taskDocRef.update({ status: 'failed', error: String(result.error) });
+          await payload.taskDocRef.update({ status: 'failed', error: e.message });
         }
       }
     }
@@ -680,7 +698,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
 
   // ── Self-schedule next chunk via after() if not finished ─────────────
   if (!isFinished) {
-    after(async () => {
+    safeAfter(async () => {
       try {
         await processJobChunkBackground(jobId);
       } catch (e) {
@@ -689,7 +707,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
     });
   } else if (job.campaignId) {
     // Fire campaign completion hooks on finish
-    after(async () => {
+    safeAfter(async () => {
       try {
         const { applyCampaignPostSendTags } = await import('./campaign-post-send');
         const { syncCampaignStats } = await import('./campaign-analytics');

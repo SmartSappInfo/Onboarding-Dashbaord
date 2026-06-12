@@ -193,16 +193,16 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full hover:bg-slate-100">
+                    <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full hover:bg-accent">
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>
-                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">{campaign.internalName}</h2>
+                        <h2 className="text-2xl font-bold tracking-tight text-foreground">{campaign.internalName}</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-100">
+                            <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-blue-500/10 text-blue-500 border-blue-500/20">
                                 {campaign.channel} Campaign
                             </Badge>
-                            <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
                                 <Clock className="h-3 w-3" /> Created {new Date(campaign.createdAt).toLocaleDateString()}
                             </span>
                         </div>
@@ -216,13 +216,13 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                         className={cn(
                             "rounded-xl font-bold text-xs h-9 gap-1.5 shadow-sm transition-all duration-300",
                             freshCampaign.status === 'testing' 
-                                ? "border-violet-200 bg-violet-50/70 text-violet-700 backdrop-blur-sm hover:bg-violet-100/80 shadow-violet-100/50" 
-                                : "border-slate-200 hover:bg-slate-50"
+                                ? "border-violet-500/20 bg-violet-500/10 text-violet-500 backdrop-blur-sm hover:bg-violet-500/25 shadow-violet-500/10" 
+                                : "border-border hover:bg-accent"
                         )}
                     >
                         <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} /> Refresh
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleClone} className="rounded-xl font-bold text-xs h-9 gap-1.5 border-slate-200 hover:bg-slate-50 shadow-sm">
+                    <Button variant="outline" size="sm" onClick={handleClone} className="rounded-xl font-bold text-xs h-9 gap-1.5 border-border hover:bg-accent shadow-sm">
                         <Copy className="h-3.5 w-3.5" /> Duplicate
                     </Button>
                 </div>
@@ -331,17 +331,17 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
 
             {/* A/B Testing Banner for Winner Selected phase */}
             {(freshCampaign.abTestEnabled && freshCampaign.abTestConfig?.winningVariantId) ? (
-                <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between gap-4 shadow-sm">
+                <div className="p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30 text-emerald-800 dark:text-emerald-400 flex items-center justify-between gap-4 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <Zap className="h-6 w-6 text-emerald-600" />
+                        <Zap className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                         <div>
-                            <h3 className="text-base font-bold">Winner Selected: Variant {freshCampaign.abTestConfig.winningVariantId}</h3>
-                            <p className="text-xs text-emerald-700 mt-0.5">
+                            <h3 className="text-base font-bold text-emerald-900 dark:text-emerald-100">Winner Selected: Variant {freshCampaign.abTestConfig.winningVariantId}</h3>
+                            <p className="text-xs text-emerald-700 dark:text-emerald-300/80 mt-0.5">
                                 Variant {freshCampaign.abTestConfig.winningVariantId} performed best based on {freshCampaign.abTestConfig.winnerMetric?.replace('_', ' ')}. Remaining audience received the winning template.
                             </p>
                         </div>
                     </div>
-                    <Badge className="bg-emerald-100 text-emerald-800 border-none px-3 py-1 font-bold text-xs">
+                    <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 border-none px-3 py-1 font-bold text-xs">
                         Completed
                     </Badge>
                 </div>
@@ -350,25 +350,21 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             {/* KPI Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpis.map(kpi => (
-                    <Card key={kpi.label} className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all duration-300">
-                        <CardContent className="p-6">
-                            <div className="flex items-start justify-between">
-                                <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", kpi.bg)}>
-                                    <kpi.icon className={cn("h-5 w-5", kpi.color)} />
-                                </div>
-                                {kpi.rate != null ? (
-                                    <div className="flex flex-col items-end">
-                                        <Badge variant="secondary" className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border-emerald-100">
-                                            {kpi.rate}% Rate
-                                        </Badge>
-                                    </div>
-                                ) : null}
+                    <Card key={kpi.label} className="h-20 rounded-2xl border-none ring-1 ring-border/50 shadow-sm bg-card/60 backdrop-blur-md hover:ring-primary/20 hover:shadow-md transition-all duration-200 flex items-center justify-between p-4 relative overflow-hidden group">
+                        <div className="flex items-center gap-3">
+                            <div className={cn("p-2.5 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shrink-0", kpi.bg)}>
+                                <kpi.icon className={cn("h-5 w-5", kpi.color)} />
                             </div>
-                            <div className="mt-4">
-                                <h4 className="text-3xl font-extrabold tabular-nums tracking-tight text-slate-900">{kpi.value.toLocaleString()}</h4>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{kpi.label}</p>
+                            <div className="flex flex-col">
+                                <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground">{kpi.label}</p>
+                                <p className="text-2xl font-extrabold text-foreground tracking-tight mt-0.5">{kpi.value.toLocaleString()}</p>
                             </div>
-                        </CardContent>
+                        </div>
+                        {kpi.rate != null ? (
+                            <Badge variant="secondary" className="text-[9px] font-bold bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-2 py-0.5 rounded-lg shrink-0">
+                                {kpi.rate}% Rate
+                            </Badge>
+                        ) : null}
                     </Card>
                 ))}
             </div>
@@ -390,59 +386,65 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                             <Card 
                                 key={varId} 
                                 className={cn(
-                                    "border-none shadow-sm overflow-hidden bg-white relative",
+                                    "border-none shadow-sm overflow-hidden bg-card/60 backdrop-blur-md rounded-2xl relative",
                                     isWinner && "ring-2 ring-emerald-500 bg-emerald-500/[0.01]"
                                 )}
                             >
                                 {isWinner ? (
-                                    <div className="absolute top-0 right-0 bg-emerald-500 text-white font-bold text-[9px] uppercase px-3 py-1 rounded-bl-xl shadow-sm tracking-wider flex items-center gap-1">
+                                    <div className="absolute top-0 right-0 bg-emerald-500 text-white font-bold text-[9px] uppercase px-3 py-1 rounded-bl-xl shadow-sm tracking-wider flex items-center gap-1 z-10">
                                         <Zap className="h-3 w-3" /> Declared Winner
                                     </div>
                                 ) : null}
-                                <CardHeader className="p-6 pb-2 border-b border-slate-50">
-                                    <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
+                                <CardHeader className="p-4 pb-2 border-b border-border/50 flex flex-row items-center justify-between space-y-0">
+                                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
                                         <span className={cn(
-                                            "w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs",
-                                            varId === 'A' ? "bg-blue-100 text-blue-700" : "bg-violet-100 text-violet-700"
+                                            "w-5 h-5 rounded-md flex items-center justify-center font-bold text-[10px]",
+                                            varId === 'A' ? "bg-blue-500/10 text-blue-500" : "bg-violet-500/10 text-violet-500"
                                         )}>
                                             {varId}
                                         </span>
                                         Variant {varId}
                                     </CardTitle>
-                                    <CardDescription className="text-[10px] font-semibold text-slate-400 mt-1 uppercase tracking-wider">
-                                        {variant?.templateName ? `Template: ${variant.templateName}` : 'Custom content overrides'}
-                                    </CardDescription>
+                                    {variant?.templateName ? (
+                                        <Badge variant="secondary" className="text-[8px] font-bold bg-violet-500/10 text-violet-500 border-violet-500/20 px-2 py-0.5 rounded-md text-right">
+                                            {variant.templateName}
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="text-[8px] font-semibold text-muted-foreground px-2 py-0.5 rounded-md text-right">
+                                            Custom overrides
+                                        </Badge>
+                                    )}
                                 </CardHeader>
                                 <CardContent className="p-6 space-y-6">
                                     {freshCampaign.channel === 'email' ? (
                                         <div className="space-y-1">
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Subject Line</p>
-                                            <p className="text-xs font-semibold text-slate-700 truncate">{variant?.customSubject || '(No subject override)'}</p>
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Subject Line</p>
+                                            <p className="text-xs font-semibold text-muted-foreground truncate">{variant?.customSubject || '(No subject override)'}</p>
                                         </div>
                                     ) : null}
 
                                     <div className="grid grid-cols-3 gap-2 text-center">
-                                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Targeted</p>
-                                            <p className="text-sm font-extrabold text-slate-800 mt-0.5">{varStats.totalTargeted}</p>
+                                        <div className="bg-muted/30 border border-border/50 p-2.5 rounded-xl">
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Targeted</p>
+                                            <p className="text-sm font-extrabold text-foreground mt-0.5">{varStats.totalTargeted}</p>
                                         </div>
-                                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Sent</p>
-                                            <p className="text-sm font-extrabold text-slate-800 mt-0.5">{varStats.totalSent}</p>
+                                        <div className="bg-muted/30 border border-border/50 p-2.5 rounded-xl">
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Sent</p>
+                                            <p className="text-sm font-extrabold text-foreground mt-0.5">{varStats.totalSent}</p>
                                         </div>
-                                        <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Unsubscribes</p>
-                                            <p className="text-sm font-extrabold text-slate-800 mt-0.5">{varStats.totalUnsubscribed || 0}</p>
+                                        <div className="bg-muted/30 border border-border/50 p-2.5 rounded-xl">
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Unsubscribes</p>
+                                            <p className="text-sm font-extrabold text-foreground mt-0.5">{varStats.totalUnsubscribed || 0}</p>
                                         </div>
                                     </div>
 
                                     <div className="space-y-4">
                                         <div className="space-y-1.5">
                                             <div className="flex items-center justify-between text-xs">
-                                                <span className="font-bold text-slate-500">Open Rate</span>
-                                                <span className="font-extrabold text-slate-800">{openRate.toFixed(1)}% <span className="text-[10px] text-slate-400 font-semibold">({varStats.totalOpened})</span></span>
+                                                <span className="font-bold text-muted-foreground">Open Rate</span>
+                                                <span className="font-extrabold text-foreground">{openRate.toFixed(1)}% <span className="text-[10px] text-muted-foreground font-semibold">({varStats.totalOpened})</span></span>
                                             </div>
-                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-2 bg-muted rounded-full overflow-hidden">
                                                 <div 
                                                     className="h-full bg-violet-500 rounded-full transition-all duration-500" 
                                                     style={{ width: `${Math.min(100, openRate)}%` }}
@@ -452,10 +454,10 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
 
                                         <div className="space-y-1.5">
                                             <div className="flex items-center justify-between text-xs">
-                                                <span className="font-bold text-slate-500">Click Rate</span>
-                                                <span className="font-extrabold text-slate-800">{clickRate.toFixed(1)}% <span className="text-[10px] text-slate-400 font-semibold">({varStats.totalClicked})</span></span>
+                                                <span className="font-bold text-muted-foreground">Click Rate</span>
+                                                <span className="font-extrabold text-foreground">{clickRate.toFixed(1)}% <span className="text-[10px] text-muted-foreground font-semibold">({varStats.totalClicked})</span></span>
                                             </div>
-                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-2 bg-muted rounded-full overflow-hidden">
                                                 <div 
                                                     className="h-full bg-amber-500 rounded-full transition-all duration-500" 
                                                     style={{ width: `${Math.min(100, clickRate)}%` }}
@@ -465,10 +467,10 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
 
                                         <div className="space-y-1.5">
                                             <div className="flex items-center justify-between text-xs">
-                                                <span className="font-bold text-slate-500">Unsubscribe Rate</span>
-                                                <span className="font-extrabold text-slate-800">{unsubscribeRate.toFixed(1)}% <span className="text-[10px] text-slate-400 font-semibold">({varStats.totalUnsubscribed || 0})</span></span>
+                                                <span className="font-bold text-muted-foreground">Unsubscribe Rate</span>
+                                                <span className="font-extrabold text-foreground">{unsubscribeRate.toFixed(1)}% <span className="text-[10px] text-muted-foreground font-semibold">({varStats.totalUnsubscribed || 0})</span></span>
                                             </div>
-                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-2 bg-muted rounded-full overflow-hidden">
                                                 <div 
                                                     className="h-full bg-rose-500 rounded-full transition-all duration-500" 
                                                     style={{ width: `${Math.min(100, unsubscribeRate)}%` }}
@@ -486,18 +488,13 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             {/* Main Analytics Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Engagement Timeline */}
-                <Card className="lg:col-span-2 border-none shadow-sm bg-white rounded-3xl overflow-hidden">
-                    <CardHeader className="p-8">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                    <TrendingUp className="h-5 w-5 text-indigo-500" /> Engagement Timeline
-                                </CardTitle>
-                                <CardDescription className="text-xs mt-1">Real-time interaction trends over the last 24 hours</CardDescription>
-                            </div>
-                        </div>
+                <Card className="lg:col-span-2 border-none shadow-sm bg-card/60 backdrop-blur-md rounded-2xl overflow-hidden">
+                    <CardHeader className="p-4 border-b border-border/50 flex flex-row items-center justify-between space-y-0">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                            <TrendingUp className="h-4 w-4 text-indigo-500" /> Engagement Timeline
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent className="px-4 pb-8">
+                    <CardContent className="p-4">
                         <div className="h-[280px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={timeline}>
@@ -511,19 +508,19 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                                             <stop offset="95%" stopColor={CHART_COLORS.opened} stopOpacity={0}/>
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" strokeOpacity={0.4} />
                                     <XAxis 
                                         dataKey="timestamp" 
                                         tickFormatter={formatTimestamp}
                                         axisLine={false}
                                         tickLine={false}
-                                        tick={{fontSize: 10, fontWeight: 600, fill: '#94a3b8'}}
+                                        tick={{fontSize: 10, fontWeight: 600, fill: 'var(--muted-foreground)'}}
                                         minTickGap={30}
                                     />
                                     <YAxis 
                                         axisLine={false}
                                         tickLine={false}
-                                        tick={{fontSize: 10, fontWeight: 600, fill: '#94a3b8'}}
+                                        tick={{fontSize: 10, fontWeight: 600, fill: 'var(--muted-foreground)'}}
                                     />
                                     <Tooltip 
                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
@@ -552,14 +549,13 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                 </Card>
 
                 {/* Cohort Breakdown */}
-                <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
-                    <CardHeader className="p-8">
-                        <CardTitle className="text-lg font-bold flex items-center gap-2">
-                            <Users className="h-5 w-5 text-emerald-500" /> Cohort Status
+                <Card className="border-none shadow-sm bg-card/60 backdrop-blur-md rounded-2xl overflow-hidden">
+                    <CardHeader className="p-4 border-b border-border/50 flex flex-row items-center justify-between space-y-0">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                            <Users className="h-4 w-4 text-emerald-500" /> Cohort Status
                         </CardTitle>
-                        <CardDescription className="text-xs mt-1">Recipient distribution by engagement</CardDescription>
                     </CardHeader>
-                    <CardContent className="px-4 pb-8 flex flex-col items-center">
+                    <CardContent className="p-4 flex flex-col items-center">
                         <div className="h-[200px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -582,12 +578,12 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                         </div>
                         <div className="w-full space-y-3 mt-6">
                             {cohortData.map((item, i) => (
-                                <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                                <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-muted/30 border border-border/50">
                                     <div className="flex items-center gap-3">
                                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                                        <span className="text-xs font-bold text-slate-700">{item.name}</span>
+                                        <span className="text-xs font-bold text-muted-foreground">{item.name}</span>
                                     </div>
-                                    <span className="text-xs font-extrabold text-slate-900">{item.value.toLocaleString()}</span>
+                                    <span className="text-xs font-extrabold text-foreground">{item.value.toLocaleString()}</span>
                                 </div>
                             ))}
                         </div>
@@ -599,49 +595,46 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Recovery Actions */}
                 {(stats?.totalFailed || 0) > 0 ? (
-                    <Card className="border-none shadow-sm bg-red-50/50 rounded-3xl overflow-hidden border border-red-100">
-                        <CardContent className="p-8 flex items-center justify-between">
-                            <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center">
-                                    <RefreshCw className="h-6 w-6 text-red-600" />
+                    <Card className="border-none shadow-sm bg-red-50/50 dark:bg-red-950/20 rounded-2xl overflow-hidden border border-red-100 dark:border-red-900/30">
+                        <CardContent className="p-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-red-500/10 text-red-500 rounded-xl">
+                                    <RefreshCw className="h-5 w-5 animate-in spin-in duration-500" />
                                 </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-red-900">{stats.totalFailed} Failed Deliveries</h3>
-                                    <p className="text-xs text-red-700/70 mt-1 font-medium">Automatic retry available for temporary provider errors.</p>
-                                    <Button 
-                                        onClick={handleResend} 
-                                        disabled={isResending} 
-                                        className="mt-4 rounded-xl font-bold text-xs h-10 gap-2 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 active:scale-95 transition-all"
-                                    >
-                                        {isResending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                        Resend to Failed Recipients
-                                    </Button>
-                                </div>
+                                <h4 className="text-sm font-bold text-red-900 dark:text-red-200">{stats?.totalFailed || 0} Failed Deliveries</h4>
                             </div>
+                            <Button
+                                onClick={handleResend}
+                                disabled={isResending}
+                                className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs h-9 px-4 active:scale-95 transition-all shadow-md shrink-0"
+                            >
+                                {isResending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                                Resend to Failed Recipients
+                            </Button>
                         </CardContent>
                     </Card>
                 ) : null}
 
                 {/* Automation Summary */}
                 {(campaign.automationHooks && campaign.automationHooks.length > 0) ? (
-                    <Card className="border-none shadow-sm bg-amber-50/50 rounded-3xl overflow-hidden border border-amber-100">
-                        <CardContent className="p-8">
-                            <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center">
-                                    <Zap className="h-6 w-6 text-amber-600" />
+                    <Card className="border-none shadow-sm bg-amber-50/50 dark:bg-amber-950/20 rounded-2xl overflow-hidden border border-amber-100 dark:border-amber-900/30">
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
+                                    <Zap className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-bold text-amber-900">Automation Loops</h3>
-                                    <p className="text-xs text-amber-700/70 mt-1 font-medium">{campaign.automationHooks.length} active triggers monitoring this campaign.</p>
-                                    <div className="mt-4 space-y-2">
-                                        {campaign.automationHooks.slice(0, 2).map((hook, i) => (
-                                            <div key={i} className="flex items-center justify-between text-[10px] font-bold bg-white/60 p-2 rounded-lg">
-                                                <span className="text-amber-800">{hook.automationName}</span>
-                                                <Badge className="bg-amber-100 text-amber-700 border-none text-[8px]">{hook.event.replace('campaign_', '')}</Badge>
-                                            </div>
-                                        ))}
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-sm font-bold text-amber-900 dark:text-amber-400">Automation Loops</h3>
+                                </div>
+                                <span className="text-[10px] text-amber-700/70 dark:text-amber-300/60 font-semibold">{campaign.automationHooks.length} active triggers</span>
+                            </div>
+                            <div className="mt-3 space-y-1.5">
+                                {campaign.automationHooks.slice(0, 2).map((hook, i) => (
+                                    <div key={i} className="flex items-center justify-between text-[9px] font-bold bg-white/60 dark:bg-background/40 p-2 rounded-lg">
+                                        <span className="text-amber-800 dark:text-amber-300 truncate mr-2">{hook.automationName}</span>
+                                        <Badge className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-none text-[8px] shrink-0">{hook.event.replace('campaign_', '')}</Badge>
                                     </div>
-                                </div>
+                                ))}
                             </div>
                         </CardContent>
                     </Card>
@@ -649,16 +642,13 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             </div>
 
             {/* Recipient Table */}
-            <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden">
-                <CardHeader className="p-8 border-b border-slate-50">
+            <Card className="border-none shadow-sm bg-card/60 backdrop-blur-md rounded-2xl overflow-hidden">
+                <CardHeader className="p-4 border-b border-border/50">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                <Users className="h-5 w-5 text-slate-500" /> Recipient Logs
-                            </CardTitle>
-                            <CardDescription className="text-xs mt-1">Detailed delivery and engagement history for individual contacts</CardDescription>
-                        </div>
-                        <Badge variant="outline" className="rounded-lg font-bold text-slate-500 border-slate-200">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                            <Users className="h-4 w-4 text-muted-foreground" /> Recipient Logs
+                        </CardTitle>
+                        <Badge variant="outline" className="rounded-lg font-bold text-muted-foreground border-border text-[10px] px-2 py-0.5">
                             Showing last {recipients.length}
                         </Badge>
                     </div>
@@ -666,44 +656,44 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full text-xs">
-                            <thead className="bg-slate-50/50 border-b border-slate-100">
+                            <thead className="bg-muted/30 border-b border-border/40">
                                 <tr>
-                                    <th className="text-left p-4 font-bold text-slate-500 uppercase tracking-wider">Recipient</th>
-                                    <th className="text-left p-4 font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                    <th className="text-left p-4 font-bold text-slate-500 uppercase tracking-wider">Activity</th>
-                                    <th className="text-left p-4 font-bold text-slate-500 uppercase tracking-wider">Outcome</th>
+                                    <th className="text-left p-4 font-bold text-muted-foreground uppercase tracking-wider">Recipient</th>
+                                    <th className="text-left p-4 font-bold text-muted-foreground uppercase tracking-wider">Status</th>
+                                    <th className="text-left p-4 font-bold text-muted-foreground uppercase tracking-wider">Activity</th>
+                                    <th className="text-left p-4 font-bold text-muted-foreground uppercase tracking-wider">Outcome</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-50">
+                            <tbody className="divide-y divide-border/40">
                                 {recipients.map((r, i) => (
-                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                                    <tr key={i} className="hover:bg-accent/40 transition-colors group">
                                         <td className="p-4">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{r.displayName}</span>
-                                                <span className="text-[10px] text-slate-400 font-medium">{r.recipient}</span>
+                                                <span className="font-bold text-foreground group-hover:text-blue-500 transition-colors">{r.displayName}</span>
+                                                <span className="text-[10px] text-muted-foreground font-medium">{r.recipient}</span>
                                             </div>
                                         </td>
                                         <td className="p-4">
                                             <Badge className={cn("text-[10px] font-bold border-none px-2 py-0.5 rounded-md",
-                                                r.status === 'opened' || r.status === 'clicked' ? 'bg-indigo-100 text-indigo-700' :
-                                                r.status === 'sent' || r.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
-                                                r.status === 'failed' ? 'bg-red-100 text-red-700' :
-                                                'bg-slate-100 text-slate-600'
+                                                r.status === 'opened' || r.status === 'clicked' ? 'bg-indigo-500/10 text-indigo-500' :
+                                                r.status === 'sent' || r.status === 'delivered' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                r.status === 'failed' ? 'bg-red-500/10 text-red-500' :
+                                                'bg-muted text-muted-foreground'
                                             )}>
                                                 {r.status}
                                             </Badge>
                                         </td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
-                                                <span className="font-bold text-slate-700">{r.sentAt ? new Date(r.sentAt).toLocaleDateString() : '—'}</span>
-                                                <span className="text-[10px] text-slate-400 font-medium">{r.sentAt ? new Date(r.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                                                <span className="font-bold text-muted-foreground">{r.sentAt ? new Date(r.sentAt).toLocaleDateString() : '—'}</span>
+                                                <span className="text-[10px] text-muted-foreground font-medium">{r.sentAt ? new Date(r.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                                             </div>
                                         </td>
                                         <td className="p-4">
                                             {r.error ? (
                                                 <span className="text-red-500 font-bold max-w-[200px] truncate block">{r.error}</span>
                                             ) : (
-                                                <span className="text-slate-400 font-medium italic">No issues reported</span>
+                                                <span className="text-muted-foreground font-medium italic">No issues reported</span>
                                             )}
                                         </td>
                                     </tr>

@@ -1,10 +1,11 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import { createBulkMessageJob, processBulkJobChunk } from './bulk-messaging';
+import { createBulkMessageJob, processBulkJobChunk, processJobChunkBackground } from './bulk-messaging';
 import { previewCampaignAudience, resolveRecipientContacts } from './messaging-actions';
 import { syncCampaignStats } from './campaign-analytics';
 import type { MessageCampaign } from './types';
+import { after } from 'next/server';
 
 /**
  * Dispatches a campaign: resolves audience, creates job, triggers processing.
@@ -123,6 +124,10 @@ export async function dispatchCampaign(campaignId: string): Promise<{
       }
     }
 
+    if (recipients.length === 0) {
+      return { success: false, error: 'No valid recipient contacts resolved' };
+    }
+
     if (campaign.abTestEnabled && campaign.variants?.length) {
       const testPct = campaign.abTestConfig?.testSizePercentage || 100;
       
@@ -156,9 +161,14 @@ export async function dispatchCampaign(campaignId: string): Promise<{
         });
         
         try {
-          await processBulkJobChunk(jobResult.jobId);
+          after(async () => {
+            await processJobChunkBackground(jobResult.jobId);
+          });
         } catch (e) {
-          console.warn('[DISPATCH] First chunk processing failed, client will retry:', (e as Error).message);
+          console.warn('[DISPATCH] next/server after() called outside request context, running asynchronously:', (e as Error).message);
+          processJobChunkBackground(jobResult.jobId).catch(err => {
+            console.error('[DISPATCH] Background processing error:', err.message);
+          });
         }
         
         return { success: true, jobId: jobResult.jobId };
@@ -217,9 +227,14 @@ export async function dispatchCampaign(campaignId: string): Promise<{
       }
 
       try {
-        await processBulkJobChunk(jobResult.jobId);
+        after(async () => {
+          await processJobChunkBackground(jobResult.jobId);
+        });
       } catch (e) {
-        console.warn('[DISPATCH] First chunk processing failed, client will retry:', (e as Error).message);
+        console.warn('[DISPATCH] next/server after() called outside request context, running asynchronously:', (e as Error).message);
+        processJobChunkBackground(jobResult.jobId).catch(err => {
+          console.error('[DISPATCH] Background processing error:', err.message);
+        });
       }
 
       return { success: true, jobId: jobResult.jobId };
@@ -253,12 +268,16 @@ export async function dispatchCampaign(campaignId: string): Promise<{
       organizationId: campaign.organizationId,
     });
 
-    // 9. Trigger first chunk processing (rest will be polled by client)
+    // 9. Trigger async background chunk processing (fire-and-forget via after())
     try {
-      await processBulkJobChunk(jobResult.jobId);
+      after(async () => {
+        await processJobChunkBackground(jobResult.jobId);
+      });
     } catch (e) {
-      // Non-fatal — client can retry via polling
-      console.warn('[DISPATCH] First chunk processing failed, client will retry:', (e as Error).message);
+      console.warn('[DISPATCH] next/server after() called outside request context, running asynchronously:', (e as Error).message);
+      processJobChunkBackground(jobResult.jobId).catch(err => {
+        console.error('[DISPATCH] Background processing error:', err.message);
+      });
     }
 
     return { success: true, jobId: jobResult.jobId };
@@ -328,8 +347,17 @@ export async function resendToFailed(campaignId: string): Promise<{
       workspaceId: campaign.workspaceId,
     });
 
-    // Process first chunk
-    await processBulkJobChunk(jobResult.jobId);
+    // Process first chunk in background
+    try {
+      after(async () => {
+        await processJobChunkBackground(jobResult.jobId);
+      });
+    } catch (e) {
+      console.warn('[RESEND] next/server after() called outside request context, running asynchronously:', (e as Error).message);
+      processJobChunkBackground(jobResult.jobId).catch(err => {
+        console.error('[RESEND] Background processing error:', err.message);
+      });
+    }
 
     return { success: true, jobId: jobResult.jobId };
   } catch (error: any) {

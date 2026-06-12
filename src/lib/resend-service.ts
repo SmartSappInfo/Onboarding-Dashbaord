@@ -1,5 +1,7 @@
-
 'use server';
+
+import fs from 'fs';
+import path from 'path';
 
 /**
  * @fileOverview Server-side service for interacting with the Resend Email API.
@@ -7,8 +9,37 @@
  */
 
 const BASE_URL = 'https://api.resend.com';
-const API_KEY = process.env.RESEND_API_KEY;
-const DOMAIN = process.env.RESEND_DOMAIN || 'enroll.smartsapp.com';
+
+function loadEnvFallback(key: string): string | undefined {
+  try {
+    if (process.env[key]) return process.env[key];
+
+    const files = ['.env.local', '.env'];
+    for (const file of files) {
+      const filePath = path.join(process.cwd(), file);
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const lines = content.split('\n');
+        for (const line of lines) {
+          const match = line.match(new RegExp(`^\\s*${key}\\s*=\\s*(.*)\\s*$`));
+          if (match) {
+            let val = match[1].trim();
+            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+              val = val.slice(1, -1);
+            }
+            return val;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn(`[ENV-FALLBACK] Failed to read environment files for ${key}:`, (e as Error).message);
+  }
+  return undefined;
+}
+
+const getApiKey = () => loadEnvFallback('RESEND_API_KEY');
+const getDomain = () => loadEnvFallback('RESEND_DOMAIN') || 'smartsapp.com';
 
 export interface EmailAttachment {
   content: string; // Base64 string
@@ -20,12 +51,13 @@ export interface EmailAttachment {
  * Core request handler for Resend API using native fetch.
  */
 async function resendRequest(endpoint: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', body?: any) {
-  if (!API_KEY) throw new Error("RESEND_API_KEY is not configured.");
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
 
   const options: RequestInit = {
     method,
     headers: {
-      'Authorization': `Bearer ${API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
   };
@@ -35,10 +67,29 @@ async function resendRequest(endpoint: string, method: 'GET' | 'POST' | 'PATCH' 
   }
 
   const response = await fetch(`${BASE_URL}${endpoint}`, options);
-  const data = await response.json();
+  
+  let data: any = null;
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch (e) {
+      console.warn('[RESEND] Failed to parse JSON response:', (e as Error).message);
+    }
+  } else {
+    try {
+      const text = await response.text();
+      if (text) {
+        data = { message: text };
+      }
+    } catch (e) {
+      // Ignore text read error
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(data.message || `Resend API Error: ${response.statusText}`);
+    const errorMsg = data?.message || `Resend API Error: ${response.statusText} (${response.status})`;
+    throw new Error(errorMsg);
   }
 
   return data;
@@ -61,8 +112,9 @@ export async function sendEmail(params: {
   scheduledAt?: string;
   tags?: ResendTag[];
 }) {
+  const domain = getDomain();
   const payload = {
-    from: params.from || `SmartSapp <notifications@${DOMAIN}>`,
+    from: params.from || `SmartSapp <notifications@${domain}>`,
     to: params.to,
     subject: params.subject,
     html: params.html,
@@ -83,8 +135,9 @@ export async function sendBatchEmails(emails: {
     scheduledAt?: string;
     tags?: ResendTag[];
 }[]) {
+  const domain = getDomain();
   const payload = emails.map(email => ({
-    from: email.from || `SmartSapp <notifications@${DOMAIN}>`,
+    from: email.from || `SmartSapp <notifications@${domain}>`,
     to: email.to,
     subject: email.subject,
     html: email.html,
@@ -93,7 +146,15 @@ export async function sendBatchEmails(emails: {
     tags: email.tags,
   }));
 
-  return resendRequest('/emails/batch', 'POST', payload);
+  // Chunk payload into groups of 150 (Resend API limit)
+  const results: any[] = [];
+  for (let i = 0; i < payload.length; i += 150) {
+    const chunk = payload.slice(i, i + 150);
+    const result = await resendRequest('/emails/batch', 'POST', chunk);
+    results.push(result);
+  }
+
+  return results.length === 1 ? results[0] : results;
 }
 
 /**

@@ -153,7 +153,7 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
     templateId = ephemeralRef.id;
   }
 
-  const { createBulkMessageJob, processBulkJobChunk } = await import('./bulk-messaging');
+  const { createBulkMessageJob, processJobChunkBackground } = await import('./bulk-messaging');
   const jobResult = await createBulkMessageJob({
     templateId,
     senderProfileId: campaign.senderProfileId || '',
@@ -169,8 +169,16 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
   });
 
   try {
-    await processBulkJobChunk(jobResult.jobId);
-  } catch (e) {}
+    const { after } = await import('next/server');
+    after(async () => {
+      await processJobChunkBackground(jobResult.jobId);
+    });
+  } catch (e) {
+    console.warn('[AB-EVAL] next/server after() called outside request context, running asynchronously:', (e as Error).message);
+    processJobChunkBackground(jobResult.jobId).catch(err => {
+      console.error('[AB-EVAL] Background processing error:', err.message);
+    });
+  }
 }
 
 export async function selectCampaignWinnerManual(campaignId: string, winningVariantId: 'A' | 'B'): Promise<void> {
