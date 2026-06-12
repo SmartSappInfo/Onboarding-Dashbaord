@@ -27,6 +27,7 @@ import {
 } from '@/lib/entity-contact-helpers';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import { getSystemContactTypes } from '@/lib/contact-type-defaults';
+import { updateEntityAction } from '@/lib/entity-actions';
 import type { Entity, EntityContact, ContactTypeEntry } from '@/lib/types';
 import {
   DropdownMenu,
@@ -104,10 +105,16 @@ export default function EntityContactDirectory({
             // Enforce constraints (single primary, single signatory)
             const finalContacts = enforceContactConstraints(updatedContacts);
             
-            await updateDoc(doc(firestore, 'entities', entityId), {
-                entityContacts: finalContacts,
-                updatedAt: new Date().toISOString()
-            });
+            const result = await updateEntityAction(
+                entityId,
+                { entityContacts: finalContacts },
+                user?.uid || 'anonymous',
+                workspaceId || '',
+                organizationId || entityData.organizationId || 'default'
+            );
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to save contact');
+            }
             
             toast({ title: isAdding ? 'Contact Created' : 'Contact Updated' });
             
@@ -149,10 +156,16 @@ export default function EntityContactDirectory({
             const updatedContacts = contacts.filter(c => c.id !== contactToDelete);
             const finalContacts = enforceContactConstraints(updatedContacts);
             
-            await updateDoc(doc(firestore, 'entities', entityId), {
-                entityContacts: finalContacts,
-                updatedAt: new Date().toISOString()
-            });
+            const result = await updateEntityAction(
+                entityId,
+                { entityContacts: finalContacts },
+                user?.uid || 'anonymous',
+                workspaceId || '',
+                organizationId || entityData.organizationId || 'default'
+            );
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to delete contact');
+            }
             
             toast({ title: 'Contact Removed' });
             

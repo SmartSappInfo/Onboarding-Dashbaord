@@ -38,7 +38,9 @@ import {
     Play,
     ArrowRightLeft,
     Globe,
-    Target
+    Target,
+    Archive,
+    ArchiveRestore
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,8 +50,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, differenceInSeconds, parseISO } from 'date-fns';
-import { deleteAutomationAction, toggleAutomationStatusAction, pulseAutomationEngineAction, saveAutomationAction } from '@/lib/automation-actions';
+import { deleteAutomationAction, toggleAutomationStatusAction, pulseAutomationEngineAction, saveAutomationAction, archiveAutomationAction, restoreAutomationAction, deleteAllArchivedAutomationsAction } from '@/lib/automation-actions';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -216,6 +219,7 @@ export default function AutomationsClient() {
     const router = useRouter();
     const { user } = useUser();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const { activeWorkspaceId } = useWorkspace();
     const { singular, plural } = useTerminology();
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -325,7 +329,7 @@ export default function AutomationsClient() {
 
     const handleBatchDelete = async () => {
         if (selectedIds.size === 0 || !user?.uid) return;
-        if (!confirm(`Are you sure you want to permanently delete these ${selectedIds.size} automations?`)) return;
+        if (!(await confirm({ title: 'Delete automations?', description: `These ${selectedIds.size} automations will be permanently deleted.`, confirmText: 'Delete', variant: 'destructive' }))) return;
         setIsBatchProcessing(true);
         try {
             const promises = Array.from(selectedIds).map(id => 
@@ -394,6 +398,7 @@ export default function AutomationsClient() {
     const filteredAutomations = React.useMemo(() => {
         if (!automations) return [];
         return automations.filter(a => {
+            if (a.isArchived) return false;
             const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'all' || 
                 (statusFilter === 'active' && a.isActive) || 
@@ -403,6 +408,15 @@ export default function AutomationsClient() {
             return matchesSearch && matchesStatus && matchesTrigger;
         });
     }, [automations, searchTerm, statusFilter, triggerFilter]);
+
+    const archivedAutomations = React.useMemo(() => {
+        if (!automations) return [];
+        return automations.filter(a => {
+            if (!a.isArchived) return false;
+            const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase());
+            return matchesSearch;
+        });
+    }, [automations, searchTerm]);
 
     const getAutomationStats = React.useCallback((automationId: string) => {
         const autoRuns = allRuns ? allRuns.filter(r => r.automationId === automationId) : [];
@@ -430,12 +444,62 @@ export default function AutomationsClient() {
 
     const handleDelete = async (id: string) => {
         if (!user?.uid) return;
-        if (!confirm('Permanently purge this automation architecture?')) return;
+        if (!(await confirm({ title: 'Delete automation?', description: 'This automation architecture will be permanently purged.', confirmText: 'Delete', variant: 'destructive' }))) return;
         const res = await deleteAutomationAction(id, user.uid);
         if (res.success) {
             toast({ title: 'Automation Deleted' });
         } else {
             toast({ variant: 'destructive', title: 'Delete failed', description: res.error });
+        }
+    };
+
+    const handleArchive = async (id: string) => {
+        if (!user?.uid) return;
+        if (!(await confirm({ 
+            title: 'Archive automation?', 
+            description: 'This workflow will be deactivated and moved to the archive.', 
+            confirmText: 'Archive', 
+            variant: 'default' 
+        }))) return;
+        const res = await archiveAutomationAction(id, user.uid);
+        if (res.success) {
+            toast({ title: 'Automation Archived' });
+        } else {
+            toast({ variant: 'destructive', title: 'Archive failed', description: res.error });
+        }
+    };
+
+    const handleRestore = async (id: string) => {
+        if (!user?.uid) return;
+        const res = await restoreAutomationAction(id, user.uid);
+        if (res.success) {
+            toast({ title: 'Automation Restored', description: 'This workflow can now be edited and activated.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Restore failed', description: res.error });
+        }
+    };
+
+    const handleDeleteAllArchived = async () => {
+        if (!user?.uid || !activeWorkspaceId) return;
+        if (!(await confirm({ 
+            title: 'Delete all archived automations?', 
+            description: 'All archived automations in this workspace will be permanently deleted. This action cannot be undone.', 
+            confirmText: 'Delete All', 
+            variant: 'destructive' 
+        }))) return;
+        
+        setIsBatchProcessing(true);
+        try {
+            const res = await deleteAllArchivedAutomationsAction(activeWorkspaceId, user.uid);
+            if (res.success) {
+                toast({ title: 'Archive Cleared', description: 'All archived automations have been permanently deleted.' });
+            } else {
+                throw new Error(res.error);
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Clear Archive failed', description: e.message });
+        } finally {
+            setIsBatchProcessing(false);
         }
     };
 
@@ -487,7 +551,7 @@ export default function AutomationsClient() {
                         </Button>
                         <Button asChild className="rounded-xl font-semibold h-11 px-6 shadow-xl">
                             <Link href="/admin/automations/new">
-                                <Plus className="mr-2 h-4 w-4" /> Initialize Workflow
+                                <Plus className="mr-2 h-4 w-4" /> New Workflow
                             </Link>
                         </Button>
                     </div>
@@ -496,6 +560,7 @@ export default function AutomationsClient() {
         <Tabs defaultValue="blueprints" className="space-y-6">
             <TabsList className="bg-transparent border border-border shadow-sm p-1 h-12 rounded-xl w-fit ring-1 ring-border">
                 <TabsTrigger value="blueprints" className="rounded-lg font-semibold text-[10px] px-8">Active Blueprints</TabsTrigger>
+                <TabsTrigger value="archived" className="rounded-lg font-semibold text-[10px] px-8">Archived</TabsTrigger>
                 <TabsTrigger value="runs" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
                     <History className="h-4 w-4" /> Run Ledger
                 </TabsTrigger>
@@ -681,8 +746,8 @@ export default function AutomationsClient() {
                                                         <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/5" asChild>
                                                             <Link href={`/admin/automations/${auth.id}/edit`}><Settings2 className="h-4 w-4 text-primary" /></Link>
                                                         </Button>
-                                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-rose-500/10 text-destructive" onClick={() => handleDelete(auth.id)}>
-                                                            <Trash2 className="h-4 w-4" />
+                                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-slate-500/10 text-muted-foreground hover:text-foreground" onClick={() => handleArchive(auth.id)} title="Archive workflow">
+                                                            <Archive className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -897,8 +962,8 @@ export default function AutomationsClient() {
                                                                         <Settings2 className="h-4 w-4" />
                                                                     </Link>
                                                                 </Button>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(auth.id)} title="Delete workflow">
-                                                                    <Trash2 className="h-4 w-4" />
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-500/10 text-muted-foreground hover:text-foreground" onClick={() => handleArchive(auth.id)} title="Archive workflow">
+                                                                    <Archive className="h-4 w-4" />
                                                                 </Button>
                                                             </div>
                                                         </TableCell>
@@ -921,7 +986,184 @@ export default function AutomationsClient() {
                         )}
                     </TabsContent>
 
-  <TabsContent value="runs" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <TabsContent value="archived" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="relative group w-full md:w-72">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40 group-focus-within:text-primary transition-colors" />
+                                    <Input 
+                                        placeholder="Search archived workflows..." 
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                        className="pl-10 h-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground rounded-xl focus:border-primary/50 focus:ring-primary/20 font-medium"
+                                    />
+                                </div>
+                            </div>
+
+                            {archivedAutomations.length > 0 ? (
+                                <Button 
+                                    variant="outline" 
+                                    onClick={handleDeleteAllArchived} 
+                                    className="rounded-xl font-bold h-10 px-5 border-rose-200 text-rose-600 bg-rose-50/50 hover:bg-rose-100/60 shadow-sm transition-all active:scale-95 shrink-0 self-end md:self-auto"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete All Archived
+                                </Button>
+                            ) : null}
+                        </div>
+
+                        <div className="rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="border-border hover:bg-transparent bg-muted/15">
+                                            <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 pl-6">
+                                                Archived Workflow & Trigger Description
+                                            </TableHead>
+                                            <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 text-center">
+                                                Flow Preview
+                                            </TableHead>
+                                            <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 text-center">
+                                                Statistics
+                                            </TableHead>
+                                            <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 pr-6 text-right w-32">
+                                                Actions
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {isLoadingAuth ? (
+                                            Array.from({ length: 2 }).map((_, i) => (
+                                                <TableRow key={i} className="border-border">
+                                                    <TableCell className="pl-6 py-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <Skeleton className="h-9 w-9 rounded-xl shrink-0" />
+                                                            <div className="space-y-2">
+                                                                <Skeleton className="h-4 w-40" />
+                                                                <Skeleton className="h-3 w-60" />
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-6"><Skeleton className="h-10 w-8 mx-auto rounded" /></TableCell>
+                                                    <TableCell className="py-6 text-center"><Skeleton className="h-6 w-24 mx-auto rounded" /></TableCell>
+                                                    <TableCell className="pr-6 py-6 text-right"><Skeleton className="h-8 w-16 rounded-xl ml-auto" /></TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : archivedAutomations.length > 0 ? (
+                                            archivedAutomations.map((auth) => (
+                                                <TableRow
+                                                    key={auth.id}
+                                                    className="border-border hover:bg-accent/5 group transition-colors"
+                                                >
+                                                    <TableCell className="py-6 pl-6 min-w-[240px]">
+                                                        <div className="flex items-start gap-4">
+                                                            <div className="p-2.5 rounded-xl transition-all shadow-sm shrink-0 mt-0.5 bg-muted text-muted-foreground opacity-40">
+                                                                <Archive className="h-4 w-4" />
+                                                            </div>
+                                                            <div className="space-y-1 min-w-0 text-left">
+                                                                <p className="font-semibold text-sm text-foreground tracking-tight truncate max-w-[200px] sm:max-w-xs">
+                                                                    {auth.name}
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-1 max-w-[280px] sm:max-w-xs md:max-w-md">
+                                                                    {auth.description || 'No description provided.'}
+                                                                </p>
+                                                                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                                                                    {(auth.triggers?.length
+                                                                        ? auth.triggers.map((t: any) => t.type)
+                                                                        : auth.triggerTypes ?? []
+                                                                    ).map((type: string) => (
+                                                                        <Badge key={type} variant="outline" className="text-[8px] font-semibold bg-accent/20 text-muted-foreground border-border rounded-md px-1.5 py-0 tracking-wider uppercase">
+                                                                            {type.replace(/_/g, ' ')}
+                                                                        </Badge>
+                                                                    ))}
+                                                                    {(!auth.triggers?.length && !auth.triggerTypes?.length) && (
+                                                                        <Badge variant="outline" className="text-[8px] font-semibold bg-accent/20 text-muted-foreground border-border rounded-md px-1.5 py-0 tracking-wider uppercase">
+                                                                            No trigger
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-6 align-middle text-center">
+                                                        <div className="inline-block">
+                                                            <MiniFlowPreview nodes={auth.nodes} edges={auth.edges} />
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-6 text-center align-middle">
+                                                        <div className="flex items-center justify-center gap-3 bg-muted/30 border border-border/50 rounded-xl px-3 py-1.5 w-fit mx-auto shadow-sm">
+                                                            <TooltipProvider delayDuration={100}>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <Activity className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                                            <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{getAutomationStats(auth.id).contacts}</span>
+                                                                        </div>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent className="text-[9px] font-semibold">Active Contacts</TooltipContent>
+                                                                </Tooltip>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <div className="flex items-center gap-1 border-l border-border/80 pl-3">
+                                                                            <Mail className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                                            <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{getAutomationStats(auth.id).messages}</span>
+                                                                        </div>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent className="text-[9px] font-semibold">Outbound Messages</TooltipContent>
+                                                                </Tooltip>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <div className="flex items-center gap-1 border-l border-border/80 pl-3">
+                                                                            <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                                            <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{getAutomationStats(auth.id).completions}</span>
+                                                                        </div>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent className="text-[9px] font-semibold">Goal Completions</TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="pr-6 py-6 text-right align-middle">
+                                                        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-8 w-8 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500" 
+                                                                onClick={() => handleRestore(auth.id)}
+                                                                title="Restore workflow"
+                                                            >
+                                                                <ArchiveRestore className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-8 w-8 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-destructive" 
+                                                                onClick={() => handleDelete(auth.id)}
+                                                                title="Delete Permanently"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="py-24 text-center">
+                                                    <div className="flex flex-col items-center justify-center gap-4">
+                                                        <Archive className="h-12 w-12 opacity-20 text-muted-foreground" />
+                                                        <p className="text-xs font-semibold text-muted-foreground">No archived blueprints</p>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="runs" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
  <div className="rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border">
  <div className="p-6 border-b bg-background flex items-center justify-between">
  <div className="flex items-center gap-3">

@@ -89,7 +89,20 @@ export async function processScheduledJobsAction(): Promise<{
       if (!claimed) continue;
 
       let success = false;
-      if (claimed.targetNodeId === '__campaign_trigger__' || !claimed.runId) {
+      if (claimed.targetNodeId === '__campaign_ab_evaluate__') {
+        try {
+          const { evaluateCampaignABTest } = await import('../campaign-automation-jobs');
+          await evaluateCampaignABTest(claimed.payload.campaignId);
+          success = true;
+        } catch (e: any) {
+          console.error(`Evaluation failed: ${e.message}`);
+          logAutomationEvent('error', 'heartbeat_ab_evaluate_failed', {
+            jobId: claimed.id,
+            campaignId: claimed.payload?.campaignId,
+            error: e.message || String(e),
+          });
+        }
+      } else if (claimed.targetNodeId === '__campaign_trigger__' || !claimed.runId) {
         try {
           await runAutomationById(claimed.automationId, claimed.payload);
           const { dispatchCampaignBlueprintTriggers } = await import(

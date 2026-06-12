@@ -7,6 +7,7 @@ import type { UserProfile, Role, PermissionsSchema, AppPermissionId, Workspace }
 import { mergePermissionsSchemas } from '@/lib/permissions-engine';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 import {
     Dialog,
@@ -51,6 +52,7 @@ export default function WorkspaceAccessDialog({
 }: WorkspaceAccessDialogProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const { accessibleWorkspaces } = useTenant();
 
     const [isUpdating, setIsUpdating] = React.useState(false);
@@ -130,7 +132,7 @@ export default function WorkspaceAccessDialog({
         if (!firestore) return;
 
         const wsName = accessibleWorkspaces.find(w => w.id === workspaceId)?.name || 'workspace';
-        if (!confirm(`Remove ${user.name} from "${wsName}"? They will lose all roles and permissions in that workspace.`)) return;
+        if (!(await confirm({ title: 'Remove from workspace?', description: `${user.name} will lose all roles and permissions in "${wsName}".`, confirmText: 'Remove', variant: 'destructive' }))) return;
 
         setIsUpdating(true);
 

@@ -11,6 +11,7 @@ import { processActionNode } from './actions';
 import { processTagActionNode, evaluateTagConditionNode } from './nodes/tag-nodes';
 import { evaluateConditionNode } from '../automation-condition';
 import { adminDb } from '../firebase-admin';
+import { enrichExecutionContext } from './nodes/traverse';
 
 export interface TestAutomationStepInput {
   workspaceId: string;
@@ -47,6 +48,15 @@ export async function testAutomationStep(
     // Scopes to the first configured workspace constraints
     const workspaceId = automation.workspaceIds?.[0] || 'onboarding';
 
+    // Fetch the captured webhook from triggers config, trigger node data, or root
+    const triggerNode = automation.nodes?.find((n: any) => n.type === 'triggerNode');
+    const triggerNodeTriggers = triggerNode?.data?.triggers as any[];
+    const latestCapturedWebhook = 
+      (automation as any).latestCapturedWebhook || 
+      (automation as any).triggers?.find((t: any) => t.type === 'WEBHOOK_RECEIVED')?.config?.capturedPayload ||
+      triggerNodeTriggers?.find((t: any) => t.type === 'WEBHOOK_RECEIVED')?.config?.capturedPayload ||
+      triggerNode?.data?.config?.capturedPayload;
+
     // Formulate a custom test action key referencing the target node ID
     const payload = buildAutomationPayload({
       organizationId: '',
@@ -58,6 +68,18 @@ export async function testAutomationStep(
       metadata: { testStepRun: true, triggeredBy: userId, nodeId },
     });
 
+    if (latestCapturedWebhook) {
+      payload.source = 'external_webhook';
+      payload.ingressId = automationId;
+      payload.body = latestCapturedWebhook.body || {};
+      payload.headers = latestCapturedWebhook.headers || {};
+      payload.query = latestCapturedWebhook.query || {};
+      payload.files = latestCapturedWebhook.files || [];
+    }
+
+    console.log('[testAutomationStep] Resolved latestCapturedWebhook:', JSON.stringify(latestCapturedWebhook, null, 2));
+    console.log('[testAutomationStep] Initial Payload:', JSON.stringify(payload, null, 2));
+
     const context: ExecutionContext = {
       entityId,
       entityType: (nodeDataOverride.entityType || 'institution') as any,
@@ -67,6 +89,10 @@ export async function testAutomationStep(
       runId: `test_step_run_${Date.now()}`,
       chainDepth: 0,
     };
+
+    // Enrich variables
+    await enrichExecutionContext(context);
+    console.log('[testAutomationStep] Enriched context.payload:', JSON.stringify(context.payload, null, 2));
 
     // Formulate the simulated mock node in memory merging any custom draft configs
     const originalNode = automation.nodes?.find((n: any) => n.id === nodeId);

@@ -51,8 +51,8 @@ const ModifySurveyInputSchema = z.object({
     showSurveyTitles: z.boolean().optional(),
   }),
   organizationId: z.string().optional(),
-  provider: z.string().optional().default('googleai'),
-  modelId: z.string().optional().default('gemini-3-flash-preview'),
+  provider: z.string().optional().default('anthropic'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 export type ModifySurveyInput = z.infer<typeof ModifySurveyInputSchema>;
 
@@ -166,8 +166,8 @@ const modifySurveyFlow = ai.defineFlow(
                 // Resolve the model instance with the correct API key for this organization
                 const resolvedModel = await getModel({
                     organizationId: input.organizationId,
-                    provider: input.provider || 'googleai',
-                    modelId: input.modelId || 'gemini-3-flash-preview',
+                    provider: input.provider || 'anthropic',
+                    modelId: input.modelId || 'claude-3-5-sonnet',
                 });
 
                 const generatorAi = resolvedModel.customAi || ai;

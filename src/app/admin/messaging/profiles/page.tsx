@@ -53,6 +53,7 @@ import {
     Share2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { checkSenderIdStatusAction, registerSenderIdAction } from '@/lib/mnotify-actions';
 import { fetchVerifiedDomainsAction } from '@/lib/resend-actions';
@@ -69,6 +70,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 export default function SenderProfilesPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
     const [isAdding, setIsAdding] = React.useState(false);
     
@@ -260,7 +262,8 @@ export default function SenderProfilesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!firestore || !confirm('Permanently delete this sender profile?')) return;
+        if (!firestore) return;
+        if (!(await confirm({ title: 'Delete sender profile?', description: 'This sender profile will be permanently deleted.', confirmText: 'Delete', variant: 'destructive' }))) return;
         await deleteDoc(doc(firestore, 'sender_profiles', id));
         toast({ title: 'Profile Deleted' });
     };

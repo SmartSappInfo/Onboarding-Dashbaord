@@ -12,22 +12,51 @@ import { Loader2, Save, RefreshCw, Mail, MessageSquare, Sparkles, Upload } from 
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { seedSystemTemplates } from '@/lib/seed-templates';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { useBackoffice } from '../../context/BackofficeProvider';
+import { getGlobalAiKeys, saveGlobalAiKeys } from '@/lib/backoffice/backoffice-ai-actions';
 
 export default function SystemDefaultsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const confirm = useConfirm();
+    const { profile } = useBackoffice();
+    
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
     const [isReseeding, setIsReseeding] = React.useState(false);
     const [templates, setTemplates] = React.useState<any>(null);
 
+    const [aiKeys, setAiKeys] = React.useState({
+        geminiApiKey: '',
+        claudeApiKey: '',
+        openRouterApiKey: '',
+    });
+    const [aiKeysExist, setAiKeysExist] = React.useState({
+        geminiApiKeyExists: false,
+        claudeApiKeyExists: false,
+        openRouterApiKeyExists: false,
+    });
+
     React.useEffect(() => {
-        const fetchTemplates = async () => {
+        const fetchTemplatesAndKeys = async () => {
             if (!firestore) return;
             try {
+                // Fetch templates
                 const snap = await getDoc(doc(firestore, 'system_settings', 'templates'));
                 if (snap.exists()) {
                     setTemplates(snap.data());
+                }
+
+                // Fetch AI keys existence
+                const keysRes = await getGlobalAiKeys();
+                if (keysRes.success && keysRes.data) {
+                    setAiKeysExist(keysRes.data);
+                    setAiKeys({
+                        geminiApiKey: keysRes.data.geminiApiKeyExists ? '••••••••' : '',
+                        claudeApiKey: keysRes.data.claudeApiKeyExists ? '••••••••' : '',
+                        openRouterApiKey: keysRes.data.openRouterApiKeyExists ? '••••••••' : '',
+                    });
                 }
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Fetch Error', description: error.message });
@@ -35,18 +64,53 @@ export default function SystemDefaultsClient() {
                 setIsLoading(false);
             }
         };
-        fetchTemplates();
+        fetchTemplatesAndKeys();
     }, [firestore, toast]);
 
     const handleSave = async () => {
         if (!firestore || !templates) return;
+        if (!profile?.id) {
+            toast({ variant: 'destructive', title: 'Authentication Error', description: 'Admin authentication required.' });
+            return;
+        }
         setIsSaving(true);
         try {
+            // Save templates
             await updateDoc(doc(firestore, 'system_settings', 'templates'), {
                 ...templates,
                 updatedAt: new Date().toISOString()
             });
-            toast({ title: 'Templates Updated', description: 'System-wide defaults have been synchronized.' });
+
+            // Save global AI keys
+            const actor = {
+                userId: profile.id,
+                name: profile.name || 'Unknown Admin',
+                email: profile.email || '',
+                role: profile.backofficeRoles?.[0] || 'super_admin'
+            };
+
+            const keysRes = await saveGlobalAiKeys({
+                geminiApiKey: aiKeys.geminiApiKey,
+                claudeApiKey: aiKeys.claudeApiKey,
+                openRouterApiKey: aiKeys.openRouterApiKey,
+            }, actor);
+
+            if (!keysRes.success) {
+                throw new Error(keysRes.error || 'Failed to save global AI keys');
+            }
+
+            // Refresh key states
+            const freshKeysRes = await getGlobalAiKeys();
+            if (freshKeysRes.success && freshKeysRes.data) {
+                setAiKeysExist(freshKeysRes.data);
+                setAiKeys({
+                    geminiApiKey: freshKeysRes.data.geminiApiKeyExists ? '••••••••' : '',
+                    claudeApiKey: freshKeysRes.data.claudeApiKeyExists ? '••••••••' : '',
+                    openRouterApiKey: freshKeysRes.data.openRouterApiKeyExists ? '••••••••' : '',
+                });
+            }
+
+            toast({ title: 'Settings Saved', description: 'System-wide templates and AI API keys have been updated.' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
         } finally {
@@ -55,7 +119,8 @@ export default function SystemDefaultsClient() {
     };
 
     const handleReseed = async () => {
-        if (!firestore || !confirm('This will reset all system templates to factory defaults. Continue?')) return;
+        if (!firestore) return;
+        if (!(await confirm({ title: 'Reset to factory defaults?', description: 'This will reset all system templates to factory defaults.', confirmText: 'Reset', variant: 'destructive' }))) return;
         setIsReseeding(true);
         try {
             await seedSystemTemplates(firestore);
@@ -239,6 +304,59 @@ export default function SystemDefaultsClient() {
                                 onChange={(e) => setTemplates({ ...templates, bulkUploadCompleted: { ...templates.bulkUploadCompleted, smsBody: e.target.value } })}
                                 className="rounded-xl min-h-[100px]"
                             />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Global AI API Keys Configuration */}
+                <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden">
+                    <CardHeader className="bg-emerald-500/5 border-b p-8">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl">
+                                    <Sparkles className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-xl font-bold">Global AI API Keys Configuration</CardTitle>
+                                    <CardDescription>Configure system-wide fallback keys for Anthropic Claude, Google Gemini, and OpenRouter.</CardDescription>
+                                </div>
+                            </div>
+                            <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-none">Security Settings</Badge>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-8 space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Anthropic Claude API Key (sk-ant-...)</label>
+                            <Input 
+                                type="password"
+                                placeholder={aiKeysExist.claudeApiKeyExists ? '••••••••' : 'Enter Anthropic API Key'}
+                                value={aiKeys.claudeApiKey} 
+                                onChange={(e) => setAiKeys({ ...aiKeys, claudeApiKey: e.target.value })}
+                                className="rounded-xl h-11"
+                            />
+                            <p className="text-[10px] text-muted-foreground">Primary default fallback key for Anthropic Claude models (e.g. claude-3-5-sonnet).</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Google Gemini API Key (AIzaSy...)</label>
+                            <Input 
+                                type="password"
+                                placeholder={aiKeysExist.geminiApiKeyExists ? '••••••••' : 'Enter Gemini API Key'}
+                                value={aiKeys.geminiApiKey} 
+                                onChange={(e) => setAiKeys({ ...aiKeys, geminiApiKey: e.target.value })}
+                                className="rounded-xl h-11"
+                            />
+                            <p className="text-[10px] text-muted-foreground">Used for fallback routing to Gemini models.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">OpenRouter API Key (sk-or-...)</label>
+                            <Input 
+                                type="password"
+                                placeholder={aiKeysExist.openRouterApiKeyExists ? '••••••••' : 'Enter OpenRouter API Key'}
+                                value={aiKeys.openRouterApiKey} 
+                                onChange={(e) => setAiKeys({ ...aiKeys, openRouterApiKey: e.target.value })}
+                                className="rounded-xl h-11"
+                            />
+                            <p className="text-[10px] text-muted-foreground">Optional alternative provider key routing.</p>
                         </div>
                     </CardContent>
                 </Card>

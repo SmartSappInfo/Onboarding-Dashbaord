@@ -12,6 +12,7 @@ import { FilterBuilder } from '@/app/admin/messaging/audiences/components/filter
 import { useAudiences } from '@/lib/audience-hooks';
 import { legacyAudienceToFilters } from '@/lib/audience-hooks';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { ABTestSlider } from './ABTestSlider';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import { previewCampaignAudience } from '@/lib/messaging-actions';
 import { generateCampaignCopy, refineCampaignCopy } from '@/lib/campaign-ai';
@@ -28,8 +29,9 @@ import { Separator } from '@/components/ui/separator';
 import {
     ArrowLeft, ArrowRight, Check, ChevronRight, Loader2, Mail, Smartphone,
     Users, Save, Send, Tag, Target, FileText, Calendar, Eye, Megaphone, Zap, X, Plus,
-    Sparkles, Wand2, Pencil, PlusCircle
+    Sparkles, Wand2, Pencil, PlusCircle, Search
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -39,6 +41,11 @@ import { MessagingTemplateSelector } from '../../../components/MessagingTemplate
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useEntityCache } from '@/context/EntityCacheContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { EmailHygieneBadge } from '@/app/admin/components/EmailHygieneBadge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { createTagAction } from '@/lib/tag-actions';
+import { ChevronsUpDown } from 'lucide-react';
 
 // ─── Contact Scope Selector ───────────────────────────────────────────────────
 
@@ -94,7 +101,7 @@ function ContactScopeSelector({ value, onChange }: { value: string; onChange: (v
                     <SelectItem value="signatories" className="text-xs font-semibold">All Registered Signatories</SelectItem>
                     <SelectItem value="all" className="text-xs font-semibold">Broadcast to All Known Contacts</SelectItem>
                 </SelectGroup>
-                {roles.length > 0 && (
+                {roles.length > 0 ? (
                     <>
                         <Separator className="my-1 opacity-50" />
                         <SelectGroup>
@@ -104,7 +111,7 @@ function ContactScopeSelector({ value, onChange }: { value: string; onChange: (v
                             ))}
                         </SelectGroup>
                     </>
-                )}
+                ) : null}
             </SelectContent>
         </Select>
     );
@@ -128,6 +135,7 @@ interface WizardState {
     tagLogic: 'any' | 'all';
     excludeTagIds: string[];
     entityIds: string[];
+    selectedContacts: Array<{ entityId: string; contactId: string; name?: string; email?: string; phone?: string; entityName?: string }>;
     contactScope: 'primary' | 'signatories' | 'all' | (string & {});
     senderProfileId: string;
     isScheduled: boolean;
@@ -190,7 +198,7 @@ function createInitialState(campaign: MessageCampaign | null): WizardState {
             internalName: campaign.internalName || '',
             channel: campaign.channel || 'email',
             target: campaign.target || 'external_client',
-            contentMode: campaign.contentMode || 'rich_builder',
+            contentMode: campaign.contentMode || 'template',
             templateId: campaign.templateId || '',
             templateName: campaign.templateName || '',
             customSubject: campaign.customSubject || '',
@@ -201,6 +209,7 @@ function createInitialState(campaign: MessageCampaign | null): WizardState {
             tagLogic: campaign.audienceDefinition?.tagLogic || 'any',
             excludeTagIds: campaign.audienceDefinition?.excludeTagIds || [],
             entityIds: campaign.audienceDefinition?.entityIds || [],
+            selectedContacts: campaign.audienceDefinition?.selectedContacts || [],
             contactScope: campaign.audienceDefinition?.contactScope || 'primary',
             senderProfileId: campaign.senderProfileId || '',
             isScheduled: !!campaign.scheduledAt,
@@ -227,9 +236,9 @@ function createInitialState(campaign: MessageCampaign | null): WizardState {
     }
     return {
         step: 1, internalName: '', channel: 'email', target: 'external_client',
-        contentMode: 'rich_builder', templateId: '', templateName: '', customSubject: '',
+        contentMode: 'template', templateId: '', templateName: '', customSubject: '',
         customBody: '', styleId: '', audienceMode: 'all', tagIds: [], tagLogic: 'any',
-        excludeTagIds: [], entityIds: [], contactScope: 'primary', senderProfileId: '',
+        excludeTagIds: [], entityIds: [], selectedContacts: [], contactScope: 'primary', senderProfileId: '',
         isScheduled: false, scheduledAt: null, isSaving: false, isSending: false,
         filters: [], filterLogic: 'AND' as const, savedAudienceId: '',
         groups: [],
@@ -271,7 +280,7 @@ function StepIndicator({ current }: { current: number }) {
                         {s.num < current ? <Check className="h-3 w-3" /> : <s.icon className="h-3 w-3" />}
                         {s.label}
                     </div>
-                    {i < STEPS.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />}
+                    {i < STEPS.length - 1 ? <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" /> : null}
                 </React.Fragment>
             ))}
         </div>
@@ -279,6 +288,302 @@ function StepIndicator({ current }: { current: number }) {
 }
 
 // ─── Main Wizard Component ────────────────────────────────────────────────────
+
+interface ManualContactSelectorProps {
+    channel: MessageChannel;
+    selectedContacts: Array<{
+        entityId: string;
+        contactId: string;
+        name?: string;
+        email?: string;
+        phone?: string;
+        entityName?: string;
+    }>;
+    onChange: (selected: Array<{
+        entityId: string;
+        contactId: string;
+        name?: string;
+        email?: string;
+        phone?: string;
+        entityName?: string;
+    }>) => void;
+}
+
+const ContactRow = React.memo(({
+    contact,
+    isSelected,
+    onToggle
+}: {
+    contact: any;
+    isSelected: boolean;
+    onToggle: (contact: any) => void;
+}) => {
+    return (
+        <div 
+            onClick={() => onToggle(contact)}
+            className={cn(
+                "flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer select-none",
+                isSelected 
+                    ? "border-primary bg-primary/5 shadow-sm" 
+                    : "border-border/50 bg-card/30 hover:bg-card/60 hover:border-primary/20"
+            )}
+        >
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+                <Checkbox 
+                    checked={isSelected}
+                    onCheckedChange={() => onToggle(contact)}
+                    onClick={(e) => e.stopPropagation()}
+                    id={`contact-chk-${contact.entityId}-${contact.id}`}
+                    className="rounded-lg h-5 w-5 mt-1 border-border/80 data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0"
+                />
+                
+                {/* Initial Avatar */}
+                <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-[10px] text-primary uppercase shrink-0 mt-0.5">
+                    {contact.name ? contact.name.substring(0, 2) : 'C'}
+                </div>
+
+                <div className="space-y-1 min-w-0 flex-1">
+                    <p className="text-xs font-bold text-foreground truncate">{contact.name}</p>
+                    <p className="text-[10px] font-medium text-muted-foreground truncate">{contact.entityName}</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground font-mono truncate">{contact.contactVal}</p>
+                </div>
+            </div>
+
+            {contact.isPrimary && (
+                <div className="shrink-0 ml-3">
+                    <Badge variant="outline" className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-primary/5 text-primary border-primary/20 uppercase tracking-wider">
+                        Primary
+                    </Badge>
+                </div>
+            )}
+        </div>
+    );
+});
+ContactRow.displayName = 'ContactRow';
+
+export function ManualContactSelector({
+    channel,
+    selectedContacts,
+    onChange
+}: ManualContactSelectorProps) {
+    const { entities, isLoading } = useEntityCache();
+    const [searchQuery, setSearchQuery] = React.useState('');
+
+    const onChangeRef = React.useRef(onChange);
+    onChangeRef.current = onChange;
+    const selectedContactsRef = React.useRef(selectedContacts);
+    selectedContactsRef.current = selectedContacts;
+
+    // Extract all available contacts matching the channel
+    const workspaceContacts = React.useMemo(() => {
+        if (!entities) return [];
+        const contactsList: Array<{
+            id: string;
+            entityId: string;
+            entityName: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            contactVal: string;
+            isPrimary: boolean;
+            isSignatory: boolean;
+            typeKey: string;
+            typeLabel?: string;
+        }> = [];
+
+        entities.forEach(ent => {
+            const entityName = ent.displayName || ent.entityName || '';
+            const entityId = ent.entityId || ent.id;
+            const sourceContacts = ent.entityContacts || [];
+
+            if (sourceContacts.length > 0) {
+                sourceContacts.forEach(c => {
+                    const email = c.email || '';
+                    const phone = c.phone || '';
+                    const contactVal = channel === 'email' ? email : phone;
+                    if (contactVal) {
+                        contactsList.push({
+                            id: c.id || Math.random().toString(),
+                            entityId,
+                            entityName,
+                            name: c.name || entityName,
+                            email,
+                            phone,
+                            contactVal,
+                            isPrimary: !!c.isPrimary,
+                            isSignatory: !!c.isSignatory,
+                            typeKey: c.typeKey || 'custom',
+                            typeLabel: c.typeLabel,
+                        });
+                    }
+                });
+            } else {
+                const email = ent.primaryEmail || (ent as any).email || '';
+                const phone = ent.primaryPhone || (ent as any).phone || '';
+                const contactVal = channel === 'email' ? email : phone;
+                if (contactVal) {
+                    contactsList.push({
+                        id: 'primary-fallback-' + entityId,
+                        entityId,
+                        entityName,
+                        name: ent.primaryContactName || ent.displayName || '',
+                        email,
+                        phone,
+                        contactVal,
+                        isPrimary: true,
+                        isSignatory: false,
+                        typeKey: 'primary',
+                        typeLabel: 'Primary',
+                    });
+                }
+            }
+        });
+        return contactsList;
+    }, [entities, channel]);
+
+    // Search query filtering
+    const filteredContacts = React.useMemo(() => {
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) return workspaceContacts;
+        return workspaceContacts.filter(c => {
+            return (
+                c.contactVal.toLowerCase().includes(query) ||
+                c.name.toLowerCase().includes(query) ||
+                c.entityName.toLowerCase().includes(query)
+            );
+        });
+    }, [workspaceContacts, searchQuery]);
+
+    // O(1) Selected keys check
+    const selectedKeysSet = React.useMemo(() => {
+        return new Set(selectedContacts.map(sc => `${sc.entityId}:${sc.contactId}`));
+    }, [selectedContacts]);
+
+    const handleToggle = React.useCallback((contact: typeof workspaceContacts[0]) => {
+        const selected = selectedContactsRef.current;
+        const key = `${contact.entityId}:${contact.id}`;
+        const isSelected = selected.some(sc => sc.entityId === contact.entityId && sc.contactId === contact.id);
+
+        if (isSelected) {
+            const updated = selected.filter(
+                sc => !(sc.entityId === contact.entityId && sc.contactId === contact.id)
+            );
+            onChangeRef.current(updated);
+        } else {
+            const updated = [...selected, {
+                entityId: contact.entityId,
+                contactId: contact.id,
+                name: contact.name,
+                email: contact.email,
+                phone: contact.phone,
+                entityName: contact.entityName
+            }];
+            onChangeRef.current(updated);
+        }
+    }, []);
+
+    // Select All / Deselect All for FILTERED list
+    const filteredSelectedCount = React.useMemo(() => {
+        return filteredContacts.filter(c => selectedKeysSet.has(`${c.entityId}:${c.id}`)).length;
+    }, [filteredContacts, selectedKeysSet]);
+
+    const handleSelectAllToggle = () => {
+        const allFilteredSelected = filteredSelectedCount === filteredContacts.length;
+        if (allFilteredSelected) {
+            // Deselect only the filtered items
+            const filteredKeys = new Set(filteredContacts.map(c => `${c.entityId}:${c.id}`));
+            const updated = selectedContacts.filter(sc => !filteredKeys.has(`${sc.entityId}:${sc.contactId}`));
+            onChange(updated);
+        } else {
+            // Select all filtered items (merge with existing selected items, keeping it unique)
+            const updated = [...selectedContacts];
+            filteredContacts.forEach(c => {
+                const key = `${c.entityId}:${c.id}`;
+                if (!selectedKeysSet.has(key)) {
+                    updated.push({
+                        entityId: c.entityId,
+                        contactId: c.id,
+                        name: c.name,
+                        email: c.email,
+                        phone: c.phone,
+                        entityName: c.entityName
+                    });
+                }
+            });
+            onChange(updated);
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border/50 bg-card/20 rounded-2xl gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <p className="text-xs font-semibold text-muted-foreground">Loading workspace contacts...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            {/* Search and control header */}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="relative flex-1 w-full">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search by name, email, or entity..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 h-11 rounded-xl text-xs font-semibold bg-card/50 border-border/50 focus-visible:ring-primary"
+                    />
+                    {searchQuery && (
+                        <button 
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                            Clear
+                        </button>
+                    )}
+                </div>
+
+                {filteredContacts.length > 0 && (
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleSelectAllToggle}
+                        className="w-full sm:w-auto h-11 px-4 rounded-xl text-xs font-bold border-border/50 hover:bg-accent/30"
+                    >
+                        {filteredSelectedCount === filteredContacts.length ? "Deselect All" : "Select All Match"}
+                    </Button>
+                )}
+            </div>
+
+            {/* Contacts list */}
+            {filteredContacts.length === 0 ? (
+                <div className="text-center py-12 border border-dashed border-border/50 bg-card/10 rounded-2xl">
+                    <p className="text-xs font-bold text-muted-foreground">No contacts found matching your query</p>
+                </div>
+            ) : (
+                <div className="max-h-72 overflow-y-auto pr-1 border border-border/40 bg-card/10 rounded-2xl p-2.5 space-y-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary/10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {filteredContacts.slice(0, 100).map(c => (
+                            <ContactRow 
+                                key={`${c.entityId}-${c.id}`}
+                                contact={c}
+                                isSelected={selectedKeysSet.has(`${c.entityId}:${c.id}`)}
+                                onToggle={handleToggle}
+                            />
+                        ))}
+                    </div>
+                    {filteredContacts.length > 100 && (
+                        <p className="text-[10px] font-semibold text-center text-muted-foreground pt-2">
+                            Showing first 100 of {filteredContacts.length} contacts. Refine search to see others.
+                        </p>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
 
 interface CampaignWizardProps {
     campaign?: MessageCampaign | null;
@@ -302,7 +607,12 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     const [quickCreateOpen, setQuickCreateOpen] = React.useState(false);
     const [activeVariantTab, setActiveVariantTab] = React.useState<'A' | 'B'>('A');
 
+    // Post-Send Rule Tag Search/Create State
+    const [openRuleTagIdx, setOpenRuleTagIdx] = React.useState<number | null>(null);
+    const [ruleTagInputValue, setRuleTagInputValue] = React.useState('');
+
     const [state, dispatch] = React.useReducer(wizardReducer, campaign, createInitialState);
+    const activeVariant = state.variants.find(v => v.id === activeVariantTab) || state.variants[0];
 
     // ── Audience Preview State ────────────────────────────────────────────────
     const [isPreviewing, setIsPreviewing] = React.useState(false);
@@ -310,6 +620,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
         count: number;
         contactCount: number;
         preview: { id: string; name: string; tags: string[] }[];
+        contactsPreview?: {
+            id: string;
+            name: string;
+            email?: string;
+            phone?: string;
+            contactVal: string;
+            verified?: boolean;
+            verificationStatus?: string;
+            entityName: string;
+        }[];
     } | null>(null);
     const debounceRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -325,25 +645,25 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 // Determine which filters to use based on audience mode
                 let filters = state.filters;
                 if (state.audienceMode === 'all') filters = [];
-                if (state.audienceMode === 'manual') {
-                    filters = [{ id: '_manual', field: 'entityId', operator: 'any_of', value: state.entityIds }];
-                }
 
                 const result = await previewCampaignAudience({
                     workspaceId: activeWorkspaceId,
-                    filters: filters as any,
+                    filters: state.audienceMode === 'manual' ? [] : (filters as any),
                     filterLogic: state.filterLogic,
                     groups: state.audienceMode === 'advanced' || state.audienceMode === 'saved' ? state.groups : [],
                     limit: 10,
                     contactScope: state.contactScope,
                     channel: state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined,
+                    selectedContacts: state.selectedContacts,
+                    audienceMode: state.audienceMode,
                 });
                 
                 if (result.success) {
                     setPreviewResult({ 
                         count: result.count ?? 0, 
                         contactCount: result.contactCount ?? 0, 
-                        preview: result.preview ?? [] 
+                        preview: result.preview ?? [],
+                        contactsPreview: result.contactsPreview ?? []
                     });
                 }
             } catch (err) {
@@ -352,7 +672,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 setIsPreviewing(false);
             }
         }, 800);
-    }, [activeWorkspaceId, state.filters, state.filterLogic, state.contactScope, state.channel, state.audienceMode, state.entityIds]);
+    }, [activeWorkspaceId, state.filters, state.filterLogic, state.contactScope, state.channel, state.audienceMode, state.entityIds, state.selectedContacts]);
 
     React.useEffect(() => {
         // Only run preview on Audience step (step 3)
@@ -364,6 +684,36 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
 
     const setField = <K extends keyof WizardState>(field: K, value: WizardState[K]) => {
         dispatch({ type: 'SET_FIELD', field, value });
+    };
+
+    const handleCreateTagForRule = async (tagName: string, idx: number) => {
+        if (!tagName.trim() || !user || !activeWorkspaceId || !activeOrganizationId) return;
+        try {
+            const result = await createTagAction({
+                name: tagName.trim(),
+                workspaceId: activeWorkspaceId,
+                organizationId: activeOrganizationId,
+                category: 'custom',
+                color: '#10B981', // green for created tags
+                userId: user.uid,
+                userName: user.displayName || undefined
+            });
+
+            if (result.success && result.data) {
+                toast({ title: 'Tag created', description: `"${tagName}" is now available and selected.` });
+                const next = [...state.postSendTagRules];
+                next[idx] = { 
+                    ...next[idx], 
+                    tagId: result.data.id, 
+                    tagName: result.data.name 
+                };
+                setField('postSendTagRules', next);
+            } else {
+                toast({ variant: 'destructive', title: 'Failed to create tag', description: result.error || 'Could not create tag.' });
+            }
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        }
     };
 
     const updateActiveVariant = (updates: Record<string, any>) => {
@@ -410,6 +760,27 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     }, [firestore, activeWorkspaceId]);
     const { data: allTags } = useCollection<any>(tagsQuery);
 
+    // ── Workspace Pipelines (for post-send deal rules) ───────────────────
+    const pipelinesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'pipelines'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            orderBy('createdAt', 'desc')
+        );
+    }, [firestore, activeWorkspaceId]);
+    const { data: pipelines } = useCollection<any>(pipelinesQuery);
+
+    // ── Workspace Stages (for post-send deal rules) ──────────────────────
+    const stagesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'onboardingStages'),
+            orderBy('order', 'asc')
+        );
+    }, [firestore, activeWorkspaceId]);
+    const { data: stages } = useCollection<any>(stagesQuery);
+
     // ── Step Validation (R6 fix: narrow deps) ─────────────────────────────────
     const canAdvance = React.useMemo(() => {
         switch (state.step) {
@@ -418,21 +789,20 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 if (state.abTestEnabled) {
                     const varA = state.variants.find(v => v.id === 'A');
                     const varB = state.variants.find(v => v.id === 'B');
-                    const isEmail = state.channel === 'email';
-                    if (isEmail) {
-                        return !!(varA?.customSubject?.trim() && varA?.customBody?.trim() && varB?.customSubject?.trim() && varB?.customBody?.trim());
-                    } else {
-                        return !!(varA?.customBody?.trim() && varB?.customBody?.trim());
-                    }
+                    return !!varA?.templateId && !!varB?.templateId;
                 }
-                return state.customBody.trim().length > 0 || state.customSubject.trim().length > 0;
+                return !!state.templateId;
             }
-            case 3: return state.audienceMode === 'all' || state.tagIds.length > 0 || state.entityIds.length > 0 || (state.audienceMode === 'advanced' && state.filters.length > 0) || (state.audienceMode === 'saved' && !!state.savedAudienceId);
+            case 3: return state.audienceMode === 'all' || 
+                           (state.audienceMode === 'manual' && state.selectedContacts && state.selectedContacts.length > 0) ||
+                           state.tagIds.length > 0 || state.entityIds.length > 0 || 
+                           (state.audienceMode === 'advanced' && state.filters.length > 0) || 
+                           (state.audienceMode === 'saved' && !!state.savedAudienceId);
             case 4: return !state.isScheduled || (state.scheduledAt && state.scheduledAt > new Date());
             case 5: return true;
             default: return false;
         }
-    }, [state.step, state.internalName, state.senderProfileId, state.customBody, state.customSubject, state.audienceMode, state.tagIds, state.entityIds, state.isScheduled, state.scheduledAt, state.filters, state.savedAudienceId, state.abTestEnabled, state.variants]);
+    }, [state.step, state.internalName, state.senderProfileId, state.customBody, state.customSubject, state.audienceMode, state.tagIds, state.entityIds, state.selectedContacts, state.isScheduled, state.scheduledAt, state.filters, state.savedAudienceId, state.abTestEnabled, state.variants]);
 
     // ── Save Draft (explicit save, not auto-save — R4 fix) ────────────────────
     const handleSaveDraft = async () => {
@@ -445,6 +815,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 tagLogic: state.tagLogic,
                 excludeTagIds: state.excludeTagIds,
                 entityIds: state.entityIds,
+                selectedContacts: state.selectedContacts || [],
                 contactScope: state.contactScope,
                 filters: state.filters,
                 filterLogic: state.filterLogic,
@@ -503,6 +874,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 tagLogic: state.tagLogic,
                 excludeTagIds: state.excludeTagIds,
                 entityIds: state.entityIds,
+                selectedContacts: state.selectedContacts || [],
                 contactScope: state.contactScope,
                 filters: state.filters,
                 filterLogic: state.filterLogic,
@@ -601,7 +973,6 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 ].map(ch => (
                                     <button key={ch.value} type="button" onClick={() => {
                                         setField('channel', ch.value);
-                                        if (ch.value === 'sms') setField('contentMode', 'plain_text');
                                     }} className={cn(
                                         "flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left",
                                         state.channel === ch.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/20"
@@ -659,9 +1030,6 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
 
             case 2: {
                 const isAb = state.abTestEnabled;
-                const activeVariant = state.variants.find(v => v.id === activeVariantTab) || state.variants[0];
-                const subjectValue = isAb ? (activeVariant.customSubject || '') : state.customSubject;
-                const bodyValue = isAb ? (activeVariant.customBody || '') : state.customBody;
 
                 return (
                     <div className="space-y-6">
@@ -675,7 +1043,30 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                             </div>
                             <Switch
                                 checked={state.abTestEnabled}
-                                onCheckedChange={v => setField('abTestEnabled', v)}
+                                onCheckedChange={v => {
+                                    setField('abTestEnabled', v);
+                                    if (v) {
+                                        const varA = state.variants.find(item => item.id === 'A');
+                                        const varB = state.variants.find(item => item.id === 'B');
+                                        // Copy template reference if B is currently empty
+                                        if (varB && !varB.templateId) {
+                                            const updated = state.variants.map(item => {
+                                                if (item.id === 'B') {
+                                                    return {
+                                                        ...item,
+                                                        templateId: varA?.templateId || null,
+                                                        templateName: varA?.templateName || null,
+                                                        customSubject: varA?.customSubject || '',
+                                                        customBody: varA?.customBody || '',
+                                                        customBlocks: varA?.customBlocks || []
+                                                    };
+                                                }
+                                                return item;
+                                            });
+                                            setField('variants', updated);
+                                        }
+                                    }
+                                }}
                             />
                         </div>
 
@@ -699,305 +1090,80 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                             </div>
                         ) : null}
 
-                        {/* Template Picker Toggle */}
-                        <div className="flex items-center justify-between p-4 rounded-xl border bg-card">
-                            <div>
-                                <p className="text-sm font-bold">Start from Template</p>
-                                <p className="text-[9px] font-semibold text-muted-foreground">Load content from a saved template</p>
-                            </div>
-                            <Switch
-                                checked={state.contentMode === 'template'}
-                                onCheckedChange={v => setField('contentMode', v ? 'template' as ContentMode : 'plain_text' as ContentMode)}
-                            />
-                        </div>
-
-                        {/* Template Picker (when template mode is on) */}
-                        {state.contentMode === 'template' ? (
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between px-1">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground">Select a Template</Label>
-                                    <div className="flex items-center gap-1">
-                                        {((!isAb && state.templateId) || (isAb && activeVariant.templateId)) ? (
-                                            <Button type="button" variant="ghost" className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg" onClick={() => setQuickCreateOpen(true)}>
-                                                <Pencil className="h-3 w-3" /> Edit
-                                            </Button>
-                                        ) : null}
-                                        <Button type="button" variant="ghost" className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg" onClick={() => { 
-                                            if (isAb) {
-                                                updateActiveVariant({ templateId: '' });
-                                            } else {
-                                                setField('templateId', '');
-                                            }
-                                            setQuickCreateOpen(true); 
-                                        }}>
-                                            <PlusCircle className="h-3 w-3" /> New
-                                        </Button>
-                                    </div>
+                        {/* Template Picker */}
+                        <div className="space-y-4 p-6 rounded-2xl border bg-card/40 backdrop-blur-sm shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label className="text-sm font-bold text-foreground">Select a messaging blueprint</Label>
+                                    <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">Pick a template for this campaign</p>
                                 </div>
-                                
-                                <MessagingTemplateSelector 
-                                    category="campaigns"
-                                    recipientType={state.target === 'external_client' ? 'entity' : 'internal_alert'}
-                                    channel={state.channel}
-                                    value={isAb ? (activeVariant.templateId || '') : state.templateId}
-                                    onValueChange={(val) => {
+                                <div className="flex items-center gap-1.5">
+                                    {((!isAb && state.templateId) || (isAb && activeVariant.templateId)) ? (
+                                        <Button type="button" variant="outline" size="sm" className="h-8 rounded-xl text-xs font-bold gap-1" onClick={() => setQuickCreateOpen(true)}>
+                                            <Pencil className="h-3.5 w-3.5" /> Edit Template
+                                        </Button>
+                                    ) : null}
+                                    <Button type="button" variant="outline" size="sm" className="h-8 rounded-xl text-xs font-bold gap-1 border-dashed hover:border-primary/50" onClick={() => { 
                                         if (isAb) {
-                                            updateActiveVariant({ templateId: val });
+                                            updateActiveVariant({ templateId: '' });
                                         } else {
-                                            setField('templateId', val);
+                                            setField('templateId', '');
                                         }
-                                    }}
-                                    onSelect={(template) => {
-                                        if (template) {
-                                            if (isAb) {
-                                                updateActiveVariant({
-                                                    templateId: template.id,
-                                                    templateName: template.name,
-                                                    customSubject: template.subject || '',
-                                                    customBody: template.body || '',
-                                                    customBlocks: template.blocks || []
-                                                });
-                                            } else {
-                                                setField('templateName', template.name);
-                                                setField('customSubject', template.subject || '');
-                                                setField('customBody', template.body || '');
-                                            }
-                                        }
-                                    }}
-                                    placeholder="Choose campaign blueprint..."
-                                    className="rounded-xl bg-card border-border/50 font-bold transition-all text-xs"
-                                />
-                                
-                                {(!isAb && state.templateId) || (isAb && activeVariant.templateId) ? (
-                                    <Badge variant="outline" className="text-[9px] font-bold">
-                                        Using: {isAb ? activeVariant.templateName : state.templateName}
-                                    </Badge>
-                                ) : null}
+                                        setQuickCreateOpen(true); 
+                                    }}>
+                                        <PlusCircle className="h-3.5 w-3.5" /> New Template
+                                    </Button>
+                                </div>
                             </div>
-                        ) : null}
-
-                        {/* Subject (email only) */}
-                        {state.channel === 'email' ? (
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line</Label>
-                                <Input
-                                    value={subjectValue}
-                                    onChange={e => {
-                                        if (isAb) {
-                                            updateActiveVariant({ customSubject: e.target.value });
-                                        } else {
-                                            setField('customSubject', e.target.value);
-                                        }
-                                    }}
-                                    placeholder="Enter email subject..."
-                                    className="h-12 rounded-xl bg-card border-border/50 font-bold"
-                                />
-                            </div>
-                        ) : null}
-
-                        {/* Body */}
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
-                                {state.channel === 'sms' ? 'Message Body' : 'Email Body'}
-                            </Label>
-                            <Textarea
-                                value={bodyValue}
-                                onChange={e => {
+                            
+                            <MessagingTemplateSelector 
+                                category="campaigns"
+                                recipientType={state.target === 'external_client' ? 'entity' : 'internal_alert'}
+                                channel={state.channel}
+                                value={isAb ? (activeVariant.templateId || '') : state.templateId}
+                                onValueChange={(val) => {
                                     if (isAb) {
-                                        updateActiveVariant({ customBody: e.target.value });
+                                        updateActiveVariant({ templateId: val });
                                     } else {
-                                        setField('customBody', e.target.value);
+                                        setField('templateId', val);
                                     }
                                 }}
-                                placeholder={state.channel === 'sms' ? 'Type your SMS message...' : 'Type your email content...'}
-                                className="min-h-[250px] rounded-xl bg-card border-border/50 font-semibold text-sm"
-                            />
-                            {state.channel === 'sms' ? (
-                                <p className="text-[9px] font-bold text-muted-foreground text-right tabular-nums">
-                                    {bodyValue.length} / {bodyValue.length <= 160 ? 160 : Math.ceil(bodyValue.length / 153) * 153} chars
-                                    ({bodyValue.length <= 160 ? 1 : Math.ceil(bodyValue.length / 153)} segment{bodyValue.length > 160 ? 's' : ''})
-                                </p>
-                            ) : null}
-                        </div>
-
-                        {/* Variable reference */}
-                        <div className="rounded-xl bg-muted/20 border border-border/30 p-3 space-y-2">
-                            <p className="text-[9px] font-bold text-primary/70">Available Variables</p>
-                            <div className="flex flex-wrap gap-1.5">
-                                {['entity_name', 'entity_email', 'entity_phone', 'workspace_name', 'sender_name'].map(v => (
-                                    <Badge key={v} variant="outline" className="text-[8px] font-mono cursor-pointer hover:bg-primary/10 transition-colors" onClick={() => {
-                                        const addition = `{{${v}}}`;
+                                onSelect={(template) => {
+                                    if (template) {
                                         if (isAb) {
-                                            updateActiveVariant({ customBody: bodyValue + addition });
+                                            updateActiveVariant({
+                                                templateId: template.id,
+                                                templateName: template.name,
+                                                customSubject: template.subject || '',
+                                                customBody: template.body || '',
+                                                customBlocks: template.blocks || []
+                                            });
                                         } else {
-                                            setField('customBody', state.customBody + addition);
+                                            setField('templateName', template.name);
+                                            setField('customSubject', template.subject || '');
+                                            setField('customBody', template.body || '');
                                         }
-                                    }}>
-                                        {`{{${v}}}`}
-                                    </Badge>
-                                ))}
-                            </div>
-                            <p className="text-[8px] font-semibold text-muted-foreground">Click to insert at end · Variables resolve per-recipient at send time</p>
-                        </div>
-
-                        {/* Phase 6 Story 6: AI Copy Assistant */}
-                        <div className="rounded-2xl border bg-card overflow-hidden">
-                            <button
-                                type="button"
-                                onClick={() => setShowAiPanel(!showAiPanel)}
-                                className="w-full p-4 flex items-center justify-between hover:bg-muted/10 transition-colors"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4 text-violet-500" />
-                                    <div className="text-left">
-                                        <p className="text-xs font-bold">AI Copy Assistant</p>
-                                        <p className="text-[9px] font-semibold text-muted-foreground">Generate or refine content with AI</p>
+                                    }
+                                }}
+                                placeholder="Choose campaign blueprint..."
+                                className="rounded-xl bg-card border-border/50 font-bold transition-all text-xs"
+                            />
+                            
+                            {((!isAb && state.templateId) || (isAb && activeVariant.templateId)) ? (
+                                <div className="space-y-4 pt-4 border-t border-border/50 animate-in fade-in duration-300">
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Selected Template Info</Label>
+                                        <Badge variant="outline" className="text-[9px] font-bold text-violet-600 bg-violet-50 border-violet-200">
+                                            {isAb ? activeVariant.templateName : state.templateName}
+                                        </Badge>
                                     </div>
-                                </div>
-                                <Badge variant="outline" className="text-[8px] font-bold bg-violet-50 text-violet-600 border-violet-200">
-                                    Gemini
-                                </Badge>
-                            </button>
-
-                            {showAiPanel ? (
-                                <div className="p-4 pt-0 space-y-4 border-t">
-                                    {/* Generate from scratch */}
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Context (optional)</Label>
-                                        <Input
-                                            value={aiPrompt}
-                                            onChange={e => setAiPrompt(e.target.value)}
-                                            placeholder="e.g., End-of-year thank you message for school principals..."
-                                            className="h-9 rounded-xl bg-muted/20 border-border/30 text-xs font-semibold"
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={isGenerating || !state.internalName.trim()}
-                                            className="rounded-xl font-bold text-xs gap-1.5 w-full border-violet-200 text-violet-600 hover:bg-violet-50"
-                                            onClick={async () => {
-                                                setIsGenerating(true);
-                                                try {
-                                                    const res = await generateCampaignCopy({
-                                                        channel: state.channel as 'email' | 'sms',
-                                                        target: state.target,
-                                                        campaignName: state.internalName,
-                                                        context: aiPrompt || undefined,
-                                                        organizationId: activeOrganizationId || undefined,
-                                                    });
-                                                    if (res.success && res.result) {
-                                                        if (isAb) {
-                                                            updateActiveVariant({
-                                                                customSubject: res.result.subject,
-                                                                customBody: res.result.body
-                                                            });
-                                                        } else {
-                                                            setField('customSubject', res.result.subject);
-                                                            setField('customBody', res.result.body);
-                                                        }
-                                                        setAiVariants(res.result.subjectVariants || []);
-                                                        toast({ title: 'Content Generated', description: 'AI-generated copy applied. Edit as needed.' });
-                                                    } else {
-                                                        toast({ variant: 'destructive', title: 'AI Error', description: res.error || 'Generation failed' });
-                                                    }
-                                                } catch (e: any) {
-                                                    toast({ variant: 'destructive', title: 'AI Error', description: e.message || 'Generation failed' });
-                                                } finally {
-                                                    setIsGenerating(false);
-                                                }
-                                            }}
-                                        >
-                                            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                            {isGenerating ? 'Generating...' : 'Generate Copy'}
-                                        </Button>
-                                    </div>
-
-                                    {/* Subject variants */}
-                                    {aiVariants.length > 0 && state.channel === 'email' ? (
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line Variants</Label>
-                                            <div className="space-y-1.5">
-                                                {aiVariants.map((variant, i) => (
-                                                    <button
-                                                        key={i}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            if (isAb) {
-                                                                updateActiveVariant({ customSubject: variant });
-                                                            } else {
-                                                                setField('customSubject', variant);
-                                                            }
-                                                        }}
-                                                        className={cn(
-                                                            "w-full text-left p-2.5 rounded-lg border text-[10px] font-semibold transition-all",
-                                                            (isAb ? activeVariant.customSubject === variant : state.customSubject === variant)
-                                                                ? "border-violet-400 bg-violet-50 text-violet-700"
-                                                                : "border-border/30 hover:border-violet-200 hover:bg-violet-50/50 text-foreground"
-                                                        )}
-                                                    >
-                                                        <span className="text-[8px] font-bold text-muted-foreground mr-1.5">#{i + 1}</span>
-                                                        {variant}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ) : null}
-
-                                    {/* Refine existing copy */}
-                                    {(state.customSubject || state.customBody) ? (
-                                        <div className="space-y-2 pt-2 border-t border-border/30">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Refine Existing Copy</Label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    value={aiPrompt}
-                                                    onChange={e => setAiPrompt(e.target.value)}
-                                                    placeholder="e.g., Make it more formal, shorten the body..."
-                                                    className="h-9 rounded-xl bg-muted/20 border-border/30 text-xs font-semibold flex-1"
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    disabled={isGenerating || !aiPrompt.trim()}
-                                                    className="rounded-xl font-bold text-xs gap-1.5 border-amber-200 text-amber-600 hover:bg-amber-50 shrink-0"
-                                                    onClick={async () => {
-                                                        setIsGenerating(true);
-                                                        try {
-                                                            const res = await refineCampaignCopy({
-                                                                 organizationId: activeOrganizationId || undefined,
-                                                                original: isAb ? activeVariant.customBody : state.customBody,
-                                                                instruction: aiPrompt,
-                                                                field: 'body',
-                                                            });
-                                                            if (res.success && res.refined) {
-                                                                if (isAb) {
-                                                                    updateActiveVariant({ customBody: res.refined });
-                                                                } else {
-                                                                    setField('customBody', res.refined);
-                                                                }
-                                                                toast({ title: 'Copy Refined' });
-                                                            } else {
-                                                                toast({ variant: 'destructive', title: 'AI Error', description: res.error || 'Refinement failed' });
-                                                            }
-                                                        } catch (e: any) {
-                                                            toast({ variant: 'destructive', title: 'AI Error', description: e.message || 'Refinement failed' });
-                                                        } finally {
-                                                            setIsGenerating(false);
-                                                        }
-                                                    }}
-                                                >
-                                                    {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
-                                                    Refine
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : null}
+                                    
                                 </div>
                             ) : null}
                         </div>
                     </div>
                 );
+            }
 
             case 3:
                 return (
@@ -1078,21 +1244,29 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                {state.savedAudienceId && (state.filters.length > 0 || (state.groups && state.groups.length > 0)) ? (
-                                    <FilterBuilder
-                                        contactScope={state.contactScope}
-                                        channel={state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined}
-                                        filters={state.filters}
-                                        filterLogic={state.filterLogic}
-                                        groups={state.groups}
-                                        showPreview={false}
-                                        onChange={(f, l, g) => { 
-                                            setField('filters', f); 
-                                            setField('filterLogic', l); 
-                                            if (g) setField('groups', g);
-                                        }}
-                                    />
-                                ) : null}
+                            </div>
+                        ) : null}
+
+                        {/* Manual Pick mode */}
+                        {state.audienceMode === 'manual' ? (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Contacts</Label>
+                                <ManualContactSelector
+                                    channel={state.channel}
+                                    selectedContacts={state.selectedContacts || []}
+                                    onChange={updated => setField('selectedContacts', updated)}
+                                />
+                            </div>
+                        ) : null}
+
+                        {/* Contact scope */}
+                        {state.audienceMode !== 'saved' && state.audienceMode !== 'manual' ? (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Scope</Label>
+                                <ContactScopeSelector 
+                                    value={state.contactScope} 
+                                    onChange={v => setField('contactScope', v as any)} 
+                                />
                             </div>
                         ) : null}
 
@@ -1127,30 +1301,42 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 </div>
                             </div>
 
-                            {previewResult?.preview && previewResult.preview.length > 0 && (
-                                <div className="pt-2 border-t border-border/50">
-                                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-tight mb-2">Sample Recipients</p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {previewResult.preview.slice(0, 3).map(p => (
-                                            <Badge key={p.id} variant="outline" className="text-[9px] font-medium bg-card border-border/50 py-0 px-2 rounded-lg">
-                                                {p.name}
-                                            </Badge>
-                                        ))}
-                                        {previewResult.preview.length > 3 && (
-                                            <span className="text-[9px] font-semibold text-muted-foreground">+{previewResult.preview.length - 3} more</span>
-                                        )}
+                            {previewResult?.contactsPreview && previewResult.contactsPreview.length > 0 ? (
+                                <div className="pt-2 border-t border-border/50 space-y-2">
+                                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-tight">Sample Targets (Resolved Contacts)</p>
+                                    <div className="space-y-2">
+                                        {previewResult.contactsPreview.slice(0, 5).map(cp => {
+                                            const initials = cp.name
+                                                ? cp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                                                : '?';
+                                            return (
+                                                <div key={cp.id} className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/30 hover:border-border/60 transition-all">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-bold text-[10px] uppercase shrink-0">
+                                                            {initials}
+                                                        </div>
+                                                        <div className="space-y-0.5">
+                                                            <p className="text-xs font-bold text-foreground">{cp.name}</p>
+                                                            <p className="text-[9px] font-semibold text-muted-foreground">{cp.entityName}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-semibold text-muted-foreground">{cp.contactVal}</span>
+                                                        {state.channel === 'email' ? (
+                                                            <EmailHygieneBadge status={cp.verificationStatus as any} size="sm" />
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {previewResult.contactsPreview.length > 5 ? (
+                                            <p className="text-[9px] font-semibold text-muted-foreground text-center">
+                                                +{previewResult.contactsPreview.length - 5} more recipients matching scope
+                                            </p>
+                                        ) : null}
                                     </div>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Contact scope */}
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Scope</Label>
-                            <ContactScopeSelector 
-                                value={state.contactScope} 
-                                onChange={v => setField('contactScope', v as any)} 
-                            />
+                            ) : null}
                         </div>
                     </div>
                 );
@@ -1196,7 +1382,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                             </div>
                                                         </div>
 
-                                                        {state.abTestEnabled && (
+                                                        {state.abTestEnabled ? (
                                                             <>
                                                                 <Separator className="opacity-50" />
                                                                 <div className="space-y-6 p-6 rounded-2xl border bg-violet-500/5 border-violet-500/20 animate-in slide-in-from-top-2 duration-300">
@@ -1210,31 +1396,15 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                                     <Separator className="bg-violet-500/20" />
                                                                     
                                                                     <div className="space-y-4">
-                                                                        <div className="space-y-2">
-                                                                            <div className="flex justify-between items-center">
-                                                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
-                                                                                    Test Group Size: {state.abTestConfig.testSizePercentage}%
-                                                                                </Label>
-                                                                                <span className="text-[9px] font-bold text-violet-600">
-                                                                                    ({state.abTestConfig.testSizePercentage / 2}% A, {state.abTestConfig.testSizePercentage / 2}% B, {100 - state.abTestConfig.testSizePercentage}% Remainder)
-                                                                                </span>
-                                                                            </div>
-                                                                            <Input
-                                                                                type="range"
-                                                                                min={2}
-                                                                                max={100}
-                                                                                step={2}
-                                                                                value={state.abTestConfig.testSizePercentage}
-                                                                                onChange={e => {
-                                                                                    const val = parseInt(e.target.value) || 20;
-                                                                                    setField('abTestConfig', {
-                                                                                        ...state.abTestConfig,
-                                                                                        testSizePercentage: val
-                                                                                    });
-                                                                                }}
-                                                                                className="h-2 bg-violet-200 rounded-lg appearance-none cursor-pointer"
-                                                                            />
-                                                                        </div>
+                                                                        <ABTestSlider
+                                                                            value={state.abTestConfig.testSizePercentage}
+                                                                            onChange={(val) => {
+                                                                                setField('abTestConfig', {
+                                                                                    ...state.abTestConfig,
+                                                                                    testSizePercentage: val
+                                                                                });
+                                                                            }}
+                                                                        />
 
                                                                         {state.abTestConfig.testSizePercentage < 100 ? (
                                                                             <>
@@ -1294,7 +1464,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                                     </div>
                                                                 </div>
                                                             </>
-                                                        )}
+                                                        ) : null}
 
                         <Separator className="opacity-50" />
 
@@ -1303,39 +1473,323 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 <Zap className="h-3 w-3" /> Post-Send Automation Rules
                             </Label>
                             
-                            <div className="space-y-3">
-                                {state.postSendTagRules.map((rule, idx) => (
-                                    <div key={idx} className="p-4 rounded-xl border bg-card/50 flex items-center gap-3">
-                                        <div className="flex-1 space-y-1">
-                                            <p className="text-[10px] font-bold text-primary">WHEN {rule.appliesTo?.replace('_', ' ').toUpperCase()}</p>
-                                            <div className="flex flex-wrap gap-1">
-                                                <Badge variant="secondary" className="text-[8px] font-bold">
-                                                    {rule.tagName || rule.tagId}
-                                                </Badge>
+                            <div className="space-y-4">
+                                {state.postSendTagRules.map((rule, idx) => {
+                                    const actionType = rule.actionType || 'add_tag';
+                                    const activeStages = stages?.filter((s: any) => s.pipelineId === rule.dealPipelineId) || [];
+
+                                    return (
+                                        <div key={idx} className="p-5 rounded-2xl border bg-card/40 backdrop-blur-sm shadow-sm space-y-4 relative group hover:border-violet-500/20 transition-all duration-300">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-black text-violet-600 dark:text-violet-400 uppercase tracking-wider">
+                                                    Rule #{idx + 1}
+                                                </span>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 rounded-xl hover:bg-destructive/10 hover:text-destructive transition-colors duration-200" 
+                                                    onClick={() => {
+                                                        const next = [...state.postSendTagRules];
+                                                        next.splice(idx, 1);
+                                                        setField('postSendTagRules', next);
+                                                    }}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
                                             </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* WHEN COHORT */}
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[9px] font-bold text-muted-foreground uppercase">When Recipient Outcome is</Label>
+                                                    <Select
+                                                        value={rule.appliesTo}
+                                                        onValueChange={(val: any) => {
+                                                            const next = [...state.postSendTagRules];
+                                                            next[idx] = { ...next[idx], appliesTo: val };
+                                                            setField('postSendTagRules', next);
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="h-10 rounded-xl bg-card border-border/50 font-semibold text-xs">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="rounded-xl">
+                                                            <SelectItem value="delivered" className="text-xs font-semibold">Delivered Successfully</SelectItem>
+                                                            <SelectItem value="failed" className="text-xs font-semibold">Failed to Deliver</SelectItem>
+                                                            <SelectItem value="not_delivered" className="text-xs font-semibold">Not Delivered (Wait / Out of bounds)</SelectItem>
+                                                            <SelectItem value="all_targeted" className="text-xs font-semibold">All Targeted Contacts</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {/* THEN ACTION */}
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[9px] font-bold text-muted-foreground uppercase">Then Action is</Label>
+                                                    <Select
+                                                        value={actionType}
+                                                        onValueChange={(val: any) => {
+                                                            const next = [...state.postSendTagRules];
+                                                            next[idx] = { 
+                                                                ...next[idx], 
+                                                                actionType: val,
+                                                                // Reset action-specific fields to avoid dirty payload
+                                                                tagId: '',
+                                                                tagName: '',
+                                                                dealPipelineId: '',
+                                                                dealStageId: '',
+                                                                dealTitleTemplate: '',
+                                                                taskTitleTemplate: '',
+                                                                taskDueDateOffsetDays: 3
+                                                            };
+                                                            setField('postSendTagRules', next);
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="h-10 rounded-xl bg-card border-border/50 font-semibold text-xs">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="rounded-xl">
+                                                            <SelectItem value="add_tag" className="text-xs font-semibold">Apply Tag</SelectItem>
+                                                            <SelectItem value="create_deal" className="text-xs font-semibold">Create Deal</SelectItem>
+                                                            <SelectItem value="create_task" className="text-xs font-semibold">Assign Follow-Up Task</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+
+                                            {/* ACTION PARAMETERS */}
+                                            {actionType === 'add_tag' && (() => {
+                                                const selectedTag = allTags?.find((t: any) => t.id === rule.tagId);
+                                                return (
+                                                    <div className="space-y-1.5 animate-in fade-in duration-200">
+                                                        <Label className="text-[9px] font-bold text-muted-foreground uppercase">Select Workspace Tag</Label>
+                                                        <Popover 
+                                                            open={openRuleTagIdx === idx} 
+                                                            onOpenChange={(open) => {
+                                                                setOpenRuleTagIdx(open ? idx : null);
+                                                                if (!open) setRuleTagInputValue('');
+                                                            }} 
+                                                            modal={false}
+                                                        >
+                                                            <PopoverTrigger asChild>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    role="combobox"
+                                                                    aria-expanded={openRuleTagIdx === idx}
+                                                                    className="w-full h-10 rounded-xl bg-card border-border/50 font-semibold text-xs justify-between px-3"
+                                                                >
+                                                                    {rule.tagId ? (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div 
+                                                                                className="h-2 w-2 rounded-full shrink-0" 
+                                                                                style={{ backgroundColor: selectedTag?.color || '#cbd5e1' }} 
+                                                                            />
+                                                                            <span>{rule.tagName || selectedTag?.name}</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-muted-foreground">Select a tag...</span>
+                                                                    )}
+                                                                    <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-2" />
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 border-none shadow-2xl rounded-xl overflow-hidden" align="start">
+                                                                <Command className="w-full" shouldFilter={true}>
+                                                                    <CommandInput 
+                                                                        placeholder="Search or type to create tag..." 
+                                                                        className="font-bold text-xs h-10" 
+                                                                        value={ruleTagInputValue}
+                                                                        onValueChange={setRuleTagInputValue}
+                                                                    />
+                                                                    <CommandList className="max-h-60 overflow-y-auto scrollbar-thin">
+                                                                        <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">No tags found.</CommandEmpty>
+                                                                        <CommandGroup className="p-1">
+                                                                            {allTags?.map((tag: any) => (
+                                                                                <CommandItem
+                                                                                    key={tag.id}
+                                                                                    value={tag.name}
+                                                                                    onSelect={() => {
+                                                                                        const next = [...state.postSendTagRules];
+                                                                                        next[idx] = { 
+                                                                                            ...next[idx], 
+                                                                                            tagId: tag.id, 
+                                                                                            tagName: tag.name 
+                                                                                        };
+                                                                                        setField('postSendTagRules', next);
+                                                                                        setOpenRuleTagIdx(null);
+                                                                                        setRuleTagInputValue('');
+                                                                                    }}
+                                                                                    className="cursor-pointer rounded-lg p-2 gap-2 text-xs font-semibold flex items-center justify-between"
+                                                                                >
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <div 
+                                                                                            className="h-2 w-2 rounded-full shrink-0" 
+                                                                                            style={{ backgroundColor: tag.color || '#cbd5e1' }} 
+                                                                                        />
+                                                                                        <span>{tag.name}</span>
+                                                                                    </div>
+                                                                                    {rule.tagId === tag.id && (
+                                                                                        <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                                                    )}
+                                                                                </CommandItem>
+                                                                            ))}
+                                                                        </CommandGroup>
+                                                                        {ruleTagInputValue.trim() !== '' && !allTags?.some((tag: any) => tag.name.toLowerCase() === ruleTagInputValue.trim().toLowerCase()) && (
+                                                                            <CommandGroup className="p-1 border-t border-border/30" forceMount>
+                                                                                <CommandItem
+                                                                                    value={ruleTagInputValue}
+                                                                                    onSelect={() => {
+                                                                                        handleCreateTagForRule(ruleTagInputValue.trim(), idx);
+                                                                                        setOpenRuleTagIdx(null);
+                                                                                        setRuleTagInputValue('');
+                                                                                    }}
+                                                                                    className="cursor-pointer rounded-lg p-2 gap-2 text-xs text-primary font-bold flex items-center"
+                                                                                    forceMount
+                                                                                >
+                                                                                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                                                                                    <span>Create &quot;{ruleTagInputValue.trim()}&quot;</span>
+                                                                                </CommandItem>
+                                                                            </CommandGroup>
+                                                                        )}
+                                                                    </CommandList>
+                                                                </Command>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {actionType === 'create_deal' && (
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in duration-200">
+                                                    {/* PIPELINE */}
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[9px] font-bold text-muted-foreground uppercase">Sales Pipeline</Label>
+                                                        <Select
+                                                            value={rule.dealPipelineId || ''}
+                                                            onValueChange={(val) => {
+                                                                const next = [...state.postSendTagRules];
+                                                                next[idx] = { 
+                                                                    ...next[idx], 
+                                                                    dealPipelineId: val,
+                                                                    dealStageId: '' // reset stage when pipeline changes
+                                                                };
+                                                                setField('postSendTagRules', next);
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="h-10 rounded-xl bg-card border-border/50 font-semibold text-xs">
+                                                                <SelectValue placeholder="Select pipeline..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-xl">
+                                                                {pipelines?.map((pipe: any) => (
+                                                                    <SelectItem key={pipe.id} value={pipe.id} className="text-xs font-semibold">
+                                                                        {pipe.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                                {(!pipelines || pipelines.length === 0) && (
+                                                                    <SelectItem value="none" disabled className="text-xs">No pipelines found</SelectItem>
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* STAGE */}
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[9px] font-bold text-muted-foreground uppercase">Pipeline Stage</Label>
+                                                        <Select
+                                                            value={rule.dealStageId || ''}
+                                                            disabled={!rule.dealPipelineId}
+                                                            onValueChange={(val) => {
+                                                                const next = [...state.postSendTagRules];
+                                                                next[idx] = { ...next[idx], dealStageId: val };
+                                                                setField('postSendTagRules', next);
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="h-10 rounded-xl bg-card border-border/50 font-semibold text-xs">
+                                                                <SelectValue placeholder={rule.dealPipelineId ? "Select stage..." : "Select pipeline first"} />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-xl">
+                                                                {activeStages.map((stage: any) => (
+                                                                    <SelectItem key={stage.id} value={stage.id} className="text-xs font-semibold">
+                                                                        {stage.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                                {activeStages.length === 0 && (
+                                                                    <SelectItem value="none" disabled className="text-xs">No stages</SelectItem>
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* DEAL TITLE */}
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[9px] font-bold text-muted-foreground uppercase">Deal Title Template</Label>
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="e.g. {{entityName}} Deal"
+                                                            value={rule.dealTitleTemplate || ''}
+                                                            onChange={(e) => {
+                                                                const next = [...state.postSendTagRules];
+                                                                next[idx] = { ...next[idx], dealTitleTemplate: e.target.value };
+                                                                setField('postSendTagRules', next);
+                                                            }}
+                                                            className="h-10 rounded-xl bg-card border border-border/50 font-semibold text-xs px-3"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {actionType === 'create_task' && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-200">
+                                                    {/* TASK TITLE */}
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[9px] font-bold text-muted-foreground uppercase">Task Title Template</Label>
+                                                        <Input
+                                                            type="text"
+                                                            placeholder="e.g. Follow up with {{entityName}}"
+                                                            value={rule.taskTitleTemplate || ''}
+                                                            onChange={(e) => {
+                                                                const next = [...state.postSendTagRules];
+                                                                next[idx] = { ...next[idx], taskTitleTemplate: e.target.value };
+                                                                setField('postSendTagRules', next);
+                                                            }}
+                                                            className="h-10 rounded-xl bg-card border border-border/50 font-semibold text-xs px-3"
+                                                        />
+                                                    </div>
+
+                                                    {/* DUE DATE OFFSET */}
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[9px] font-bold text-muted-foreground uppercase">Due Date Offset (Days)</Label>
+                                                        <Input
+                                                            type="number"
+                                                            min={1}
+                                                            max={365}
+                                                            value={rule.taskDueDateOffsetDays ?? 3}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value) || 3;
+                                                                const next = [...state.postSendTagRules];
+                                                                next[idx] = { ...next[idx], taskDueDateOffsetDays: val };
+                                                                setField('postSendTagRules', next);
+                                                            }}
+                                                            placeholder="e.g. 3"
+                                                            className="h-10 rounded-xl bg-card border border-border/50 font-semibold text-xs px-3"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => {
-                                            const next = [...state.postSendTagRules];
-                                            next.splice(idx, 1);
-                                            setField('postSendTagRules', next);
-                                        }}>
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
+                                    );
+                                })}
 
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="w-full h-10 rounded-xl border-dashed border-2 hover:border-primary/50 text-xs font-bold gap-2"
+                                    className="w-full h-10 rounded-xl border-dashed border-2 hover:border-violet-500/50 hover:text-violet-600 text-xs font-bold gap-2 transition-all"
                                     onClick={() => {
                                         setField('postSendTagRules', [
                                             ...state.postSendTagRules,
-                                            { appliesTo: 'delivered', tagId: 'new', tagName: 'New Tag' }
+                                            { appliesTo: 'delivered', actionType: 'add_tag', tagId: '', tagName: '' }
                                         ]);
                                     }}
                                 >
-                                    <Plus className="h-3 w-3" /> Add Behavior Rule
+                                    <Plus className="h-3 w-3" /> Add Post-Send Automation Rule
                                 </Button>
                             </div>
                         </div>
@@ -1437,11 +1891,11 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                             >
                                                 <div className="p-3 bg-violet-500/5 border-b border-violet-500/10 flex items-center justify-between">
                                                     <span className="text-[10px] font-bold text-violet-700">Variant {varId}</span>
-                                                    {variant.templateName && (
+                                                    {variant.templateName ? (
                                                         <Badge variant="secondary" className="text-[8px] font-bold bg-violet-100 text-violet-800">
                                                             {variant.templateName}
                                                         </Badge>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                                 {state.channel === 'email' ? (
                                                     <div className="p-3.5 border-b bg-muted/10">
@@ -1463,7 +1917,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between px-1">
                                     <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Content Preview</Label>
-                                    {state.templateName && <Badge variant="secondary" className="text-[8px] font-bold">Template: {state.templateName}</Badge>}
+                                    {state.templateName ? <Badge variant="secondary" className="text-[8px] font-bold">Template: {state.templateName}</Badge> : null}
                                 </div>
                                 <div className="rounded-2xl border bg-card overflow-hidden">
                                     {state.channel === 'email' ? (
@@ -1502,20 +1956,15 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     return (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300 flex items-center justify-center p-4">
             <Card className="w-full max-w-3xl h-[90vh] flex flex-col rounded-[2.5rem] shadow-2xl border-none overflow-hidden animate-in zoom-in-95 duration-500">
-                <CardHeader className="p-8 pb-0 shrink-0">
+                <CardHeader className="p-8 pb-0 shrink-0 relative">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
                                 <Megaphone className="h-6 w-6" />
                             </div>
-                            <div>
-                                <CardTitle className="text-xl font-bold tracking-tight">Campaign Wizard</CardTitle>
-                                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-primary/60">
-                                    {campaign ? 'Update Blueprint' : 'Initialize Dispatch'}
-                                </CardDescription>
-                            </div>
+                            <CardTitle className="text-xl font-bold tracking-tight">Campaign Wizard</CardTitle>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={handleClose} className="rounded-2xl h-10 w-10">
+                        <Button variant="ghost" size="icon" onClick={handleClose} className="absolute top-8 right-8 rounded-2xl h-10 w-10 hover:bg-accent/50 transition-colors">
                             <X className="h-6 w-6" />
                         </Button>
                     </div>

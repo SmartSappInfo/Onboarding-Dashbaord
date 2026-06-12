@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, ShieldEllipsis, UserPlus, UserMinus, Key, Building2, Search, Filter, ChevronDown } from 'lucide-react';
@@ -46,6 +47,7 @@ function useRoleLookup(roles: Role[] | null | undefined) {
 export default function UsersClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { activeOrganizationId, activeWorkspaceId, activeWorkspace, isSuperAdmin } = useTenant();
   const { user: currentUser } = useUser();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
@@ -155,7 +157,7 @@ export default function UsersClient() {
   }, [firestore, roles, activeWorkspaceId, users, activeWorkspace, toast]);
 
   const handleResetPassword = React.useCallback(async (userId: string, userName: string) => {
-      if (!confirm(`Are you sure you want to reset the password for ${userName}? A new temporary password will be sent via Email/SMS.`)) return;
+      if (!(await confirm({ title: 'Reset password?', description: `A new temporary password will be sent to ${userName} via Email/SMS.`, confirmText: 'Reset Password' }))) return;
       
       setUpdatingId(userId);
       try {
@@ -197,7 +199,7 @@ export default function UsersClient() {
 
   const handleDeclineRequest = React.useCallback(async (userId: string, userName: string) => {
       if (!currentUser?.uid) return;
-      if (!confirm(`Are you sure you want to decline ${userName}'s joining request? This will reject their onboarding and disable their access.`)) return;
+      if (!(await confirm({ title: 'Decline joining request?', description: `This will reject ${userName}'s onboarding and disable their access.`, confirmText: 'Decline', variant: 'destructive' }))) return;
       
       setUpdatingId(userId);
       try {
@@ -231,7 +233,7 @@ export default function UsersClient() {
           });
           return;
       }
-      if (!confirm(`Are you sure you want to remove ${userName} from the organization? This will immediately strip all organization and workspace access and reset their onboarding profile.`)) return;
+      if (!(await confirm({ title: 'Remove from organization?', description: `This immediately strips all of ${userName}'s organization and workspace access and resets their onboarding profile.`, confirmText: 'Remove', variant: 'destructive' }))) return;
       
       setUpdatingId(userId);
       try {

@@ -13,6 +13,9 @@ import {
   Plus,
   Users,
   Layers,
+  Copy,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -39,9 +42,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { listAllOrganizations, suspendOrganization, restoreOrganization } from '@/lib/backoffice/backoffice-org-actions';
+import { 
+  listAllOrganizations, 
+  suspendOrganization, 
+  restoreOrganization,
+  createOrganizationFromBackofficeAction 
+} from '@/lib/backoffice/backoffice-org-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
-import type { Organization } from '@/lib/types';
+import ShareOrgInvite from './ShareOrgInvite';
+import { APP_FEATURES, type AppFeatureId, type Organization } from '@/lib/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 // ─────────────────────────────────────────────────
 // Organization List Client
@@ -54,6 +67,30 @@ type OrgWithStats = Organization & {
   activeUsers: number;
 };
 
+/** Short, customer-facing blurbs for each platform feature entitlement. */
+const FEATURE_DESCRIPTIONS: Record<AppFeatureId, string> = {
+  entities: 'Manage contacts, accounts, and records.',
+  pipeline: 'Track deals through customizable stages.',
+  tasks: 'Assign tasks, set reminders, and follow up.',
+  meetings: 'Schedule and coordinate virtual/in-person meetings.',
+  automations: 'Design automated, event-triggered workflows.',
+  reports: 'Dashboards, analytics, and intelligence reports.',
+  portals: 'Public-facing portals and landing pages.',
+  media: 'Upload and manage images, files, and assets.',
+  surveys: 'Create satisfaction, NPS, and intake surveys.',
+  pdfs: 'Prepare documents and collect e-signatures.',
+  messaging: 'Run bulk SMS/email campaigns and conversations.',
+  tags: 'Segment records with tags and labels.',
+  forms: 'Build dynamic intake and data-collection forms.',
+  qr_studio: 'Generate and brand QR codes.',
+  verify_studio: 'Verify identities and submitted documents.',
+  agreements: 'Create and manage contracts and agreements.',
+  invoices: 'Issue and track invoices.',
+  packages: 'Define pricing tiers and packages.',
+  billing_periods: 'Manage billing cycles and periods.',
+  billing_setup: 'Configure billing and payment settings.',
+};
+
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
   trial: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
@@ -63,13 +100,26 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function OrgListClient() {
   const { can, profile } = useBackoffice();
+  const { toast } = useToast();
   const [orgs, setOrgs] = React.useState<OrgWithStats[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState('all');
 
+  // New Organization Creation States
+  const [isCreateOpen, setIsCreateOpen] = React.useState(false);
+  const [isCreating, setIsCreating] = React.useState(false);
+  const [newOrgName, setNewOrgName] = React.useState('');
+  const [newOrgEmail, setNewOrgEmail] = React.useState('');
+  const [features, setFeatures] = React.useState<any[]>([]);
+  const [selectedFeatures, setSelectedFeatures] = React.useState<Record<string, boolean>>({});
+  const [createResult, setCreateResult] = React.useState<{ organizationId: string; joinToken: string; link: string } | null>(null);
+  const [copiedToken, setCopiedToken] = React.useState(false);
+  const [copiedLink, setCopiedLink] = React.useState(false);
+
   React.useEffect(() => {
     loadOrgs();
+    loadFeatures();
   }, []);
 
   async function loadOrgs() {
@@ -79,6 +129,25 @@ export default function OrgListClient() {
       setOrgs(result.data);
     }
     setIsLoading(false);
+  }
+
+  function loadFeatures() {
+    // Entitlements are keyed by AppFeatureId — the SAME canonical registry the
+    // admin Feature Manager uses to turn features on/off (org.enabledFeatures).
+    // Sourcing the modal from APP_FEATURES guarantees the full list is shown and
+    // that the keys actually gate features post-creation.
+    const list = APP_FEATURES.map(f => ({
+      id: f.id,
+      key: f.id,
+      label: f.label,
+      category: f.category,
+      description: FEATURE_DESCRIPTIONS[f.id],
+      defaultState: f.defaultEnabled,
+    }));
+    setFeatures(list);
+    const defaults: Record<string, boolean> = {};
+    list.forEach(f => { defaults[f.key] = Boolean(f.defaultState); });
+    setSelectedFeatures(defaults);
   }
 
   // Filter orgs by search and status
@@ -123,6 +192,78 @@ export default function OrgListClient() {
     if (result.success) loadOrgs();
   }
 
+  async function handleCreateOrg(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newOrgName.trim()) {
+      toast({ variant: 'destructive', title: 'Validation Error', description: 'Organization name is required.' });
+      return;
+    }
+    if (!profile) {
+      toast({ variant: 'destructive', title: 'Authentication Error', description: 'Action requires logged-in super admin actor.' });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const result = await createOrganizationFromBackofficeAction({
+        name: newOrgName,
+        email: newOrgEmail,
+        enabledFeatures: selectedFeatures
+      }, {
+        userId: profile.id,
+        name: profile.name,
+        email: profile.email,
+        role: 'super_admin'
+      });
+
+      if (result.success && result.data) {
+        const inviteLink = `${window.location.origin}/profile-setup?code=${result.data.joinToken}`;
+        setCreateResult({
+          organizationId: result.data.organizationId,
+          joinToken: result.data.joinToken,
+          link: inviteLink
+        });
+        toast({ title: 'Success', description: 'Organization pre-created successfully.' });
+        loadOrgs();
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to create organization.' });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'System Error', description: err.message || 'Server error occurred.' });
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  function handleCloseCreate(open: boolean) {
+    if (!open) {
+      setIsCreateOpen(false);
+      setNewOrgName('');
+      setNewOrgEmail('');
+      setCreateResult(null);
+      setCopiedToken(false);
+      setCopiedLink(false);
+    } else {
+      setIsCreateOpen(true);
+    }
+  }
+
+  const copyToClipboard = async (text: string, type: 'token' | 'link') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === 'token') {
+        setCopiedToken(true);
+        setTimeout(() => setCopiedToken(false), 2000);
+      } else {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      }
+      toast({ title: 'Copied', description: `${type === 'token' ? 'Join token' : 'Invitation link'} copied to clipboard.` });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Copy Failed', description: 'Failed to copy to clipboard.' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -137,6 +278,7 @@ export default function OrgListClient() {
         </div>
         {can('organizations', 'create') ? (
           <Button
+            onClick={() => setIsCreateOpen(true)}
             className="bg-emerald-600 hover:bg-emerald-700 text-foreground rounded-xl h-10 px-4 cursor-pointer"
             aria-label="Create new organization"
           >
@@ -321,6 +463,216 @@ export default function OrgListClient() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={isCreateOpen} onOpenChange={handleCloseCreate}>
+        <DialogContent className="sm:max-w-[550px] bg-background border-border rounded-2xl shadow-xl text-foreground">
+          {createResult ? (
+            <div className="space-y-6 py-4">
+              <DialogHeader>
+                <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-2 animate-bounce">
+                  <Check className="h-6 w-6 text-emerald-400" />
+                </div>
+                <DialogTitle className="text-xl font-bold text-center">Organization Pre-Created!</DialogTitle>
+                <DialogDescription className="text-center text-sm text-muted-foreground">
+                  The organization has been provisioned as unconfigured. Share the credentials below to allow the administrator to complete setup.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl border border-border bg-muted/30 space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Join Token</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <code className="flex-1 p-2 bg-muted border border-border rounded-lg text-sm font-mono text-emerald-400 font-bold select-all">
+                        {createResult.joinToken}
+                      </code>
+                      <Button
+                        size="icon"
+                        type="button"
+                        variant="outline"
+                        onClick={() => copyToClipboard(createResult.joinToken, 'token')}
+                        className="h-9 w-9 rounded-lg border-border cursor-pointer hover:bg-muted"
+                        aria-label="Copy token"
+                      >
+                        {copiedToken ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Invitation Link</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        readOnly
+                        value={createResult.link}
+                        className="flex-1 h-9 bg-muted border border-border rounded-lg text-xs font-mono select-all text-muted-foreground"
+                      />
+                      <Button
+                        size="icon"
+                        type="button"
+                        variant="outline"
+                        onClick={() => copyToClipboard(createResult.link, 'link')}
+                        className="h-9 w-9 rounded-lg border-border cursor-pointer hover:bg-muted"
+                        aria-label="Copy link"
+                      >
+                        {copiedLink ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border border-border rounded-xl p-4 bg-muted/10">
+                  <ShareOrgInvite
+                    organizationId={createResult.organizationId}
+                    defaultEmail={newOrgEmail}
+                    onShared={({ joinToken, link }) => {
+                      if (joinToken && link) {
+                        setCreateResult((prev) => prev ? { ...prev, joinToken, link } : prev);
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="text-xs text-muted-foreground bg-emerald-500/5 border border-emerald-500/10 p-3 rounded-lg flex items-start gap-2">
+                  <span className="text-emerald-400 font-bold">💡 Note:</span>
+                  <span>
+                    When the user visits this link, they will complete their profile, customize the organization's branding/preferences, create the first workspace, and automatically become the organization's <strong>Administrator</strong>.
+                  </span>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  onClick={() => handleCloseCreate(false)}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-foreground rounded-xl h-10 cursor-pointer"
+                >
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <form onSubmit={handleCreateOrg} className="space-y-6 py-2">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold">Create New Organization</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Pre-register an organization with custom feature entitlements. A join code will be generated to complete setup.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="org-name" className="text-sm font-semibold">Organization Name *</Label>
+                  <Input
+                    id="org-name"
+                    required
+                    placeholder="e.g. Acme Corp"
+                    value={newOrgName}
+                    onChange={(e) => setNewOrgName(e.target.value)}
+                    className="h-10 bg-muted/30 border-border rounded-xl focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="org-email" className="text-sm font-semibold">Primary Contact Email (Optional)</Label>
+                  <Input
+                    id="org-email"
+                    type="email"
+                    placeholder="e.g. admin@acme.com"
+                    value={newOrgEmail}
+                    onChange={(e) => setNewOrgEmail(e.target.value)}
+                    className="h-10 bg-muted/30 border-border rounded-xl focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Feature Entitlements</Label>
+                    <span className="text-[10px] font-semibold text-muted-foreground">
+                      {Object.values(selectedFeatures).filter(Boolean).length} of {features.length} selected
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Select the platform features that this organization is allowed to access.</p>
+                  <div className="space-y-4 max-h-[340px] overflow-y-auto pr-1 mt-2">
+                    {[...new Set(features.map((f) => f.category))].map((category) => {
+                      const groupFeatures = features.filter((f) => f.category === category);
+                      const allOn = groupFeatures.every((f) => selectedFeatures[f.key]);
+                      return (
+                        <div key={category} className="space-y-2">
+                          <div className="flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur-sm py-1 z-10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{category}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedFeatures((prev) => {
+                                  const next = { ...prev };
+                                  groupFeatures.forEach((f) => { next[f.key] = !allOn; });
+                                  return next;
+                                })
+                              }
+                              className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-700"
+                            >
+                              {allOn ? 'Clear all' : 'Select all'}
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            {groupFeatures.map((feature) => (
+                              <div
+                                key={feature.id}
+                                className="flex items-start gap-2.5 p-2.5 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
+                              >
+                                <Checkbox
+                                  id={`feature-${feature.key}`}
+                                  checked={!!selectedFeatures[feature.key]}
+                                  onCheckedChange={(checked) =>
+                                    setSelectedFeatures((prev) => ({
+                                      ...prev,
+                                      [feature.key]: !!checked,
+                                    }))
+                                  }
+                                  className="mt-1 border-border data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                                />
+                                <label
+                                  htmlFor={`feature-${feature.key}`}
+                                  className="text-xs text-foreground cursor-pointer select-none space-y-0.5"
+                                >
+                                  <span className="font-semibold block">{feature.label || feature.key}</span>
+                                  {feature.description && (
+                                    <span className="text-[10px] text-muted-foreground block leading-normal">
+                                      {feature.description}
+                                    </span>
+                                  )}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleCloseCreate(false)}
+                  className="rounded-xl h-10 border-border cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isCreating}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-foreground rounded-xl h-10 px-6 cursor-pointer"
+                >
+                  {isCreating ? 'Creating...' : 'Create Organization'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -13,8 +13,8 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
     if (!snap.exists) throw new Error('Campaign not found');
     const campaign = snap.data() as MessageCampaign;
 
-    if (campaign.status !== 'testing' && !forcedWinnerId) {
-      return null; // Already evaluated
+    if (campaign.status !== 'testing' && campaign.status !== 'paused') {
+      return null; // Already evaluated or not in a valid state
     }
 
     const variantA = campaign.variants?.find(v => v.id === 'A')!;
@@ -185,4 +185,72 @@ export async function selectCampaignWinnerManual(campaignId: string, winningVari
   }
 
   await evaluateCampaignABTest(campaignId, winningVariantId);
+}
+
+export async function cancelCampaignABTest(campaignId: string): Promise<void> {
+  const campaignRef = adminDb.collection('message_campaigns').doc(campaignId);
+  
+  await adminDb.runTransaction(async (transaction) => {
+    const snap = await transaction.get(campaignRef);
+    if (!snap.exists) throw new Error('Campaign not found');
+    const campaign = snap.data() as MessageCampaign;
+    
+    if (campaign.status !== 'testing') {
+      throw new Error(`Cannot cancel A/B test in '${campaign.status}' status`);
+    }
+    
+    transaction.update(campaignRef, {
+      status: 'paused',
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
+  const pendingJobs = await adminDb.collection('automation_jobs')
+    .where('payload.campaignId', '==', campaignId)
+    .where('targetNodeId', '==', '__campaign_ab_evaluate__')
+    .where('status', '==', 'pending')
+    .get();
+
+  const batch = adminDb.batch();
+  for (const doc of pendingJobs.docs) {
+    batch.update(doc.ref, { status: 'cancelled' });
+  }
+  await batch.commit();
+}
+
+export async function resumeCampaignABTest(campaignId: string): Promise<void> {
+  const campaignRef = adminDb.collection('message_campaigns').doc(campaignId);
+  
+  await adminDb.runTransaction(async (transaction) => {
+    const snap = await transaction.get(campaignRef);
+    if (!snap.exists) throw new Error('Campaign not found');
+    const campaign = snap.data() as MessageCampaign;
+    
+    if (campaign.status !== 'paused') {
+      throw new Error(`Cannot resume A/B test in '${campaign.status}' status`);
+    }
+    
+    transaction.update(campaignRef, {
+      status: 'testing',
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
+  const campaignSnap = await campaignRef.get();
+  const campaign = campaignSnap.data() as MessageCampaign;
+  
+  const executeAt = new Date();
+  executeAt.setHours(executeAt.getHours() + (campaign.abTestConfig?.testDurationHours || 4));
+
+  const jobRef = await adminDb.collection('automation_jobs').add({
+    targetNodeId: '__campaign_ab_evaluate__',
+    executeAt: executeAt.toISOString(),
+    status: 'pending',
+    automationId: 'campaign_ab_eval',
+    runId: '',
+    payload: { campaignId },
+    createdAt: new Date().toISOString(),
+  });
+  
+  await campaignRef.update({ 'abTestConfig.evaluationJobId': jobRef.id });
 }

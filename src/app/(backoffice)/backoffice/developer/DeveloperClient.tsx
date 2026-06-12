@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ export default function DeveloperClient({ workspaces }: { workspaces: WorkspaceI
   const [keys, setKeys] = useState<ApiKeyRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const confirm = useConfirm();
   
   // Create state
   const [newKeyName, setNewKeyName] = useState('');
@@ -66,7 +68,7 @@ export default function DeveloperClient({ workspaces }: { workspaces: WorkspaceI
   };
 
   const handleRevoke = async (id: string) => {
-    if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) return;
+    if (!(await confirm({ title: 'Revoke API key?', description: 'This action cannot be undone.', confirmText: 'Revoke', variant: 'destructive' }))) return;
     
     const res = await revokeApiKey(id);
     if (res.success) {

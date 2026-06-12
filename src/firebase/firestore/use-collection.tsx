@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useAuth } from '../provider';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -57,20 +58,26 @@ export function useCollection<T = any>(
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
 
+  const auth = useAuth();
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  // The query whose snapshot (or error) produced the current data. Loading is
+  // DERIVED as "the current query hasn't settled yet" — a state-based
+  // isLoading flipped inside the effect leaves a one-commit gap where it reads
+  // `false` for a brand-new query, causing consumers to briefly treat
+  // "not fetched yet" as "fetched and empty" (empty-state flashes, gate races).
+  // Identity comparison is safe: the memoization contract is enforced below.
+  const [settledQuery, setSettledQuery] = useState<Query<DocumentData> | null>(null);
+
+  const isLoading = !!memoizedTargetRefOrQuery && memoizedTargetRefOrQuery !== settledQuery;
 
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {
       setData(null);
-      setIsLoading(false);
       setError(null);
+      setSettledQuery(null);
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
 
     // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
@@ -82,7 +89,7 @@ export function useCollection<T = any>(
         }
         setData(results);
         setError(null);
-        setIsLoading(false);
+        setSettledQuery(memoizedTargetRefOrQuery);
       },
       (error: FirestoreError) => {
         // This logic extracts the path from either a ref or a query
@@ -98,10 +105,12 @@ export function useCollection<T = any>(
 
         setError(contextualError)
         setData(null)
-        setIsLoading(false)
+        setSettledQuery(memoizedTargetRefOrQuery)
 
-        // trigger global error propagation
-        errorEmitter.emit('permission-error', contextualError);
+        // trigger global error propagation only if authenticated
+        if (auth.currentUser) {
+          errorEmitter.emit('permission-error', contextualError);
+        }
       }
     );
 

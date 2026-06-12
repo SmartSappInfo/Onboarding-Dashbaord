@@ -128,17 +128,74 @@ export async function applyCampaignPostSendTags(campaignId: string): Promise<{
       // Deduplicate
       const uniqueEntityIds = [...new Set(entityIds)];
 
-      // Apply in chunks (Firestore batch limit = 500 operations)
-      const CHUNK_SIZE = 50; // Conservative: each entity may need 2 writes (dual-write)
-      for (let i = 0; i < uniqueEntityIds.length; i += CHUNK_SIZE) {
-        const chunk = uniqueEntityIds.slice(i, i + CHUNK_SIZE);
-        await Promise.all(
-          chunk.map(eid => applyTagsToEntity(eid, campaign.workspaceId, [rule.tagId]))
-        );
+      const actionType = rule.actionType || 'add_tag';
+
+      if (actionType === 'add_tag') {
+        const tagId = rule.tagId;
+        if (!tagId) continue;
+        // Apply in chunks (Firestore batch limit = 500 operations)
+        const CHUNK_SIZE = 50; // Conservative: each entity may need 2 writes (dual-write)
+        for (let i = 0; i < uniqueEntityIds.length; i += CHUNK_SIZE) {
+          const chunk = uniqueEntityIds.slice(i, i + CHUNK_SIZE);
+          await Promise.all(
+            chunk.map(eid => applyTagsToEntity(eid, campaign.workspaceId, [tagId]))
+          );
+        }
+        console.log(`[POST-SEND] Applied tag "${rule.tagName}" to ${uniqueEntityIds.length} entities (cohort: ${rule.appliesTo})`);
+      } else if (actionType === 'create_deal') {
+        const { handleCreateDeal } = await import('./automations/actions/deal-automation-actions');
+        const config = {
+          pipelineId: rule.dealPipelineId,
+          stageId: rule.dealStageId,
+          name: rule.dealTitleTemplate || '{{entityName}} Deal',
+          value: 0
+        };
+        for (const eid of uniqueEntityIds) {
+          try {
+            const context = {
+              entityId: eid,
+              workspaceId: campaign.workspaceId,
+              payload: {
+                organizationId: campaign.organizationId || '',
+              }
+            };
+            await handleCreateDeal(config, context as any);
+          } catch (dealErr: any) {
+            console.error(`[POST-SEND] Failed to create deal for ${eid}:`, dealErr.message);
+          }
+        }
+        console.log(`[POST-SEND] Created deals for ${uniqueEntityIds.length} entities (cohort: ${rule.appliesTo})`);
+      } else if (actionType === 'create_task') {
+        const { handleCreateTask } = await import('./automations/actions/task-actions');
+        const config = {
+          title: rule.taskTitleTemplate || 'Automated Task',
+          description: `Campaign post-send task for "${campaign.internalName}"`,
+          dueOffsetDays: rule.taskDueDateOffsetDays || 3,
+          priority: 'medium',
+          category: 'follow_up',
+          assignedTo: 'auto'
+        };
+        for (const eid of uniqueEntityIds) {
+          try {
+            const contact = await resolveContact(eid, campaign.workspaceId);
+            const context = {
+              entityId: eid,
+              entityType: contact?.entityType || 'person',
+              workspaceId: campaign.workspaceId,
+              payload: {
+                organizationId: campaign.organizationId || '',
+                assignedTo: { userId: contact?.assignedTo || '' }
+              }
+            };
+            await handleCreateTask(config, context as any);
+          } catch (taskErr: any) {
+            console.error(`[POST-SEND] Failed to create task for ${eid}:`, taskErr.message);
+          }
+        }
+        console.log(`[POST-SEND] Created tasks for ${uniqueEntityIds.length} entities (cohort: ${rule.appliesTo})`);
       }
 
       totalApplied += uniqueEntityIds.length;
-      console.log(`[POST-SEND] Applied tag "${rule.tagName}" to ${uniqueEntityIds.length} entities (cohort: ${rule.appliesTo})`);
     }
 
     return { success: true, appliedCount: totalApplied };

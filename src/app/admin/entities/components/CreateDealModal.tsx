@@ -26,6 +26,7 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useSortedEntities } from '@/context/EntityCacheContext';
 import { cn } from '@/lib/utils';
 import type { EntityContact, DealFocalContact } from '@/lib/types';
+import { useTerminology } from '@/hooks/use-terminology';
 
 interface CreateDealModalProps {
     entityId?: string;
@@ -39,6 +40,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     const { toast } = useToast();
     const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
     const firestore = useFirestore();
+    const { singular, plural } = useTerminology();
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [name, setName] = React.useState('');
@@ -61,6 +63,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     const [isLoadingContacts, setIsLoadingContacts] = React.useState(false);
     const [selectedFocalContactIds, setSelectedFocalContactIds] = React.useState<string[]>([]);
     
+
     // Fetch pipelines for current workspace
     const pipelinesQuery = useMemoFirebase(() => 
         firestore && activeWorkspaceId ? query(
@@ -118,6 +121,8 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
             }
         }
     }, [open, entityId, initialStageId, initialPipelineId, pipelines, stages]);
+
+
 
     // Load the entity's focal contacts AND its workspace owner (one round-trip)
     // so we can pre-fill the deal's default assignee from the entity.
@@ -204,55 +209,64 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
         }
     };
 
+    const getAutoLabel = () => {
+        const selectedPipelineObj = pipelines?.find((p: any) => p.id === pipelineId);
+        const strategy = selectedPipelineObj?.assignmentStrategy || 'direct';
+        if (strategy === 'round-robin') return 'Auto — Round Robin';
+        if (strategy === 'value-based') return 'Auto — Value-based Routing';
+        if (strategy === 'unassigned') return 'Auto — Leave Unassigned';
+        return `Auto — ${entityAssignee?.name || `${singular} owner`}`;
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[450px] rounded-2xl p-0 border-none shadow-2xl overflow-hidden bg-card">
+            <DialogContent className="sm:max-w-[450px] rounded-2xl p-0 border border-border/50 shadow-2xl overflow-hidden bg-white dark:bg-zinc-900 z-[150]">
                 <form onSubmit={handleSubmit}>
-                    <DialogHeader className="p-6 bg-card/50 backdrop-blur-xl border-b border-border/10 shrink-0 text-left">
-                        <DialogTitle className="text-xl font-semibold tracking-tight">Initiate Deal</DialogTitle>
-                        <DialogDescription className="text-xs font-bold text-muted-foreground mt-1.5">
-                            Create a new operational track for an entity in the pipeline.
+                    <DialogHeader className="p-6 border-b border-border/50 shrink-0 text-left bg-white dark:bg-zinc-900">
+                        <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Add new deal</DialogTitle>
+                        <DialogDescription className="text-xs font-medium text-muted-foreground mt-1.5">
+                            Create a new deal for a {singular.toLowerCase()} in the pipeline.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
                         {!entityId && (
                             <div className="space-y-2 flex flex-col">
-                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Target Contact / Entity</Label>
-                                <Popover open={entitySearchOpen} onOpenChange={setEntitySearchOpen}>
+                                <Label className="text-xs font-semibold text-muted-foreground ml-1">Target contact / {singular.toLowerCase()}</Label>
+                                <Popover open={entitySearchOpen} onOpenChange={setEntitySearchOpen} modal={true}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             type="button"
                                             variant="outline"
                                             role="combobox"
                                             aria-expanded={entitySearchOpen}
-                                            className="w-full justify-between h-10 rounded-xl font-bold bg-muted/20 border-primary/10 shadow-inner"
+                                            className="w-full justify-between h-10 rounded-xl font-bold border border-border bg-background shadow-sm text-xs text-muted-foreground hover:bg-muted/50"
                                         >
                                             {selectedEntityId
-                                                ? ((entities?.find((e: any) => e.id === selectedEntityId) as any)?.name || entities?.find((e: any) => e.id === selectedEntityId)?.displayName || "Select Entity...")
-                                                : "Select Entity..."}
+                                                ? ((entities?.find((e: any) => e.entityId === selectedEntityId) as any)?.name || entities?.find((e: any) => e.entityId === selectedEntityId)?.displayName || `Select ${singular}...`)
+                                                : `Select ${singular}...`}
                                             <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[400px] p-0 border-none shadow-2xl rounded-xl overflow-hidden bg-card">
+                                    <PopoverContent data-scroll-lock-scrollable className="w-[var(--radix-popover-trigger-width)] p-0 border border-border shadow-2xl rounded-xl overflow-hidden bg-background z-[200]" align="start">
                                         <Command>
-                                            <CommandInput placeholder="Search entities..." />
-                                            <CommandList>
-                                                <CommandEmpty>No entity found.</CommandEmpty>
+                                            <CommandInput placeholder={`Search ${plural.toLowerCase()}...`} />
+                                            <CommandList data-scroll-lock-scrollable className="max-h-[220px] overflow-y-auto overflow-x-hidden scrollbar-thin">
+                                                <CommandEmpty>No {singular.toLowerCase()} found.</CommandEmpty>
                                                 <CommandGroup>
                                                     {entities?.map((e: any) => (
                                                         <CommandItem
                                                             key={e.id}
                                                             value={e.name || e.displayName}
                                                             onSelect={() => {
-                                                                setSelectedEntityId(e.id);
+                                                                setSelectedEntityId(e.entityId);
                                                                 setEntitySearchOpen(false);
                                                             }}
                                                             className="font-bold text-xs p-3 cursor-pointer"
                                                         >
                                                             <div className="flex flex-col">
                                                                 <span>{e.name || e.displayName}</span>
-                                                                <span className="text-[9px] text-muted-foreground font-normal">{e.email || e.primaryEmail || 'No Email'} • {e.entityType || 'person'}</span>
+                                                                <span className="text-[9px] text-muted-foreground font-normal">{e.email || e.primaryEmail || 'No Email'} • {e.entityType || singular.toLowerCase()}</span>
                                                             </div>
                                                         </CommandItem>
                                                     ))}
@@ -265,33 +279,33 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                         )}
 
                         <div className="space-y-2">
-                            <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Deal Name</Label>
+                            <Label className="text-xs font-semibold text-muted-foreground ml-1">Deal name</Label>
                             <Input 
                                 required
                                 value={name} 
                                 onChange={e => setName(e.target.value)} 
                                 placeholder="e.g. 2026 Expansion Contract" 
-                                className="h-10 rounded-xl font-bold bg-muted/20 border-primary/10 shadow-inner focus-visible:ring-1 focus-visible:ring-primary/30"
+                                className="h-10 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
                             />
                         </div>
 
                         {focalEntityId && (
                             <div className="space-y-2">
-                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Users className="h-3 w-3" /> Focal Contacts (Optional)
+                                <Label className="text-xs font-semibold text-muted-foreground ml-1 flex items-center gap-1.5">
+                                    <Users className="h-3 w-3" /> Focal contacts (optional)
                                 </Label>
                                 {isLoadingContacts ? (
-                                    <div className="flex items-center gap-2 h-10 px-3 rounded-xl bg-muted/20 border border-primary/10">
+                                    <div className="flex items-center gap-2 h-10 px-3 rounded-xl border border-border bg-background/50">
                                         <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                                         <span className="text-[10px] font-bold text-muted-foreground">Loading contacts…</span>
                                     </div>
                                 ) : entityContacts.length === 0 ? (
-                                    <p className="text-[10px] font-semibold text-muted-foreground px-3 py-2 rounded-xl bg-muted/20 border border-dashed border-primary/10">
-                                        No contacts found on this entity.
+                                    <p className="text-[10px] font-semibold text-muted-foreground px-3 py-2 rounded-xl border border-dashed border-border bg-background/50">
+                                        No contacts found on this {singular.toLowerCase()}.
                                     </p>
                                 ) : (
                                     <>
-                                        <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto p-1 rounded-xl bg-muted/20 border border-primary/10 shadow-inner">
+                                        <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto p-1.5 rounded-xl border border-border bg-background/50 shadow-sm">
                                             {entityContacts.map(c => {
                                                 const selected = selectedFocalContactIds.includes(c.id);
                                                 return (
@@ -344,20 +358,20 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Estimated Value ($)</Label>
+                                <Label className="text-xs font-semibold text-muted-foreground ml-1">Estimated value ($)</Label>
                                 <Input 
                                     type="number"
                                     min="0"
                                     value={value} 
                                     onChange={e => setValue(e.target.value)} 
                                     placeholder="0" 
-                                    className="h-10 rounded-xl font-bold bg-muted/20 border-primary/10 shadow-inner focus-visible:ring-1 focus-visible:ring-primary/30"
+                                    className="h-10 rounded-xl font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 text-xs"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Pipeline</Label>
+                                <Label className="text-xs font-semibold text-muted-foreground ml-1">Pipeline</Label>
                                 <Select value={pipelineId} onValueChange={(val) => { setPipelineId(val); setStageId(''); }} disabled={isLoadingPipelines}>
-                                    <SelectTrigger className="h-10 rounded-xl font-bold bg-muted/20 border-primary/10 shadow-inner">
+                                    <SelectTrigger className="h-10 rounded-xl font-bold border border-border bg-background shadow-sm text-xs hover:bg-muted/10 transition-colors">
                                         <SelectValue placeholder="Select Pipeline" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-none shadow-xl">
@@ -371,9 +385,9 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Stage (Optional)</Label>
+                                <Label className="text-xs font-semibold text-muted-foreground ml-1">Stage (optional)</Label>
                                 <Select value={stageId} onValueChange={setStageId} disabled={!pipelineId}>
-                                    <SelectTrigger className="h-10 rounded-xl font-bold bg-muted/20 border-primary/10 shadow-inner">
+                                    <SelectTrigger className="h-10 rounded-xl font-bold border border-border bg-background shadow-sm text-xs hover:bg-muted/10 transition-colors">
                                         <SelectValue placeholder="First stage (default)" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-none shadow-xl">
@@ -384,14 +398,14 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Owner</Label>
+                                <Label className="text-xs font-semibold text-muted-foreground ml-1">Owner</Label>
                                 <Select value={ownerUserId} onValueChange={setOwnerUserId}>
-                                    <SelectTrigger className="h-10 rounded-xl font-bold bg-muted/20 border-primary/10 shadow-inner">
+                                    <SelectTrigger className="h-10 rounded-xl font-bold border border-border bg-background shadow-sm text-xs hover:bg-muted/10 transition-colors">
                                         <SelectValue placeholder="Select owner" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-none shadow-xl max-h-[240px]">
                                         <SelectItem value="auto" className="font-bold text-xs">
-                                            Auto — {entityAssignee?.name || 'Entity owner'}
+                                            {getAutoLabel()}
                                         </SelectItem>
                                         <SelectItem value="unassigned" className="font-bold text-xs text-muted-foreground">Leave Unassigned</SelectItem>
                                         {workspaceUsers?.map(u => (
@@ -403,21 +417,21 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[9px] font-semibold text-muted-foreground ml-1 uppercase tracking-wider">Description</Label>
+                            <Label className="text-xs font-semibold text-muted-foreground ml-1">Description</Label>
                             <textarea 
                                 value={description} 
                                 onChange={e => setDescription(e.target.value)} 
                                 placeholder="Describe the deal context, opportunity details, etc." 
-                                className="w-full min-h-[80px] rounded-xl p-3 text-sm font-semibold bg-muted/20 border border-primary/10 shadow-inner focus-visible:ring-1 focus-visible:ring-primary/30 outline-none resize-none"
+                                className="w-full min-h-[80px] rounded-xl p-3 text-xs font-bold border border-border bg-background shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 outline-none resize-none"
                             />
                         </div>
                     </div>
 
-                    <DialogFooter className="p-4 bg-muted/10 border-t border-border/10 flex items-center justify-end gap-2 shrink-0">
+                    <DialogFooter className="p-4 bg-muted/5 dark:bg-zinc-900/50 border-t border-border/50 flex items-center justify-end gap-2 shrink-0">
                         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-xl font-bold h-10 px-6 hover:bg-rose-50 hover:text-rose-600 transition-colors">
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting || !name || !pipelineId || (!entityId && !selectedEntityId)} className="rounded-xl font-bold h-10 px-8 shadow-md transition-all active:scale-95">
+                        <Button type="submit" disabled={isSubmitting || !name || !pipelineId || (!entityId && !selectedEntityId)} className="rounded-xl font-bold h-10 px-8 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
                             {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : <><Plus className="mr-2 h-4 w-4" /> Create Deal</>}
                         </Button>
                     </DialogFooter>

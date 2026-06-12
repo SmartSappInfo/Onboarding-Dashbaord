@@ -5,6 +5,7 @@ import { doc, updateDoc, query, collection, orderBy, where, getDocs, deleteDoc, 
 import { useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import type { Pipeline, Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { 
     ShieldCheck, 
     Loader2,
@@ -14,7 +15,8 @@ import {
     Layout,
     Zap,
     Plus,
-    Trash2
+    Trash2,
+    Users
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +31,7 @@ import StageEditor from '../components/StageEditor';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Separator } from '@/components/ui/separator';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 
 interface PipelineConfigViewProps {
     pipelineId: string;
@@ -39,6 +42,7 @@ interface PipelineConfigViewProps {
 export default function PipelineSettingsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
     
     const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -50,6 +54,10 @@ export default function PipelineSettingsClient() {
     const [description, setDescription] = React.useState('');
     const [accessRoles, setAccessRoles] = React.useState<string[]>([]);
     const [columnWidth, setColumnWidth] = React.useState(320);
+    const [assignmentStrategy, setAssignmentStrategy] = React.useState<'direct' | 'round-robin' | 'value-based' | 'unassigned'>('direct');
+    const [assignmentUserIds, setAssignmentUserIds] = React.useState<string[]>([]);
+
+    const { data: workspaceUsers } = useWorkspaceUsers(activeWorkspaceId);
 
     // Synchronized Pipeline Query
     const pipelinesQuery = useMemoFirebase(() => 
@@ -75,11 +83,15 @@ export default function PipelineSettingsClient() {
             setName(selectedPipeline.name);
             setDescription(selectedPipeline.description || '');
             setAccessRoles(selectedPipeline.accessRoles || []);
+            setAssignmentStrategy(selectedPipeline.assignmentStrategy || 'direct');
+            setAssignmentUserIds(selectedPipeline.assignmentUserIds || []);
             if (selectedPipeline.columnWidth) setColumnWidth(selectedPipeline.columnWidth);
         } else if (!isCreating) {
             setName('');
             setDescription('');
             setAccessRoles([]);
+            setAssignmentStrategy('direct');
+            setAssignmentUserIds([]);
         }
     }, [selectedPipeline, isCreating]);
 
@@ -93,6 +105,8 @@ export default function PipelineSettingsClient() {
             description: description.trim(),
             accessRoles,
             columnWidth,
+            assignmentStrategy,
+            assignmentUserIds,
             updatedAt: new Date().toISOString()
         };
 
@@ -119,7 +133,8 @@ export default function PipelineSettingsClient() {
     };
 
     const handleDelete = async () => {
-        if (!firestore || !selectedId || !confirm('Permanently purge this workflow architecture?')) return;
+        if (!firestore || !selectedId) return;
+        if (!(await confirm({ title: 'Delete pipeline?', description: 'This workflow architecture will be permanently purged.', confirmText: 'Delete', variant: 'destructive' }))) return;
         try {
             await deleteDoc(doc(firestore, 'pipelines', selectedId));
             const stagesSnap = await getDocs(query(collection(firestore, 'onboardingStages'), where('pipelineId', '==', selectedId)));
@@ -134,6 +149,7 @@ export default function PipelineSettingsClient() {
     };
 
     const roleOptions = roles?.map(r => ({ label: r.name, value: r.id })) || [];
+    const workspaceUserOptions = workspaceUsers?.map(u => ({ label: u.name || u.email || 'Workspace User', value: u.id })) || [];
 
  if (isLoadingPipelines) return <div className="space-y-8 animate-pulse"><div className="h-64 bg-muted rounded-[2.5rem]" /><div className="h-96 bg-muted rounded-[2.5rem]" /></div>;
 
@@ -261,6 +277,50 @@ export default function PipelineSettingsClient() {
                                         />
                                     </CardContent>
                                 </Card>
+
+ <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden text-left">
+ <CardHeader className="bg-primary/5 border-b p-6 px-8">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-card rounded-xl shadow-sm"><Users className="h-4 w-4 text-primary" /></div>
+ <CardTitle className="text-sm font-semibold tracking-tight">Deal Assignment Rules</CardTitle>
+                                        </div>
+                                    </CardHeader>
+ <CardContent className="p-6 space-y-4">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Routing Strategy</Label>
+                                            <Select 
+                                                value={assignmentStrategy} 
+                                                onValueChange={(val: any) => setAssignmentStrategy(val)}
+                                            >
+                                                <SelectTrigger className="w-full h-11 rounded-xl bg-muted/20 border-none font-semibold text-xs px-4">
+                                                    <SelectValue placeholder="Select strategy..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-none shadow-2xl bg-popover text-popover-foreground">
+                                                    <SelectItem value="direct" className="text-xs">Manual (Inherit from Entity owner)</SelectItem>
+                                                    <SelectItem value="round-robin" className="text-xs">Round Robin (Equal distribution)</SelectItem>
+                                                    <SelectItem value="value-based" className="text-xs">Round Robin based on Deal Value</SelectItem>
+                                                    <SelectItem value="unassigned" className="text-xs">Leave Unassigned</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {(assignmentStrategy === 'round-robin' || assignmentStrategy === 'value-based') && (
+                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assignee Pool</Label>
+                                                <MultiSelect 
+                                                    options={workspaceUserOptions} 
+                                                    value={assignmentUserIds} 
+                                                    onChange={setAssignmentUserIds} 
+                                                    placeholder="Select eligible team members..." 
+                                                    className="rounded-xl border-primary/10 shadow-sm" 
+                                                />
+                                                <p className="text-[10px] text-muted-foreground ml-1 italic leading-normal">
+                                                    Deals will be routed dynamically among the selected pool.
+                                                </p>
+                                            </div>
+                                        )}
+                                     </CardContent>
+                                 </Card>
 
  <div className="space-y-4 pt-4 sticky top-24">
                                     <Button 

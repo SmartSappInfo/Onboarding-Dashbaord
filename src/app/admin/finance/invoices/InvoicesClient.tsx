@@ -57,6 +57,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { generateInvoiceAction, deleteInvoiceAction } from '@/lib/billing-actions';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -77,6 +78,7 @@ export default function InvoicesClient() {
     const router = useRouter();
     const { user } = useUser();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const { singular } = useTerminology();
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     const { activeWorkspaceId } = useWorkspace();
@@ -157,7 +159,8 @@ export default function InvoicesClient() {
     };
 
     const handleDelete = async (invoice: Invoice) => {
-        if (!user || !confirm(`Permanently delete ${invoice.invoiceNumber}?`)) return;
+        if (!user) return;
+        if (!(await confirm({ title: 'Delete invoice?', description: `${invoice.invoiceNumber} will be permanently deleted.`, confirmText: 'Delete', variant: 'destructive' }))) return;
         const result = await deleteInvoiceAction(invoice.id, invoice.invoiceNumber, user.uid);
         if (result.success) toast({ title: 'Invoice Removed' });
     };

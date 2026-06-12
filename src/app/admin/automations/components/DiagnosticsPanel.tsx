@@ -24,6 +24,7 @@ import { StepTimeline } from './StepTimeline';
 import type { AutomationRun } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { manuallyReleaseWaitJobAction, manuallyEndAutomationRunAction } from '@/lib/automation-actions';
 
 interface DiagnosticsPanelProps {
@@ -50,6 +51,7 @@ export function DiagnosticsPanel({
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('ALL');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [jsonExpanded, setJsonExpanded] = React.useState(false);
@@ -169,8 +171,7 @@ export function DiagnosticsPanel({
 
   const handleEndAutomation = async (runId: string) => {
     if (!user) return;
-    const confirm = window.confirm('Are you sure you want to end this automation run? The contact will be marked as finished and pending steps will be cancelled.');
-    if (!confirm) return;
+    if (!(await confirm({ title: 'End automation run?', description: 'The contact will be marked as finished and pending steps will be cancelled.', confirmText: 'End Run', variant: 'destructive' }))) return;
 
     setIsProcessingAction(runId);
     try {

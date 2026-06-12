@@ -69,9 +69,9 @@ function SortableStageItem({ stage, count, onDelete, isEditing, onToggleEdit, on
   };
 
   return (
- <div ref={setNodeRef} style={style} className="flex items-center gap-2 bg-background p-3 border rounded-xl shadow-sm hover:shadow-md transition-shadow group">
- <Button variant="ghost" size="icon" className="cursor-grab h-8 w-8 text-muted-foreground/30 hover:text-primary" {...attributes} {...listeners}>
- <GripVertical className="h-5 w-5" />
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 bg-muted/10 dark:bg-muted/5 p-3 border border-border/80 rounded-xl hover:bg-muted/20 dark:hover:bg-muted/10 hover:border-primary/20 hover:scale-[1.01] hover:shadow-sm transition-all duration-200 group">
+      <Button variant="ghost" size="icon" className="cursor-grab h-8 w-8 text-muted-foreground/30 hover:text-primary transition-colors" {...attributes} {...listeners}>
+        <GripVertical className="h-5 w-5" />
       </Button>
       
       <Popover>
@@ -80,7 +80,7 @@ function SortableStageItem({ stage, count, onDelete, isEditing, onToggleEdit, on
  <div className="w-full h-full rounded-sm" style={{ backgroundColor: stage.color || '#FFFFFF' }} />
             </Button>
         </PopoverTrigger>
- <PopoverContent className="w-auto p-2">
+    <PopoverContent className="w-auto p-3 rounded-xl bg-popover border border-border shadow-md" align="start">
  <div className="grid grid-cols-6 gap-1 mb-2">
                 {ONBOARDING_STAGE_COLORS.map((color) => (
                     <button
@@ -107,27 +107,27 @@ function SortableStageItem({ stage, count, onDelete, isEditing, onToggleEdit, on
 
  <div className="flex-grow flex items-center min-w-0">
         {isEditing ? (
-            <Input
+          <Input
             value={newName}
             onChange={onNameChange}
             onBlur={saveRename}
             onKeyDown={(e) => e.key === 'Enter' && saveRename()}
             autoFocus
- className="h-9 font-bold"
-            />
+            className="h-9 rounded-xl border border-border bg-background shadow-sm text-xs font-semibold px-3 focus:ring-1 focus:ring-primary/20 transition-all"
+          />
         ) : (
  <div className="flex items-center gap-3 min-w-0 flex-1">
  <span className="font-semibold text-xs truncate block" onDoubleClick={() => onToggleEdit(stage.id)}>{stage.name}</span>
-                <Badge 
-                    variant="outline" 
- className={cn(
-                        "h-5 px-1.5 font-semibold tabular-nums border-none shadow-inner shrink-0",
-                        count > 0 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground opacity-40"
-                    )}
-                >
- <Users className="h-2.5 w-2.5 mr-1" />
-                    {count}
-                </Badge>
+            <Badge 
+              variant="outline" 
+              className={cn(
+                "h-5 px-1.5 font-bold uppercase tracking-wider text-[9px] shrink-0 border transition-all",
+                count > 0 ? "bg-primary/5 text-primary border-primary/20" : "bg-muted text-muted-foreground border-border/80"
+              )}
+            >
+              <Users className="h-2.5 w-2.5 mr-1" />
+              {count}
+            </Badge>
             </div>
         )}
       </div>
@@ -332,17 +332,19 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
 
   return (
     <>
-    <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <CardHeader className="bg-background border-b pb-6">
- <CardTitle className="text-sm font-semibold text-foreground">Stage Architect</CardTitle>
- <CardDescription className="text-xs font-medium">Define the progression nodes. Double-click to rename.</CardDescription>
-            </CardHeader>
- <CardContent className="p-6 space-y-6">
-                {isLoadingStages ? (
- <div className="space-y-3">
- <Skeleton className="h-14 w-full rounded-xl" />
- <Skeleton className="h-14 w-full rounded-xl" />
-                </div>
+      <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <CardHeader className="p-6 pb-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/5 text-primary shrink-0"><Workflow size={18} /></div>
+            <CardTitle className="text-sm font-semibold text-foreground">Stage Architect</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          {isLoadingStages ? (
+            <div className="space-y-3 animate-pulse">
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
                 ) : (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={localStages.map((s) => s.id)} strategy={verticalListSortingStrategy}>
@@ -368,55 +370,57 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
                     </SortableContext>
                 </DndContext>
                 )}
-                
-                {localStages.length === 0 && !isLoadingStages && (
- <div className="py-12 text-center border-2 border-dashed rounded-xl opacity-20 text-left">
- <Workflow className="h-10 w-10 mx-auto mb-2" />
- <p className="text-[10px] font-semibold ">No stages defined</p>
-                    </div>
-                )}
+                         {localStages.length === 0 && !isLoadingStages && (
+            <div className="py-12 text-center border border-dashed border-border rounded-xl bg-muted/5 flex flex-col items-center justify-center text-muted-foreground gap-2">
+              <Workflow className="h-8 w-8 text-muted-foreground/50 animate-pulse" />
+              <p className="text-xs font-semibold">No stages defined</p>
+            </div>
+          )}
 
- <div className="flex gap-2 pt-4 border-t border-dashed">
-                    <Input
-                        placeholder="Initialize new stage..."
-                        value={newStageName}
-                        onChange={(e) => setNewStageName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddStage()}
- className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
-                    />
- <Button onClick={handleAddStage} disabled={isAdding || !newStageName.trim()} className="h-11 rounded-xl font-bold shadow-lg gap-2">
- {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                        Add Stage
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-        <AlertDialog open={!!stageToDelete} onOpenChange={(open) => !open && setStageToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl">
-              <AlertDialogHeader>
- <AlertDialogTitle className="font-semibold tracking-tight">Purge Workflow Stage?</AlertDialogTitle>
- <AlertDialogDescription className="text-sm font-medium text-left">
- You are about to delete <span className="font-bold text-foreground">"{stageToDelete?.name}"</span>. 
-                      <br/><br/>
-                      {stageCounts[stageToDelete?.id || ''] > 0 ? (
- <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 flex items-start gap-3">
- <AlertCircle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
- <p className="text-[11px] text-rose-900 font-bold leading-relaxed">
-                                  WARNING: There are {stageCounts[stageToDelete?.id || '']} schools in this stage. 
-                                  They will be reset to the primary entry stage (order 1).
-                              </p>
-                          </div>
-                      ) : (
-                          "This stage is currently empty and can be safely removed."
-                      )}
-                  </AlertDialogDescription>
-              </AlertDialogHeader>
- <AlertDialogFooter className="sm:justify-center gap-3">
- <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
- <AlertDialogAction onClick={handleDeleteStage} className="rounded-xl font-semibold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xl">Confirm Deletion</AlertDialogAction>
-              </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          <div className="flex gap-2 pt-4 border-t border-dashed border-border/60">
+            <Input
+              placeholder="Initialize new stage..."
+              value={newStageName}
+              onChange={(e) => setNewStageName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddStage()}
+              className="h-10 rounded-xl border border-border bg-background shadow-sm text-xs px-4 focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+            />
+            <Button onClick={handleAddStage} disabled={isAdding || !newStageName.trim()} className="h-10 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98] gap-2 flex items-center justify-center px-4 shrink-0">
+              {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Add Stage
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    <AlertDialog open={!!stageToDelete} onOpenChange={(open) => !open && setStageToDelete(null)}>
+      <AlertDialogContent className="rounded-2xl border border-border bg-card shadow-2xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-bold text-lg tracking-tight text-foreground flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            Purge Workflow Stage?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-xs font-medium text-muted-foreground text-left leading-relaxed mt-2">
+            You are about to delete <span className="font-bold text-foreground">"{stageToDelete?.name}"</span>. 
+            <br/><br/>
+            {stageCounts[stageToDelete?.id || ''] > 0 ? (
+              <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/10 flex items-start gap-3">
+                <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                <p className="text-xs text-destructive font-semibold leading-relaxed">
+                  WARNING: There are {stageCounts[stageToDelete?.id || '']} schools in this stage. 
+                  They will be reset to the primary entry stage (order 1).
+                </p>
+              </div>
+            ) : (
+              "This stage is currently empty and can be safely removed."
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="sm:justify-end gap-2 mt-4">
+          <AlertDialogCancel className="rounded-xl h-10 px-4 text-xs font-semibold border border-border bg-background hover:bg-muted/50 transition-colors">Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDeleteStage} className="rounded-xl h-10 px-4 text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg shadow-destructive/20 transition-all active:scale-[0.98]">Confirm Deletion</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }

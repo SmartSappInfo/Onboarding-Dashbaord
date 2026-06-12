@@ -12,8 +12,8 @@ import { getBaseUrl } from '@/lib/utils/url-helpers';
 const ExtractSchoolDataInputSchema = z.object({
   text: z.string().describe('The raw text containing school information.'),
   organizationId: z.string().optional(),
-  provider: z.string().optional().default('googleai'),
-  modelId: z.string().optional().default('gemini-3-flash-preview'),
+  provider: z.string().optional().default('anthropic'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 export type ExtractSchoolDataInput = z.infer<typeof ExtractSchoolDataInputSchema>;
 
@@ -117,8 +117,8 @@ const extractSchoolDataFlow = ai.defineFlow(
     // --- Native Genkit Path for Gemini and OpenAI ---
     const resolvedModel = await getModel({
       organizationId: input.organizationId,
-      provider: input.provider || 'googleai',
-      modelId: input.modelId || 'gemini-3-flash-preview',
+      provider: input.provider || 'anthropic',
+      modelId: input.modelId || 'claude-3-5-sonnet',
     });
 
     const generatorAi = resolvedModel.customAi || ai;

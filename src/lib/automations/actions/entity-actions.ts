@@ -2,6 +2,7 @@ import { adminDb } from '../../firebase-admin';
 import { resolveContact } from '../../contact-adapter';
 import { logActivity } from '../../activity-logger';
 import type { ExecutionContext } from '../execution-types';
+import type { EntityType } from '../../types';
 
 /**
  * Resolves the workspace's organizationId.
@@ -12,6 +13,57 @@ async function resolveOrgId(context: ExecutionContext): Promise<string> {
   if (context.organizationId) return context.organizationId;
   const snap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
   return (snap.data()?.organizationId as string) || '';
+}
+
+const NATIVE_ENTITY_FIELDS_LIST = [
+  'initials', 'slogan', 'capacity', 'currency', 'subscriptionPackageId',
+  'subscriptionRate', 'discountPercentage', 'billingAddress', 'arrearsBalance',
+  'creditBalance', 'currentNeeds', 'currentChallenges', 'interests',
+  'locationString', 'website', 'digitalAddress', 'googleMapLocation',
+  'facebook', 'whatsapp', 'instagram', 'linkedin', 'x_twitter', 'youtube',
+  'tiktok', 'pinterest', 'firstName', 'lastName', 'company', 'jobTitle',
+  'leadSource', 'status'
+];
+
+function mapNativeFieldsToPayload(sourceMap: Record<string, any>, entityType: string): Record<string, any> {
+  const payload: Record<string, any> = {};
+  const financeData: Record<string, any> = {};
+  const onlinePresence: Record<string, any> = {};
+  const industryData: Record<string, any> = {};
+  const location: Record<string, any> = {};
+  const personData: Record<string, any> = {};
+
+  for (const [key, val] of Object.entries(sourceMap)) {
+    if (val === undefined || val === null) continue;
+
+    if (['initials', 'slogan', 'currentNeeds', 'currentChallenges', 'status'].includes(key)) {
+      payload[key] = val;
+    } else if (key === 'interests') {
+      payload.interests = typeof val === 'string' ? val.split(',').map(s => s.trim()) : val;
+    } else if (key === 'capacity') {
+      industryData.capacity = Number(val) || 0;
+    } else if (['currency', 'billingAddress', 'subscriptionPackageId', 'subscriptionRate', 'discountPercentage', 'arrearsBalance', 'creditBalance'].includes(key)) {
+      financeData[key] = ['subscriptionRate', 'discountPercentage', 'arrearsBalance', 'creditBalance'].includes(key) ? Number(val) || 0 : val;
+    } else if (['website', 'digitalAddress', 'googleMapLocation', 'facebook', 'whatsapp', 'instagram', 'linkedin', 'x_twitter', 'youtube', 'tiktok', 'pinterest'].includes(key)) {
+      const opKey = key === 'x_twitter' ? 'x' : key;
+      onlinePresence[opKey] = val;
+    } else if (key === 'locationString') {
+      location.locationString = val;
+    } else if (['firstName', 'lastName', 'company', 'jobTitle', 'leadSource'].includes(key)) {
+      personData[key] = val;
+    }
+  }
+
+  if (Object.keys(financeData).length > 0) {
+    if (!financeData.currency) financeData.currency = 'GHS';
+    payload.financeData = financeData;
+  }
+  if (Object.keys(onlinePresence).length > 0) payload.onlinePresence = onlinePresence;
+  if (Object.keys(industryData).length > 0) payload.industryData = industryData;
+  if (Object.keys(location).length > 0) payload.location = location;
+  if (Object.keys(personData).length > 0 && entityType === 'person') payload.personData = personData;
+
+  return payload;
 }
 
 export async function handleUpdateEntity(
@@ -25,41 +77,50 @@ export async function handleUpdateEntity(
 
   const timestamp = new Date().toISOString();
   const identityFields = ['name', 'slug', 'displayName'];
-  const identityUpdates: Record<string, unknown> = { updatedAt: timestamp };
   const workspaceUpdates: Record<string, unknown> = { updatedAt: timestamp };
-  const customDataUpdates: Record<string, unknown> = {};
+  const entityUpdates: Record<string, unknown> = { updatedAt: timestamp };
 
   const updates = (config.updates || config) as Record<string, unknown>;
   if (config.pipelineId) workspaceUpdates.pipelineId = config.pipelineId;
   if (config.stageId) workspaceUpdates.stageId = config.stageId;
   if (config.assignedTo) workspaceUpdates.assignedTo = config.assignedTo;
 
-
   if (updates && typeof updates === 'object') {
     for (const [key, value] of Object.entries(updates)) {
       if (identityFields.includes(key)) {
-        identityUpdates[key] = value;
+        entityUpdates[key] = value;
       } else if (['pipelineId', 'stageId', 'assignedTo', 'workspaceTags'].includes(key)) {
         workspaceUpdates[key] = value;
+      } else if (NATIVE_ENTITY_FIELDS_LIST.includes(key)) {
+        if (['initials', 'slogan', 'currentNeeds', 'currentChallenges', 'status'].includes(key)) {
+          entityUpdates[key] = value;
+        } else if (key === 'interests') {
+          entityUpdates.interests = typeof value === 'string' ? value.split(',').map(s => s.trim()) : value;
+        } else if (key === 'capacity') {
+          entityUpdates['industryData.capacity'] = Number(value) || 0;
+        } else if (['currency', 'billingAddress', 'subscriptionPackageId', 'subscriptionRate', 'discountPercentage', 'arrearsBalance', 'creditBalance'].includes(key)) {
+          entityUpdates[`financeData.${key}`] = ['subscriptionRate', 'discountPercentage', 'arrearsBalance', 'creditBalance'].includes(key) ? Number(value) || 0 : value;
+        } else if (['website', 'digitalAddress', 'googleMapLocation', 'facebook', 'whatsapp', 'instagram', 'linkedin', 'x_twitter', 'youtube', 'tiktok', 'pinterest'].includes(key)) {
+          const opKey = key === 'x_twitter' ? 'x' : key;
+          entityUpdates[`onlinePresence.${opKey}`] = value;
+        } else if (key === 'locationString') {
+          entityUpdates['location.locationString'] = value;
+        } else if (['firstName', 'lastName', 'company', 'jobTitle', 'leadSource'].includes(key)) {
+          entityUpdates[`personData.${key}`] = value;
+        }
       } else if (
         key !== 'updates' &&
         key !== 'pipelineId' &&
         key !== 'stageId' &&
         key !== 'assignedTo'
       ) {
-        customDataUpdates[key] = value;
+        entityUpdates[`customData.${key}`] = value;
       }
     }
   }
 
-  if (Object.keys(identityUpdates).length > 1 || Object.keys(customDataUpdates).length > 0) {
-    const payload: Record<string, any> = { ...identityUpdates };
-    if (Object.keys(customDataUpdates).length > 0) {
-      for (const [k, v] of Object.entries(customDataUpdates)) {
-        payload[`customData.${k}`] = v;
-      }
-    }
-    await adminDb.collection('entities').doc(contact.entityId).update(payload);
+  if (Object.keys(entityUpdates).length > 1) {
+    await adminDb.collection('entities').doc(contact.entityId).update(entityUpdates);
   }
 
   if (contact.workspaceEntityId && Object.keys(workspaceUpdates).length > 1) {
@@ -71,9 +132,8 @@ export async function handleUpdateEntity(
 
   // Log to activity feed — exclude the auto-added updatedAt so we only surface real field changes
   const changedFields = Object.keys({
-    ...identityUpdates,
+    ...entityUpdates,
     ...workspaceUpdates,
-    ...customDataUpdates,
   }).filter((k) => k !== 'updatedAt');
 
   if (changedFields.length > 0) {
@@ -165,7 +225,7 @@ export async function handleAddNote(
 export async function handleCreateEntity(
   config: Record<string, unknown>,
   context: ExecutionContext
-): Promise<void> {
+): Promise<{ id: string }> {
   const resolvedName = (config.name as string || '').trim();
   const resolvedPhone = (config.phone as string || '').trim();
   const resolvedEmail = (config.email as string || '').trim();
@@ -187,18 +247,35 @@ export async function handleCreateEntity(
     .where('workspaceId', '==', context.workspaceId)
     .get();
 
-  const validFieldKeys = new Set(appFieldsSnap.docs.map(doc => doc.data().id || doc.data().name));
+  // Create a map of app field compatibility scopes
+  const fieldScopes = new Map<string, string[]>();
+  appFieldsSnap.docs.forEach(doc => {
+    const data = doc.data();
+    const key = data.id || data.name;
+    fieldScopes.set(key, data.compatibilityScope || ['common']);
+  });
 
-  // Extract and filter custom fields
+  // Extract, filter, and validate custom fields by compatibility scope, allowing native fields to bypass
   const customData: Record<string, unknown> = {};
+  const nativeInputs: Record<string, unknown> = {};
   const configCustomData = (config.customData || {}) as Record<string, unknown>;
+
   for (const [key, val] of Object.entries(configCustomData)) {
-    if (validFieldKeys.has(key)) {
-      customData[key] = val;
+    if (NATIVE_ENTITY_FIELDS_LIST.includes(key)) {
+      nativeInputs[key] = val;
+    } else if (fieldScopes.has(key)) {
+      const scopes = fieldScopes.get(key) || ['common'];
+      if (scopes.includes('common') || scopes.includes(entityType)) {
+        customData[key] = val;
+      } else {
+        console.warn(`[CREATE_ENTITY] Ignored custom field key "${key}" since it is not compatible with entityType "${entityType}".`);
+      }
     } else {
       console.warn(`[CREATE_ENTITY] Ignored custom field key "${key}" since it is not defined in the workspace app_fields.`);
     }
   }
+
+  const nativePayload = mapNativeFieldsToPayload(nativeInputs, entityType);
 
   const { createEntityAction } = await import('../../entity-actions');
   const createRes = await createEntityAction(
@@ -215,7 +292,8 @@ export async function handleCreateEntity(
       ],
       customData,
       globalTags: [],
-      workspaceTags: []
+      workspaceTags: [],
+      ...nativePayload
     },
     `system-automation-create:${context.automationId}`,
     context.workspaceId,
@@ -236,6 +314,8 @@ export async function handleCreateEntity(
     entityId: createRes.id,
     updatedAt: new Date().toISOString()
   });
+
+  return { id: createRes.id };
 }
 
 export async function handleCreateContactForEntity(
@@ -262,7 +342,7 @@ export async function handleCreateContactForEntity(
 
   // 1. Search for Entity by Match in workspace_entities
   let entityId = '';
-  let entityType = '';
+  let entityType: EntityType | undefined;
 
   if (config.caseInsensitive) {
     const weSnap = await adminDb

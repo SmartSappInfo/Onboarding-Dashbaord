@@ -38,8 +38,8 @@ const BlueprintInputSchema = z.object({
   sourceType: z.enum(['text', 'url']),
   content: z.string(),
   organizationId: z.string().optional(),
-  provider: z.string().optional().default('googleai'),
-  modelId: z.string().optional().default('gemini-3-flash-preview'),
+  provider: z.string().optional().default('anthropic'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 type BlueprintInput = z.infer<typeof BlueprintInputSchema>;
 
@@ -112,8 +112,8 @@ const QuestionsInputSchema = z.object({
   sourceText: z.string(),
   blueprint: BlueprintOutputSchema,
   organizationId: z.string().optional(),
-  provider: z.string().optional().default('googleai'),
-  modelId: z.string().optional().default('gemini-3-flash-preview'),
+  provider: z.string().optional().default('anthropic'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 type QuestionsInput = z.infer<typeof QuestionsInputSchema>;
 
@@ -281,8 +281,8 @@ const LogicInputSchema = z.object({
   blueprint: BlueprintOutputSchema,
   elements: z.array(z.any()).describe('Elements from Phase 2'),
   organizationId: z.string().optional(),
-  provider: z.string().optional().default('googleai'),
-  modelId: z.string().optional().default('gemini-3-flash-preview'),
+  provider: z.string().optional().default('anthropic'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 type LogicInput = z.infer<typeof LogicInputSchema>;
 

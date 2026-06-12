@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   ArrowLeft,
   ToggleRight,
@@ -32,6 +33,7 @@ const STABILITY_COLORS: Record<string, string> = {
 
 export default function FeatureDetailClient({ featureId }: { featureId: string }) {
   const { profile, can } = useBackoffice();
+  const confirm = useConfirm();
   const [feature, setFeature] = React.useState<PlatformFeature | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -91,7 +93,7 @@ export default function FeatureDetailClient({ featureId }: { featureId: string }
     if (!profile || !feature) return;
     const newState = !feature.killSwitch;
     
-    if (newState && !confirm('ATTENTION: Enabling the Kill Switch will immediately turn off this feature for everyone, overriding all default states and rollout rules. Proceed?')) {
+    if (newState && !(await confirm({ title: 'Enable kill switch?', description: 'This immediately turns off the feature for everyone, overriding all default states and rollout rules.', confirmText: 'Enable Kill Switch', variant: 'destructive' }))) {
       return;
     }
     

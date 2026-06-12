@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useTerminology } from '@/hooks/use-terminology';
 import { 
   Zap, 
   Mail, 
@@ -28,7 +29,9 @@ import {
   Lock,
   ChevronRight,
   Info,
-  Bell
+  Bell,
+  SplitSquareVertical,
+  Sparkles
 } from 'lucide-react';
 
 interface AutomationStepLibraryModalProps {
@@ -198,6 +201,15 @@ const LIBRARY_ITEMS = [
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Run Automation', actionType: 'RUN_AUTOMATION' }
   },
+  {
+    id: 'ab_split',
+    title: 'A/B Split',
+    description: 'Statelessly route contacts down two branching paths based on a configured split ratio.',
+    category: 'conditions_flow',
+    icon: SplitSquareVertical,
+    nodeType: 'abSplitNode',
+    payload: { type: 'abSplitNode', label: 'A/B Split (50/50)', config: { splitRatio: 50 } }
+  },
 
   // Contacts & Data
   {
@@ -254,17 +266,26 @@ const LIBRARY_ITEMS = [
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Add Contact to Entity', actionType: 'ADD_CONTACT_TO_ENTITY' }
   },
-
-  // CRM & Sales
   {
     id: 'create_entity',
     title: 'Create Entity',
     description: 'Create a new CRM contact or business entity using mapped webhook payload attributes.',
-    category: 'crm_sales',
+    category: 'contacts_data',
     icon: Building,
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Create Entity', actionType: 'CREATE_ENTITY' }
   },
+  {
+    id: 'update_lead_score',
+    title: 'Adjust Lead Score',
+    description: 'Add, subtract, or set a score for the triggering contact.',
+    category: 'contacts_data',
+    icon: Sparkles,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Adjust Lead Score', actionType: 'UPDATE_LEAD_SCORE' }
+  },
+
+  // CRM & Sales
   {
     id: 'create_deal',
     title: 'Create Deal',
@@ -386,6 +407,7 @@ export default function AutomationStepLibraryModal({
 }: AutomationStepLibraryModalProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [activeCategory, setActiveCategory] = React.useState<string>('all');
+  const { singular } = useTerminology();
 
   // Reset category and search query on open
   React.useEffect(() => {
@@ -395,38 +417,56 @@ export default function AutomationStepLibraryModal({
     }
   }, [open]);
 
+  // Localize library items based on active vertical terminology
+  const localizedLibraryItems = React.useMemo(() => {
+    return LIBRARY_ITEMS.map((item) => {
+      if (item.id === 'create_entity') {
+        return {
+          ...item,
+          title: `Create ${singular}`,
+          description: `Create a new CRM ${singular.toLowerCase()} entity using mapped webhook payload attributes.`,
+          payload: {
+            ...item.payload,
+            label: `Create ${singular}`,
+          },
+        };
+      }
+      return item;
+    });
+  }, [singular]);
+
   // Real-time client-side filter
   const filteredItems = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return LIBRARY_ITEMS.filter((item) => {
+    return localizedLibraryItems.filter((item) => {
       const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
       const matchesQuery = !query || 
         item.title.toLowerCase().includes(query) || 
         item.description.toLowerCase().includes(query);
       return matchesCategory && matchesQuery;
     });
-  }, [searchQuery, activeCategory]);
+  }, [searchQuery, activeCategory, localizedLibraryItems]);
 
   const getCategoryCount = React.useCallback((catId: string) => {
     const query = searchQuery.trim().toLowerCase();
-    return LIBRARY_ITEMS.filter((item) => {
+    return localizedLibraryItems.filter((item) => {
       const matchesCategory = catId === 'all' || item.category === catId;
       const matchesQuery = !query || 
         item.title.toLowerCase().includes(query) || 
         item.description.toLowerCase().includes(query);
       return matchesCategory && matchesQuery;
     }).length;
-  }, [searchQuery]);
+  }, [searchQuery, localizedLibraryItems]);
 
   const isTriggerCategoryDisabled = React.useCallback((catId: string) => {
     return hasParentSelected && catId === 'start_triggers';
   }, [hasParentSelected]);
 
-  const isItemDisabled = React.useCallback((item: typeof LIBRARY_ITEMS[number]) => {
+  const isItemDisabled = React.useCallback((item: any) => {
     return hasParentSelected && item.category === 'start_triggers';
   }, [hasParentSelected]);
 
-  const handleItemSelect = (item: typeof LIBRARY_ITEMS[number]) => {
+  const handleItemSelect = (item: any) => {
     if (isItemDisabled(item)) return;
     onSelect(item.payload);
     onOpenChange(false);

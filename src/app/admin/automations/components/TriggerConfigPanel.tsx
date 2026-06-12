@@ -22,7 +22,12 @@ import { useToast } from '@/hooks/use-toast';
 import type { Tag as TagType, Pipeline, OnboardingStage, AutomationTrigger, Automation } from '@/lib/types';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore';
+import { useParams } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import { createTagAction } from '@/lib/tag-actions';
 
 interface TriggerConfigPanelProps {
@@ -57,6 +62,60 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { user } = useUser();
   const [hasCopied, setHasCopied] = React.useState(false);
+
+  const firestore = useFirestore();
+  const params = useParams();
+  const automationId = params.id as string;
+  const [isListening, setIsListening] = React.useState(false);
+  const [capturedPayload, setCapturedPayload] = React.useState<any>(config.capturedPayload || null);
+
+  React.useEffect(() => {
+    if (!firestore || !automationId || automationId === 'new') return;
+    const unsub = onSnapshot(doc(firestore, 'automations', automationId), (snapshot) => {
+      if (snapshot.exists()) {
+        const autoData = snapshot.data();
+        if (autoData?.latestCapturedWebhook) {
+          setCapturedPayload(autoData.latestCapturedWebhook);
+          
+          // Sync it into the trigger config if it is different
+          if (JSON.stringify(config.capturedPayload) !== JSON.stringify(autoData.latestCapturedWebhook)) {
+            onUpdateConfig({ capturedPayload: autoData.latestCapturedWebhook });
+          }
+
+          setIsListening(prev => {
+            if (prev) {
+              toast({
+                title: 'Webhook captured!',
+                description: 'The incoming test webhook was successfully recorded.',
+              });
+            }
+            return false;
+          });
+        }
+      }
+    });
+    return () => unsub();
+  }, [firestore, automationId, toast, config.capturedPayload, onUpdateConfig]);
+
+  const handleToggleListening = async () => {
+    const nextListening = !isListening;
+    setIsListening(nextListening);
+
+    if (nextListening) {
+      setCapturedPayload(null);
+      onUpdateConfig({ capturedPayload: null });
+
+      if (firestore && automationId && automationId !== 'new') {
+        try {
+          await updateDoc(doc(firestore, 'automations', automationId), {
+            latestCapturedWebhook: deleteField()
+          });
+        } catch (e) {
+          console.error('[TriggerConfigPanel] Error clearing latestCapturedWebhook:', e);
+        }
+      }
+    }
+  };
 
   const copyWebhookUrl = () => {
     if (!webhookUrl) return;
@@ -101,7 +160,7 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
   return (
     <div className="w-full pt-1">
       {trigger === 'WEBHOOK_RECEIVED' ? (
-        <div className="space-y-6 animate-in slide-in-from-top-2 duration-500 bg-blue-500/5 p-6 rounded-[2rem] border border-blue-500/20 shadow-inner">
+        <div className="space-y-6 animate-in slide-in-from-top-2 duration-500 bg-blue-500/5 p-6 rounded-[2rem] border border-blue-500/20 shadow-inner text-left">
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
               <Label className="text-[10px] font-semibold text-blue-500 flex items-center gap-2">
@@ -113,10 +172,120 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
               <div className="flex-1 p-3 rounded-xl bg-slate-950/50 border border-white/5 shadow-inner overflow-hidden">
                 <p className="text-[10px] font-mono text-blue-500 break-all select-all">{webhookUrl}</p>
               </div>
-              <Button size="icon" variant="outline" className="h-10 w-10 shrink-0 rounded-xl bg-card shadow-lg" onClick={copyWebhookUrl}>
+              <Button size="icon" variant="outline" className="h-10 w-10 shrink-0 rounded-xl bg-card shadow-lg" onClick={copyWebhookUrl} type="button">
                 {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
+          </div>
+
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Webhook Capture</Label>
+              {isListening && (
+                <span className="text-[9px] font-bold text-blue-500 animate-pulse">Listening...</span>
+              )}
+            </div>
+
+            {!capturedPayload ? (
+              <div className="p-8 text-center bg-slate-950/20 rounded-2xl border border-dashed border-border/50">
+                <Globe className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30 animate-pulse" />
+                <p className="text-xs font-semibold text-muted-foreground">No payload captured yet</p>
+                <p className="text-[9px] text-muted-foreground/60 mt-1 leading-relaxed">
+                  Click the button below to start expectant capture, then send a POST request to your ingress endpoint.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 p-4 rounded-2xl bg-card border border-border/50 shadow-sm animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b pb-2 mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Captured Request</span>
+                  <span className="text-[9px] font-medium text-muted-foreground/60">
+                    {capturedPayload.capturedAt ? new Date(capturedPayload.capturedAt).toLocaleTimeString() : 'Recently'}
+                  </span>
+                </div>
+
+                <Tabs defaultValue="body" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 rounded-xl bg-muted/50 p-1">
+                    <TabsTrigger value="body" className="text-[10px] font-bold rounded-lg py-1.5">Body</TabsTrigger>
+                    <TabsTrigger value="headers" className="text-[10px] font-bold rounded-lg py-1.5">Headers ({Object.keys(capturedPayload.headers || {}).length})</TabsTrigger>
+                    <TabsTrigger value="files" className="text-[10px] font-bold rounded-lg py-1.5">Files ({capturedPayload.files?.length || 0})</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="body" className="pt-2">
+                    <ScrollArea className="h-40 w-full rounded-xl bg-slate-950/40 p-3 border border-white/5 font-mono text-[9px] text-foreground">
+                      {Object.keys(capturedPayload.body || {}).length === 0 ? (
+                        <span className="text-muted-foreground/50 italic">Empty JSON Body</span>
+                      ) : (
+                        <div className="space-y-1">
+                          {Object.entries(capturedPayload.body || {}).map(([key, val]) => (
+                            <div key={key} className="flex justify-between hover:bg-white/5 px-1 rounded py-0.5">
+                              <span className="text-blue-400 font-semibold">{key}</span>
+                              <span className="text-muted-foreground truncate max-w-[200px]" title={String(val)}>{JSON.stringify(val)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="headers" className="pt-2">
+                    <ScrollArea className="h-40 w-full rounded-xl bg-slate-950/40 p-3 border border-white/5 font-mono text-[9px] text-foreground">
+                      {Object.keys(capturedPayload.headers || {}).length === 0 ? (
+                        <span className="text-muted-foreground/50 italic">No Headers</span>
+                      ) : (
+                        <div className="space-y-1">
+                          {Object.entries(capturedPayload.headers || {}).map(([key, val]) => (
+                            <div key={key} className="flex justify-between hover:bg-white/5 px-1 rounded py-0.5">
+                              <span className="text-indigo-400 font-semibold">{key}</span>
+                              <span className="text-muted-foreground truncate max-w-[200px]" title={String(val)}>{String(val)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="files" className="pt-2">
+                    <ScrollArea className="h-40 w-full rounded-xl bg-slate-950/40 p-3 border border-white/5 font-mono text-[9px] text-foreground">
+                      {!capturedPayload.files || capturedPayload.files.length === 0 ? (
+                        <span className="text-muted-foreground/50 italic">No File Data Uploaded</span>
+                      ) : (
+                        <div className="space-y-2">
+                          {capturedPayload.files.map((file: any, index: number) => (
+                            <div key={index} className="p-2 rounded bg-white/5 border border-white/5 space-y-0.5">
+                              <div className="flex justify-between">
+                                <span className="text-emerald-400 font-bold truncate max-w-[180px]">{file.name}</span>
+                                <span className="text-muted-foreground/80 font-semibold">{(file.size / 1024).toFixed(1)} KB</span>
+                              </div>
+                              <div className="text-[8px] text-muted-foreground">Type: {file.type}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleToggleListening}
+              className={cn(
+                "w-full h-10 rounded-xl font-bold text-xs transition-all shadow-md gap-2 border",
+                isListening
+                  ? "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20"
+                  : "bg-blue-500 text-white border-blue-600 hover:bg-blue-600 shadow-blue-500/15"
+              )}
+            >
+              {isListening ? (
+                <>
+                  <div className="h-3.5 w-3.5 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+                  Cancel Expectant Mode
+                </>
+              ) : (
+                capturedPayload ? "Re-Capture Webhook Payload" : "Capture Webhook Response"
+              )}
+            </Button>
           </div>
         </div>
       ) : null}

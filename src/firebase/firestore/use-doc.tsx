@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useAuth } from '../provider';
 
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
@@ -43,21 +44,25 @@ export function useDoc<T = any>(
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
+  const auth = useAuth();
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  // The ref whose snapshot (or error) produced the current data. Loading is
+  // DERIVED as "the current ref hasn't settled yet" — a state-based isLoading
+  // flipped inside the effect leaves a one-commit gap where it reads `false`
+  // for a brand-new ref, causing consumers (e.g. auth gates) to briefly treat
+  // "not fetched yet" as "fetched and empty" (Access Denied flashes).
+  const [settledRef, setSettledRef] = useState<DocumentReference<DocumentData> | null>(null);
+
+  const isLoading = !!memoizedDocRef && memoizedDocRef !== settledRef;
 
   useEffect(() => {
     if (!memoizedDocRef) {
       setData(null);
-      setIsLoading(false);
       setError(null);
+      setSettledRef(null);
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
-    // Optional: setData(null); // Clear previous data instantly
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,
@@ -69,7 +74,7 @@ export function useDoc<T = any>(
           setData(null);
         }
         setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
-        setIsLoading(false);
+        setSettledRef(memoizedDocRef);
       },
       (error: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
@@ -79,10 +84,12 @@ export function useDoc<T = any>(
 
         setError(contextualError)
         setData(null)
-        setIsLoading(false)
+        setSettledRef(memoizedDocRef)
 
-        // trigger global error propagation
-        errorEmitter.emit('permission-error', contextualError);
+        // trigger global error propagation only if authenticated
+        if (auth.currentUser) {
+          errorEmitter.emit('permission-error', contextualError);
+        }
       }
     );
 

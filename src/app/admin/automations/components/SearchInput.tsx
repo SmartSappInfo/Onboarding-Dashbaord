@@ -8,6 +8,7 @@ interface SearchInputProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  autoFocus?: boolean;
 }
 
 export const SearchInput = React.memo(function SearchInput({
@@ -15,6 +16,7 @@ export const SearchInput = React.memo(function SearchInput({
   onChange,
   placeholder = 'Search...',
   className,
+  autoFocus,
 }: SearchInputProps) {
   return (
     <div className={`relative flex items-center ${className || ''}`}>
@@ -23,6 +25,7 @@ export const SearchInput = React.memo(function SearchInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        autoFocus={autoFocus}
         className="pl-9 pr-9 h-10 rounded-xl bg-background border border-border/50 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/30 shadow-sm text-xs font-medium"
       />
       {value ? (

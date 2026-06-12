@@ -80,6 +80,15 @@ export function useWorkspaceScopedQueries() {
     return query(collection(firestore, 'app_fields'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
   }, [firestore, activeWorkspaceId]);
 
+  // Field Groups - workspace-scoped
+  const groupsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (!activeWorkspaceId) {
+      return query(collection(firestore, 'field_groups'), orderBy('order', 'asc'));
+    }
+    return query(collection(firestore, 'field_groups'), where('workspaceId', '==', activeWorkspaceId), orderBy('order', 'asc'));
+  }, [firestore, activeWorkspaceId]);
+
   const { data: users } = useCollection<UserProfile>(usersQuery);
   const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
   const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
@@ -89,6 +98,7 @@ export function useWorkspaceScopedQueries() {
   const { data: surveys } = useCollection<{ id: string; internalName?: string; title?: string }>(surveysQuery);
   const { data: automations } = useCollection<Automation>(automationsQuery);
   const { data: appFields } = useCollection<any>(appFieldsQuery);
+  const { data: fieldGroups } = useCollection<any>(groupsQuery);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -106,6 +116,7 @@ export function useWorkspaceScopedQueries() {
     surveys: surveys || [],
     automations: automations || [],
     appFields: appFields || [],
+    fieldGroups: fieldGroups || [],
     activeWorkspaceId,
   };
 }

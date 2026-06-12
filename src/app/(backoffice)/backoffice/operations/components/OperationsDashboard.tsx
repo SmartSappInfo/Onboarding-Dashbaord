@@ -1,13 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { Network, Activity, ListOrdered, Wrench, Trash2, Database } from 'lucide-react';
+import { Activity, ListOrdered, Wrench, Trash2, Database, ShieldAlert } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import JobRunner from './JobRunner';
 import TenantDiagnostics from './TenantDiagnostics';
 import AutomationCleaner from './AutomationCleaner';
 import StripAccountStatusFer from './StripAccountStatusFer';
 import StripLifecycleStatusFer from './StripLifecycleStatusFer';
+import FixOrgAdminPermissionsFer from './FixOrgAdminPermissionsFer';
 
 export default function OperationsDashboard() {
   return (
@@ -56,11 +57,10 @@ export default function OperationsDashboard() {
             <Database className="h-3.5 w-3.5 mr-2" /> Strip lifecycleStatus
           </TabsTrigger>
           <TabsTrigger
-            value="api"
-            disabled
-            className="rounded-lg text-xs font-semibold cursor-pointer flex-1 sm:flex-none opacity-50"
+            value="fer-org-admin-perms"
+            className="rounded-lg text-xs font-semibold data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-400 cursor-pointer flex-1 sm:flex-none"
           >
-            <Network className="h-3.5 w-3.5 mr-2" /> Live API Gateways
+            <ShieldAlert className="h-3.5 w-3.5 mr-2" /> Org Admin Perms
           </TabsTrigger>
         </TabsList>
 
@@ -83,7 +83,11 @@ export default function OperationsDashboard() {
         <TabsContent value="fer-lifecycle-status" className="flex-1 mt-4 overflow-hidden flex flex-col">
            <StripLifecycleStatusFer />
         </TabsContent>
-        
+
+        <TabsContent value="fer-org-admin-perms" className="flex-1 mt-4 overflow-y-auto">
+           <FixOrgAdminPermissionsFer />
+        </TabsContent>
+
       </Tabs>
     </div>
   );

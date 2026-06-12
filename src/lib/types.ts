@@ -295,6 +295,14 @@ export interface Organization {
   email?: string;
   phone?: string;
   address?: string;
+  /** True once the first admin completes org configuration. */
+  isConfigured?: boolean;
+  /** Provisioning invite token (`SS-XXXXXX`) for the unconfigured setup flow. */
+  joinToken?: string;
+  /** ISO expiry for the provisioning token. */
+  joinTokenExpiresAt?: string;
+  /** True once the provisioning token has been consumed (org configured). */
+  joinTokenUsed?: boolean;
   status?: 'active' | 'trial' | 'suspended' | 'archived';
   settings?: {
     defaultCurrency?: string;
@@ -420,8 +428,19 @@ export interface Workspace {
   entityDefaults?: EntityDefaults;
   /** Custom lead sources created by the user during bulk import or elsewhere */
   customLeadSources?: string[];
+  leadScoringSettings?: LeadScoringSettings;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EmailVerificationRule {
+  minScore: number;
+  scoreValue: number;
+}
+
+export interface LeadScoringSettings {
+  emailVerificationRules: EmailVerificationRule[];
+  engagementRules: Record<string, number>;
 }
 
 export interface WorkspaceStatus {
@@ -552,6 +571,19 @@ export interface EntityContact {
   order: number;
   notes?: ContactNote[];
   attachments?: ContactAttachment[];
+  emailVerificationScore?: number;
+  score?: number;
+  // Email Hygiene
+  emailStatus?: 'valid' | 'bounced' | 'unsubscribed' | 'complained' | 'snoozed' | 'opt-down';
+  bounceReason?: string;
+  bouncedAt?: string;
+  unsubscribedAt?: string;
+  unsubscribedCategories?: string[];
+  snoozedUntil?: string;
+  optDownFrequency?: 'weekly' | 'monthly' | 'default';
+  // Engagement Tracking
+  lastEngagedAt?: string; // ISO timestamp updated whenever a meaningful action occurs
+  lastEmailOpenedAt?: string; // ISO timestamp for email open tracking
   createdAt?: string;
   updatedAt?: string;
 }
@@ -632,6 +664,8 @@ export interface Pipeline {
   isDefault?: boolean;
   createdAt: string;
   updatedAt?: string;
+  assignmentStrategy?: 'direct' | 'round-robin' | 'value-based' | 'unassigned';
+  assignmentUserIds?: string[];
 }
 
 export const APP_PERMISSIONS = [
@@ -933,6 +967,7 @@ export interface Entity {
 
   // Online Presence & Social Media
   onlinePresence?: OnlinePresence;
+  leadScore?: number;
 }
 
 /**
@@ -1008,6 +1043,8 @@ export interface WorkspaceEntity {
 
   // Dynamic custom data bucket (Requirement: Phase 6)
   customData?: Record<string, any>;
+  leadScore?: number;
+  lastEngagedAt?: string; // Rolled-up engagement timestamp for fast filtering
 }
 
 export interface DealContact {
@@ -2041,6 +2078,7 @@ export interface Automation {
   workspaceIds: string[]; // Shared
   name: string;
   description?: string;
+  isArchived?: boolean;
 
   /**
    * First-class multi-trigger array.
@@ -2542,7 +2580,7 @@ export interface MessageStyle {
  * Linear progression: draft → scheduled → sending → sent | failed
  * Manual transitions: any → archived
  */
-export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed' | 'archived';
+export type CampaignStatus = 'draft' | 'scheduled' | 'testing' | 'paused' | 'sending' | 'sent' | 'failed' | 'archived';
 
 /**
  * Defines how a campaign's audience is selected.
@@ -2570,6 +2608,15 @@ export interface AudienceDefinition {
   /** Logic for combining advanced filters */
   filterLogic?: 'AND' | 'OR';
   groups?: any[];
+  /** Manually selected individual contacts */
+  selectedContacts?: Array<{
+    entityId: string;
+    contactId: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    entityName?: string;
+  }>;
 }
 
 /**
@@ -2638,12 +2685,23 @@ export interface MessageAudience {
  * Each rule targets a specific cohort (e.g., all delivered, all failed).
  */
 export interface PostSendTagRule {
-  tagId: string;
-  tagName: string;
+  id?: string;
+  actionType?: 'add_tag' | 'create_deal' | 'create_task';
+  tagId?: string;
+  tagName?: string;
   /** Which cohort of recipients should receive this tag */
   appliesTo: 'all_targeted' | 'delivered' | 'failed' | 'not_delivered';
   /** Optional delay in minutes before applying (for 'not_delivered': wait, then check) */
   delayMinutes?: number;
+
+  // parameters for 'create_deal'
+  dealPipelineId?: string;
+  dealStageId?: string;
+  dealTitleTemplate?: string;
+  
+  // parameters for 'create_task'
+  taskTitleTemplate?: string;
+  taskDueDateOffsetDays?: number;
 }
 
 /**
@@ -2706,6 +2764,17 @@ export interface MessageCampaign {
   /** Whether to transform URLs in the message body into tracked links (Phase 7) */
   trackLinks?: boolean;
 
+  abTestEnabled?: boolean;
+  abTestConfig?: {
+    testSizePercentage: number;
+    testDurationHours: number;
+    winnerMetric: 'open_rate' | 'click_rate' | 'low_unsubscribe_rate';
+    winnerSelectedAt?: string;
+    winningVariantId?: 'A' | 'B';
+    evaluationJobId?: string;
+  };
+  variants?: CampaignVariant[];
+
   // Stats (denormalized for list view)
   stats: {
     totalTargeted: number;
@@ -2713,12 +2782,33 @@ export interface MessageCampaign {
     totalFailed: number;
     totalOpened: number;
     totalClicked: number;
+    totalUnsubscribed?: number;
   };
 
   // Metadata
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CampaignStats {
+  totalTargeted: number;
+  totalSent: number;
+  totalFailed: number;
+  totalOpened: number;
+  totalClicked: number;
+  totalUnsubscribed: number;
+}
+
+export interface CampaignVariant {
+  id: 'A' | 'B';
+  templateId?: string | null;
+  templateName?: string | null;
+  customSubject?: string;
+  customBody?: string;
+  customBlocks?: MessageBlock[];
+  ratio: number;
+  stats: CampaignStats;
 }
 
 export interface SenderProfile {
@@ -2767,6 +2857,8 @@ export interface MessageLog {
   openedCount?: number;
   clickedCount?: number;
   dealId?: string; // Optional deal reference for deal-level message tracking
+  campaignId?: string;
+  campaignVariantId?: 'A' | 'B';
 }
 
 export interface MessageJob {
@@ -2813,6 +2905,7 @@ export interface MessageTask {
   displayName?: string;
   /** Entity ID for post-send tagging */
   entityId?: string;
+  campaignVariantId?: 'A' | 'B';
 }
 
 

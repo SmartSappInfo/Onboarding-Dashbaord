@@ -8,6 +8,9 @@ import {
   setAutomationStatus,
   manuallyReleaseWaitJob,
   manuallyEndAutomationRun,
+  archiveAutomation,
+  restoreAutomation,
+  deleteAllArchivedAutomations,
 } from './automations/service';
 import { testAutomationFlow } from './automations/test-flow';
 import type { TestAutomationFlowInput } from './automations/test-flow';
@@ -25,6 +28,18 @@ export async function saveAutomationAction(
 
 export async function deleteAutomationAction(id: string, userId: string) {
   return removeAutomation(id, userId);
+}
+
+export async function archiveAutomationAction(id: string, userId: string) {
+  return archiveAutomation(id, userId);
+}
+
+export async function restoreAutomationAction(id: string, userId: string) {
+  return restoreAutomation(id, userId);
+}
+
+export async function deleteAllArchivedAutomationsAction(workspaceId: string, userId: string) {
+  return deleteAllArchivedAutomations(workspaceId, userId);
 }
 
 export async function toggleAutomationStatusAction(id: string, active: boolean, userId: string) {

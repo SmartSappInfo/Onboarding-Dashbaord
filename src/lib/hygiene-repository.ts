@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { VerifyEmailResult } from './email-verifier';
+import { calculateNewVerifyScores } from './scoring-rules-engine';
 
 const LOCK_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -136,6 +137,30 @@ export class ContactHygieneRepository {
   static async commitBatch(updates: [string, VerifyEmailResult][]) {
     // 1. Gather all document refs & payloads
     const writes: { ref: FirebaseFirestore.DocumentReference, data: any, isMerge?: boolean }[] = [];
+    const workspaceRulesCache = new Map<string, any[]>();
+
+    const getWorkspaceScoringRules = async (workspaceId: string) => {
+      if (workspaceRulesCache.has(workspaceId)) {
+        return workspaceRulesCache.get(workspaceId)!;
+      }
+      try {
+        const snap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        const data = snap.data();
+        const rules = data?.leadScoringSettings?.emailVerificationRules || [
+          { minScore: 90, scoreValue: 10 },
+          { minScore: 40, scoreValue: 5 },
+          { minScore: 0, scoreValue: 0 }
+        ];
+        workspaceRulesCache.set(workspaceId, rules);
+        return rules;
+      } catch (err) {
+        return [
+          { minScore: 90, scoreValue: 10 },
+          { minScore: 40, scoreValue: 5 },
+          { minScore: 0, scoreValue: 0 }
+        ];
+      }
+    };
     
     // We run queries in parallel to find all contact documents mapped to these emails
     const entityQueries = updates.map(async ([email, result]) => {
@@ -160,17 +185,53 @@ export class ContactHygieneRepository {
         .where('email', '==', email)
         .get();
         
-      entitiesSnap.docs.forEach(doc => {
-         writes.push({
-           ref: doc.ref,
-           data: {
-             verificationStatus: result.status,
-             verificationScore: result.score,
-             lastVerifiedAt: new Date().toISOString(),
-             verificationDetails: result.checks
-           }
-         });
-      });
+      for (const doc of entitiesSnap.docs) {
+        const weData = doc.data();
+        const workspaceId = weData.workspaceId;
+        const entityId = weData.entityId;
+
+        if (entityId && workspaceId) {
+          const rules = await getWorkspaceScoringRules(workspaceId);
+          const entityRef = adminDb.collection('entities').doc(entityId);
+          const entitySnap = await entityRef.get();
+
+          if (entitySnap.exists) {
+            const entityData = entitySnap.data() || {};
+            const entityContacts = entityData.entityContacts || [];
+
+            const { entityContacts: updatedContacts, leadScore } = calculateNewVerifyScores(
+              entityContacts,
+              email,
+              result.score,
+              rules
+            );
+
+            writes.push({
+              ref: entityRef,
+              data: {
+                entityContacts: updatedContacts,
+                leadScore,
+                updatedAt: new Date().toISOString()
+              },
+              isMerge: true
+            });
+
+            writes.push({
+              ref: doc.ref,
+              data: {
+                verificationStatus: result.status,
+                verificationScore: result.score,
+                lastVerifiedAt: new Date().toISOString(),
+                verificationDetails: result.checks,
+                entityContacts: updatedContacts,
+                leadScore,
+                updatedAt: new Date().toISOString()
+              },
+              isMerge: true
+            });
+          }
+        }
+      }
     });
 
     await Promise.all(entityQueries);

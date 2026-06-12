@@ -21,6 +21,17 @@ import type { UserProfile } from '@/lib/types';
 
 export const AI_PROVIDERS = [
     {
+        id: 'anthropic',
+        name: 'Anthropic Claude',
+        icon: Zap,
+        color: 'text-orange-500',
+        bgColor: 'bg-orange-500/10',
+        models: [
+            { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', description: 'Most intelligent & capable Claude model' },
+            { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', description: 'Fastest Claude model for low-latency tasks' },
+        ]
+    },
+    {
         id: 'googleai',
         name: 'Google Gemini',
         icon: Sparkles,
@@ -50,17 +61,6 @@ export const AI_PROVIDERS = [
             { id: 'xiaomi/mimo-v2-flash:free', name: 'Mimo V2 Flash', description: '309B parameter reasoning & coding model' },
             { id: 'meta-llama/llama-4-scout:free', name: 'Llama 4 Scout', description: 'Efficient MoE designed for long-context' },
         ]
-    },
-    {
-        id: 'openai',
-        name: 'OpenAI Direct',
-        icon: Zap,
-        color: 'text-emerald-500',
-        bgColor: 'bg-emerald-500/10',
-        models: [
-            { id: 'gpt-4o', name: 'GPT-4o', description: 'Smartest Model' },
-            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast, Budget-Friendly' },
-        ]
     }
 ];
 
@@ -70,19 +70,21 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    const [selectedProvider, setSelectedProvider] = React.useState<string>('googleai');
-    const [selectedModel, setSelectedModel] = React.useState<string>('gemini-3-flash-preview');
+    const [selectedProvider, setSelectedProvider] = React.useState<string>('anthropic');
+    const [selectedModel, setSelectedModel] = React.useState<string>('claude-3-5-sonnet');
     const [isLoading, setIsLoading] = React.useState(true);
 
     const availableProviders = React.useMemo(() => {
-        if (!activeOrganization) return AI_PROVIDERS;
+        if (!activeOrganization) return [];
 
         const mode = activeOrganization.aiKeyMode || 'platform';
-        if (mode === 'platform') return AI_PROVIDERS;
+        // If organization uses platform defaults (fallback DB/env keys), hide selector
+        if (mode === 'platform') return [];
 
+        // Return only providers that have organization-configured API keys
         return AI_PROVIDERS.filter(provider => {
             if (provider.id === 'googleai') return !!activeOrganization.geminiApiKey;
-            if (provider.id === 'openai') return !!activeOrganization.openaiApiKey;
+            if (provider.id === 'anthropic') return !!activeOrganization.claudeApiKey;
             if (provider.id === 'openrouter') return !!activeOrganization.openRouterApiKey;
             return false;
         });
@@ -96,11 +98,20 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
                 if (docSnap.exists()) {
                     const data = docSnap.data() as UserProfile;
                     
+                    let provider = data.preferredAiProvider;
+                    let model = data.preferredAiModel;
+
+                    // Automatically migrate legacy 'openai' to 'anthropic'
+                    if (provider === 'openai') {
+                        provider = 'anthropic';
+                        model = 'claude-3-5-sonnet';
+                    }
+                    
                     // Only apply if the preferred model is still available under the active organization's rules
-                    const isAvailable = availableProviders.some(p => p.id === data.preferredAiProvider);
-                    if (isAvailable) {
-                        if (data.preferredAiProvider) setSelectedProvider(data.preferredAiProvider);
-                        if (data.preferredAiModel) setSelectedModel(data.preferredAiModel);
+                    const isAvailable = availableProviders.some(p => p.id === provider);
+                    if (isAvailable && provider && model) {
+                        setSelectedProvider(provider);
+                        setSelectedModel(model);
                     } else if (availableProviders.length > 0) {
                         // Fallback to first available provider
                         setSelectedProvider(availableProviders[0].id);
@@ -109,6 +120,8 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
                 }
                 setIsLoading(false);
             });
+        } else {
+            setIsLoading(false);
         }
     }, [user, firestore, availableProviders]);
 
@@ -145,15 +158,18 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
         return <div className="h-10 w-[240px] bg-muted animate-pulse rounded-xl" />;
     }
 
+    // Return the clean read-only badge indicating system default if no custom keys are configured
     if (availableProviders.length === 0) {
         return (
             <div className={cn("flex flex-col gap-1.5", className)}>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                    AI Architect Model
-                </label>
-                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-sm font-medium">
-                    <Shield className="w-4 h-4 shrink-0" />
-                    <span>No AI models available. Please configure API keys in Organization Settings.</span>
+                {!hideLabel && (
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                        AI Architect Model
+                    </label>
+                )}
+                <div className="flex items-center gap-2.5 p-3 bg-orange-500/5 border border-orange-500/10 text-orange-600 rounded-[1.25rem] text-sm font-bold w-[280px]">
+                    <Zap className="w-4 h-4 shrink-0 text-orange-500" />
+                    <span>System Default: Claude 3.5 Sonnet</span>
                 </div>
             </div>
         );

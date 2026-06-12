@@ -46,7 +46,7 @@ export async function saveAutomation(
 
     const normalized = serializeBlueprint(data);
 
-    if (normalized.nodes?.length && !normalized.triggers?.length) {
+    if (normalized.isActive && normalized.nodes?.length && !normalized.triggers?.length) {
       throw new AutomationValidationError(
         'Automation blueprint must have at least one trigger configured.'
       );
@@ -138,6 +138,10 @@ export async function removeAutomation(
     if (!existing) throw new AutomationNotFoundError();
     await assertAutomationManagePermission(userId, existing.workspaceIds, 'delete');
 
+    if (!existing.isArchived) {
+      throw new AutomationValidationError('Automation must be archived before it can be deleted.');
+    }
+
     // Clean up all pending scheduled jobs for the deleted automation
     const { purgeAllPendingJobsForAutomation } = await import('./reschedule');
     await purgeAllPendingJobsForAutomation(id);
@@ -162,6 +166,10 @@ export async function setAutomationStatus(
     const existing = await getAutomationById(id);
     if (!existing) throw new AutomationNotFoundError();
     await assertAutomationManagePermission(userId, existing.workspaceIds, 'edit');
+
+    if (active) {
+      await validateAutomationBlueprint({ ...existing, isActive: true });
+    }
 
     await setAutomationActive(id, active);
     revalidateAutomationsHub();
@@ -345,5 +353,96 @@ export async function manuallyEndAutomationRun(
   } catch (error: any) {
     logAutomationEvent('error', 'manual_terminate_failed', { runId, error });
     return { success: false, error: error.message || String(error) };
+  }
+}
+
+export async function archiveAutomation(
+  id: string,
+  userId: string
+): Promise<AutomationActionResult> {
+  try {
+    assertAutomationUserId(userId);
+    const existing = await getAutomationById(id);
+    if (!existing) throw new AutomationNotFoundError();
+    await assertAutomationManagePermission(userId, existing.workspaceIds, 'edit');
+
+    // Archive setting: isArchived = true and isActive = false (cannot be active while archived)
+    await adminDb.collection('automations').doc(id).update({
+      isActive: false,
+      isArchived: true,
+      updatedAt: new Date().toISOString()
+    });
+
+    // Clean up all pending scheduled jobs for the archived automation
+    const { purgeAllPendingJobsForAutomation } = await import('./reschedule');
+    await purgeAllPendingJobsForAutomation(id);
+
+    revalidateAutomationsHub();
+    return { success: true };
+  } catch (error) {
+    logAutomationEvent('error', 'archive_automation_failed', { automationId: id, error });
+    return { success: false, error: toAutomationClientError(error) };
+  }
+}
+
+export async function restoreAutomation(
+  id: string,
+  userId: string
+): Promise<AutomationActionResult> {
+  try {
+    assertAutomationUserId(userId);
+    const existing = await getAutomationById(id);
+    if (!existing) throw new AutomationNotFoundError();
+    await assertAutomationManagePermission(userId, existing.workspaceIds, 'edit');
+
+    // Restore setting: isArchived = false (isActive remains false, user can manually enable it)
+    await adminDb.collection('automations').doc(id).update({
+      isArchived: false,
+      updatedAt: new Date().toISOString()
+    });
+
+    revalidateAutomationsHub();
+    return { success: true };
+  } catch (error) {
+    logAutomationEvent('error', 'restore_automation_failed', { automationId: id, error });
+    return { success: false, error: toAutomationClientError(error) };
+  }
+}
+
+export async function deleteAllArchivedAutomations(
+  workspaceId: string,
+  userId: string
+): Promise<AutomationActionResult> {
+  try {
+    assertAutomationUserId(userId);
+
+    // Fetch all workspace automations
+    const snap = await adminDb
+      .collection('automations')
+      .where('workspaceIds', 'array-contains', workspaceId)
+      .get();
+
+    // Filter in-memory to bypass composite index creation
+    const archivedDocs = snap.docs.filter((doc) => doc.data().isArchived === true);
+
+    if (archivedDocs.length === 0) {
+      return { success: true };
+    }
+
+    const { purgeAllPendingJobsForAutomation } = await import('./reschedule');
+
+    // Perform deletions and purge pending scheduled jobs
+    for (const doc of archivedDocs) {
+      const existing = { id: doc.id, ...doc.data() } as Automation;
+      await assertAutomationManagePermission(userId, existing.workspaceIds, 'delete');
+      await purgeAllPendingJobsForAutomation(doc.id);
+      await deleteAutomation(doc.id);
+    }
+
+    revalidateAutomationsHub();
+    return { success: true };
+  } catch (error) {
+    logAutomationEvent('error', 'delete_all_archived_failed', { workspaceId, error });
+    return { success: false, error: toAutomationClientError(error) };
   }
 }

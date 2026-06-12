@@ -936,6 +936,13 @@ export default function EntitiesClient() {
                                 </RainbowButton>
                             )}
 
+                            <Button asChild variant="outline" className="h-11 px-5 gap-2 font-bold text-[10px] uppercase tracking-widest shadow-sm rounded-xl border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-600">
+                                <Link href="/admin/entities/lead-scoring">
+                                    <Sparkles className="h-4 w-4 text-amber-500" />
+                                    Lead Cleanup
+                                </Link>
+                            </Button>
+
                             {canCreate && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>

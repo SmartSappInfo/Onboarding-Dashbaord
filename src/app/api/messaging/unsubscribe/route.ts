@@ -8,7 +8,7 @@ import { suppressRecipient } from '@/lib/suppression-service';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, workspaceId, channels, reason } = body;
+    const { id, workspaceId, channels, reason, campaignId, variantId } = body;
 
     if (!id || !workspaceId || !channels) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -23,6 +23,11 @@ export async function POST(req: NextRequest) {
         reason: reason || 'unsubscribed_from_preference_center',
         entityId: id.includes('@') ? undefined : id
       });
+    }
+
+    if (campaignId && variantId) {
+      const { updateCampaignUnsubscribeStat } = await import('@/lib/campaign-analytics');
+      await updateCampaignUnsubscribeStat(campaignId, variantId as 'A' | 'B');
     }
 
     return NextResponse.json({ success: true });

@@ -7,6 +7,7 @@ import { collection, query, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { endMeetingAction } from '@/app/actions/meeting-post-event-action';
 import type { ScheduledMessage, QRCode, MeetingReminderSlot } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,7 @@ export default function MeetingDetailPage() {
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [isEnding, startTransition] = React.useTransition();
   const [copiedLink, setCopiedLink] = React.useState<'short' | 'long' | string | null>(null);
   const { user } = useUser();
@@ -294,10 +296,11 @@ export default function MeetingDetailPage() {
   const { data: qrCodes, isLoading: isLoadingQR } = useCollection<QRCode>(qrQuery);
   const qrCode = qrCodes && qrCodes.length > 0 ? qrCodes[0] : null;
 
-  const handleEndMeeting = () => {
+  const handleEndMeeting = async () => {
     if (!meeting || meeting.status === 'ended') return;
-    
-    if (window.confirm('Are you sure you want to end this meeting? This will schedule all post-event follow-up messages.')) {
+
+    const ok = await confirm({ title: 'End meeting?', description: 'This will schedule all post-event follow-up messages.', confirmText: 'End Meeting' });
+    if (ok) {
       startTransition(async () => {
         try {
           const result = await endMeetingAction(meeting.id, activeOrganizationId);

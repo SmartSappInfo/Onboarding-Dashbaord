@@ -2,12 +2,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { traverseNodes } from '../automations/nodes/traverse';
 
-const runUpdate = vi.fn();
+const mockLogStep = vi.fn();
 const mockProcessAction = vi.fn();
 const mockProcessTagAction = vi.fn();
 const mockEvaluateCondition = vi.fn();
 const mockEvaluateTagCondition = vi.fn();
 const mockHandleDelay = vi.fn();
+
+vi.mock('../automations/step-logger', () => ({
+  logStepExecution: (...args: any[]) => mockLogStep(...args),
+}));
 
 vi.mock('../automations/actions', () => ({
   processActionNode: (...args: any[]) => mockProcessAction(...args),
@@ -18,7 +22,7 @@ vi.mock('../automations/nodes/tag-nodes', () => ({
   processTagActionNode: (...args: any[]) => mockProcessTagAction(...args),
 }));
 
-vi.mock('../../automation-condition', () => ({
+vi.mock('../automation-condition', () => ({
   evaluateConditionNode: (...args: any[]) => mockEvaluateCondition(...args),
 }));
 
@@ -28,24 +32,11 @@ vi.mock('../automations/nodes/delay', () => ({
 
 vi.mock('../firebase-admin', () => ({
   adminDb: {
-    collection: vi.fn((name: string) => {
-      if (name === 'automation_runs') {
-        return {
-          doc: vi.fn(() => ({
-            get: vi.fn().mockResolvedValue({
-              exists: true,
-              data: () => ({ steps: {} }),
-            }),
-            update: runUpdate,
-          })),
-        };
-      }
-      return {
-        doc: vi.fn(() => ({
-          get: vi.fn().mockResolvedValue({ exists: false }),
-        })),
-      };
-    }),
+    collection: vi.fn(() => ({
+      doc: vi.fn(() => ({
+        get: vi.fn().mockResolvedValue({ exists: false }),
+      })),
+    })),
   },
 }));
 
@@ -76,26 +67,24 @@ describe('Traverse Step Logging', () => {
 
     await traverseNodes('t1', automation, context);
 
-    expect(runUpdate).toHaveBeenCalledWith(
+    expect(mockLogStep).toHaveBeenCalledWith(
+      'run-1',
       expect.objectContaining({
-        'steps.t1': expect.objectContaining({
-          nodeId: 't1',
-          nodeType: 'triggerNode',
-          nodeLabel: 'Contact Created',
-          status: 'success',
-        }),
+        nodeId: 't1',
+        nodeType: 'triggerNode',
+        nodeLabel: 'Contact Created',
+        status: 'success',
       })
     );
 
-    expect(runUpdate).toHaveBeenCalledWith(
+    expect(mockLogStep).toHaveBeenCalledWith(
+      'run-1',
       expect.objectContaining({
-        'steps.a1': expect.objectContaining({
-          nodeId: 'a1',
-          nodeType: 'actionNode',
-          nodeLabel: 'Send Welcome Email',
-          status: 'success',
-          metadata: { actionType: 'SEND_MESSAGE' },
-        }),
+        nodeId: 'a1',
+        nodeType: 'actionNode',
+        nodeLabel: 'Send Welcome Email',
+        status: 'success',
+        metadata: { actionType: 'SEND_MESSAGE' },
       })
     );
   });
@@ -124,13 +113,12 @@ describe('Traverse Step Logging', () => {
       traverseNodes('t1', automation, context)
     ).rejects.toThrow('Node [Send Webhook] failed: Webhook timeout');
 
-    expect(runUpdate).toHaveBeenCalledWith(
+    expect(mockLogStep).toHaveBeenCalledWith(
+      'run-1',
       expect.objectContaining({
-        'steps.a1': expect.objectContaining({
-          nodeId: 'a1',
-          status: 'failed',
-          error: 'Webhook timeout',
-        }),
+        nodeId: 'a1',
+        status: 'failed',
+        error: 'Webhook timeout',
       })
     );
   });
@@ -161,14 +149,13 @@ describe('Traverse Step Logging', () => {
 
     await traverseNodes('c1', automation, context);
 
-    expect(runUpdate).toHaveBeenCalledWith(
+    expect(mockLogStep).toHaveBeenCalledWith(
+      'run-1',
       expect.objectContaining({
-        'steps.c1': expect.objectContaining({
-          nodeId: 'c1',
-          nodeType: 'conditionNode',
-          status: 'success',
-          metadata: { evaluation: 'true' },
-        }),
+        nodeId: 'c1',
+        nodeType: 'conditionNode',
+        status: 'success',
+        metadata: { evaluation: 'true' },
       })
     );
   });
@@ -195,15 +182,14 @@ describe('Traverse Step Logging', () => {
 
     await traverseNodes('t1', automation, context);
 
-    expect(runUpdate).toHaveBeenCalledWith(
+    expect(mockLogStep).toHaveBeenCalledWith(
+      'run-1',
       expect.objectContaining({
-        'steps.d1': expect.objectContaining({
-          nodeId: 'd1',
-          nodeType: 'delayNode',
-          status: 'waiting',
-          metadata: expect.objectContaining({
-            delayUntil: expect.any(String),
-          }),
+        nodeId: 'd1',
+        nodeType: 'delayNode',
+        status: 'waiting',
+        metadata: expect.objectContaining({
+          delayUntil: expect.any(String),
         }),
       })
     );
@@ -232,15 +218,14 @@ describe('Traverse Step Logging', () => {
     // Starting traverse from the delay node represents resumption
     await traverseNodes('d1', automation, context);
 
-    expect(runUpdate).toHaveBeenCalledWith(
+    expect(mockLogStep).toHaveBeenCalledWith(
+      'run-1',
       expect.objectContaining({
-        'steps.d1': expect.objectContaining({
-          nodeId: 'd1',
-          nodeType: 'delayNode',
-          status: 'success',
-          metadata: expect.objectContaining({
-            resumedAt: expect.any(String),
-          }),
+        nodeId: 'd1',
+        nodeType: 'delayNode',
+        status: 'success',
+        metadata: expect.objectContaining({
+          resumedAt: expect.any(String),
         }),
       })
     );

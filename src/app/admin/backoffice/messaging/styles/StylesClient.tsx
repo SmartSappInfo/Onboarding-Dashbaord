@@ -37,6 +37,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,6 +63,7 @@ type ScopeFilter = 'all' | 'global' | 'organization';
 export default function StylesClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const { user } = useUser();
     const router = useRouter();
     
@@ -338,7 +340,7 @@ export default function StylesClient() {
             return;
         }
 
-        if (!confirm('Permanently purge this global blueprint? All workspaces adopting it will retain their local overrides, but new workspaces cannot adopt it.')) return;
+        if (!(await confirm({ title: 'Delete global blueprint?', description: 'Workspaces adopting it keep their local overrides, but new workspaces cannot adopt it.', confirmText: 'Delete', variant: 'destructive' }))) return;
         await deleteDoc(doc(firestore, 'message_styles', id));
         toast({ title: 'Global Blueprint Purged' });
     };

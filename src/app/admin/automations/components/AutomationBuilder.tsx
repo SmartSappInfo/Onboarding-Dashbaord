@@ -23,6 +23,7 @@ import { ConditionNode } from '../[id]/edit/components/nodes/ConditionNode';
 import { DelayNode } from '../[id]/edit/components/nodes/DelayNode';
 import { TagConditionNode } from '../[id]/edit/components/nodes/TagConditionNode';
 import { TagActionNode } from '../[id]/edit/components/nodes/TagActionNode';
+import { ABSplitNode } from '../[id]/edit/components/nodes/ABSplitNode';
 import {
     Dialog,
     DialogContent,
@@ -64,6 +65,7 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { NodeInspector } from './NodeInspector';
@@ -79,6 +81,7 @@ const nodeTypes = {
     delayNode: DelayNode,
     tagConditionNode: TagConditionNode,
     tagActionNode: TagActionNode,
+    abSplitNode: ABSplitNode,
 };
 
 const edgeTypes = {
@@ -606,6 +609,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             case 'delayNode': label = 'Temporal Wait'; break;
             case 'tagConditionNode': label = 'Tag Condition'; break;
             case 'tagActionNode': label = 'Tag Action'; break;
+            case 'abSplitNode': label = 'A/B Split'; break;
         }
 
         const newNode = {
@@ -643,11 +647,18 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                 } else {
                     sourceHandle = 'false';
                 }
+            } else if (!sourceHandle && parentNode.type === 'abSplitNode') {
+                const hasAEdge = edges.some(e => e.source === parentNode.id && e.sourceHandle === 'a');
+                if (!hasAEdge) {
+                    sourceHandle = 'a';
+                } else {
+                    sourceHandle = 'b';
+                }
             }
 
-            if (sourceHandle === 'true') {
+            if (sourceHandle === 'true' || sourceHandle === 'a') {
                 targetX -= 120;
-            } else if (sourceHandle === 'false') {
+            } else if (sourceHandle === 'false' || sourceHandle === 'b') {
                 targetX += 120;
             }
 
@@ -760,8 +771,9 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         return nodes.map(node => {
             const hasTrueConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'true');
             const hasFalseConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'false');
+            const hasAConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'a');
+            const hasBConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'b');
             const hasDefaultConnection = edges.some(e => e.source === node.id && (!e.sourceHandle || e.sourceHandle === 'default' || e.sourceHandle === ''));
-
             const stepData = stepMap[node.id];
 
             return {
@@ -769,8 +781,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                 data: {
                     ...node.data,
                     isDefaultConnected: hasDefaultConnection,
-                    isTrueConnected: hasTrueConnection,
-                    isFalseConnected: hasFalseConnection,
+                    isTrueConnected: node.type === 'abSplitNode' ? hasAConnection : hasTrueConnection,
+                    isFalseConnected: node.type === 'abSplitNode' ? hasBConnection : hasFalseConnection,
                     // Execution overlay data
                     ...(selectedRun ? {
                         executionStatus: stepData?.status || null,
@@ -1040,25 +1052,23 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
 
                 return (
                     <Dialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
-                        <DialogContent className="rounded-2xl max-w-sm border-none shadow-2xl p-6 bg-background/95 backdrop-blur-md">
+                        <DialogContent className="rounded-3xl max-w-md border border-border/20 shadow-2xl p-6 bg-background/95 backdrop-blur-md">
                             <DialogHeader className="text-left space-y-2">
-                                <DialogTitle className="text-sm font-bold">Unsaved Inspector Changes</DialogTitle>
+                                <DialogTitle className="text-sm font-bold text-foreground">Unsaved Inspector Changes</DialogTitle>
                                 <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
                                     You have unsaved changes in the Logic Inspector. Would you like to save and apply them or discard them before exiting?
                                 </DialogDescription>
                             </DialogHeader>
 
-                            <div className="flex items-center gap-2 py-3">
-                                <input
-                                    type="checkbox"
+                            <div className="flex items-center gap-2.5 py-3">
+                                <Checkbox
                                     id="skipConfirmCheckbox"
                                     checked={skipConfirm}
-                                    onChange={(e) => {
-                                        const val = e.target.checked;
-                                        setSkipConfirm(val);
-                                        localStorage.setItem('skipInspectorConfirmations', String(val));
+                                    onCheckedChange={(val) => {
+                                        const isChecked = !!val;
+                                        setSkipConfirm(isChecked);
+                                        localStorage.setItem('skipInspectorConfirmations', String(isChecked));
                                     }}
-                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                                 />
                                 <label htmlFor="skipConfirmCheckbox" className="text-[10px] font-semibold text-muted-foreground cursor-pointer select-none">
                                     Skip this confirmation next time

@@ -2,68 +2,89 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { saveAutomationAction } from '@/lib/automation-actions';
 import { useUser } from '@/firebase';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useTerminology } from '@/hooks/use-terminology';
+import { saveAutomationAction } from '@/lib/automation-actions';
+import { Loader2 } from 'lucide-react';
 
 /**
  * @fileOverview Initialization page for new Automations.
- * Automatically binds the new blueprint to the active workspace track.
+ * Instantly creates a draft blueprint in Firestore and routes to the editor.
  */
 export default function NewAutomationPage() {
     const router = useRouter();
     const { user } = useUser();
-    const { toast } = useToast();
     const { activeWorkspaceId } = useWorkspace();
-    const { singular } = useTerminology();
+    const [error, setError] = React.useState<string | null>(null);
+
+    const creationStarted = React.useRef(false);
+    const isMounted = React.useRef(true);
 
     React.useEffect(() => {
-        if (!user || !singular) return;
-
-        const init = async () => {
-            const res = await saveAutomationAction(null, {
-                name: 'Untitled Workflow',
-                triggers: [
-                    {
-                        id: 'trigger_0',
-                        type: 'ENTITY_CREATED',
-                        config: {}
-                    }
-                ],
-                triggerTypes: ['ENTITY_CREATED'],
-                workspaceIds: [activeWorkspaceId], 
-                nodes: [
-                    {
-                        id: 'trigger',
-                        type: 'triggerNode',
-                        position: { x: 250, y: 100 },
-                        data: { label: `${singular} Created`, trigger: 'ENTITY_CREATED' }
-                    }
-                ],
-                edges: []
-            }, user.uid);
-
-            if (res.success && res.id) {
-                router.push(`/admin/automations/${res.id}/edit`);
-            } else {
-                toast({ variant: 'destructive', title: 'Initialization Failed', description: res.error });
-                router.push('/admin/automations');
-            }
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
         };
+    }, []);
 
-        init();
-    }, [user, router, toast, activeWorkspaceId, singular]);
+    React.useEffect(() => {
+        if (!user?.uid || !activeWorkspaceId) return;
+        if (creationStarted.current) return;
+        creationStarted.current = true;
+
+        const userId = user.uid;
+
+        async function createDraft() {
+            try {
+                const defaultNewAutomation = {
+                    name: 'Untitled Workflow',
+                    description: '',
+                    isActive: false,
+                    triggers: [],
+                    triggerTypes: [],
+                    workspaceIds: [activeWorkspaceId],
+                    nodes: [
+                        {
+                            id: 'trigger',
+                            type: 'triggerNode',
+                            position: { x: 250, y: 100 },
+                            data: { label: 'Event Trigger' }
+                        }
+                    ],
+                    edges: [],
+                };
+
+                const res = await saveAutomationAction(null, defaultNewAutomation, userId);
+                if (isMounted.current) {
+                    if (res.success && res.id) {
+                        router.replace(`/admin/automations/${res.id}/edit`);
+                    } else {
+                        setError(res.error || 'Failed to create automation blueprint.');
+                    }
+                }
+            } catch (err: any) {
+                if (isMounted.current) {
+                    setError(err.message || 'An unexpected error occurred.');
+                }
+            }
+        }
+
+        createDraft();
+    }, [user, activeWorkspaceId, router]);
+
+    if (error) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center gap-2 text-destructive p-4">
+                <span className="font-bold">Error Initializing Blueprint</span>
+                <span className="text-xs text-muted-foreground">{error}</span>
+            </div>
+        );
+    }
 
     return (
- <div className="h-full flex flex-col items-center justify-center gap-4 bg-background">
- <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
- <div className="text-center">
- <p className="text-[10px] font-semibold tracking-[0.3em] animate-pulse">Architecting Workflow Space...</p>
- <p className="text-[8px] font-bold text-muted-foreground mt-1">Binding to {singular} track</p>
-            </div>
+        <div className="h-full flex flex-col items-center justify-center gap-3 py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500 opacity-80" />
+            <span className="text-xs text-muted-foreground font-semibold">Initializing new workflow blueprint...</span>
         </div>
     );
 }

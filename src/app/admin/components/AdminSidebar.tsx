@@ -53,7 +53,8 @@ import {
     Unplug,
     ShieldCheck,
     ChevronRight,
-    Lock
+    Lock,
+    Sparkles
 } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -120,6 +121,7 @@ export function AdminSidebar() {
   const systemNavItems = React.useMemo(() => [
     { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: can('management', 'activities', 'view') },
     { href: wrapHref('/admin/users'), icon: Users, label: 'Users', visible: can('management', 'users', 'view') },
+    { href: wrapHref('/admin/entities/lead-scoring'), icon: Sparkles, label: 'Lead Cleanup', visible: isFeatureEnabled('entities'), disabled: !can('operations', 'campuses', 'view') },
     { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: isSystemAdmin },
     { href: wrapHref('/admin/settings/invitation'), icon: Mail, label: 'Messaging', visible: can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: can('management', 'fields', 'view') },

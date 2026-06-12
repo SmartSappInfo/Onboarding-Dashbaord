@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Image as ImageIcon, Search, Plus, Trash2, Link as LinkIcon, FileCheck } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +19,7 @@ import type { PlatformAsset, PlatformAssetCategory } from '@/lib/backoffice/back
 
 export default function AssetLibraryClient() {
   const { can, profile } = useBackoffice();
+  const confirm = useConfirm();
   const [assets, setAssets] = React.useState<PlatformAsset[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
@@ -50,7 +52,7 @@ export default function AssetLibraryClient() {
 
   const handleDelete = async (asset: PlatformAsset) => {
      if (!profile) return;
-     if (!confirm(`Delete asset "${asset.name}"? This action cannot be undone.`)) return;
+     if (!(await confirm({ title: 'Delete asset?', description: `"${asset.name}" will be permanently deleted. This cannot be undone.`, confirmText: 'Delete', variant: 'destructive' }))) return;
      
      const res = await deleteAssetRecord(asset.id, {
        userId: profile.id,

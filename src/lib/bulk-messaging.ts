@@ -8,14 +8,14 @@ import { getBaseUrl } from './utils/url-helpers';
 import { sendBatchEmails } from './resend-service';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
 import { resolveOrgBrandingVars } from './messaging-branding';
-import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageStyle } from './types';
+import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageStyle, MessageCampaign } from './types';
 
 const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
 
 interface BulkJobInput {
   templateId: string;
   senderProfileId: string;
-  recipients: { recipient: string; variables: Record<string, any>; entityId?: string; displayName?: string }[];
+  recipients: { recipient: string; variables: Record<string, any>; entityId?: string; displayName?: string; campaignVariantId?: 'A' | 'B' }[];
   userId: string;
   trackLinks?: boolean;
   campaignId?: string;
@@ -67,6 +67,7 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
           status: 'pending',
           ...(item.entityId && { entityId: item.entityId }),
           ...(item.displayName && { displayName: item.displayName }),
+          ...(item.campaignVariantId && { campaignVariantId: item.campaignVariantId }),
         };
         batch.set(taskRef, taskData);
       }
@@ -118,6 +119,14 @@ export async function processBulkJobChunk(jobId: string) {
     const template = templateSnap.data() as MessageTemplate;
     const sender = senderSnap.data() as SenderProfile;
 
+    let campaign: MessageCampaign | null = null;
+    if (job.campaignId) {
+        const campSnap = await adminDb.collection('message_campaigns').doc(job.campaignId).get();
+        if (campSnap.exists) {
+            campaign = campSnap.data() as MessageCampaign;
+        }
+    }
+
     // Resolve org branding variables once per chunk (not per recipient)
     const orgId = template.organizationId || '';
     const orgBrandingVars = await resolveOrgBrandingVars(orgId);
@@ -159,24 +168,49 @@ export async function processBulkJobChunk(jobId: string) {
             // Phase 7: Inject Unsubscribe Link
             const baseUrl = getBaseUrl();
             const unsubId = task.entityId || task.recipient;
-            mergedVars.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
+            let unsubUrl = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
+            if (job.campaignId) {
+                unsubUrl += `&cmp=${encodeURIComponent(job.campaignId)}`;
+            }
+            if (task.campaignVariantId) {
+                unsubUrl += `&v=${encodeURIComponent(task.campaignVariantId)}`;
+            }
+            mergedVars.unsubscribe_link = unsubUrl;
 
             let html = '';
-            let subject = resolveVariables(template.subject || '', mergedVars);
+            let currentSubject = template.subject || '';
+            let currentBody = template.body || '';
+            let currentBlocks = template.blocks || [];
+            let currentContentMode = template.contentMode || 'plain_text';
+
+            if (campaign?.abTestEnabled && campaign.variants?.length) {
+                const variantId = task.campaignVariantId || 'A';
+                const variant = campaign.variants.find(v => v.id === variantId);
+                if (variant) {
+                    currentSubject = variant.customSubject ?? currentSubject;
+                    currentBody = variant.customBody ?? currentBody;
+                    currentBlocks = variant.customBlocks ?? currentBlocks;
+                    if (variant.customBlocks && variant.customBlocks.length > 0) {
+                        currentContentMode = 'rich_builder';
+                    }
+                }
+            }
+
+            let subject = resolveVariables(currentSubject, mergedVars);
 
             // contentMode-aware routing (matches messaging-engine.ts)
-            const useBlocks = template.contentMode === 'rich_builder'
-                || (!template.contentMode && template.blocks?.length);
+            const useBlocks = currentContentMode === 'rich_builder'
+                || (!currentContentMode && currentBlocks.length);
 
-            if (useBlocks && template.blocks?.length) {
-                html = renderBlocksToHtml(template.blocks, mergedVars, {
+            if (useBlocks && currentBlocks.length) {
+                html = renderBlocksToHtml(currentBlocks, mergedVars, {
                     wrapper: styleWrapper || undefined
                 });
             } else {
-                html = resolveVariables(template.body, mergedVars);
+                html = resolveVariables(currentBody, mergedVars);
                 if (styleWrapper && styleWrapper.includes('{{content}}')) {
                     html = resolveVariables(styleWrapper, mergedVars).replace('{{content}}', html);
-                } else if (template.contentMode === 'plain_text' || !template.contentMode) {
+                } else if (currentContentMode === 'plain_text' || !currentContentMode) {
                     html = plainTextToHtml(html);
                 }
             }
@@ -247,12 +281,28 @@ export async function processBulkJobChunk(jobId: string) {
             // Actually, sendMessage handles the resolution.
             // If we want to track links in SMS, we should probably resolve variables, then track, then pass as override.
             
+            let subjectOverride = undefined;
+            let bodyOverride = undefined;
+
+            if (campaign?.abTestEnabled && campaign.variants?.length) {
+                const variantId = task.campaignVariantId || 'A';
+                const variant = campaign.variants.find(v => v.id === variantId);
+                if (variant) {
+                    subjectOverride = variant.customSubject ?? undefined;
+                    bodyOverride = variant.customBody ?? undefined;
+                }
+            }
+
             const result = await sendMessage({
                 templateId: job.templateId,
                 senderProfileId: job.senderProfileId,
                 recipient: task.recipient,
                 variables: task.variables,
                 trackLinks: job.trackLinks,
+                subject: subjectOverride,
+                body: bodyOverride,
+                campaignId: job.campaignId,
+                campaignVariantId: task.campaignVariantId,
                 tags: [
                     { name: 'jobId', value: jobId },
                     { name: 'taskId', value: taskDoc.id }
@@ -403,6 +453,14 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
   const template = templateSnap.data() as MessageTemplate;
   const sender = senderSnap.data() as SenderProfile;
 
+  let campaign: MessageCampaign | null = null;
+  if (job.campaignId) {
+    const campSnap = await adminDb.collection('message_campaigns').doc(job.campaignId).get();
+    if (campSnap.exists) {
+      campaign = campSnap.data() as MessageCampaign;
+    }
+  }
+
   // Org branding (resolved once per chunk, not per recipient)
   const orgId = template.organizationId || '';
   const orgBrandingVars = await resolveOrgBrandingVars(orgId);
@@ -451,24 +509,49 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
       // Inject unsubscribe link
       const baseUrl = getBaseUrl();
       const unsubId = task.entityId || task.recipient;
-      mergedVars.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
+      let unsubUrl = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
+      if (job.campaignId) {
+        unsubUrl += `&cmp=${encodeURIComponent(job.campaignId)}`;
+      }
+      if (task.campaignVariantId) {
+        unsubUrl += `&v=${encodeURIComponent(task.campaignVariantId)}`;
+      }
+      mergedVars.unsubscribe_link = unsubUrl;
 
       let html = '';
-      const subject = resolveVariables(template.subject || '', mergedVars);
+      let currentSubject = template.subject || '';
+      let currentBody = template.body || '';
+      let currentBlocks = template.blocks || [];
+      let currentContentMode = template.contentMode || 'plain_text';
+
+      if (campaign?.abTestEnabled && campaign.variants?.length) {
+        const variantId = task.campaignVariantId || 'A';
+        const variant = campaign.variants.find(v => v.id === variantId);
+        if (variant) {
+          currentSubject = variant.customSubject ?? currentSubject;
+          currentBody = variant.customBody ?? currentBody;
+          currentBlocks = variant.customBlocks ?? currentBlocks;
+          if (variant.customBlocks && variant.customBlocks.length > 0) {
+            currentContentMode = 'rich_builder';
+          }
+        }
+      }
+
+      const subject = resolveVariables(currentSubject, mergedVars);
 
       const useBlocks =
-        template.contentMode === 'rich_builder' ||
-        (!template.contentMode && template.blocks?.length);
+        currentContentMode === 'rich_builder' ||
+        (!currentContentMode && currentBlocks.length);
 
-      if (useBlocks && template.blocks?.length) {
-        html = renderBlocksToHtml(template.blocks, mergedVars, {
+      if (useBlocks && currentBlocks.length) {
+        html = renderBlocksToHtml(currentBlocks, mergedVars, {
           wrapper: styleWrapper || undefined,
         });
       } else {
-        html = resolveVariables(template.body, mergedVars);
+        html = resolveVariables(currentBody, mergedVars);
         if (styleWrapper && styleWrapper.includes('{{content}}')) {
           html = resolveVariables(styleWrapper, mergedVars).replace('{{content}}', html);
-        } else if (template.contentMode === 'plain_text' || !template.contentMode) {
+        } else if (currentContentMode === 'plain_text' || !currentContentMode) {
           html = plainTextToHtml(html);
         }
       }
@@ -540,12 +623,28 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
 
       processedCount++;
 
+      let subjectOverride = undefined;
+      let bodyOverride = undefined;
+
+      if (campaign?.abTestEnabled && campaign.variants?.length) {
+        const variantId = task.campaignVariantId || 'A';
+        const variant = campaign.variants.find(v => v.id === variantId);
+        if (variant) {
+          subjectOverride = variant.customSubject ?? undefined;
+          bodyOverride = variant.customBody ?? undefined;
+        }
+      }
+
       const result = await sendMessage({
         templateId: job.templateId,
         senderProfileId: job.senderProfileId,
         recipient: task.recipient,
         variables: task.variables,
         trackLinks: job.trackLinks,
+        subject: subjectOverride,
+        body: bodyOverride,
+        campaignId: job.campaignId,
+        campaignVariantId: task.campaignVariantId,
         tags: [
           { name: 'jobId', value: jobId },
           { name: 'taskId', value: taskDoc.id },

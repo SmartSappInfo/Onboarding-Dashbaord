@@ -12,6 +12,7 @@ export async function validateJoinCodeAction(code: string): Promise<{
   organizationId?: string;
   organizationName?: string;
   departments?: string[];
+  isConfigured?: boolean;
   error?: string;
 }> {
   try {
@@ -21,8 +22,7 @@ export async function validateJoinCodeAction(code: string): Promise<{
 
     const cleanCode = code.trim().toLowerCase();
 
-    // 1. Check organizations by slug first
-    // 1. Check organizations by slug prefix (supporting dynamic suffixes) or exact slug match
+    // 1. Check organizations by slug first or prefix matching
     let matchedDoc: any = null;
     const orgsBySlug = await adminDb.collection('organizations')
       .where('slug', '==', cleanCode)
@@ -50,7 +50,8 @@ export async function validateJoinCodeAction(code: string): Promise<{
         success: true, 
         organizationId: matchedDoc.id, 
         organizationName: data.name,
-        departments: data.departments && data.departments.length > 0 ? data.departments : ['General']
+        departments: data.departments && data.departments.length > 0 ? data.departments : ['General'],
+        isConfigured: data.isConfigured || false
       };
     }
 
@@ -63,11 +64,20 @@ export async function validateJoinCodeAction(code: string): Promise<{
     if (!orgsByToken.empty) {
       const doc = orgsByToken.docs[0];
       const data = doc.data();
-      return { 
-        success: true, 
-        organizationId: doc.id, 
+      // Provisioning-token hardening: single-use + expiry. (Slug/doc-id joins
+      // above are unaffected — those are for members of an existing org.)
+      if (data.joinTokenUsed === true) {
+        return { success: false, error: 'This invitation link has already been used. Please ask your administrator to re-share it.' };
+      }
+      if (data.joinTokenExpiresAt && new Date(data.joinTokenExpiresAt).getTime() < Date.now()) {
+        return { success: false, error: 'This invitation link has expired. Please ask your administrator to re-share it.' };
+      }
+      return {
+        success: true,
+        organizationId: doc.id,
         organizationName: data.name,
-        departments: data.departments && data.departments.length > 0 ? data.departments : ['General']
+        departments: data.departments && data.departments.length > 0 ? data.departments : ['General'],
+        isConfigured: data.isConfigured || false
       };
     }
 
@@ -79,7 +89,8 @@ export async function validateJoinCodeAction(code: string): Promise<{
         success: true,
         organizationId: orgDoc.id,
         organizationName: data?.name || 'SmartSapp Organization',
-        departments: data?.departments && data.departments.length > 0 ? data.departments : ['General']
+        departments: data?.departments && data.departments.length > 0 ? data.departments : ['General'],
+        isConfigured: data?.isConfigured || false
       };
     }
 
@@ -87,6 +98,48 @@ export async function validateJoinCodeAction(code: string): Promise<{
   } catch (error: any) {
     console.error('>>> [ONBOARDING:VALIDATE] Error:', error.message);
     return { success: false, error: error.message || 'Validation failed due to database error.' };
+  }
+}
+
+/**
+ * Resolves the onboarding wizard's initial state server-side (Admin SDK).
+ *
+ * The wizard previously did these reads from the client SDK, which made this
+ * critical path fail on (a) restrictive security rules for pending users and
+ * (b) client↔Firestore connectivity issues (WebChannel "offline mode").
+ * A server action goes over plain HTTPS to the Next server and is immune to both.
+ */
+export async function getOnboardingSetupStateAction(userId: string): Promise<{
+  success: boolean;
+  error?: string;
+  state?: 'no-profile' | 'already-configured' | 'ready';
+  org?: { id: string; name: string };
+}> {
+  try {
+    if (!userId) return { success: false, error: 'Not authenticated.' };
+
+    const userSnap = await adminDb.collection('users').doc(userId).get();
+    if (!userSnap.exists) return { success: true, state: 'no-profile' };
+
+    const userData = userSnap.data() || {};
+    if (!userData.organizationId) return { success: true, state: 'no-profile' };
+
+    const orgSnap = await adminDb.collection('organizations').doc(userData.organizationId).get();
+    if (!orgSnap.exists) return { success: true, state: 'no-profile' };
+
+    const orgData = orgSnap.data() || {};
+    if (orgData.isConfigured === true) {
+      return { success: true, state: 'already-configured' };
+    }
+
+    return {
+      success: true,
+      state: 'ready',
+      org: { id: orgSnap.id, name: orgData.name || 'Your Organization' },
+    };
+  } catch (error: any) {
+    console.error('>>> [ONBOARDING:SETUP-STATE] Error:', error.message);
+    return { success: false, error: error.message || 'Failed to load setup state.' };
   }
 }
 
@@ -162,6 +215,17 @@ const SUPER_ADMIN_PERMISSIONS = [
 ];
 
 /**
+ * Organization-level administrator permissions: full operational control of
+ * their OWN organization, but never `system_admin` / `system_user_switch` —
+ * those make the holder a platform super admin (the Firestore rules'
+ * `isSystemAdmin()` and the org switcher both key off `system_admin`, which
+ * would let an invited org admin see and switch into every organization).
+ */
+const ORG_ADMIN_PERMISSIONS = SUPER_ADMIN_PERMISSIONS.filter(
+  p => p !== 'system_admin' && p !== 'system_user_switch'
+);
+
+/**
  * Checks if the user's email is a designated super admin in system_config/super_admins.
  * If yes, updates their user profile in Firestore securely using admin privileges,
  * granting full permissions and bypassing onboarding screens.
@@ -209,5 +273,146 @@ export async function enforceSuperAdminProfileAction(uid: string, email: string,
   } catch (error: any) {
     console.error('>>> [AUTH:SUPERADMIN] Error:', error.message);
     return { success: false, isSuperAdmin: false, error: error.message };
+  }
+}
+
+interface CompleteOnboardingInput {
+  userId: string;
+  organizationId: string;
+  branding: {
+    primaryColor: string;
+    secondaryColor: string;
+    logoUrl?: string;
+    fontFamily: string;
+    settings: {
+      defaultLanguage: string;
+      timezone: string;
+      currency: string;
+    };
+  };
+  workspace: {
+    name: string;
+    contactScope: 'institution' | 'family' | 'person';
+    industry: 'SaaS' | 'SchoolEnrollment' | 'Law' | 'Marketing' | 'RealEstate' | 'Consultancy';
+  };
+}
+
+/**
+ * Transactionally completes the organization's onboarding:
+ * 1. Verifies that the organization is not already configured.
+ * 2. Saves branding and sets isConfigured to true.
+ * 3. Provisions the first workspace.
+ * 4. Assigns user roles/permissions as organization Administrator.
+ */
+export async function completeOrganizationOnboardingAction(
+  input: CompleteOnboardingInput
+): Promise<{ success: boolean; error?: string; code?: string; workspaceId?: string }> {
+  try {
+    if (!input.userId) {
+      return { success: false, error: 'User ID is required.' };
+    }
+    if (!input.organizationId) {
+      return { success: false, error: 'Organization ID is required.' };
+    }
+    if (!input.workspace.name.trim()) {
+      return { success: false, error: 'Workspace Name is required.' };
+    }
+
+    const timestamp = new Date().toISOString();
+
+    const transactionResult = await adminDb.runTransaction(async (transaction) => {
+      const userRef = adminDb.collection('users').doc(input.userId);
+      const orgRef = adminDb.collection('organizations').doc(input.organizationId);
+
+      const userSnap = await transaction.get(userRef);
+      const orgSnap = await transaction.get(orgRef);
+
+      if (!userSnap.exists) {
+        throw new Error('User profile not found.');
+      }
+      if (!orgSnap.exists) {
+        throw new Error('Organization not found.');
+      }
+
+      const userData = userSnap.data() || {};
+      const orgData = orgSnap.data() || {};
+
+      // Security check
+      if (userData.organizationId !== input.organizationId) {
+        throw new Error('Security restriction: Organization mismatch.');
+      }
+
+      // Concurrency check
+      if (orgData.isConfigured === true) {
+        return { success: false, code: 'ALREADY_CONFIGURED', error: 'Organization has already been configured.' };
+      }
+
+      // Update Org settings
+      transaction.update(orgRef, {
+        'settings.defaultLanguage': input.branding.settings.defaultLanguage || 'en',
+        'settings.timezone': input.branding.settings.timezone || 'UTC',
+        'settings.currency': input.branding.settings.currency || 'USD',
+        'settings.branding.primaryColor': input.branding.primaryColor || '#10b981',
+        'settings.branding.secondaryColor': input.branding.secondaryColor || '#3b82f6',
+        'settings.branding.logoUrl': input.branding.logoUrl || '',
+        'settings.branding.fontFamily': input.branding.fontFamily || 'Inter',
+        isConfigured: true,
+        // Consume the provisioning join token now that the org is configured.
+        // (Consumed here, not at validation, so a dropped session doesn't burn it.)
+        joinTokenUsed: true,
+        joinTokenUsedAt: timestamp,
+        updatedAt: timestamp,
+      });
+
+      // Provision new workspace
+      const workspaceRef = adminDb.collection('workspaces').doc();
+      const workspaceId = workspaceRef.id;
+
+      const workspaceData = {
+        id: workspaceId,
+        organizationId: input.organizationId,
+        name: input.workspace.name.trim(),
+        status: 'active',
+        statuses: [],
+        contactScope: input.workspace.contactScope || 'person',
+        industry: input.workspace.industry || 'Consultancy',
+        industryScopeLocked: false,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+
+      transaction.set(workspaceRef, workspaceData);
+
+      // Update User permissions
+      const currentWorkspaces = userData.workspaceIds || [];
+      const workspaceIds = Array.from(new Set([...currentWorkspaces, workspaceId]));
+      const workspaceRoles = {
+        ...(userData.workspaceRoles || {}),
+        [workspaceId]: ['administrator'],
+      };
+      const workspacePermissions = {
+        ...(userData.workspacePermissions || {}),
+        [workspaceId]: ORG_ADMIN_PERMISSIONS,
+      };
+
+      transaction.update(userRef, {
+        isAuthorized: true,
+        approvalStatus: 'approved',
+        roles: ['administrator'],
+        permissions: ORG_ADMIN_PERMISSIONS,
+        workspaceIds,
+        workspaceRoles,
+        workspacePermissions,
+        lastActiveWorkspaceId: workspaceId,
+        updatedAt: timestamp,
+      });
+
+      return { success: true, workspaceId };
+    });
+
+    return transactionResult;
+  } catch (err: any) {
+    console.error('>>> [ONBOARDING:COMPLETE] Error:', err.message);
+    return { success: false, error: err.message || 'Transaction failed.' };
   }
 }

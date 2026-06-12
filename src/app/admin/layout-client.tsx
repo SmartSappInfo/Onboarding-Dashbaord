@@ -54,6 +54,16 @@ import { UnsavedChangesProvider } from '@/context/UnsavedChangesContext';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
+/**
+ * Route to profile-setup, carrying any pending invite code stashed before auth
+ * so an invited admin who lands on /admin isn't sent to a code-less setup form.
+ */
+const profileSetupHref = (): string => {
+  if (typeof window === 'undefined') return '/profile-setup';
+  const code = sessionStorage.getItem('pendingJoinCode');
+  return code ? `/profile-setup?code=${encodeURIComponent(code)}` : '/profile-setup';
+};
+
 function AdminLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -102,8 +112,26 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             // 1. Check if user has completed their profile setup (Bypassed for Superadmins)
             if (!isSuperAdminUser && (data.profileCompleted === false || !data.profileCompleted)) {
               setLoaderStatus('success');
-              router.push('/profile-setup');
+              router.push(profileSetupHref());
               return;
+            }
+
+            // 1.1 Check if organization is configured (Bypassed for Superadmins)
+            if (!isSuperAdminUser && data.organizationId && data.organizationId !== 'smartsapp-hq') {
+              try {
+                const orgDocRef = doc(firestore, 'organizations', data.organizationId);
+                const orgSnap = await getDoc(orgDocRef);
+                if (orgSnap.exists()) {
+                  const orgData = orgSnap.data();
+                  if (orgData.isConfigured === false) {
+                    setLoaderStatus('success');
+                    router.push('/onboarding/setup');
+                    return;
+                  }
+                }
+              } catch (orgErr) {
+                console.error("Error checking organization configuration status:", orgErr);
+              }
             }
 
             // 2. Check authorization (Bypassed for Superadmins)
@@ -150,7 +178,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             }
 
             setLoaderStatus('success');
-            router.push('/profile-setup');
+            router.push(profileSetupHref());
           }
         })
         .catch((err) => {

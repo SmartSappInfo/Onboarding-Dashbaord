@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser, useAuth } from '@/firebase';
 import { validateJoinCodeAction, submitOnboardingProfileAction } from '@/app/actions/onboarding-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -20,11 +20,16 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 const DEFAULT_DEPARTMENTS = ['General'];
 
-export default function ProfileSetupPage() {
+function ProfileSetupContent() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const codeParam = searchParams.get('code');
   const { toast } = useToast();
+  // True once the code arrived via the invite link — lock the field so the
+  // invitee can't accidentally edit it.
+  const [codeFromLink, setCodeFromLink] = React.useState(false);
 
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -32,7 +37,7 @@ export default function ProfileSetupPage() {
   // Form State
   const [joinCode, setJoinCode] = React.useState('');
   const [isValidatingCode, setIsValidatingCode] = React.useState(false);
-  const [validatedOrg, setValidatedOrg] = React.useState<{ id: string; name: string } | null>(null);
+  const [validatedOrg, setValidatedOrg] = React.useState<{ id: string; name: string; isConfigured: boolean } | null>(null);
   const [codeError, setCodeError] = React.useState('');
 
   const [fullName, setFullName] = React.useState('');
@@ -61,15 +66,39 @@ export default function ProfileSetupPage() {
     }
   }, [user]);
 
-  // Auth Redirect Guard
+  // Auth Redirect Guard — preserve the invite code across the auth boundary.
+  // Invited admins are new users, so default unauthenticated invitees to
+  // sign-up (carrying the destination); fall back to login when there is no
+  // invite code to preserve.
   React.useEffect(() => {
-    if (!isUserLoading && !user) {
+    if (isUserLoading || user) return;
+    const code = codeParam || (typeof window !== 'undefined' ? sessionStorage.getItem('pendingJoinCode') : null);
+    if (code) {
+      if (typeof window !== 'undefined') sessionStorage.setItem('pendingJoinCode', code);
+      const dest = `/profile-setup?code=${encodeURIComponent(code)}`;
+      router.push(`/signup?redirect=${encodeURIComponent(dest)}`);
+    } else {
       router.push('/login');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, codeParam, router]);
 
-  const handleValidateCode = async () => {
-    if (!joinCode.trim()) {
+  // Auto-validate a code arriving from the invite link (or stashed before auth).
+  const autoValidatedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!user || autoValidatedRef.current) return;
+    const code = codeParam || (typeof window !== 'undefined' ? sessionStorage.getItem('pendingJoinCode') : null);
+    if (!code) return;
+    autoValidatedRef.current = true;
+    setJoinCode(code);
+    setCodeFromLink(true);
+    void runValidation(code, { advanceOnSuccess: true });
+  }, [user, codeParam]);
+
+  const runValidation = async (
+    codeToValidate: string,
+    opts?: { advanceOnSuccess?: boolean }
+  ) => {
+    if (!codeToValidate.trim()) {
       setCodeError('Please enter a Join Code / Organization slug.');
       return;
     }
@@ -79,11 +108,12 @@ export default function ProfileSetupPage() {
     setValidatedOrg(null);
 
     try {
-      const result = await validateJoinCodeAction(joinCode);
+      const result = await validateJoinCodeAction(codeToValidate);
       if (result.success && result.organizationId && result.organizationName) {
         setValidatedOrg({
           id: result.organizationId,
-          name: result.organizationName
+          name: result.organizationName,
+          isConfigured: !!result.isConfigured
         });
         const validDepts = result.departments || DEFAULT_DEPARTMENTS;
         setOrgDepartments(validDepts);
@@ -94,8 +124,18 @@ export default function ProfileSetupPage() {
           title: 'Organization Found',
           description: `You are requesting to join: ${result.organizationName}`,
         });
+        // When the code came from the invite link, skip the manual entry step.
+        if (opts?.advanceOnSuccess) {
+          setStep(2);
+        }
       } else {
+        // A bad/expired/used code from a link must not silently lock the user
+        // out — surface the error and let them re-enter manually.
         setCodeError(result.error || 'Invalid code.');
+        if (opts?.advanceOnSuccess) {
+          setCodeFromLink(false);
+          if (typeof window !== 'undefined') sessionStorage.removeItem('pendingJoinCode');
+        }
       }
     } catch (e: any) {
       setCodeError(e.message || 'An error occurred during validation.');
@@ -103,6 +143,8 @@ export default function ProfileSetupPage() {
       setIsValidatingCode(false);
     }
   };
+
+  const handleValidateCode = () => runValidation(joinCode);
 
   const handleNextStep = () => {
     if (step === 1) {
@@ -169,11 +211,19 @@ export default function ProfileSetupPage() {
       });
 
       if (result.success) {
+        // Invite code consumed for routing purposes — clear the stash.
+        if (typeof window !== 'undefined') sessionStorage.removeItem('pendingJoinCode');
         toast({
           title: 'Profile Updated Successfully',
-          description: 'Your registration is complete and awaiting administrator approval.',
+          description: validatedOrg.isConfigured
+            ? 'Your registration is complete and awaiting administrator approval.'
+            : "Profile setup complete. Let's configure your organization.",
         });
-        router.push('/admin'); // Redirect to admin; guard will send them to /awaiting-approval
+        if (!validatedOrg.isConfigured) {
+          router.push('/onboarding/setup');
+        } else {
+          router.push('/admin'); // Redirect to admin; guard will send them to /awaiting-approval
+        }
       } else {
         toast({
           variant: 'destructive',
@@ -233,7 +283,7 @@ export default function ProfileSetupPage() {
       <div className="w-full max-w-lg z-10 space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-extrabold tracking-tight">Onboarding Registration</h1>
-          <p className="text-sm text-muted-foreground">Setup your profile settings to join your school team</p>
+          <p className="text-sm text-muted-foreground">Setup your profile settings to join your team</p>
         </div>
 
         {/* Stepper Progress */}
@@ -268,7 +318,7 @@ export default function ProfileSetupPage() {
             <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
               step >= 3 ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-border'
             }`}>
-              '3'
+              3
             </div>
             <span className={step === 3 ? 'text-white' : ''}>Notifications</span>
           </div>
@@ -277,8 +327,8 @@ export default function ProfileSetupPage() {
         <Card className="rounded-2xl border-white/10 bg-black/40 backdrop-blur-xl shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-emerald-500/20 via-emerald-500 to-emerald-500/20" />
           
-          <CardHeader className="pt-8">
-            <CardTitle className="text-xl font-bold flex items-center gap-2">
+          <CardHeader className="pt-8 items-center text-center space-y-2">
+            <CardTitle className="text-xl font-bold flex items-center justify-center gap-2">
               {step === 1 && <Building2 className="h-5 w-5 text-emerald-500" />}
               {step === 2 && <User className="h-5 w-5 text-emerald-500" />}
               {step === 3 && <Bell className="h-5 w-5 text-emerald-500" />}
@@ -286,8 +336,8 @@ export default function ProfileSetupPage() {
               {step === 2 && 'Step 2: Profile Settings'}
               {step === 3 && 'Step 3: Alert Channels'}
             </CardTitle>
-            <CardDescription className="text-white/60">
-              {step === 1 && 'Enter your organization code or slug to identify your company.'}
+            <CardDescription className="text-white/60 text-center">
+              {step === 1 && 'Enter your organization code to identify your company'}
               {step === 2 && 'Fill in your name, contact phone, and department.'}
               {step === 3 && 'Toggle how you would like to receive messages.'}
             </CardDescription>
@@ -303,6 +353,7 @@ export default function ProfileSetupPage() {
                       id="joinCode"
                       placeholder="e.g. smartsapp-hq, acme-corp, ORG-JOIN-CODE"
                       value={joinCode}
+                      readOnly={codeFromLink && isValidatingCode}
                       onChange={(e) => {
                         setJoinCode(e.target.value);
                         setValidatedOrg(null);
@@ -311,10 +362,10 @@ export default function ProfileSetupPage() {
                       }}
                       className="rounded-xl border-white/10 bg-white/5 text-white h-11 focus-visible:ring-emerald-500/30"
                     />
-                    <Button 
-                      type="button" 
-                      onClick={handleValidateCode} 
-                      disabled={isValidatingCode}
+                    <Button
+                      type="button"
+                      onClick={handleValidateCode}
+                      disabled={isValidatingCode || !joinCode.trim()}
                       className="rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 px-6 h-11"
                     >
                       {isValidatingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Validate'}
@@ -441,9 +492,10 @@ export default function ProfileSetupPage() {
             )}
 
             {step < 3 ? (
-              <Button 
+              <Button
                 onClick={handleNextStep}
-                className="rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-11 px-6 ml-auto"
+                disabled={step === 1 && (!validatedOrg || isValidatingCode)}
+                className="rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-11 px-6 ml-auto disabled:opacity-40"
               >
                 Continue <ArrowRight className="h-4 w-4" />
               </Button>
@@ -468,5 +520,22 @@ export default function ProfileSetupPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ProfileSetupPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-900">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            <p className="text-sm font-semibold text-muted-foreground animate-pulse">Loading Onboarding Wizard...</p>
+          </div>
+        </div>
+      }
+    >
+      <ProfileSetupContent />
+    </React.Suspense>
   );
 }

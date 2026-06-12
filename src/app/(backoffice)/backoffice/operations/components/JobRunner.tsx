@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   Search, PlayCircle, Loader2, StopCircle, RefreshCw,
   Network, RotateCcw, ShieldAlert, ChevronRight, Terminal,
@@ -57,21 +58,15 @@ const STATUS_COLORS: Record<string, string> = {
 // Available job types exposed in the wizard
 // ─────────────────────────────────────────────────
 
+// Only job types with REAL execution handlers are exposed. The previous
+// placeholder types (reseed_templates, reindex_search, repair_contacts, …)
+// ran a generic no-op processor that logged a fake success message — they
+// were removed rather than left to mislead operators.
 const JOB_TYPES: { id: PlatformJobType; name: string }[] = [
-   { id: 'reseed_templates', name: 'Reseed System Templates' },
-   { id: 'reindex_search', name: 'Rebuild Search Indices' },
-   { id: 'repair_contacts', name: 'Repair Contact Relationships' },
-   { id: 'backfill_analytics', name: 'Backfill Missing Analytics' },
-   { id: 'migrate_data', name: 'Migrate Deprecated Data' },
    { id: 'migrate_messaging_templates_fer', name: 'Messaging Templates — FER' },
    { id: 'migrate_meetings_fer', name: 'Meetings Infrastructure — FER' },
    { id: 'migrate_hierarchical_rbac', name: 'Hierarchical RBAC Migration' },
    { id: 'migrate_legacy_saas_fields', name: 'SaaS Field Re-parenting' },
-   { id: 'rebuild_variables', name: 'Rebuild Variable Registry' },
-   { id: 'fix_duplicate_slugs', name: 'Fix Duplicate Slugs' },
-   { id: 'replay_webhooks', name: 'Replay Failed Webhooks' },
-   { id: 'retry_campaigns', name: 'Retry Failed Campaigns' },
-   { id: 'restore_archived', name: 'Restore Archived Entities' },
 ];
 
 // ─────────────────────────────────────────────────
@@ -91,6 +86,7 @@ function ClientDate({ iso }: { iso: string }) {
 
 export default function JobRunner() {
   const { can, profile } = useBackoffice();
+  const confirm = useConfirm();
   const auth = useAuth();
   const [jobs, setJobs] = React.useState<PlatformJob[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -161,8 +157,8 @@ export default function JobRunner() {
      });
   };
 
-  const handleCancelJob = (jobId: string) => {
-     if (!confirm('Cancel this job? Processing will halt safely.')) return;
+  const handleCancelJob = async (jobId: string) => {
+     if (!(await confirm({ title: 'Cancel job?', description: 'Processing will halt safely.', confirmText: 'Cancel Job', variant: 'destructive' }))) return;
 
      startCancelTransition(async () => {
        try {

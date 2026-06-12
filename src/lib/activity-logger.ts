@@ -116,6 +116,85 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                 } catch (err: any) {
                     console.error(`>>> [Scoring Engine] Recalculation failed on activity log:`, err.message);
                 }
+
+                // LEAD SCORING INTEGRATION:
+                // Check if this activity triggers global engagement scoring.
+                // Guard: Skip if this event was itself created by automation to avoid loops.
+                if (!activityData.metadata?.isAutomation && !activityData.metadata?.isRetry) {
+                    try {
+                        const wsSnap = await adminDb.collection('workspaces').doc(finalData.workspaceId!).get();
+                        const wsData = wsSnap.data();
+                        const rules = wsData?.leadScoringSettings?.engagementRules;
+                        const increment = rules ? rules[activityData.type] : undefined;
+
+                        if (increment && increment !== 0) {
+                            const entityRef = adminDb.collection('entities').doc(finalData.entityId!);
+                            await adminDb.runTransaction(async (transaction) => {
+                                const entitySnap = await transaction.get(entityRef);
+                                if (entitySnap.exists) {
+                                    const entityData = entitySnap.data() || {};
+                                    const entityContacts = entityData.entityContacts || [];
+
+                                    // Resolve target contact email or ID from metadata or fallback
+                                    const contactEmailOrId = 
+                                        activityData.metadata?.contactId || 
+                                        activityData.metadata?.contactEmail || 
+                                        activityData.metadata?.email || 
+                                        activityData.metadata?.recipientEmail;
+
+                                    const { calculateEngagementAdjustment } = await import('./scoring-rules-engine');
+                                    const { entityContacts: updatedContacts, leadScore } = calculateEngagementAdjustment(
+                                        entityContacts,
+                                        contactEmailOrId ? String(contactEmailOrId) : undefined,
+                                        Math.abs(increment),
+                                        increment < 0 ? 'subtract' : 'add'
+                                    );
+
+                                    transaction.update(entityRef, {
+                                        entityContacts: updatedContacts,
+                                        leadScore,
+                                        updatedAt: new Date().toISOString()
+                                    });
+
+                                    // Also update workspace entity
+                                    const weSnap = await adminDb.collection('workspace_entities')
+                                        .where('entityId', '==', finalData.entityId)
+                                        .where('workspaceId', '==', finalData.workspaceId)
+                                        .limit(1)
+                                        .get();
+
+                                    if (!weSnap.empty) {
+                                        transaction.update(weSnap.docs[0].ref, {
+                                            entityContacts: updatedContacts,
+                                            leadScore,
+                                            updatedAt: new Date().toISOString()
+                                        });
+                                    }
+                                }
+                            });
+
+                            // Log a system activity event for the score change (marked isAutomation: true to prevent loops)
+                            const opLabel = increment > 0 ? `increased by ${increment}` : `decreased by ${Math.abs(increment)}`;
+                            await logActivity({
+                                type: 'lead_score_updated',
+                                description: `Lead score ${opLabel} for contact due to engagement: "${activityData.type}"`,
+                                source: 'system',
+                                organizationId: finalData.organizationId!,
+                                workspaceId: finalData.workspaceId!,
+                                entityId: finalData.entityId!,
+                                userId: 'system-scoring-engine',
+                                displayName: 'System Core',
+                                metadata: {
+                                    isAutomation: true,
+                                    activityTriggerType: activityData.type,
+                                    incrementValue: increment
+                                }
+                            });
+                        }
+                    } catch (err: any) {
+                        console.error(`>>> [Scoring Engine] Global engagement scoring failed:`, err.message);
+                    }
+                }
             });
         }
 

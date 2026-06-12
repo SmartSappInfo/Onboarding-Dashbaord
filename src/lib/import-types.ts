@@ -50,6 +50,7 @@ export interface DealImportConfig {
   nameTemplate: string;
   value: number;
   suppressAutomations: boolean;
+  assignmentStrategy?: 'direct' | 'unassigned' | 'pipeline';
 }
 
 export function isDealImportConfig(val: unknown): val is DealImportConfig {

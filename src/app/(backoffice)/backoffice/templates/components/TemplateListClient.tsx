@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   FileStack,
   Search,
@@ -57,6 +58,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 export default function TemplateListClient() {
   const { can, profile } = useBackoffice();
+  const confirm = useConfirm();
   const [templates, setTemplates] = React.useState<PlatformTemplate[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
@@ -97,7 +99,7 @@ export default function TemplateListClient() {
 
   async function handlePublish(tpl: PlatformTemplate) {
     if (!profile) return;
-    if (!confirm('Are you sure you want to publish this template? It will become available to all active organizations.')) return;
+    if (!(await confirm({ title: 'Publish template?', description: 'It will become available to all active organizations.', confirmText: 'Publish' }))) return;
     
     const result = await publishTemplate(tpl.id, {
       userId: profile.id,
@@ -111,7 +113,7 @@ export default function TemplateListClient() {
 
   async function handleDeprecate(tpl: PlatformTemplate) {
     if (!profile) return;
-    if (!confirm('Deprecating this template means orgs missing it cannot select it anymore, but existing users will keep it. Proceed?')) return;
+    if (!(await confirm({ title: 'Deprecate template?', description: 'Orgs missing it cannot select it anymore, but existing users keep it.', confirmText: 'Deprecate', variant: 'destructive' }))) return;
     
     const result = await deprecateTemplate(tpl.id, {
       userId: profile.id,

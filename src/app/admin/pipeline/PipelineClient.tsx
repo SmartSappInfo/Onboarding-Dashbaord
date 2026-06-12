@@ -186,7 +186,7 @@ export default function PipelineClient() {
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-none shadow-2xl p-2 min-w-[240px]">
                                 {pipelines?.map(p => (
-                                    <SelectItem key={p.id} value={p.id} className="rounded-lg p-2.5 my-0.5">
+                                    <SelectItem key={p.id} value={p.id} className="rounded-lg pl-8 pr-2.5 py-2 my-0.5">
                                         <div className="flex items-center justify-between gap-4 w-full pr-2">
                                             <span className="font-semibold text-[10px] tracking-tight">{p.name}</span>
                                             {p.isDefault && <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[7px] font-semibold uppercase px-1 shadow-sm">Default</Badge>}
@@ -233,6 +233,7 @@ export default function PipelineClient() {
                 users={users}
                 tags={tags}
                 stages={filterStages}
+                showStagesFilter={activeView === 'list'}
             />
         )}
 

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   Layers,
   Search,
@@ -58,6 +59,7 @@ const SCOPE_COLORS: Record<string, string> = {
 
 export default function WorkspaceListClient() {
   const { can, profile } = useBackoffice();
+  const confirm = useConfirm();
   const [workspaces, setWorkspaces] = React.useState<BackofficeWorkspace[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
@@ -93,7 +95,7 @@ export default function WorkspaceListClient() {
 
   async function handleArchive(workspaceId: string) {
     if (!profile) return;
-    if (!confirm('Are you sure you want to archive this workspace?')) return;
+    if (!(await confirm({ title: 'Archive workspace?', description: 'This workspace will be archived.', confirmText: 'Archive', variant: 'destructive' }))) return;
     
     const result = await archiveWorkspaceFromBackoffice(workspaceId, {
       userId: profile.id,

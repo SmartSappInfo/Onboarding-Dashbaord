@@ -8,7 +8,11 @@ import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { MessageCampaign } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { selectCampaignWinnerManual } from '@/lib/campaign-automation-jobs';
+import { selectCampaignWinnerManual, cancelCampaignABTest, resumeCampaignABTest } from '@/lib/campaign-automation-jobs';
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,6 +84,37 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
     }, [campaign.id, firestore]);
 
     React.useEffect(() => { loadData(); }, [loadData]);
+
+    const [pauseDialogOpen, setPauseDialogOpen] = React.useState(false);
+    const [isPausing, setIsPausing] = React.useState(false);
+    const [isResuming, setIsResuming] = React.useState(false);
+
+    const handlePauseTest = async () => {
+        setIsPausing(true);
+        try {
+            await cancelCampaignABTest(campaign.id);
+            toast({ title: 'Test Paused', description: 'The A/B test has been paused. Remainder dispatch is suspended.' });
+            await loadData();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Pause Failed', description: err.message });
+        } finally {
+            setIsPausing(false);
+            setPauseDialogOpen(false);
+        }
+    };
+
+    const handleResumeTest = async () => {
+        setIsResuming(true);
+        try {
+            await resumeCampaignABTest(campaign.id);
+            toast({ title: 'Test Resumed', description: 'The A/B test has been resumed. A new evaluation job has been scheduled.' });
+            await loadData();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Resume Failed', description: err.message });
+        } finally {
+            setIsResuming(false);
+        }
+    };
 
     const handleManualEvaluate = async (winnerId: 'A' | 'B') => {
         setIsEvaluating(true);
@@ -174,7 +209,17 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={loadData} className="rounded-xl font-bold text-xs h-9 gap-1.5 border-slate-200 hover:bg-slate-50 shadow-sm">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={loadData} 
+                        className={cn(
+                            "rounded-xl font-bold text-xs h-9 gap-1.5 shadow-sm transition-all duration-300",
+                            freshCampaign.status === 'testing' 
+                                ? "border-violet-200 bg-violet-50/70 text-violet-700 backdrop-blur-sm hover:bg-violet-100/80 shadow-violet-100/50" 
+                                : "border-slate-200 hover:bg-slate-50"
+                        )}
+                    >
                         <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} /> Refresh
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleClone} className="rounded-xl font-bold text-xs h-9 gap-1.5 border-slate-200 hover:bg-slate-50 shadow-sm">
@@ -184,7 +229,7 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             </div>
 
             {/* A/B Testing Banner for Testing phase */}
-            {freshCampaign.abTestEnabled && freshCampaign.status === 'testing' && (
+            {(freshCampaign.abTestEnabled && freshCampaign.status === 'testing') ? (
                 <div className="p-6 rounded-3xl bg-violet-600 text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl shadow-violet-200">
                     <div className="flex items-center gap-3">
                         <Clock className="h-6 w-6 text-violet-200 animate-pulse" />
@@ -195,7 +240,7 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
                         <Button
                             onClick={() => handleManualEvaluate('A')}
                             disabled={isEvaluating}
@@ -212,12 +257,80 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                             {isEvaluating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
                             Force Variant B Winner
                         </Button>
+                        <AlertDialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
+                            <Button
+                                onClick={() => setPauseDialogOpen(true)}
+                                disabled={isPausing}
+                                className="bg-destructive/20 hover:bg-destructive/30 text-white border border-destructive/30 rounded-xl font-bold text-xs h-9 px-4 active:scale-95 transition-all"
+                            >
+                                {isPausing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                                Cancel Remainder
+                            </Button>
+                            <AlertDialogContent className="rounded-2xl">
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle className="font-bold text-base">Cancel Remainder / Pause A/B Test?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-xs font-semibold text-muted-foreground mt-2">
+                                        Are you sure you want to pause/cancel this A/B test? This will cancel the scheduled automatic winner evaluation job and prevent the remainder dispatch from sending until you resume it.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="mt-4">
+                                    <AlertDialogCancel className="rounded-xl font-bold text-xs">Keep Testing</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                        onClick={handlePauseTest}
+                                        className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-bold text-xs"
+                                    >
+                                        Yes, Cancel Remainder
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </div>
-            )}
+            ) : null}
+
+            {/* A/B Testing Banner for Paused phase */}
+            {(freshCampaign.abTestEnabled && freshCampaign.status === 'paused') ? (
+                <div className="p-6 rounded-3xl bg-amber-500 text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl shadow-amber-200 animate-in fade-in">
+                    <div className="flex items-center gap-3">
+                        <Clock className="h-6 w-6 text-amber-200" />
+                        <div>
+                            <h3 className="text-base font-bold">A/B Testing Paused</h3>
+                            <p className="text-xs text-amber-100 mt-0.5">
+                                The automated evaluation and remainder dispatch are suspended. You can resume the test or declare a winner immediately.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
+                        <Button
+                            onClick={() => handleManualEvaluate('A')}
+                            disabled={isEvaluating}
+                            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl font-bold text-xs h-9 px-4 active:scale-95 transition-all"
+                        >
+                            {isEvaluating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                            Force Variant A Winner
+                        </Button>
+                        <Button
+                            onClick={() => handleManualEvaluate('B')}
+                            disabled={isEvaluating}
+                            className="bg-white hover:bg-slate-50 text-amber-700 border-none rounded-xl font-bold text-xs h-9 px-4 active:scale-95 transition-all shadow-md"
+                        >
+                            {isEvaluating ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                            Force Variant B Winner
+                        </Button>
+                        <Button
+                            onClick={handleResumeTest}
+                            disabled={isResuming}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs h-9 px-4 active:scale-95 transition-all shadow-md"
+                        >
+                            {isResuming ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                            Resume Test
+                        </Button>
+                    </div>
+                </div>
+            ) : null}
 
             {/* A/B Testing Banner for Winner Selected phase */}
-            {freshCampaign.abTestEnabled && freshCampaign.abTestConfig?.winningVariantId && (
+            {(freshCampaign.abTestEnabled && freshCampaign.abTestConfig?.winningVariantId) ? (
                 <div className="p-6 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between gap-4 shadow-sm">
                     <div className="flex items-center gap-3">
                         <Zap className="h-6 w-6 text-emerald-600" />
@@ -232,7 +345,7 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                         Completed
                     </Badge>
                 </div>
-            )}
+            ) : null}
 
             {/* KPI Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -243,13 +356,13 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                                 <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", kpi.bg)}>
                                     <kpi.icon className={cn("h-5 w-5", kpi.color)} />
                                 </div>
-                                {kpi.rate != null && (
+                                {kpi.rate != null ? (
                                     <div className="flex flex-col items-end">
                                         <Badge variant="secondary" className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border-emerald-100">
                                             {kpi.rate}% Rate
                                         </Badge>
                                     </div>
-                                )}
+                                ) : null}
                             </div>
                             <div className="mt-4">
                                 <h4 className="text-3xl font-extrabold tabular-nums tracking-tight text-slate-900">{kpi.value.toLocaleString()}</h4>
@@ -261,7 +374,7 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             </div>
 
             {/* A/B Testing Variant Details side-by-side */}
-            {freshCampaign.abTestEnabled && (
+            {freshCampaign.abTestEnabled ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
                     {['A', 'B'].map((varId) => {
                         const variant = freshCampaign.variants?.find(v => v.id === varId);
@@ -281,11 +394,11 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                                     isWinner && "ring-2 ring-emerald-500 bg-emerald-500/[0.01]"
                                 )}
                             >
-                                {isWinner && (
+                                {isWinner ? (
                                     <div className="absolute top-0 right-0 bg-emerald-500 text-white font-bold text-[9px] uppercase px-3 py-1 rounded-bl-xl shadow-sm tracking-wider flex items-center gap-1">
                                         <Zap className="h-3 w-3" /> Declared Winner
                                     </div>
-                                )}
+                                ) : null}
                                 <CardHeader className="p-6 pb-2 border-b border-slate-50">
                                     <CardTitle className="text-base font-bold flex items-center gap-2 text-slate-800">
                                         <span className={cn(
@@ -301,12 +414,12 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-6 space-y-6">
-                                    {freshCampaign.channel === 'email' && (
+                                    {freshCampaign.channel === 'email' ? (
                                         <div className="space-y-1">
                                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Subject Line</p>
                                             <p className="text-xs font-semibold text-slate-700 truncate">{variant?.customSubject || '(No subject override)'}</p>
                                         </div>
-                                    )}
+                                    ) : null}
 
                                     <div className="grid grid-cols-3 gap-2 text-center">
                                         <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-xl">
@@ -368,7 +481,7 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                         );
                     })}
                 </div>
-            )}
+            ) : null}
 
             {/* Main Analytics Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -485,7 +598,7 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             {/* Smart Recovery & Automation */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Recovery Actions */}
-                {(stats?.totalFailed || 0) > 0 && (
+                {(stats?.totalFailed || 0) > 0 ? (
                     <Card className="border-none shadow-sm bg-red-50/50 rounded-3xl overflow-hidden border border-red-100">
                         <CardContent className="p-8 flex items-center justify-between">
                             <div className="flex items-start gap-4">
@@ -507,10 +620,10 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                             </div>
                         </CardContent>
                     </Card>
-                )}
+                ) : null}
 
                 {/* Automation Summary */}
-                {campaign.automationHooks && campaign.automationHooks.length > 0 && (
+                {(campaign.automationHooks && campaign.automationHooks.length > 0) ? (
                     <Card className="border-none shadow-sm bg-amber-50/50 rounded-3xl overflow-hidden border border-amber-100">
                         <CardContent className="p-8">
                             <div className="flex items-start gap-4">
@@ -532,7 +645,7 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                             </div>
                         </CardContent>
                     </Card>
-                )}
+                ) : null}
             </div>
 
             {/* Recipient Table */}

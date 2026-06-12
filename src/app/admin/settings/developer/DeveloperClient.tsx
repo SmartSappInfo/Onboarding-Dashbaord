@@ -13,11 +13,13 @@ import { toast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import { useUser } from '@/firebase';
 import { useTerminology } from '@/hooks/use-terminology';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 export default function DeveloperClient() {
   const { activeWorkspaceId, activeWorkspace } = useTenant();
   const { user } = useUser();
   const { singular, plural } = useTerminology();
+  const confirm = useConfirm();
 
   const [keys, setKeys] = useState<ApiKeyRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export default function DeveloperClient() {
   };
 
   const handleRevoke = async (id: string) => {
-    if (!confirm('Are you sure you want to revoke this API key? Any applications using it will immediately lose access.')) return;
+    if (!(await confirm({ title: 'Revoke API key?', description: 'Any applications using it will immediately lose access.', confirmText: 'Revoke', variant: 'destructive' }))) return;
     
     const res = await revokeApiKey(id);
     if (res.success) {

@@ -31,6 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
+import { useTerminology } from '@/hooks/use-terminology';
 
 const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: string }>> = {
     overdue: AlertCircle,
@@ -55,6 +56,7 @@ interface DealCardProps {
  * @fileOverview High-fidelity Deal Card for Kanban boards.
  */
 export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) {
+  const { singular } = useTerminology();
 
   const {
     attributes,
@@ -88,10 +90,10 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
 
   return (
     <TooltipProvider>
-        <div ref={setNodeRef} style={style}>
+        <div ref={setNodeRef} style={style} className="w-full min-w-0 overflow-hidden">
         <Card
             className={cn(
-                "w-full max-w-full mb-3 touch-manipulation rounded-[1.5rem] border transition-all duration-300 bg-card select-none group/card overflow-hidden text-left",
+                "w-full min-w-0 max-w-full mb-3 touch-manipulation rounded-[1.5rem] border transition-all duration-300 bg-card select-none group/card overflow-hidden text-left",
                 isOverlay ? "border-primary shadow-2xl scale-105 rotate-1" : "border-border shadow-sm hover:shadow-lg hover:border-primary/30",
                 deal.status === 'lost' && "grayscale opacity-60"
             )}
@@ -99,9 +101,9 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
         <CardHeader 
             {...attributes} 
             {...listeners} 
-            className="p-4 pb-2 flex flex-row items-start justify-between space-y-0 cursor-grab active:cursor-grabbing"
+            className="p-4 pb-2 flex flex-row items-start justify-between space-y-0 cursor-grab active:cursor-grabbing w-full min-w-0 overflow-hidden"
         >
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
                 <div className="relative shrink-0">
                     <AsyncEntityAvatar 
                         entityId={deal.entityId}
@@ -171,7 +173,7 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
                     <DropdownMenuItem asChild className="rounded-lg p-2 gap-2.5">
                         <Link href={`/admin/entities/${deal.entityId}`}>
                             <Edit className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="font-bold text-xs ">View Linked Entity</span>
+                            <span className="font-bold text-xs ">View Linked {singular}</span>
                         </Link>
                     </DropdownMenuItem>
                 </DropdownMenuContent>

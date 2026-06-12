@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   ArrowLeft,
   FileStack,
@@ -35,6 +36,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 export default function TemplateDetailClient({ templateId }: { templateId: string }) {
   const { profile, can } = useBackoffice();
+  const confirm = useConfirm();
   const [template, setTemplate] = React.useState<PlatformTemplate | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isActionLoading, setIsActionLoading] = React.useState(false);
@@ -54,7 +56,7 @@ export default function TemplateDetailClient({ templateId }: { templateId: strin
 
   const handlePublish = async () => {
     if (!profile || !template) return;
-    if (!confirm('Publishing will make this version available to all allowed organizations immediately. Proceed?')) return;
+    if (!(await confirm({ title: 'Publish template?', description: 'This version becomes available to all allowed organizations immediately.', confirmText: 'Publish' }))) return;
     
     setIsActionLoading(true);
     const result = await publishTemplate(template.id, {
@@ -70,7 +72,7 @@ export default function TemplateDetailClient({ templateId }: { templateId: strin
 
   const handleDeprecate = async () => {
     if (!profile || !template) return;
-    if (!confirm('Deprecating this template will hide it from the selection screen for any orgs not currently using it. Proceed?')) return;
+    if (!(await confirm({ title: 'Deprecate template?', description: 'It will be hidden from the selection screen for any orgs not currently using it.', confirmText: 'Deprecate', variant: 'destructive' }))) return;
     
     setIsActionLoading(true);
     const result = await deprecateTemplate(template.id, {

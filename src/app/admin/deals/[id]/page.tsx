@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
-import type { Deal, UserProfile, OnboardingStage, Pipeline, Task, WorkspaceEntity, EntityContact, DealFocalContact } from '@/lib/types';
+import type { Deal, UserProfile, OnboardingStage, Pipeline, Task, EntityContact, DealFocalContact } from '@/lib/types';
 import { getEntityContactsAction } from '@/app/actions/entity-contact-actions';
 import { getForecastUrgency } from '../../pipeline/utils/deal-urgency';
 import { Button } from '@/components/ui/button';
@@ -32,10 +32,11 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { cn, toTitleCase } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { useTerminology } from '@/hooks/use-terminology';
 import { mergeById } from './deal-select-utils';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -48,9 +49,8 @@ import {
     removeDealContactAction
 } from '@/app/actions/deal-actions';
 import { createTaskAction, updateTaskAction, deleteTaskAction } from '@/lib/task-server-actions';
-import { useTenant } from '@/context/TenantContext';
 import { useEntityCache } from '@/context/EntityCacheContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import dynamic from 'next/dynamic';
 import EntityNotesTab from '../../entities/components/EntityNotesTab';
 import { PageContainer } from '@/components/ui/page-container';
@@ -140,8 +140,8 @@ export default function DealDetailsPage() {
     );
 
     const { user: currentUser } = useUser();
-    const { activeWorkspaceId } = useTenant();
     const { singular } = useTerminology();
+    const confirm = useConfirm();
 
     // Task Creation State
     const [isCreateTaskOpen, setIsCreateTaskOpen] = React.useState(false);
@@ -243,7 +243,8 @@ export default function DealDetailsPage() {
     };
 
     const handleDeleteTask = async (taskId: string) => {
-        if (!currentUser || !confirm('Are you sure you want to delete this task?')) return;
+        if (!currentUser) return;
+        if (!(await confirm({ title: 'Delete task?', description: 'This task will be permanently deleted.', confirmText: 'Delete', variant: 'destructive' }))) return;
         try {
             const res = await deleteTaskAction(taskId, currentUser.uid);
             if (res.success) {
@@ -284,7 +285,8 @@ export default function DealDetailsPage() {
     };
 
     const handleRemoveContact = async (contactEntityId: string) => {
-        if (!deal || !confirm('Are you sure you want to remove this contact from this deal?')) return;
+        if (!deal) return;
+        if (!(await confirm({ title: 'Remove contact?', description: 'This contact will be unlinked from this deal.', confirmText: 'Remove', variant: 'destructive' }))) return;
         try {
             const res = await removeDealContactAction(deal.id, contactEntityId);
             if (res.success) {

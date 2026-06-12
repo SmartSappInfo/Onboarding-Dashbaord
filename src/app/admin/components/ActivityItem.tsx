@@ -54,7 +54,7 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
       {/* Icon on the timeline */}
       <div className="absolute left-4 top-0 -translate-x-1/2 z-10">
         <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm ring-4 ring-background transition-all group-hover/item:scale-110 group-hover/item:bg-primary group-hover/item:text-white">
-          {isSystemEvent ? (
+          {isSystemEvent && activity.type !== 'campaign_event' ? (
             <Bot className="h-4 w-4" />
           ) : (
             <Icon className="h-4 w-4" />

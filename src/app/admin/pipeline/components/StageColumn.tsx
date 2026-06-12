@@ -5,8 +5,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 
 import type { Deal, OnboardingStage } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { GripVertical, ShieldCheck as ShieldIcon, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -97,35 +96,38 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                     </Badge>
                 </CardHeader>
                 
-                <ScrollArea className="w-full min-w-0" style={{ maxHeight: 'min(600px, 70vh)' }}>
-                    <CardContent className="px-3 pt-5 pb-8 w-full min-w-0">
-                         <SortableContext items={deals.map(d => d.id)} strategy={verticalListSortingStrategy}>
-                            <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0 overflow-hidden">
-                                {deals.map(deal => (
-                                    <div key={deal.id} className="w-full min-w-0">
-                                        <DealCard deal={deal} taskStats={tasksByDealId?.[deal.id]} />
-                                    </div>
-                                ))}
-                            </div>
-                        </SortableContext>
-                        
-                        {deals.length === 0 && (
-                            <div className="py-24 text-center flex flex-col items-center gap-4 opacity-5 pointer-events-none">
-                                <ShieldIcon size={64} />
-                                <p className="text-xs font-semibold tracking-[0.3em] leading-none">Segment Clear</p>
-                            </div>
-                        )}
-
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => setIsCreateDealOpen(true)}
-                            className="w-full mt-4 h-9 border border-dashed border-border hover:border-primary/40 text-muted-foreground hover:text-primary rounded-xl font-bold text-xs gap-1.5 flex items-center justify-center bg-muted/10 hover:bg-primary/5 transition-all"
-                        >
-                            <Plus className="h-3.5 w-3.5" /> Add Deal
-                        </Button>
-                    </CardContent>
-                </ScrollArea>
+                <div 
+                    className="w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pt-5 pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                    style={{ maxHeight: 'min(600px, 70vh)' }}
+                >
+                    <SortableContext items={deals.map(d => d.id)} strategy={verticalListSortingStrategy}>
+                        <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0">
+                            {deals.map(deal => (
+                                <div key={deal.id} className="w-full min-w-0">
+                                    <DealCard deal={deal} taskStats={tasksByDealId?.[deal.id]} />
+                                </div>
+                            ))}
+                        </div>
+                    </SortableContext>
+                    
+                    {deals.length === 0 && (
+                        <div className="py-24 text-center flex flex-col items-center gap-4 opacity-5 pointer-events-none">
+                            <ShieldIcon size={64} />
+                            <p className="text-xs font-semibold tracking-[0.3em] leading-none">Segment Clear</p>
+                        </div>
+                    )}
+                </div>
+                
+                <div className="p-3 bg-card border-t border-border/10 shrink-0">
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setIsCreateDealOpen(true)}
+                        className="w-full h-9 border border-dashed border-border hover:border-primary/40 text-muted-foreground hover:text-primary rounded-xl font-bold text-xs gap-1.5 flex items-center justify-center bg-muted/10 hover:bg-primary/5 transition-all"
+                    >
+                        <Plus className="h-3.5 w-3.5" /> Add Deal
+                    </Button>
+                </div>
                 <CreateDealModal open={isCreateDealOpen} onOpenChange={setIsCreateDealOpen} initialStageId={stage.id} />
             </Card>
         </div>

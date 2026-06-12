@@ -32,6 +32,9 @@ interface SendMessageInput {
   subject?: string; // Override template subject
   tags?: { name: string; value: string }[]; // Optional provider-specific tags (Requirement 7)
   trackLinks?: boolean; // Phase 7: Whether to track URLs in the body
+  campaignId?: string;
+  campaignVariantId?: 'A' | 'B';
+  messageType?: 'transactional' | 'marketing';
 }
 
 /**
@@ -61,7 +64,7 @@ function getPhoneFormats(phone: string): string[] {
 }
 
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
-  const { templateId, senderProfileId, recipient, variables, attachments, entityId, entityType, workspaceId, scheduledAt, tags, trackLinks } = input;
+  const { templateId, senderProfileId, recipient, variables, attachments, entityId, entityType, workspaceId, scheduledAt, tags, trackLinks, campaignId, campaignVariantId } = input;
 
   try {
     // 1. Fetch Template
@@ -118,11 +121,13 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // Support dual-write: accept either entityId or entityId (Requirement 15.1, 15.2)
     let resolvedEntityId = entityId;
     let resolvedEntityType = entityType;
+    let resolvedContact: any = null;
 
     if (entityId) {
         // Use adapter to resolve contact from either schools or entities + workspace_entities
         const contextWorkspaceId = resolvedWorkspaceId || workspaceIds[0] || 'onboarding';
         const contact = await resolveContact(entityId || '', contextWorkspaceId);
+        resolvedContact = contact;
         
         if (contact) {
             const signatory = getRecipientContact(contact, recipient);
@@ -434,10 +439,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         finalVariables.current_year = new Date().getFullYear().toString();
     }
 
-    // Phase 7: Inject Unsubscribe Link
-    const baseUrl = await getRequestBaseUrl();
-    const unsubId = resolvedEntityId || recipient;
-    finalVariables.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${resolvedWorkspaceId}&c=${template.channel}`;
+    // Phase 7: Inject Unsubscribe Link (Secure, tokenized preference link)
+    const { generateSecureUnsubscribeLink } = await import('./services/unsubscribe-service');
+    finalVariables.unsubscribe_link = await generateSecureUnsubscribeLink(recipient, resolvedEntityId, resolvedWorkspaceId);
 
     // 6. Resolve Style Wrapper
     let styleWrapper = '';
@@ -534,16 +538,40 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     let resolvedLogTitle = resolveVariables(template.name, finalVariables);
 
     // Phase 7: Suppression Check (Unsubscribe compliance)
-    const { isSuppressed } = await import('./suppression-service');
-    const suppressed = await isSuppressed({
-        recipient,
-        workspaceId: resolvedWorkspaceId,
-        channel: template.channel as 'email' | 'sms'
-    });
+    const isTx = input.messageType === 'transactional' || 
+                 (input.messageType !== 'marketing' && 
+                  ['forms', 'meetings', 'agreements', 'reminders', 'tasks', 'users'].includes(template.category));
 
-    if (suppressed) {
-        console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} is suppressed for ${template.channel} in workspace ${resolvedWorkspaceId}`);
-        return { success: false, error: 'Recipient unsubscribed' };
+    if (!isTx) {
+      // 1. Check contact-level granular preference opt-outs
+      if (resolvedContact) {
+        const matchingContact = getRecipientContact(resolvedContact, recipient);
+        if (matchingContact) {
+          // Check category-specific opt-out
+          if (matchingContact.unsubscribedCategories?.includes(template.category)) {
+            console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} has opted out of category ${template.category}`);
+            return { success: false, error: 'Recipient unsubscribed from this category' };
+          }
+          // Check opt-down frequency (marketing emails are blocked if they opted-down to digests)
+          if (matchingContact.emailStatus === 'opt-down') {
+            console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} has opted down and is suppressed for standard promotions.`);
+            return { success: false, error: 'Recipient opted down' };
+          }
+        }
+      }
+
+      // 2. Check global suppressions (handles unsubscribed, bounced, complained, and active snoozes)
+      const { isSuppressed } = await import('./suppression-service');
+      const suppressed = await isSuppressed({
+          recipient,
+          workspaceId: resolvedWorkspaceId,
+          channel: template.channel as 'email' | 'sms'
+      });
+
+      if (suppressed) {
+          console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} is suppressed for ${template.channel} in workspace ${resolvedWorkspaceId}`);
+          return { success: false, error: 'Recipient unsubscribed' };
+      }
     }
 
     // Phase 8: Email Hygiene Guard (Resend Protection)
@@ -673,6 +701,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       providerStatus: providerStatus || null,
       hasAttachments: !!(attachments && attachments.length > 0),
       attachmentCount: attachments?.length || 0,
+      ...(campaignId ? { campaignId } : {}),
+      ...(campaignVariantId ? { campaignVariantId } : {}),
     };
 
     const logRef = await adminDb.collection('message_logs').add(logData);
@@ -707,9 +737,10 @@ export async function sendRawMessage(input: {
     subject?: string,
     senderProfileId?: string,
     variables?: Record<string, any>,
-    workspaceIds?: string[]
+    workspaceIds?: string[],
+    messageType?: 'transactional' | 'marketing'
 }) {
-    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'] } = input;
+    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing' } = input;
 
     try {
         let senderProfileSnap;
@@ -732,6 +763,22 @@ export async function sendRawMessage(input: {
         const sender = senderProfileSnap.data() as SenderProfile;
         const resolvedBody = resolveVariables(body, variables);
         const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Institutional Alert — SmartSapp';
+
+        // Phase 7: Suppression Check (Unsubscribe compliance)
+        const isTx = messageType === 'transactional';
+        if (!isTx && (channel === 'email' || channel === 'sms')) {
+            const { isSuppressed } = await import('./suppression-service');
+            const suppressed = await isSuppressed({
+                recipient,
+                workspaceId: workspaceIds[0] || 'onboarding',
+                channel: channel as 'email' | 'sms'
+            });
+
+            if (suppressed) {
+                console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} is suppressed for RAW ${channel} in workspace ${workspaceIds[0]}`);
+                return { success: false, error: 'Recipient unsubscribed' };
+            }
+        }
 
         // Phase 8: Email Hygiene Guard (Resend Protection)
         if (channel === 'email') {

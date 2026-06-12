@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Badge } from '@/components/ui/badge';
 import { logNoteActivity, getEntityAiSummary } from '@/lib/note-actions';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Sparkles, BrainCircuit, ListChecks, TrendingUp, TrendingDown, Info } from 'lucide-react';
 
 interface EntityNotesTabProps {
@@ -35,6 +36,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
     const { user } = useUser();
     const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
     const { toast } = useToast();
+    const confirm = useConfirm();
 
     const [newNote, setNewNote] = React.useState('');
     const [noteType, setNoteType] = React.useState<EntityNote['noteType']>('general');
@@ -157,7 +159,8 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
     };
 
     const handleDeleteNote = async (noteId: string) => {
-        if (!firestore || !confirm('Are you sure you want to delete this note?')) return;
+        if (!firestore) return;
+        if (!(await confirm({ title: 'Delete note?', description: 'This note will be permanently deleted.', confirmText: 'Delete', variant: 'destructive' }))) return;
         
         try {
             await deleteDoc(doc(firestore, 'entity_notes', noteId));

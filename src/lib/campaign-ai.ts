@@ -1,16 +1,12 @@
 'use server';
 
 /**
- * Phase 6 Story 5: AI copy generation using the Gemini REST API directly.
- * 
- * Server action that calls the Gemini API via REST — no extra packages needed.
- * Requires env var: GEMINI_API_KEY
- * 
- * Falls back gracefully if the API key is not configured.
+ * AI copy generation for campaigns using Genkit model resolution.
+ * Supports fallback to organization keys, global DB keys, and system defaults.
  */
 
-const GEMINI_MODEL = 'gemini-3-flash-preview';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+import { ai, getModel } from '@/ai/genkit';
+import { z } from 'genkit';
 
 interface CopyResult {
   subject: string;
@@ -18,43 +14,51 @@ interface CopyResult {
   subjectVariants: string[];
 }
 
-async function callGemini(prompt: string, jsonMode: boolean = false): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
+const CopyResultSchema = z.object({
+  subject: z.string().describe('The primary subject line'),
+  body: z.string().describe('The message body content'),
+  subjectVariants: z.array(z.string()).describe('Alternative subject lines'),
+});
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.8,
-        topP: 0.95,
-        maxOutputTokens: 2048,
-        ...(jsonMode && { responseMimeType: 'application/json' }),
-      },
-    }),
+async function callGenkit(params: {
+  prompt: string;
+  organizationId?: string;
+  jsonMode?: boolean;
+  schema?: any;
+}): Promise<string> {
+  // Resolve model via unified Genkit getModel utility
+  const resolvedModel = await getModel({
+    organizationId: params.organizationId,
+    provider: 'anthropic',
+    modelId: 'claude-3-5-sonnet',
   });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${err}`);
+  const generatorAi = resolvedModel.customAi || ai;
+
+  const { output, text } = await generatorAi.generate({
+    model: resolvedModel.modelString,
+    prompt: params.prompt,
+    ...(params.jsonMode && params.schema && { output: { schema: params.schema } }),
+  });
+
+  if (params.jsonMode && params.schema) {
+    if (!output) throw new Error('AI model failed to generate structured copy');
+    return JSON.stringify(output);
   }
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Empty response from Gemini');
+  if (!text) throw new Error('AI model returned an empty payload');
   return text;
 }
 
 /**
- * Generate campaign copy (subject + body + variants) using Gemini.
+ * Generate campaign copy (subject + body + variants) using resolved Genkit model.
  */
 export async function generateCampaignCopy(params: {
   channel: 'email' | 'sms';
   target: string;
   campaignName: string;
   context?: string;
+  organizationId?: string;
 }): Promise<{ success: boolean; result?: CopyResult; error?: string }> {
   try {
     const channelGuidance = params.channel === 'sms'
@@ -76,16 +80,14 @@ ${params.context ? `- Additional context: ${params.context}` : ''}
 ${channelGuidance}
 ${targetGuidance}
 
-Available template variables (use double curly braces): entity_name, entity_email, entity_phone, org_name
+Available template variables (use double curly braces): entity_name, entity_email, entity_phone, org_name`;
 
-Respond with a JSON object containing:
-{
-  "subject": "The primary subject line",
-  "body": "The message body content",
-  "subjectVariants": ["Alternative subject 1", "Alternative subject 2", "Alternative subject 3"]
-}`;
-
-    const text = await callGemini(prompt, true);
+    const text = await callGenkit({
+      prompt,
+      organizationId: params.organizationId,
+      jsonMode: true,
+      schema: CopyResultSchema,
+    });
     const parsed = JSON.parse(text) as CopyResult;
 
     return {
@@ -103,12 +105,13 @@ Respond with a JSON object containing:
 }
 
 /**
- * Refine existing campaign copy using Gemini with a natural language instruction.
+ * Refine existing campaign copy using Genkit model with a natural language instruction.
  */
 export async function refineCampaignCopy(params: {
   original: string;
   instruction: string;
   field: 'subject' | 'body';
+  organizationId?: string;
 }): Promise<{ success: boolean; refined?: string; error?: string }> {
   try {
     const prompt = `You are a professional copywriter. Refine the following ${params.field === 'subject' ? 'email subject line' : 'message body'}.
@@ -125,7 +128,11 @@ Rules:
 - Apply the requested changes precisely
 - Return ONLY the refined text, nothing else (no JSON, no explanation, no quotes)`;
 
-    const refined = await callGemini(prompt, false);
+    const refined = await callGenkit({
+      prompt,
+      organizationId: params.organizationId,
+      jsonMode: false,
+    });
     return { success: true, refined: refined.trim() };
   } catch (error: any) {
     console.error('[CAMPAIGN-AI] Refine failed:', error.message);

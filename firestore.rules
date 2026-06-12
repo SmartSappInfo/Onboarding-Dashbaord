@@ -79,6 +79,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- System Settings (Server/Admin SDK only) ---
+    match /system_settings/{settingId} {
+      allow read, write: if false;
+    }
+
     // --- Shared Reference Data ---
     match /countries/{countryId} {
       allow read: if isAuthorized();
@@ -107,10 +112,12 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn() && (isSystemAdmin() || isAuthorized());
+      // A signed-in user may always read their OWN profile — required for the
+      // onboarding wizard and guards before they are authorized/approved.
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSystemAdmin() || isAuthorized());
       allow list: if isSignedIn() && (isSystemAdmin() || isAuthorized());
       allow update: if isSignedIn() && isSystemAdmin();
-      allow create: if isSignedIn() && request.auth.uid == userId; 
+      allow create: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /roles/{roleId} {

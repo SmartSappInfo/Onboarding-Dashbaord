@@ -17,6 +17,108 @@ export function getSplitAssignment(entityId: string, automationId: string, nodeI
   return percent < splitRatio ? 'a' : 'b';
 }
 
+function flattenObject(obj: any, prefix = '', res: Record<string, any> = {}): Record<string, any> {
+  if (!obj || typeof obj !== 'object') return res;
+
+  for (const [key, value] of Object.entries(obj)) {
+    const newKey = prefix ? `${prefix}.${key}` : key;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      flattenObject(value, newKey, res);
+    } else {
+      res[newKey] = value;
+    }
+  }
+  return res;
+}
+
+export async function enrichExecutionContext(context: ExecutionContext): Promise<void> {
+  if (!context.payload) {
+    context.payload = {};
+  }
+
+  // 1. Workspace Info
+  if (context.workspaceId) {
+    context.payload['workspace.id'] = context.workspaceId;
+  }
+
+  // 2. Entity Details
+  if (context.entityId && context.workspaceId) {
+    try {
+      const { resolveContact } = await import('../../contact-adapter');
+      const contact = await resolveContact(context.entityId, context.workspaceId);
+      if (contact) {
+        context.payload['entity.displayName'] = contact.name || '';
+        context.payload['entity.primaryEmail'] = contact.primaryContactEmail || '';
+        context.payload['entity.primaryPhone'] = contact.primaryContactPhone || '';
+        context.payload['entity.assignedTo'] = contact.assignedTo || '';
+        context.payload['entityName'] = contact.name || '';
+        context.payload['displayName'] = contact.name || '';
+      }
+    } catch (err) {
+      console.warn('Failed to resolve entity context variables:', err);
+    }
+  }
+
+  // 3. Webhook Ingress Payload
+  const isWebhook = context.payload.source === 'external_webhook' || context.payload.ingressId;
+  if (isWebhook) {
+    const body = context.payload.body || {};
+    const headers = context.payload.headers || {};
+    const query = context.payload.query || {};
+    const files = context.payload.files || [];
+
+    const flatBody = flattenObject(body);
+
+    for (const [key, val] of Object.entries(flatBody)) {
+      context.payload[`1.body.${key}`] = val;
+      context.payload[`body.${key}`] = val;
+    }
+    for (const [key, val] of Object.entries(headers)) {
+      context.payload[`1.headers.${key}`] = val;
+      context.payload[`headers.${key}`] = val;
+    }
+    for (const [key, val] of Object.entries(query)) {
+      context.payload[`1.query.${key}`] = val;
+      context.payload[`query.${key}`] = val;
+    }
+    if (Array.isArray(files)) {
+      files.forEach((file: any, idx: number) => {
+        if (file && typeof file === 'object') {
+          context.payload[`1.files[${idx}].name`] = file.name;
+          context.payload[`1.files[${idx}].size`] = file.size;
+          context.payload[`1.files[${idx}].type`] = file.type;
+          context.payload[`files[${idx}].name`] = file.name;
+          context.payload[`files[${idx}].size`] = file.size;
+          context.payload[`files[${idx}].type`] = file.type;
+        }
+      });
+    }
+  }
+}
+
+function getStepNumbers(automation: Automation): Record<string, number> {
+  const steps: Record<string, number> = {};
+  const triggerNode = automation.nodes.find((n) => n.type === 'triggerNode');
+  if (!triggerNode) return steps;
+
+  const queue: { id: string; step: number }[] = [{ id: triggerNode.id, step: 1 }];
+  const visited = new Set<string>();
+
+  while (queue.length > 0) {
+    const { id, step } = queue.shift()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+
+    steps[id] = step;
+
+    const outgoing = automation.edges.filter((e) => e.source === id);
+    for (const edge of outgoing) {
+      queue.push({ id: edge.target, step: step + 1 });
+    }
+  }
+  return steps;
+}
+
 export async function traverseNodes(
   nodeId: string,
   automation: Automation,
@@ -24,6 +126,9 @@ export async function traverseNodes(
 ): Promise<void> {
   const currentNode = automation.nodes.find((n) => n.id === nodeId);
   if (!currentNode) return;
+
+  // Enrich context details at the start of node traversal
+  await enrichExecutionContext(context);
 
   // Log trigger node execution or delay node resumption
   if (currentNode.type === 'triggerNode') {
@@ -153,7 +258,18 @@ export async function traverseNodes(
 
     try {
       if (nextNode.type === 'actionNode') {
-        await processActionNode(nextNode, context);
+        const output = await processActionNode(nextNode, context);
+
+        // Enrich context payload with action output
+        const stepNumbers = getStepNumbers(automation);
+        const stepNum = stepNumbers[nextNode.id];
+        if (stepNum && output && typeof output === 'object') {
+          for (const [key, val] of Object.entries(output)) {
+            context.payload[`${stepNum}.${key}`] = val;
+            context.payload[`${nextNode.id}.${key}`] = val;
+          }
+        }
+
         logStepExecution(context.runId, {
           nodeId: nextNode.id,
           nodeType: 'actionNode',

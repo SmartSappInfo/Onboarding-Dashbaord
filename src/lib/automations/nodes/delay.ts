@@ -5,6 +5,7 @@ export async function handleDelayNode(
   node: { id: string; data?: { config?: { value?: number; unit?: string } } },
   context: ExecutionContext
 ): Promise<void> {
+  console.log('[REAL handleDelayNode] called for node:', node.id);
   const { value, unit } = node.data?.config || { value: 5, unit: 'Minutes' };
 
   const now = new Date();

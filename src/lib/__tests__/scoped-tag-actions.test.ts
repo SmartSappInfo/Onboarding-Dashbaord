@@ -107,9 +107,7 @@ describe('Scoped Tag Actions', () => {
       expect(result.success).toBe(true);
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityType: 'institution',
-    entityContacts: [],
-    globalTags: ['tag-1', 'tag-2'],
+          globalTags: ['tag-1', 'tag-2'],
         })
       );
       expect(mockBatchCommit).toHaveBeenCalled();
@@ -190,8 +188,7 @@ describe('Scoped Tag Actions', () => {
       expect(result.success).toBe(true);
       expect(mockWeUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityType: 'institution',
-    workspaceTags: ['tag-1', 'tag-2'],
+          workspaceTags: ['tag-1', 'tag-2'],
         })
       );
       expect(mockBatchCommit).toHaveBeenCalled();
@@ -288,9 +285,7 @@ describe('Scoped Tag Actions', () => {
       expect(result.success).toBe(true);
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityType: 'institution',
-    entityContacts: [],
-    globalTags: ['tag-1', 'tag-2'], // Should not duplicate tag-1
+          globalTags: ['tag-1', 'tag-2'], // Should not duplicate tag-1
         })
       );
     });
@@ -359,9 +354,7 @@ describe('Scoped Tag Actions', () => {
       expect(result.success).toBe(true);
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityType: 'institution',
-    entityContacts: [],
-    globalTags: ['tag-3'], // Only tag-3 remains
+          globalTags: ['tag-3'], // Only tag-3 remains
         })
       );
       expect(mockBatchCommit).toHaveBeenCalled();
@@ -442,8 +435,7 @@ describe('Scoped Tag Actions', () => {
       expect(result.success).toBe(true);
       expect(mockWeUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityType: 'institution',
-    workspaceTags: ['tag-3'], // Only tag-3 remains
+          workspaceTags: ['tag-3'], // Only tag-3 remains
         })
       );
       expect(mockBatchCommit).toHaveBeenCalled();

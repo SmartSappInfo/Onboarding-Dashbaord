@@ -2,10 +2,65 @@
 
 import { adminDb } from './firebase-admin';
 import type { MessageCampaign, MessageTask, AutomationTrigger } from './types';
+import { resolveContact } from './contact-adapter';
 import {
   buildCampaignAutomationJobPayload,
   campaignAutomationJobDocId,
-} from './campaign-automation-jobs';
+} from './campaign-automation-utils';
+
+export async function logCampaignEventToTimeline(params: {
+  workspaceId: string;
+  organizationId: string;
+  entityId: string;
+  campaignId: string;
+  campaignName: string;
+  event: 'delivered' | 'failed' | 'opened' | 'clicked';
+  channel: 'email' | 'sms';
+  details?: string;
+  error?: string;
+}): Promise<void> {
+  const { workspaceId, organizationId, entityId, campaignId, campaignName, event, channel, details, error } = params;
+  
+  const docId = `camp_${entityId}_${campaignId}_${event}`;
+  
+  try {
+    const contact = await resolveContact(entityId, workspaceId);
+    const displayName = contact?.name || 'Unknown Contact';
+    const entitySlug = contact?.slug || '';
+    const entityType = contact?.entityType || 'person';
+
+    let description = '';
+    if (event === 'delivered') description = `Received campaign "${campaignName}" (${channel})`;
+    else if (event === 'failed') description = `Failed to receive campaign "${campaignName}" (${channel})`;
+    else if (event === 'opened') description = `Opened campaign "${campaignName}"`;
+    else if (event === 'clicked') description = `Clicked link in campaign "${campaignName}"`;
+
+    await adminDb.collection('activities').doc(docId).set({
+      organizationId,
+      workspaceId,
+      entityId,
+      entityType,
+      displayName,
+      entityName: displayName,
+      entitySlug,
+      userId: 'system-campaign-engine',
+      type: 'campaign_event',
+      source: 'system',
+      timestamp: new Date().toISOString(),
+      description,
+      metadata: {
+        campaignId,
+        event,
+        channel,
+        details: details || null,
+        error: error || null,
+        isAutomation: true
+      }
+    }, { merge: true });
+  } catch (err: any) {
+    console.error(`[logCampaignEventToTimeline] Failed for entity ${entityId}:`, err.message);
+  }
+}
 
 /**
  * Phase 6 Story 3: Campaign event emission for the automation engine.
@@ -70,6 +125,36 @@ export async function emitCampaignEvents(campaignId: string): Promise<{
       failed: allTasks.filter(t => t.status === 'failed' && t.entityId).map(t => t.entityId!),
       not_delivered: allTasks.filter(t => t.status !== 'sent' && t.entityId).map(t => t.entityId!),
     };
+
+    // Log batch delivery events to timeline asynchronously
+    const timelinePromises: Promise<void>[] = [];
+    cohorts.delivered.forEach(entityId => {
+      timelinePromises.push(logCampaignEventToTimeline({
+        workspaceId: campaign.workspaceId,
+        organizationId: campaign.organizationId || '',
+        entityId,
+        campaignId,
+        campaignName: campaign.internalName,
+        event: 'delivered',
+        channel: campaign.channel as 'email' | 'sms',
+      }));
+    });
+    cohorts.failed.forEach(entityId => {
+      const task = allTasks.find(t => t.entityId === entityId && t.status === 'failed');
+      timelinePromises.push(logCampaignEventToTimeline({
+        workspaceId: campaign.workspaceId,
+        organizationId: campaign.organizationId || '',
+        entityId,
+        campaignId,
+        campaignName: campaign.internalName,
+        event: 'failed',
+        channel: campaign.channel as 'email' | 'sms',
+        error: task?.error || undefined,
+      }));
+    });
+    Promise.all(timelinePromises).catch(err => {
+      console.error('[Timeline Logs] Failed to write batch activities:', err);
+    });
 
     let totalQueued = 0;
 
@@ -156,6 +241,29 @@ export async function emitSingleCampaignEvent(params: {
     if (!campaignSnap.exists) return { success: false, queuedCount: 0, error: 'Campaign not found' };
 
     const campaign = campaignSnap.data() as MessageCampaign;
+
+    // Log timeline event asynchronously
+    const eventMap: Record<string, 'opened' | 'clicked' | 'delivered' | 'failed'> = {
+      campaign_opened: 'opened',
+      campaign_clicked: 'clicked',
+      campaign_delivered: 'delivered',
+      campaign_failed: 'failed',
+    };
+    const mappedEvent = eventMap[event];
+    if (mappedEvent) {
+      logCampaignEventToTimeline({
+        workspaceId: campaign.workspaceId,
+        organizationId: campaign.organizationId || '',
+        entityId,
+        campaignId,
+        campaignName: campaign.internalName,
+        event: mappedEvent,
+        channel: campaign.channel as 'email' | 'sms',
+      }).catch(err => {
+        console.error('[Timeline Logs] Failed to write single activity:', err);
+      });
+    }
+
     const hooks = campaign.automationHooks || [];
 
     // Filter hooks that match this specific event

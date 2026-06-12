@@ -12,6 +12,7 @@ export interface StepLogEntry {
     delayUntil?: string;             // For delay nodes
     resumedAt?: string;              // For delay resume
     output?: Record<string, unknown>;
+    [key: string]: any;
   };
 }
 

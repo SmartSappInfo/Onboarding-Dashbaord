@@ -48,8 +48,8 @@ export function AiArchitectDialog({
     try {
       const result = await extractSchoolData({ 
         text,
-        provider: 'googleai',
-        modelId: 'gemini-3-flash-preview'
+        provider: 'anthropic',
+        modelId: 'claude-3-5-sonnet'
       });
       if (!result || !result.name) {
         throw new Error('AI was unable to identify a name for this record.');

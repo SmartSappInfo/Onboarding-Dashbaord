@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import {
   ToggleRight,
   Search,
@@ -48,6 +49,7 @@ const STABILITY_COLORS: Record<string, string> = {
 
 export default function FeatureListClient() {
   const { can, profile } = useBackoffice();
+  const confirm = useConfirm();
   const [features, setFeatures] = React.useState<PlatformFeature[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
@@ -90,7 +92,7 @@ export default function FeatureListClient() {
     if (!profile) return;
     const newState = !feature.killSwitch;
     
-    if (newState && !confirm('Are you sure you want to KILL this feature? This overrides all rollouts.')) {
+    if (newState && !(await confirm({ title: 'Kill this feature?', description: 'This overrides all rollouts and turns the feature off for everyone.', confirmText: 'Kill Feature', variant: 'destructive' }))) {
       return;
     }
     

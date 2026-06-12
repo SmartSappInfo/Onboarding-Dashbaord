@@ -57,6 +57,7 @@ import {
     MapPin
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
@@ -90,6 +91,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 export default function MessageStylesPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces } = useWorkspace();
     const router = useRouter();
     
@@ -493,7 +495,7 @@ export default function MessageStylesPage() {
             return;
         }
 
-        if (!confirm('Permanently purge this style? Templates using it may render incorrectly.')) return;
+        if (!(await confirm({ title: 'Delete style?', description: 'Templates using it may render incorrectly.', confirmText: 'Delete', variant: 'destructive' }))) return;
         await deleteDoc(doc(firestore, 'message_styles', style.id));
         toast({ title: 'Style Purged' });
     };

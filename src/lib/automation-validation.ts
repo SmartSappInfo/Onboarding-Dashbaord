@@ -20,7 +20,7 @@ function nodeLabel(node: BlueprintNode): string {
 export async function validateAutomationBlueprint(automation: Partial<Automation>): Promise<void> {
   if (!automation.nodes?.length) return;
 
-  if (!automation.triggers?.length) {
+  if (automation.isActive && !automation.triggers?.length) {
     throw new AutomationValidationError(
       'At least one trigger must be configured before saving.'
     );

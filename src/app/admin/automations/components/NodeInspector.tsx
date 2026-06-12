@@ -11,7 +11,8 @@ import {
     X,
     ChevronLeft,
     Trash2,
-    Search
+    Search,
+    SplitSquareVertical
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -457,6 +458,19 @@ export function NodeInspector({
     const params = useParams();
     const automationId = params.id as string;
 
+    const localizedActionTypes = React.useMemo(() => {
+        return ACTION_TYPES.map((a) => {
+            if (a.value === 'CREATE_ENTITY') {
+                return {
+                    ...a,
+                    label: `Create ${singular}`,
+                    desc: `Create a new CRM ${singular.toLowerCase()} entity using mapped webhook payload attributes.`,
+                };
+            }
+            return a;
+        });
+    }, [singular]);
+
     // Draft state for normal node data
     const [draftData, setDraftData] = React.useState<any>(null);
     // Draft state for triggers array (for triggerNode)
@@ -520,13 +534,13 @@ export function NodeInspector({
     }, [deferredTriggerSearch]);
 
     const filteredActionTypes = React.useMemo(() => {
-        if (!deferredActionSearch.trim()) return ACTION_TYPES;
+        if (!deferredActionSearch.trim()) return localizedActionTypes;
         const q = deferredActionSearch.toLowerCase();
-        return ACTION_TYPES.filter(a => 
+        return localizedActionTypes.filter(a => 
             a.label.toLowerCase().includes(q) || 
             a.desc.toLowerCase().includes(q)
         );
-    }, [deferredActionSearch]);
+    }, [deferredActionSearch, localizedActionTypes]);
 
     const {
         users,
@@ -538,6 +552,7 @@ export function NodeInspector({
         surveys,
         automations,
         appFields,
+        fieldGroups,
     } = useWorkspaceScopedQueries();
 
     const updateConfig = (updates: any) => {
@@ -565,12 +580,13 @@ export function NodeInspector({
 
     return (
         <div className="flex flex-col h-full text-left min-h-0">
-            {node.type === 'triggerNode' && (
+            {node.type === 'triggerNode' && viewMode === 'add' && (
                 <div className="pb-4 mb-4 border-b border-border/50 shrink-0">
                     <SearchInput
                         value={triggerSearch}
                         onChange={setTriggerSearch}
                         placeholder="Search triggers..."
+                        autoFocus
                         className="w-full"
                     />
                 </div>
@@ -657,23 +673,13 @@ export function NodeInspector({
                                     >
                                         <ChevronLeft className="h-3.5 w-3.5" /> Back to Triggers
                                     </button>
-                                    <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col gap-2">
                                         <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
                                             <Zap className="h-3 w-3" /> Add entry trigger
                                         </Label>
-                                        <div className="relative">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                                            <Input
-                                                value={triggerSearch}
-                                                onChange={e => setTriggerSearch(e.target.value)}
-                                                placeholder="Search triggers..."
-                                                className="pl-9 h-9 text-xs bg-muted/40 rounded-xl"
-                                                autoFocus
-                                            />
-                                        </div>
                                     </div>
 
-                                    <div className="space-y-6 max-h-[450px] overflow-y-auto pr-1 scrollbar-thin">
+                                    <div className="space-y-6">
                                         {filteredTriggerGroups.map(group => {
                                             const usedTypes = new Set(draftTriggers.map(t => t.type));
                                             return (
@@ -823,7 +829,7 @@ export function NodeInspector({
                                     <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/8 border border-emerald-500/20">
                                         <div className="flex items-center gap-3 min-w-0">
                                             {(() => {
-                                                const actionMeta = ACTION_TYPES.find(a => a.value === data.actionType);
+                                                const actionMeta = localizedActionTypes.find(a => a.value === data.actionType);
                                                 const Icon = actionMeta?.icon ?? PlusCircle;
                                                 return (
                                                     <>
@@ -867,6 +873,7 @@ export function NodeInspector({
                                         singular={singular}
                                         automations={automations}
                                         appFields={appFields}
+                                        fieldGroups={fieldGroups}
                                     />
                                 </div>
                             )}
@@ -1265,6 +1272,38 @@ export function NodeInspector({
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {node.type === 'abSplitNode' ? (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 bg-violet-500/5 p-6 rounded-[2rem] border border-violet-500/20 shadow-inner">
+                            <Label className="text-[10px] font-semibold text-violet-600 flex items-center gap-2">
+                                <SplitSquareVertical className="h-3 w-3" /> A/B Split Configuration
+                            </Label>
+
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                    Variant A Traffic Ratio: {data.config?.splitRatio ?? 50}%
+                                </Label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={99}
+                                    value={data.config?.splitRatio ?? 50}
+                                    onChange={(e) => {
+                                        const val = Math.min(99, Math.max(1, parseInt(e.target.value) || 50));
+                                        setDraftData((prev: any) => ({
+                                            ...prev,
+                                            label: `A/B Split (${val}/${100 - val})`,
+                                            config: { ...(prev?.config || {}), splitRatio: val }
+                                        }));
+                                    }}
+                                    className="h-11 rounded-xl bg-background border-none font-bold shadow-inner px-4 text-xs"
+                                />
+                                <p className="text-[10px] text-muted-foreground font-semibold ml-1">
+                                    Variant B Traffic Ratio: {100 - (data.config?.splitRatio ?? 50)}%
+                                </p>
                             </div>
                         </div>
                     ) : null}

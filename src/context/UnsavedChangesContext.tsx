@@ -193,7 +193,7 @@ export function UnsavedChangesProvider({ children }: { children: React.ReactNode
             </Button>
             <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-bold h-11 bg-primary text-white flex items-center gap-1.5 shadow-md">
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save & Continue
+              Save & Exit
             </Button>
           </DialogFooter>
         </DialogContent>

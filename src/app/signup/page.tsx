@@ -5,10 +5,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
+import { safeInternalRedirect } from '@/lib/auth/return-to';
+import InviteContextBanner from '@/components/auth/InviteContextBanner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -38,9 +40,14 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function SignupPage() {
+function SignupContent() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Post-signup destination carried from an invite link (open-redirect safe).
+  const returnTo = safeInternalRedirect(searchParams.get('redirect'));
+  // Preserve the destination when bouncing to the login screen.
+  const loginHref = returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login';
   const auth = useAuth();
   const firestore = useFirestore();
   const [showPassword, setShowPassword] = React.useState(false);
@@ -86,7 +93,7 @@ export default function SignupPage() {
           description: 'Your account has been created. Let\'s set up your profile details.',
           duration: 5000,
         });
-        router.push('/admin');
+        router.push(returnTo || '/admin');
 
       })
       .catch((error) => {
@@ -132,7 +139,7 @@ export default function SignupPage() {
             title: 'Account Exists',
             description: 'An account with this Google profile already exists. Please log in.',
           });
-          router.push('/login');
+          router.push(loginHref);
         } else {
           const userProfile = {
             name: user.displayName,
@@ -151,7 +158,7 @@ export default function SignupPage() {
             description: 'Your account has been created. Let\'s set up your profile details.',
             duration: 5000,
           });
-          router.push('/admin');
+          router.push(returnTo || '/admin');
         }
       })
       .catch((error) => {
@@ -174,6 +181,9 @@ export default function SignupPage() {
               Enter your details to create an account
             </p>
           </div>
+
+          <InviteContextBanner mode="signup" />
+
           <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
             <GoogleIcon className="mr-2 h-5 w-5" />
             Sign up with Google
@@ -272,7 +282,7 @@ export default function SignupPage() {
               </Button>
                <div className="mt-4 text-center text-sm text-muted-foreground">
                 Already have an account?{' '}
-                <Link href="/login" className="font-semibold text-primary hover:underline">
+                <Link href={loginHref} className="font-semibold text-primary hover:underline">
                   Log In
                 </Link>
               </div>
@@ -316,5 +326,13 @@ export default function SignupPage() {
         </div>
       </aside>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <SignupContent />
+    </React.Suspense>
   );
 }

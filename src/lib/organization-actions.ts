@@ -257,8 +257,14 @@ async function provisionOrganizationDefaults(organizationId: string, userId: str
         { name: 'Finance Officer', description: 'Financial oversight and billing management.', color: '#10B981' }
     ];
     for (const role of ferRoles) {
-        const perms: AppPermissionId[] = role.name === 'Administrator' 
-            ? ['system_admin']
+        // NOTE: never seed 'system_admin' on org-scoped roles — it is the
+        // PLATFORM super-admin token (rules isSystemAdmin() + org switcher).
+        // Org administrators get the full operational set instead.
+        const perms: AppPermissionId[] = role.name === 'Administrator'
+            ? ['schools_view', 'schools_edit', 'prospects_view', 'finance_view', 'finance_manage',
+               'contracts_delete', 'studios_view', 'studios_edit', 'dashboard_manage',
+               'meetings_manage', 'tasks_manage', 'activities_view',
+               'tags_view', 'tags_manage', 'tags_apply', 'forms_manage', 'fields_manage']
             : ['schools_view', 'activities_view'];
         
         const ref = adminDb.collection('roles').doc();

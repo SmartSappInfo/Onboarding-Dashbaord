@@ -189,6 +189,7 @@ export default function BulkUploadClient() {
         nameTemplate: '{{name}}',
         value: 0,
         suppressAutomations: true,
+        assignmentStrategy: 'pipeline',
     });
     const [selectedAutomationId, setSelectedAutomationId] = React.useState<string | null>(null);
     const [notificationConfig, setNotificationConfig] = React.useState<NotificationConfig>({

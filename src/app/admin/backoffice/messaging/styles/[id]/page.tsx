@@ -16,6 +16,7 @@ import {
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import type { MessageStyle, MessageTemplate } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,6 +68,7 @@ export default function BackofficeStyleEditorPage() {
     const params = useParams();
     const router = useRouter();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const firestore = useFirestore();
     const styleId = params.id as string;
     const isNew = styleId === 'new';
@@ -196,7 +198,7 @@ export default function BackofficeStyleEditorPage() {
             return;
         }
 
-        if (!confirm('Are you sure you want to permanently delete this system blueprint style? Organizations using it will fall back to local templates.')) return;
+        if (!(await confirm({ title: 'Delete system blueprint style?', description: 'Organizations using it will fall back to local templates.', confirmText: 'Delete', variant: 'destructive' }))) return;
 
         setDeleting(true);
         try {

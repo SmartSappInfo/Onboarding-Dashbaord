@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import QuestionEditor from './question-editor';
 import BlockSettingsSidebar from './block-settings-sidebar';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
@@ -37,6 +38,7 @@ function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
 export default function SurveyFormBuilder() {
     const { getValues, setValue, watch, formState: { isDirty }, control, reset } = useFormContext();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const params = useParams();
     const router = useRouter();
     const { user } = useUser();
@@ -217,7 +219,7 @@ export default function SurveyFormBuilder() {
         }
     }, [user, isDirty, router]);
 
-    const handleBulkAction = React.useCallback((action: string, value?: any) => {
+    const handleBulkAction = React.useCallback(async (action: string, value?: any) => {
         const currentElements: SurveyElement[] = getValues('elements') || [];
         const selectedIndices = selectedBlockIds
             .map(id => currentElements.findIndex(el => el.id === id))
@@ -230,7 +232,7 @@ export default function SurveyFormBuilder() {
 
         switch (action) {
             case 'delete':
-                if (confirm(`Are you sure you want to delete ${selectedIndices.length} blocks?`)) {
+                if (await confirm({ title: 'Delete blocks?', description: `${selectedIndices.length} block(s) will be deleted.`, confirmText: 'Delete', variant: 'destructive' })) {
                     updatedElements = updatedElements.filter(el => !selectedBlockIds.includes(el.id));
                     setSelectedBlockIds([]);
                     setLastSelectedId(null);

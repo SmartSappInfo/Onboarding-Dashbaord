@@ -16,7 +16,7 @@ import {
   onSnapshot,
   type FirestoreError,
 } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser, useAuth } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -100,6 +100,8 @@ const EntityCacheContext = createContext<EntityCacheContextValue | undefined>(
 
 export function EntityCacheProvider({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
+  const { user } = useUser();
+  const auth = useAuth();
   // §5.7: narrow dep to primitive (activeWorkspaceId), not the full tenant object
   const { activeWorkspaceId } = useTenant();
 
@@ -127,7 +129,7 @@ export function EntityCacheProvider({ children }: { children: ReactNode }) {
   }, [activeWorkspaceId]);
 
   useEffect(() => {
-    if (!firestore || !activeWorkspaceId) {
+    if (!firestore || !activeWorkspaceId || !user) {
       setEntities(null);
       setIsLoading(false);
       setError(null);
@@ -240,12 +242,14 @@ export function EntityCacheProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
 
         // Trigger global error propagation (matches useCollection behavior)
-        errorEmitter.emit('permission-error', contextualError);
+        if (auth.currentUser) {
+          errorEmitter.emit('permission-error', contextualError);
+        }
       },
     );
 
     return () => unsubscribe();
-  }, [firestore, activeWorkspaceId, invalidateCount]);
+  }, [firestore, activeWorkspaceId, user, invalidateCount]);
 
   // §5.11: functional setState for stable callback
   const invalidate = useMemo(

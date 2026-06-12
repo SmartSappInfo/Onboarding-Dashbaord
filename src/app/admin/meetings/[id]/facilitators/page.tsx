@@ -6,6 +6,7 @@ import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useMeetingContext } from '../layout';
 import type { MeetingFacilitator, MediaAsset } from '@/lib/types';
 import { resendFacilitatorLinksAction } from '@/app/actions/meeting-facilitator-actions';
@@ -54,6 +55,7 @@ export default function MeetingFacilitatorsPage() {
   const { activeOrganizationId } = useTenant();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const params = useParams();
   const meetingId = params.id as string;
 
@@ -185,7 +187,7 @@ export default function MeetingFacilitatorsPage() {
   // Delete facilitator
   const handleDeleteFacilitator = async (facId: string, name: string) => {
     if (!meetingDocRef) return;
-    if (window.confirm(`Are you sure you want to remove ${name} as a facilitator?`)) {
+    if (await confirm({ title: 'Remove facilitator?', description: `${name} will be removed as a facilitator.`, confirmText: 'Remove', variant: 'destructive' })) {
       const currentFacs = meeting?.facilitators || [];
       const updatedFacs = currentFacs.filter((f: any) => f.id !== facId);
 

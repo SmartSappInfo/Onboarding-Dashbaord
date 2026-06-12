@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import { GtmProvider } from '@/components/GtmProvider';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 
 export const metadata: Metadata = {
   title: {
@@ -51,7 +52,9 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true} disableTransitionOnChange>
           <FirebaseClientProvider>
             <GtmProvider />
-            {children}
+            <ConfirmProvider>
+              {children}
+            </ConfirmProvider>
             <Toaster />
           </FirebaseClientProvider>
         </ThemeProvider>

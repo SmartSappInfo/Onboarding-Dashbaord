@@ -16,7 +16,8 @@ import {
   PlusCircle,
   UserCheck,
   UserCog,
-  UserMinus
+  UserMinus,
+  Megaphone
 } from 'lucide-react';
 import type { Activity } from '@/lib/types';
 
@@ -42,7 +43,8 @@ export const getActivityIcon = (type: Activity['type']): React.ElementType => {
     task_completed: CheckCircle2,
     contact_added: UserCheck,
     contact_updated: UserCog,
-    contact_removed: UserMinus
+    contact_removed: UserMinus,
+    campaign_event: Megaphone
   };
   return iconMap[type] || Bot;
 };

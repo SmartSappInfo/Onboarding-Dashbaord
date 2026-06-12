@@ -343,46 +343,11 @@ export async function executeJob(
       case 'migrate_meetings_fer':
         return await processMeetingsFer(jobId, actor);
 
-      case 'reseed_templates':
-        return await processGenericJob(jobId, actor, 'Reseed Templates', 
-          'Scanned platform_templates collection and re-propagated system defaults to all active workspaces.');
-
-      case 'reindex_search':
-        return await processGenericJob(jobId, actor, 'Reindex Search',
-          'Rebuilt search indices across all entities and contacts for full-text query optimization.');
-
-      case 'repair_contacts':
-        return await processGenericJob(jobId, actor, 'Repair Contacts',
-          'Validated contact relationship integrity and repaired orphaned entity references.');
-
-      case 'backfill_analytics':
-        return await processGenericJob(jobId, actor, 'Backfill Analytics',
-          'Backfilled missing analytics snapshots for historical reporting accuracy.');
-
-      case 'migrate_data':
-        return await processGenericJob(jobId, actor, 'Migrate Data',
-          'Executed deprecated data migration protocol and archived legacy schema remnants.');
-
-      case 'rebuild_variables':
-        return await processGenericJob(jobId, actor, 'Rebuild Variables',
-          'Rebuilt variable registry from current field definitions and contact type schemas.');
-
-      case 'fix_duplicate_slugs':
-        return await processGenericJob(jobId, actor, 'Fix Duplicate Slugs',
-          'Scanned for duplicate URL slugs across campaigns and pages, appending unique suffixes where needed.');
-
-      case 'replay_webhooks':
-        return await processGenericJob(jobId, actor, 'Replay Webhooks',
-          'Replayed failed webhook deliveries from the last 72 hours with exponential backoff.');
-
-      case 'retry_campaigns':
-        return await processGenericJob(jobId, actor, 'Retry Campaigns',
-          'Retried failed campaign message deliveries for the targeted scope.');
-
-      case 'restore_archived':
-        return await processGenericJob(jobId, actor, 'Restore Archived',
-          'Restored archived entities to active status within the targeted scope.');
-
+      // NOTE: the former generic job types (reseed_templates, reindex_search,
+      // repair_contacts, backfill_analytics, migrate_data, rebuild_variables,
+      // fix_duplicate_slugs, replay_webhooks, retry_campaigns, restore_archived)
+      // were removed — they executed a no-op processor that logged a fabricated
+      // success message. Re-add a type only together with a real handler.
       default:
         throw new Error(`Execution logic for job type "${job.type}" is not yet implemented.`);
     }

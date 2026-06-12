@@ -15,7 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { saveAutomationAction, testAutomationFlowAction, toggleAutomationStatusAction } from '@/lib/automation-actions';
+import { saveAutomationAction, testAutomationFlowAction, toggleAutomationStatusAction, restoreAutomationAction } from '@/lib/automation-actions';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
 import {
@@ -63,12 +63,38 @@ export default function EditAutomationPage() {
   const [isEditingMeta, setIsEditingMeta] = React.useState(false);
   const [editDraft, setEditDraft] = React.useState({ name: '', description: '' });
 
+  const isNew = automationId === 'new';
+
   const docRef = useMemoFirebase(
-    () => (firestore ? doc(firestore, 'automations', automationId) : null),
-    [firestore, automationId]
+    () => (firestore && !isNew ? doc(firestore, 'automations', automationId) : null),
+    [firestore, automationId, isNew]
   );
 
-  const { data: automation, isLoading } = useDoc<Automation>(docRef);
+  const { data: dbAutomation, isLoading: isDocLoading } = useDoc<Automation>(docRef);
+
+  const defaultNewAutomation = React.useMemo(() => {
+    return {
+      id: 'new',
+      name: 'Untitled Workflow',
+      description: '',
+      isActive: false,
+      triggers: [],
+      triggerTypes: [],
+      workspaceIds: [activeWorkspaceId],
+      nodes: [
+        {
+          id: 'trigger',
+          type: 'triggerNode',
+          position: { x: 250, y: 100 },
+          data: { label: 'Event Trigger' }
+        }
+      ],
+      edges: [],
+    } as unknown as Automation;
+  }, [activeWorkspaceId]);
+
+  const automation = isNew ? defaultNewAutomation : dbAutomation;
+  const isLoading = isNew ? false : isDocLoading;
 
   React.useEffect(() => {
     if (automation) {
@@ -76,12 +102,16 @@ export default function EditAutomationPage() {
         const next = { ...prev };
         if (next.name === undefined) next.name = automation.name;
         if (next.description === undefined) next.description = automation.description || '';
-        // Initialise triggers from Firestore on first load
         if (next.triggers === undefined) next.triggers = automation.triggers ?? [];
+        if (next.isActive === undefined) next.isActive = automation.isActive ?? false;
+        if (isNew) {
+          if (next.nodes === undefined) next.nodes = automation.nodes;
+          if (next.edges === undefined) next.edges = automation.edges;
+        }
         return next;
       });
     }
-  }, [automation]);
+  }, [automation, isNew]);
 
   const isDirty = React.useMemo(() => {
     if (!automation) return false;
@@ -147,16 +177,30 @@ export default function EditAutomationPage() {
     if (!user) return false;
     setIsSaving(true);
     const cleanData = JSON.parse(JSON.stringify(currentData));
-    const res = await saveAutomationAction(automationId, cleanData, user.uid);
+
+    if (isNew) {
+      if (!cleanData.workspaceIds || cleanData.workspaceIds.length === 0) {
+        cleanData.workspaceIds = [activeWorkspaceId];
+      }
+    }
+
+    const res = await saveAutomationAction(isNew ? null : automationId, cleanData, user.uid);
     setIsSaving(false);
     if (res.success) {
-      toast({ title: 'Automation Saved', description: 'Blueprint updated successfully.' });
+      toast({ 
+        title: isNew ? 'Automation Created' : 'Automation Saved', 
+        description: isNew ? 'Blueprint created successfully.' : 'Blueprint updated successfully.' 
+      });
+      if (isNew && res.id) {
+        unregisterUnsavedChanges('automation-builder');
+        router.push(`/admin/automations/${res.id}/edit`);
+      }
       return true;
     } else {
       toast({ variant: 'destructive', title: 'Save Failed', description: res.error });
       return false;
     }
-  }, [user, currentData, automationId, toast]);
+  }, [user, currentData, automationId, isNew, activeWorkspaceId, toast, router, unregisterUnsavedChanges]);
 
   const handleSave = async () => {
     await handleSaveAndReturn();
@@ -327,32 +371,40 @@ export default function EditAutomationPage() {
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border/60 bg-card/50">
             <Switch
               id="automation-active-toggle"
-              checked={automation.isActive ?? false}
-              onCheckedChange={handleToggleActive}
-              disabled={isTogglingStatus}
+              checked={isNew ? (currentData.isActive ?? false) : (automation.isActive ?? false)}
+              onCheckedChange={v => {
+                if (isNew) {
+                  setCurrentData(prev => ({ ...prev, isActive: v }));
+                } else {
+                  handleToggleActive(v);
+                }
+              }}
+              disabled={isTogglingStatus || automation.isArchived}
               className="data-[state=checked]:bg-emerald-500"
             />
             <Label
               htmlFor="automation-active-toggle"
               className={cn(
                 'text-[11px] font-semibold cursor-pointer select-none transition-colors',
-                automation.isActive ? 'text-emerald-600' : 'text-muted-foreground',
+                isNew ? (currentData.isActive ? 'text-emerald-600' : 'text-muted-foreground') : (automation.isActive ? 'text-emerald-600' : 'text-muted-foreground'),
               )}
             >
-              {isTogglingStatus ? 'Updating…' : automation.isActive ? 'Active' : 'Inactive'}
+              {isTogglingStatus ? 'Updating…' : (isNew ? (currentData.isActive ? 'Active' : 'Inactive') : (automation.isActive ? 'Active' : 'Inactive'))}
             </Label>
           </div>
 
-          <Button
-            variant="outline"
-            className="rounded-xl font-bold h-10 gap-2 border-primary/20 text-primary"
-            onClick={() => setTestDialogOpen(true)}
-          >
-            <Play className="h-4 w-4" /> Test Flow
-          </Button>
+          {!isNew && !automation.isArchived ? (
+            <Button
+              variant="outline"
+              className="rounded-xl font-bold h-10 gap-2 border-primary/20 text-primary"
+              onClick={() => setTestDialogOpen(true)}
+            >
+              <Play className="h-4 w-4" /> Test Flow
+            </Button>
+          ) : null}
           <Button
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || automation.isArchived}
             className="rounded-xl font-semibold h-10 px-6 shadow-xl shadow-primary/20 gap-2 text-xs"
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -361,7 +413,34 @@ export default function EditAutomationPage() {
         </div>
       </header>
 
-      {(!automation.workspaceIds || automation.workspaceIds.length === 0) && (
+      {automation.isArchived ? (
+        <div className="bg-rose-500/10 border-b border-rose-500/20 px-6 py-3 flex items-center justify-between gap-4 z-20">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+            <p className="text-xs font-bold text-rose-950 dark:text-rose-200">
+              This automation is archived. You must restore it before making changes or executing it.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-4 rounded-xl border-rose-500/20 text-rose-600 dark:text-rose-400 bg-background hover:bg-rose-500/10 text-xs font-bold transition-all active:scale-95 shadow-sm shrink-0"
+            onClick={async () => {
+              if (!user?.uid) return;
+              const res = await restoreAutomationAction(automationId, user.uid);
+              if (res.success) {
+                toast({ title: 'Automation Restored', description: 'This workflow can now be edited and activated.' });
+              } else {
+                toast({ variant: 'destructive', title: 'Restore failed', description: res.error });
+              }
+            }}
+          >
+            Restore Automation
+          </Button>
+        </div>
+      ) : null}
+
+      {(!automation.workspaceIds || automation.workspaceIds.length === 0) ? (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3 z-20">
           <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
           <p className="text-xs font-bold text-amber-900">
@@ -369,7 +448,7 @@ export default function EditAutomationPage() {
             constraint and may trigger across all workspaces.
           </p>
         </div>
-      )}
+      ) : null}
 
       <div className="flex-1 relative overflow-hidden">
         <AutomationBuilder

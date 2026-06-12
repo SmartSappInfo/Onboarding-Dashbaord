@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildCampaignAutomationJobPayload,
   campaignAutomationJobDocId,
-} from '../campaign-automation-jobs';
+} from '../campaign-automation-utils';
 
 describe('campaign-automation-jobs', () => {
   it('builds entity-first payload with action field', () => {

@@ -41,7 +41,7 @@ export default function BulkCreateDealModal({
   const [dealNamePattern, setDealNamePattern] = React.useState('{{entityName}} - Onboarding Deal');
   const [value, setValue] = React.useState('');
   const [pipelineId, setPipelineId] = React.useState('');
-  const [assignmentStrategy, setAssignmentStrategy] = React.useState<'direct' | 'unassigned'>('direct');
+  const [assignmentStrategy, setAssignmentStrategy] = React.useState<'direct' | 'unassigned' | 'pipeline'>('pipeline');
 
   // Fetch pipelines for current workspace
   const pipelinesQuery = useMemoFirebase(() =>
@@ -61,7 +61,7 @@ export default function BulkCreateDealModal({
     if (open) {
       setDealNamePattern('{{entityName}} - Onboarding Deal');
       setValue('');
-      setAssignmentStrategy('direct');
+      setAssignmentStrategy('pipeline');
       if (pipelines && pipelines.length > 0) {
         setPipelineId(pipelines[0].id);
       }
@@ -179,6 +179,9 @@ export default function BulkCreateDealModal({
                   <SelectValue placeholder="Select Routing Logic" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-xl">
+                  <SelectItem value="pipeline" className="font-bold text-xs">
+                    Use Pipeline Routing Rules
+                  </SelectItem>
                   <SelectItem value="direct" className="font-bold text-xs">
                     Direct (Match Account Owner)
                   </SelectItem>

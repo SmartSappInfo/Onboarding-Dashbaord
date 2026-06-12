@@ -228,7 +228,7 @@ export function DefaultSettingsStep({
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             {/* Name Template */}
                                             <div className="space-y-2">
                                                 <Label htmlFor="deal-name-template" className="text-sm font-semibold">Deal Name Template</Label>
@@ -262,6 +262,27 @@ export function DefaultSettingsStep({
                                                 </div>
                                                 <p className="text-[10px] text-muted-foreground mt-1">
                                                     Est. value of each created deal in USD.
+                                                </p>
+                                            </div>
+
+                                            {/* Assignment Routing */}
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-semibold">Assignment Routing</Label>
+                                                <Select 
+                                                    value={dealImportConfig.assignmentStrategy || 'pipeline'} 
+                                                    onValueChange={(val: any) => setDealImportConfig(prev => ({ ...prev, assignmentStrategy: val }))}
+                                                >
+                                                    <SelectTrigger className="w-full h-11 bg-background">
+                                                        <SelectValue placeholder="Select routing strategy" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl bg-popover text-popover-foreground">
+                                                        <SelectItem value="pipeline" className="font-semibold text-xs">Use Pipeline Routing Rules</SelectItem>
+                                                        <SelectItem value="direct" className="font-semibold text-xs">Direct (Match Account Owner)</SelectItem>
+                                                        <SelectItem value="unassigned" className="font-semibold text-xs">Leave Unassigned</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                    Routing strategy for the created deals.
                                                 </p>
                                             </div>
                                         </div>

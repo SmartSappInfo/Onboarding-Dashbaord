@@ -18,35 +18,75 @@ interface DealCreationData extends Partial<Deal> {
     suppressAutomations?: boolean;
 }
 
+async function resolveAssigneeDetails(userId: string): Promise<{ userId: string; name: string; email: string }> {
+    try {
+        const userSnap = await adminDb.collection('users').doc(userId).get();
+        if (userSnap.exists) {
+            const userData = userSnap.data();
+            return {
+                userId,
+                name: userData?.name || 'Assigned User',
+                email: userData?.email || '',
+            };
+        }
+    } catch (e) {
+        console.error('Failed to resolve assignee details:', e);
+    }
+    return { userId, name: 'Assigned User', email: '' };
+}
+
 export async function createDeal(data: DealCreationData): Promise<{ id?: string; error?: string }> {
     try {
-        const { entityId, workspaceId, organizationId, pipelineId, name, value, assignmentStrategy = 'direct', eligibleUserIds = [], suppressAutomations = false, ...rest } = data;
+        const { entityId, workspaceId, organizationId, pipelineId, name, value, assignmentStrategy, eligibleUserIds = [], suppressAutomations = false, ...rest } = data;
 
-        const entitySnap = await adminDb.collection('workspace_entities').doc(`${workspaceId}_${entityId}`).get();
+        const entityRef = adminDb.collection('workspace_entities').doc(`${workspaceId}_${entityId}`);
+        const pipelineRef = adminDb.collection('pipelines').doc(pipelineId);
+        
+        let stageQueryOrDoc: any;
+        if (!data.stageId) {
+            stageQueryOrDoc = adminDb.collection('onboardingStages').where('pipelineId', '==', pipelineId).orderBy('order', 'asc').limit(1);
+        } else if (!data.stageName) {
+            stageQueryOrDoc = adminDb.collection('onboardingStages').doc(data.stageId);
+        }
+
+        const [entitySnap, pipelineSnap, stageSnap] = await Promise.all([
+            entityRef.get(),
+            pipelineRef.get(),
+            stageQueryOrDoc ? stageQueryOrDoc.get() : Promise.resolve(null)
+        ]);
+
         if (!entitySnap.exists) throw new Error('Entity not found');
         const entity = entitySnap.data() as WorkspaceEntity;
 
+        const pipeline = pipelineSnap.exists ? pipelineSnap.data() : null;
+
+        // Resolve final strategy and eligible assignees
+        const activeStrategy = assignmentStrategy || pipeline?.assignmentStrategy || 'direct';
+        const activeEligibleUserIds = eligibleUserIds.length > 0
+            ? eligibleUserIds
+            : (pipeline?.assignmentUserIds || []);
+
         let assignedTo = null;
 
-        if (assignmentStrategy === 'direct') {
+        if (activeStrategy === 'direct') {
             assignedTo = entity.assignedTo || null;
-        } else if (assignmentStrategy === 'round-robin' && eligibleUserIds.length > 0) {
+        } else if (activeStrategy === 'round-robin' && activeEligibleUserIds.length > 0) {
             let minDeals = Infinity;
-            let selectedUserId = eligibleUserIds[0];
+            let selectedUserId = activeEligibleUserIds[0];
             
-            for (const uid of eligibleUserIds) {
+            for (const uid of activeEligibleUserIds) {
                 const snap = await adminDb.collection('deals').where('assignedTo.userId', '==', uid).where('status', '==', 'open').get();
                 if (snap.size < minDeals) {
                     minDeals = snap.size;
                     selectedUserId = uid;
                 }
             }
-            assignedTo = { userId: selectedUserId, name: 'Assigned User', email: '' };
-        } else if (assignmentStrategy === 'value-based' && eligibleUserIds.length > 0) {
+            assignedTo = await resolveAssigneeDetails(selectedUserId);
+        } else if (activeStrategy === 'value-based' && activeEligibleUserIds.length > 0) {
             let minVal = Infinity;
-            let selectedUserId = eligibleUserIds[0];
+            let selectedUserId = activeEligibleUserIds[0];
             
-            for (const uid of eligibleUserIds) {
+            for (const uid of activeEligibleUserIds) {
                 const snap = await adminDb.collection('deals').where('assignedTo.userId', '==', uid).where('status', '==', 'open').get();
                 let totalValue = 0;
                 snap.forEach(doc => totalValue += (doc.data().value || 0));
@@ -56,20 +96,22 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
                     selectedUserId = uid;
                 }
             }
-            assignedTo = { userId: selectedUserId, name: 'Assigned User', email: '' };
+            assignedTo = await resolveAssigneeDetails(selectedUserId);
+        } else if (activeStrategy === 'unassigned') {
+            assignedTo = null;
         }
 
         let stageId = data.stageId;
         let stageName = data.stageName;
 
-        if (!stageId) {
-            const stageSnap = await adminDb.collection('onboardingStages').where('pipelineId', '==', pipelineId).orderBy('order', 'asc').limit(1).get();
-            stageId = stageSnap.empty ? 'default_stage' : stageSnap.docs[0].id;
-            stageName = stageSnap.empty ? undefined : (stageSnap.docs[0].data().name as string | undefined);
-        } else if (!stageName) {
-            const stageDoc = await adminDb.collection('onboardingStages').doc(stageId).get();
-            if (stageDoc.exists) {
-                stageName = stageDoc.data()?.name as string | undefined;
+        if (stageSnap) {
+            if (!stageId) {
+                stageId = stageSnap.empty ? 'default_stage' : stageSnap.docs[0].id;
+                stageName = stageSnap.empty ? undefined : (stageSnap.docs[0].data().name as string | undefined);
+            } else if (!stageName) {
+                if (stageSnap.exists) {
+                    stageName = stageSnap.data()?.name as string | undefined;
+                }
             }
         }
 
@@ -78,7 +120,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             workspaceId,
             entityId,
             pipelineId,
-            stageId,
+            stageId: stageId || 'default_stage',
             ...(stageName ? { stageName } : {}),
             name,
             value: value || 0,

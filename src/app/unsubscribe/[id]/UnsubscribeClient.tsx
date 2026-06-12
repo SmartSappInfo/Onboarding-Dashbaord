@@ -16,6 +16,8 @@ interface UnsubscribeClientProps {
   initialChannel: string;
   workspaceName?: string;
   orgBranding?: OrgBranding | null;
+  campaignId?: string | null;
+  variantId?: string | null;
 }
 
 export default function UnsubscribeClient({
@@ -23,7 +25,9 @@ export default function UnsubscribeClient({
   workspaceId,
   initialChannel,
   workspaceName,
-  orgBranding
+  orgBranding,
+  campaignId,
+  variantId
 }: UnsubscribeClientProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [preferences, setPreferences] = useState({
@@ -42,6 +46,8 @@ export default function UnsubscribeClient({
           workspaceId,
           channels: all ? ['email', 'sms'] : Object.entries(preferences).filter(([_, v]) => !v).map(([k]) => k),
           reason: 'user_request',
+          campaignId,
+          variantId
         }),
       });
 

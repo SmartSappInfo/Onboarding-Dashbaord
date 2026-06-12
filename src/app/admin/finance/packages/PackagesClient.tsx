@@ -5,6 +5,7 @@ import { collection, query, orderBy, addDoc, doc, updateDoc, deleteDoc, where } 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { SubscriptionPackage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { 
     Package, 
     Plus, 
@@ -50,6 +51,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 export default function PackagesClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
     
     const [isAdding, setIsAdding] = React.useState(false);
@@ -115,7 +117,8 @@ export default function PackagesClient() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!firestore || !confirm('Permanently delete this pricing tier? Schools using this package will require manual reassignment.')) return;
+        if (!firestore) return;
+        if (!(await confirm({ title: 'Delete pricing tier?', description: 'Records using this package will require manual reassignment.', confirmText: 'Delete', variant: 'destructive' }))) return;
         try {
             await deleteDoc(doc(firestore, 'subscription_packages', id));
             toast({ title: 'Package Purged' });

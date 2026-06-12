@@ -18,10 +18,31 @@ vi.mock('../firebase-admin', () => ({
     }
 }));
 
+vi.mock('@/firebase/config', () => ({
+    firestore: {},
+}));
+
+vi.mock('firebase/firestore', () => ({
+    collection: vi.fn(),
+    doc: vi.fn(),
+    getDoc: vi.fn().mockResolvedValue({ exists: () => false }),
+    getDocs: vi.fn().mockResolvedValue({ empty: true, docs: [], forEach: () => {} }),
+    addDoc: vi.fn(),
+    updateDoc: vi.fn(),
+    query: vi.fn(),
+    where: vi.fn(),
+    orderBy: vi.fn(),
+    limit: vi.fn(),
+    Timestamp: {},
+    arrayUnion: vi.fn((...items) => items),
+    arrayRemove: vi.fn((...items) => items),
+}));
+
 vi.mock('firebase-admin/firestore', () => ({
     FieldValue: {
         arrayUnion: vi.fn((...items) => ({ _methodName: 'FieldValue.arrayUnion', _elements: items })),
-        arrayRemove: vi.fn((...items) => ({ _methodName: 'FieldValue.arrayRemove', _elements: items }))
+        arrayRemove: vi.fn((...items) => ({ _methodName: 'FieldValue.arrayRemove', _elements: items })),
+        increment: vi.fn((n) => ({ _methodName: 'FieldValue.increment', _value: n })),
     }
 }));
 
@@ -92,6 +113,7 @@ describe('Unified Tag Automation Flow', () => {
             get: vi.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
         };
 
+        let lastQueryTrigger: string | null = null;
         // Enhanced mock with doc().get() support and proper doc references
         (adminDb.collection as any).mockImplementation((collectionName: string) => {
             const getDocRef = (docId: string) => {
@@ -103,13 +125,30 @@ describe('Unified Tag Automation Flow', () => {
                 };
             };
 
-            return {
-                where: vi.fn().mockReturnThis(),
-                get: vi.fn().mockImplementation(() => {
-                    if (collectionName === 'automations') return Promise.resolve(mockAutoSnap);
-                    if (collectionName === 'automation_jobs') return Promise.resolve(mockJobsSnap);
+            const mockWhere = vi.fn().mockImplementation((field, op, value) => {
+                if (field === 'triggerTypes' && op === 'array-contains') {
+                    lastQueryTrigger = value;
+                }
+                return {
+                    where: mockWhere,
+                    get: mockGet,
+                };
+            });
+
+            const mockGet = vi.fn().mockImplementation(() => {
+                if (collectionName === 'automations') {
+                    if (lastQueryTrigger === 'TAG_ADDED') {
+                        return Promise.resolve(mockAutoSnap);
+                    }
                     return Promise.resolve({ empty: true, docs: [] });
-                }),
+                }
+                if (collectionName === 'automation_jobs') return Promise.resolve(mockJobsSnap);
+                return Promise.resolve({ empty: true, docs: [] });
+            });
+
+            return {
+                where: mockWhere,
+                get: mockGet,
                 add: vi.fn().mockResolvedValue({ 
                     id: 'run_1', 
                     update: vi.fn().mockResolvedValue(undefined) 
@@ -126,7 +165,8 @@ describe('Unified Tag Automation Flow', () => {
             workspaceEntityId: 'we_123',
             entityType: 'institution',
             name: 'Test School',
-            tags: ['tag_hot']
+            tags: ['tag_hot'],
+            migrationStatus: 'migrated'
         });
 
         // 2. Simulate Activity Logging (which happens in Tag Actions)
@@ -154,7 +194,7 @@ describe('Unified Tag Automation Flow', () => {
         // 4. Verify workspace_entities tag update (entity-only path, no legacy schools/prospects)
         expect(mockWeDocRef.update).toHaveBeenCalled();
         expect(mockWeDocRef.update.mock.calls[0][0]).toMatchObject({
-            updatedAt: expect.any(String)
+            workspaceTags: expect.any(Array)
         });
     });
 
@@ -181,6 +221,7 @@ describe('Unified Tag Automation Flow', () => {
             docs: []
         };
 
+        let lastQueryTrigger: string | null = null;
         // Enhanced mock with doc().get() support
         (adminDb.collection as any).mockImplementation((collectionName: string) => {
             const mockDoc = {
@@ -191,13 +232,30 @@ describe('Unified Tag Automation Flow', () => {
                 update: vi.fn().mockResolvedValue(undefined)
             };
 
-            return {
-                where: vi.fn().mockReturnThis(),
-                get: vi.fn().mockImplementation(() => {
-                    if (collectionName === 'automations') return Promise.resolve(mockAutoSnap);
-                    if (collectionName === 'automation_jobs') return Promise.resolve(mockJobsSnap);
+            const mockWhere = vi.fn().mockImplementation((field, op, value) => {
+                if (field === 'triggerTypes' && op === 'array-contains') {
+                    lastQueryTrigger = value;
+                }
+                return {
+                    where: mockWhere,
+                    get: mockGet,
+                };
+            });
+
+            const mockGet = vi.fn().mockImplementation(() => {
+                if (collectionName === 'automations') {
+                    if (lastQueryTrigger === 'TAG_ADDED') {
+                        return Promise.resolve(mockAutoSnap);
+                    }
                     return Promise.resolve({ empty: true, docs: [] });
-                }),
+                }
+                if (collectionName === 'automation_jobs') return Promise.resolve(mockJobsSnap);
+                return Promise.resolve({ empty: true, docs: [] });
+            });
+
+            return {
+                where: mockWhere,
+                get: mockGet,
                 add: vi.fn().mockResolvedValue({ 
                     id: 'run_2', 
                     update: vi.fn().mockResolvedValue(undefined) 

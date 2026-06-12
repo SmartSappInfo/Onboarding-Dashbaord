@@ -10,7 +10,9 @@ type AutomationLogContext = {
   jobId?: string;
   trigger?: string;
   processed?: number;
+  campaignId?: string;
   error?: unknown;
+  [key: string]: any;
 };
 
 function serializeError(error: unknown): { errorMessage?: string; errorStack?: string } {

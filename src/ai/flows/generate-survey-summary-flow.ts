@@ -13,8 +13,8 @@ const GenerateSurveySummaryInputSchema = z.object({
   survey: z.any().describe('The survey object, including title, description, and elements array.'),
   responses: z.array(z.any()).describe('An array of survey response objects.'),
   organizationId: z.string().optional().describe('The organization ID for API key resolution.'),
-  provider: z.string().optional().default('googleai').describe('The AI provider to use.'),
-  modelId: z.string().optional().default('gemini-3-flash-preview').describe('The model ID to use.'),
+  provider: z.string().optional().default('anthropic').describe('The AI provider to use.'),
+  modelId: z.string().optional().default('claude-3-5-sonnet').describe('The model ID to use.'),
 });
 export type GenerateSurveySummaryInput = z.infer<typeof GenerateSurveySummaryInputSchema>;
 
@@ -83,7 +83,7 @@ const generateSurveySummaryFlow = ai.defineFlow(
         outputSchema: GenerateSurveySummaryOutputSchema,
     },
     async (input) => {
-        const { survey, responses, organizationId, provider = 'googleai', modelId = 'gemini-3-flash-preview' } = input;
+        const { survey, responses, organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
         const surveyElementsJson = JSON.stringify(survey.elements, null, 2);
         const responsesJson = JSON.stringify(responses, null, 2);
         

@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
@@ -32,6 +32,8 @@ import { GoogleIcon, SmartSappIcon } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Eye, EyeOff } from 'lucide-react';
 import LightRays from '@/components/LightRays';
+import { safeInternalRedirect } from '@/lib/auth/return-to';
+import InviteContextBanner from '@/components/auth/InviteContextBanner';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -40,9 +42,12 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function LoginPage() {
+function LoginContent() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Post-auth destination carried from an invite link (open-redirect safe).
+  const returnTo = safeInternalRedirect(searchParams.get('redirect'));
   const auth = useAuth();
   const firestore = useFirestore();
   const [showPassword, setShowPassword] = React.useState(false);
@@ -74,7 +79,7 @@ export default function LoginPage() {
         const checkSuper = await enforceSuperAdminProfileAction(uid, profile.email, profile.name || '');
         if (checkSuper.success && checkSuper.isSuperAdmin) {
           toast({ title: 'Login Successful', description: 'Super admin access granted.' });
-          router.push('/admin/settings/organizations');
+          router.push(returnTo || '/admin/settings/organizations');
           return;
         }
       }
@@ -85,13 +90,13 @@ export default function LoginPage() {
         if (data.isAuthorized === true) {
           toast({ title: 'Login Successful', description: 'Welcome back!' });
           if (data.permissions?.includes('system_admin')) {
-            router.push('/admin/settings/organizations');
+            router.push(returnTo || '/admin/settings/organizations');
           } else {
-            router.push('/admin');
+            router.push(returnTo || '/admin');
           }
         } else if (data.profileCompleted === false || !data.profileCompleted || data.approvalStatus === 'pending') {
           toast({ title: 'Sign-in Successful' });
-          router.push('/admin');
+          router.push(returnTo || '/admin');
         } else {
           await auth.signOut();
           toast({
@@ -119,9 +124,9 @@ export default function LoginPage() {
         description: 'Your account has been created. Let\'s set up your profile details.',
         duration: 5000,
       });
-      router.push('/admin');
+      router.push(returnTo || '/admin');
     },
-    [auth, firestore, router, toast]
+    [auth, firestore, router, toast, returnTo]
   );
 
   React.useEffect(() => {
@@ -182,7 +187,7 @@ export default function LoginPage() {
         const checkSuper = await enforceSuperAdminProfileAction(user.uid, user.email, user.displayName || '');
         if (checkSuper.success && checkSuper.isSuperAdmin) {
           toast({ title: 'Login Successful', description: 'Super admin access granted.' });
-          router.push('/admin/settings/organizations');
+          router.push(returnTo || '/admin/settings/organizations');
           return;
         }
       }
@@ -200,13 +205,13 @@ export default function LoginPage() {
           }
 
           if (data.permissions?.includes('system_admin')) {
-            router.push('/admin/settings/organizations');
+            router.push(returnTo || '/admin/settings/organizations');
           } else {
-            router.push('/admin');
+            router.push(returnTo || '/admin');
           }
         } else if (data.profileCompleted === false || !data.profileCompleted || data.approvalStatus === 'pending') {
           toast({ title: 'Sign-in Successful' });
-          router.push('/admin');
+          router.push(returnTo || '/admin');
         } else {
           await auth.signOut();
           toast({
@@ -229,7 +234,7 @@ export default function LoginPage() {
           createdAt: new Date().toISOString(),
         });
         toast({ title: 'Welcome to SmartSapp', description: 'Let\'s complete your profile.' });
-        router.push('/admin');
+        router.push(returnTo || '/admin');
       }
     } catch (error: unknown) {
       const errorCode = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
@@ -314,6 +319,8 @@ export default function LoginPage() {
               Enter your email and password to sign in!
             </p>
           </div>
+
+          <InviteContextBanner mode="login" />
 
           <Button
             variant="outline"
@@ -404,7 +411,7 @@ export default function LoginPage() {
 
               <div className="mt-4 text-center text-sm text-muted-foreground">
                 Not registered yet?{' '}
-                <Link href="/signup" className="font-semibold text-primary hover:underline">
+                <Link href={returnTo ? `/signup?redirect=${encodeURIComponent(returnTo)}` : '/signup'} className="font-semibold text-primary hover:underline">
                   Create an Account
                 </Link>
               </div>
@@ -449,5 +456,13 @@ export default function LoginPage() {
         </div>
       </aside>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <LoginContent />
+    </React.Suspense>
   );
 }

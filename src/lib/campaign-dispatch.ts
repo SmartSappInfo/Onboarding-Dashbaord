@@ -41,6 +41,8 @@ export async function dispatchCampaign(campaignId: string): Promise<{
       includeTagIds: campaign.audienceDefinition?.tagIds,
       excludeTagIds: campaign.audienceDefinition?.excludeTagIds,
       includeLogic: campaign.audienceDefinition?.tagLogic === 'all' ? 'AND' : 'OR',
+      selectedContacts: campaign.audienceDefinition?.selectedContacts,
+      audienceMode: campaign.audienceDefinition?.mode,
       limit: 5000, // R4 fix: dispatch needs full audience, not preview-limited
     });
 
@@ -79,16 +81,28 @@ export async function dispatchCampaign(campaignId: string): Promise<{
     const recipients: { recipient: string; variables: Record<string, any>; entityId: string; displayName: string }[] = [];
     const contactRolesFilter = campaign.audienceDefinition?.filters?.find((f: any) => f.field === 'contactRoles');
     const contactRoles = contactRolesFilter ? contactRolesFilter.value as string[] : null;
+    const selectedContacts = campaign.audienceDefinition?.selectedContacts || [];
+    const isManualMode = campaign.audienceDefinition?.mode === 'manual';
 
     for (const entity of audienceResult.preview!) {
       try {
-        const resolved = await resolveRecipientContacts({
+        let resolved = await resolveRecipientContacts({
           entityId: entity.id,
           workspaceId: campaign.workspaceId,
-          contactScope: campaign.audienceDefinition?.contactScope || 'primary',
+          contactScope: isManualMode ? 'all' : (campaign.audienceDefinition?.contactScope || 'primary'),
           channel: campaign.channel === 'email' ? 'email' : 'sms',
-          contactRoles,
+          contactRoles: isManualMode ? null : contactRoles,
         });
+
+        if (isManualMode) {
+          resolved = resolved.filter(r => {
+            return selectedContacts.some(sc => {
+              if (sc.entityId !== entity.id) return false;
+              const contactVal = campaign.channel === 'email' ? sc.email : sc.phone;
+              return r.contact.toLowerCase() === contactVal?.toLowerCase();
+            });
+          });
+        }
 
         for (const r of resolved) {
           recipients.push({
@@ -109,8 +123,106 @@ export async function dispatchCampaign(campaignId: string): Promise<{
       }
     }
 
-    if (recipients.length === 0) {
-      return { success: false, error: 'No valid recipients found (all entities missing contact info)' };
+    if (campaign.abTestEnabled && campaign.variants?.length) {
+      const testPct = campaign.abTestConfig?.testSizePercentage || 100;
+      
+      // Safety check for empty or small list sizes
+      if (recipients.length < 2) {
+        // Small list fallback: bypass test phase entirely, default to Variant A
+        const testRecipients = recipients.map(r => ({ ...r, campaignVariantId: 'A' as const }));
+        
+        await campaignRef.update({
+          status: 'sending',
+          sentAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        
+        const jobResult = await createBulkMessageJob({
+          templateId: campaign.variants.find(v => v.id === 'A')?.templateId || templateId,
+          senderProfileId: campaign.senderProfileId,
+          recipients: testRecipients,
+          userId: campaign.createdBy,
+        });
+        
+        await campaignRef.update({
+          jobId: jobResult.jobId,
+          'stats.totalTargeted': audienceResult.count || recipients.length,
+        });
+        
+        await adminDb.collection('message_jobs').doc(jobResult.jobId).update({
+          campaignId,
+          workspaceId: campaign.workspaceId,
+          organizationId: campaign.organizationId,
+        });
+        
+        try {
+          await processBulkJobChunk(jobResult.jobId);
+        } catch (e) {
+          console.warn('[DISPATCH] First chunk processing failed, client will retry:', (e as Error).message);
+        }
+        
+        return { success: true, jobId: jobResult.jobId };
+      }
+      
+      const testSize = testPct < 100 
+        ? Math.max(2, Math.ceil(recipients.length * (testPct / 100))) 
+        : recipients.length;
+        
+      const testRecipients = recipients.slice(0, testSize).map((r, idx) => ({
+        ...r,
+        campaignVariantId: idx % 2 === 0 ? ('A' as const) : ('B' as const)
+      }));
+
+      const finalStatus = testPct < 100 ? 'testing' : 'sending';
+
+      await campaignRef.update({
+        status: finalStatus,
+        sentAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const jobResult = await createBulkMessageJob({
+        templateId,
+        senderProfileId: campaign.senderProfileId,
+        recipients: testRecipients,
+        userId: campaign.createdBy,
+      });
+
+      await campaignRef.update({
+        jobId: jobResult.jobId,
+        'stats.totalTargeted': audienceResult.count || recipients.length,
+      });
+
+      await adminDb.collection('message_jobs').doc(jobResult.jobId).update({
+        campaignId,
+        workspaceId: campaign.workspaceId,
+        organizationId: campaign.organizationId,
+      });
+
+      if (testPct < 100) {
+        const executeAt = new Date();
+        executeAt.setHours(executeAt.getHours() + (campaign.abTestConfig?.testDurationHours || 4));
+        
+        const jobRef = await adminDb.collection('automation_jobs').add({
+          targetNodeId: '__campaign_ab_evaluate__',
+          executeAt: executeAt.toISOString(),
+          status: 'pending',
+          automationId: 'campaign_ab_eval',
+          runId: '',
+          payload: { campaignId },
+          createdAt: new Date().toISOString(),
+        });
+        
+        await campaignRef.update({ 'abTestConfig.evaluationJobId': jobRef.id });
+      }
+
+      try {
+        await processBulkJobChunk(jobResult.jobId);
+      } catch (e) {
+        console.warn('[DISPATCH] First chunk processing failed, client will retry:', (e as Error).message);
+      }
+
+      return { success: true, jobId: jobResult.jobId };
     }
 
     // 5. Update campaign status → 'sending'
@@ -195,6 +307,9 @@ export async function resendToFailed(campaignId: string): Promise<{
     const recipients = failedSnap.docs.map(d => ({
       recipient: d.data().recipient,
       variables: d.data().variables || {},
+      entityId: d.data().entityId,
+      displayName: d.data().displayName,
+      campaignVariantId: d.data().campaignVariantId || 'A', // Preserve variant
     }));
 
     const templateId = campaign.templateId || '';

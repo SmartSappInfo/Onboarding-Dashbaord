@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, orderBy, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, addDoc, updateDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MessageCampaign, CampaignStatus } from '@/lib/types';
 
@@ -82,6 +82,27 @@ export async function updateCampaign(
  * Soft-deletes a campaign by setting status to 'archived'.
  * Industry standard: never hard-delete campaigns (audit trail).
  */
+async function cancelPendingEvaluationJobs(firestore: any, campaignId: string): Promise<void> {
+  try {
+    const q = query(
+      collection(firestore, 'automation_jobs'),
+      where('payload.campaignId', '==', campaignId),
+      where('targetNodeId', '==', '__campaign_ab_evaluate__'),
+      where('status', '==', 'pending')
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      const batch = writeBatch(firestore);
+      snap.forEach(d => {
+        batch.update(d.ref, { status: 'cancelled' });
+      });
+      await batch.commit();
+    }
+  } catch (err) {
+    console.error('Error cancelling pending evaluation jobs:', err);
+  }
+}
+
 export async function archiveCampaign(
   firestore: any,
   campaignId: string
@@ -90,6 +111,7 @@ export async function archiveCampaign(
     status: 'archived' as CampaignStatus,
     updatedAt: new Date().toISOString(),
   });
+  await cancelPendingEvaluationJobs(firestore, campaignId);
 }
 
 /**
@@ -99,6 +121,7 @@ export async function deleteCampaign(
   firestore: any,
   campaignId: string
 ): Promise<void> {
+  await cancelPendingEvaluationJobs(firestore, campaignId);
   await deleteDoc(doc(firestore, 'message_campaigns', campaignId));
 }
 
@@ -131,6 +154,17 @@ export async function cloneCampaign(
     senderProfileId: source.senderProfileId,
     postSendTagRules: source.postSendTagRules,
     automationHooks: source.automationHooks,
+    // A/B test settings
+    abTestEnabled: source.abTestEnabled || false,
+    abTestConfig: source.abTestConfig ? {
+      testSizePercentage: source.abTestConfig.testSizePercentage,
+      testDurationHours: source.abTestConfig.testDurationHours,
+      winnerMetric: source.abTestConfig.winnerMetric,
+    } : null,
+    variants: source.variants ? source.variants.map(v => ({
+      ...v,
+      stats: { totalTargeted: 0, totalSent: 0, totalFailed: 0, totalOpened: 0, totalClicked: 0, totalUnsubscribed: 0 }
+    })) : null,
     // Reset lifecycle
     status: 'draft' as CampaignStatus,
     lastCompletedStep: source.lastCompletedStep,

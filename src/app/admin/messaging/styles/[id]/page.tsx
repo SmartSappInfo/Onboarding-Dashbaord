@@ -16,6 +16,7 @@ import {
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import type { MessageStyle, MessageTemplate } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,7 @@ export default function TenantStyleEditorPage() {
     const params = useParams();
     const router = useRouter();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const firestore = useFirestore();
     const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
     const { activeOrganizationId } = useTenant();
@@ -352,7 +354,7 @@ export default function TenantStyleEditorPage() {
             return;
         }
 
-        if (!confirm('Are you sure you want to permanently delete this style template? Templates using it may fall back to default layouts.')) return;
+        if (!(await confirm({ title: 'Delete style template?', description: 'Templates using it may fall back to default layouts.', confirmText: 'Delete', variant: 'destructive' }))) return;
 
         setDeleting(true);
         try {

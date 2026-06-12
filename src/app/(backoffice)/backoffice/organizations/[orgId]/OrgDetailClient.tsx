@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getOrganizationDetail, getOrganizationDiagnostics } from '@/lib/backoffice/backoffice-org-actions';
+import ShareOrgInvite from '../components/ShareOrgInvite';
 import type { Organization } from '@/lib/types';
 
 // ─────────────────────────────────────────────────
@@ -134,6 +135,27 @@ export default function OrgDetailClient({ orgId }: { orgId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Pending Onboarding — share the setup link until the org is configured */}
+      {org.isConfigured === false && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground">Pending Setup</h3>
+            <Badge variant="outline" className="text-[9px] uppercase font-bold px-2 h-5 border-amber-500/30 text-amber-600">Unconfigured</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            This organization hasn&apos;t been configured yet. Share the setup link below — the recipient completes their profile,
+            configures the organization, creates the first workspace, and becomes its administrator.
+          </p>
+          {org.joinToken && (
+            <div className="space-y-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Join Token</span>
+              <p className="font-mono text-sm font-bold text-emerald-600">{org.joinToken}</p>
+            </div>
+          )}
+          <ShareOrgInvite organizationId={org.id} defaultEmail={org.email} defaultPhone={org.phone} />
+        </div>
+      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

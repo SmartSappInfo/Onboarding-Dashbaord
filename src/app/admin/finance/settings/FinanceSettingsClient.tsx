@@ -5,6 +5,7 @@ import { collection, query, where, orderBy, doc, updateDoc, addDoc, deleteDoc } 
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { BillingProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { 
     Settings2, 
     ShieldCheck, 
@@ -45,6 +46,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 export default function FinanceSettingsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const confirm = useConfirm();
     const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
     const { user } = useUser();
     
@@ -141,7 +143,7 @@ export default function FinanceSettingsClient() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Purge this financial profile? This may affect historical integrity if used by existing invoices.')) return;
+        if (!(await confirm({ title: 'Delete financial profile?', description: 'This may affect historical integrity if used by existing invoices.', confirmText: 'Delete', variant: 'destructive' }))) return;
         await deleteDoc(doc(firestore, 'billing_profiles', id));
         toast({ title: 'Profile Removed' });
     };

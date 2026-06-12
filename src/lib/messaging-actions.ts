@@ -453,11 +453,23 @@ export async function previewCampaignAudience(params: {
   includeTagIds?: string[];
   excludeTagIds?: string[];
   includeLogic?: 'AND' | 'OR';
+  selectedContacts?: Array<{ entityId: string; contactId: string; name?: string; email?: string; phone?: string; entityName?: string }>;
+  audienceMode?: 'all' | 'tags' | 'manual' | 'saved' | 'advanced';
 }): Promise<{
   success: boolean;
   count?: number;
   contactCount?: number;
   preview?: { id: string; name: string; tags: string[] }[];
+  contactsPreview?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    contactVal: string;
+    verified?: boolean;
+    verificationStatus?: string;
+    entityName: string;
+  }[];
   tagDistribution?: { tagId: string; tagName: string; count: number }[];
   error?: string;
 }> {
@@ -486,16 +498,9 @@ export async function previewCampaignAudience(params: {
       filterLogic = 'AND';
     }
 
-    // ── Build Firestore query (Tier 1: server-side) ───────────────────────
-    let baseQuery: FirebaseFirestore.Query = adminDb
-      .collection('workspace_entities')
-      .where('workspaceId', '==', workspaceId);
-
     const tagFilters = filters.filter(f => f.field === 'tags');
-    const equalityFilters = filters.filter(f => f.field !== 'tags' && f.field !== 'contactRoles' && f.operator !== 'is_empty' && f.operator !== 'is_not_empty');
+    const includeTagFilter = tagFilters.find(f => f.operator === 'any_of' || f.operator === 'all_of');
     const emptyFilters = filters.filter(f => f.operator === 'is_empty' || f.operator === 'is_not_empty');
-
-    // Apply equality filters server-side (Firestore supports multiple == on different fields)
     const fieldMap: Record<string, string> = {
       status: 'status',
       entityType: 'entityType',
@@ -505,42 +510,88 @@ export async function previewCampaignAudience(params: {
       locationDistrict: 'locationDistrictId',
     };
 
-    for (const f of equalityFilters) {
-      const fsField = fieldMap[f.field];
-      if (!fsField) continue;
-      if (f.operator === 'is') {
-        baseQuery = baseQuery.where(fsField, '==', f.value);
-      } else if (f.operator === 'is_not') {
-        baseQuery = baseQuery.where(fsField, '!=', f.value);
-      }
-    }
-
-    // Apply ONE tag filter server-side (Firestore constraint: one array-contains-any per query)
-    const includeTagFilter = tagFilters.find(f => f.operator === 'any_of' || f.operator === 'all_of');
-    if (includeTagFilter && Array.isArray(includeTagFilter.value) && includeTagFilter.value.length > 0) {
-      if (includeTagFilter.operator === 'any_of') {
-        // OR: use array-contains-any (chunked at 10)
-        const firstChunk = includeTagFilter.value.slice(0, 10);
-        baseQuery = baseQuery.where('workspaceTags', 'array-contains-any', firstChunk);
-      } else if (includeTagFilter.operator === 'all_of') {
-        // AND: use array-contains for first tag, JS-filter remaining (Tier 2)
-        baseQuery = baseQuery.where('workspaceTags', 'array-contains', includeTagFilter.value[0]);
-      }
-    }
-
-    // ── Execute query (Uncapped to get accurate count) ────────────────────────
-    const snap = await baseQuery.get();
+    const isManualMode = params.audienceMode === 'manual' || !!params.selectedContacts;
+    const selectedContacts = params.selectedContacts || [];
 
     interface ContactEntry { id: string; name: string; tags: string[]; data: any; }
-    let results: ContactEntry[] = snap.docs.map(d => ({
-      id: d.data().entityId || d.id,
-      name: d.data().displayName || d.data().name || '',
-      tags: d.data().workspaceTags || [],
-      data: d.data(),
-    }));
+    let results: ContactEntry[] = [];
+
+    if (isManualMode) {
+      const uniqueEntityIds = Array.from(new Set(selectedContacts.map(sc => sc.entityId)));
+      if (uniqueEntityIds.length === 0) {
+        return { success: true, count: 0, contactCount: 0, preview: [], tagDistribution: [], contactsPreview: [] };
+      }
+
+      // Fetch in parallel batches of 30 due to Firestore 'in' limit
+      const batches = [];
+      for (let i = 0; i < uniqueEntityIds.length; i += 30) {
+        batches.push(uniqueEntityIds.slice(i, i + 30));
+      }
+
+      const snaps = await Promise.all(batches.map(batch =>
+        adminDb.collection('workspace_entities')
+          .where('workspaceId', '==', workspaceId)
+          .where('entityId', 'in', batch)
+          .get()
+      ));
+
+      snaps.forEach(snap => {
+        snap.docs.forEach(d => {
+          results.push({
+            id: d.data().entityId || d.id,
+            name: d.data().displayName || d.data().name || '',
+            tags: d.data().workspaceTags || [],
+            data: d.data(),
+          });
+        });
+      });
+    } else {
+      // ── Build Firestore query (Tier 1: server-side) ───────────────────────
+      let baseQuery: FirebaseFirestore.Query = adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId);
+
+      const equalityFilters = filters.filter(f => f.field !== 'tags' && f.field !== 'contactRoles' && f.operator !== 'is_empty' && f.operator !== 'is_not_empty');
+
+      // Apply equality filters server-side (Firestore supports multiple == on different fields)
+
+      for (const f of equalityFilters) {
+        const fsField = fieldMap[f.field];
+        if (!fsField) continue;
+        if (f.operator === 'is') {
+          baseQuery = baseQuery.where(fsField, '==', f.value);
+        } else if (f.operator === 'is_not') {
+          baseQuery = baseQuery.where(fsField, '!=', f.value);
+        }
+      }
+
+      // Apply ONE tag filter server-side (Firestore constraint: one array-contains-any per query)
+      if (includeTagFilter && Array.isArray(includeTagFilter.value) && includeTagFilter.value.length > 0) {
+        if (includeTagFilter.operator === 'any_of') {
+          // OR: use array-contains-any (chunked at 10)
+          const firstChunk = includeTagFilter.value.slice(0, 10);
+          baseQuery = baseQuery.where('workspaceTags', 'array-contains-any', firstChunk);
+        } else if (includeTagFilter.operator === 'all_of') {
+          // AND: use array-contains for first tag, JS-filter remaining (Tier 2)
+          baseQuery = baseQuery.where('workspaceTags', 'array-contains', includeTagFilter.value[0]);
+        }
+      }
+
+      // ── Execute query (Uncapped to get accurate count) ────────────────────────
+      const snap = await baseQuery.get();
+
+      results = snap.docs.map(d => ({
+        id: d.data().entityId || d.id,
+        name: d.data().displayName || d.data().name || '',
+        tags: d.data().workspaceTags || [],
+        data: d.data(),
+      }));
+    }
 
     // ── Tier 2: JS-filter for conditions Firestore can't handle ───────────
-    if (params.groups && Array.isArray(params.groups) && params.groups.length > 0) {
+    if (isManualMode) {
+      // Bypassed: manual mode does not use query filters or groups
+    } else if (params.groups && Array.isArray(params.groups) && params.groups.length > 0) {
       const mockNode = { data: { config: { groups: params.groups, relation: params.filterLogic || 'AND' } } };
       const resolveAudienceHelper = async (audienceId: string) => {
         const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
@@ -809,10 +860,25 @@ export async function previewCampaignAudience(params: {
 
     // Calculate contact count accurately based on channel & scope
     let contactCount = 0;
-    const isRoleBased = contactScope !== 'primary' && contactScope !== 'signatories' && contactScope !== 'all';
-    const targetRole = isRoleBased && contactScope.startsWith('role:') ? contactScope.split(':')[1] : contactScope;
-    const contactRolesFilter = filters.find(f => f.field === 'contactRoles');
+    const effectiveContactScope = isManualMode ? 'all' : contactScope;
+    const isRoleBased = !isManualMode && effectiveContactScope !== 'primary' && effectiveContactScope !== 'signatories' && effectiveContactScope !== 'all';
+    const targetRole = isRoleBased && effectiveContactScope.startsWith('role:') ? effectiveContactScope.split(':')[1] : effectiveContactScope;
+    const contactRolesFilter = isManualMode ? null : filters.find(f => f.field === 'contactRoles');
     const contactRoles = contactRolesFilter ? contactRolesFilter.value as string[] : null;
+
+    const isContactSelected = (entityId: string, sc: any, fallbackData: any) => {
+      if (!isManualMode) return true;
+      return selectedContacts.some(sel => {
+        if (sel.entityId !== entityId) return false;
+        if (channel === 'email') {
+          const email = sc ? sc.email : (fallbackData.email || fallbackData.primaryEmail || fallbackData.primaryContactEmail);
+          return email && sel.email && email.toLowerCase() === sel.email.toLowerCase();
+        } else {
+          const phone = sc ? sc.phone : (fallbackData.phone || fallbackData.primaryPhone || fallbackData.primaryContactPhone);
+          return phone && sel.phone && phone === sel.phone;
+        }
+      });
+    };
 
     results.forEach(c => {
       const sourceContacts = c.data.entityContacts || c.data.contacts || [];
@@ -834,31 +900,166 @@ export async function previewCampaignAudience(params: {
             return sc.typeKey === cleanRole;
           });
         });
-        contactCount += matched.filter((sc: any) => isValidForChannel(sc, c.data)).length;
+        contactCount += matched.filter((sc: any) => isValidForChannel(sc, c.data) && isContactSelected(c.id, sc, c.data)).length;
       } else if (isRoleBased) {
         // Only count contacts that have the specific role and valid channel data
-        contactCount += sourceContacts.filter((sc: any) => sc.typeKey === targetRole && isValidForChannel(sc, c.data)).length;
-      } else if (contactScope === 'primary') {
+        contactCount += sourceContacts.filter((sc: any) => sc.typeKey === targetRole && isValidForChannel(sc, c.data) && isContactSelected(c.id, sc, c.data)).length;
+      } else if (effectiveContactScope === 'primary') {
         const primary = sourceContacts.find((sc: any) => sc.isPrimary) || sourceContacts[0];
         if (primary) {
-          if (isValidForChannel(primary, c.data)) contactCount++;
+          if (isValidForChannel(primary, c.data) && isContactSelected(c.id, primary, c.data)) contactCount++;
         } else {
           // Fallback to entity direct fields if no nested contacts exist
-          if (isValidForChannel(null, c.data)) contactCount++;
+          if (isValidForChannel(null, c.data) && isContactSelected(c.id, null, c.data)) contactCount++;
         }
-      } else if (contactScope === 'signatories') {
-        contactCount += sourceContacts.filter((sc: any) => sc.isSignatory && isValidForChannel(sc, c.data)).length;
+      } else if (effectiveContactScope === 'signatories') {
+        contactCount += sourceContacts.filter((sc: any) => sc.isSignatory && isValidForChannel(sc, c.data) && isContactSelected(c.id, sc, c.data)).length;
       } else { // 'all'
         if (sourceContacts.length > 0) {
-          contactCount += sourceContacts.filter((sc: any) => isValidForChannel(sc, c.data)).length;
+          contactCount += sourceContacts.filter((sc: any) => isValidForChannel(sc, c.data) && isContactSelected(c.id, sc, c.data)).length;
         } else {
           // Fallback to entity direct fields
-          if (isValidForChannel(null, c.data)) contactCount++;
+          if (isValidForChannel(null, c.data) && isContactSelected(c.id, null, c.data)) contactCount++;
         }
       }
     });
 
-    return { success: true, count: results.length, contactCount, preview, tagDistribution };
+    // Fetch the actual entities documents for the previewed items to get fresh canonical contacts
+    const previewEntities = results.slice(0, previewLimit);
+    const previewEntityIds = previewEntities.map(pe => pe.id);
+
+    const freshEntitiesMap = new Map<string, any>();
+    if (previewEntityIds.length > 0) {
+      const entitiesColl = adminDb.collection('entities');
+      if (entitiesColl && typeof entitiesColl.where === 'function') {
+        const entitiesSnap = await entitiesColl
+          .where('__name__', 'in', previewEntityIds)
+          .get();
+        entitiesSnap.docs.forEach(doc => {
+          freshEntitiesMap.set(doc.id, doc.data());
+        });
+      }
+    }
+
+    // Build contactsPreview (max 10 contacts to preview)
+    const contactsPreview: {
+      id: string;
+      name: string;
+      email?: string;
+      phone?: string;
+      contactVal: string;
+      verified?: boolean;
+      verificationStatus?: string;
+      entityName: string;
+    }[] = [];
+
+    for (const c of results) {
+      if (contactsPreview.length >= previewLimit) break;
+      
+      const freshEntityData = freshEntitiesMap.get(c.id);
+      const fallbackData = freshEntityData || c.data;
+      const sourceContacts = freshEntityData?.entityContacts || freshEntityData?.contacts || c.data.entityContacts || c.data.contacts || [];
+
+      const isValidForChannel = (sc: any, fallbackData: any) => {
+        if (!channel) return true;
+        if (channel === 'email') return !!sc?.email || (!sc && (!!fallbackData?.email || !!fallbackData?.primaryEmail || !!fallbackData?.primaryContactEmail));
+        if (channel === 'sms') return !!sc?.phone || (!sc && (!!fallbackData?.phone || !!fallbackData?.primaryPhone || !!fallbackData?.primaryContactPhone));
+        return false;
+      };
+
+      let matched: any[] = [];
+      if (contactRoles && contactRoles.length > 0) {
+        matched = sourceContacts.filter((sc: any) => {
+          return contactRoles.some((role: string) => {
+            if (role === 'primary') return !!sc.isPrimary;
+            if (role === 'signatories' || role === 'signatory') return !!sc.isSignatory;
+            const cleanRole = role.startsWith('role:') ? role.substring(5) : role;
+            return sc.typeKey === cleanRole;
+          });
+        }).filter((sc: any) => isValidForChannel(sc, fallbackData));
+      } else if (isRoleBased) {
+        matched = sourceContacts.filter((sc: any) => sc.typeKey === targetRole && isValidForChannel(sc, fallbackData));
+      } else if (effectiveContactScope === 'primary') {
+        const primary = sourceContacts.find((sc: any) => sc.isPrimary) || sourceContacts[0];
+        if (primary) {
+          if (isValidForChannel(primary, fallbackData)) matched = [primary];
+        } else {
+          if (isValidForChannel(null, fallbackData)) {
+            matched = [{
+              id: 'primary-fallback-' + c.id,
+              name: fallbackData.primaryContactName || fallbackData.name || c.name,
+              email: fallbackData.email || fallbackData.primaryEmail || fallbackData.primaryContactEmail || '',
+              phone: fallbackData.phone || fallbackData.primaryPhone || fallbackData.primaryContactPhone || '',
+              isPrimary: true,
+              typeKey: 'primary',
+            }];
+          }
+        }
+      } else if (effectiveContactScope === 'signatories') {
+        matched = sourceContacts.filter((sc: any) => sc.isSignatory && isValidForChannel(sc, fallbackData));
+      } else { // 'all'
+        if (sourceContacts.length > 0) {
+          matched = sourceContacts.filter((sc: any) => isValidForChannel(sc, fallbackData));
+        } else {
+          if (isValidForChannel(null, fallbackData)) {
+            matched = [{
+              id: 'primary-fallback-' + c.id,
+              name: fallbackData.primaryContactName || fallbackData.name || c.name,
+              email: fallbackData.email || fallbackData.primaryEmail || fallbackData.primaryContactEmail || '',
+              phone: fallbackData.phone || fallbackData.primaryPhone || fallbackData.primaryContactPhone || '',
+              isPrimary: true,
+              typeKey: 'primary',
+            }];
+          }
+        }
+      }
+
+      for (const sc of matched) {
+        if (contactsPreview.length >= previewLimit) break;
+        if (!isContactSelected(c.id, sc.id?.startsWith('primary-fallback') ? null : sc, fallbackData)) continue;
+
+        const email = sc.email || (sc.id?.startsWith('primary-fallback') ? fallbackData.email || fallbackData.primaryEmail || fallbackData.primaryContactEmail : '') || '';
+        const phone = sc.phone || (sc.id?.startsWith('primary-fallback') ? fallbackData.phone || fallbackData.primaryPhone || fallbackData.primaryContactPhone : '') || '';
+        const contactVal = channel === 'email' ? email : phone;
+
+        contactsPreview.push({
+          id: sc.id || Math.random().toString(),
+          name: sc.name || fallbackData.name || c.name,
+          email,
+          phone,
+          contactVal,
+          verificationStatus: 'unchecked',
+          entityName: fallbackData.name || c.name
+        });
+      }
+    }
+
+    if (channel === 'email' && contactsPreview.length > 0) {
+      const emailHashes = contactsPreview
+        .map(cp => cp.email ? Buffer.from(cp.email.toLowerCase()).toString('base64') : '')
+        .filter(Boolean);
+
+      if (emailHashes.length > 0) {
+        const hashToStatus = new Map<string, string>();
+        for (let i = 0; i < emailHashes.length; i += 10) {
+          const chunk = emailHashes.slice(i, i + 10);
+          const cacheSnap = await adminDb.collection('verification_cache').where('__name__', 'in', chunk).get();
+          cacheSnap.docs.forEach(doc => {
+            hashToStatus.set(doc.id, doc.data()?.status || 'unchecked');
+          });
+        }
+
+        contactsPreview.forEach(cp => {
+          if (cp.email) {
+            const hash = Buffer.from(cp.email.toLowerCase()).toString('base64');
+            cp.verificationStatus = hashToStatus.get(hash) || 'unchecked';
+            cp.verified = cp.verificationStatus === 'verified' || cp.verificationStatus === 'likely_valid';
+          }
+        });
+      }
+    }
+
+    return { success: true, count: results.length, contactCount, preview, tagDistribution, contactsPreview };
   } catch (error: any) {
     console.error('previewCampaignAudience error:', error.message);
     return { success: false, error: error.message };

@@ -243,6 +243,22 @@ export default function PortalsClient() {
                     themeColor="#3B5FFF"
                     onCopy={handleCopy}
                   />
+                  <PortalCard
+                    kind="custom"
+                    title="/collect-fees-within-four-weeks"
+                    path="/collect-fees-within-four-weeks"
+                    pageKey="/collect-fees-within-four-weeks"
+                    themeColor="#5f30e2"
+                    onCopy={handleCopy}
+                  />
+                  <PortalCard
+                    kind="custom"
+                    title="Demo Thank You"
+                    path="/thank-you"
+                    pageKey="/thank-you"
+                    themeColor="#10b981"
+                    onCopy={handleCopy}
+                  />
                   {activeWorkspaceId === 'onboarding' && (
                     <>
                       <PortalCard kind="custom" title="Campaign Landing"    path="/campaign/school-comparison"            pageKey="/campaign/school-comparison"            themeColor="#6366f1" onCopy={handleCopy} />

@@ -108,8 +108,8 @@ const GenerateSurveyInputSchema = z.object({
   sourceType: z.enum(['text', 'url']),
   content: z.string(),
   organizationId: z.string().optional(),
-  provider: z.string().optional().default('googleai'),
-  modelId: z.string().optional().default('gemini-3-flash-preview'),
+  provider: z.string().optional().default('anthropic'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 export type GenerateSurveyInput = z.infer<typeof GenerateSurveyInputSchema>;
 
@@ -236,8 +236,8 @@ const generateSurveyFlow = ai.defineFlow(
         // --- Native Genkit Path for Gemini and OpenAI ---
         const resolvedModel = await getModel({
             organizationId: input.organizationId,
-            provider: input.provider || 'googleai',
-            modelId: input.modelId || 'gemini-3-flash-preview',
+            provider: input.provider || 'anthropic',
+            modelId: input.modelId || 'claude-3-5-sonnet',
         });
 
         const generatorAi = resolvedModel.customAi || ai;

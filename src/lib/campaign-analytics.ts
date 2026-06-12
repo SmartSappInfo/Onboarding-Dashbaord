@@ -248,3 +248,28 @@ export async function getCampaignEngagementTimeline(campaignId: string): Promise
     return { success: false, error: error.message };
   }
 }
+
+export async function updateCampaignUnsubscribeStat(campaignId: string, variantId: 'A' | 'B'): Promise<void> {
+  const { FieldValue } = await import('./firebase-admin');
+  await adminDb.collection('message_campaigns').doc(campaignId).update({
+    'stats.totalUnsubscribed': FieldValue.increment(1)
+  });
+  
+  await adminDb.runTransaction(async (transaction) => {
+    const docRef = adminDb.collection('message_campaigns').doc(campaignId);
+    const snap = await transaction.get(docRef);
+    if (!snap.exists) return;
+    const data = snap.data() as MessageCampaign;
+    const variants = data.variants || [];
+    const updatedVariants = variants.map(v => {
+      if (v.id === variantId) {
+        return {
+          ...v,
+          stats: { ...v.stats, totalUnsubscribed: (v.stats.totalUnsubscribed || 0) + 1 }
+        };
+      }
+      return v;
+    });
+    transaction.update(docRef, { variants: updatedVariants });
+  });
+}

@@ -49,8 +49,8 @@ type ModuleOption = Pick<Module, 'id' | 'name' | 'abbreviation' | 'color'>;
 
 const formSchema = z.object({
   text: z.string().min(50, { message: 'Please provide at least 50 characters of descriptive text.' }),
-  provider: z.string().default('googleai'),
-  modelId: z.string().default('gemini-3-flash-preview'),
+  provider: z.string().default('anthropic'),
+  modelId: z.string().default('claude-3-5-sonnet'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -73,8 +73,8 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
     resolver: zodResolver(formSchema),
     defaultValues: { 
         text: '',
-        provider: 'googleai',
-        modelId: 'gemini-3-flash-preview'
+        provider: 'anthropic',
+        modelId: 'claude-3-5-sonnet'
     },
   });
 
@@ -95,11 +95,17 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
       getDoc(userDoc).then((docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.preferredAiProvider) {
-            form.setValue('provider', data.preferredAiProvider);
+          let provider = data.preferredAiProvider;
+          let modelId = data.preferredAiModel;
+          if (provider === 'openai') {
+            provider = 'anthropic';
+            modelId = 'claude-3-5-sonnet';
           }
-          if (data.preferredAiModel) {
-            form.setValue('modelId', data.preferredAiModel);
+          if (provider) {
+            form.setValue('provider', provider);
+          }
+          if (modelId) {
+            form.setValue('modelId', modelId);
           }
         }
       });
@@ -114,7 +120,7 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
 
     return AI_PROVIDERS.filter(provider => {
         if (provider.id === 'googleai') return !!activeOrganization.geminiApiKey;
-        if (provider.id === 'openai') return !!activeOrganization.openaiApiKey;
+        if (provider.id === 'anthropic') return !!activeOrganization.claudeApiKey;
         if (provider.id === 'openrouter') return !!activeOrganization.openRouterApiKey;
         return false;
     });

@@ -337,6 +337,61 @@ export async function processImportChunkBackground(importLogId: string): Promise
     // Fetch resolution context once per chunk (zones, tags, users, etc.)
     const context = await getResolutionContext(importLog.workspaceId);
 
+    // Resolve assignment strategy and users
+    const dealConfig = isDealImportConfig(cfg.dealConfig) ? cfg.dealConfig : null;
+    let isAutoAssign = false;
+    let activeStrategy: 'direct' | 'unassigned' | 'round-robin' | 'value-based' = 'direct';
+    let activeEligibleUserIds: string[] = [];
+    const userProfiles: Record<string, { name: string; email: string }> = {};
+    const userStats: Record<string, number> = {};
+
+    if (dealConfig) {
+        try {
+            const pipelineSnap = await adminDb.collection('pipelines').doc(dealConfig.pipelineId).get();
+            if (pipelineSnap.exists) {
+                const pipeline = pipelineSnap.data() as any;
+                const assignmentStrategy = dealConfig.assignmentStrategy || 'pipeline';
+                activeStrategy = assignmentStrategy === 'pipeline'
+                  ? (pipeline.assignmentStrategy || 'direct')
+                  : assignmentStrategy as any;
+                
+                activeEligibleUserIds = pipeline.assignmentUserIds || [];
+                isAutoAssign = (activeStrategy === 'round-robin' || activeStrategy === 'value-based') && activeEligibleUserIds.length > 0;
+                
+                if (isAutoAssign) {
+                    // Fetch user profiles
+                    const userRefs = activeEligibleUserIds.map(uid => adminDb.collection('users').doc(uid));
+                    const userSnaps = await adminDb.getAll(...userRefs);
+                    userSnaps.forEach(snap => {
+                        if (snap.exists) {
+                            const u = snap.data();
+                            userProfiles[snap.id] = { name: u?.name || 'Assigned User', email: u?.email || '' };
+                        } else {
+                            userProfiles[snap.id] = { name: 'Assigned User', email: '' };
+                        }
+                    });
+
+                    // Fetch initial user deal stats
+                    for (const uid of activeEligibleUserIds) {
+                        const snap = await adminDb.collection('deals')
+                            .where('assignedTo.userId', '==', uid)
+                            .where('status', '==', 'open')
+                            .get();
+                        if (activeStrategy === 'round-robin') {
+                            userStats[uid] = snap.size;
+                        } else {
+                            let totalVal = 0;
+                            snap.forEach(d => totalVal += (d.data().value || 0));
+                            userStats[uid] = totalVal;
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[BULK-BG] Failed to resolve pipeline assignment strategy:', err);
+        }
+    }
+
     // Resolve restricted status for uploading user
     let isRestricted = false;
     let uploaderUser: any = null;
@@ -469,8 +524,34 @@ export async function processImportChunkBackground(importLogId: string): Promise
                         const stage = context.stages.find(s => s.id === dealConfig.stageId);
                         const dealId = adminDb.collection('deals').doc().id;
                         
-                        // Inherit assignee from entity if mapped, otherwise null (Open Q1)
-                        const assignedTo = extracted.workspaceEntityDoc.assignedTo || null;
+                        let assignedTo = null;
+                        if (isAutoAssign) {
+                            // Find eligible user with lowest metric
+                            let minVal = Infinity;
+                            let selectedUid = activeEligibleUserIds[0];
+                            for (const uid of activeEligibleUserIds) {
+                                const val = userStats[uid] ?? 0;
+                                if (val < minVal) {
+                                    minVal = val;
+                                    selectedUid = uid;
+                                }
+                            }
+                            // Update stats in memory for next loop iteration
+                            if (activeStrategy === 'round-robin') {
+                                userStats[selectedUid] = (userStats[selectedUid] ?? 0) + 1;
+                            } else {
+                                userStats[selectedUid] = (userStats[selectedUid] ?? 0) + (dealConfig.value || 0);
+                            }
+                            assignedTo = {
+                                userId: selectedUid,
+                                name: userProfiles[selectedUid]?.name || 'Assigned User',
+                                email: userProfiles[selectedUid]?.email || '',
+                            };
+                        } else if (activeStrategy === 'direct') {
+                            assignedTo = extracted.workspaceEntityDoc.assignedTo || null;
+                        } else if (activeStrategy === 'unassigned') {
+                            assignedTo = null;
+                        }
 
                         const dealDoc = buildDealDocument({
                             entityId: extracted.entityId,

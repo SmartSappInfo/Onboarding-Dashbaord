@@ -17,10 +17,28 @@ export async function isSuppressed(params: {
       .where('workspaceId', 'in', [workspaceId, 'global'])
       .where('channel', 'in', [channel, 'all'])
       .where('status', '==', 'active')
-      .limit(1)
       .get();
 
-    return !suppressionSnap.empty;
+    if (suppressionSnap.empty) return false;
+
+    // Check if any suppression is unexpired
+    for (const doc of suppressionSnap.docs) {
+      const data = doc.data();
+      if (data.reason === 'snoozed' && data.snoozedUntil) {
+        const hasExpired = new Date() > new Date(data.snoozedUntil);
+        if (hasExpired) {
+          // Self-heal: delete the expired snooze record asynchronously
+          doc.ref.delete().catch(err => {
+            console.error('[SUPPRESSION] Failed to delete expired snooze document:', err);
+          });
+          continue; // Check remaining suppression documents
+        }
+      }
+      // If we find any active suppression that is not an expired snooze, they are suppressed.
+      return true;
+    }
+
+    return false;
   } catch (error) {
     console.error('[SUPPRESSION] Check failed:', error);
     return false; // Fail open to ensure delivery unless explicitly blocked
@@ -36,8 +54,9 @@ export async function suppressRecipient(params: {
   channel: 'email' | 'sms' | 'all';
   reason?: string;
   entityId?: string;
+  snoozedUntil?: string;
 }) {
-  const { recipient, workspaceId, channel, reason, entityId } = params;
+  const { recipient, workspaceId, channel, reason, entityId, snoozedUntil } = params;
   
   const suppressionData = {
     recipient,
@@ -45,6 +64,7 @@ export async function suppressRecipient(params: {
     channel,
     reason: reason || 'unsubscribed',
     entityId: entityId || null,
+    snoozedUntil: snoozedUntil || null,
     status: 'active',
     createdAt: new Date().toISOString(),
   };

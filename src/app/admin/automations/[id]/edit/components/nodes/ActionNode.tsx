@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, Smartphone, Plus } from 'lucide-react';
+import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, Smartphone, Plus, Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,7 @@ const ACTION_NAMES: Record<string, string> = {
     UPDATE_DEAL_VALUE: 'Update Deal Value',
     UPDATE_DEAL_STATUS: 'Update Deal Status',
     UPDATE_TASK: 'Update Task',
+    UPDATE_LEAD_SCORE: 'Adjust Lead Score',
 };
 
 export function ActionNode({ id, data, selected }: any) {
@@ -49,6 +50,7 @@ export function ActionNode({ id, data, selected }: any) {
             case 'SEND_NOTIFICATION_SMS': return Smartphone;
             case 'SEND_NOTIFICATION_IN_APP': return Bell;
             case 'SEND_NOTIFICATION_PUSH': return Smartphone;
+            case 'UPDATE_LEAD_SCORE': return Sparkles;
             default: return Play;
         }
     };
@@ -73,6 +75,7 @@ export function ActionNode({ id, data, selected }: any) {
         if (actionType === 'UPDATE_DEAL_STAGE') return 'Deal Stage';
         if (actionType === 'UPDATE_DEAL_VALUE') return 'Deal Value';
         if (actionType === 'UPDATE_DEAL_STATUS') return 'Deal Status';
+        if (actionType === 'UPDATE_LEAD_SCORE') return 'Lead Score';
         return 'Details';
     };
 
@@ -153,6 +156,10 @@ export function ActionNode({ id, data, selected }: any) {
                 return `Update deal status to "${config.status || 'Status'}"`;
             case 'UPDATE_TASK':
                 return `Update task status`;
+            case 'UPDATE_LEAD_SCORE': {
+                const op = config.operation === 'subtract' ? '-' : config.operation === 'set' ? '=' : '+';
+                return `Adjust Score: ${op}${config.value !== undefined ? config.value : 0}`;
+            }
             default:
                 return actionType.replace(/_/g, ' ');
         }
