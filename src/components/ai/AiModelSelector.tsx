@@ -190,21 +190,14 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
                         <div className={cn("p-1.5 rounded-lg transition-colors shrink-0", currentProvider.bgColor)}>
                             <currentProvider.icon className={cn("h-4 w-4", currentProvider.color)} />
                         </div>
-                        <div className="flex flex-col items-start min-w-0">
+                        <div className="flex items-center min-w-0">
                             {(() => {
                                 const allModels = availableProviders.flatMap(p => p.models);
                                 const found = allModels.find(m => m.id === selectedModel);
                                 return (
-                                    <>
-                                        <span className="text-sm font-bold text-foreground leading-tight truncate">
-                                            {found?.name || 'Select Model'}
-                                        </span>
-                                        {found?.description && (
-                                            <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
-                                                {found.description}
-                                            </span>
-                                        )}
-                                    </>
+                                    <span className="text-sm font-bold text-foreground truncate">
+                                        {found?.name || 'Select Model'}
+                                    </span>
                                 );
                             })()}
                         </div>
@@ -224,12 +217,9 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
                                 <SelectItem 
                                     key={model.id} 
                                     value={model.id}
-                                    className="rounded-xl py-3 px-3 focus:bg-primary/5 cursor-pointer"
+                                    className="rounded-xl py-2 px-3 focus:bg-primary/5 cursor-pointer"
                                 >
-                                    <div className="flex flex-col gap-0.5">
-                                        <span className="font-bold text-sm tracking-tight">{model.name}</span>
-                                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{model.description}</span>
-                                    </div>
+                                    <span className="font-bold text-sm tracking-tight">{model.name}</span>
                                 </SelectItem>
                             ))}
                         </SelectGroup>

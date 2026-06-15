@@ -38,27 +38,32 @@ export function GlobalFilterProvider({ children }: { children: React.ReactNode }
 
   // 1. Initialize state once from URL, sessionStorage, or user default.
   React.useEffect(() => {
-    if (isUserLoading || isInitialized) {
+    // Wait for tenant data so we know whether visibility is restricted before
+    // choosing a default filter (otherwise we'd default to the current user even
+    // when the workspace is configured to show all entities).
+    if (isUserLoading || isTenantLoading || isInitialized) {
       return;
     }
 
     const urlParam = searchParams.get('assignedTo');
     const storedValue = sessionStorage.getItem(STORAGE_KEY);
-    
+
     let initialValue: string | null = null;
 
-    // The order of priority for the initial value is: URL > sessionStorage > logged-in user
+    // The order of priority for the initial value is: URL > sessionStorage > default.
+    // When the workspace restricts visibility to assigned entities, default to the
+    // logged-in user. Otherwise ("All Entities" scope), default to showing all.
     if (urlParam) {
       initialValue = urlParam === 'all' ? null : urlParam;
     } else if (storedValue) {
       initialValue = storedValue === 'all' ? null : storedValue;
-    } else if (user) {
+    } else if (isRestricted && user) {
       initialValue = user.uid;
     }
 
     setAssignedUserIdState(initialValue);
     setIsInitialized(true); // Mark as initialized to prevent this from running again.
-  }, [isUserLoading, user, searchParams, isInitialized]);
+  }, [isUserLoading, isTenantLoading, isRestricted, user, searchParams, isInitialized]);
   
 
   // 2. This function is exposed to the app to change the filter.

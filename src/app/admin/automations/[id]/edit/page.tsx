@@ -18,6 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { saveAutomationAction, testAutomationFlowAction, toggleAutomationStatusAction, restoreAutomationAction } from '@/lib/automation-actions';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
+import { useAutomationAutosave } from '../../hooks/useAutomationAutosave';
+import { clearAutomationBackup } from '@/lib/automation-storage';
 import {
   Dialog,
   DialogContent,
@@ -123,6 +125,24 @@ export default function EditAutomationPage() {
     return nameChanged || descChanged || nodesChanged || edgesChanged || triggersChanged;
   }, [automation, currentData]);
 
+  const {
+    showRestoreDialog,
+    setShowRestoreDialog,
+    backupData,
+    builderKey,
+    handleRestore,
+    handleDiscard
+  } = useAutomationAutosave(automationId, currentData, automation || undefined, isDirty);
+
+  const handleRestoreBackup = React.useCallback(() => {
+    handleRestore((restored) => {
+      setCurrentData((prev) => ({
+        ...prev,
+        ...restored,
+      }));
+    });
+  }, [handleRestore]);
+
   const testWorkspaceId =
     automation?.workspaceIds?.[0] || activeWorkspaceId || '';
 
@@ -191,6 +211,7 @@ export default function EditAutomationPage() {
         title: isNew ? 'Automation Created' : 'Automation Saved', 
         description: isNew ? 'Blueprint created successfully.' : 'Blueprint updated successfully.' 
       });
+      clearAutomationBackup(automationId);
       if (isNew && res.id) {
         unregisterUnsavedChanges('automation-builder');
         router.push(`/admin/automations/${res.id}/edit`);
@@ -452,8 +473,9 @@ export default function EditAutomationPage() {
 
       <div className="flex-1 relative overflow-hidden">
         <AutomationBuilder
-          initialNodes={automation.nodes}
-          initialEdges={automation.edges}
+          key={builderKey}
+          initialNodes={currentData.nodes ?? automation.nodes}
+          initialEdges={currentData.edges ?? automation.edges}
           triggers={activeTriggers}
           onStateChange={handleStateChange}
           onTriggersChange={handleTriggersChange}
@@ -585,6 +607,67 @@ export default function EditAutomationPage() {
             >
               {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               Run test
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recovery Dialog */}
+      <Dialog
+        open={showRestoreDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowRestoreDialog(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md rounded-3xl border border-border/20 shadow-2xl bg-card/90 backdrop-blur-md p-6 animate-in fade-in zoom-in-95 duration-200">
+          <DialogHeader>
+            <DialogTitle className="text-foreground text-lg font-bold flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+              Unsaved Changes Detected
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground text-xs leading-relaxed pt-2">
+              We found a local backup of this workflow with unsaved changes. This typically happens if the browser closed unexpectedly.
+            </DialogDescription>
+          </DialogHeader>
+
+          {backupData && (
+            <div className="my-4 p-4 rounded-2xl bg-muted/40 border border-border/50 space-y-2 text-xs">
+              <div className="flex justify-between items-center text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                <span>Backup Created</span>
+                <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full">
+                  Unsaved Draft
+                </span>
+              </div>
+              <div className="font-semibold text-foreground text-sm">
+                {new Date(backupData.timestamp).toLocaleString()}
+              </div>
+              <div className="text-[11px] text-muted-foreground line-clamp-2">
+                <span className="font-semibold text-foreground">Name:</span> {backupData.name}
+                {backupData.description && (
+                  <>
+                    <br />
+                    <span className="font-semibold text-foreground">Desc:</span> {backupData.description}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="ghost"
+              onClick={handleDiscard}
+              className="rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive text-xs transition-all duration-200"
+            >
+              Discard Backup
+            </Button>
+            <Button
+              onClick={handleRestoreBackup}
+              className="rounded-xl font-semibold shadow-lg shadow-primary/20 bg-primary text-primary-foreground hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 text-xs gap-2"
+            >
+              Restore Backup
             </Button>
           </DialogFooter>
         </DialogContent>

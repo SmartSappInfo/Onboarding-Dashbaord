@@ -16,3 +16,11 @@ export const GlobalAiKeysSchema = z.object({
 });
 
 export type GlobalAiKeys = z.infer<typeof GlobalAiKeysSchema>;
+
+export const GlobalAiConfigSchema = z.object({
+  defaultProvider: z.enum(['googleai', 'anthropic', 'openrouter']),
+  defaultModelId: z.string().trim().min(1, 'Model ID is required'),
+});
+
+export type GlobalAiConfig = z.infer<typeof GlobalAiConfigSchema>;
+

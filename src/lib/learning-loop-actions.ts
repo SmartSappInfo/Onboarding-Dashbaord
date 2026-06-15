@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { after } from 'next/server';
 import type { LearningSignal } from './types';
+import { calculateJsonDiff } from './json-diff';
 
 /**
  * Creates a new learning signal record when AI generates content.
@@ -52,8 +53,10 @@ export async function finalizeLearningSignalAction(signalId: string, finalData: 
 
                 const initialData = signalSnap.data()?.initialState;
                 
-                // Future: Calculate edit distance/delta here
-                const editDistance = calculateEditDistance(initialData, finalData);
+                // Calculate structured JSON diff edit distance
+                const diffResult = calculateJsonDiff(initialData, finalData);
+                const editDistance = diffResult.editDistance;
+                const corrections = diffResult.corrections;
 
                 await signalRef.update({
                     finalState: finalData,
@@ -62,7 +65,8 @@ export async function finalizeLearningSignalAction(signalId: string, finalData: 
                     isPublished: true,
                     publishedAt: now,
                     updatedAt: now,
-                    editDistance
+                    editDistance,
+                    corrections
                 });
             } catch (bgError) {
                 console.error('Background Learning Signal Update Failed:', bgError);
@@ -125,19 +129,7 @@ export async function deleteLearningSignalsBySurveyAction(surveyId: string) {
     }
 }
 
-/**
- * Basic heuristic to calculate delta between initial and final states.
- * This is a placeholder for a more advanced diffing algorithm.
- */
-function calculateEditDistance(initial: any, final: any): number {
-    const s1 = JSON.stringify(initial);
-    const s2 = JSON.stringify(final);
-    if (s1 === s2) return 0;
-    
-    // Simple ratio of length difference vs content difference
-    // This will be replaced by a proper semantic diff later
-    return Math.abs(s1.length - s2.length) / Math.max(s1.length, s2.length);
-}
+
 
 /**
  * Retrieves past "Gold Standard" examples for a specific organization.

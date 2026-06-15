@@ -26,7 +26,7 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Layout, Camera, AlertTriangle, Share2, Globe, Hash, Network, Phone as PhoneIcon, Sparkles } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Layout, Camera, AlertTriangle, Share2, Globe, Hash, Network, Phone as PhoneIcon, Sparkles, Database, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import dynamic from 'next/dynamic';
@@ -50,6 +50,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { ModuleSelect } from '../components/ModuleSelect';
@@ -184,6 +185,7 @@ export default function NewEntityPage() {
   const [isAiOpen, setIsAiOpen] = React.useState(false);
   const [pendingAiData, setPendingAiData] = React.useState<any>(null);
   const [isOverwriteAlertOpen, setIsOverwriteAlertOpen] = React.useState(false);
+  const [isCustomVarsOpen, setIsCustomVarsOpen] = React.useState(false);
 
   const zonesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -1188,6 +1190,45 @@ export default function NewEntityPage() {
                         )} /> 
 
                     </CardContent>
+                </Card>
+
+                {/* Custom Variables informational panel */}
+                <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
+                  <CardHeader
+                    className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left cursor-pointer select-none"
+                    onClick={() => setIsCustomVarsOpen(prev => !prev)}
+                  >
+                    <div className="flex items-center justify-between text-left">
+                      <div className="flex items-center gap-2">
+                        <Database className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-sm font-semibold tracking-tight">Custom Variables for Messaging</CardTitle>
+                      </div>
+                      <ChevronDown className={cn('h-4 w-4 text-muted-foreground/60 transition-transform duration-200', isCustomVarsOpen && 'rotate-180')} />
+                    </div>
+                  </CardHeader>
+                  {isCustomVarsOpen && (
+                    <CardContent className="p-6 space-y-3 text-left">
+                      {appFields && appFields.length > 0 ? (
+                        <>
+                          <div className="space-y-2">
+                            {appFields.filter((f: any) => f.status === 'active' && f.variableName).map((field: any) => (
+                              <div key={field.id} className="flex items-center justify-between gap-2 py-1.5 px-3 rounded-xl bg-muted/30 border border-border/30">
+                                <span className="text-[10px] font-medium text-muted-foreground/80 truncate">{field.label}</span>
+                                <Badge variant="secondary" className="text-[8px] font-mono px-2 py-0.5 rounded-lg bg-primary/10 text-primary border-none shrink-0">
+                                  {`{{${field.variableName}}}`}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[8px] text-muted-foreground/50 leading-relaxed mt-2">
+                            These variables are available in messaging templates when sending to this entity.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground/50">No custom variables configured</p>
+                      )}
+                    </CardContent>
+                  )}
                 </Card>
 
                 {/* Deal Opportunity integration card */}

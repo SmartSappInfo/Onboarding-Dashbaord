@@ -80,7 +80,7 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useTerminology } from '@/hooks/use-terminology';
 import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
-import { EmailHygieneHoverCard, EmailHygieneHoverCardContent } from '../components/EmailHygieneHoverCard';
+import { ContactVerificationPanel } from '../components/ContactVerificationPanel';
 import { BulkScanProgress } from '../components/BulkScanProgress';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
@@ -1930,24 +1930,12 @@ function InteractiveContactAvatar({ contact, onManualRecheck }: { contact: any, 
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const [isTooltipOpen, setIsTooltipOpen] = useState(false);
     
-    const firestore = useFirestore();
-    const hashed = useMemo(() => contact.email ? btoa(contact.email.toLowerCase()) : '', [contact.email]);
-    const docRef = useMemoFirebase(() => (firestore && hashed) ? doc(firestore, 'verification_cache', hashed) : null, [firestore, hashed]);
-    const { data: cache } = useDoc<any>(docRef);
-
-    const hygieneData = useMemo(() => cache ? {
-        verificationStatus: cache.status,
-        verificationScore: cache.score,
-        lastVerifiedAt: cache.lastVerifiedAt,
-        verificationDetails: cache.checks
-    } : undefined, [cache]);
-
     return (
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
             <PopoverTrigger asChild>
                 <div onClick={(e) => e.stopPropagation()}>
-                    <Tooltip 
-                        open={isTooltipOpen && !isPopoverOpen} 
+                    <Tooltip
+                        open={isTooltipOpen && !isPopoverOpen}
                         onOpenChange={setIsTooltipOpen}
                         delayDuration={100}
                     >
@@ -1961,7 +1949,7 @@ function InteractiveContactAvatar({ contact, onManualRecheck }: { contact: any, 
                                 {contact.email && <EmailVerificationStatusDot email={contact.email} />}
                             </div>
                         </TooltipTrigger>
-                        
+
                         <TooltipContent className="p-3 text-left z-50">
                             <p className="font-bold text-sm tracking-tight">{contact.name}</p>
                             <Badge variant="outline" className="text-[8px] uppercase tracking-tighter mt-1 mb-2">
@@ -1975,15 +1963,9 @@ function InteractiveContactAvatar({ contact, onManualRecheck }: { contact: any, 
                     </Tooltip>
                 </div>
             </PopoverTrigger>
-            
-            <PopoverContent side="top" className="w-80 p-0 bg-slate-900 border-slate-800 shadow-2xl overflow-hidden z-50 rounded-2xl">
-                {contact.email && (
-                    <EmailHygieneHoverCardContent 
-                        email={contact.email} 
-                        hygiene={hygieneData} 
-                        onManualRecheck={onManualRecheck} 
-                    />
-                )}
+
+            <PopoverContent side="top" className="w-80 p-0 bg-slate-950 border-slate-800 shadow-2xl overflow-hidden z-50 rounded-2xl">
+                <ContactVerificationPanel contact={contact} onRecheckEmail={onManualRecheck} />
             </PopoverContent>
         </Popover>
     );

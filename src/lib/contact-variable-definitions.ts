@@ -135,6 +135,71 @@ export function generateContactVariableDefinitions(
 }
 
 /**
+ * Generates VariableDefinition entries for all entity creation/editing
+ * form fields. These correspond to the fields available in the
+ * entity creation and editing pages, making them all available as
+ * template variables.
+ *
+ * Groups:
+ * - Core Identity (name, initials, slogan, status)
+ * - Location & Geography (zone, country, region, district, locationString)
+ * - Financial & Billing (currency, subscription, arrears, credit, discount)
+ * - Narrative & Context (currentNeeds, currentChallenges, interests)
+ * - Person Fields (firstName, lastName, company, jobTitle, leadSource)
+ * - Online Presence (website, digital address)
+ * - Operational (capacity, leadScore)
+ *
+ * @param entityTerminology  User-facing term for the entity type (e.g. 'Campus', 'Client')
+ */
+export function generateEntityFieldVariables(
+  entityTerminology = 'Entity'
+): VariableDefinition[] {
+  const t = entityTerminology;
+  const src = 'entity_fields';
+  const srcName = `${t} Fields`;
+
+  return [
+    // ── Core Identity ──
+    { id: 'ef_slogan',   key: 'entity_slogan',   label: `${t} Slogan`,   category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'slogan',   type: 'string' },
+    { id: 'ef_status',   key: 'entity_status',   label: `${t} Status`,   category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'status',   type: 'string' },
+
+    // ── Location & Geography ──
+    { id: 'ef_zone',     key: 'entity_zone',     label: `${t} Zone`,     category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'zone.name',              type: 'string' },
+    { id: 'ef_country',  key: 'entity_country',  label: `${t} Country`,  category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'location.country.name',   type: 'string' },
+    { id: 'ef_region',   key: 'entity_region',   label: `${t} Region`,   category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'location.region.name',    type: 'string' },
+    { id: 'ef_district', key: 'entity_district', label: `${t} District`, category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'location.district.name',  type: 'string' },
+
+    // ── Financial & Billing ──
+    { id: 'ef_billing_addr',  key: 'entity_billing_address',  label: `Billing Address`,       category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'billingAddress',      type: 'string' },
+    { id: 'ef_currency',      key: 'entity_currency',         label: `Currency`,              category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'currency',            type: 'string' },
+    { id: 'ef_sub_rate',      key: 'entity_subscription_rate',label: `Subscription Rate`,     category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'subscriptionRate',    type: 'number' },
+    { id: 'ef_discount',      key: 'entity_discount',         label: `Discount Percentage`,   category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'discountPercentage',  type: 'number' },
+    { id: 'ef_arrears',       key: 'entity_arrears',          label: `Arrears Balance`,       category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'arrearsBalance',      type: 'number' },
+    { id: 'ef_credit',        key: 'entity_credit',           label: `Credit Balance`,        category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'creditBalance',       type: 'number' },
+
+    // ── Narrative & Context ──
+    { id: 'ef_needs',       key: 'entity_current_needs',      label: `Current Needs`,       category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'currentNeeds',      type: 'string' },
+    { id: 'ef_challenges',  key: 'entity_current_challenges', label: `Current Challenges`,  category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'currentChallenges', type: 'string' },
+    { id: 'ef_interests',   key: 'entity_interests',          label: `Interests`,           category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'interests',         type: 'string' },
+
+    // ── Person Fields ──
+    { id: 'ef_first_name',  key: 'entity_first_name',   label: `First Name`,    category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'firstName',   type: 'string' },
+    { id: 'ef_last_name',   key: 'entity_last_name',    label: `Last Name`,     category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'lastName',    type: 'string' },
+    { id: 'ef_company',     key: 'entity_company',       label: `Company`,       category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'company',     type: 'string' },
+    { id: 'ef_job_title',   key: 'entity_job_title',     label: `Job Title`,     category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'jobTitle',    type: 'string' },
+    { id: 'ef_lead_source', key: 'entity_lead_source',   label: `Lead Source`,   category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'leadSource',  type: 'string' },
+
+    // ── Online Presence ──
+    { id: 'ef_website',         key: 'entity_website',         label: `Website`,         category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'op_website',        type: 'url' },
+    { id: 'ef_digital_address', key: 'entity_digital_address', label: `Digital Address`, category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'op_digitalAddress', type: 'string' },
+
+    // ── Operational ──
+    { id: 'ef_capacity',    key: 'entity_capacity',    label: `${t} Capacity`,   category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'capacity',   type: 'number' },
+    { id: 'ef_lead_score',  key: 'entity_lead_score',  label: `Lead Score`,      category: 'general', source: src, sourceName: srcName, entity: 'Entity', path: 'leadScore',  type: 'number' },
+  ];
+}
+
+/**
  * Segments contact variable definitions into UI-ready groups for the
  * variable sidebar panels.
  */

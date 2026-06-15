@@ -43,6 +43,9 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainer } from '@/components/ui/page-container';
 import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
+import { useLiveAiModel } from '@/hooks/use-live-ai-model';
+import { createLearningSignalAction, finalizeLearningSignalAction } from '@/lib/learning-loop-actions';
+import { AiAssistantModalHeader } from '@/components/ai/AiAssistantModalHeader';
 import dynamic from 'next/dynamic';
 
 // Heavy, WhatsApp-only management UI — lazy-loaded so it stays out of the main
@@ -68,6 +71,10 @@ export default function MessageTemplatesPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     
+    // Live AI preferences & ULL tracking state
+    const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
+    const [currentSignalId, setCurrentSignalId] = React.useState<string | null>(null);
+
     // Global Navigation State
     const [isAdding, setIsAdding] = React.useState(false);
     const [editingTemplate, setEditingTemplate] = React.useState<MessageTemplate | null>(null);
@@ -346,8 +353,27 @@ export default function MessageTemplatesPage() {
             const result = await generateEmailTemplate({
                 prompt: aiPrompt,
                 channel: 'email',
-                availableVariables: availableKeys
+                availableVariables: availableKeys,
+                organizationId: activeOrganizationId,
+                provider: liveProvider,
+                modelId: liveModelId,
             });
+
+            // ULL Signal Registration
+            const signalResult = await createLearningSignalAction({
+                prompt: aiPrompt,
+                initialState: result,
+                artifactType: 'template',
+                organizationId: activeOrganizationId || 'default',
+                workspaceId: activeWorkspaceId || '',
+                userId: user?.uid || '',
+                modelId: liveModelId,
+                provider: liveProvider,
+            });
+
+            if (signalResult.success && signalResult.id) {
+                setCurrentSignalId(signalResult.id);
+            }
 
             const draftTemplate: any = {
                 name: result.name,
@@ -417,6 +443,13 @@ export default function MessageTemplatesPage() {
                     createdAt: new Date().toISOString() 
                 });
             }
+
+            // ULL Signal Finalization
+            if (currentSignalId) {
+                await finalizeLearningSignalAction(currentSignalId, sanitizedData, []);
+                setCurrentSignalId(null);
+            }
+
             invalidateAllTemplatesCache();
             toast({ title: 'Template Saved' });
             setIsAdding(false);
@@ -548,21 +581,15 @@ export default function MessageTemplatesPage() {
             </AnimatePresence>
 
             <Dialog open={isAiModalOpen} onOpenChange={setIsAiModalOpen}>
- <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
- <DialogHeader className="p-8 bg-primary/5 border-b border-primary/10 shrink-0">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
- <Wand2 className="h-6 w-6" />
-                            </div>
-                            <div>
- <DialogTitle className="text-2xl font-semibold tracking-tight">AI Template Generator</DialogTitle>
- <DialogDescription className="text-xs font-bold text-primary/60">Create a template using AI.</DialogDescription>
-                            </div>
-                        </div>
-                    </DialogHeader>
- <div className="p-8 space-y-6">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Describe Your Message</Label>
+                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-6 overflow-hidden border-none shadow-2xl bg-card">
+                    <AiAssistantModalHeader 
+                        title="AI Template Generator" 
+                        description="Describe your message and the AI will draft a complete template with dynamic tags." 
+                        onClose={() => setIsAiModalOpen(false)} 
+                    />
+                    <div className="space-y-6 mt-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Describe Your Message</Label>
                             <Textarea 
                                 value={aiPrompt} 
                                 onChange={e => setAiPrompt(e.target.value)} 

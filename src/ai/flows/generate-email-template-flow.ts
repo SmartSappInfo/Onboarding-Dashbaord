@@ -4,7 +4,7 @@
  * Upgraded to detect institutional context and map technical tags from the registry.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const BlockSchema = z.object({
@@ -26,6 +26,9 @@ const GenerateEmailTemplateInputSchema = z.object({
   prompt: z.string().describe('Instructions or description of what the email should convey.'),
   channel: z.enum(['email', 'sms']).describe('The communication channel.'),
   availableVariables: z.array(z.string()).optional().describe('A list of dynamic variables available for this specific context.'),
+  organizationId: z.string().optional().describe('The organization ID for API key resolution.'),
+  provider: z.string().optional().default('anthropic').describe('The AI provider to use.'),
+  modelId: z.string().optional().default('claude-3-5-sonnet').describe('The model ID to use.'),
 });
 export type GenerateEmailTemplateInput = z.infer<typeof GenerateEmailTemplateInputSchema>;
 
@@ -87,7 +90,23 @@ const generateEmailTemplateFlow = ai.defineFlow(
     outputSchema: GenerateEmailTemplateOutputSchema,
   },
   async (input) => {
-    const { output } = await templatePrompt(input);
+    const { organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
+
+    // Resolve dynamic credentials/model based on tenant preference
+    const resolvedModel = await getModel({
+      organizationId,
+      provider,
+      modelId,
+    });
+
+    const generatorAi = resolvedModel.customAi || ai;
+
+    const { output } = await generatorAi.generate({
+      model: resolvedModel.modelString,
+      prompt: await templatePrompt.render(input),
+      output: { schema: GenerateEmailTemplateOutputSchema }
+    });
+
     if (!output) throw new Error("The AI failed to generate a template blueprint.");
     return output;
   }

@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { seedSystemTemplates } from '@/lib/seed-templates';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useBackoffice } from '../../context/BackofficeProvider';
-import { getGlobalAiKeys, saveGlobalAiKeys } from '@/lib/backoffice/backoffice-ai-actions';
+import { getGlobalAiKeys, saveGlobalAiKeys, getGlobalAiConfig, saveGlobalAiConfig } from '@/lib/backoffice/backoffice-ai-actions';
 
 export default function SystemDefaultsClient() {
     const firestore = useFirestore();
@@ -26,6 +26,10 @@ export default function SystemDefaultsClient() {
     const [isSaving, setIsSaving] = React.useState(false);
     const [isReseeding, setIsReseeding] = React.useState(false);
     const [templates, setTemplates] = React.useState<any>(null);
+    const [aiConfig, setAiConfig] = React.useState({
+        defaultProvider: 'googleai',
+        defaultModelId: 'gemini-3-flash-preview',
+    });
 
     const [aiKeys, setAiKeys] = React.useState({
         geminiApiKey: '',
@@ -43,6 +47,13 @@ export default function SystemDefaultsClient() {
             if (!firestore) return;
             try {
                 // Fetch templates
+                const configRes = await getGlobalAiConfig();
+                if (configRes.success && configRes.data) {
+                    setAiConfig({
+                        defaultProvider: configRes.data.defaultProvider,
+                        defaultModelId: configRes.data.defaultModelId,
+                    });
+                }
                 const snap = await getDoc(doc(firestore, 'system_settings', 'templates'));
                 if (snap.exists()) {
                     setTemplates(snap.data());
@@ -88,6 +99,16 @@ export default function SystemDefaultsClient() {
                 email: profile.email || '',
                 role: profile.backofficeRoles?.[0] || 'super_admin'
             };
+
+            // Save global AI config defaults
+            const configRes = await saveGlobalAiConfig({
+                defaultProvider: aiConfig.defaultProvider as 'googleai' | 'anthropic' | 'openrouter',
+                defaultModelId: aiConfig.defaultModelId,
+            }, actor);
+
+            if (!configRes.success) {
+                throw new Error(configRes.error || 'Failed to save global AI defaults');
+            }
 
             const keysRes = await saveGlobalAiKeys({
                 geminiApiKey: aiKeys.geminiApiKey,
@@ -304,6 +325,51 @@ export default function SystemDefaultsClient() {
                                 onChange={(e) => setTemplates({ ...templates, bulkUploadCompleted: { ...templates.bulkUploadCompleted, smsBody: e.target.value } })}
                                 className="rounded-xl min-h-[100px]"
                             />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Global Default AI Model Configuration */}
+                <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden">
+                    <CardHeader className="bg-primary/5 border-b p-8">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-primary/10 text-primary rounded-2xl">
+                                    <Sparkles className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-xl font-bold">Global AI Defaults</CardTitle>
+                                    <CardDescription>Configure the default model and provider for all AI assistance across the platform.</CardDescription>
+                                </div>
+                            </div>
+                            <Badge variant="secondary" className="bg-primary/10 text-primary border-none">AI Control Plane</Badge>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-8 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Default AI Provider</label>
+                                <select
+                                    value={aiConfig.defaultProvider}
+                                    onChange={(e) => setAiConfig({ ...aiConfig, defaultProvider: e.target.value })}
+                                    className="w-full rounded-xl h-11 border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="googleai">Google Gemini (googleai)</option>
+                                    <option value="anthropic">Anthropic Claude (anthropic)</option>
+                                    <option value="openrouter">OpenRouter (openrouter)</option>
+                                </select>
+                                <p className="text-[10px] text-muted-foreground">Select the primary default provider for the entire application.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Default Model ID</label>
+                                <Input
+                                    value={aiConfig.defaultModelId}
+                                    onChange={(e) => setAiConfig({ ...aiConfig, defaultModelId: e.target.value })}
+                                    className="rounded-xl h-11"
+                                    placeholder="e.g. gemini-3-flash-preview, claude-3-5-sonnet"
+                                />
+                                <p className="text-[10px] text-muted-foreground">The model ID matching the chosen provider (e.g. <code>gemini-3-flash-preview</code> or <code>claude-3-5-sonnet</code>).</p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

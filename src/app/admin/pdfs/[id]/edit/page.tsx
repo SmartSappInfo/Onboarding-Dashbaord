@@ -4,6 +4,8 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
+import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import { doc, collection, query, orderBy, where, getDocs } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -127,6 +129,9 @@ export default function EditPdfPage() {
   const { user } = useUser();
   const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
 
+  const { activeOrganizationId } = useTenant();
+  const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
+
   const [step, setStep] = React.useState(1);
   const [fields, setFields] = React.useState<PDFFormField[]>([]);
   const [namingFieldId, setNamingFieldId] = React.useState<string | null>(null);
@@ -238,7 +243,13 @@ export default function EditPdfPage() {
             reader.onloadend = () => resolve(reader.result as string);
             reader.readAsDataURL(blob);
         });
-        const result = await detectPdfFields({ pdfDataUri: base64data, existingFields: mode === 'continue' ? fields : undefined });
+        const result = await detectPdfFields({
+            pdfDataUri: base64data,
+            existingFields: mode === 'continue' ? fields : undefined,
+            organizationId: activeOrganizationId,
+            provider: liveProvider,
+            modelId: liveModelId,
+        });
         if (result.fields?.length > 0) {
             const newSuggestions = result.fields.map(suggestion => ({ ...suggestion, id: `ai_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, isSuggestion: true }));
             if (mode === 'overwrite') setFields(newSuggestions);
@@ -398,6 +409,41 @@ export default function EditPdfPage() {
             </div>
         </div>
         <PdfPreviewDialog isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm} entity={selectedSchool} />
+        
+        <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}>
+            <AlertDialogContent className="rounded-[1.5rem] border-none shadow-2xl bg-background/95 backdrop-blur-xl max-w-md p-6">
+                <AlertDialogHeader>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-xl text-primary shrink-0">
+                            <Sparkles className="h-5 w-5 animate-pulse" />
+                        </div>
+                        <AlertDialogTitle className="font-bold text-lg text-foreground">AI Field Detection Options</AlertDialogTitle>
+                    </div>
+                    <AlertDialogDescription className="text-sm text-muted-foreground mt-2 leading-relaxed text-left">
+                        This document already contains interactive form fields. Would you like to overwrite all existing fields, or search and merge new ones?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 mt-6 sm:justify-end">
+                    <AlertDialogCancel onClick={() => setIsDetectionModeOpen(false)} className="rounded-xl font-semibold border-border/50 h-11">Cancel</AlertDialogCancel>
+                    <Button 
+                        type="button"
+                        variant="outline" 
+                        onClick={() => handleDetectClick('continue')} 
+                        className="rounded-xl font-semibold border-primary/20 hover:bg-primary/5 text-primary h-11"
+                    >
+                        Merge Fields
+                    </Button>
+                    <Button 
+                        type="button"
+                        variant="destructive" 
+                        onClick={() => handleDetectClick('overwrite')} 
+                        className="rounded-xl font-semibold bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-lg h-11"
+                    >
+                        Overwrite All
+                    </Button>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </FormProvider>
   );
 }

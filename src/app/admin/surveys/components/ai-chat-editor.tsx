@@ -29,6 +29,7 @@ import type { UserProfile } from '@/lib/types';
 import { createPortal } from 'react-dom';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { onSnapshot } from 'firebase/firestore';
+import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -58,9 +59,8 @@ function AiChatPanel() {
     const [stagedFile, setStagedFile] = React.useState<{ name: string; url: string; content?: string; dataUri?: string } | null>(null);
     const [unreadCount, setUnreadCount] = React.useState(0);
 
-    // Live model preferences — updated in real time when user changes model in AiModelSelector
-    const [liveProvider, setLiveProvider] = React.useState('googleai');
-    const [liveModelId, setLiveModelId] = React.useState('gemini-3-flash-preview');
+    // Live model preferences — updated in real time via the hook
+    const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
 
     const [messages, setMessages] = React.useState<Message[]>([
         { role: 'assistant', content: "Hello! I'm your AI Design Partner. Describe changes, paste a link, or upload a document to build your survey blueprint." }
@@ -76,20 +76,6 @@ function AiChatPanel() {
             pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
         }
     }, []);
-
-    // Real-time subscription to the user's model preferences
-    React.useEffect(() => {
-        if (!user || !firestore) return;
-        const userRef = doc(firestore, 'users', user.uid);
-        const unsubscribe = onSnapshot(userRef, (snap) => {
-            if (snap.exists()) {
-                const data = snap.data() as UserProfile;
-                if (data.preferredAiProvider) setLiveProvider(data.preferredAiProvider);
-                if (data.preferredAiModel) setLiveModelId(data.preferredAiModel);
-            }
-        });
-        return () => unsubscribe();
-    }, [user, firestore]);
 
     React.useEffect(() => {
         if (scrollRef.current) {

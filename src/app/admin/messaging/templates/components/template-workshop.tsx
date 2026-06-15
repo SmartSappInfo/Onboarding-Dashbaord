@@ -42,7 +42,8 @@ import {
     ArrowUp,
     ArrowDown,
     Copy,
-    Trash2
+    Trash2,
+    Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,7 @@ import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { groupContactVariableDefinitions, generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
+import { groupContactVariableDefinitions, generateContactVariableDefinitions, generateEntityFieldVariables } from '@/lib/contact-variable-definitions';
 import { getAllSystemVariables } from '@/lib/system-variable-definitions';
 import { validateTemplateVariables } from '@/lib/template-validator';
 import { Users, UserCheck, ShieldCheck as ShieldCheckIcon, AlertTriangle, AlertCircle } from 'lucide-react';
@@ -1935,10 +1936,14 @@ export function TemplateWorkshop({
             }
         ];
         
+        // Entity field variables (all fields from entity creation/editing forms)
+        const entityFieldVars = generateEntityFieldVariables(entityTerminology || 'Entity');
+
         const seenKeys = new Set(nonDuplicateFiltered.map(v => v.key));
         const filteredTerminologyVars = terminologyVars.filter(v => !seenKeys.has(v.key));
+        const filteredEntityFieldVars = entityFieldVars.filter(v => !seenKeys.has(v.key) && !new Set(filteredTerminologyVars.map(t => t.key)).has(v.key));
 
-        return [...filteredTerminologyVars, ...contactVarDefs, ...nonDuplicateFiltered];
+        return [...filteredTerminologyVars, ...contactVarDefs, ...filteredEntityFieldVars, ...nonDuplicateFiltered];
     }, [rawVariables, entityTerminology]);
 
     const recipientRoles = React.useMemo(() => [
@@ -1963,6 +1968,7 @@ export function TemplateWorkshop({
     const dragStartRef = React.useRef({ mouseX: 0, startWidth: 0 });
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
     const [showValidationErrorDialog, setShowValidationErrorDialog] = React.useState(false);
+    const [variableSearchQuery, setVariableSearchQuery] = React.useState('');
 
     // Active editor insertion reference
     const editorInsertRef = React.useRef<((token: string) => void) | null>(null);
@@ -3130,31 +3136,7 @@ export function TemplateWorkshop({
                                                     </div>
                                                 )}
 
-                                                {/* Subject & Preview (Email Only) */}
-                                                {channel === 'email' && (
-                                                    <div className="space-y-4 pt-4 border-t border-dashed border-border/80">
-                                                        <div className="space-y-2 text-left">
-                                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line</Label>
-                                                            <Input
-                                                                value={subject}
-                                                                onChange={e => setSubject(e.target.value)}
-                                                                placeholder="Enter email subject line..."
-                                                                className="h-11 rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all font-semibold"
-                                                                autoComplete="off"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2 text-left">
-                                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Preview Text</Label>
-                                                            <Input
-                                                                value={previewText}
-                                                                onChange={e => setPreviewText(e.target.value)}
-                                                                placeholder="Enter email preview text..."
-                                                                className="h-11 rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all text-sm"
-                                                                autoComplete="off"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                {/* Subject & Preview moved to Builder (Step 2) for easier variable insertion */}
                                             </CardContent>
                                         </Card>
                                     </div>
@@ -3420,18 +3402,75 @@ export function TemplateWorkshop({
 
                                         {sidebarTab === 'variables' && (
                                             <div className="absolute inset-0 flex flex-col overflow-hidden">
+                                                {/* Variable Search */}
+                                                <div className="px-3 pt-3 pb-2 border-b border-border/60 shrink-0">
+                                                    <div className="relative">
+                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                                                        <Input
+                                                            placeholder="Search variables..."
+                                                            value={variableSearchQuery}
+                                                            onChange={(e) => setVariableSearchQuery(e.target.value)}
+                                                            className="h-8 pl-8 text-xs rounded-lg bg-muted/30 border-border/60 placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-primary/20"
+                                                        />
+                                                    </div>
+                                                </div>
                                                 <ScrollArea className="flex-1">
                                                     <div className="p-4 space-y-6">
+                                                        {(() => {
+                                                            const q = variableSearchQuery.toLowerCase().trim();
+                                                            const matchVar = (v: VariableDefinition) => !q || v.key.toLowerCase().includes(q) || v.label.toLowerCase().includes(q);
+
+                                                            // Build filtered groups
+                                                            const systemGroups = [
+                                                                { category: 'Primary Contacts', variables: contactVarGroups.primary.filter(matchVar) },
+                                                                { category: 'Signatory Contacts', variables: contactVarGroups.signatory.filter(matchVar) },
+                                                                { category: 'Role-based Contacts', variables: contactVarGroups.roles.filter(matchVar) },
+                                                                { category: 'Branding & Constants', variables: contactVarGroups.other.filter(matchVar) }
+                                                            ].filter(grp => grp.variables.length > 0);
+
+                                                            const filteredFeatureVars = featureSpecificVars.filter(matchVar);
+
+                                                            // Entity field variables
+                                                            const entityFieldVars = filteredVars.filter(v => v.source === 'entity_fields').filter(matchVar);
+
+                                                            const filteredCustomVars = contactVarGroups.custom.filter(matchVar);
+
+                                                            // Survey/PDF groups filtered
+                                                            const filteredSurveyGroups = category === 'surveys' ? surveyGroups.map(grp => ({
+                                                                ...grp,
+                                                                variables: grp.variables.filter(matchVar)
+                                                            })).filter(grp => grp.variables.length > 0) : [];
+
+                                                            const filteredPdfGroups = (category === 'forms' || category === 'agreements') ? pdfGroups.map(grp => ({
+                                                                ...grp,
+                                                                variables: grp.variables.filter(matchVar)
+                                                            })).filter(grp => grp.variables.length > 0) : [];
+
+                                                            const totalResults = systemGroups.reduce((s, g) => s + g.variables.length, 0)
+                                                                + filteredFeatureVars.length
+                                                                + entityFieldVars.length
+                                                                + filteredCustomVars.length
+                                                                + filteredSurveyGroups.reduce((s, g) => s + g.variables.length, 0)
+                                                                + filteredPdfGroups.reduce((s, g) => s + g.variables.length, 0);
+
+                                                            if (q && totalResults === 0) {
+                                                                return (
+                                                                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                                                                        <Search className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                                                                        <p className="text-xs font-semibold text-muted-foreground">No variables found</p>
+                                                                        <p className="text-[10px] text-muted-foreground/60 mt-1">Try a different search term</p>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            return (
+                                                                <>
                                                         {/* 1. System Variables */}
+                                                        {systemGroups.length > 0 && (
                                                         <div>
                                                             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-3">System Variables</p>
                                                             <div className="space-y-3">
-                                                                {[
-                                                                    { category: 'Primary Contacts', variables: contactVarGroups.primary },
-                                                                    { category: 'Signatory Contacts', variables: contactVarGroups.signatory },
-                                                                    { category: 'Role-based Contacts', variables: contactVarGroups.roles },
-                                                                    { category: 'Branding & Constants', variables: contactVarGroups.other }
-                                                                ].filter(grp => grp.variables.length > 0).map(grp => (
+                                                                {systemGroups.map(grp => (
                                                                     <div key={grp.category} className="space-y-1.5">
                                                                         <span className="text-[8px] font-bold text-primary uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-md">{grp.category}</span>
                                                                         <div className="space-y-1">
@@ -3454,13 +3493,37 @@ export function TemplateWorkshop({
                                                                 ))}
                                                             </div>
                                                         </div>
+                                                        )}
 
-                                                        {/* 2. Feature-Specific System Variables */}
-                                                        {featureSpecificVars.length > 0 && (
+                                                        {/* 2. Entity Fields */}
+                                                        {entityFieldVars.length > 0 && (
+                                                            <div>
+                                                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-3">Entity Fields</p>
+                                                                <div className="space-y-1">
+                                                                    {entityFieldVars.map(v => (
+                                                                        <button
+                                                                            key={v.key}
+                                                                            type="button"
+                                                                            onClick={() => handleVariableInsert(v.key)}
+                                                                            className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
+                                                                        >
+                                                                            <div className="min-w-0">
+                                                                                <p className="text-[10px] font-bold truncate text-sky-600">{v.label}</p>
+                                                                                <p className="text-[8px] text-muted-foreground font-mono truncate leading-none mt-0.5">{`{{${v.key}}}`}</p>
+                                                                            </div>
+                                                                            <PlusCircle className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* 3. Feature-Specific System Variables */}
+                                                        {filteredFeatureVars.length > 0 && (
                                                             <div>
                                                                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-3">Feature System Variables</p>
                                                                 <div className="space-y-1">
-                                                                    {featureSpecificVars.map(v => (
+                                                                    {filteredFeatureVars.map(v => (
                                                                         <button
                                                                             key={v.key}
                                                                             type="button"
@@ -3478,11 +3541,11 @@ export function TemplateWorkshop({
                                                             </div>
                                                         )}
 
-                                                        {/* 3. Collapsible Dynamic Survey Question Groups */}
-                                                        {category === 'surveys' && surveyGroups.length > 0 && (
+                                                        {/* 4. Collapsible Dynamic Survey Question Groups */}
+                                                        {filteredSurveyGroups.length > 0 && (
                                                             <div className="space-y-3">
                                                                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left">Surveys Answers</p>
-                                                                {surveyGroups.map(grp => {
+                                                                {filteredSurveyGroups.map(grp => {
                                                                     const isExpanded = !!expandedGroups[grp.id];
                                                                     return (
                                                                         <div key={grp.id} className="border rounded-xl p-2 bg-muted/5 space-y-2">
@@ -3526,11 +3589,11 @@ export function TemplateWorkshop({
                                                             </div>
                                                         )}
 
-                                                        {/* 4. Collapsible Dynamic PDF Form Groups */}
-                                                        {(category === 'forms' || category === 'agreements') && pdfGroups.length > 0 && (
+                                                        {/* 5. Collapsible Dynamic PDF Form Groups */}
+                                                        {filteredPdfGroups.length > 0 && (
                                                             <div className="space-y-3">
                                                                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left">Forms Fields</p>
-                                                                {pdfGroups.map(grp => {
+                                                                {filteredPdfGroups.map(grp => {
                                                                     const isExpanded = !!expandedGroups[grp.id];
                                                                     return (
                                                                         <div key={grp.id} className="border rounded-xl p-2 bg-muted/5 space-y-2">
@@ -3574,12 +3637,15 @@ export function TemplateWorkshop({
                                                             </div>
                                                         )}
 
-                                                        {/* 5. Workspace Custom Fields */}
-                                                        {contactVarGroups.custom.length > 0 && (
+                                                        {/* 6. Workspace Custom Fields */}
+                                                        {filteredCustomVars.length > 0 && (
                                                             <div>
-                                                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-3">Workspace Custom Fields</p>
+                                                                <div className="flex items-center gap-2 mb-3">
+                                                                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left">Custom Variables</p>
+                                                                    <Badge variant="secondary" className="text-[7px] h-4 px-1.5 font-bold uppercase bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Custom</Badge>
+                                                                </div>
                                                                 <div className="space-y-1">
-                                                                    {contactVarGroups.custom.map(v => (
+                                                                    {filteredCustomVars.map(v => (
                                                                         <button
                                                                             key={v.key}
                                                                             type="button"
@@ -3596,6 +3662,8 @@ export function TemplateWorkshop({
                                                                 </div>
                                                             </div>
                                                         )}
+                                                                </>);
+                                                        })()}
                                                     </div>
                                                 </ScrollArea>
                                             </div>
@@ -3791,6 +3859,66 @@ export function TemplateWorkshop({
 
                                 <ScrollArea className="flex-1" onClick={() => setSelectedBlockId(null)}>
                                     <div className="max-w-4xl mx-auto p-8 pb-64">
+                                        {/* Subject & Preview Text (Email Only) — with variable insertion support */}
+                                        {channel === 'email' && (
+                                            <div className="mb-6 space-y-3 rounded-2xl border border-border/60 bg-card/50 p-4 shadow-sm backdrop-blur-sm">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <MailIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Email Header</span>
+                                                </div>
+                                                {/* Subject Line */}
+                                                <div className="space-y-1.5 text-left">
+                                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-0.5">Subject Line</Label>
+                                                    <div className="relative group">
+                                                        <Input
+                                                            value={subject}
+                                                            onChange={e => setSubject(e.target.value)}
+                                                            placeholder="Enter email subject line — supports {{variables}}"
+                                                            className="h-10 pr-9 rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all font-semibold text-sm font-mono"
+                                                            autoComplete="off"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const el = document.querySelector<HTMLInputElement>('input[placeholder*="subject line"]');
+                                                                if (el) el.focus();
+                                                                setSidebarTab('variables');
+                                                            }}
+                                                            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-60 group-hover:opacity-100"
+                                                            title="Insert Variable — focus this field then click a variable in the sidebar"
+                                                        >
+                                                            <Database className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                {/* Preview Text */}
+                                                <div className="space-y-1.5 text-left">
+                                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-0.5">Preview Text</Label>
+                                                    <div className="relative group">
+                                                        <Input
+                                                            value={previewText}
+                                                            onChange={e => setPreviewText(e.target.value)}
+                                                            placeholder="Enter email preview text — supports {{variables}}"
+                                                            className="h-10 pr-9 rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all text-sm font-mono"
+                                                            autoComplete="off"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const el = document.querySelector<HTMLInputElement>('input[placeholder*="preview text"]');
+                                                                if (el) el.focus();
+                                                                setSidebarTab('variables');
+                                                            }}
+                                                            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-60 group-hover:opacity-100"
+                                                            title="Insert Variable — focus this field then click a variable in the sidebar"
+                                                        >
+                                                            <Database className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-[9px] text-muted-foreground/60 ml-0.5">Focus a field above, then click any variable in the sidebar to insert it at the cursor position.</p>
+                                            </div>
+                                        )}
                                         {/* contentMode-aware editor routing */}
                                         {channel === 'sms' || contentMode === 'plain_text' ? (
                                             <PlainTextEditor 

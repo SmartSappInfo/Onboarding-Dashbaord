@@ -1839,6 +1839,7 @@ export interface SurveyQuestion extends SurveyElement {
   yesScore?: number;
   noScore?: number;
   autoAdvance?: boolean;
+  isFilterField?: boolean;
 }
 
 export interface SurveyLayoutBlock extends SurveyElement {
@@ -1955,7 +1956,7 @@ export interface LearningSignal {
   prompt: string;
   modelId: string;
   provider: string;
-  artifactType: 'survey' | 'form' | 'page' | 'pdf';
+  artifactType: 'survey' | 'form' | 'page' | 'pdf' | 'template' | 'script' | 'automation';
   initialState: any;
   finalState?: any;
   touchedFields?: string[];

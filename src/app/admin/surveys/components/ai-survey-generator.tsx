@@ -28,6 +28,7 @@ import AiModelSelector from '@/components/ai/AiModelSelector';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Loader2, Sparkles, Check, X, RotateCcw, FileText, MessageSquare, Zap, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 
 // Chunked AI flow imports (server actions)
 import {
@@ -82,6 +83,7 @@ export default function AiSurveyGenerator() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { activeOrganizationId, activeWorkspaceId } = useWorkspace();
+  const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [phases, setPhases] = React.useState<PhaseState[]>(INITIAL_PHASES);
   const [showProgress, setShowProgress] = React.useState(false);
@@ -121,19 +123,11 @@ export default function AiSurveyGenerator() {
   };
 
   const resolveModel = async () => {
-    let provider = 'googleai';
-    let modelId = 'gemini-3-flash-preview';
+    let provider = liveProvider;
+    let modelId = liveModelId;
     let keyLevel = 'App API';
     
     if (user && firestore) {
-      const userRef = doc(firestore, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const profile = userSnap.data() as UserProfile;
-        provider = profile.preferredAiProvider || 'googleai';
-        modelId = profile.preferredAiModel || 'gemini-3-flash-preview';
-      }
-
       if (activeOrganizationId) {
         const orgRef = doc(firestore, 'organizations', activeOrganizationId);
         const orgSnap = await getDoc(orgRef);

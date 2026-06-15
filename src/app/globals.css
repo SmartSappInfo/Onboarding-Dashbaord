@@ -133,3 +133,16 @@
 .font-signature {
   font-family: 'Mrs Saint Delafield', cursive !important;
 }
+
+/* Sticky table cells with solid background on hover to prevent horizontal overlap transparency */
+.sticky-cell-hover {
+  background-color: hsl(var(--background)) !important;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, background-image;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.group:hover .sticky-cell-hover {
+  background-image: linear-gradient(hsl(var(--muted) / 0.3), hsl(var(--muted) / 0.3)), linear-gradient(hsl(var(--background)), hsl(var(--background))) !important;
+}
+

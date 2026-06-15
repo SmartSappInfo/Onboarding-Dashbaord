@@ -11,7 +11,7 @@ import {
     ListChecks, ChevronDownSquare, Star, Calendar as CalendarIcon,
     Clock, Upload, Heading1, Type, Minus, Image as ImageIcon,
     Video as VideoIcon, AudioWaveform, FileText, Code, Bot,
-    Link as LinkIcon, CheckCircle, ChevronDown, Mail, Phone, Hash
+    Link as LinkIcon, CheckCircle, ChevronDown, Mail, Phone, Hash, Filter
 } from 'lucide-react';
 import { 
     Select, SelectContent, SelectGroup, SelectItem, 
@@ -428,6 +428,27 @@ export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettings
                                     <Switch 
                                         id="question-required" 
                                         checked={field.value} 
+                                        onCheckedChange={field.onChange} 
+                                    />
+                                )}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between group">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="question-filterfield" className="flex items-center gap-2 cursor-pointer">
+                                    <Filter className="h-4 w-4 text-primary group-hover:scale-125 transition-transform" />
+                                    <span className="font-bold">Mark as Filter Field</span>
+                                </Label>
+                                <p className="text-[10px] text-muted-foreground font-medium">Use answers of this field to filter survey responses.</p>
+                            </div>
+                            <Controller
+                                control={control}
+                                name={`elements.${activeIndex}.isFilterField`}
+                                render={({ field }) => (
+                                    <Switch 
+                                        id="question-filterfield" 
+                                        checked={field.value || false} 
                                         onCheckedChange={field.onChange} 
                                     />
                                 )}

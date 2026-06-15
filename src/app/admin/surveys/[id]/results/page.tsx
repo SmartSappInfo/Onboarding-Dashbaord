@@ -71,9 +71,14 @@ export default function SurveyResultsPage() {
     const { toast } = useToast();
     const { user } = useUser();
     const { activeOrganizationId } = useWorkspace();
-
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
     const activeTab = searchParams.get("view") || "responses";
+
+    // Filter states
+    const [columnFilters, setColumnFilters] = React.useState<Record<string, string[]>>({});
+    const [hideEmptyColumns, setHideEmptyColumns] = React.useState(true);
+    const [attributionFilter, setAttributionFilter] = React.useState<string>('all');
+    const [deepLinkFilterType, setDeepLinkFilterType] = React.useState<string | null>(null);
 
     // Live model preferences
     const [liveProvider, setLiveProvider] = React.useState('googleai');
@@ -91,6 +96,15 @@ export default function SurveyResultsPage() {
         });
         return () => unsubscribe();
     }, [user, firestore]);
+
+    React.useEffect(() => {
+        const filterUser = searchParams.get('filterUser');
+        const filterType = searchParams.get('filterType');
+        if (filterUser) {
+            setAttributionFilter(filterUser);
+            setDeepLinkFilterType(filterType);
+        }
+    }, [searchParams]);
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
@@ -115,8 +129,94 @@ export default function SurveyResultsPage() {
     // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
     useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
+    // Helper to format answers into simple string matches
+    const formatAnswerForComparison = React.useCallback((value: any): string => {
+        if (value === undefined || value === null) return '';
+        if (Array.isArray(value)) {
+            return value.map(val => formatAnswerForComparison(val)).join(', ');
+        }
+        if (typeof value === 'object') {
+            if (Array.isArray(value.options)) {
+                const parts = [...value.options];
+                if (value.other && value.other.trim()) parts.push(value.other.trim());
+                return parts.join(', ');
+            }
+            if (value.option !== undefined) {
+                if (value.option === '__other__') {
+                    return value.other?.trim() ? value.other.trim() : '';
+                }
+                const parts = [value.option];
+                if (value.other?.trim()) parts.push(value.other.trim());
+                return parts.join(', ');
+            }
+            return Object.values(value).filter(Boolean).map(String).join(', ');
+        }
+        return String(value);
+    }, []);
+
+    // Filter responses by attribution and columns (AND logic)
+    const filteredResponses = React.useMemo(() => {
+        if (!responses) return [];
+        let result = responses;
+
+        // 1. Attribution filter
+        if (attributionFilter !== 'all') {
+            if (attributionFilter === 'anonymous') {
+                result = result.filter(r => !r.assignedUserId);
+            } else {
+                result = result.filter(r => r.assignedUserId === attributionFilter);
+            }
+        }
+
+        // 2. Deep-link type filter
+        if (deepLinkFilterType === 'leads') {
+            result = result.filter(r => r.entityId);
+        }
+
+        // 3. Column filters
+        Object.entries(columnFilters).forEach(([questionId, selectedValues]) => {
+            if (!selectedValues || selectedValues.length === 0) return;
+            result = result.filter(response => {
+                const answer = response.answers.find(a => a.questionId === questionId)?.value;
+                if (answer === undefined || answer === null) return false;
+
+                // For checklist options
+                if (Array.isArray(answer)) {
+                    const formatted = answer.map(val => formatAnswerForComparison(val).toLowerCase());
+                    return selectedValues.some(val => formatted.includes(val.toLowerCase()));
+                } else if (typeof answer === 'object') {
+                    if (Array.isArray(answer.options)) {
+                        const formatted = answer.options.map((val: string) => val.toLowerCase());
+                        if (answer.other && answer.other.trim()) {
+                            formatted.push(answer.other.trim().toLowerCase());
+                        }
+                        return selectedValues.some(val => formatted.includes(val.toLowerCase()));
+                    }
+                    if (answer.option !== undefined) {
+                        const formattedOpts: string[] = [];
+                        if (answer.option === '__other__') {
+                            if (answer.other?.trim()) formattedOpts.push(answer.other.trim().toLowerCase());
+                        } else {
+                            formattedOpts.push(answer.option.toLowerCase());
+                            if (answer.other?.trim()) formattedOpts.push(answer.other.trim().toLowerCase());
+                        }
+                        return selectedValues.some(val => formattedOpts.includes(val.toLowerCase()));
+                    }
+                }
+
+                const formatted = formatAnswerForComparison(answer).toLowerCase();
+                return selectedValues.some(val => {
+                    const cleanVal = val.toLowerCase();
+                    return formatted === cleanVal || formatted.includes(cleanVal);
+                });
+            });
+        });
+
+        return result;
+    }, [responses, attributionFilter, deepLinkFilterType, columnFilters, formatAnswerForComparison]);
+
     const handleGenerateSummary = async () => {
-        if (!survey || !responses || !firestore) {
+        if (!survey || !filteredResponses || !firestore) {
             toast({ variant: 'destructive', title: 'Survey data not loaded yet.' });
             return;
         }
@@ -124,7 +224,7 @@ export default function SurveyResultsPage() {
         try {
             const result = await generateSurveySummary({ 
                 survey, 
-                responses,
+                responses: filteredResponses,
                 organizationId: activeOrganizationId || undefined,
                 provider: liveProvider,
                 modelId: liveModelId,
@@ -154,7 +254,7 @@ export default function SurveyResultsPage() {
     };
 
     const handleExport = () => {
-        if (!survey || !responses) {
+        if (!survey || !filteredResponses) {
             toast({ variant: "destructive", title: "No data to export" });
             return;
         }
@@ -165,7 +265,7 @@ export default function SurveyResultsPage() {
 
         const headerRow = ["Submitted At", ...questionIds.map(id => `"${stripHtml(questionIdToTitleMap.get(id) || '').replace(/"/g, '""') ?? id}"`)].join(',');
 
-        const rows = responses.map(response => {
+        const rows = filteredResponses.map(response => {
             const answerMap = new Map(response.answers.map(a => [a.questionId, a.value]));
             const submittedAtCell = `"${format(new Date(response.submittedAt), "yyyy-MM-dd HH:mm:ss")}"`;
             const answerCells = questionIds.map(id => {
@@ -196,16 +296,16 @@ export default function SurveyResultsPage() {
 
     if (isSurveyLoading) {
         return (
- <div className="flex h-full w-full items-center justify-center ">
- <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex h-full w-full items-center justify-center ">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
     if (!survey) {
         return (
- <div className="flex h-full w-full flex-col items-center justify-center gap-4 ">
- <p className="text-lg font-medium">Survey not found.</p>
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4 ">
+                <p className="text-lg font-medium">Survey not found.</p>
             </div>
         );
     }
@@ -214,31 +314,31 @@ export default function SurveyResultsPage() {
         <Tabs
             value={activeTab}
             onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
- className="flex h-full flex-col"
+            className="flex h-full flex-col"
         >
- <div className="shrink-0 border-b bg-card/40 backdrop-blur-md p-4 sm:p-6">
- <div className="flex items-center justify-between">
- <TabsList className="bg-card/20 border-border/50">
- <TabsTrigger value="responses" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
- <FileText className="mr-2 h-4 w-4" /> Responses
+            <div className="shrink-0 border-b bg-card/40 backdrop-blur-md p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                    <TabsList className="bg-card/20 border-border/50">
+                        <TabsTrigger value="responses" className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-lg transition-all">
+                            <FileText className="mr-2 h-4 w-4" /> Responses
                         </TabsTrigger>
- <TabsTrigger value="analytics" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
- <BarChart3 className="mr-2 h-4 w-4" /> Analytics
+                        <TabsTrigger value="analytics" className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-lg transition-all">
+                            <BarChart3 className="mr-2 h-4 w-4" /> Analytics
                         </TabsTrigger>
- <TabsTrigger value="ai-summaries" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
- <Brain className="mr-2 h-4 w-4" /> AI Summaries
-                    </TabsTrigger>
-                    {survey.assignmentEnabled && (survey.assignedUsers?.length ?? 0) > 0 && (
-                        <TabsTrigger value="field-team" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
-                            <Users className="mr-2 h-4 w-4" /> Field Team
+                        <TabsTrigger value="ai-summaries" className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-lg transition-all">
+                            <Brain className="mr-2 h-4 w-4" /> AI Summaries
                         </TabsTrigger>
-                    )}
+                        {survey.assignmentEnabled && (survey.assignedUsers?.length ?? 0) > 0 && (
+                            <TabsTrigger value="field-team" className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-lg transition-all">
+                                <Users className="mr-2 h-4 w-4" /> Field Team
+                            </TabsTrigger>
+                        )}
                     </TabsList>
- <div className="flex shrink-0 items-center gap-4">
+                    <div className="flex shrink-0 items-center gap-4">
                         <AiModelSelector hideLabel className="scale-90" />
                         {activeTab === "responses" ? (
-                            <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
- <Download className="mr-2 h-4 w-4" />
+                            <Button onClick={handleExport} disabled={!filteredResponses || filteredResponses.length === 0}>
+                                <Download className="mr-2 h-4 w-4" />
                                 Export CSV
                             </Button>
                         ) : (
@@ -255,20 +355,29 @@ export default function SurveyResultsPage() {
                 </div>
             </div>
 
- <div className="flex-1 overflow-x-auto">
- <TabsContent value="responses" className="m-0 h-full">
-                      <ResponsesListView
-                          survey={survey}
-                          responses={responses || []}
-                          isLoading={areResponsesLoading}
-                      />
+            <div className="flex-1 overflow-x-auto">
+                <TabsContent value="responses" className="m-0 h-full">
+                    <ResponsesListView
+                        survey={survey}
+                        responses={responses || []}
+                        filteredResponses={filteredResponses}
+                        isLoading={areResponsesLoading}
+                        columnFilters={columnFilters}
+                        setColumnFilters={setColumnFilters}
+                        hideEmptyColumns={hideEmptyColumns}
+                        setHideEmptyColumns={setHideEmptyColumns}
+                        attributionFilter={attributionFilter}
+                        setAttributionFilter={setAttributionFilter}
+                        deepLinkFilterType={deepLinkFilterType}
+                        setDeepLinkFilterType={setDeepLinkFilterType}
+                    />
                 </TabsContent>
 
- <TabsContent value="analytics" className="m-0">
- <div className="p-4 sm:p-6 lg:p-8">
+                <TabsContent value="analytics" className="m-0">
+                    <div className="p-4 sm:p-6 lg:p-8">
                         <AnalyticsView 
                             survey={survey} 
-                            responses={responses || []} 
+                            responses={filteredResponses} 
                             summaries={summaries || []}
                             onGenerateSummary={handleGenerateSummary}
                             isGeneratingSummary={isGeneratingSummary}
@@ -276,18 +385,18 @@ export default function SurveyResultsPage() {
                     </div>
                 </TabsContent>
 
- <TabsContent value="ai-summaries" className="m-0">
- <div className="p-4 sm:p-6 lg:p-8">
+                <TabsContent value="ai-summaries" className="m-0">
+                    <div className="p-4 sm:p-6 lg:p-8">
                         {responses ? (
                             <AISummariesView 
                                 survey={survey} 
-                                responses={responses} 
+                                responses={filteredResponses} 
                                 summaries={summaries || []}
                                 areSummariesLoading={areSummariesLoading}
                             />
                         ) : (
- <div className="flex h-64 items-center justify-center">
- <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            <div className="flex h-64 items-center justify-center">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                             </div>
                         )}
                     </div>
@@ -295,7 +404,7 @@ export default function SurveyResultsPage() {
 
                 {survey.assignmentEnabled && (survey.assignedUsers?.length ?? 0) > 0 && (
                     <TabsContent value="field-team" className="m-0">
-                        <FieldTeamView survey={survey} responses={responses || []} />
+                        <FieldTeamView survey={survey} responses={filteredResponses} />
                     </TabsContent>
                 )}
             </div>

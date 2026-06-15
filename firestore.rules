@@ -79,7 +79,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // --- System Settings (Server/Admin SDK only) ---
+    // --- System Settings (Server/Admin SDK only, except safe configurations) ---
+    match /system_settings/ai_config {
+      allow read: if isSignedIn();
+      allow write: if isSystemAdmin();
+    }
+
+    match /system_settings/templates {
+      allow read: if isAuthorized();
+      allow write: if isSystemAdmin();
+    }
+
     match /system_settings/{settingId} {
       allow read, write: if false;
     }

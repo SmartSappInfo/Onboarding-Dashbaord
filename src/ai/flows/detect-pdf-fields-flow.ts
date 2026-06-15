@@ -3,7 +3,7 @@
  * @fileOverview An AI flow to detect potential form fields in a PDF document.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const DetectPdfFieldsInputSchema = z.object({
@@ -21,6 +21,9 @@ const DetectPdfFieldsInputSchema = z.object({
         position: z.object({ x: z.number(), y: z.number() }),
         dimensions: z.object({ width: z.number(), height: z.number() })
     })).optional().describe("A list of fields already placed by the user to provide context and avoid duplicates."),
+    organizationId: z.string().optional().describe("The organization ID for API key resolution."),
+    provider: z.string().optional().default('googleai').describe("The AI provider to use."),
+    modelId: z.string().optional().default('gemini-3-flash-preview').describe("The model ID to use."),
 });
 export type DetectPdfFieldsInput = z.infer<typeof DetectPdfFieldsInputSchema>;
 
@@ -113,7 +116,23 @@ const detectPdfFieldsFlow = ai.defineFlow(
     outputSchema: DetectPdfFieldsOutputSchema,
   },
   async (input) => {
-    const { output } = await detectionPrompt(input);
+    const { organizationId, provider = 'googleai', modelId = 'gemini-3-flash-preview' } = input;
+
+    // Resolve model dynamically based on user selection/tenant settings
+    const resolvedModel = await getModel({
+      organizationId,
+      provider,
+      modelId,
+    });
+
+    const generatorAi = resolvedModel.customAi || ai;
+
+    const { output } = await generatorAi.generate({
+      model: resolvedModel.modelString,
+      prompt: await detectionPrompt.render(input),
+      output: { schema: DetectPdfFieldsOutputSchema }
+    });
+
     if (!output) {
         throw new Error("The AI model failed to detect any fields in the PDF.");
     }

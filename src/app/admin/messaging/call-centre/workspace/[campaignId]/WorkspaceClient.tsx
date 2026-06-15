@@ -325,6 +325,27 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const [currentNodeId, setCurrentNodeId] = React.useState<string | null>(null);
   const [pathHistory, setPathHistory] = React.useState<string[]>([]); // list of node IDs traversed
 
+  const currentNode = React.useMemo(() => {
+    if (!currentNodeId || !scriptGraph) return null;
+    return scriptGraph.nodes.find(n => n.id === currentNodeId) || null;
+  }, [currentNodeId, scriptGraph]);
+
+  const resolvedActiveNodeText = React.useMemo(() => {
+    if (!currentNode) return '';
+    const rawText = currentNode.data.text || '';
+    return resolveScriptVariables(
+      rawText,
+      entityData || { name: currentItem?.entityName, email: currentItem?.entityEmail, phone: currentItem?.entityPhone },
+      contactDeals?.[0] || null,
+      user?.displayName || 'Akosua'
+    );
+  }, [currentNode, entityData, currentItem, contactDeals, user]);
+
+  const choices = React.useMemo(() => {
+    if (!currentNodeId || !scriptGraph) return [];
+    return getNextNodeChoices(scriptGraph, currentNodeId);
+  }, [currentNodeId, scriptGraph]);
+
   // Reset navigation states when contact changes or script changes
   React.useEffect(() => {
     if (scriptGraph && scriptGraph.nodes.length > 0) {
@@ -363,6 +384,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     if (activeNode.type === 'question' && activeNode.data.questionConfig?.fieldName) {
       const qc = activeNode.data.questionConfig;
       const fieldName = qc.fieldName;
+      if (!fieldName) return;
       const value = collectedAnswersRef.current[fieldName];
 
       // Regular Expression Validation Pattern
@@ -612,26 +634,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     });
   }, [objectionNodes, objectionSearch]);
 
-  const currentNode = React.useMemo(() => {
-    if (!currentNodeId || !scriptGraph) return null;
-    return scriptGraph.nodes.find(n => n.id === currentNodeId) || null;
-  }, [currentNodeId, scriptGraph]);
 
-  const resolvedActiveNodeText = React.useMemo(() => {
-    if (!currentNode) return '';
-    const rawText = currentNode.data.text || '';
-    return resolveScriptVariables(
-      rawText,
-      entityData || { name: currentItem?.entityName, email: currentItem?.entityEmail, phone: currentItem?.entityPhone },
-      contactDeals?.[0] || null,
-      user?.displayName || 'Akosua'
-    );
-  }, [currentNode, entityData, currentItem, contactDeals, user]);
-
-  const choices = React.useMemo(() => {
-    if (!currentNodeId || !scriptGraph) return [];
-    return getNextNodeChoices(scriptGraph, currentNodeId);
-  }, [currentNodeId, scriptGraph]);
 
   const renderedScript = React.useMemo(() => {
     if (!campaign || !currentItem) return '';
@@ -1093,7 +1096,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                           )}
 
                           {/* Dynamic Compliance Checkbox for Say nodes */}
-                          {currentNode?.type === 'say' && currentNode.data.sayConfig?.complianceVerify && (
+                          {currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && (
                             <div className="mt-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl flex items-start gap-3 max-w-xl">
                               <input 
                                 type="checkbox"
@@ -1202,7 +1205,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                   <Button
                                     key={choice.edgeId}
                                     type="button"
-                                    disabled={currentNode?.type === 'say' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked}
+                                    disabled={currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked}
                                     onClick={() => handleChoiceClick(choice.targetNode.id)}
                                     className="h-9 px-4 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-200 hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black"
                                   >

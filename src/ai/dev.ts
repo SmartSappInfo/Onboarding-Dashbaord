@@ -15,3 +15,5 @@ import './flows/refine-message-flow';
 import './flows/extract-school-data-flow';
 import './flows/bulk-mapping-flow';
 import './flows/bulk-normalization-flow';
+import './flows/generate-script-flow';
+import './flows/generate-automation-flow';

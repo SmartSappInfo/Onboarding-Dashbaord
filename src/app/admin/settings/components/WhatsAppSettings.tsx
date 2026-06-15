@@ -17,7 +17,9 @@ import {
   PlugZap,
   Unplug,
   ShieldCheck,
+  BookOpen,
 } from 'lucide-react';
+import WhatsAppSetupGuide from './WhatsAppSetupGuide';
 import {
   getWhatsAppConnection,
   saveWhatsAppConnection,
@@ -53,6 +55,7 @@ export default function WhatsAppSettings({ organizationId }: WhatsAppSettingsPro
   const { toast } = useToast();
 
   const [loading, setLoading] = React.useState(true);
+  const [guideOpen, setGuideOpen] = React.useState(false);
   const [conn, setConn] = React.useState<WhatsAppConnectionPublic | null>(null);
   const [showSecrets, setShowSecrets] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -188,7 +191,16 @@ export default function WhatsAppSettings({ organizationId }: WhatsAppSettingsPro
               Connect your organization's WhatsApp Business Account to send on the WhatsApp channel
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setGuideOpen(true)}
+              className="rounded-xl font-bold h-8"
+            >
+              <BookOpen className="h-3.5 w-3.5 mr-1.5" /> Setup guide
+            </Button>
             <Badge variant="outline" className={`text-[10px] font-bold ${statusStyle.cls}`}>
               {statusStyle.label}
             </Badge>
@@ -205,6 +217,8 @@ export default function WhatsAppSettings({ organizationId }: WhatsAppSettingsPro
           </div>
         </div>
       </CardHeader>
+
+      <WhatsAppSetupGuide open={guideOpen} onOpenChange={setGuideOpen} />
 
       <CardContent className="p-8 space-y-6">
         {loading ? (
