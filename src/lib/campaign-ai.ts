@@ -199,7 +199,35 @@ export async function refineCallScript(params: {
   organizationId?: string;
 }): Promise<{ success: boolean; refined?: string; error?: string }> {
   try {
-    const prompt = `You are a professional call script copywriter. Refine the following outreach calling script.
+    const isJson = params.original.trim().startsWith('{') || params.original.trim().startsWith('[');
+    
+    let prompt = '';
+    if (isJson) {
+      prompt = `You are a professional call script copywriter. Refine the text and labels within the following visual call script JSON graph.
+
+Original Script Graph (JSON):
+"""
+${params.original}
+"""
+
+Instruction: ${params.instruction}
+
+Rules for JSON graph refinement:
+1. Parse the JSON and locate the text properties (e.g., 'text', 'label') inside each node's 'data' object.
+2. Refine these text properties according to the instruction while maintaining all dynamic placeholders (e.g., {{FIRST_NAME}}, {{AGENT_NAME}}).
+3. CRITICAL: You must preserve and copy over all other custom configurations and metadata inside the node 'data' block exactly as they are. This includes properties such as:
+   - 'startConfig' (checkDnc, checkTimezone, allowedHoursStart, allowedHoursEnd)
+   - 'sayConfig' (complianceVerify, complianceText)
+   - 'questionConfig' (fieldBinding, fieldName, fieldType, selectOptions, validationPattern)
+   - 'objectionConfig' (keywordTriggers)
+   - 'actionConfig' (webhookUrl, webhookHeaders, triggerDelaySeconds)
+   - 'outcomeConfig' (suppressDays, followUpCampaignId)
+   - 'endConfig' (wrapUpTemplateId)
+   - Any other structural or configuration keys.
+4. Do NOT change node IDs or edge structures unless explicitly requested by the instruction.
+5. Return ONLY the valid refined JSON graph matching the original structure. Do not wrap in quotes, do not add comments, explanations, or introductory text.`;
+    } else {
+      prompt = `You are a professional call script copywriter. Refine the following outreach calling script.
 
 Original Script:
 """
@@ -212,6 +240,7 @@ Rules:
 - Keep the overall intent, dynamic placeholders (e.g., {{FIRST_NAME}}, {{AGENT_NAME}}), and flow.
 - Apply the requested refinement changes precisely.
 - Return ONLY the refined calling script text. Do not wrap in quotes, do not add comments, explanations, or introductory text.`;
+    }
 
     const refined = await callGenkit({
       prompt,
