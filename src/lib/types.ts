@@ -4404,6 +4404,40 @@ export interface ScriptNode {
     text: string;           // Script text to display to agent (supports variable injection)
     outcomeValue?: string;  // Value mapped if node type is 'outcome'
     actionType?: string;    // Action type mapped if node type is 'action'
+    
+    // Node Specific Configurations
+    startConfig?: {
+      checkDnc?: boolean;
+      checkTimezone?: boolean;
+      allowedHoursStart?: string; // HH:MM
+      allowedHoursEnd?: string;   // HH:MM
+    };
+    sayConfig?: {
+      complianceVerify?: boolean;
+      complianceText?: string;
+    };
+    questionConfig?: {
+      fieldBinding?: 'contact' | 'deal';
+      fieldName?: string; // e.g. "email", "value", "expectedCloseDate"
+      fieldType?: 'text' | 'number' | 'select' | 'datepicker';
+      selectOptions?: string[];
+      validationPattern?: string; // Regex
+    };
+    objectionConfig?: {
+      keywordTriggers?: string[];
+    };
+    actionConfig?: {
+      webhookUrl?: string;
+      webhookHeaders?: string; // JSON string
+      triggerDelaySeconds?: number;
+    };
+    outcomeConfig?: {
+      suppressDays?: number;
+      followUpCampaignId?: string;
+    };
+    endConfig?: {
+      wrapUpTemplateId?: string;
+    };
   };
 }
 
