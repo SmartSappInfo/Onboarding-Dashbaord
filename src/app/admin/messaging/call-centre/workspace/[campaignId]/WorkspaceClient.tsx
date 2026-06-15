@@ -21,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
 import type { ScriptNode } from '@/lib/types';
 import { 
   isJsonGraph, 
@@ -83,6 +83,15 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   // Queue sorting & filtering states
   const [sortOption, setSortOption] = React.useState<'default' | 'attempts-asc' | 'attempts-desc' | 'active' | 'alpha'>('default');
   const [filterOption, setFilterOption] = React.useState<'all' | 'institution' | 'person' | 'family'>('all');
+
+  // Interactive node integration states
+  const [collectedAnswers, setCollectedAnswers] = React.useState<Record<string, any>>(() => ({}));
+  const [validationError, setValidationError] = React.useState<string | null>(null);
+  const [complianceChecked, setComplianceChecked] = React.useState(false);
+  const [actionStatus, setActionStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [actionError, setActionError] = React.useState<string | null>(null);
+  const [objectionSearch, setObjectionSearch] = React.useState('');
+  const [guardrailBypassed, setGuardrailBypassed] = React.useState(false);
 
   const wrapHref = (href: string) => {
     if (!activeWorkspaceId) return href;
@@ -326,6 +335,12 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       setCurrentNodeId(null);
       setPathHistory([]);
     }
+    setCollectedAnswers({});
+    setValidationError(null);
+    setComplianceChecked(false);
+    setActionStatus('idle');
+    setActionError(null);
+    setGuardrailBypassed(false);
   }, [currentItem?.id, scriptGraph]);
 
   const handleHistoryClick = (nodeId: string, index: number) => {
@@ -333,11 +348,84 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     setPathHistory(prev => prev.slice(0, index));
   };
 
-  const handleChoiceClick = (targetNodeId: string) => {
-    if (!currentNodeId) return;
-    setPathHistory(prev => [...prev, currentNodeId]);
+  // Weak references to preserve state without causing stale closure updates in callback triggers
+  const collectedAnswersRef = React.useRef(collectedAnswers);
+  React.useEffect(() => { collectedAnswersRef.current = collectedAnswers; }, [collectedAnswers]);
+
+  const currentNodeRef = React.useRef(currentNode);
+  React.useEffect(() => { currentNodeRef.current = currentNode; }, [currentNode]);
+
+  const handleChoiceClick = React.useCallback(async (targetNodeId: string) => {
+    const activeNode = currentNodeRef.current;
+    if (!activeNode) return;
+
+    // Validation & Writeback logic for Question nodes
+    if (activeNode.type === 'question' && activeNode.data.questionConfig?.fieldName) {
+      const qc = activeNode.data.questionConfig;
+      const fieldName = qc.fieldName;
+      const value = collectedAnswersRef.current[fieldName];
+
+      // Regular Expression Validation Pattern
+      if (qc.validationPattern) {
+        try {
+          const regex = new RegExp(qc.validationPattern);
+          if (!value || !regex.test(value.toString())) {
+            setValidationError(`Input value does not match the required format pattern: ${qc.validationPattern}`);
+            toast({
+              variant: 'destructive',
+              title: 'Validation Failed',
+              description: `The input for "${fieldName}" does not match the required format.`
+            });
+            return;
+          }
+        } catch (e) {
+          console.error('[WORKSPACE_CLIENT] Invalid validation regex pattern:', qc.validationPattern);
+        }
+      }
+
+      setValidationError(null);
+
+      const fieldBinding = qc.fieldBinding || 'contact';
+      let castValue: any = value;
+      if (qc.fieldType === 'number') {
+        castValue = Number(value) || 0;
+      }
+
+      if (castValue !== undefined) {
+        if (fieldBinding === 'contact' && currentItem?.entityId) {
+          // Asynchronously write to contact (entities collection)
+          updateDoc(doc(firestore, 'entities', currentItem.entityId), {
+            [fieldName]: castValue,
+            updatedAt: new Date().toISOString()
+          }).catch(err => {
+            console.error('[WORKSPACE_CLIENT] Failed to write-back contact field:', err);
+            toast({
+              variant: 'destructive',
+              title: 'CRM Save Failed',
+              description: `Could not save field "${fieldName}" to contact profile.`
+            });
+          });
+        } else if (fieldBinding === 'deal' && contactDeals.length > 0) {
+          // Asynchronously write to deal
+          const dealId = contactDeals[0].id;
+          updateDoc(doc(firestore, 'deals', dealId), {
+            [fieldName]: castValue,
+            updatedAt: new Date().toISOString()
+          }).catch(err => {
+            console.error('[WORKSPACE_CLIENT] Failed to write-back deal field:', err);
+            toast({
+              variant: 'destructive',
+              title: 'CRM Save Failed',
+              description: `Could not save field "${fieldName}" to active deal.`
+            });
+          });
+        }
+      }
+    }
+
+    setPathHistory(prev => [...prev, activeNode.id]);
     setCurrentNodeId(targetNodeId);
-  };
+  }, [currentItem?.entityId, contactDeals, firestore, toast]);
 
   const handleGoBack = () => {
     if (pathHistory.length === 0) return;
@@ -345,7 +433,157 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     const prevNodeId = newHistory.pop();
     setPathHistory(newHistory);
     setCurrentNodeId(prevNodeId || null);
+    setValidationError(null);
   };
+
+  const handleObjectionClick = (nodeId: string) => {
+    if (!currentNodeId) return;
+    setPathHistory(prev => [...prev, currentNodeId]);
+    setCurrentNodeId(nodeId);
+    setValidationError(null);
+  };
+
+  // Automated Webhook Actions Trigger Effect
+  React.useEffect(() => {
+    if (!currentNode || currentNode.type !== 'action') return;
+
+    let isMounted = true;
+    const runAction = async () => {
+      const ac = currentNode.data.actionConfig;
+      if (currentNode.data.actionType === 'WEBHOOK' && ac?.webhookUrl) {
+        if (isMounted) {
+          setActionStatus('loading');
+          setActionError(null);
+        }
+
+        try {
+          const response = await fetch('/api/call-centre/webhook', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              url: ac.webhookUrl,
+              headers: ac.webhookHeaders,
+              payload: {
+                campaignId,
+                entityId: currentItem?.entityId,
+                entityName: currentItem?.entityName,
+                entityPhone: currentItem?.entityPhone,
+                entityEmail: currentItem?.entityEmail,
+                collectedAnswers: collectedAnswersRef.current,
+                timestamp: new Date().toISOString(),
+              }
+            })
+          });
+          const result = await response.json();
+          if (!isMounted) return;
+
+          if (response.ok && result.status >= 200 && result.status < 300) {
+            setActionStatus('success');
+            toast({
+              title: 'Webhook Success',
+              description: `Successfully executed webhook action.`
+            });
+
+            // Automatically transition forward after 1.5 seconds if there's exactly one choice
+            if (choices.length === 1) {
+              setTimeout(() => {
+                if (isMounted) {
+                  handleChoiceClick(choices[0].targetNode.id);
+                }
+              }, 1500);
+            }
+          } else {
+            setActionStatus('error');
+            const errMsg = result.error || `Failed with status ${result.status}`;
+            setActionError(errMsg);
+            toast({
+              variant: 'destructive',
+              title: 'Webhook Failed',
+              description: errMsg
+            });
+          }
+        } catch (err: any) {
+          if (!isMounted) return;
+          setActionStatus('error');
+          setActionError(err.message);
+          toast({
+            variant: 'destructive',
+            title: 'Webhook Error',
+            description: err.message
+          });
+        }
+      } else {
+        if (isMounted) {
+          setActionStatus('success');
+          if (choices.length === 1) {
+            setTimeout(() => {
+              if (isMounted) {
+                handleChoiceClick(choices[0].targetNode.id);
+              }
+            }, 1000);
+          }
+        }
+      }
+    };
+
+    runAction();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentNodeId, choices, handleChoiceClick, campaignId, currentItem, toast]);
+
+  // Pre-call Guardrails (DNC/Timezone) calculations
+  const isDncContact = React.useMemo(() => {
+    return entityData?.doNotCall === true || entityData?.dnc === true || entityData?.status === 'dnc';
+  }, [entityData]);
+
+  const isOutsideTimezone = React.useMemo(() => {
+    if (currentNode?.type !== 'start' || !currentNode?.data?.startConfig?.checkTimezone) return false;
+    const start = currentNode.data.startConfig.allowedHoursStart || "08:00";
+    const end = currentNode.data.startConfig.allowedHoursEnd || "17:00";
+    const current = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    return current < start || current > end;
+  }, [currentNode]);
+
+  const showGuardrailWarning = React.useMemo(() => {
+    if (currentNode?.type !== 'start' || guardrailBypassed) return false;
+    const checkDnc = currentNode.data.startConfig?.checkDnc;
+    const checkTimezone = currentNode.data.startConfig?.checkTimezone;
+    return (checkDnc && isDncContact) || (checkTimezone && isOutsideTimezone);
+  }, [currentNode, guardrailBypassed, isDncContact, isOutsideTimezone]);
+
+  // Objection Rebuttals lists
+  const objectionNodes = React.useMemo(() => {
+    if (!scriptGraph) return [];
+    return scriptGraph.nodes.filter(n => n.type === 'objection');
+  }, [scriptGraph]);
+
+  const escapeRegExp = (str: string) => {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
+  const filteredObjections = React.useMemo(() => {
+    if (!objectionNodes) return [];
+    if (!objectionSearch.trim()) return objectionNodes;
+
+    const searchLower = objectionSearch.toLowerCase();
+    return objectionNodes.filter(node => {
+      const labelMatch = node.data.label?.toLowerCase().includes(searchLower);
+      const textMatch = node.data.text?.toLowerCase().includes(searchLower);
+      const keywordMatch = node.data.objectionConfig?.keywordTriggers?.some((kw: string) => {
+        try {
+          const regex = new RegExp(escapeRegExp(kw), 'i');
+          return regex.test(searchLower);
+        } catch {
+          return kw.toLowerCase().includes(searchLower);
+        }
+      });
+      return labelMatch || textMatch || keywordMatch;
+    });
+  }, [objectionNodes, objectionSearch]);
 
   const currentNode = React.useMemo(() => {
     if (!currentNodeId || !scriptGraph) return null;
@@ -692,124 +930,283 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                 </div>
                 
                 {isBranching ? (
-                  <div className="flex h-full min-h-[260px] overflow-hidden pt-4">
-                    {/* Left Timeline */}
-                    <div className="flex flex-col gap-2 border-r border-zinc-805 pr-4 mr-4 shrink-0 w-48 overflow-y-auto">
-                      <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">Conversation Path</span>
-                      {pathHistory.length === 0 ? (
-                        <span className="text-[10px] text-zinc-650 italic">No steps taken yet.</span>
-                      ) : (
-                        <div className="space-y-4 relative pl-3 before:absolute before:left-1.5 before:top-1 before:bottom-1 before:w-[1px] before:bg-zinc-800">
-                          {pathHistory.map((histNodeId, idx) => {
-                            const histNode = scriptGraph?.nodes.find(n => n.id === histNodeId);
-                            if (!histNode) return null;
-                            return (
-                              <div key={`${histNodeId}-${idx}`} className="relative flex items-center gap-2 text-[10px]">
-                                <span className="absolute -left-[10px] w-2 h-2 rounded-full bg-zinc-700 border border-zinc-950" />
-                                <button
-                                  type="button"
-                                  onClick={() => handleHistoryClick(histNodeId, idx)}
-                                  className="text-left font-bold text-zinc-400 hover:text-primary transition-colors hover:underline truncate max-w-[130px]"
-                                  title={`Jump back to ${histNode.data.label}`}
-                                >
-                                  {histNode.data.label || histNode.id}
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {currentNode && (
-                        <div className="mt-4 pt-4 border-t border-zinc-805 pl-3 relative">
-                          <span className="absolute -left-[10px] top-[22px] w-2 h-2 rounded-full bg-primary animate-pulse" />
-                          <span className="text-[9px] font-black uppercase text-primary tracking-wider block">Active Node</span>
-                          <span className="text-[10px] font-bold text-zinc-200 block truncate max-w-[130px]">{currentNode.data.label}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Right dialog state & choices */}
-                    <div className="flex-grow flex flex-col justify-between overflow-y-auto min-h-[220px]">
-                      <div className="space-y-4">
-                        {currentNode && (
-                          <div className="flex items-center gap-2">
-                            {getNodeBadge(currentNode.type)}
-                          </div>
-                        )}
-                        
-                        {currentNode?.type === 'outcome' ? (
-                          <div className="space-y-4 max-w-xl">
-                            <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-2">
-                              <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wide">Outcome Step Reached</h4>
-                              <p className="text-xs text-zinc-300">
-                                The conversation has reached the outcome: <span className="font-extrabold text-purple-300">"{currentNode.data.outcomeValue}"</span>.
-                              </p>
-                            </div>
-                            <Button
-                              onClick={() => handleOutcomeSubmit(currentNode.data.outcomeValue || 'Interested')}
-                              disabled={isSaving}
-                              className="w-full h-11 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider shadow-lg flex items-center justify-center gap-2"
-                            >
-                              <Check className="h-4 w-4" /> Confirm & Save Outcome: {currentNode.data.outcomeValue}
-                            </Button>
-                          </div>
-                        ) : currentNode?.type === 'action' ? (
-                          <div className="space-y-4 max-w-xl">
-                            <div className="p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl space-y-2">
-                              <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wide">Automation Action Step</h4>
-                              <p className="text-xs text-zinc-300">
-                                This step triggers the automation action: <span className="font-extrabold text-indigo-300">"{currentNode.data.actionType?.replace('_', ' ')}"</span>.
-                              </p>
-                            </div>
-                          </div>
-                        ) : null}
-
-                        {currentNode?.data?.text && (
-                          <div className="text-base font-serif text-zinc-200 leading-relaxed max-w-2xl pr-4 whitespace-pre-line select-text">
-                            {resolvedActiveNodeText}
-                          </div>
-                        )}
+                  showGuardrailWarning ? (
+                    <div className="flex flex-col items-center justify-center text-center p-8 bg-zinc-900 border border-amber-500/20 rounded-2xl max-w-xl mx-auto my-6 space-y-4">
+                      <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                        <AlertTriangle className="h-6 w-6" />
                       </div>
-
-                      <div className="pt-6 border-t border-zinc-800/80 mt-6 space-y-3 shrink-0">
-                        {choices.length > 0 ? (
-                          <>
-                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Choose Customer's Response:</span>
-                            <div className="flex flex-wrap gap-2">
-                              {choices.map((choice) => (
-                                <Button
-                                  key={choice.edgeId}
-                                  type="button"
-                                  onClick={() => handleChoiceClick(choice.targetNode.id)}
-                                  className="h-9 px-4 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-200 hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black"
-                                >
-                                  {choice.edgeLabel}
-                                </Button>
-                              ))}
-                            </div>
-                          </>
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-black uppercase text-amber-500 tracking-wider">Pre-Call Guardrail Alert</h3>
+                        <p className="text-xs text-zinc-300 max-w-sm">
+                          {currentNode?.data.startConfig?.checkDnc && isDncContact && (
+                            <span>This contact is registered on the Do Not Call (DNC) list. Calling them may violate compliance regulations.</span>
+                          )}
+                          {currentNode?.data.startConfig?.checkTimezone && isOutsideTimezone && (
+                            <span>It is currently outside the allowed contact hours ({currentNode.data.startConfig.allowedHoursStart} - {currentNode.data.startConfig.allowedHoursEnd}) for this contact's timezone.</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 w-full pt-2">
+                        <Button
+                          onClick={handleSkip}
+                          variant="outline"
+                          className="flex-grow h-10 border-zinc-800 bg-zinc-950 text-xs font-bold hover:bg-zinc-900"
+                        >
+                          Skip Contact
+                        </Button>
+                        <Button
+                          onClick={() => setGuardrailBypassed(true)}
+                          className="flex-grow h-10 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold"
+                        >
+                          Acknowledge & Proceed
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex h-full min-h-[260px] overflow-hidden pt-4">
+                      {/* Left Timeline */}
+                      <div className="flex flex-col gap-2 border-r border-zinc-805 pr-4 mr-4 shrink-0 w-48 overflow-y-auto">
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">Conversation Path</span>
+                        {pathHistory.length === 0 ? (
+                          <span className="text-[10px] text-zinc-650 italic">No steps taken yet.</span>
                         ) : (
-                          currentNode?.type !== 'outcome' && (
-                            <div className="text-xs text-zinc-500 italic">
-                              No further choices. You can log the outcome in the right panel to complete this call.
-                            </div>
-                          )
+                          <div className="space-y-4 relative pl-3 before:absolute before:left-1.5 before:top-1 before:bottom-1 before:w-[1px] before:bg-zinc-800">
+                            {pathHistory.map((histNodeId, idx) => {
+                              const histNode = scriptGraph?.nodes.find(n => n.id === histNodeId);
+                              if (!histNode) return null;
+                              return (
+                                <div key={`${histNodeId}-${idx}`} className="relative flex items-center gap-2 text-[10px]">
+                                  <span className="absolute -left-[10px] w-2 h-2 rounded-full bg-zinc-700 border border-zinc-950" />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleHistoryClick(histNodeId, idx)}
+                                    className="text-left font-bold text-zinc-400 hover:text-primary transition-colors hover:underline truncate max-w-[130px]"
+                                    title={`Jump back to ${histNode.data.label}`}
+                                  >
+                                    {histNode.data.label || histNode.id}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
-                        
-                        {pathHistory.length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            type="button"
-                            onClick={handleGoBack}
-                            className="h-8 text-[10px] font-bold text-zinc-400 hover:text-zinc-100 rounded-lg gap-1 px-2.5 mt-2"
-                          >
-                            <ChevronLeft className="h-3.5 w-3.5" /> Back to Previous Step
-                          </Button>
+                        {currentNode && (
+                          <div className="mt-4 pt-4 border-t border-zinc-805 pl-3 relative">
+                            <span className="absolute -left-[10px] top-[22px] w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            <span className="text-[9px] font-black uppercase text-primary tracking-wider block">Active Node</span>
+                            <span className="text-[10px] font-bold text-zinc-200 block truncate max-w-[130px]">{currentNode.data.label}</span>
+                          </div>
                         )}
                       </div>
+                      
+                      {/* Right dialog state & choices */}
+                      <div className="flex-grow flex flex-col justify-between overflow-y-auto min-h-[220px]">
+                        <div className="space-y-4">
+                          {currentNode && (
+                            <div className="flex items-center gap-2">
+                              {getNodeBadge(currentNode.type)}
+                            </div>
+                          )}
+                          
+                          {/* Node Type Specific Overlays */}
+                          {currentNode?.type === 'outcome' && (
+                            <div className="space-y-4 max-w-xl">
+                              <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-2">
+                                <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wide">Outcome Step Reached</h4>
+                                <p className="text-xs text-zinc-300">
+                                  The conversation has reached the outcome: <span className="font-extrabold text-purple-300">"{currentNode.data.outcomeValue}"</span>.
+                                </p>
+                              </div>
+                              <Button
+                                onClick={() => handleOutcomeSubmit(currentNode.data.outcomeValue || 'Interested')}
+                                disabled={isSaving}
+                                className="w-full h-11 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider shadow-lg flex items-center justify-center gap-2"
+                              >
+                                <Check className="h-4 w-4" /> Confirm & Save Outcome: {currentNode.data.outcomeValue}
+                              </Button>
+                            </div>
+                          )}
+
+                          {currentNode?.type === 'action' && (
+                            <div className="space-y-4 max-w-xl">
+                              <div className={cn(
+                                "p-4 border rounded-xl space-y-2",
+                                actionStatus === 'loading' ? "bg-primary/5 border-primary/20 text-primary" :
+                                actionStatus === 'success' ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400" :
+                                actionStatus === 'error' ? "bg-rose-500/5 border-rose-500/20 text-rose-400" :
+                                "bg-zinc-900 border-zinc-800 text-zinc-350"
+                              )}>
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-xs font-bold uppercase tracking-wide">
+                                    {actionStatus === 'loading' ? 'Executing Automation Action...' :
+                                     actionStatus === 'success' ? 'Automation Action Completed' :
+                                     actionStatus === 'error' ? 'Automation Action Failed' :
+                                     'Automation Action Step'}
+                                  </h4>
+                                  {actionStatus === 'loading' && <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />}
+                                  {actionStatus === 'success' && <Check className="h-3.5 w-3.5 text-emerald-400" />}
+                                  {actionStatus === 'error' && <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />}
+                                </div>
+                                <p className="text-xs text-zinc-350">
+                                  This step triggers the automation action: <span className="font-extrabold">{currentNode.data.actionType?.replace('_', ' ')}</span>.
+                                </p>
+                                {actionError && (
+                                  <p className="text-[11px] text-rose-400 font-mono border-t border-rose-500/10 pt-2 mt-2">
+                                    Error: {actionError}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {currentNode?.data?.text && (
+                            <div className="text-base font-serif text-zinc-200 leading-relaxed max-w-2xl pr-4 whitespace-pre-line select-text">
+                              {resolvedActiveNodeText}
+                            </div>
+                          )}
+
+                          {/* Dynamic Compliance Checkbox for Say nodes */}
+                          {currentNode?.type === 'say' && currentNode.data.sayConfig?.complianceVerify && (
+                            <div className="mt-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl flex items-start gap-3 max-w-xl">
+                              <input 
+                                type="checkbox"
+                                id="compliance-checkbox"
+                                checked={complianceChecked}
+                                onChange={(e) => setComplianceChecked(e.target.checked)}
+                                className="mt-0.5 rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-0"
+                              />
+                              <label htmlFor="compliance-checkbox" className="text-xs text-zinc-350 cursor-pointer select-none">
+                                <span className="font-extrabold text-amber-400 block mb-1">Compliance Verification Required</span>
+                                I verify that I have read the compliance statement exactly as written.
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Dynamic Input Fields rendering for Question nodes */}
+                          {currentNode?.type === 'question' && currentNode.data.questionConfig?.fieldName && (
+                            <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl max-w-xl space-y-3 shadow-inner">
+                              <div className="flex justify-between items-center">
+                                <Label htmlFor="question-input" className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
+                                  Response for <span className="text-primary font-mono">{currentNode.data.questionConfig.fieldName}</span>
+                                </Label>
+                                <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-wider border-zinc-800 text-zinc-400 bg-zinc-900/40">
+                                  {currentNode.data.questionConfig.fieldType || 'text'}
+                                </Badge>
+                              </div>
+                              
+                              {currentNode.data.questionConfig.fieldType === 'select' ? (
+                                <select
+                                  id="question-input"
+                                  value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
+                                    setValidationError(null);
+                                  }}
+                                  className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-lg text-xs p-2 focus:border-primary focus:ring-0 outline-none"
+                                >
+                                  <option value="">-- Choose Option --</option>
+                                  {currentNode.data.questionConfig.selectOptions?.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              ) : currentNode.data.questionConfig.fieldType === 'datepicker' ? (
+                                <Input
+                                  id="question-input"
+                                  type="date"
+                                  value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
+                                    setValidationError(null);
+                                  }}
+                                  className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg h-9"
+                                />
+                              ) : currentNode.data.questionConfig.fieldType === 'number' ? (
+                                <Input
+                                  id="question-input"
+                                  type="number"
+                                  placeholder="Enter numeric response..."
+                                  value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
+                                    setValidationError(null);
+                                  }}
+                                  className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg h-9"
+                                />
+                              ) : (
+                                <Input
+                                  id="question-input"
+                                  type="text"
+                                  placeholder="Type response..."
+                                  value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
+                                    setValidationError(null);
+                                  }}
+                                  className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg h-9"
+                                />
+                              )}
+                              {currentNode.data.questionConfig.validationPattern && (
+                                <p className="text-[9px] text-zinc-500 font-mono">
+                                  Validation Regex: {currentNode.data.questionConfig.validationPattern}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Field level Validation Error banner */}
+                          {validationError && (
+                            <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg text-xs flex items-center gap-2 max-w-xl">
+                              <AlertTriangle className="h-4 w-4 shrink-0" />
+                              <span>{validationError}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-6 border-t border-zinc-800/80 mt-6 space-y-3 shrink-0">
+                          {choices.length > 0 ? (
+                            <>
+                              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Choose Customer's Response:</span>
+                              <div className="flex flex-wrap gap-2">
+                                {choices.map((choice) => (
+                                  <Button
+                                    key={choice.edgeId}
+                                    type="button"
+                                    disabled={currentNode?.type === 'say' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked}
+                                    onClick={() => handleChoiceClick(choice.targetNode.id)}
+                                    className="h-9 px-4 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-200 hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black"
+                                  >
+                                    {choice.edgeLabel}
+                                  </Button>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            currentNode?.type !== 'outcome' && (
+                              <div className="text-xs text-zinc-500 italic">
+                                No further choices. You can log the outcome in the right panel to complete this call.
+                              </div>
+                            )
+                          )}
+                          
+                          {pathHistory.length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              type="button"
+                              onClick={handleGoBack}
+                              className="h-8 text-[10px] font-bold text-zinc-400 hover:text-zinc-100 rounded-lg gap-1 px-2.5 mt-2"
+                            >
+                              <ChevronLeft className="h-3.5 w-3.5" /> Back to Previous Step
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )
                 ) : (
                   <div className="text-base font-serif text-zinc-200 leading-relaxed max-w-3xl pr-4 whitespace-pre-line select-text pt-4">
                     {renderedScript}
@@ -835,6 +1232,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
               <TabsTrigger value="notes" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-zinc-950 text-xs font-bold">Notes</TabsTrigger>
               <TabsTrigger value="deals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-zinc-950 text-xs font-bold">Deals ({contactDeals.length})</TabsTrigger>
               <TabsTrigger value="history" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-zinc-950 text-xs font-bold">Timeline ({contactHistory.length})</TabsTrigger>
+              <TabsTrigger value="rebuttals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-zinc-950 text-xs font-bold">Rebuttals ({objectionNodes.length})</TabsTrigger>
             </TabsList>
 
             {/* Notes & Outcomes Tab */}
@@ -988,6 +1386,56 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            {/* Rebuttals & Objections Tab */}
+            <TabsContent value="rebuttals" className="flex-grow overflow-y-auto p-4 space-y-4 flex flex-col">
+              <div className="space-y-3 flex-grow overflow-y-auto">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Objection Rebuttals Quick-Access</span>
+                
+                <Input
+                  type="text"
+                  placeholder="Search objections by keyword..."
+                  value={objectionSearch}
+                  onChange={(e) => setObjectionSearch(e.target.value)}
+                  className="bg-zinc-950 border-zinc-800 text-zinc-150 text-xs rounded-xl h-9"
+                />
+                
+                {filteredObjections.length === 0 ? (
+                  <p className="text-xs text-zinc-500 italic text-center py-20">No matching objections found.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredObjections.map((node) => (
+                      <div 
+                        key={node.id} 
+                        onClick={() => handleObjectionClick(node.id)}
+                        className={cn(
+                          "p-3 rounded-xl border cursor-pointer transition-all flex flex-col gap-1 text-left",
+                          currentNodeId === node.id
+                            ? "bg-amber-500/10 border-amber-500 text-amber-500 shadow"
+                            : "bg-zinc-950 border-zinc-850 text-zinc-400 hover:bg-zinc-900 hover:border-zinc-750 hover:text-zinc-200"
+                        )}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold truncate">{node.data.label || 'Objection'}</span>
+                          <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[8px] font-bold uppercase tracking-wider scale-90">
+                            Objection
+                          </Badge>
+                        </div>
+                        {node.data.objectionConfig?.keywordTriggers && node.data.objectionConfig.keywordTriggers.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {node.data.objectionConfig.keywordTriggers.map((kw: string) => (
+                              <Badge key={kw} variant="outline" className="text-[8px] border-zinc-805 text-zinc-400 bg-zinc-900/50">
+                                {kw}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </TabsContent>
           </Tabs>
 
