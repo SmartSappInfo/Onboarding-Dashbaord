@@ -472,6 +472,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                 entityPhone: currentItem?.entityPhone,
                 entityEmail: currentItem?.entityEmail,
                 collectedAnswers: collectedAnswersRef.current,
+                agentId: user?.uid,
+                agentName: user?.displayName || 'Agent',
+                workspaceId: activeWorkspaceId,
                 timestamp: new Date().toISOString(),
               }
             })
@@ -537,16 +540,40 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   // Pre-call Guardrails (DNC/Timezone) calculations
   const isDncContact = React.useMemo(() => {
-    return entityData?.doNotCall === true || entityData?.dnc === true || entityData?.status === 'dnc';
+    // Check direct boolean properties or tags matching "dnc" or "do not call"
+    const hasDncTag = entityData?.tags?.some((t: any) => {
+      const tagName = typeof t === 'string' ? t.toLowerCase() : t?.name?.toLowerCase();
+      return tagName === 'dnc' || tagName === 'do not call';
+    });
+    return (
+      entityData?.doNotCall === true ||
+      entityData?.dnc === true ||
+      entityData?.status === 'dnc' ||
+      !!hasDncTag
+    );
   }, [entityData]);
 
   const isOutsideTimezone = React.useMemo(() => {
     if (currentNode?.type !== 'start' || !currentNode?.data?.startConfig?.checkTimezone) return false;
     const start = currentNode.data.startConfig.allowedHoursStart || "08:00";
     const end = currentNode.data.startConfig.allowedHoursEnd || "17:00";
-    const current = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    return current < start || current > end;
-  }, [currentNode]);
+
+    // Resolve target timezone context (contact's custom timezone field, e.g. "America/New_York", falling back to agent browser locale)
+    const targetTimezone = entityData?.timezone || entityData?.address?.timezone || undefined;
+    try {
+      const current = new Date().toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        ...(targetTimezone && { timeZone: targetTimezone })
+      });
+      return current < start || current > end;
+    } catch (e) {
+      console.error('[WORKSPACE_CLIENT] Invalid contact timezone string:', targetTimezone, e);
+      const current = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+      return current < start || current > end;
+    }
+  }, [currentNode, entityData]);
 
   const showGuardrailWarning = React.useMemo(() => {
     if (currentNode?.type !== 'start' || guardrailBypassed) return false;
