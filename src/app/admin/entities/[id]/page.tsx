@@ -81,6 +81,7 @@ import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
 import EntityNotesTab from '../components/EntityNotesTab';
+import LinkedQuickNotesPanel from '@/app/admin/quick-notes/components/LinkedQuickNotesPanel';
 import EntityNotesWidget from '../components/EntityNotesWidget';
 import EntityContactDirectory from '../components/EntityContactDirectory';
 import EntityAutomationsTab from '../components/EntityAutomationsTab';
@@ -527,8 +528,9 @@ export default function EntityDetailPage() {
                         </Card>
                     </TabsContent>
                     
-                    <TabsContent value="notes" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                    <TabsContent value="notes" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityNotesTab entityId={entityId} />
+                        <LinkedQuickNotesPanel workspaceId={activeWorkspaceId} by="entity" recordId={entityId} />
                     </TabsContent>
                     <TabsContent value="automations" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityAutomationsTab entityId={entityId} />

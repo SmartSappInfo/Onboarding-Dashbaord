@@ -131,11 +131,12 @@ const formSchema = z.object({
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   adminAlertsEnabled: z.boolean().default(false),
-  adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  adminAlertChannel: z.enum(['email', 'sms', 'whatsapp', 'both']).default('both'),
   adminAlertNotifyManager: z.boolean().default(false),
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
+  adminAlertWhatsappTemplateId: z.string().optional(),
   
   // Reminders (Task 12.1)
   enabledReminders: z.array(z.string()).default([]),
@@ -483,6 +484,7 @@ export default function NewMeetingPage() {
             adminAlertSpecificUserIds: data.adminAlertSpecificUserIds || [],
             adminAlertEmailTemplateId: data.adminAlertEmailTemplateId || '',
             adminAlertSmsTemplateId: data.adminAlertSmsTemplateId || '',
+            adminAlertWhatsappTemplateId: data.adminAlertWhatsappTemplateId || '',
             
             // Reminders (Task 12.1)
             enabledReminders: data.enabledReminders || [],
@@ -535,6 +537,7 @@ export default function NewMeetingPage() {
                 specificUserIds: data.adminAlertSpecificUserIds,
                 emailTemplateId: data.adminAlertEmailTemplateId,
                 smsTemplateId: data.adminAlertSmsTemplateId,
+                whatsappTemplateId: data.adminAlertWhatsappTemplateId,
                 channel: data.adminAlertChannel,
                 variables: {
                     school_name: data.entity?.displayName || data.heroTitle || 'Standalone Session',

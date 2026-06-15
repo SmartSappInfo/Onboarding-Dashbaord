@@ -1,7 +1,13 @@
+import type { Metadata } from 'next';
 import { Suspense, type ReactNode } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
 import AdminLayoutClient from './layout-client';
 import FirebaseBootstrap from '@/firebase/FirebaseBootstrap';
+
+// The admin control plane is auth-gated; never index it.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 /**
  * Server Component wrapper for admin layout.

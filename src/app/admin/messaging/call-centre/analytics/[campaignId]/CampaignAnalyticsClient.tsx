@@ -1,0 +1,495 @@
+'use client';
+
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import { useCallQueueItems, useCallCampaigns } from '@/lib/call-centre-hooks';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageContainer } from '@/components/ui/page-container';
+import { cn } from '@/lib/utils';
+import { 
+  RefreshCw, 
+  ArrowLeft, 
+  AlertCircle, 
+  Phone, 
+  Clock, 
+  FileText, 
+  ChevronDown, 
+  ChevronUp, 
+  Settings,
+  CheckCircle2,
+  PhoneOff,
+  UserCheck
+} from 'lucide-react';
+import type { CallCampaign } from '@/lib/types';
+
+interface CampaignAnalyticsClientProps {
+  campaignId: string;
+  workspaceId: string;
+}
+
+export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAnalyticsClientProps) {
+  const router = useRouter();
+  const { activeWorkspaceId: contextWorkspaceId } = useWorkspace() as any;
+  const activeWorkspaceId = workspaceId || contextWorkspaceId;
+
+  const { campaigns, isLoading: campaignsLoading } = useCallCampaigns(activeWorkspaceId);
+  const { queueItems, isLoading: queueItemsLoading } = useCallQueueItems(campaignId);
+
+  const campaign = React.useMemo(() => campaigns.find(c => c.id === campaignId), [campaigns, campaignId]);
+
+  const [expandedNotesId, setExpandedNotesId] = React.useState<string | null>(null);
+
+  const wrapHref = (href: string) => {
+    if (!activeWorkspaceId) return href;
+    const separator = href.includes('?') ? '&' : '?';
+    return `${href}${separator}track=${activeWorkspaceId}`;
+  };
+
+  // Filter completed calls for log
+  const completedCalls = React.useMemo(() => {
+    return queueItems
+      .filter(item => item.status === 'completed')
+      .sort((a, b) => {
+        const timeA = a.lastAttemptAt ? new Date(a.lastAttemptAt).getTime() : 0;
+        const timeB = b.lastAttemptAt ? new Date(b.lastAttemptAt).getTime() : 0;
+        return timeB - timeA; // Most recent calls first
+      });
+  }, [queueItems]);
+
+  // Aggregate outcomes and statuses
+  const analytics = React.useMemo(() => {
+    if (queueItems.length === 0) return [];
+
+    const counts: Record<string, { count: number; color: string; label: string }> = {};
+
+    const addCount = (key: string, label: string, color: string) => {
+      if (!counts[key]) {
+        counts[key] = { count: 0, label, color };
+      }
+      counts[key].count++;
+    };
+
+    queueItems.forEach(item => {
+      if (item.status === 'completed') {
+        const outcomeLabel = item.outcome || 'Completed (No Outcome)';
+        let color = 'bg-primary';
+        if (outcomeLabel.toLowerCase().includes('interested') && !outcomeLabel.toLowerCase().includes('not')) {
+          color = 'bg-emerald-500';
+        } else if (outcomeLabel.toLowerCase().includes('not interested')) {
+          color = 'bg-rose-500';
+        } else if (outcomeLabel.toLowerCase().includes('callback') || outcomeLabel.toLowerCase().includes('call back')) {
+          color = 'bg-amber-500';
+        } else if (outcomeLabel.toLowerCase().includes('wrong')) {
+          color = 'bg-red-700';
+        } else if (outcomeLabel.toLowerCase().includes('no answer') || outcomeLabel.toLowerCase().includes('voicemail')) {
+          color = 'bg-zinc-500';
+        } else if (outcomeLabel.toLowerCase().includes('defer')) {
+          color = 'bg-purple-500';
+        }
+        addCount(`outcome:${outcomeLabel}`, outcomeLabel, color);
+      } else if (item.status === 'callback_scheduled') {
+        addCount('status:callback', 'Callback Scheduled', 'bg-amber-400');
+      } else if (item.status === 'deferred') {
+        addCount('status:deferred', 'Deferred Call', 'bg-purple-400');
+      } else if (item.status === 'skipped') {
+        addCount('status:skipped', 'Skipped', 'bg-zinc-400');
+      } else {
+        addCount('status:pending', 'Pending / In Progress', 'bg-blue-500');
+      }
+    });
+
+    const total = queueItems.length;
+    return Object.values(counts)
+      .map(group => ({
+        ...group,
+        percentage: Math.round((group.count / total) * 100),
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [queueItems]);
+
+  const formatCallDuration = (secs: number | undefined) => {
+    if (secs === undefined) return '0s';
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  };
+
+  const getOutcomeBadgeColor = (outcomeLabel: string | undefined) => {
+    if (!outcomeLabel) return 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400';
+    const clean = outcomeLabel.toLowerCase();
+    if (clean.includes('interested') && !clean.includes('not')) {
+      return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+    }
+    if (clean.includes('not interested')) {
+      return 'bg-rose-500/10 border-rose-500/20 text-rose-400';
+    }
+    if (clean.includes('callback') || clean.includes('call back')) {
+      return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
+    }
+    return 'bg-blue-500/10 border-blue-500/20 text-blue-400';
+  };
+
+  const getStatusBadge = (status: CallCampaign['status']) => {
+    switch (status) {
+      case 'running':
+        return <Badge className="bg-emerald-500 hover:bg-emerald-600 font-bold uppercase text-[9px] px-2 rounded-md">Running</Badge>;
+      case 'paused':
+        return <Badge variant="secondary" className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 font-bold uppercase text-[9px] px-2 rounded-md">Paused</Badge>;
+      case 'completed':
+        return <Badge className="bg-blue-500 hover:bg-blue-600 font-bold uppercase text-[9px] px-2 rounded-md">Completed</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive" className="font-bold uppercase text-[9px] px-2 rounded-md">Cancelled</Badge>;
+      default:
+        return <Badge variant="outline" className="font-bold uppercase text-[9px] px-2 rounded-md">Draft</Badge>;
+    }
+  };
+
+  const isLoading = campaignsLoading || queueItemsLoading;
+
+  return (
+    <div className="h-full overflow-y-auto bg-zinc-950 text-zinc-100">
+      <PageContainer>
+        <div className="space-y-8 py-6">
+          {/* Header */}
+          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-zinc-900 pb-5">
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => router.push(wrapHref('/admin/messaging/call-centre'))}
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-black uppercase text-zinc-100 tracking-wider">
+                    {campaign?.name || 'Campaign Analytics'}
+                  </h1>
+                  {campaign?.status && getStatusBadge(campaign.status)}
+                </div>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">
+                  Detailed outcomes, duration metrics, and call history logs
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-40 gap-3 text-zinc-500">
+              <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+              <span className="text-xs font-semibold">Loading campaign analytics...</span>
+            </div>
+          ) : !campaign ? (
+            <div className="text-center py-20 space-y-3">
+              <AlertCircle className="h-10 w-10 text-zinc-650 mx-auto" />
+              <h4 className="text-sm font-bold text-zinc-400">Campaign not found</h4>
+              <p className="text-xs text-zinc-500 max-w-xs mx-auto">The requested campaign does not exist or you do not have permission to view it.</p>
+              <Button onClick={() => router.push(wrapHref('/admin/messaging/call-centre'))} className="rounded-xl font-bold text-xs">
+                Back to Dashboard
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Premium KPI Metric Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <div className="p-3 bg-primary/10 text-primary rounded-xl border border-primary/20">
+                      <Phone className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Queue Contacts</p>
+                      <p className="text-2xl font-black text-zinc-100">{queueItems.length}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Completed Calls</p>
+                      <p className="text-2xl font-black text-zinc-100">{completedCalls.length}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
+                      <Clock className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Callbacks Pending</p>
+                      <p className="text-2xl font-black text-zinc-100">
+                        {queueItems.filter(i => i.status === 'callback_scheduled').length}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl border border-purple-500/20">
+                      <UserCheck className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Deferred Calls</p>
+                      <p className="text-2xl font-black text-zinc-100">
+                        {queueItems.filter(i => i.status === 'deferred').length}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Analytics Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                
+                {/* Left Columns: Tabs for Distribution & Logs */}
+                <div className="lg:col-span-2 space-y-6">
+                  <Tabs defaultValue="distribution" className="w-full">
+                    <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
+                      <TabsList className="bg-transparent h-10 p-0 rounded-none border-b border-transparent gap-6">
+                        <TabsTrigger 
+                          value="distribution" 
+                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-zinc-400 data-[state=active]:text-zinc-100"
+                        >
+                          Outcomes Distribution
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="logs" 
+                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-zinc-400 data-[state=active]:text-zinc-100"
+                        >
+                          Call Logs ({completedCalls.length})
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
+
+                    {/* Distribution Tab Content */}
+                    <TabsContent value="distribution" className="pt-6 space-y-8">
+                      {queueItems.length === 0 ? (
+                        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
+                          <AlertCircle className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
+                          <h4 className="text-sm font-bold text-zinc-400">No dialer records found</h4>
+                          <p className="text-xs text-zinc-500">This campaign does not have any contacts in its queue yet.</p>
+                        </div>
+                      ) : (
+                        <Card className="border border-zinc-800 bg-zinc-900/20 rounded-2xl">
+                          <div className="p-6 border-b border-zinc-850 bg-zinc-900/30">
+                            <h3 className="text-sm font-bold text-zinc-300 font-sans">Visual Outcomes Distribution</h3>
+                          </div>
+                          <div className="p-6 space-y-8">
+                            {/* Stacked Horizontal Progress Bar */}
+                            <div className="space-y-3">
+                              <div className="h-6 w-full rounded-xl overflow-hidden flex bg-zinc-900 border border-zinc-800">
+                                {analytics.map((group, idx) => {
+                                  if (group.percentage === 0) return null;
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className={`${group.color} transition-all duration-300 hover:opacity-90`}
+                                      style={{ width: `${group.percentage}%` }}
+                                      title={`${group.label}: ${group.count} (${group.percentage}%)`}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Group Legend & Metrics list */}
+                            <div className="space-y-4 pt-4 border-t border-zinc-850">
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Outcomes & Statuses breakdown</span>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {analytics.map((group, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="p-3.5 bg-zinc-900/40 border border-zinc-800/80 rounded-xl flex items-center justify-between hover:border-zinc-700 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <span className={`w-3.5 h-3.5 rounded-md ${group.color} shrink-0`} />
+                                      <span className="text-xs font-bold text-zinc-200 truncate">{group.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 font-mono text-xs shrink-0 pl-2">
+                                      <span className="text-zinc-400 font-medium">{group.count} calls</span>
+                                      <span className="text-zinc-100 font-bold w-10 text-right">{group.percentage}%</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      )}
+                    </TabsContent>
+
+                    {/* Logs Tab Content */}
+                    <TabsContent value="logs" className="pt-6" style={{ contentVisibility: 'auto' }}>
+                      {completedCalls.length === 0 ? (
+                        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
+                          <PhoneOff className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
+                          <h4 className="text-sm font-bold text-zinc-400">No completed calls</h4>
+                          <p className="text-xs text-zinc-500">No contacts have been resolved in this campaign yet.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {completedCalls.map((item) => {
+                            const isExpanded = expandedNotesId === item.id;
+                            const rules = campaign?.automationRules?.[item.outcome || ''] || [];
+
+                            return (
+                              <div 
+                                key={item.id} 
+                                className="p-5 bg-zinc-900/30 border border-zinc-800/80 rounded-2xl space-y-4 hover:border-zinc-700 transition-colors"
+                              >
+                                {/* Contact Info Header */}
+                                <div className="flex items-start justify-between gap-4">
+                                  <div>
+                                    <h4 className="text-sm font-bold text-zinc-100">{item.entityName}</h4>
+                                    <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-400 font-medium">
+                                      <span className="font-mono">{item.entityPhone || 'No Phone'}</span>
+                                      {item.entityEmail && (
+                                        <>
+                                          <span>•</span>
+                                          <span className="truncate max-w-[200px]">{item.entityEmail}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded", getOutcomeBadgeColor(item.outcome))}>
+                                    {item.outcome || 'Completed'}
+                                  </Badge>
+                                </div>
+
+                                {/* Log stats (Duration, Date, attempts) */}
+                                <div className="grid grid-cols-3 gap-2 bg-zinc-950 p-3.5 border border-zinc-800/80 rounded-xl text-center text-xs font-mono text-zinc-400">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                                    <span>{formatCallDuration(item.duration)}</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-bold text-zinc-300">{item.attempts}</span> attempts
+                                  </div>
+                                  <div>
+                                    <span>{item.lastAttemptAt ? new Date(item.lastAttemptAt).toLocaleDateString() : '—'}</span>
+                                  </div>
+                                </div>
+
+                                {/* Post-Call Actions / Automations badges */}
+                                <div className="pt-1 space-y-2">
+                                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-450 uppercase tracking-widest">
+                                    <Settings className="h-3.5 w-3.5 text-zinc-500" />
+                                    <span>Triggered Automations ({rules.length})</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {rules.length === 0 ? (
+                                      <span className="text-[10px] text-zinc-550 italic">No automations mapped to this outcome</span>
+                                    ) : (
+                                      rules.map((rule, idx) => (
+                                        <Badge key={idx} variant="outline" className="text-[8px] font-bold uppercase tracking-wider bg-zinc-950 border-zinc-800 text-zinc-350">
+                                          {rule.type === 'CHANGE_STAGE' && 'Stage Changed'}
+                                          {rule.type === 'ADD_TAG' && 'Applied Tag'}
+                                          {rule.type === 'CREATE_TASK' && 'Created Task'}
+                                          {rule.type === 'SEND_SMS' && 'Sent SMS'}
+                                          {rule.type === 'SEND_EMAIL' && 'Sent Email'}
+                                        </Badge>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Call Notes Collapsible toggler */}
+                                {item.notesDraft && (
+                                  <div className="border-t border-zinc-800/60 pt-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedNotesId(isExpanded ? null : item.id)}
+                                      className="flex items-center gap-1.5 text-[9px] font-bold text-primary uppercase tracking-widest hover:text-primary/80"
+                                    >
+                                      <FileText className="h-3.5 w-3.5" />
+                                      <span>Call Notes Logged</span>
+                                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                    </button>
+                                    
+                                    {isExpanded && (
+                                      <div className="mt-2.5 p-3.5 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-zinc-300 font-serif leading-relaxed italic whitespace-pre-line select-text animate-in slide-in-from-top-2 duration-200">
+                                        "{item.notesDraft}"
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
+                {/* Right Column: Campaign Details & Information Card */}
+                <div className="space-y-6">
+                  <Card className="border border-zinc-800 bg-zinc-900/20 rounded-2xl">
+                    <div className="p-6 border-b border-zinc-850 bg-zinc-900/30">
+                      <h3 className="text-sm font-bold text-zinc-300">Campaign Details</h3>
+                    </div>
+                    <div className="p-6 space-y-5">
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Description</span>
+                        <p className="text-xs text-zinc-350 leading-relaxed">
+                          {campaign.description || 'No description provided for this campaign.'}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 border-t border-zinc-800/60 pt-4">
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Call Script</span>
+                          <span className="text-xs font-bold text-zinc-300 truncate block">
+                            {campaign.scriptId ? 'Assigned' : 'None'}
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Workspace ID</span>
+                          <span className="text-xs font-bold text-zinc-350 truncate block">
+                            {activeWorkspaceId || 'Default'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-zinc-800/60 pt-4 space-y-2.5">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Summary Stats</span>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs text-zinc-400">
+                            <span>Pending Contacts</span>
+                            <span className="font-bold text-zinc-200">
+                              {queueItems.filter(i => i.status === 'scheduled' || i.status === 'in_progress').length}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs text-zinc-400">
+                            <span>Total Calls Attempted</span>
+                            <span className="font-bold text-zinc-200">
+                              {queueItems.reduce((acc, curr) => acc + (curr.attempts || 0), 0)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+              </div>
+            </>
+          )}
+        </div>
+      </PageContainer>
+    </div>
+  );
+}

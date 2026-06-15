@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronDown, Variable } from 'lucide-react';
-import type { TemplateVariable } from '@/lib/types';
+import type { TemplateVariable, MessageChannel } from '@/lib/types';
 
 // ── SMS segment calculation ────────────────────────────────────────────────
 
@@ -124,7 +124,7 @@ function BasicVariablePicker({ variables, onInsert }: VariablePickerProps) {
 interface TemplateEditorProps {
   value: string;
   onChange: (value: string) => void;
-  channel: 'email' | 'sms' | 'in_app' | 'push';
+  channel: MessageChannel;
   variables?: TemplateVariable[];
   placeholder?: string;
 }

@@ -20,6 +20,10 @@ export default {
     },
   	extend: {
   		fontFamily: {
+  			figtree: [
+  				'Figtree',
+  				'sans-serif'
+  			],
   			body: [
   				'Figtree',
   				'sans-serif'

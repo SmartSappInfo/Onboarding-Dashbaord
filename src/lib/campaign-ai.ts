@@ -139,3 +139,88 @@ Rules:
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Generate outbound call script template using resolved Genkit model.
+ */
+export async function generateCallScript(params: {
+  campaignName: string;
+  objective: string;
+  targetAudience: string;
+  tone: string;
+  customGuidelines?: string;
+  organizationId?: string;
+}): Promise<{ success: boolean; script?: string; error?: string }> {
+  try {
+    const prompt = `You are an expert sales and CRM outreach calling scriptwriter.
+Generate a highly effective outbound calling script for a call campaign.
+
+Campaign Context:
+- Campaign Name: "${params.campaignName}"
+- Objective: "${params.objective}"
+- Target Audience: "${params.targetAudience}"
+- Tone: "${params.tone}" (e.g., professional, warm, urgent, authoritative)
+${params.customGuidelines ? `- Custom Guidelines: ${params.customGuidelines}` : ''}
+
+Calling Script Rules:
+1. Provide a logical flow: Introduction, Main Hook/Value Proposition, Handling common objections, and Call to Action/Next Steps.
+2. Use double curly brace placeholders for dynamic contact token replacement where appropriate.
+   Available variables:
+   - {{FIRST_NAME}} (Contact's name)
+   - {{AGENT_NAME}} (Caller's name)
+   - {{SCHOOL_NAME}} (Organization / School name)
+   - {{EMAIL}} (Contact's email)
+   - {{PHONE}} (Contact's phone number)
+3. Keep the script conversational, professional, and easy to read/speak aloud.
+4. Output ONLY the script body text. No introductions like "Here is your script", no quotes, no conversational filler. Start directly with the script.`;
+
+    const script = await callGenkit({
+      prompt,
+      organizationId: params.organizationId,
+      jsonMode: false,
+    });
+
+    return {
+      success: true,
+      script: script.trim(),
+    };
+  } catch (error: any) {
+    console.error('[CAMPAIGN-AI] Generate script failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Refine an existing call script using Genkit model with a natural language instruction.
+ */
+export async function refineCallScript(params: {
+  original: string;
+  instruction: string;
+  organizationId?: string;
+}): Promise<{ success: boolean; refined?: string; error?: string }> {
+  try {
+    const prompt = `You are a professional call script copywriter. Refine the following outreach calling script.
+
+Original Script:
+"""
+${params.original}
+"""
+
+Instruction: ${params.instruction}
+
+Rules:
+- Keep the overall intent, dynamic placeholders (e.g., {{FIRST_NAME}}, {{AGENT_NAME}}), and flow.
+- Apply the requested refinement changes precisely.
+- Return ONLY the refined calling script text. Do not wrap in quotes, do not add comments, explanations, or introductory text.`;
+
+    const refined = await callGenkit({
+      prompt,
+      organizationId: params.organizationId,
+      jsonMode: false,
+    });
+    return { success: true, refined: refined.trim() };
+  } catch (error: any) {
+    console.error('[CAMPAIGN-AI] Refine script failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}

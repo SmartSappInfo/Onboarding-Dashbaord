@@ -7,7 +7,20 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const Sheet = SheetPrimitive.Root
+const SheetDescriptionContext = React.createContext<{
+  hasDescription: boolean;
+  setHasDescription: (value: boolean) => void;
+} | null>(null)
+
+const Sheet = ({ children, ...props }: React.ComponentPropsWithoutRef<typeof SheetPrimitive.Root>) => {
+  const [hasDescription, setHasDescription] = React.useState(false)
+  const contextValue = React.useMemo(() => ({ hasDescription, setHasDescription }), [hasDescription])
+  return (
+    <SheetDescriptionContext.Provider value={contextValue}>
+      <SheetPrimitive.Root {...props}>{children}</SheetPrimitive.Root>
+    </SheetDescriptionContext.Provider>
+  )
+}
 
 const SheetTrigger = SheetPrimitive.Trigger
 
@@ -56,22 +69,27 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
+>(({ side = "right", className, children, ...props }, ref) => {
+  const context = React.useContext(SheetDescriptionContext)
+  
+  return (
+    <SheetPortal>
+      <SheetOverlay />
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(sheetVariants({ side }), "font-figtree", className)}
+        {...(!context?.hasDescription && { "aria-describedby": undefined })}
+        {...props}
+      >
+        {children}
+        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  )
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({
@@ -117,13 +135,22 @@ SheetTitle.displayName = SheetPrimitive.Title.displayName
 const SheetDescription = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  const context = React.useContext(SheetDescriptionContext)
+  
+  React.useEffect(() => {
+    context?.setHasDescription(true)
+    return () => context?.setHasDescription(false)
+  }, [context])
+
+  return (
+    <SheetPrimitive.Description
+      ref={ref}
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
+})
 SheetDescription.displayName = "SheetDescription"
 
 export {

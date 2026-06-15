@@ -1,4 +1,4 @@
-import type { EntityContact, EmailVerificationRule } from './types';
+import type { EntityContact, EmailVerificationRule, PhoneVerificationRule } from './types';
 
 /**
  * Pure business logic engine for calculating Lead Scoring updates.
@@ -41,6 +41,48 @@ export function calculateNewVerifyScores(
   }
 
   // Calculate overall entity lead score as sum of contact scores
+  const leadScore = updatedContacts.reduce((sum, c) => sum + (c.score || 0), 0);
+
+  return { entityContacts: updatedContacts, leadScore };
+}
+
+/**
+ * Calculates new contact and entity scores based on phone verification results.
+ * Mirrors calculateNewVerifyScores: delta scoring against phoneVerificationScore
+ * prevents double-counting. Matches the contact by stored phone string, falling
+ * back to the normalized E.164 form.
+ */
+export function calculateNewPhoneVerifyScores(
+  entityContacts: EntityContact[],
+  phone: string,
+  verificationScore: number,
+  rules: PhoneVerificationRule[],
+  e164?: string | null
+): { entityContacts: EntityContact[]; leadScore: number } {
+  const updatedContacts = entityContacts.map((c) => ({ ...c }));
+  const targetPhone = phone.trim();
+
+  const sortedRules = [...rules].sort((a, b) => b.minScore - a.minScore);
+  const matchedRule = sortedRules.find((r) => verificationScore >= r.minScore);
+  const newVerifyScore = matchedRule ? matchedRule.scoreValue : 0;
+
+  const contactIndex = updatedContacts.findIndex((c) => {
+    const p = c.phone?.trim();
+    if (!p) return false;
+    return p === targetPhone || (!!e164 && p === e164);
+  });
+
+  if (contactIndex !== -1) {
+    const contact = updatedContacts[contactIndex];
+    const oldVerifyScore = contact.phoneVerificationScore || 0;
+
+    contact.phoneVerificationScore = newVerifyScore;
+    contact.score = Math.max(
+      0,
+      (contact.score || 0) - oldVerifyScore + newVerifyScore
+    );
+  }
+
   const leadScore = updatedContacts.reduce((sum, c) => sum + (c.score || 0), 0);
 
   return { entityContacts: updatedContacts, leadScore };

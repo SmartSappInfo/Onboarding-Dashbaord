@@ -7,7 +7,7 @@ import type { MessageTemplate } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bell, Users, Mail, Smartphone, PlusCircle, Pencil } from 'lucide-react';
+import { Bell, Users, Mail, Smartphone, MessageCircle, PlusCircle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
@@ -23,6 +23,7 @@ interface NotificationConfig {
   respondentPhoneField?: string;
   emailTemplateId?: string;
   smsTemplateId?: string;
+  whatsappTemplateId?: string;
   inAppTemplateId?: string;
   pushTemplateId?: string;
 }
@@ -159,13 +160,28 @@ export function FormNotificationSettings({
                       </Button>
                     </div>
                   </div>
-                  <MessagingTemplateSelector 
+                  <MessagingTemplateSelector
                     category="forms"
                     recipientType={recipientTypeMatch}
                     channel="sms"
                     value={config.smsTemplateId}
                     onValueChange={(val) => onChange({ ...config, smsTemplateId: val })}
                     placeholder="Select SMS blueprint..."
+                    compact
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2 px-1">
+                    <MessageCircle className="h-3 w-3" /> WhatsApp Template
+                  </Label>
+                  <MessagingTemplateSelector
+                    category="forms"
+                    recipientType={recipientTypeMatch}
+                    channel="whatsapp"
+                    value={config.whatsappTemplateId}
+                    onValueChange={(val) => onChange({ ...config, whatsappTemplateId: val })}
+                    placeholder="Select approved WhatsApp template..."
                     compact
                   />
                 </div>

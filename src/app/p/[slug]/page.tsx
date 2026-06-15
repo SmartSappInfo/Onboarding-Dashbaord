@@ -1,12 +1,15 @@
 import type { Metadata, ResolvingMetadata } from 'next';
+import { cache } from 'react';
 import PublicPageClient from './PublicPageClient';
 import { adminDb } from '@/lib/firebase-admin';
 import { getOrgBranding } from '@/lib/org-branding';
+import { resolveSeoMetadata, normalizeParentImages } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function getPageBySlug(slug: string) {
+// React.cache dedupes this between generateMetadata and the page body.
+const getPageBySlug = cache(async function getPageBySlug(slug: string) {
     try {
         const snap = await adminDb.collection('campaign_pages')
             .where('slug', '==', slug)
@@ -20,7 +23,7 @@ async function getPageBySlug(slug: string) {
     } catch {
         return null;
     }
-}
+});
 
 async function getPageVersion(pageId: string, versionId: string) {
     try {
@@ -43,39 +46,30 @@ export async function generateMetadata(
     const page = await getPageBySlug(slug) as any;
 
     if (!page) {
-        return { title: 'Page Not Found | SmartSapp' };
+        return { title: 'Page Not Found', robots: { index: false, follow: false } };
     }
 
     const org = await getOrgBranding(page.organizationId);
-    const title = page.seo?.title || page.name || org.name || 'Campaign Page';
-    const description = page.seo?.description || '';
-    const previousImages = (await parent).openGraph?.images || [];
 
-    // Preconnect to Google Fonts and load the brand font stylesheet
-    const fontFamily = org.brandFontFamily || 'Inter';
-    const fontUrl = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/\s+/g, '+')}:wght@400;500;700;900&display=swap`;
+    // Campaign pages have no separate banner — their `seo.ogImageUrl` IS the
+    // social image, so it is passed as the asset (default mode picks it up).
+    const base = resolveSeoMetadata({
+        seo: page.seo,
+        fallback: {
+            title: page.name || org.name || 'Campaign Page',
+            assetImageUrl: page.seo?.ogImageUrl,
+        },
+        org,
+        parentImages: normalizeParentImages((await parent).openGraph?.images),
+    });
 
     return {
-        title,
-        description,
+        ...base,
         other: {
             // Preconnect links for Google Fonts to prevent font flicker/layout shift
             'preconnect-fonts': 'https://fonts.googleapis.com',
             'preconnect-gstatic': 'https://fonts.gstatic.com',
         },
-        openGraph: {
-            title,
-            description,
-            images: page.seo?.ogImageUrl ? [page.seo.ogImageUrl] : previousImages,
-            type: 'website',
-        },
-        twitter: {
-            card: 'summary_large_image',
-            title,
-            description,
-            images: page.seo?.ogImageUrl ? [page.seo.ogImageUrl] : [],
-        },
-        robots: page.seo?.noIndex ? { index: false, follow: false } : undefined,
     };
 }
 

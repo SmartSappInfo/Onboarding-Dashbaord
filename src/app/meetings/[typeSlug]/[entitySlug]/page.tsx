@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
+import { cache } from 'react';
 import MeetingLoader from '@/components/meeting-loader';
 import { adminDb } from '@/lib/firebase-admin';
 import { SmartSappLogo } from '@/components/icons';
+import type { Meeting } from '@/lib/types';
+import { resolveSeoMetadata } from '@/lib/seo';
 
 type Props = {
   params: Promise<{ typeSlug: string; entitySlug: string }>;
@@ -22,57 +25,49 @@ export const viewport: Viewport = {
   themeColor: '#0a0a1a',
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { typeSlug, entitySlug } = await params;
-
+// Single source of truth for resolving a meeting by its public slug. Wrapped in
+// React.cache so generateMetadata and the page body share one Firestore read
+// (previously the same query ran twice per request).
+const getMeetingBySlug = cache(async function getMeetingBySlug(slug: string): Promise<Meeting | null> {
   try {
     const meetingsCol = adminDb.collection('meetings');
-
     // Try meetingSlug first (V3), then entitySlug (legacy)
-    let snap = await meetingsCol
-      .where('meetingSlug', '==', entitySlug.toLowerCase())
-      .limit(1)
-      .get();
-
+    let snap = await meetingsCol.where('meetingSlug', '==', slug.toLowerCase()).limit(1).get();
     if (snap.empty) {
-      snap = await meetingsCol
-        .where('entitySlug', '==', entitySlug.toLowerCase())
-        .limit(1)
-        .get();
+      snap = await meetingsCol.where('entitySlug', '==', slug.toLowerCase()).limit(1).get();
     }
-
-    if (!snap.empty) {
-      const data = snap.docs[0].data();
-      const title = data.heroTitle || data.brandingName || data.entityName || 'Meeting Session';
-      const description =
-        data.heroDescription ||
-        `Join us for an upcoming ${data.type?.name || 'session'}. Register now to secure your spot.`;
-      const typeLabel = data.type?.name || 'Meeting';
-
-      return {
-        title: `${title} | ${typeLabel}`,
-        description,
-        openGraph: {
-          title: `${title} | ${typeLabel}`,
-          description,
-          type: 'website',
-          images: data.heroImageUrl ? [{ url: data.heroImageUrl }] : [],
-        },
-        twitter: {
-          card: 'summary_large_image',
-          title: `${title} | ${typeLabel}`,
-          description,
-        },
-      };
-    }
+    if (snap.empty) return null;
+    return { id: snap.docs[0].id, ...snap.docs[0].data() } as Meeting;
   } catch {
-    // Graceful fallback — do not block page render
+    return null;
+  }
+});
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { entitySlug } = await params;
+  const meeting = await getMeetingBySlug(entitySlug);
+
+  if (!meeting) {
+    return resolveSeoMetadata({
+      fallback: { title: 'Meeting Session', description: 'Register for an upcoming meeting session.' },
+    });
   }
 
-  return {
-    title: 'Meeting Session',
-    description: 'Register for an upcoming meeting session.',
-  };
+  const typeLabel = meeting.type?.name || 'Meeting';
+  const baseTitle = meeting.heroTitle || meeting.brandingName || meeting.entityName || 'Meeting Session';
+
+  return resolveSeoMetadata({
+    seo: meeting.seo,
+    fallback: {
+      title: `${baseTitle} | ${typeLabel}`,
+      description:
+        meeting.heroDescription ||
+        `Join us for an upcoming ${typeLabel}. Register now to secure your spot.`,
+      assetImageUrl: meeting.heroImageUrl,
+    },
+    // Per-meeting logo override doubles as the entity_logo source.
+    org: { logoUrl: meeting.logoUrl },
+  });
 }
 
 export default async function PublicMeetingPage({ params }: Props) {
@@ -80,25 +75,12 @@ export default async function PublicMeetingPage({ params }: Props) {
 
   let orgName = 'SmartSapp';
   try {
-    const meetingsCol = adminDb.collection('meetings');
-    let snap = await meetingsCol
-      .where('meetingSlug', '==', entitySlug.toLowerCase())
-      .limit(1)
-      .get();
-
-    if (snap.empty) {
-      snap = await meetingsCol
-        .where('entitySlug', '==', entitySlug.toLowerCase())
-        .limit(1)
-        .get();
-    }
-
-    if (!snap.empty) {
-      const meetingData = snap.docs[0].data();
-      if (meetingData.brandingName) {
-        orgName = meetingData.brandingName;
-      } else if (meetingData.entityId) {
-        const entityDoc = await adminDb.collection('entities').doc(meetingData.entityId).get();
+    const meeting = await getMeetingBySlug(entitySlug);
+    if (meeting) {
+      if (meeting.brandingName) {
+        orgName = meeting.brandingName;
+      } else if (meeting.entityId) {
+        const entityDoc = await adminDb.collection('entities').doc(meeting.entityId).get();
         if (entityDoc.exists) {
           orgName = entityDoc.data()?.name || orgName;
         }

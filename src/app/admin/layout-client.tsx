@@ -40,6 +40,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NavigationProvider } from '@/context/NavigationContext';
 import { TenantProvider, useTenant } from '@/context/TenantContext';
+import { PageTitleManager } from '@/components/seo/PageTitleManager';
+import { ADMIN_ROUTE_TITLES } from '@/lib/route-titles';
 import { IndustryProvider } from '@/context/IndustryContext';
 import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
 import { EntityCacheProvider } from '@/context/EntityCacheContext';
@@ -72,7 +74,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const { toast } = useToast();
   const { singular, plural, dealPlural } = useTerminology();
-  const { activeWorkspaceId } = useTenant();
+  const { activeWorkspaceId, activeOrganization } = useTenant();
   const { isFeatureEnabled } = useFeatures();
   
   const [mounted, setMounted] = React.useState(false);
@@ -212,7 +214,8 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   });
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
+      <PageTitleManager map={ADMIN_ROUTE_TITLES} orgName={activeOrganization?.name} fallback="Admin" />
       <AdminSidebar />
       <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden relative">
         {/* Subtle radial gradient accent */}

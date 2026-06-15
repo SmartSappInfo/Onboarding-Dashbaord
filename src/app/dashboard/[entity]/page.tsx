@@ -9,6 +9,7 @@ export async function generateMetadata({ params }: { params: Promise<{ entity: s
   return {
     title: `${entity.charAt(0).toUpperCase() + entity.slice(1)} Dashboard`,
     description: `Analytics for ${entity}`,
+    robots: { index: false, follow: false },
   };
 }
 

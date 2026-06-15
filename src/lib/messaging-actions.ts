@@ -449,7 +449,7 @@ export async function previewCampaignAudience(params: {
   filterLogic?: 'AND' | 'OR';
   limit?: number;
   contactScope?: 'primary' | 'signatories' | 'all' | (string & {});
-  channel?: 'email' | 'sms';
+  channel?: 'email' | 'sms' | 'call';
   includeTagIds?: string[];
   excludeTagIds?: string[];
   includeLogic?: 'AND' | 'OR';
@@ -887,7 +887,7 @@ export async function previewCampaignAudience(params: {
       const isValidForChannel = (sc: any, fallbackData: any) => {
         if (!channel) return true; // No channel specified, assume valid
         if (channel === 'email') return !!sc.email || (!sc && !!fallbackData.email);
-        if (channel === 'sms') return !!sc.phone || (!sc && !!fallbackData.phone);
+        if (channel === 'sms' || channel === 'call') return !!sc.phone || (!sc && !!fallbackData.phone);
         return false;
       };
 
@@ -963,7 +963,7 @@ export async function previewCampaignAudience(params: {
       const isValidForChannel = (sc: any, fallbackData: any) => {
         if (!channel) return true;
         if (channel === 'email') return !!sc?.email || (!sc && (!!fallbackData?.email || !!fallbackData?.primaryEmail || !!fallbackData?.primaryContactEmail));
-        if (channel === 'sms') return !!sc?.phone || (!sc && (!!fallbackData?.phone || !!fallbackData?.primaryPhone || !!fallbackData?.primaryContactPhone));
+        if (channel === 'sms' || channel === 'call') return !!sc?.phone || (!sc && (!!fallbackData?.phone || !!fallbackData?.primaryPhone || !!fallbackData?.primaryContactPhone));
         return false;
       };
 

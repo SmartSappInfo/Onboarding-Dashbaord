@@ -20,6 +20,19 @@ import { useTenant } from '@/context/TenantContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 import UnifiedQRSheet from '@/components/qr-studio/unified-qr-sheet';
 import { useUser } from '@/firebase';
+import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
+import type { SeoConfig, OgImageMode } from '@/lib/types';
+import { generateKeywordsAction } from '@/app/actions/survey-seo-actions';
+import { MediaSelect } from '@/app/admin/entities/components/media-select';
+
+/** Bridge the survey form's legacy image-mode label to the canonical config. */
+function surveyModeToConfig(mode?: string): OgImageMode {
+    return mode === 'entity_logo' || mode === 'custom' ? mode : 'asset';
+}
+/** Bridge the canonical image-mode back to the survey form's label. */
+function configModeToSurvey(mode?: OgImageMode): 'survey_banner' | 'entity_logo' | 'custom' {
+    return mode === 'entity_logo' || mode === 'custom' ? mode : 'survey_banner';
+}
 
 export default function Step4Publish() {
     const { allowedWorkspaces } = useWorkspace();
@@ -27,9 +40,46 @@ export default function Step4Publish() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user } = useUser();
-    const { watch, control } = useFormContext();
+    const { watch, control, setValue } = useFormContext();
 
     const [qrSheetUser, setQrSheetUser] = React.useState<{ id: string; name: string } | null>(null);
+    const [isGeneratingKeywords, setIsGeneratingKeywords] = React.useState(false);
+
+    // ── SEO & Social Sharing bridge (flat RHF fields ⇄ canonical SeoConfig) ──
+    const seoValue: SeoConfig = {
+        title: watch('seoTitle') || undefined,
+        description: watch('seoDescription') || undefined,
+        keywords: watch('seoKeywords') || undefined,
+        ogImageUrl: watch('seoOgImage') || undefined,
+        ogImageMode: surveyModeToConfig(watch('seoOgImageMode')),
+        useContentFallback: watch('seoUseSurveyFallback') ?? true,
+    };
+
+    const handleSeoChange = React.useCallback((next: SeoConfig) => {
+        setValue('seoTitle', next.title ?? '', { shouldDirty: true });
+        setValue('seoDescription', next.description ?? '', { shouldDirty: true });
+        setValue('seoKeywords', next.keywords ?? '', { shouldDirty: true });
+        setValue('seoOgImage', next.ogImageUrl ?? '', { shouldDirty: true });
+        setValue('seoOgImageMode', configModeToSurvey(next.ogImageMode), { shouldDirty: true });
+        setValue('seoUseSurveyFallback', next.useContentFallback ?? false, { shouldDirty: true });
+    }, [setValue]);
+
+    const handleGenerateKeywords = React.useCallback(async () => {
+        const title = watch('title');
+        const description = watch('description');
+        if (!title || !description) return;
+        setIsGeneratingKeywords(true);
+        try {
+            const res = await generateKeywordsAction(title, description);
+            if (res.success && res.keywords && res.keywords.length > 0) {
+                setValue('seoKeywords', res.keywords.join(', '), { shouldDirty: true });
+            }
+        } catch (error) {
+            console.error('Failed to generate keywords via AI action:', error);
+        } finally {
+            setIsGeneratingKeywords(false);
+        }
+    }, [watch, setValue]);
 
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
@@ -363,6 +413,23 @@ export default function Step4Publish() {
                 </Card>
             </div>
             </div>
+
+            <SeoSettingsCard
+                value={seoValue}
+                onChange={handleSeoChange}
+                assetLabel="Survey Banner"
+                assetImageUrl={watch('bannerImageUrl')}
+                entityLogoUrl={watch('logoUrl')}
+                contentTitle={watch('title')}
+                contentDescription={watch('description')}
+                previewUrl={`smartsapp.com/surveys/${slug || ''}`}
+                onGenerateKeywords={handleGenerateKeywords}
+                isGeneratingKeywords={isGeneratingKeywords}
+                description="Configure how this survey appears in search engines and social links."
+                renderImagePicker={(val, onChange) => (
+                    <MediaSelect value={val} onChange={onChange} filterType="image" className="rounded-2xl" />
+                )}
+            />
 
             {/* Attribution QR Sheet */}
             {qrSheetUser && (

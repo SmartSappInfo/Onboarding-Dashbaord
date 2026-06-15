@@ -35,7 +35,8 @@
     "migrate:entity-tags": "tsx scripts/migrate-entity-tags.ts",
     "migrate:schools": "tsx scripts/migrate-schools-to-entities.ts",
     "migrate:cleanup-logs": "tsx scripts/cleanup-migration-logs.ts",
-    "fix:org-admin-perms": "tsx scripts/fix-org-admin-permissions.ts"
+    "fix:org-admin-perms": "tsx scripts/fix-org-admin-permissions.ts",
+    "backfill:note-index": "tsx scripts/backfill-note-index.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

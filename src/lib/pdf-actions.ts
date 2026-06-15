@@ -388,9 +388,10 @@ export async function finalizeAgreementAction(
                 specificUserIds: pdfData.adminAlertSpecificUserIds,
                 emailTemplateId: pdfData.adminAlertEmailTemplateId,
                 smsTemplateId: pdfData.adminAlertSmsTemplateId,
-                variables: { 
-                    ...formData, 
-                    event_type: 'Agreement Executed', 
+                whatsappTemplateId: pdfData.adminAlertWhatsappTemplateId,
+                variables: {
+                    ...formData,
+                    event_type: 'Agreement Executed',
                     entity_name: contractData?.entityName || 'Institution',
                     submission_id: submissionId
                 },

@@ -45,7 +45,8 @@ import {
     X
 } from 'lucide-react';
 
-import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField } from '@/lib/types';
+import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField, SeoConfig } from '@/lib/types';
+import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
 import { MEETING_TYPES, REMINDER_OFFSETS, getDefaultMeetingMessagingConfig } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -125,7 +126,18 @@ const formSchema = z.object({
   heroDescription: z.string().optional().or(z.literal('')),
   heroTagline: z.string().optional().or(z.literal('')),
   heroCtaLabel: z.string().optional().or(z.literal('')),
-  
+
+  // SEO & Social Sharing
+  seo: z.object({
+    title: z.string().optional(),
+    description: z.string().optional(),
+    keywords: z.string().optional(),
+    ogImageMode: z.enum(['asset', 'entity_logo', 'custom']).optional(),
+    ogImageUrl: z.string().optional(),
+    useContentFallback: z.boolean().optional(),
+    noIndex: z.boolean().optional(),
+  }).optional(),
+
   // Options
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
@@ -133,11 +145,12 @@ const formSchema = z.object({
   feedbackFormUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   durationMinutes: z.number().int().min(0).optional(),
   adminAlertsEnabled: z.boolean().default(false),
-  adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  adminAlertChannel: z.enum(['email', 'sms', 'whatsapp', 'both']).default('both'),
   adminAlertNotifyManager: z.boolean().default(false),
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
+  adminAlertWhatsappTemplateId: z.string().optional(),
   
   // Reminders (Task 12.1)
   enabledReminders: z.array(z.string()).default([]),
@@ -257,6 +270,7 @@ export default function EditMeetingPage() {
       heroDescription: '',
       heroTagline: '',
       heroCtaLabel: '',
+      seo: undefined,
       recordingUrl: '',
       brochureUrl: '',
       resourceUrl: '',
@@ -349,6 +363,7 @@ export default function EditMeetingPage() {
         heroDescription: meeting.heroDescription || '',
         heroTagline: meeting.heroTagline || '',
         heroCtaLabel: meeting.heroCtaLabel || '',
+        seo: meeting.seo || undefined,
         recordingUrl: meeting.recordingUrl || '',
         brochureUrl: meeting.brochureUrl || '',
         resourceUrl: meeting.resourceUrl || '',
@@ -466,7 +481,10 @@ export default function EditMeetingPage() {
             heroDescription: data.heroDescription || '',
             heroTagline: data.heroTagline || '',
             heroCtaLabel: data.heroCtaLabel || '',
-            
+
+            // SEO & Social Sharing (omit when unset so Firestore never sees undefined)
+            ...(data.seo ? { seo: data.seo } : {}),
+
             // Options
             recordingUrl: data.recordingUrl || '',
             brochureUrl: data.brochureUrl || '',
@@ -1404,6 +1422,28 @@ export default function EditMeetingPage() {
             {/* ──────── STEP 6: Publish ──────── */}
                 <div className={cn(currentStep !== stepIndex('publish') && "hidden")}>
                     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+                        {/* ── SEO & Social Sharing ── */}
+                        <FormField
+                            control={form.control}
+                            name="seo"
+                            render={({ field }) => (
+                                <SeoSettingsCard
+                                    value={(field.value as SeoConfig) || {}}
+                                    onChange={field.onChange}
+                                    assetLabel="Hero Image"
+                                    assetImageUrl={form.watch('heroImageUrl') || form.watch('bannerImageUrl')}
+                                    entityLogoUrl={form.watch('logoUrl')}
+                                    contentTitle={form.watch('heroTitle') || form.watch('title')}
+                                    contentDescription={form.watch('heroDescription')}
+                                    previewUrl={`smartsapp.com/meetings/${form.watch('type')?.slug || ''}/${form.watch('meetingSlug') || ''}`}
+                                    description="Configure how this meeting appears in search engines and when shared."
+                                    renderImagePicker={(val, onChange) => (
+                                        <MediaSelect value={val} onValueChange={onChange} className="rounded-2xl" />
+                                    )}
+                                />
+                            )}
+                        />
 
                         {/* ── Assets Card: Recording & Brochure ── */}
                         <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">

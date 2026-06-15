@@ -12,10 +12,12 @@ interface InternalNotificationOptions {
   notifyManager?: boolean;
   emailTemplateId?: string;
   smsTemplateId?: string;
+  whatsappTemplateId?: string;
   inAppTemplateId?: string;
   pushTemplateId?: string;
   variables: Record<string, any>;
-  channel?: 'email' | 'sms' | 'both' | 'all';
+  // 'both' = email+sms (legacy); 'all' includes whatsapp; 'whatsapp' = whatsapp only.
+  channel?: 'email' | 'sms' | 'whatsapp' | 'both' | 'all';
 }
 
 interface ExternalNotificationOptions {
@@ -23,8 +25,9 @@ interface ExternalNotificationOptions {
   contactTypes: string[];
   emailTemplateId?: string;
   smsTemplateId?: string;
+  whatsappTemplateId?: string;
   variables: Record<string, any>;
-  channel?: 'email' | 'sms' | 'both';
+  channel?: 'email' | 'sms' | 'whatsapp' | 'both';
 }
 
 /**
@@ -34,7 +37,7 @@ interface ExternalNotificationOptions {
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function triggerInternalNotification(options: InternalNotificationOptions) {
-  const { entityId, specificUserIds, notifyManager, emailTemplateId, smsTemplateId, inAppTemplateId, pushTemplateId, variables, channel = 'both' } = options;
+  const { entityId, specificUserIds, notifyManager, emailTemplateId, smsTemplateId, whatsappTemplateId, inAppTemplateId, pushTemplateId, variables, channel = 'both' } = options;
 
   console.log(`>>> [NOTIFY] Triggering Internal Notification Hub...`);
 
@@ -122,6 +125,20 @@ export async function triggerInternalNotification(options: InternalNotificationO
         );
       }
 
+      // WhatsApp Dispatch (delivers to phone; opt-in via 'whatsapp'/'all' channel)
+      if ((channel === 'whatsapp' || channel === 'all') && whatsappTemplateId && contact.phone && prefs.whatsapp !== false) {
+        dispatchPromises.push(
+          sendMessage({
+            templateId: whatsappTemplateId,
+            senderProfileId: 'default',
+            recipient: contact.phone,
+            variables: personalVars,
+            entityId,
+            workspaceId: variables.workspaceId || 'onboarding'
+          })
+        );
+      }
+
       // In-App Dispatch
       if (inAppTemplateId && prefs.inApp !== false) {
         dispatchPromises.push(
@@ -164,7 +181,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
  * Resolves contacts at a specific campus/entity and dispatches alerts.
  */
 export async function triggerExternalNotification(options: ExternalNotificationOptions) {
-  const { entityId, contactTypes, emailTemplateId, smsTemplateId, variables, channel = 'both' } = options;
+  const { entityId, contactTypes, emailTemplateId, smsTemplateId, whatsappTemplateId, variables, channel = 'both' } = options;
 
   console.log(`>>> [EXTERNAL-NOTIFY] Triggering External Notification Hub for Entity: ${entityId}`);
 
@@ -216,6 +233,20 @@ export async function triggerExternalNotification(options: ExternalNotificationO
         dispatchPromises.push(
           sendMessage({
             templateId: smsTemplateId,
+            senderProfileId: 'default',
+            recipient: stakeholder.phone,
+            variables: personalVars,
+            entityId,
+            workspaceId: variables.workspaceId || 'onboarding'
+          })
+        );
+      }
+
+      // WhatsApp Dispatch (delivers to phone; opt-in via 'whatsapp' channel)
+      if (channel === 'whatsapp' && whatsappTemplateId && stakeholder.phone) {
+        dispatchPromises.push(
+          sendMessage({
+            templateId: whatsappTemplateId,
             senderProfileId: 'default',
             recipient: stakeholder.phone,
             variables: personalVars,

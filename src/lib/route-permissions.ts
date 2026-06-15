@@ -38,6 +38,7 @@ export const ROUTE_PERMISSION_MAP: { path: string; check: RoutePermissionCheck }
     { path: '/admin/meetings', check: { label: 'Meetings', section: 'operations', feature: 'meetings' } },
     { path: '/admin/automations', check: { label: 'Automations', section: 'operations', feature: 'automations' } },
     { path: '/admin/reports', check: { label: 'Intelligence', section: 'operations', feature: 'intelligence' } },
+    { path: '/admin/quick-notes', check: { label: 'Quick Notes', section: 'operations', feature: 'quickNotes' } },
 
     // Studios
     { path: '/admin/portals', check: { label: 'Public Portals', section: 'studios', feature: 'publicPortals' } },

@@ -7,7 +7,7 @@ import { adminDb } from './firebase-admin';
 export async function isSuppressed(params: {
   recipient: string;
   workspaceId: string;
-  channel: 'email' | 'sms';
+  channel: 'email' | 'sms' | 'whatsapp';
 }): Promise<boolean> {
   const { recipient, workspaceId, channel } = params;
   
@@ -51,7 +51,7 @@ export async function isSuppressed(params: {
 export async function suppressRecipient(params: {
   recipient: string;
   workspaceId: string;
-  channel: 'email' | 'sms' | 'all';
+  channel: 'email' | 'sms' | 'whatsapp' | 'all';
   reason?: string;
   entityId?: string;
   snoozedUntil?: string;

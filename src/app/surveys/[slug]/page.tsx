@@ -1,4 +1,5 @@
 import type { Metadata, ResolvingMetadata } from 'next';
+import { cache } from 'react';
 import type { Survey } from '@/lib/types';
 import SurveyDisplay from './components/survey-display';
 import SurveyUnavailable from '../components/survey-unavailable';
@@ -6,6 +7,7 @@ import { notFound } from 'next/navigation';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { getOrgBranding } from '@/lib/org-branding';
+import { resolveSeoMetadata, mapLegacySurveySeo, normalizeParentImages } from '@/lib/seo';
 
 import { cn, stripHtml, safeDecodeURI } from '@/lib/utils';
 
@@ -13,7 +15,9 @@ import { cn, stripHtml, safeDecodeURI } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function getSurveyBySlug(slug: string): Promise<Survey | null> {
+// Wrapped in React.cache so generateMetadata and the page body share a single
+// per-request fetch instead of querying Firestore twice.
+const getSurveyBySlug = cache(async function getSurveyBySlug(slug: string): Promise<Survey | null> {
     const trimmedSlug = safeDecodeURI(slug).trim();
     console.log(`[PublicSurveyPage] Fetching survey for slug: "${trimmedSlug}"`);
     
@@ -46,52 +50,33 @@ async function getSurveyBySlug(slug: string): Promise<Survey | null> {
         console.error(`[PublicSurveyPage] Error fetching survey for "${trimmedSlug}":`, error);
         return null;
     }
-}
+});
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }, parent: ResolvingMetadata): Promise<Metadata> {
   const { slug } = await params;
   const survey = await getSurveyBySlug(slug);
 
   if (!survey || survey.status !== 'published') {
-    return {
-      title: 'Survey Unavailable | SmartSapp',
-    };
-  }
-  
-  const resolvedTitle = (!survey.seoUseSurveyFallback && survey.seoTitle) ? survey.seoTitle : survey.title;
-  const resolvedDescription = (!survey.seoUseSurveyFallback && survey.seoDescription) ? stripHtml(survey.seoDescription) : stripHtml(survey.description);
-  
-  const resolvedKeywords = survey.seoKeywords 
-    ? survey.seoKeywords.split(',').map((k: string) => k.trim()).filter(Boolean) 
-    : undefined;
-
-  let resolvedOgImage = survey.bannerImageUrl || '';
-  if (survey.seoOgImageMode === 'custom' && survey.seoOgImage) {
-    resolvedOgImage = survey.seoOgImage;
-  } else if (survey.seoOgImageMode === 'entity_logo') {
-    resolvedOgImage = survey.logoUrl || survey.bannerImageUrl || '';
+    // Bare title — the root layout template appends "— SmartSapp" (avoids the
+    // historical "… | SmartSapp — SmartSapp" double-branding).
+    return { title: 'Survey Unavailable', robots: { index: false, follow: false } };
   }
 
-  const previousImages = (await parent).openGraph?.images || [];
-  const images = resolvedOgImage ? [resolvedOgImage] : previousImages;
+  // Prefer the canonical nested `seo` object; fall back to legacy flat fields
+  // until the migration backfills (Phase 3). Survey semantics: `entity_logo`
+  // mode uses the survey's own logoUrl, so it is passed as the org logo.
+  const seo = survey.seo ?? mapLegacySurveySeo(survey);
 
-  return {
-    title: resolvedTitle,
-    description: resolvedDescription,
-    keywords: resolvedKeywords,
-    openGraph: {
-      title: resolvedTitle,
-      description: resolvedDescription,
-      images: images,
-      type: 'website',
+  return resolveSeoMetadata({
+    seo,
+    fallback: {
+      title: survey.title,
+      description: survey.description,
+      assetImageUrl: survey.bannerImageUrl,
     },
-    twitter: {
-        card: 'summary_large_image',
-        title: resolvedTitle,
-        description: resolvedDescription,
-        images: resolvedOgImage ? [resolvedOgImage] : [],
-    }
-  };
+    org: { logoUrl: survey.logoUrl },
+    parentImages: normalizeParentImages((await parent).openGraph?.images),
+  });
 }
 
 

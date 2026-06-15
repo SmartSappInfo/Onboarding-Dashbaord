@@ -38,6 +38,7 @@ import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { prepareSurveyForFirestore, applySurveyDefaults } from '@/lib/firestore-utils';
+import { migrateSurveyFormSeo } from '@/lib/seo';
 
 // Extracted Modular Components
 import Step1Details from '../components/step-1-details';
@@ -83,16 +84,18 @@ const formSchema = z.object({
   showSurveyTitles: z.boolean().default(true),
   showBranding: z.boolean().default(true),
   adminAlertsEnabled: z.boolean().default(false),
-  adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  adminAlertChannel: z.enum(['email', 'sms', 'whatsapp', 'both']).default('both'),
   adminAlertNotifyManager: z.boolean().default(false),
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
+  adminAlertWhatsappTemplateId: z.string().optional(),
   externalAlertsEnabled: z.boolean().default(false),
-  externalAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  externalAlertChannel: z.enum(['email', 'sms', 'whatsapp', 'both']).default('both'),
   externalAlertContactTypes: z.array(z.string()).default([]),
   externalAlertEmailTemplateId: z.string().optional(),
   externalAlertSmsTemplateId: z.string().optional(),
+  externalAlertWhatsappTemplateId: z.string().optional(),
   useEntityLogo: z.boolean().default(false),
   entityId: z.string().optional().nullable(),
   entityName: z.string().optional().nullable(),
@@ -351,9 +354,12 @@ export default function NewSurveyPage() {
             }
 
             const { resultPages, ...mainData } = data;
-            
+
+            // Persist only the canonical nested `seo` object (public reader prefers it).
+            const surveyInput = migrateSurveyFormSeo(mainData);
+
             // Apply defaults and clean the data for Firestore
-            const dataWithDefaults = applySurveyDefaults(mainData);
+            const dataWithDefaults = applySurveyDefaults(surveyInput);
             const cleanedData = prepareSurveyForFirestore(dataWithDefaults, false);
             
             // Debug log to help identify problematic fields

@@ -33,7 +33,8 @@ import {
     Send,
     Search,
     Inbox,
-    Bell
+    Bell,
+    MessageCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -235,6 +236,8 @@ export default function ScheduledMessagesPage() {
                 return <Mail className="h-4 w-4 text-blue-500" />;
             case 'sms':
                 return <Smartphone className="h-4 w-4 text-orange-500" />;
+            case 'whatsapp':
+                return <MessageCircle className="h-4 w-4 text-emerald-600" />;
             case 'push':
                 return <Bell className="h-4 w-4 text-emerald-500" />;
             case 'in_app':

@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings2, Globe, PlusCircle, Check, Users } from 'lucide-react';
-import type { CampaignPage } from '@/lib/types';
+import { Settings2, PlusCircle, Check, Users } from 'lucide-react';
+import type { CampaignPage, SeoConfig } from '@/lib/types';
+import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
 
 interface SettingsPanelProps {
     page: CampaignPage;
@@ -29,44 +29,17 @@ const SettingsPanel = React.memo(function SettingsPanel({ page, onUpdateSettings
                 </div>
             </section>
 
-            {/* SEO */}
-            <section className="space-y-4 pt-4 border-t border-slate-700/50">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 bg-emerald-500/10 rounded-lg">
-                        <Globe className="h-4 w-4 text-emerald-400" />
-                    </div>
-                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">SEO & Search</h4>
-                </div>
-                <div className="space-y-3">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Page Title</Label>
-                        <Input
-                            value={page.seo.title || ''}
-                            onChange={(e) => onUpdateSeo({ title: e.target.value })}
-                            className="h-8 text-[11px] font-semibold bg-slate-800 border-slate-700 rounded-lg text-slate-200 focus:border-emerald-500/50"
-                            placeholder="Search result title..."
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Meta Description</Label>
-                        <textarea
-                            value={page.seo.description || ''}
-                            onChange={(e) => onUpdateSeo({ description: e.target.value })}
-                            className="w-full min-h-[60px] p-2 text-[10px] font-medium bg-slate-800 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500/20 text-slate-300"
-                            placeholder="Brief summary for search engines..."
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-slate-500 uppercase">OG Image URL</Label>
-                        <Input
-                            value={page.seo.ogImageUrl || ''}
-                            onChange={(e) => onUpdateSeo({ ogImageUrl: e.target.value })}
-                            className="h-8 text-[11px] font-semibold bg-slate-800 border-slate-700 rounded-lg text-slate-200 focus:border-emerald-500/50"
-                            placeholder="https://..."
-                        />
-                    </div>
-                    <ToggleRow label="Hide from Search (noindex)" checked={page.seo.noIndex || false} onChange={(v) => onUpdateSeo({ noIndex: v })} />
-                </div>
+            {/* SEO & Social Sharing */}
+            <section className="pt-4 border-t border-slate-700/50">
+                <SeoSettingsCard
+                    value={page.seo as SeoConfig}
+                    onChange={(next) => onUpdateSeo(next)}
+                    assetLabel="Cover Image"
+                    assetImageUrl={page.seo.ogImageUrl}
+                    contentTitle={page.name}
+                    previewUrl={`smartsapp.com/p/${page.slug}`}
+                    description="Configure how this page appears in search engines and when shared."
+                />
             </section>
 
             {/* Custom Scripts */}

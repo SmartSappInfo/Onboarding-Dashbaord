@@ -509,18 +509,17 @@ export async function processFormSubmissionAction(input: {
       
       const { internalAlerts, respondentAlerts } = form.actions.notifications;
 
-      // Internal Notifications
+      // Internal Notifications. 'all' fires each channel that has a template
+      // set (the engine guards each by its template id), which is equivalent to
+      // the previous email/sms derivation and additionally covers WhatsApp.
       if (internalAlerts?.enabled) {
-        let channel: 'email' | 'sms' | 'both' = 'email';
-        if (internalAlerts.emailTemplateId && internalAlerts.smsTemplateId) channel = 'both';
-        else if (internalAlerts.smsTemplateId) channel = 'sms';
-
         await triggerInternalNotification({
           specificUserIds: internalAlerts.userIds || [],
           variables: automationVars,
           emailTemplateId: internalAlerts.emailTemplateId,
           smsTemplateId: internalAlerts.smsTemplateId,
-          channel
+          whatsappTemplateId: internalAlerts.whatsappTemplateId,
+          channel: 'all',
         });
       }
 
@@ -543,6 +542,17 @@ export async function processFormSubmissionAction(input: {
         if (respondentAlerts.smsTemplateId && respondentPhone) {
           await sendMessage({
             templateId: respondentAlerts.smsTemplateId,
+            senderProfileId: 'default',
+            recipient: respondentPhone,
+            variables: automationVars,
+            entityId: resolvedEntityId || undefined,
+            workspaceId: form.workspaceId
+          });
+        }
+
+        if (respondentAlerts.whatsappTemplateId && respondentPhone) {
+          await sendMessage({
+            templateId: respondentAlerts.whatsappTemplateId,
             senderProfileId: 'default',
             recipient: respondentPhone,
             variables: automationVars,

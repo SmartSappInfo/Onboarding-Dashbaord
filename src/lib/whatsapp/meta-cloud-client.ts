@@ -1,0 +1,173 @@
+/**
+ * @fileOverview Thin server-only client for the Meta WhatsApp Cloud API
+ * (Graph API). The HTTP core retries 429/5xx with exponential backoff (spec
+ * R10, F7) and NEVER puts the access token in the URL or logs — it travels in
+ * the `Authorization: Bearer` header only (spec R5).
+ *
+ * `fetch` and `sleep` are injectable so the retry logic is unit-testable
+ * without network access or real timers.
+ */
+
+import type { MetaTemplateRaw } from './whatsapp-domain';
+
+export const GRAPH_VERSION = 'v21.0';
+const GRAPH_BASE = 'https://graph.facebook.com';
+
+export interface MetaCredentials {
+  accessToken: string;
+  phoneNumberId: string;
+  wabaId: string;
+}
+
+export interface MetaClientOptions {
+  fetchImpl?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
+  maxAttempts?: number;
+  baseDelayMs?: number;
+  capDelayMs?: number;
+  graphVersion?: string;
+}
+
+export interface PhoneHealth {
+  displayPhoneNumber?: string;
+  verifiedName?: string;
+  qualityRating?: 'GREEN' | 'YELLOW' | 'RED';
+  messagingLimit?: string;
+}
+
+interface MetaTemplatePage {
+  data?: MetaTemplateRaw[];
+  paging?: { cursors?: { after?: string }; next?: string };
+}
+
+// ── Pure helpers ─────────────────────────────────────────────────────────────
+
+export function buildGraphUrl(path: string, version = GRAPH_VERSION): string {
+  return `${GRAPH_BASE}/${version}/${path.replace(/^\//, '')}`;
+}
+
+export function isRetryableStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+/** Deterministic exponential backoff with a ceiling (ms). */
+export function backoffDelayMs(attempt: number, baseMs = 500, capMs = 8000): number {
+  return Math.min(capMs, baseMs * 2 ** attempt);
+}
+
+export function parsePhoneHealth(data: Record<string, unknown>): PhoneHealth {
+  return {
+    displayPhoneNumber: data.display_phone_number as string | undefined,
+    verifiedName: data.verified_name as string | undefined,
+    qualityRating: data.quality_rating as PhoneHealth['qualityRating'],
+    messagingLimit: data.messaging_limit_tier as string | undefined,
+  };
+}
+
+export function parseGraphError(data: unknown): string {
+  const err = (data as { error?: { message?: string } } | undefined)?.error;
+  return err?.message || 'Unknown Meta Graph API error';
+}
+
+// ── Client ───────────────────────────────────────────────────────────────────
+
+const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+export class MetaCloudApiClient {
+  private readonly fetchImpl: typeof fetch;
+  private readonly sleep: (ms: number) => Promise<void>;
+  private readonly maxAttempts: number;
+  private readonly baseDelayMs: number;
+  private readonly capDelayMs: number;
+  private readonly version: string;
+
+  constructor(private readonly creds: MetaCredentials, opts: MetaClientOptions = {}) {
+    this.fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+    this.sleep = opts.sleep ?? defaultSleep;
+    this.maxAttempts = opts.maxAttempts ?? 3;
+    this.baseDelayMs = opts.baseDelayMs ?? 500;
+    this.capDelayMs = opts.capDelayMs ?? 8000;
+    this.version = opts.graphVersion ?? GRAPH_VERSION;
+  }
+
+  /**
+   * Issue a Graph request with retry. Returns parsed JSON on 2xx; throws the
+   * Graph error message otherwise (after exhausting retries for transient
+   * failures). The token is never placed in the URL.
+   */
+  async request<T = unknown>(
+    method: string,
+    path: string,
+    init: { query?: Record<string, string>; body?: unknown } = {},
+  ): Promise<T> {
+    let url = buildGraphUrl(path, this.version);
+    if (init.query && Object.keys(init.query).length > 0) {
+      url += `?${new URLSearchParams(init.query).toString()}`;
+    }
+
+    let lastError = 'request failed';
+    for (let attempt = 0; attempt < this.maxAttempts; attempt++) {
+      const res = await this.fetchImpl(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.creds.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) return data as T;
+
+      lastError = parseGraphError(data);
+      const canRetry = isRetryableStatus(res.status) && attempt < this.maxAttempts - 1;
+      if (!canRetry) break;
+      await this.sleep(backoffDelayMs(attempt, this.baseDelayMs, this.capDelayMs));
+    }
+    throw new Error(`[meta-cloud] ${lastError}`);
+  }
+
+  /**
+   * List all message templates for the WABA, following cursor pagination until
+   * exhausted. Returns raw Meta template objects (normalize via whatsapp-domain).
+   */
+  async listMessageTemplates(): Promise<MetaTemplateRaw[]> {
+    const all: MetaTemplateRaw[] = [];
+    let after: string | undefined;
+    do {
+      const query: Record<string, string> = {
+        limit: '100',
+        fields: 'id,name,language,category,status,components,rejected_reason',
+      };
+      if (after) query.after = after;
+      const page = await this.request<MetaTemplatePage>('GET', `${this.creds.wabaId}/message_templates`, {
+        query,
+      });
+      all.push(...(page.data ?? []));
+      after = page.paging?.next ? page.paging?.cursors?.after : undefined;
+    } while (after);
+    return all;
+  }
+
+  /**
+   * Send a pre-built message payload (template or text) via
+   * `POST /{phoneNumberId}/messages`. Returns the Meta message id (wamid) for
+   * status reconciliation.
+   */
+  async sendMessage(payload: unknown): Promise<{ metaMessageId: string | null; raw: unknown }> {
+    const data = await this.request<{ messages?: Array<{ id?: string }> }>(
+      'POST',
+      `${this.creds.phoneNumberId}/messages`,
+      { body: payload },
+    );
+    return { metaMessageId: data.messages?.[0]?.id ?? null, raw: data };
+  }
+
+  /** Fetch quality rating / messaging tier for the configured phone number. */
+  async getPhoneNumberHealth(): Promise<PhoneHealth> {
+    const data = await this.request<Record<string, unknown>>('GET', this.creds.phoneNumberId, {
+      query: { fields: 'display_phone_number,verified_name,quality_rating,messaging_limit_tier' },
+    });
+    return parsePhoneHealth(data);
+  }
+}

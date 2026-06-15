@@ -6,6 +6,8 @@ import { BackofficeProvider } from './context/BackofficeProvider';
 import BackofficeSidebar from './components/BackofficeSidebar';
 import BackofficeHeader from './components/BackofficeHeader';
 import AuthorizationGate from './components/AuthorizationGate';
+import { PageTitleManager } from '@/components/seo/PageTitleManager';
+import { BACKOFFICE_ROUTE_TITLES } from '@/lib/route-titles';
 
 // ─────────────────────────────────────────────────
 // Backoffice Layout Client
@@ -15,7 +17,8 @@ import AuthorizationGate from './components/AuthorizationGate';
 
 function BackofficeShell({ children }: { children: ReactNode }) {
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
+      <PageTitleManager map={BACKOFFICE_ROUTE_TITLES} fallback="Backoffice" />
       <BackofficeSidebar />
       <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden bg-card relative">
         {/* Subtle radial gradient accent */}

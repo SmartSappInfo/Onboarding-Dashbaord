@@ -1385,6 +1385,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                             specificUserIds: survey.adminAlertSpecificUserIds,
                             emailTemplateId: survey.adminAlertEmailTemplateId,
                             smsTemplateId: survey.adminAlertSmsTemplateId,
+                            whatsappTemplateId: survey.adminAlertWhatsappTemplateId,
                             channel: survey.adminAlertChannel,
                             variables: { ...variables, event_type: 'Survey Completion' }
                         });

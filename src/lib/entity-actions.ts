@@ -17,7 +17,43 @@ import { validateIndustryData } from './industry-schemas';
 import { normalizePhoneNumber } from './phone-utils';
 import { after } from 'next/server';
 import { BulkVerificationService } from './bulk-verifier';
+import { BulkPhoneVerificationService } from './bulk-phone-verifier';
 import { applyIndustryDataDefaults } from './entity-utils';
+
+/**
+ * Runs background contact verification for a primary contact.
+ *
+ * Email and phone are verified SEQUENTIALLY (never in parallel): both writers
+ * rewrite the shared entityContacts[]/leadScore on the same entity, so running
+ * them concurrently would race and lose data. Each leg is independently
+ * try/caught so one failure never blocks the other.
+ */
+async function runContactVerification(opts: {
+  email?: string;
+  phone?: string;
+  defaultCountry?: string;
+  context: string;
+}): Promise<void> {
+  const { email, phone, defaultCountry, context } = opts;
+
+  if (email) {
+    try {
+      console.log(`[autoVerify] Initiating background email verification (${context}): ${email}`);
+      await new BulkVerificationService().processBulk([email]);
+    } catch (err: any) {
+      console.error('[autoVerify] Background email verification failed:', err.message);
+    }
+  }
+
+  if (phone) {
+    try {
+      console.log(`[autoVerify] Initiating background phone verification (${context}): ${phone}`);
+      await new BulkPhoneVerificationService().processBulk([{ phone, defaultCountry }]);
+    } catch (err: any) {
+      console.error('[autoVerify] Background phone verification failed:', err.message);
+    }
+  }
+}
 
 /**
  * @fileOverview Server actions for entity lifecycle management.
@@ -429,18 +465,15 @@ export async function createEntityAction(
     revalidatePath('/admin/entities');
     revalidatePath('/admin/pipeline');
 
-    // Auto-verify email asynchronously in the background (zero impact on performance)
-    if (primaryEmail) {
+    // Auto-verify email + phone asynchronously in the background (zero impact on performance)
+    if (primaryEmail || primaryPhone) {
       try {
-        after(async () => {
-          try {
-            console.log(`[autoVerify] Initiating background email verification for newly created contact: ${primaryEmail}`);
-            const verifierService = new BulkVerificationService();
-            await verifierService.processBulk([primaryEmail]);
-          } catch (err: any) {
-            console.error('[autoVerify] Background verification failed:', err.message);
-          }
-        });
+        after(() => runContactVerification({
+          email: primaryEmail,
+          phone: primaryPhone,
+          defaultCountry: defaultCountryCode,
+          context: 'create',
+        }));
       } catch (err) {
         console.warn('[autoVerify] next/server after() was called outside Next.js request context (likely in test). Skipping.');
       }
@@ -475,6 +508,7 @@ export async function updateEntityAction(
 
     const timestamp = new Date().toISOString();
     let updatedPrimaryEmail: string | undefined;
+    let updatedPrimaryPhone: string | undefined;
     
     // 1. Resolve Entity reference
     const entityRef = adminDb.collection('entities').doc(entityId);
@@ -656,6 +690,7 @@ export async function updateEntityAction(
         if (entityContacts) {
           const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts });
           updatedPrimaryEmail = primaryEmail;
+          updatedPrimaryPhone = primaryPhone;
           weUpdate.primaryContactName = primaryContactName;
           weUpdate.primaryEmail = primaryEmail;
           weUpdate.primaryPhone = primaryPhone;
@@ -665,7 +700,10 @@ export async function updateEntityAction(
             weUpdate.primaryEmail = data.primaryEmail;
             updatedPrimaryEmail = data.primaryEmail;
           }
-          if (data.primaryPhone !== undefined) weUpdate.primaryPhone = data.primaryPhone;
+          if (data.primaryPhone !== undefined) {
+            weUpdate.primaryPhone = data.primaryPhone;
+            updatedPrimaryPhone = data.primaryPhone;
+          }
         }
         
         if (data.modules !== undefined) {
@@ -713,17 +751,28 @@ export async function updateEntityAction(
     revalidatePath('/admin/entities');
     revalidatePath(`/admin/entities/${entityId}`);
 
-    // Auto-verify updated email asynchronously in the background (zero impact on performance)
-    if (updatedPrimaryEmail) {
+    // Auto-verify updated email + phone asynchronously in the background (zero impact on performance)
+    if (updatedPrimaryEmail || updatedPrimaryPhone) {
       try {
         after(async () => {
-          try {
-            console.log(`[autoVerify] Initiating background email verification for updated contact: ${updatedPrimaryEmail}`);
-            const verifierService = new BulkVerificationService();
-            await verifierService.processBulk([updatedPrimaryEmail]);
-          } catch (err: any) {
-            console.error('[autoVerify] Background verification failed:', err.message);
+          // Resolve the org default country only when a phone needs parsing
+          // (the update path stores phones as-entered; the verifier's pre-pass
+          // normalizes local formats given the default country).
+          let defaultCountry: string | undefined;
+          if (updatedPrimaryPhone) {
+            try {
+              const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+              defaultCountry = orgSnap.data()?.defaultCountryCode || undefined;
+            } catch {
+              // No default country — E.164-stored numbers still verify fine
+            }
           }
+          await runContactVerification({
+            email: updatedPrimaryEmail,
+            phone: updatedPrimaryPhone,
+            defaultCountry,
+            context: 'update',
+          });
         });
       } catch (err) {
         console.warn('[autoVerify] next/server after() was called outside Next.js request context (likely in test). Skipping.');

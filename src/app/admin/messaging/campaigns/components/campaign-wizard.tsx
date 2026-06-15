@@ -8,7 +8,7 @@ import { createCampaign, updateCampaign } from '@/lib/campaign-hooks';
 import { dispatchCampaign } from '@/lib/campaign-dispatch';
 import { useToast } from '@/hooks/use-toast';
 import type { MessageCampaign, MessageChannel, TemplateTarget, ContentMode, AudienceDefinition, SenderProfile, AudienceFilter, PostSendTagRule, MessageTemplate } from '@/lib/types';
-import { FilterBuilder } from '@/app/admin/messaging/audiences/components/filter-builder';
+import { AudienceSelector } from '@/app/admin/messaging/audiences/components/AudienceSelector';
 import { useAudiences } from '@/lib/audience-hooks';
 import { legacyAudienceToFilters } from '@/lib/audience-hooks';
 import { TagSelector } from '@/components/tags/TagSelector';
@@ -29,7 +29,7 @@ import { Switch } from '@/components/ui/switch';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Separator } from '@/components/ui/separator';
 import {
-    ArrowLeft, ArrowRight, Check, ChevronRight, ChevronLeft, Loader2, Mail, Smartphone,
+    ArrowLeft, ArrowRight, Check, ChevronRight, ChevronLeft, Loader2, Mail, Smartphone, MessageCircle,
     Users, Save, Send, Tag, Target, FileText, Calendar, Eye, Megaphone, Zap, X, Plus,
     Sparkles, Wand2, Pencil, PlusCircle, Search
 } from 'lucide-react';
@@ -39,6 +39,7 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { contactResolutionChannel } from '@/lib/messaging/channel-registry';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useEntityCache } from '@/context/EntityCacheContext';
@@ -49,75 +50,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { createTagAction } from '@/lib/tag-actions';
 import { ChevronsUpDown } from 'lucide-react';
 
-// ─── Contact Scope Selector ───────────────────────────────────────────────────
 
-function ContactScopeSelector({ value, onChange }: { value: string; onChange: (val: string) => void }) {
-    const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
-    const [roles, setRoles] = React.useState<{label: string, value: string}[]>([]);
-    const { entities } = useEntityCache();
-
-    React.useEffect(() => {
-        if (!activeWorkspaceId || !entities) return;
-        const currentEntities = entities;
-        async function fetchRoles() {
-            try {
-                const activeEntityTypes = new Set<string>();
-                currentEntities.slice(0, 100).forEach(d => {
-                    const type = d.entityType;
-                    if (type) activeEntityTypes.add(type);
-                });
-
-                // Fallback to all types if workspace is empty (for new workspaces)
-                const typesToFetch = activeEntityTypes.size > 0 
-                    ? Array.from(activeEntityTypes) as any[]
-                    : ['institution', 'family', 'person'];
-
-                const rolePromises = typesToFetch.map(type => 
-                    getEffectiveContactTypes(type, activeOrganizationId, activeWorkspaceId)
-                );
-                
-                const roleResults = await Promise.all(rolePromises);
-                const uniqueRoles = new Map<string, string>();
-                
-                roleResults.flat().forEach(r => {
-                    if (r.active) uniqueRoles.set(r.key, r.label);
-                });
-                
-                setRoles(Array.from(uniqueRoles.entries()).map(([v, label]) => ({ label, value: `role:${v}` })));
-            } catch (error) {
-                console.error('[ContactScopeSelector] Failed to fetch roles:', error);
-            }
-        }
-        fetchRoles();
-    }, [activeWorkspaceId, activeOrganizationId, entities]);
-
-    return (
-        <Select value={value} onValueChange={onChange}>
-            <SelectTrigger className="h-10 rounded-xl font-bold text-xs bg-card border-border/50">
-                <SelectValue placeholder="Select contact scope" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-                <SelectGroup>
-                    <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">Broad Scope</SelectLabel>
-                    <SelectItem value="primary" className="text-xs font-semibold">Primary Contact Only</SelectItem>
-                    <SelectItem value="signatories" className="text-xs font-semibold">All Registered Signatories</SelectItem>
-                    <SelectItem value="all" className="text-xs font-semibold">Broadcast to All Known Contacts</SelectItem>
-                </SelectGroup>
-                {roles.length > 0 ? (
-                    <>
-                        <Separator className="my-1 opacity-50" />
-                        <SelectGroup>
-                            <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">Role Based</SelectLabel>
-                            {roles.map(r => (
-                                <SelectItem key={r.value} value={r.value} className="text-xs font-semibold">{r.label}</SelectItem>
-                            ))}
-                        </SelectGroup>
-                    </>
-                ) : null}
-            </SelectContent>
-        </Select>
-    );
-}
 
 // ─── Wizard State (R4 fix: useReducer instead of 25+ useState) ───────────────
 
@@ -319,417 +252,7 @@ const MOCK_VARIABLES = {
 
 // ─── Main Wizard Component ────────────────────────────────────────────────────
 
-interface ManualContactSelectorProps {
-    channel: MessageChannel;
-    selectedContacts: Array<{
-        entityId: string;
-        contactId: string;
-        name?: string;
-        email?: string;
-        phone?: string;
-        entityName?: string;
-    }>;
-    onChange: (selected: Array<{
-        entityId: string;
-        contactId: string;
-        name?: string;
-        email?: string;
-        phone?: string;
-        entityName?: string;
-    }>) => void;
-}
 
-const ContactRow = React.memo(({
-    contact,
-    isSelected,
-    onToggle
-}: {
-    contact: any;
-    isSelected: boolean;
-    onToggle: (contact: any) => void;
-}) => {
-    return (
-        <div 
-            onClick={() => onToggle(contact)}
-            className={cn(
-                "flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer select-none",
-                isSelected 
-                    ? "border-primary bg-primary/5 shadow-sm" 
-                    : "border-border/50 bg-card/30 hover:bg-card/60 hover:border-primary/20"
-            )}
-        >
-            <div className="flex items-start gap-3 flex-1 min-w-0">
-                <Checkbox 
-                    checked={isSelected}
-                    onCheckedChange={() => onToggle(contact)}
-                    onClick={(e) => e.stopPropagation()}
-                    id={`contact-chk-${contact.entityId}-${contact.id}`}
-                    className="rounded-lg h-5 w-5 mt-1 border-border/80 data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0"
-                />
-                
-                {/* Initial Avatar */}
-                <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-[10px] text-primary uppercase shrink-0 mt-0.5">
-                    {contact.name ? contact.name.substring(0, 2) : 'C'}
-                </div>
-
-                <div className="space-y-1 min-w-0 flex-1">
-                    <p className="text-xs font-bold text-foreground truncate">{contact.name}</p>
-                    <p className="text-[10px] font-medium text-muted-foreground truncate">{contact.entityName}</p>
-                    <p className="text-[10px] font-semibold text-muted-foreground font-mono truncate">{contact.contactVal}</p>
-                </div>
-            </div>
-
-            {contact.isPrimary && (
-                <div className="shrink-0 ml-3">
-                    <Badge variant="outline" className="text-[8px] font-bold px-1.5 py-0.5 rounded-md bg-primary/5 text-primary border-primary/20 uppercase tracking-wider">
-                        Primary
-                    </Badge>
-                </div>
-            )}
-        </div>
-    );
-});
-ContactRow.displayName = 'ContactRow';
-
-export function ManualContactSelector({
-    channel,
-    selectedContacts,
-    onChange
-}: ManualContactSelectorProps) {
-    const { entities, isLoading } = useEntityCache();
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [currentPage, setCurrentPage] = React.useState(1);
-    const [showSelectedOnly, setShowSelectedOnly] = React.useState(false);
-    const pageSize = 20;
-
-    const onChangeRef = React.useRef(onChange);
-    onChangeRef.current = onChange;
-    const selectedContactsRef = React.useRef(selectedContacts);
-    selectedContactsRef.current = selectedContacts;
-
-    // Reset pagination to page 1 on filter, channel, or view changes
-    React.useEffect(() => {
-        setCurrentPage(1);
-    }, [searchQuery, channel, showSelectedOnly]);
-
-    // Extract all available contacts matching the channel
-    const workspaceContacts = React.useMemo(() => {
-        if (!entities) return [];
-        const contactsList: Array<{
-            id: string;
-            entityId: string;
-            entityName: string;
-            name: string;
-            email?: string;
-            phone?: string;
-            contactVal: string;
-            isPrimary: boolean;
-            isSignatory: boolean;
-            typeKey: string;
-            typeLabel?: string;
-        }> = [];
-
-        entities.forEach(ent => {
-            const entityName = ent.displayName || ent.entityName || '';
-            const entityId = ent.entityId || ent.id;
-            const sourceContacts = ent.entityContacts || [];
-
-            if (sourceContacts.length > 0) {
-                sourceContacts.forEach(c => {
-                    const email = c.email || '';
-                    const phone = c.phone || '';
-                    const contactVal = channel === 'email' ? email : phone;
-                    if (contactVal) {
-                        contactsList.push({
-                            id: c.id || Math.random().toString(),
-                            entityId,
-                            entityName,
-                            name: c.name || entityName,
-                            email,
-                            phone,
-                            contactVal,
-                            isPrimary: !!c.isPrimary,
-                            isSignatory: !!c.isSignatory,
-                            typeKey: c.typeKey || 'custom',
-                            typeLabel: c.typeLabel,
-                        });
-                    }
-                });
-            } else {
-                const email = ent.primaryEmail || (ent as any).email || '';
-                const phone = ent.primaryPhone || (ent as any).phone || '';
-                const contactVal = channel === 'email' ? email : phone;
-                if (contactVal) {
-                    contactsList.push({
-                        id: 'primary-fallback-' + entityId,
-                        entityId,
-                        entityName,
-                        name: ent.primaryContactName || ent.displayName || '',
-                        email,
-                        phone,
-                        contactVal,
-                        isPrimary: true,
-                        isSignatory: false,
-                        typeKey: 'primary',
-                        typeLabel: 'Primary',
-                    });
-                }
-            }
-        });
-        return contactsList;
-    }, [entities, channel]);
-
-    // Search query filtering
-    const filteredContacts = React.useMemo(() => {
-        const query = searchQuery.toLowerCase().trim();
-        if (!query) return workspaceContacts;
-        return workspaceContacts.filter(c => {
-            return (
-                c.contactVal.toLowerCase().includes(query) ||
-                c.name.toLowerCase().includes(query) ||
-                c.entityName.toLowerCase().includes(query)
-            );
-        });
-    }, [workspaceContacts, searchQuery]);
-
-    // O(1) Selected keys check
-    const selectedKeysSet = React.useMemo(() => {
-        return new Set(selectedContacts.map(sc => `${sc.entityId}:${sc.contactId}`));
-    }, [selectedContacts]);
-
-    // Filter contactsToDisplay: showSelectedOnly vs all filtered
-    const contactsToDisplay = React.useMemo(() => {
-        let list = filteredContacts;
-        if (showSelectedOnly) {
-            list = list.filter(c => selectedKeysSet.has(`${c.entityId}:${c.id}`));
-        }
-        return list;
-    }, [filteredContacts, showSelectedOnly, selectedKeysSet]);
-
-    // Clamped active page index
-    const totalPages = Math.ceil(contactsToDisplay.length / pageSize);
-    const clampedPage = Math.min(currentPage, totalPages || 1);
-
-    // Derived paginated slice
-    const paginatedContacts = React.useMemo(() => {
-        const start = (clampedPage - 1) * pageSize;
-        return contactsToDisplay.slice(start, start + pageSize);
-    }, [contactsToDisplay, clampedPage, pageSize]);
-
-    const handleToggle = React.useCallback((contact: typeof workspaceContacts[0]) => {
-        const selected = selectedContactsRef.current;
-        const key = `${contact.entityId}:${contact.id}`;
-        const isSelected = selected.some(sc => sc.entityId === contact.entityId && sc.contactId === contact.id);
-
-        if (isSelected) {
-            const updated = selected.filter(
-                sc => !(sc.entityId === contact.entityId && sc.contactId === contact.id)
-            );
-            onChangeRef.current(updated);
-        } else {
-            const updated = [...selected, {
-                entityId: contact.entityId,
-                contactId: contact.id,
-                name: contact.name,
-                email: contact.email,
-                phone: contact.phone,
-                entityName: contact.entityName
-            }];
-            onChangeRef.current(updated);
-        }
-    }, []);
-
-    // Select All / Deselect All for FILTERED list
-    const filteredSelectedCount = React.useMemo(() => {
-        return filteredContacts.filter(c => selectedKeysSet.has(`${c.entityId}:${c.id}`)).length;
-    }, [filteredContacts, selectedKeysSet]);
-
-    const handleSelectAllToggle = () => {
-        const allFilteredSelected = filteredSelectedCount === filteredContacts.length;
-        if (allFilteredSelected) {
-            // Deselect only the filtered items
-            const filteredKeys = new Set(filteredContacts.map(c => `${c.entityId}:${c.id}`));
-            const updated = selectedContacts.filter(sc => !filteredKeys.has(`${sc.entityId}:${sc.contactId}`));
-            onChange(updated);
-        } else {
-            // Select all filtered items (merge with existing selected items, keeping it unique)
-            const updated = [...selectedContacts];
-            filteredContacts.forEach(c => {
-                const key = `${c.entityId}:${c.id}`;
-                if (!selectedKeysSet.has(key)) {
-                    updated.push({
-                        entityId: c.entityId,
-                        contactId: c.id,
-                        name: c.name,
-                        email: c.email,
-                        phone: c.phone,
-                        entityName: c.entityName
-                    });
-                }
-            });
-            onChange(updated);
-        }
-    };
-
-    if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border/50 bg-card/20 rounded-2xl gap-3">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <p className="text-xs font-semibold text-muted-foreground">Loading workspace contacts...</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="space-y-3">
-            {/* Search and control header */}
-            <div className="flex flex-col gap-3">
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                    <div className="relative flex-1 w-full">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search by name, email, or entity..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 h-11 rounded-xl text-xs font-semibold bg-card/50 border-border/50 focus-visible:ring-primary"
-                        />
-                        {searchQuery && (
-                            <button 
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground hover:text-foreground hover:underline"
-                            >
-                                Clear
-                            </button>
-                        )}
-                    </div>
-
-                    {filteredContacts.length > 0 && (
-                        <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={handleSelectAllToggle}
-                            className="w-full sm:w-auto h-11 px-4 rounded-xl text-xs font-bold border-border/50 hover:bg-accent/30"
-                        >
-                            {filteredSelectedCount === filteredContacts.length ? "Deselect All" : "Select All Match"}
-                        </Button>
-                    )}
-                </div>
-
-                {/* View toggles & selected counts */}
-                <div className="flex items-center justify-between px-1">
-                    <div className="flex items-center gap-2">
-                        <Checkbox 
-                            id="show-selected-chk"
-                            checked={showSelectedOnly}
-                            onCheckedChange={(checked) => setShowSelectedOnly(!!checked)}
-                            className="rounded-md border-border/80 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                        />
-                        <Label htmlFor="show-selected-chk" className="text-xs font-bold cursor-pointer select-none">
-                            Show Selected Only ({selectedContacts.length} contacts selected)
-                        </Label>
-                    </div>
-                </div>
-            </div>
-
-            {/* Contacts list */}
-            {contactsToDisplay.length === 0 ? (
-                <div className="text-center py-12 border border-dashed border-border/50 bg-card/10 rounded-2xl">
-                    <p className="text-xs font-bold text-muted-foreground">
-                        {showSelectedOnly ? "No selected contacts found" : "No contacts found matching your query"}
-                    </p>
-                </div>
-            ) : (
-                <div className="max-h-72 overflow-y-auto pr-1 border border-border/40 bg-card/10 rounded-2xl p-2.5 space-y-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary/10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {paginatedContacts.map(c => (
-                            <ContactRow 
-                                key={`${c.entityId}-${c.id}`}
-                                contact={c}
-                                isSelected={selectedKeysSet.has(`${c.entityId}:${c.id}`)}
-                                onToggle={handleToggle}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4 border-t border-border/30 mt-3 text-xs">
-                    <p className="text-muted-foreground font-medium">
-                        Showing <span className="font-bold text-foreground">{(clampedPage - 1) * pageSize + 1}</span> to{" "}
-                        <span className="font-bold text-foreground">
-                            {Math.min(clampedPage * pageSize, contactsToDisplay.length)}
-                        </span>{" "}
-                        of <span className="font-bold text-foreground">{contactsToDisplay.length}</span> contacts
-                    </p>
-                    <div className="flex items-center gap-1.5">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={clampedPage === 1}
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            className="h-8 w-8 p-0 rounded-lg border-border/50 bg-card/40 hover:bg-accent/30 disabled:opacity-40"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                            <span className="sr-only">Previous page</span>
-                        </Button>
-                        <div className="flex items-center gap-1">
-                            {(() => {
-                                const pages: (number | string)[] = [];
-                                if (totalPages <= 5) {
-                                    for (let i = 1; i <= totalPages; i++) pages.push(i);
-                                } else {
-                                    pages.push(1);
-                                    if (clampedPage > 3) pages.push('ellipsis-start');
-                                    const start = Math.max(2, clampedPage - 1);
-                                    const end = Math.min(totalPages - 1, clampedPage + 1);
-                                    for (let i = start; i <= end; i++) pages.push(i);
-                                    if (clampedPage < totalPages - 2) pages.push('ellipsis-end');
-                                    pages.push(totalPages);
-                                }
-                                return pages.map((page, idx) => {
-                                    if (typeof page === 'string') {
-                                        return <span key={`ell-${idx}`} className="px-1 text-muted-foreground font-bold text-[10px]">...</span>;
-                                    }
-                                    return (
-                                        <Button
-                                            key={page}
-                                            type="button"
-                                            variant={clampedPage === page ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => setCurrentPage(page)}
-                                            className={cn(
-                                                "h-8 w-8 p-0 rounded-lg text-xs font-bold transition-all",
-                                                clampedPage === page
-                                                    ? "bg-primary text-primary-foreground hover:bg-primary/95"
-                                                    : "border-border/50 bg-card/40 hover:bg-accent/30"
-                                            )}
-                                        >
-                                            {page}
-                                        </Button>
-                                    );
-                                });
-                            })()}
-                        </div>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={clampedPage === totalPages}
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            className="h-8 w-8 p-0 rounded-lg border-border/50 bg-card/40 hover:bg-accent/30 disabled:opacity-40"
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                            <span className="sr-only">Next page</span>
-                        </Button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
 
 interface CampaignWizardProps {
     campaign?: MessageCampaign | null;
@@ -800,7 +323,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                     groups: state.audienceMode === 'advanced' || state.audienceMode === 'saved' ? state.groups : [],
                     limit: 10,
                     contactScope: state.contactScope,
-                    channel: state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined,
+                    channel: contactResolutionChannel(state.channel),
                     selectedContacts: state.selectedContacts,
                     audienceMode: state.audienceMode,
                     includeTagIds: state.tagIds,
@@ -890,7 +413,13 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
 
     // Auto-select default sender when channel changes
     React.useEffect(() => {
-        if (!senderProfiles || state.senderProfileId) return;
+        if (state.senderProfileId) return;
+        // WhatsApp uses a synthetic sender (the WABA is resolved server-side).
+        if (state.channel === 'whatsapp') {
+            setField('senderProfileId', 'whatsapp');
+            return;
+        }
+        if (!senderProfiles) return;
         const match = senderProfiles.find(p => p.channel === state.channel && p.isDefault)
             || senderProfiles.find(p => p.channel === state.channel);
         if (match) setField('senderProfileId', match.id);
@@ -1169,13 +698,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Channel</Label>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-3 gap-3">
                                 {[
                                     { value: 'email' as const, icon: Mail, label: 'Email', desc: 'Rich content with tracking' },
                                     { value: 'sms' as const, icon: Smartphone, label: 'SMS', desc: 'Short text messages' },
+                                    { value: 'whatsapp' as const, icon: MessageCircle, label: 'WhatsApp', desc: 'Approved template messages' },
                                 ].map(ch => (
                                     <button key={ch.value} type="button" onClick={() => {
                                         setField('channel', ch.value);
+                                        // Reset sender so the auto-select effect picks the right one for the new channel.
+                                        setField('senderProfileId', '');
                                     }} className={cn(
                                         "flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left",
                                         state.channel === ch.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/20"
@@ -1215,16 +747,26 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     <SelectValue placeholder="Select sender..." />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
-                                    {(senderProfiles || []).filter(p => p.channel === state.channel).map(p => (
-                                        <SelectItem key={p.id} value={p.id} className="text-xs font-semibold">
-                                            {p.name} ({p.identifier})
+                                    {state.channel === 'whatsapp' ? (
+                                        // WhatsApp sends from the org's WABA (resolved server-side); no
+                                        // SenderProfile needed. Offer a synthetic, auto-selected option.
+                                        <SelectItem value="whatsapp" className="text-xs font-semibold">
+                                            WhatsApp Business Account
                                         </SelectItem>
-                                    ))}
-                                    {!(senderProfiles || []).some(p => p.channel === state.channel) ? (
-                                        <SelectItem value="_none" disabled className="text-xs text-muted-foreground">
-                                            No {state.channel} profiles available
-                                        </SelectItem>
-                                    ) : null}
+                                    ) : (
+                                        <>
+                                            {(senderProfiles || []).filter(p => p.channel === state.channel).map(p => (
+                                                <SelectItem key={p.id} value={p.id} className="text-xs font-semibold">
+                                                    {p.name} ({p.identifier})
+                                                </SelectItem>
+                                            ))}
+                                            {!(senderProfiles || []).some(p => p.channel === state.channel) ? (
+                                                <SelectItem value="_none" disabled className="text-xs text-muted-foreground">
+                                                    No {state.channel} profiles available
+                                                </SelectItem>
+                                            ) : null}
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1375,178 +917,31 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
 
             case 3:
                 return (
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Audience Selection</Label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {[
-                                    { value: 'all' as const, icon: Users, label: 'All Entities', desc: 'Target everyone' },
-                                    { value: 'advanced' as const, icon: Tag, label: 'By Filters', desc: 'Advanced rules' },
-                                    { value: 'saved' as const, icon: Target, label: 'Saved Audience', desc: 'Reuse a segment' },
-                                    { value: 'manual' as const, icon: Target, label: 'Manual Pick', desc: 'Select specific' },
-                                ].map(m => (
-                                    <button key={m.value} type="button" onClick={() => setField('audienceMode', m.value)} className={cn(
-                                        "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
-                                        state.audienceMode === m.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/20"
-                                    )}>
-                                        <m.icon className={cn("h-4 w-4", state.audienceMode === m.value ? "text-primary" : "text-muted-foreground")} />
-                                        <p className="text-[10px] font-bold">{m.label}</p>
-                                        <p className="text-[8px] font-semibold text-muted-foreground">{m.desc}</p>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* All mode */}
-                        {state.audienceMode === 'all' ? (
-                            <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-                                <Users className="h-5 w-5 text-emerald-600 shrink-0" />
-                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">All entities in your workspace will receive this campaign.</p>
-                            </div>
-                        ) : null}
-
-                        {/* Advanced filter mode */}
-                        {state.audienceMode === 'advanced' ? (
-                            <FilterBuilder
-                                contactScope={state.contactScope}
-                                channel={state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined}
-                                filters={state.filters}
-                                filterLogic={state.filterLogic}
-                                groups={state.groups}
-                                showPreview={false}
-                                onChange={(f, l, g) => { 
-                                    setField('filters', f); 
-                                    setField('filterLogic', l); 
-                                    if (g) setField('groups', g);
-                                }}
-                            />
-                        ) : null}
-
-                        {/* Saved audience mode */}
-                        {state.audienceMode === 'saved' ? (
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Saved Audience</Label>
-                                    <Select value={state.savedAudienceId} onValueChange={v => {
-                                        setField('savedAudienceId', v);
-                                        // Load filters from saved audience
-                                        const aud = savedAudiences.find(a => a.id === v);
-                                        if (aud) {
-                                            setField('filters', aud.filters);
-                                            setField('filterLogic', aud.filterLogic);
-                                            setField('groups', aud.groups || []);
-                                        }
-                                    }}>
-                                        <SelectTrigger className="h-10 rounded-xl font-bold text-xs bg-card border-border/50">
-                                            <SelectValue placeholder="Choose an audience..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl">
-                                            {savedAudiences.map(a => (
-                                                <SelectItem key={a.id} value={a.id} className="text-xs font-semibold">
-                                                    {a.name} ({a.filters?.length || 0} filters)
-                                                </SelectItem>
-                                            ))}
-                                            {savedAudiences.length === 0 ? (
-                                                <SelectItem value="_none" disabled className="text-xs text-muted-foreground">No saved audiences</SelectItem>
-                                            ) : null}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        ) : null}
-
-                        {/* Manual Pick mode */}
-                        {state.audienceMode === 'manual' ? (
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Contacts</Label>
-                                <ManualContactSelector
-                                    channel={state.channel}
-                                    selectedContacts={state.selectedContacts || []}
-                                    onChange={updated => setField('selectedContacts', updated)}
-                                />
-                            </div>
-                        ) : null}
-
-                        {/* Contact scope */}
-                        {state.audienceMode !== 'saved' && state.audienceMode !== 'manual' ? (
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Scope</Label>
-                                <ContactScopeSelector 
-                                    value={state.contactScope} 
-                                    onChange={v => setField('contactScope', v as any)} 
-                                />
-                            </div>
-                        ) : null}
-
-                        {/* Projected Reach Summary */}
-                        <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded-lg bg-primary/10">
-                                        <Users className="h-3.5 w-3.5 text-primary" />
-                                    </div>
-                                    <p className="text-xs font-bold">Projected Reach</p>
-                                </div>
-                                {isPreviewing ? (
-                                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                                ) : (
-                                    <Badge variant="secondary" className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-primary/10 text-primary border-none">
-                                        {previewResult?.contactCount || 0} Recipients
-                                    </Badge>
-                                )}
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-tight">Entities Matched</p>
-                                    <p className="text-sm font-bold">{previewResult?.count || 0}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-tight">Scope Coverage</p>
-                                    <p className="text-sm font-bold">
-                                        {previewResult?.count ? Math.round(((previewResult.contactCount || 0) / previewResult.count) * 100) : 0}%
-                                    </p>
-                                </div>
-                            </div>
-
-                            {previewResult?.contactsPreview && previewResult.contactsPreview.length > 0 ? (
-                                <div className="pt-2 border-t border-border/50 space-y-2">
-                                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-tight">Sample Targets (Resolved Contacts)</p>
-                                    <div className="space-y-2">
-                                        {previewResult.contactsPreview.slice(0, 5).map(cp => {
-                                            const initials = cp.name
-                                                ? cp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-                                                : '?';
-                                            return (
-                                                <div key={cp.id} className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/30 hover:border-border/60 transition-all">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-bold text-[10px] uppercase shrink-0">
-                                                            {initials}
-                                                        </div>
-                                                        <div className="space-y-0.5">
-                                                            <p className="text-xs font-bold text-foreground">{cp.name}</p>
-                                                            <p className="text-[9px] font-semibold text-muted-foreground">{cp.entityName}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-semibold text-muted-foreground">{cp.contactVal}</span>
-                                                        {state.channel === 'email' ? (
-                                                            <EmailHygieneBadge status={cp.verificationStatus as any} size="sm" />
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                        {previewResult.contactsPreview.length > 5 ? (
-                                            <p className="text-[9px] font-semibold text-muted-foreground text-center">
-                                                +{previewResult.contactsPreview.length - 5} more recipients matching scope
-                                            </p>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
+                    <AudienceSelector
+                        workspaceId={activeWorkspaceId}
+                        organizationId={activeOrganizationId}
+                        channel={contactResolutionChannel(state.channel)}
+                        audienceMode={state.audienceMode === 'tags' ? 'advanced' : state.audienceMode}
+                        filters={state.filters}
+                        filterLogic={state.filterLogic}
+                        groups={state.groups}
+                        savedAudienceId={state.savedAudienceId}
+                        selectedContacts={state.selectedContacts}
+                        contactScope={state.contactScope}
+                        onChange={(updates) => {
+                            Object.entries(updates).forEach(([field, value]) => {
+                                setField(field as any, value);
+                            });
+                        }}
+                        onReachCalculated={(count, contactCount) => {
+                            setPreviewResult(prev => ({
+                                count,
+                                contactCount,
+                                preview: prev?.preview || [],
+                                contactsPreview: prev?.contactsPreview || []
+                            }));
+                        }}
+                    />
                 );
 
             case 4:

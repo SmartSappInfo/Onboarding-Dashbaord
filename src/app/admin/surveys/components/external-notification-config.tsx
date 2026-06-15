@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Bell, UserCheck, Users, Mail, Smartphone, Info, PlusCircle, Pencil, Filter } from 'lucide-react';
+import { Bell, UserCheck, Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
@@ -111,8 +111,8 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                     name={`${prefix}Channel`}
                                     control={control}
                                     render={({ field }) => (
-                                        <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
-                                            {(['email', 'sms', 'both'] as const).map(c => (
+                                        <div className="grid grid-cols-4 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
+                                            {(['email', 'sms', 'whatsapp', 'both'] as const).map(c => (
                                                 <button
                                                     key={c}
                                                     type="button"
@@ -242,6 +242,32 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                             />
                                         )}
                                     />
+                                </div>
+                            )}
+
+                            {channel === 'whatsapp' && (
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2 px-1">
+                                        <MessageCircle className="h-3 w-3" /> WhatsApp Template
+                                    </Label>
+                                    <Controller
+                                        name={`${prefix}WhatsappTemplateId`}
+                                        control={control}
+                                        render={({ field }) => (
+                                            <MessagingTemplateSelector
+                                                category={category}
+                                                recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
+                                                channel="whatsapp"
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                placeholder="Select approved WhatsApp template..."
+                                                compact
+                                            />
+                                        )}
+                                    />
+                                    <p className="text-[9px] font-semibold text-muted-foreground px-1">
+                                        Only approved templates send. Adopt one from Messaging → Templates.
+                                    </p>
                                 </div>
                             )}
                         </div>

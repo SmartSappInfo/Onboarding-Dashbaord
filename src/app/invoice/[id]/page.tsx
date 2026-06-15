@@ -13,12 +13,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const result = await getPublicInvoiceAction(id);
 
     if (!result.success || !result.invoice) {
-        return { title: 'Invoice Not Found' };
+        return { title: 'Invoice Not Found', robots: { index: false, follow: false } };
     }
 
     return {
-        title: `Invoice ${result.invoice.invoiceNumber} — SmartSapp`,
+        // Bare title — root template appends "— SmartSapp" (was double-branded).
+        title: `Invoice ${result.invoice.invoiceNumber}`,
         description: `Institutional bill for ${result.invoice.entityName}.`,
+        robots: { index: false, follow: false },
     };
 }
 

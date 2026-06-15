@@ -1,0 +1,209 @@
+import type { BranchingScriptGraph, ScriptNode, ScriptNodeType } from './types';
+
+/**
+ * Check if the script content string is a serialized JSON branching script graph.
+ */
+export function isJsonGraph(content: string | undefined): boolean {
+  if (!content) return false;
+  const trimmed = content.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed.nodes) && Array.isArray(parsed.edges);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Parses script content into a BranchingScriptGraph.
+ * If the content is plain text (legacy), it maps it to a default linear graph.
+ */
+export function parseGraph(content: string | undefined): BranchingScriptGraph {
+  if (!content) {
+    return { nodes: [], edges: [] };
+  }
+
+  if (isJsonGraph(content)) {
+    try {
+      return JSON.parse(content);
+    } catch {
+      // Fallback in case of parse failure
+    }
+  }
+
+  // Legacy fallback: Create a simple linear start -> block -> end graph
+  const startId = 'node-start';
+  const blockId = 'node-legacy-block';
+  const endId = 'node-end';
+
+  return {
+    nodes: [
+      {
+        id: startId,
+        type: 'start',
+        position: { x: 100, y: 150 },
+        data: { label: 'Start Call', text: 'Initiate outbound call conversation.' }
+      },
+      {
+        id: blockId,
+        type: 'script_block',
+        position: { x: 100, y: 300 },
+        data: { label: 'Script Body', text: content }
+      },
+      {
+        id: endId,
+        type: 'end',
+        position: { x: 100, y: 450 },
+        data: { label: 'End Call', text: 'End of outbound call conversation.' }
+      }
+    ],
+    edges: [
+      { id: 'edge-1', source: startId, target: blockId },
+      { id: 'edge-2', source: blockId, target: endId }
+    ]
+  };
+}
+
+/**
+ * Get outgoing edges and target nodes for a specific conversation node.
+ */
+export function getNextNodeChoices(
+  graph: BranchingScriptGraph,
+  currentNodeId: string
+): { edgeId: string; edgeLabel: string; targetNode: ScriptNode }[] {
+  const outgoingEdges = graph.edges.filter(edge => edge.source === currentNodeId);
+  return outgoingEdges.map(edge => {
+    const targetNode = graph.nodes.find(n => n.id === edge.target);
+    return {
+      edgeId: edge.id,
+      edgeLabel: edge.label || 'Continue',
+      targetNode: targetNode || {
+        id: edge.target,
+        type: 'end',
+        position: { x: 0, y: 0 },
+        data: { label: 'End', text: 'End of conversation.' }
+      }
+    };
+  });
+}
+
+/**
+ * Resolves dynamic curly brace placeholders inside the script block text using Entity and Deal details.
+ */
+export function resolveScriptVariables(
+  text: string | undefined,
+  entity: any,
+  deal: any,
+  agentName: string
+): string {
+  if (!text) return '';
+
+  const primaryContact = entity?.entityContacts?.find((c: any) => c.isPrimary) || entity?.entityContacts?.[0];
+
+  const variables: Record<string, string> = {
+    ENTITY_NAME: entity?.name || 'Contact',
+    ENTITY_EMAIL: entity?.email || primaryContact?.email || '',
+    ENTITY_PHONE: entity?.phone || primaryContact?.phone || '',
+    ENTITY_TYPE: entity?.entityType || 'prospect',
+    PRIMARY_CONTACT_NAME: primaryContact?.name || '',
+    PRIMARY_CONTACT_PHONE: primaryContact?.phone || '',
+    DEAL_NAME: deal?.name || '[No Active Deal]',
+    DEAL_VALUE: deal?.value !== undefined ? String(deal.value) : '[No Active Deal Value]',
+    DEAL_STAGE: deal?.stageName || '[No Stage]',
+    DEAL_STATUS: deal?.status || 'open',
+    DEAL_EXPECTED_CLOSE: deal?.expectedCloseDate || '',
+    AGENT_NAME: agentName || 'Caller',
+    // Legacy backwards compatibility variables
+    FIRST_NAME: entity?.name || 'Contact',
+    SCHOOL_NAME: entity?.name || 'SmartSapp HQ',
+    EMAIL: entity?.email || primaryContact?.email || '',
+    PHONE: entity?.phone || primaryContact?.phone || '',
+  };
+
+  return text.replace(/\{\{([A-Za-z0-9_]+)\}\}/g, (match, key) => {
+    const vName = key.toUpperCase();
+    return variables[vName] !== undefined ? variables[vName] : match;
+  });
+}
+
+/**
+ * Validates script node layout connections and detects orphaned nodes, loops, and missing endpoints.
+ */
+export function validateScriptGraph(graph: BranchingScriptGraph): { isValid: boolean; warnings: string[] } {
+  const warnings: string[] = [];
+
+  if (graph.nodes.length === 0) {
+    return { isValid: false, warnings: ['Script does not contain any nodes.'] };
+  }
+
+  const startNodes = graph.nodes.filter(n => n.type === 'start');
+  if (startNodes.length === 0) {
+    warnings.push('Script must contain at least one Start node.');
+  }
+
+  const endNodes = graph.nodes.filter(n => n.type === 'end');
+  if (endNodes.length === 0) {
+    warnings.push('Script should contain at least one End node.');
+  }
+
+  // Check for orphaned nodes (no incoming and no outgoing connections)
+  graph.nodes.forEach(node => {
+    const incoming = graph.edges.filter(e => e.target === node.id);
+    const outgoing = graph.edges.filter(e => e.source === node.id);
+
+    if (node.type === 'start') {
+      if (outgoing.length === 0) {
+        warnings.push(`Start node "${node.data.label}" has no outgoing connections.`);
+      }
+    } else if (node.type === 'end') {
+      if (incoming.length === 0) {
+        warnings.push(`End node "${node.data.label}" has no incoming connections.`);
+      }
+    } else {
+      if (incoming.length === 0 && outgoing.length === 0) {
+        warnings.push(`Node "${node.data.label}" is orphaned (no incoming or outgoing connections).`);
+      } else if (incoming.length === 0) {
+        warnings.push(`Node "${node.data.label}" has no incoming connections.`);
+      } else if (outgoing.length === 0 && node.type !== 'outcome') {
+        warnings.push(`Node "${node.data.label}" is a dead end (no outgoing connections).`);
+      }
+    }
+  });
+
+  // Cycle detection (simple DFS to notify loop existence)
+  const visited = new Set<string>();
+  const recStack = new Set<string>();
+  let hasCycles = false;
+
+  function dfs(nodeId: string) {
+    visited.add(nodeId);
+    recStack.add(nodeId);
+
+    const edges = graph.edges.filter(e => e.source === nodeId);
+    for (const edge of edges) {
+      if (!visited.has(edge.target)) {
+        dfs(edge.target);
+      } else if (recStack.has(edge.target)) {
+        hasCycles = true;
+      }
+    }
+
+    recStack.delete(nodeId);
+  }
+
+  startNodes.forEach(node => {
+    if (!visited.has(node.id)) {
+      dfs(node.id);
+    }
+  });
+
+  if (hasCycles) {
+    warnings.push('The script contains loop cycles (nodes referencing each other). Ensure this is intended.');
+  }
+
+  return {
+    isValid: warnings.length === 0 || !warnings.some(w => w.includes('must contain') || w.includes('orphaned')),
+    warnings
+  };
+}

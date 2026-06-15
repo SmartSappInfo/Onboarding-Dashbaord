@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { createBulkMessageJob, processBulkJobChunk, processJobChunkBackground } from './bulk-messaging';
 import { previewCampaignAudience, resolveRecipientContacts } from './messaging-actions';
 import { syncCampaignStats } from './campaign-analytics';
+import { CHANNEL_REGISTRY, contactResolutionChannel } from './messaging/channel-registry';
 import type { MessageCampaign } from './types';
 import { after } from 'next/server';
 
@@ -91,7 +92,7 @@ export async function dispatchCampaign(campaignId: string): Promise<{
           entityId: entity.id,
           workspaceId: campaign.workspaceId,
           contactScope: isManualMode ? 'all' : (campaign.audienceDefinition?.contactScope || 'primary'),
-          channel: campaign.channel === 'email' ? 'email' : 'sms',
+          channel: contactResolutionChannel(campaign.channel),
           contactRoles: isManualMode ? null : contactRoles,
         });
 
@@ -99,7 +100,7 @@ export async function dispatchCampaign(campaignId: string): Promise<{
           resolved = resolved.filter(r => {
             return selectedContacts.some(sc => {
               if (sc.entityId !== entity.id) return false;
-              const contactVal = campaign.channel === 'email' ? sc.email : sc.phone;
+              const contactVal = CHANNEL_REGISTRY[campaign.channel].recipientField === 'email' ? sc.email : sc.phone;
               return r.contact.toLowerCase() === contactVal?.toLowerCase();
             });
           });

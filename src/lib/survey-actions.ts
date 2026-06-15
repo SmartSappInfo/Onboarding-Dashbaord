@@ -540,6 +540,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           specificUserIds: surveyData.adminAlertSpecificUserIds,
           emailTemplateId: surveyData.adminAlertEmailTemplateId,
           smsTemplateId: surveyData.adminAlertSmsTemplateId,
+          whatsappTemplateId: surveyData.adminAlertWhatsappTemplateId,
           variables: notificationVars,
           channel: surveyData.adminAlertChannel
         });
@@ -552,6 +553,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           contactTypes: surveyData.externalAlertContactTypes || [],
           emailTemplateId: surveyData.externalAlertEmailTemplateId,
           smsTemplateId: surveyData.externalAlertSmsTemplateId,
+          whatsappTemplateId: surveyData.externalAlertWhatsappTemplateId,
           variables: notificationVars,
           channel: surveyData.externalAlertChannel
         });

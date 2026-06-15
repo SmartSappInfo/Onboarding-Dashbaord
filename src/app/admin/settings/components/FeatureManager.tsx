@@ -39,6 +39,7 @@ import {
   Target,
   History,
   MapPin,
+  NotebookPen,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -46,6 +47,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   School, Workflow, CheckSquare, Calendar, Zap, BarChart3,
   Globe, Film, ClipboardList, FileText, MessageSquareText, Tags,
   FileCheck, Receipt, Package, Timer, Settings2, Target, History, MapPin,
+  NotebookPen,
 };
 
 /**

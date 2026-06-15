@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
 import { Key, Loader2, Save, Eye, EyeOff } from 'lucide-react';
+import WhatsAppSettings from './WhatsAppSettings';
 
 interface OrganizationIntegrationsTabProps {
     organization: Organization;
@@ -56,6 +57,7 @@ export default function OrganizationIntegrationsTab({ organization }: Organizati
     };
 
     return (
+        <div className="space-y-8">
         <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden">
             <CardHeader className="p-8 border-b">
                 <div className="flex items-center justify-between">
@@ -153,5 +155,8 @@ export default function OrganizationIntegrationsTab({ organization }: Organizati
                 </div>
             </CardContent>
         </Card>
+
+        <WhatsAppSettings organizationId={organization.id} />
+        </div>
     );
 }

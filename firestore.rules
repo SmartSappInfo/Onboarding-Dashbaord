@@ -136,6 +136,11 @@ service cloud.firestore {
       allow read: if isAuthorized();
     }
 
+    match /phone_verification_cache/{docId} {
+      allow read: if isAuthorized();
+      // Writes are admin-SDK only (server-side verification), never from clients.
+    }
+
     match /workspaces/{workspaceId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
@@ -458,6 +463,28 @@ service cloud.firestore {
       allow list: if isAuthorized();
     }
 
+    // --- WhatsApp (Meta Cloud API) ---
+    // Connections, sessions, and webhook idempotency markers hold encrypted
+    // secrets and are written exclusively by the Admin SDK (server). Clients
+    // read the redacted projection through authenticated Server Actions, never
+    // the raw doc. Explicit deny is redundant with the default-deny at the top
+    // but kept self-documenting.
+    match /whatsapp_connections/{orgId} {
+      allow read, write: if false;
+    }
+    match /whatsapp_sessions/{sessionId} {
+      allow read, write: if false;
+    }
+    match /webhook_events/{eventId} {
+      allow read, write: if false;
+    }
+    // Templates mirror Meta's registry; synced server-side (Admin SDK) only.
+    // Org members may read their own org's templates for selection in the UI.
+    match /whatsapp_templates/{templateId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
     // --- Message Campaigns ---
     // Campaign management for bulk messaging
     match /message_campaigns/{campaignId} {
@@ -699,6 +726,25 @@ service cloud.firestore {
       allow write: if isAuthorized();
     }
 
+    // --- Call Centre ---
+    match /call_scripts/{scriptId} {
+      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow list: if isAuthorized();
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId) || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+    }
+
+    match /call_campaigns/{campaignId} {
+      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow list: if isAuthorized();
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId) || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+    }
+
+    match /call_queue_items/{queueItemId} {
+      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow list: if isAuthorized();
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId) || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+    }
+
     // --- Attendees (top-level) ---
     match /attendees/{aId} {
       allow create: if true;
@@ -841,6 +887,49 @@ service cloud.firestore {
         (hasWorkspaceAccess(resource.data.workspaceId) &&
          request.auth.uid == resource.data.createdBy)
       );
+    }
+
+    // --- Quick Notes (Unified Notes Workspace) ---
+    // Mirrors the proven entity_notes model: workspace-scoped, author-owned writes.
+    match /quick_notes/{noteId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized() &&
+        // Author cannot be forged — pins createdBy to the caller (integrity/audit).
+        request.resource.data.createdBy == request.auth.uid && (
+          isSystemAdmin() ||
+          hasWorkspaceAccess(request.resource.data.workspaceId)
+        );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId &&
+         request.auth.uid == resource.data.createdBy)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.auth.uid == resource.data.createdBy)
+      );
+    }
+
+    match /quick_note_categories/{categoryId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    // Denormalized read-model projection. Fully server-mediated: written by the
+    // Admin SDK and read only via the semantic-search server action (also Admin
+    // SDK). Clients never read it directly, so deny client access entirely to
+    // avoid exposing cross-workspace denormalized note text.
+    match /note_index/{rowId} {
+      allow read, write: if false;
     }
 
     match /workspace_entities/{workspaceEntityId} {

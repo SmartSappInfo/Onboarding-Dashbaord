@@ -4,6 +4,8 @@ import PdfFormRenderer from './components/PdfFormRenderer';
 import { notFound } from 'next/navigation';
 import PasswordGatedForm from './components/PasswordGatedForm';
 import { Metadata } from 'next';
+import { cache } from 'react';
+import { resolveSeoMetadata } from '@/lib/seo';
 
 // Force dynamic rendering - requires Firebase Admin
 export const dynamic = 'force-dynamic';
@@ -17,7 +19,9 @@ interface PageData {
     submissionId?: string;
 }
 
-async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageData | null> {
+// React.cache dedupes this (and all its sub-reads) between generateMetadata and
+// the page body, which call it with identical arguments.
+const getPdfFormData = cache(async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageData | null> {
     try {
         // 1. Fetch PDF Metadata
         let docSnap = await adminDb.collection('pdfs').doc(id).get();
@@ -82,25 +86,32 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
         console.error("Error fetching PDF form:", error);
         return null;
     }
-}
+});
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ entityId?: string }> }): Promise<Metadata> {
     const { pdfId } = await params;
     const sParams = await searchParams;
     const data = await getPdfFormData(pdfId, sParams.entityId);
 
-    if (!data) return { title: 'Form Not Found' };
+    if (!data) return { title: 'Form Not Found', robots: { index: false, follow: false } };
 
-    const title = data.entity 
+    const title = data.entity
         ? `${data.entity.displayName} — ${data.pdfForm.publicTitle || data.pdfForm.name}`
-        : data.identity?.name 
+        : data.identity?.name
             ? `${data.identity.name} — ${data.pdfForm.publicTitle || data.pdfForm.name}`
             : data.pdfForm.publicTitle || data.pdfForm.name;
 
-    return {
-        title,
-        description: 'Institutional document signing powered by SmartSapp.',
-    };
+    // Org branding supplies the logo for the `entity_logo` OG-image mode.
+    const org = await getOrgBranding(data.pdfForm.organizationId);
+
+    return resolveSeoMetadata({
+        seo: data.pdfForm.seo,
+        fallback: {
+            title,
+            description: 'Institutional document signing powered by SmartSapp.',
+        },
+        org,
+    });
 }
 
 import { getOrgBranding } from '@/lib/org-branding';

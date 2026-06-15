@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { doc, collection, query, where, orderBy, updateDoc } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { Form, FormFieldInstance, AppField, FieldGroup, FormThemeConfig, FormSubmissionActions } from '@/lib/types';
+import type { Form, FormFieldInstance, AppField, FieldGroup, FormThemeConfig, FormSubmissionActions, SeoConfig } from '@/lib/types';
+import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
@@ -811,6 +812,15 @@ export default function EditFormPage() {
             {/* ── Step 4: Share ── */}
             {step === 4 && (
               <motion.div key="step4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+                <SeoSettingsCard
+                  value={formData.seo || {}}
+                  onChange={(next: SeoConfig) => updateField('seo', next)}
+                  assetLabel="Cover Image"
+                  contentTitle={formData.title}
+                  contentDescription={formData.description}
+                  previewUrl={`smartsapp.com/p/f/${formData.slug || ''}`}
+                  description="Configure how this form appears in search engines and when shared."
+                />
                 <Card className="rounded-2xl border-none shadow-sm">
                   <CardHeader>
                     <CardTitle className="text-base font-semibold">Distribution</CardTitle>

@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { 
     Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2, PlusCircle
 } from 'lucide-react';
-import { type PDFForm, type PDFFormField, type WorkspaceEntity, type Entity, type MessageTemplate, type SenderProfile } from '@/lib/types';
+import { type PDFForm, type PDFFormField, type WorkspaceEntity, type Entity, type MessageTemplate, type SenderProfile, type SeoConfig } from '@/lib/types';
+import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
 import { savePdfForm, updatePdfFormStatus } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import { FormProvider, useForm, Controller } from 'react-hook-form';
@@ -71,11 +72,21 @@ const formSchema = z.object({
   confirmationTemplateId: z.string().optional(),
   confirmationSenderProfileId: z.string().optional(),
   adminAlertsEnabled: z.boolean().default(false),
-  adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  adminAlertChannel: z.enum(['email', 'sms', 'whatsapp', 'both']).default('both'),
   adminAlertNotifyManager: z.boolean().default(false),
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
+  adminAlertWhatsappTemplateId: z.string().optional(),
+  seo: z.object({
+    title: z.string().optional(),
+    description: z.string().optional(),
+    keywords: z.string().optional(),
+    ogImageMode: z.enum(['asset', 'entity_logo', 'custom']).optional(),
+    ogImageUrl: z.string().optional(),
+    useContentFallback: z.boolean().optional(),
+    noIndex: z.boolean().optional(),
+  }).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -323,6 +334,23 @@ export default function EditPdfPage() {
                             )}
                             {step === 3 && (
                                 <motion.div key="step3" {...stepTransition}>
+ <div className="mb-8">
+   <Controller name="seo" control={form.control} render={({ field }) => (
+     <SeoSettingsCard
+       value={(field.value as SeoConfig) || {}}
+       onChange={field.onChange}
+       assetLabel="Brand Logo"
+       assetImageUrl={watch('logoUrl')}
+       entityLogoUrl={watch('logoUrl')}
+       contentTitle={watch('publicTitle')}
+       previewUrl={`smartsapp.com/forms/${watch('slug') || ''}`}
+       description="Configure how this signing document appears in search engines and when shared."
+       renderImagePicker={(val, onChange) => (
+         <MediaSelect value={val} onValueChange={onChange} filterType="image" className="rounded-2xl" />
+       )}
+     />
+   )} />
+ </div>
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start text-left">
  <div className="space-y-8">
  <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">

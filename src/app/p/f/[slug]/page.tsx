@@ -1,17 +1,21 @@
 import { Metadata, ResolvingMetadata } from 'next';
+import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import { firestore } from '@/firebase/config';
 import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import type { Form } from '@/lib/types';
 import FormRenderer from './components/FormRenderer';
 import { getFieldsForWorkspace } from '@/lib/fields-actions';
+import { resolveSeoMetadata, normalizeParentImages } from '@/lib/seo';
+import { getOrgBranding } from '@/lib/org-branding';
 
 /**
  * Public Form Wrapper Route
  * Handles server-side form resolution by slug and metadata generation.
  */
 
-async function getFormBySlug(slug: string): Promise<Form | null> {
+// React.cache dedupes the lookup between generateMetadata and the page body.
+const getFormBySlug = cache(async function getFormBySlug(slug: string): Promise<Form | null> {
   try {
     const formsRef = collection(firestore, 'forms');
     const q = query(
@@ -30,7 +34,7 @@ async function getFormBySlug(slug: string): Promise<Form | null> {
     console.error('Error fetching form by slug:', error);
     return null;
   }
-}
+});
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
@@ -39,17 +43,20 @@ export async function generateMetadata(
   const { slug } = await params;
   const form = await getFormBySlug(slug);
 
-  if (!form) return { title: 'Form Not Found' };
+  if (!form) return { title: 'Form Not Found', robots: { index: false, follow: false } };
 
-  return {
-    title: form.title,
-    description: form.description || 'Form submission powered by SmartSapp',
-    openGraph: {
+  // Org branding supplies the logo for the `entity_logo` OG-image mode.
+  const org = await getOrgBranding(form.organizationId);
+
+  return resolveSeoMetadata({
+    seo: form.seo,
+    fallback: {
       title: form.title,
-      description: form.description,
-      type: 'website',
+      description: form.description || 'Form submission powered by SmartSapp',
     },
-  };
+    org,
+    parentImages: normalizeParentImages((await parent).openGraph?.images),
+  });
 }
 
 export default async function PublicFormPage({ 

@@ -72,7 +72,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const data = await getResultData(slug, submissionId);
 
     if (!data) {
-        return { title: 'Result Not Found' };
+        return { title: 'Result Not Found', robots: { index: false, follow: false } };
     }
 
     const { survey } = data;
@@ -82,6 +82,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return {
         title: `Results: ${survey.title}`,
         description: cleanDescription,
+        // A specific respondent's result is private — keep it out of search indexes.
+        robots: { index: false, follow: false },
         openGraph: {
             title: `Results: ${survey.title}`,
             description: cleanDescription,

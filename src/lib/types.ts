@@ -361,6 +361,39 @@ export interface OrgBranding {
 }
 
 /**
+ * How the Open Graph / social preview image for a public page is sourced.
+ * - `asset`        → the content's own banner/hero/cover image
+ * - `entity_logo`  → the owning organization's logo
+ * - `custom`       → an explicit URL supplied in {@link SeoConfig.ogImageUrl}
+ */
+export type OgImageMode = 'asset' | 'entity_logo' | 'custom';
+
+/**
+ * Canonical, surface-agnostic SEO & social-sharing configuration.
+ *
+ * Persisted as a nested `seo` object on public content documents
+ * (surveys, campaign pages, meetings, forms, signing documents) and consumed
+ * by `resolveSeoMetadata` in `src/lib/seo.ts`. Titles are stored **bare**
+ * (without the "— SmartSapp" suffix); the resolver applies branding.
+ */
+export interface SeoConfig {
+  /** Bare title (no brand suffix). Falls back to the content title. */
+  title?: string;
+  /** Plain-text description; HTML is stripped by the resolver. */
+  description?: string;
+  /** Comma-separated keywords; the resolver splits into an array. */
+  keywords?: string;
+  /** Which source supplies the social preview image. Defaults per surface. */
+  ogImageMode?: OgImageMode;
+  /** Explicit image URL; used only when `ogImageMode === 'custom'`. */
+  ogImageUrl?: string;
+  /** When true, title/description mirror the content fields, ignoring overrides. */
+  useContentFallback?: boolean;
+  /** When true, emits `robots: noindex, nofollow`. */
+  noIndex?: boolean;
+}
+
+/**
  * Contact scope types for workspaces
  */
 export type ContactScope = 'institution' | 'family' | 'person';
@@ -438,8 +471,12 @@ export interface EmailVerificationRule {
   scoreValue: number;
 }
 
+/** Same threshold→value shape as email rules; applied to phone verification scores. */
+export type PhoneVerificationRule = EmailVerificationRule;
+
 export interface LeadScoringSettings {
   emailVerificationRules: EmailVerificationRule[];
+  phoneVerificationRules?: PhoneVerificationRule[];
   engagementRules: Record<string, number>;
 }
 
@@ -581,6 +618,18 @@ export interface EntityContact {
   unsubscribedCategories?: string[];
   snoozedUntil?: string;
   optDownFrequency?: 'weekly' | 'monthly' | 'default';
+  // Phone Hygiene
+  // Note: like emailVerificationScore, phoneVerificationScore stores the
+  // rule-mapped lead-score value (not the raw 0-100 verification score —
+  // that lives in phone_verification_cache and WorkspaceEntity).
+  phoneStatus?: 'unverified' | 'format_valid' | 'otp_sent' | 'verified' | 'active' | 'failed' | 'invalid' | 'opted_out';
+  phoneVerificationScore?: number;
+  phoneVerifiedAt?: string;
+  phoneVerificationMethod?: 'offline' | 'otp' | 'delivery';
+  phoneType?: 'mobile' | 'fixed_line' | 'fixed_line_or_mobile' | 'voip' | 'premium_rate' | 'other';
+  lastSmsDeliveredAt?: string;
+  lastSmsFailedAt?: string;
+  hasWhatsapp?: boolean; // Reserved for WhatsApp presence detection (v2) — modeled now, unpopulated
   // Engagement Tracking
   lastEngagedAt?: string; // ISO timestamp updated whenever a meaningful action occurs
   lastEmailOpenedAt?: string; // ISO timestamp for email open tracking
@@ -1045,6 +1094,12 @@ export interface WorkspaceEntity {
   customData?: Record<string, any>;
   leadScore?: number;
   lastEngagedAt?: string; // Rolled-up engagement timestamp for fast filtering
+
+  // Denormalized phone verification fields (raw 0-100 score; see phone_verification_cache)
+  phoneVerificationStatus?: string;
+  phoneVerificationScore?: number;
+  lastPhoneVerifiedAt?: string;
+  phoneVerificationDetails?: Record<string, any>;
 }
 
 export interface DealContact {
@@ -1233,6 +1288,8 @@ export interface Invoice {
 export interface Meeting {
   id: string;
   title?: string;
+  /** Canonical SEO & social-sharing config for the public meeting page. @see SeoConfig */
+  seo?: SeoConfig;
   // ── V3: Standalone URL routing ──────────────────
   meetingSlug: string; // Unique slug for public URL: /meetings/[type]/[meetingSlug]
   // ── V3: Branding controls ──────────────────────
@@ -1700,16 +1757,18 @@ export interface Survey {
   webhookId?: string;
   showDebugProcessingModal?: boolean;
   adminAlertsEnabled?: boolean;
-  adminAlertChannel?: 'email' | 'sms' | 'both';
+  adminAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both';
   adminAlertNotifyManager?: boolean;
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
+  adminAlertWhatsappTemplateId?: string;
   externalAlertsEnabled?: boolean;
-  externalAlertChannel?: 'email' | 'sms' | 'both';
+  externalAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both';
   externalAlertContactTypes?: string[];
   externalAlertEmailTemplateId?: string;
   externalAlertSmsTemplateId?: string;
+  externalAlertWhatsappTemplateId?: string;
   useEntityLogo?: boolean;
   logoMode?: 'organization' | 'custom' | 'placeholder';
   // Entity Creation & Assignment (Task 12)
@@ -1733,11 +1792,22 @@ export interface Survey {
     isFirstPublishComplete: boolean;
   };
   // SEO & Social Configuration
+  /**
+   * Canonical SEO config. Reads should prefer this object.
+   * @see SeoConfig
+   */
+  seo?: SeoConfig;
+  /** @deprecated Use {@link Survey.seo}.title. Retained for backward-compat during migration. */
   seoTitle?: string;
+  /** @deprecated Use {@link Survey.seo}.description. */
   seoDescription?: string;
+  /** @deprecated Use {@link Survey.seo}.keywords. */
   seoKeywords?: string;
+  /** @deprecated Use {@link Survey.seo}.ogImageUrl. */
   seoOgImage?: string;
+  /** @deprecated Use {@link Survey.seo}.ogImageMode (`survey_banner` maps to `asset`). */
   seoOgImageMode?: 'survey_banner' | 'entity_logo' | 'custom';
+  /** @deprecated Use {@link Survey.seo}.useContentFallback. */
   seoUseSurveyFallback?: boolean;
 }
 
@@ -1913,6 +1983,8 @@ export interface PDFForm {
   workspaceIds: string[]; // Shared
   name: string;
   publicTitle: string;
+  /** Canonical SEO & social-sharing config for the public signing-document page. @see SeoConfig */
+  seo?: SeoConfig;
   slug: string;
   storagePath: string;
   downloadUrl: string;
@@ -1936,11 +2008,12 @@ export interface PDFForm {
   confirmationTemplateId?: string;
   confirmationSenderProfileId?: string;
   adminAlertsEnabled?: boolean;
-  adminAlertChannel?: 'email' | 'sms' | 'both';
+  adminAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both';
   adminAlertNotifyManager?: boolean;
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
+  adminAlertWhatsappTemplateId?: string;
   resultsShared?: boolean;
   resultsPassword?: string;
   createdBy?: string;
@@ -2276,7 +2349,7 @@ export interface VariableDefinition {
   constantValue?: string;
 }
 
-export type MessageChannel = 'email' | 'sms' | 'in_app' | 'push';
+export type MessageChannel = 'email' | 'sms' | 'whatsapp' | 'in_app' | 'push';
 
 export type RecipientType = 
   | 'respondent'
@@ -2477,6 +2550,12 @@ export interface MessageTemplate {
   // Style (OPTIONAL — null/undefined means no wrapper)
   styleId?: string | null;
   workspaceIds?: string[];
+
+  // WhatsApp-only (channel === 'whatsapp'): binds this template to an approved
+  // Meta template and maps positional {{1..n}} params to variable keys.
+  whatsappTemplateName?: string;
+  whatsappLanguage?: string;
+  whatsappParamMap?: string[];
 
   // Metadata
   createdAt: string;
@@ -2814,8 +2893,12 @@ export interface CampaignVariant {
 export interface SenderProfile {
   id: string;
   name: string;
-  channel: 'email' | 'sms';
+  channel: 'email' | 'sms' | 'whatsapp';
   identifier: string; // The from email or Sender ID
+  /** WhatsApp-only: the Meta phone-number ID this profile sends from. */
+  whatsappPhoneNumberId?: string;
+  /** WhatsApp-only: connection health for this sender. */
+  whatsappStatus?: 'connected' | 'pending' | 'error' | 'disconnected';
   isDefault: boolean;
   isActive: boolean;
   workspaceIds: string[];
@@ -2834,7 +2917,9 @@ export interface MessageLog {
   templateName: string;
   senderProfileId: string;
   senderName: string;
-  channel: 'email' | 'sms';
+  channel: 'email' | 'sms' | 'whatsapp';
+  /** Direction of the message. Defaults to outbound when absent (legacy logs). */
+  direction?: 'inbound' | 'outbound';
   recipient: string;
   subject?: string | null;
   previewText?: string | null;
@@ -2859,13 +2944,19 @@ export interface MessageLog {
   dealId?: string; // Optional deal reference for deal-level message tracking
   campaignId?: string;
   campaignVariantId?: 'A' | 'B';
+  /** WhatsApp-only: the Meta message id (wamid), used to reconcile status webhooks. */
+  metaMessageId?: string;
+  /** WhatsApp-only: name of the approved template used for this send, if any. */
+  whatsappTemplateName?: string;
+  /** WhatsApp-only: Meta conversation id, for conversation-based pricing/analytics. */
+  whatsappConversationId?: string;
 }
 
 export interface MessageJob {
   id: string;
   templateId: string;
   senderProfileId: string;
-  channel: 'email' | 'sms';
+  channel: 'email' | 'sms' | 'whatsapp';
   status: 'queued' | 'processing' | 'completed' | 'failed';
   totalRecipients: number;
   processed: number;
@@ -3002,6 +3093,7 @@ export const APP_FEATURES = [
   { id: 'meetings', label: 'Meetings', category: 'Operations', icon: 'Calendar', defaultEnabled: true },
   { id: 'automations', label: 'Automations', category: 'Operations', icon: 'Zap', defaultEnabled: true },
   { id: 'reports', label: 'Intelligence / Reports', category: 'Operations', icon: 'BarChart3', defaultEnabled: true },
+  { id: 'quick_notes', label: 'Quick Notes', category: 'Operations', icon: 'NotebookPen', defaultEnabled: true },
   // Studios
   { id: 'portals', label: 'Public Portals', category: 'Studios', icon: 'Globe', defaultEnabled: true },
   { id: 'media', label: 'Media Library', category: 'Studios', icon: 'Film', defaultEnabled: true },
@@ -3097,12 +3189,8 @@ export interface CampaignPage {
   status: 'draft' | 'published' | 'archived';
   pageGoal: 'lead_capture' | 'registration' | 'information' | 'payment' | 'thank_you';
   themeId?: string | null;
-  seo: {
-    title: string;
-    description: string;
-    ogImageUrl?: string;
-    noIndex: boolean;
-  };
+  /** Canonical SEO & social-sharing config. @see SeoConfig */
+  seo: SeoConfig;
   settings: {
     customScriptsAllowed: boolean;
     customHead?: string;
@@ -3270,6 +3358,8 @@ export interface Form {
   title: string;
   slug: string;
   description?: string;
+  /** Canonical SEO & social-sharing config for the public form page. @see SeoConfig */
+  seo?: SeoConfig;
   formType: 'bound' | 'global';
   contactScope?: 'institution' | 'family' | 'person'; // Only populated if bound
   fields: FormFieldInstance[];
@@ -3325,6 +3415,7 @@ export interface FormSubmissionActions {
       userIds: string[];
       emailTemplateId?: string;
       smsTemplateId?: string;
+      whatsappTemplateId?: string;
       pushTemplateId?: string;
       inAppTemplateId?: string;
     };
@@ -3334,6 +3425,7 @@ export interface FormSubmissionActions {
       respondentPhoneField?: string;
       emailTemplateId?: string;
       smsTemplateId?: string;
+      whatsappTemplateId?: string;
       pushTemplateId?: string;
       inAppTemplateId?: string;
     };
@@ -3438,6 +3530,7 @@ export interface QRCode {
       userIds: string[];
       emailTemplateId?: string;
       smsTemplateId?: string;
+      whatsappTemplateId?: string;
       pushTemplateId?: string;
       inAppTemplateId?: string;
     };
@@ -4190,3 +4283,139 @@ export interface Retainer {
   createdAt: string;
   updatedAt: string;
 }
+
+// ─── Call Centre & Outreach Campaign Types ───────────────────────────────────
+
+export interface CallScript {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  content: string;
+  variables: string[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+export type CallCampaignStatus = 'draft' | 'scheduled' | 'running' | 'paused' | 'completed' | 'cancelled';
+
+export interface CallOutcomeAutomation {
+  type: 'CHANGE_STAGE' | 'CREATE_TASK' | 'ADD_TAG' | 'SEND_SMS' | 'SEND_EMAIL';
+  params: {
+    stageId?: string;
+    taskTitle?: string;
+    taskPriority?: 'low' | 'medium' | 'high';
+    tagId?: string;
+    templateId?: string;
+  };
+}
+
+export interface CallCampaign {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  scriptId: string;
+  scriptSnapshot: string;
+  audienceDefinition: AudienceDefinition;
+  outcomes: string[];
+  automationRules: Record<string, CallOutcomeAutomation[]>;
+  status: CallCampaignStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  progress: {
+    total: number;
+    completed: number;
+    pending: number;
+    skipped: number;
+    callbacks: number;
+    deferred: number;
+  };
+  aiInsights?: {
+    commonObjections: string[];
+    commonQuestions: string[];
+    scriptPerformanceScore: number;
+    suggestedImprovements?: string;
+  };
+}
+
+export type CallQueueItemStatus = 'scheduled' | 'in_progress' | 'completed' | 'callback_scheduled' | 'deferred' | 'skipped' | 'invalid_contact';
+
+export interface CallQueueItem {
+  id: string;
+  campaignId: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  entityType: EntityType;
+  entityName: string;
+  entityPhone: string;
+  entityEmail: string;
+  status: CallQueueItemStatus;
+  assignedTo: string | null;
+  lockExpiresAt: string | null;
+  callbackDate: string | null;
+  attempts: number;
+  lastAttemptAt: string | null;
+  notesDraft?: string;
+  outcome?: string;
+  duration?: number;
+  
+  // AI Integration slots
+  recordingUrl?: string;
+  transcript?: string;
+  aiSummary?: {
+    summary: string;
+    suggestedOutcome: string;
+    confidence: number;
+    sentiment: 'positive' | 'neutral' | 'negative';
+  };
+  aiExtractedActions?: Array<{
+    type: 'create_task' | 'schedule_callback';
+    title: string;
+    dueDate?: string;
+  }>;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ScriptNodeType = 
+  | 'start'           // Beginning of call
+  | 'script_block'    // What agent should say
+  | 'question'        // Ask customer something
+  | 'multiple_choice' // Customer answer options (branches)
+  | 'condition'       // If/Else logic check
+  | 'objection'       // Objection handler block
+  | 'action'          // Automation trigger (e.g. change stage, task)
+  | 'outcome'         // Campaign outcomes (e.g. Interested, Callback)
+  | 'end';            // End call
+
+export interface ScriptNode {
+  id: string;
+  type: ScriptNodeType;
+  position: { x: number; y: number };
+  data: {
+    label: string;
+    text: string;           // Script text to display to agent (supports variable injection)
+    outcomeValue?: string;  // Value mapped if node type is 'outcome'
+    actionType?: string;    // Action type mapped if node type is 'action'
+  };
+}
+
+export interface ScriptEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;           // Text label shown on the branch button (e.g., "Yes", "No", "Busy")
+}
+
+export interface BranchingScriptGraph {
+  nodes: ScriptNode[];
+  edges: ScriptEdge[];
+}
+

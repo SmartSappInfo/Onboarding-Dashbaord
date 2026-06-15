@@ -526,14 +526,15 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               <SelectContent className="rounded-xl">
                 <SelectItem value="email">Email</SelectItem>
                 <SelectItem value="sms">SMS</SelectItem>
+                <SelectItem value="whatsapp">WhatsApp</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Master Template</Label>
-            <MessagingTemplateSelector 
+            <MessagingTemplateSelector
               category="all"
-              channel={(config.channel as 'email' | 'sms') || 'email'}
+              channel={(config.channel as 'email' | 'sms' | 'whatsapp') || 'email'}
               recipientType="all"
               value={config.templateId}
               onValueChange={(v) => updateConfig({ templateId: v })}

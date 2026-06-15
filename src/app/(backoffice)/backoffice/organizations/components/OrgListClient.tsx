@@ -75,6 +75,7 @@ const FEATURE_DESCRIPTIONS: Record<AppFeatureId, string> = {
   meetings: 'Schedule and coordinate virtual/in-person meetings.',
   automations: 'Design automated, event-triggered workflows.',
   reports: 'Dashboards, analytics, and intelligence reports.',
+  quick_notes: 'Consolidated rich notes with linking and AI insights.',
   portals: 'Public-facing portals and landing pages.',
   media: 'Upload and manage images, files, and assets.',
   surveys: 'Create satisfaction, NPS, and intake surveys.',

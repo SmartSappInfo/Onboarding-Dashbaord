@@ -14,6 +14,7 @@ import { type ScheduleMessageResult } from '@/lib/sequential-scheduler';
 import { resolveContact } from '@/lib/contact-adapter';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { fetchContextualData, resolveRecipientContacts, updateEntityLastContactedAt, type ResolvedRecipient } from '@/lib/messaging-actions';
+import { contactResolutionChannel } from '@/lib/messaging/channel-registry';
 import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
@@ -31,7 +32,7 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import {
-    Check, ChevronRight, Smartphone, Mail, Users, Upload, Loader2, Eye,
+    Check, ChevronRight, Smartphone, Mail, MessageCircle, Users, Upload, Loader2, Eye,
     X, AlertCircle, Info, CalendarClock, Building, Trophy, TrendingUp, Zap,
     CheckCircle2, Target, Layers, Wand2, ArrowLeft, FileText, ClipboardList,
     Calendar, Database, PlusCircle, FlaskConical, Tag, Send, Settings2,
@@ -56,7 +57,7 @@ import { useEntityCache } from '@/context/EntityCacheContext';
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const formSchema = z.object({
     // Step 1 – Message Type
-    channel: z.enum(['email', 'sms']),
+    channel: z.enum(['email', 'sms', 'whatsapp']),
     messageSourceType: z.enum(['template', 'new']).default('template'),
     templateId: z.string().optional(),
     senderProfileId: z.string().optional(),
@@ -506,7 +507,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         if (!selectedTemplate || isRefining) return;
         setIsRefining(true);
         try {
-            const result = await refineMessage({ text: selectedTemplate.body, tone: selectedTone, channel: watchedChannel });
+            const result = await refineMessage({ text: selectedTemplate.body, tone: selectedTone, channel: contactResolutionChannel(watchedChannel) });
             setValue('variables.ai_refined_body', result.refinedText);
             toast({ title: 'AI Refinement Applied' });
         } catch (e: any) {
@@ -598,7 +599,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             entityId, workspaceId: activeWorkspace?.id,
                             contactScope: data.contactScope,
                             contactTypeFilter: data.contactTypeFilter,
-                            channel: data.channel,
+                            channel: contactResolutionChannel(data.channel),
                         });
                         if (!recipients.length) { 
                             results.totalFailed++; 
@@ -622,6 +623,10 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     recipient, variables: { ...data.variables, channel: data.channel },
                                     workspaceId: activeWorkspace?.id, scheduledAt, entityId,
                                 });
+                            } else if (data.channel === 'whatsapp') {
+                                // WhatsApp free-form is only valid inside an open 24h session and has
+                                // no raw composer path in v1 — require an approved template.
+                                res = { success: false, error: 'WhatsApp requires selecting an approved template.' };
                             } else {
                                 res = await sendRawMessage({
                                     channel: data.channel, recipient,
@@ -706,8 +711,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             {/* Channel */}
                             <div className="space-y-3">
                                 <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">1. Channel</Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {([['email', 'Email', Mail], ['sms', 'SMS', Smartphone]] as const).map(([val, label, Icon]) => (
+                                <div className="grid grid-cols-3 gap-3">
+                                    {([['email', 'Email', Mail], ['sms', 'SMS', Smartphone], ['whatsapp', 'WhatsApp', MessageCircle]] as const).map(([val, label, Icon]) => (
                                         <button key={val} type="button" onClick={() => setValue('channel', val)}
                                             className={cn('flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all duration-300 font-semibold text-sm',
                                                 watchedChannel === val ? 'border-primary bg-primary/5 text-primary shadow-lg shadow-primary/10' : 'border-border hover:border-primary/30 text-muted-foreground'
@@ -845,7 +850,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                         <EntitySelector
                                             entities={workspaceEntities}
                                             isLoading={isCombinedLoading}
-                                            channel={watchedChannel}
+                                            channel={contactResolutionChannel(watchedChannel)}
                                             selectedEntityIds={watchedSelectedEntityIds}
                                             activeContactTypeFilter={watchedContactTypeFilter || []}
                                             onContactTypeFilterChange={(keys) => setValue('contactTypeFilter', keys)}

@@ -30,6 +30,12 @@
       "skillPath": "partner-built/zoom-plugin/skills/build-zoom-meeting-app/SKILL.md",
       "computedHash": "488e8f05a3cef529bfbd22a57c1211b040ccfbc18a4a66db5da46a744a47a763"
     },
+    "cc-skill-backend-patterns": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cc-skill-backend-patterns/SKILL.md",
+      "computedHash": "88dacdcb6d42bb993bc0f02a95a6c9aaee9bf211b02d96c0425b708277e01c44"
+    },
     "clean-data-xls": {
       "source": "anthropics/financial-services-plugins",
       "sourceType": "github",

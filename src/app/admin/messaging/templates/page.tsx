@@ -43,6 +43,14 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainer } from '@/components/ui/page-container';
 import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
+import dynamic from 'next/dynamic';
+
+// Heavy, WhatsApp-only management UI — lazy-loaded so it stays out of the main
+// templates bundle (vercel:bundle-dynamic-imports).
+const WhatsAppTemplatePanel = dynamic(
+  () => import('./components/WhatsAppTemplatePanel'),
+  { ssr: false },
+);
 
 /**
  * @fileOverview Messaging Templates Management Page.
@@ -529,6 +537,10 @@ export default function MessageTemplatesPage() {
                                 onPreview={setPreviewTemplate}
                                 onUpdateStatus={handleUpdateStatus}
                             />
+
+                            {activeOrganizationId && (
+                                <WhatsAppTemplatePanel organizationId={activeOrganizationId} />
+                            )}
                             </div>
                         </PageContainer>
                     </div>

@@ -4,6 +4,7 @@ import * as React from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { EmailHygieneHoverCard } from '../../components/EmailHygieneHoverCard';
+import { PhoneHygieneHoverCard } from '../../components/PhoneHygieneHoverCard';
 import { logActivity } from '@/lib/activity-logger';
 import { 
     Plus, User, Mail, Phone, ShieldCheck, BadgeCheck, X, AlertCircle, Loader2, Save, Trash2, Pencil, MoreHorizontal, UserCheck, Video
@@ -337,7 +338,26 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, disabled }: {
         verificationDetails: cache.checks
     } : undefined, [cache]);
 
+    // Phone hygiene — subscribe to the phone cache doc (null ref when no phone, so no dead listener)
+    const phoneHashed = React.useMemo(() => contact.phone ? btoa(contact.phone.trim()) : '', [contact.phone]);
+    const phoneDocRef = useMemoFirebase(() => (firestore && phoneHashed) ? doc(firestore, 'phone_verification_cache', phoneHashed) : null, [firestore, phoneHashed]);
+    const { data: phoneCache } = useDoc<any>(phoneDocRef);
+
+    const phoneHygieneData = React.useMemo(() => (contact.phone ? {
+        // Prefer the contact's lifecycle status (otp/active/failed) over the cache's offline status
+        phoneStatus: contact.phoneStatus || phoneCache?.status,
+        phoneVerificationScore: phoneCache?.score,
+        lastPhoneVerifiedAt: phoneCache?.lastVerifiedAt,
+        country: phoneCache?.country,
+        callingCode: phoneCache?.callingCode,
+        lineType: phoneCache?.lineType || contact.phoneType,
+        verificationDetails: phoneCache?.checks,
+        lastSmsDeliveredAt: contact.lastSmsDeliveredAt,
+        lastSmsFailedAt: contact.lastSmsFailedAt,
+    } : undefined), [contact.phone, contact.phoneStatus, contact.phoneType, contact.lastSmsDeliveredAt, contact.lastSmsFailedAt, phoneCache]);
+
     const [isRechecking, setIsRechecking] = React.useState(false);
+    const [isPhoneRechecking, setIsPhoneRechecking] = React.useState(false);
     const { toast } = useToast();
 
     const handleManualRecheck = async (email: string) => {
@@ -355,6 +375,24 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, disabled }: {
             toast({ variant: 'destructive', title: 'Recheck Failed', description: e.message });
         } finally {
             setIsRechecking(false);
+        }
+    };
+
+    const handlePhoneRecheck = async (phone: string) => {
+        if (isPhoneRechecking) return;
+        setIsPhoneRechecking(true);
+        try {
+            const res = await fetch('/api/verify-phone/trigger', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phones: [phone] })
+            });
+            if (!res.ok) throw new Error('Verification trigger failed');
+            toast({ title: 'Verification Queued', description: `${phone} is being verified in the background.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Recheck Failed', description: e.message });
+        } finally {
+            setIsPhoneRechecking(false);
         }
     };
 
@@ -402,7 +440,16 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, disabled }: {
                             {contact.phone && (
                                 <span className="flex items-center gap-1.5">
                                     <Phone className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                    {contact.phone}
+                                    <PhoneHygieneHoverCard
+                                        phone={contact.phone}
+                                        hygiene={phoneHygieneData}
+                                        onManualRecheck={handlePhoneRecheck}
+                                        isRechecking={isPhoneRechecking}
+                                    >
+                                        <span className="cursor-pointer hover:text-primary transition-colors font-bold">
+                                            {contact.phone}
+                                        </span>
+                                    </PhoneHygieneHoverCard>
                                 </span>
                             )}
                         </div>

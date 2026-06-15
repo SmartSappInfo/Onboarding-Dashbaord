@@ -16,6 +16,7 @@ import { buildMeetingBaseVariables, buildFacilitatorVariables, buildRegistrantVa
 import { getRecipientContact } from './migration-status-utils';
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
 import { getBaseUrl, getRequestBaseUrl, cleanPersonalizedMeetingUrl } from './utils/url-helpers';
+import { CHANNEL_REGISTRY } from './messaging/channel-registry';
 
 interface SendMessageInput {
   templateId: string;
@@ -63,6 +64,19 @@ function getPhoneFormats(phone: string): string[] {
   ])).filter(Boolean);
 }
 
+/**
+ * Fire-and-forget reachability signal (Level 3) from an SMS send.
+ * `ok` reflects provider ACCEPTANCE (mNotify accepted the request), which is
+ * not the same as confirmed delivery — true delivery status would require
+ * mNotify status polling/webhooks (deferred). Never awaited and never throws,
+ * so it cannot delay or fail the message send.
+ */
+function recordSmsReachability(recipient: string, ok: boolean): void {
+  import('./phone-hygiene-repository')
+    .then(({ PhoneHygieneRepository }) => PhoneHygieneRepository.recordSmsOutcome(recipient, ok))
+    .catch((err) => console.warn('[MSG-ENGINE] recordSmsReachability failed (non-fatal):', err?.message));
+}
+
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
   const { templateId, senderProfileId, recipient, variables, attachments, entityId, entityType, workspaceId, scheduledAt, tags, trackLinks, campaignId, campaignVariantId } = input;
 
@@ -73,34 +87,47 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     const template = { id: templateSnap.id, ...templateSnap.data() } as MessageTemplate;
 
     // 2. Resolve Sender Profile
-    let senderProfileSnap;
-    if (senderProfileId && senderProfileId !== 'default' && senderProfileId !== 'none') {
-        senderProfileSnap = await adminDb.collection('sender_profiles').doc(senderProfileId).get();
-    }
+    let sender: SenderProfile;
+    if (template.channel === 'whatsapp') {
+        // WhatsApp's sender is the organization's WABA (resolved from the
+        // encrypted connection inside sendWhatsApp), not a SenderProfile.
+        // Synthesize a minimal sender so the engine flow + logging work without
+        // requiring a redundant whatsapp profile.
+        sender = {
+            id: 'whatsapp', name: 'WhatsApp', identifier: 'whatsapp', channel: 'whatsapp',
+            isDefault: true, isActive: true, workspaceIds: [],
+            createdAt: '', updatedAt: '',
+        } as SenderProfile;
+    } else {
+        let senderProfileSnap;
+        if (senderProfileId && senderProfileId !== 'default' && senderProfileId !== 'none') {
+            senderProfileSnap = await adminDb.collection('sender_profiles').doc(senderProfileId).get();
+        }
 
-    if (!senderProfileSnap || !senderProfileSnap.exists) {
-        const defaultSnap = await adminDb.collection('sender_profiles')
-            .where('channel', '==', template.channel)
-            .where('isDefault', '==', true)
-            .where('isActive', '==', true)
-            .limit(1)
-            .get();
-        
-        if (defaultSnap.empty) {
-            const anyActiveSnap = await adminDb.collection('sender_profiles')
+        if (!senderProfileSnap || !senderProfileSnap.exists) {
+            const defaultSnap = await adminDb.collection('sender_profiles')
                 .where('channel', '==', template.channel)
+                .where('isDefault', '==', true)
                 .where('isActive', '==', true)
                 .limit(1)
                 .get();
-            
-            if (anyActiveSnap.empty) throw new Error(`No active sender profile found for ${template.channel}`);
-            senderProfileSnap = anyActiveSnap.docs[0];
-        } else {
-            senderProfileSnap = defaultSnap.docs[0];
-        }
-    }
 
-    const sender = { id: senderProfileSnap.id, ...senderProfileSnap.data() } as SenderProfile;
+            if (defaultSnap.empty) {
+                const anyActiveSnap = await adminDb.collection('sender_profiles')
+                    .where('channel', '==', template.channel)
+                    .where('isActive', '==', true)
+                    .limit(1)
+                    .get();
+
+                if (anyActiveSnap.empty) throw new Error(`No active sender profile found for ${template.channel}`);
+                senderProfileSnap = anyActiveSnap.docs[0];
+            } else {
+                senderProfileSnap = defaultSnap.docs[0];
+            }
+        }
+
+        sender = { id: senderProfileSnap.id, ...senderProfileSnap.data() } as SenderProfile;
+    }
 
     // 3. Resolve Operational Workspace context (Requirement 11)
     // Priority: explicit workspaceId > template workspaceIds > contact workspaceIds > default
@@ -560,17 +587,21 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
       }
 
-      // 2. Check global suppressions (handles unsubscribed, bounced, complained, and active snoozes)
-      const { isSuppressed } = await import('./suppression-service');
-      const suppressed = await isSuppressed({
-          recipient,
-          workspaceId: resolvedWorkspaceId,
-          channel: template.channel as 'email' | 'sms'
-      });
+      // 2. Check global suppressions (handles unsubscribed, bounced, complained, and active snoozes).
+      // Only contact channels (email/sms/whatsapp) have a suppression key.
+      const suppressionKey = CHANNEL_REGISTRY[template.channel]?.suppressionKey;
+      if (suppressionKey) {
+        const { isSuppressed } = await import('./suppression-service');
+        const suppressed = await isSuppressed({
+            recipient,
+            workspaceId: resolvedWorkspaceId,
+            channel: suppressionKey,
+        });
 
-      if (suppressed) {
-          console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} is suppressed for ${template.channel} in workspace ${resolvedWorkspaceId}`);
-          return { success: false, error: 'Recipient unsubscribed' };
+        if (suppressed) {
+            console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} is suppressed for ${template.channel} in workspace ${resolvedWorkspaceId}`);
+            return { success: false, error: 'Recipient unsubscribed' };
+        }
       }
     }
 
@@ -578,13 +609,29 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (template.channel === 'email') {
         const { ContactHygieneRepository } = await import('./hygiene-repository');
         const hygiene = await ContactHygieneRepository.getCache(recipient);
-        
+
         // Block if strictly invalid, or highly risky (score below 40)
         if (hygiene && (hygiene.status === 'invalid' || (hygiene.status === 'risky' && (hygiene.score || 0) < 40))) {
             console.warn(`>>> [MSG-ENGINE] Delivery Guard aborted dispatch to ${recipient}: Status=${hygiene.status}, Score=${hygiene.score}`);
-            return { 
-                success: false, 
-                error: `Recipient mailbox is marked as ${hygiene.status} (Hygiene Score: ${hygiene.score}). Delivery blocked to protect sender reputation.` 
+            return {
+                success: false,
+                error: `Recipient mailbox is marked as ${hygiene.status} (Hygiene Score: ${hygiene.score}). Delivery blocked to protect sender reputation.`
+            };
+        }
+    }
+
+    // Phase 8 (phone): SMS Hygiene Guard. Deliberately conservative — only
+    // strictly `invalid` numbers are blocked. `format_valid` is never blocked
+    // because libphonenumber line-type/range metadata lags for some countries.
+    if (template.channel === 'sms') {
+        const { PhoneHygieneRepository } = await import('./phone-hygiene-repository');
+        const hygiene = await PhoneHygieneRepository.getCache(recipient);
+
+        if (hygiene && hygiene.status === 'invalid') {
+            console.warn(`>>> [MSG-ENGINE] SMS Delivery Guard aborted dispatch to ${recipient}: Status=${hygiene.status}, Score=${hygiene.score}`);
+            return {
+                success: false,
+                error: `Recipient number is marked as ${hygiene.status} (Hygiene Score: ${hygiene.score}). Delivery blocked to protect sender reputation.`
             };
         }
     }
@@ -635,14 +682,20 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     let providerStatus = null;
 
     if (template.channel === 'sms') {
-        const providerResponse = await sendSms({
-            recipient,
-            message: resolvedBody,
-            sender: sender.identifier,
-            scheduleDate: scheduledAt ? new Date(scheduledAt) : undefined
-        });
-        providerId = providerResponse?.summary?._id;
-        providerStatus = providerResponse?.status;
+        try {
+            const providerResponse = await sendSms({
+                recipient,
+                message: resolvedBody,
+                sender: sender.identifier,
+                scheduleDate: scheduledAt ? new Date(scheduledAt) : undefined
+            });
+            providerId = providerResponse?.summary?._id;
+            providerStatus = providerResponse?.status;
+            recordSmsReachability(recipient, true);
+        } catch (smsErr) {
+            recordSmsReachability(recipient, false);
+            throw smsErr;
+        }
     } else if (template.channel === 'push') {
         const providerResponse = await sendPushNotification(
             [recipient], 
@@ -665,6 +718,22 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         });
         providerId = inAppRef.id;
         providerStatus = 'delivered';
+    } else if (template.channel === 'whatsapp') {
+        // Focused WhatsApp branch (spec Phase 3): delegate to the orchestration,
+        // which resolves the org connection, re-checks the 24h session window at
+        // send time, enforces approved-template / session rules, and returns the
+        // Meta message id for status reconciliation.
+        const { sendWhatsApp } = await import('./whatsapp/whatsapp-send');
+        const waOrgId = template.organizationId || finalOrgId || variables.organizationId || 'default';
+        const waResult = await sendWhatsApp({
+            organizationId: waOrgId,
+            recipient,
+            template,
+            resolvedBody,
+            variables: finalVariables,
+        });
+        providerId = waResult.metaMessageId;
+        providerStatus = waResult.status;
     } else {
         const providerResponse = await sendEmail({
             from: `${sender.name} <${sender.identifier}>`, 
@@ -703,6 +772,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       attachmentCount: attachments?.length || 0,
       ...(campaignId ? { campaignId } : {}),
       ...(campaignVariantId ? { campaignVariantId } : {}),
+      ...(template.channel === 'whatsapp' ? {
+        direction: 'outbound' as const,
+        ...(providerId ? { metaMessageId: providerId } : {}),
+        ...(template.whatsappTemplateName ? { whatsappTemplateName: template.whatsappTemplateName } : {}),
+      } : {}),
     };
 
     const logRef = await adminDb.collection('message_logs').add(logData);

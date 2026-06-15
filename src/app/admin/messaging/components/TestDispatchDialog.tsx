@@ -32,7 +32,7 @@ import { Badge } from '@/components/ui/badge';
 interface TestDispatchDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    channel: 'email' | 'sms';
+    channel: 'email' | 'sms' | 'whatsapp';
     templateId?: string;
     rawBody?: string;
     rawSubject?: string;
@@ -159,6 +159,9 @@ export default function TestDispatchDialog({
                 });
                 if (!result.success) throw new Error(result.error);
             } else if (rawBody) {
+                if (channel === 'whatsapp') {
+                    throw new Error('WhatsApp test requires selecting an approved template.');
+                }
                 const result = await sendRawMessage({
                     channel,
                     recipient: recipient.trim(),

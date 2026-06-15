@@ -17,15 +17,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
-  Sparkles, 
-  Trash2, 
-  ChevronDown, 
-  ChevronUp, 
-  Search, 
-  RotateCcw, 
-  ShieldCheck, 
-  Mail, 
-  Settings2, 
+  Sparkles,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  RotateCcw,
+  ShieldCheck,
+  Mail,
+  Phone,
+  Settings2,
   Sliders, 
   Plus, 
   X, 
@@ -37,7 +38,7 @@ import {
   ShieldAlert,
   Download
 } from 'lucide-react';
-import type { WorkspaceEntity, EntityContact, LeadScoringSettings, EmailVerificationRule } from '@/lib/types';
+import type { WorkspaceEntity, EntityContact, LeadScoringSettings, EmailVerificationRule, PhoneVerificationRule } from '@/lib/types';
 import { calculateEngagementAdjustment } from '@/lib/scoring-rules-engine';
 import { BentoPagination } from '../components/BentoPagination';
 
@@ -45,6 +46,12 @@ const DEFAULT_SCORING_SETTINGS: LeadScoringSettings = {
   emailVerificationRules: [
     { minScore: 90, scoreValue: 10 },
     { minScore: 40, scoreValue: 5 },
+    { minScore: 0, scoreValue: 0 }
+  ],
+  // Phone verification is opt-in: defaults contribute zero so enabling phone
+  // verification never silently shifts existing lead scores. Configure tiers
+  // here to start awarding points for verified phone numbers.
+  phoneVerificationRules: [
     { minScore: 0, scoreValue: 0 }
   ],
   engagementRules: {
@@ -105,12 +112,16 @@ export default function LeadScoringCleanupPage() {
   }, [activeWorkspace?.leadScoringSettings]);
 
   const [localVerificationRules, setLocalVerificationRules] = useState<EmailVerificationRule[]>([]);
+  const [localPhoneVerificationRules, setLocalPhoneVerificationRules] = useState<PhoneVerificationRule[]>([]);
   const [localEngagementRules, setLocalEngagementRules] = useState<Record<string, number>>({});
 
   // Sync settings local state on load
   React.useEffect(() => {
     if (settings) {
       setLocalVerificationRules([...(settings.emailVerificationRules || [])]);
+      setLocalPhoneVerificationRules([
+        ...(settings.phoneVerificationRules || DEFAULT_SCORING_SETTINGS.phoneVerificationRules || [])
+      ]);
       setLocalEngagementRules({ ...(settings.engagementRules || {}) });
     }
   }, [settings]);
@@ -393,6 +404,7 @@ export default function LeadScoringCleanupPage() {
   // Reset scoring settings
   const handleResetSettings = () => {
     setLocalVerificationRules([...DEFAULT_SCORING_SETTINGS.emailVerificationRules]);
+    setLocalPhoneVerificationRules([...(DEFAULT_SCORING_SETTINGS.phoneVerificationRules || [])]);
     setLocalEngagementRules({ ...DEFAULT_SCORING_SETTINGS.engagementRules });
     toast({
       title: 'Settings Reset Locally',
@@ -409,10 +421,12 @@ export default function LeadScoringCleanupPage() {
       
       // Sort rules descending by minScore to ensure scoring engine matches highest threshold correctly
       const sortedRules = [...localVerificationRules].sort((a, b) => b.minScore - a.minScore);
+      const sortedPhoneRules = [...localPhoneVerificationRules].sort((a, b) => b.minScore - a.minScore);
 
       await updateDoc(workspaceRef, {
         leadScoringSettings: {
           emailVerificationRules: sortedRules,
+          phoneVerificationRules: sortedPhoneRules,
           engagementRules: localEngagementRules
         }
       });
@@ -518,6 +532,26 @@ export default function LeadScoringCleanupPage() {
       [key]: value
     };
     setLocalVerificationRules(updated);
+  };
+
+  // Helper functions for Phone Verification Rules manipulation
+  const addPhoneVerificationRule = () => {
+    setLocalPhoneVerificationRules([...localPhoneVerificationRules, { minScore: 50, scoreValue: 4 }]);
+  };
+
+  const removePhoneVerificationRule = (index: number) => {
+    const updated = [...localPhoneVerificationRules];
+    updated.splice(index, 1);
+    setLocalPhoneVerificationRules(updated);
+  };
+
+  const updatePhoneVerificationRule = (index: number, key: keyof PhoneVerificationRule, value: number) => {
+    const updated = [...localPhoneVerificationRules];
+    updated[index] = {
+      ...updated[index],
+      [key]: value
+    };
+    setLocalPhoneVerificationRules(updated);
   };
 
   // Helper functions for Engagement Rules manipulation
@@ -760,7 +794,8 @@ export default function LeadScoringCleanupPage() {
                                         ) : (
                                           lead.entityContacts.map((contact) => {
                                             const totalContScore = contact.score || 0;
-                                            const verifyScore = contact.emailVerificationScore || 0;
+                                            // Combined verifier points (email + phone) so engagement isn't overstated
+                                            const verifyScore = (contact.emailVerificationScore || 0) + (contact.phoneVerificationScore || 0);
                                             const engScore = Math.max(0, totalContScore - verifyScore);
 
                                             return (
@@ -915,7 +950,71 @@ export default function LeadScoringCleanupPage() {
                   </div>
                 </div>
 
-                {/* 2. Engagement Rules Mapping */}
+                {/* 2. Phone Verification Rules */}
+                <div className="space-y-4 border-t border-border/40 pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5 text-left">
+                      <Label className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                        <Phone className="h-3.5 w-3.5 text-primary" /> Phone Verification Score Mapping
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Award points once a phone number passes background verification (format, allocated range, line type). Opt-in: leave the single 0 / 0 tier to keep phone scoring disabled. (Rules sorted descending).
+                      </p>
+                    </div>
+                    <Button
+                      onClick={addPhoneVerificationRule}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg text-xs font-bold border-dashed"
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Add Tier
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {localPhoneVerificationRules.map((rule, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-3 p-4 rounded-xl border bg-muted/10 relative group"
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="flex flex-col gap-1.5 flex-1">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/60">Min Verifier Score (%)</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={rule.minScore}
+                              onChange={(e) => updatePhoneVerificationRule(idx, 'minScore', Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                              className="h-9 rounded-lg font-mono text-xs text-center"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5 flex-1">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/60">Score Value Assigned</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={rule.scoreValue}
+                              onChange={(e) => updatePhoneVerificationRule(idx, 'scoreValue', Math.max(0, parseInt(e.target.value) || 0))}
+                              className="h-9 rounded-lg font-mono text-xs text-center text-primary font-bold"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removePhoneVerificationRule(idx)}
+                          className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg shrink-0"
+                          disabled={localPhoneVerificationRules.length <= 1}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Engagement Rules Mapping */}
                 <div className="space-y-4 border-t border-border/40 pt-6">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5 text-left">

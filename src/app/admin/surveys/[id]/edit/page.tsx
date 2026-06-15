@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { finalizeLearningSignalAction } from '@/lib/learning-loop-actions';
 import { updateWorkspaceVocabularyAction } from '@/lib/vocabulary-map-actions';
+import { surveyToSeoFormFields, migrateSurveyFormSeo } from '@/lib/seo';
 
 // Extracted Modular Components
 import Step1Details from '../../components/step-1-details';
@@ -88,16 +89,18 @@ const formSchema = z.object({
   optionsColumns: z.number().min(1).max(4).default(1),
   showBranding: z.boolean().default(true),
   adminAlertsEnabled: z.boolean().default(false),
-  adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  adminAlertChannel: z.enum(['email', 'sms', 'whatsapp', 'both']).default('both'),
   adminAlertNotifyManager: z.boolean().default(false),
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
+  adminAlertWhatsappTemplateId: z.string().optional(),
   externalAlertsEnabled: z.boolean().default(false),
-  externalAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  externalAlertChannel: z.enum(['email', 'sms', 'whatsapp', 'both']).default('both'),
   externalAlertContactTypes: z.array(z.string()).default([]),
   externalAlertEmailTemplateId: z.string().optional(),
   externalAlertSmsTemplateId: z.string().optional(),
+  externalAlertWhatsappTemplateId: z.string().optional(),
   useEntityLogo: z.boolean().default(false),
   entityId: z.string().optional().nullable(),
   entityName: z.string().optional().nullable(),
@@ -266,8 +269,9 @@ export default function EditSurveyPage() {
                 showIntroAsPage: survey.showIntroAsPage ?? survey.showCoverPage ?? true,
                 stepperVariant: survey.stepperVariant || 'full',
                 showBranding: survey.showBranding ?? true,
-                seoOgImageMode: survey.seoOgImageMode || 'survey_banner',
-                seoUseSurveyFallback: survey.seoUseSurveyFallback ?? true,
+                // Project the canonical nested `seo` (or legacy flat fields) onto
+                // the flat form fields the editor binds to.
+                ...surveyToSeoFormFields(survey),
             };
 
             reset(initialData as any);
@@ -310,7 +314,7 @@ export default function EditSurveyPage() {
         
         try {
             const docRef = doc(firestore!, 'surveys', surveyId);
-            await updateDoc(docRef, JSON.parse(JSON.stringify({ ...mainData, updatedAt: new Date().toISOString() })));
+            await updateDoc(docRef, JSON.parse(JSON.stringify({ ...migrateSurveyFormSeo(mainData), updatedAt: new Date().toISOString() })));
             
             const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
             for (const page of resultPages) {
@@ -382,7 +386,7 @@ export default function EditSurveyPage() {
                 };
             }
 
-            await updateDoc(docRef, JSON.parse(JSON.stringify({ ...mainData, updatedAt: new Date().toISOString() })));
+            await updateDoc(docRef, JSON.parse(JSON.stringify({ ...migrateSurveyFormSeo(mainData), updatedAt: new Date().toISOString() })));
             const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
             for (const page of resultPages) {
                 await setDoc(doc(pagesCol, page.id), page);

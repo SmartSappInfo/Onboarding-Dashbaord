@@ -10,8 +10,10 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Communication Preferences | SmartSapp',
+    // Bare title — root template appends "— SmartSapp" (was double-branded).
+    title: 'Communication Preferences',
     description: 'Manage your email subscription preferences securely.',
+    robots: { index: false, follow: false },
   };
 }
 

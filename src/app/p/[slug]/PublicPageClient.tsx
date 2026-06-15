@@ -412,8 +412,8 @@ export default function PublicPageClient({
                 <>
                     {/* Metadata handled by Next.js or hoisted by React if in body */}
                     <div className="hidden">
-                        <title>{interpolate(page?.seo?.title)}</title>
-                        <meta name="description" content={interpolate(page?.seo?.description)} />
+                        <title>{interpolate(page?.seo?.title || '')}</title>
+                        <meta name="description" content={interpolate(page?.seo?.description || '')} />
                         <meta name="robots" content="noindex, nofollow" />
                     </div>
                 </>

@@ -13,7 +13,9 @@ export async function handleSendMessage(
     );
   }
 
-  const channel = (config.channel as 'email' | 'sms') || 'email';
+  const channel = (config.channel as 'email' | 'sms' | 'whatsapp') || 'email';
+  // SMS and WhatsApp both deliver to the phone field; only email uses email.
+  const usePhone = channel !== 'email';
   const targets = (config.recipientTargets || []) as string[];
   const roles = (config.recipientRoles || []) as string[];
 
@@ -26,14 +28,14 @@ export async function handleSendMessage(
 
       // 1. Triggering Contact
       if (targets.includes('triggering')) {
-        const triggerContactVal = channel === 'sms' 
-          ? (context.payload.phone || context.payload.contactPhone) 
+        const triggerContactVal = usePhone
+          ? (context.payload.phone || context.payload.contactPhone)
           : (context.payload.email || context.payload.contactEmail);
         if (triggerContactVal) {
           recipients.add(String(triggerContactVal));
         } else {
           const primary = entityContacts.find(ec => ec.isPrimary);
-          const primaryVal = channel === 'sms' ? primary?.phone : primary?.email;
+          const primaryVal = usePhone ?primary?.phone : primary?.email;
           if (primaryVal) {
             recipients.add(primaryVal);
           } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
@@ -45,7 +47,7 @@ export async function handleSendMessage(
       // 2. Primary Contact
       if (targets.includes('primary')) {
         const primary = entityContacts.find(ec => ec.isPrimary);
-        const primaryVal = channel === 'sms' ? primary?.phone : primary?.email;
+        const primaryVal = usePhone ?primary?.phone : primary?.email;
         if (primaryVal) {
           recipients.add(primaryVal);
         } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
@@ -56,7 +58,7 @@ export async function handleSendMessage(
       // 3. Signatories
       if (targets.includes('signatories')) {
         entityContacts.filter(ec => ec.isSignatory).forEach(ec => {
-          const val = channel === 'sms' ? ec.phone : ec.email;
+          const val = usePhone ?ec.phone : ec.email;
           if (val) recipients.add(val);
         });
       }
@@ -66,7 +68,7 @@ export async function handleSendMessage(
         entityContacts.filter(ec => 
           ec.typeLabel && roles.some(r => r.toLowerCase() === ec.typeLabel?.toLowerCase() || r.toLowerCase() === ec.typeKey?.toLowerCase())
         ).forEach(ec => {
-          const val = channel === 'sms' ? ec.phone : ec.email;
+          const val = usePhone ?ec.phone : ec.email;
           if (val) recipients.add(val);
         });
       }
@@ -74,7 +76,7 @@ export async function handleSendMessage(
       // 5. All Contacts
       if (targets.includes('all')) {
         entityContacts.forEach(ec => {
-          const val = channel === 'sms' ? ec.phone : ec.email;
+          const val = usePhone ?ec.phone : ec.email;
           if (val) recipients.add(val);
         });
       }

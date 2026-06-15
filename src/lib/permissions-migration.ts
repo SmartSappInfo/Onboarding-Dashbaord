@@ -169,6 +169,7 @@ const featureMapping: Record<AppFeatureId, { section: keyof PermissionsSchema; f
   meetings: { section: 'operations', feature: 'meetings' },
   automations: { section: 'operations', feature: 'automations' },
   reports: { section: 'operations', feature: 'intelligence' },
+  quick_notes: { section: 'operations', feature: 'quickNotes' },
   portals: { section: 'studios', feature: 'publicPortals' },
   media: { section: 'studios', feature: 'media' },
   surveys: { section: 'studios', feature: 'surveys' },

@@ -43,11 +43,22 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
     if (!templateSnap.exists) throw new Error("Template not found");
     const template = templateSnap.data() as MessageTemplate;
 
+    // Email uses the inline batch path; SMS and WhatsApp fall into the `else`
+    // branch below, which delegates per-recipient to the messaging engine
+    // (the engine's WhatsApp branch handles session/template/approval rules).
+    // Anything else is unsupported — fail loud rather than silently coercing to
+    // email (spec §3A F2).
+    if (template.channel !== 'email' && template.channel !== 'sms' && template.channel !== 'whatsapp') {
+      throw new Error(
+        `[bulk-messaging] Channel '${template.channel}' is not supported by bulk dispatch. Use the messaging engine.`,
+      );
+    }
+
     // 2. Initialize Job record
     const jobData: Omit<MessageJob, 'id'> = {
       templateId,
       senderProfileId,
-      channel: (template.channel === 'email' || template.channel === 'sms') ? template.channel : 'email',
+      channel: template.channel,
       createdBy: userId,
       status: 'queued',
       totalRecipients: recipients.length,

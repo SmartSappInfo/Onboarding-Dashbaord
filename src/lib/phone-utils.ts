@@ -33,6 +33,41 @@ export function sanitizeScientificNotation(value: string | number): string {
 }
 
 /**
+ * Generates the common storage formats of a phone number for database
+ * equality/IN queries (E.164, bare digits, national 0-format, etc.).
+ * Country-agnostic: national variants are derived from the parsed calling
+ * code rather than any hardcoded prefix.
+ */
+export function getPhoneFormats(phone: string, defaultCountry?: string): string[] {
+  if (!phone) return [];
+  const trimmed = phone.trim();
+  if (!trimmed) return [];
+
+  const formats = new Set<string>([trimmed]);
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits) {
+    formats.add(digits);
+    formats.add('+' + digits);
+  }
+
+  const parsed = normalizePhoneNumber(trimmed, defaultCountry);
+  if (parsed.e164) {
+    formats.add(parsed.e164);
+    const e164Digits = parsed.e164.replace(/\D/g, '');
+    formats.add(e164Digits);
+    if (parsed.callingCode && e164Digits.startsWith(parsed.callingCode)) {
+      const national = e164Digits.slice(parsed.callingCode.length);
+      if (national) {
+        formats.add(national);
+        formats.add('0' + national);
+      }
+    }
+  }
+
+  return Array.from(formats).filter(Boolean);
+}
+
+/**
  * Normalizes phone numbers by stripping non-digit characters and prepending
  * the target country prefix intelligently if not already present.
  */

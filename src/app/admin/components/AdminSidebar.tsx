@@ -33,10 +33,12 @@ import {
     History, 
     FileText, 
     MessageSquareText,
+    PhoneCall,
     Globe,
     CheckSquare,
     Zap,
     BarChart3,
+    NotebookPen,
     Receipt,
     Package,
     Timer,
@@ -95,6 +97,7 @@ export function AdminSidebar() {
     { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isFeatureEnabled('meetings'), disabled: !can('operations', 'meetings', 'view') },
     { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isFeatureEnabled('automations'), disabled: !can('operations', 'automations', 'view') },
     { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Intelligence', visible: isFeatureEnabled('reports'), disabled: !can('operations', 'intelligence', 'view') },
+    { href: wrapHref('/admin/quick-notes'), icon: NotebookPen, label: 'Quick Notes', visible: isFeatureEnabled('quick_notes'), disabled: !can('operations', 'quickNotes', 'view') },
   ], [wrapHref, isFeatureEnabled, can, plural, dealPlural]);
 
   const financeNavItems = React.useMemo(() => [
@@ -112,6 +115,7 @@ export function AdminSidebar() {
     { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isFeatureEnabled('surveys'), disabled: !can('studios', 'surveys', 'view') },
     { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isFeatureEnabled('pdfs'), disabled: !can('studios', 'docSigning', 'view') },
     { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isFeatureEnabled('messaging'), disabled: !can('studios', 'messaging', 'view') },
+    { href: wrapHref('/admin/messaging/call-centre'), icon: PhoneCall, label: 'Call Centre', visible: isFeatureEnabled('messaging'), disabled: !can('studios', 'messaging', 'view') },
     { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isFeatureEnabled('forms'), disabled: !can('studios', 'forms', 'view') },
     { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isFeatureEnabled('tags'), disabled: !can('studios', 'tags', 'view') },
     { href: wrapHref('/admin/qr-studio'), icon: QrCode, label: 'QR Studio', visible: isFeatureEnabled('qr_studio'), disabled: !can('studios', 'qrStudio', 'view') },

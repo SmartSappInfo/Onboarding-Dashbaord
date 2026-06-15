@@ -80,6 +80,7 @@ export function getFullAdminPermissions(): PermissionsSchema {
         meetings: { view: true, create: true, edit: true, delete: true },
         automations: { view: true, create: true, edit: true, delete: true },
         intelligence: { view: true },
+        quickNotes: { view: true, create: true, edit: true, delete: true },
       },
     },
     finance: {
@@ -175,6 +176,7 @@ export function getOperationsPermissions(): PermissionsSchema {
       meetings: { view: true, create: true, edit: true, delete: false },
       automations: { view: false },
       intelligence: { view: true },
+      quickNotes: { view: true, create: true, edit: true, delete: false },
     },
   };
   return blank;
@@ -189,6 +191,7 @@ export const featureToCoordinates: Record<AppFeatureId, { section: keyof Permiss
   meetings: { section: 'operations', feature: 'meetings' },
   automations: { section: 'operations', feature: 'automations' },
   reports: { section: 'operations', feature: 'intelligence' },
+  quick_notes: { section: 'operations', feature: 'quickNotes' },
   portals: { section: 'studios', feature: 'publicPortals' },
   media: { section: 'studios', feature: 'media' },
   surveys: { section: 'studios', feature: 'surveys' },
