@@ -741,45 +741,324 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         />
                       </div>
 
-                      {/* Outcome Values */}
-                      {selectedNode.type === 'outcome' && (
-                        <div className="space-y-1">
-                          <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Map Outcome Label</Label>
-                          <Select 
-                            value={selectedNode.data.outcomeValue || 'Interested'} 
-                            onValueChange={(val) => updateSelectedNode({ outcomeValue: val, label: `Set Outcome: ${val}` })}
-                          >
-                            <SelectTrigger className="h-8 bg-zinc-955 border-zinc-855 rounded-lg text-xs">
-                              <SelectValue placeholder="Select outcome" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-zinc-955 border-zinc-800 text-zinc-100">
-                              <SelectItem value="Interested">Interested</SelectItem>
-                              <SelectItem value="Not Interested">Not Interested</SelectItem>
-                              <SelectItem value="Callback Scheduled">Callback Scheduled</SelectItem>
-                              <SelectItem value="Deferred / Retry">Deferred / Retry</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      {/* Start Node Configuration */}
+                      {selectedNode.type === 'start' && (
+                        <div className="space-y-3 pt-3 border-t border-zinc-850">
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Start Configuration</span>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-zinc-350">Check DNC List</Label>
+                            <input 
+                              type="checkbox"
+                              checked={selectedNode.data.startConfig?.checkDnc || false}
+                              onChange={(e) => updateSelectedNode({ 
+                                startConfig: { ...selectedNode.data.startConfig, checkDnc: e.target.checked } 
+                              })}
+                              className="rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-0"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-zinc-350">Guard Timezones</Label>
+                            <input 
+                              type="checkbox"
+                              checked={selectedNode.data.startConfig?.checkTimezone || false}
+                              onChange={(e) => updateSelectedNode({ 
+                                startConfig: { ...selectedNode.data.startConfig, checkTimezone: e.target.checked } 
+                              })}
+                              className="rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-0"
+                            />
+                          </div>
+                          {selectedNode.data.startConfig?.checkTimezone && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-[8px] font-bold text-zinc-400 uppercase">Start (HH:MM)</Label>
+                                <Input
+                                  value={selectedNode.data.startConfig?.allowedHoursStart || '08:00'}
+                                  onChange={(e) => updateSelectedNode({ 
+                                    startConfig: { ...selectedNode.data.startConfig, allowedHoursStart: e.target.value } 
+                                  })}
+                                  placeholder="08:00"
+                                  className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[8px] font-bold text-zinc-400 uppercase">End (HH:MM)</Label>
+                                <Input
+                                  value={selectedNode.data.startConfig?.allowedHoursEnd || '20:00'}
+                                  onChange={(e) => updateSelectedNode({ 
+                                    startConfig: { ...selectedNode.data.startConfig, allowedHoursEnd: e.target.value } 
+                                  })}
+                                  placeholder="20:00"
+                                  className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {/* Action Values */}
+                      {/* Say/Script Block Node Configuration */}
+                      {selectedNode.type === 'script_block' && (
+                        <div className="space-y-3 pt-3 border-t border-zinc-850">
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Say Configuration</span>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-zinc-350">Verify compliance read</Label>
+                            <input 
+                              type="checkbox"
+                              checked={selectedNode.data.sayConfig?.complianceVerify || false}
+                              onChange={(e) => updateSelectedNode({ 
+                                sayConfig: { ...selectedNode.data.sayConfig, complianceVerify: e.target.checked } 
+                              })}
+                              className="rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-0"
+                            />
+                          </div>
+                          {selectedNode.data.sayConfig?.complianceVerify && (
+                            <div className="space-y-1">
+                              <Label className="text-[8px] font-bold text-zinc-400 uppercase">Compliance Text Required</Label>
+                              <Textarea
+                                value={selectedNode.data.sayConfig?.complianceText || ''}
+                                onChange={(e) => updateSelectedNode({ 
+                                  sayConfig: { ...selectedNode.data.sayConfig, complianceText: e.target.value } 
+                                })}
+                                placeholder="Legal notice or disclosures agents must read verbatim..."
+                                rows={3}
+                                className="bg-zinc-950 border-zinc-850 rounded-xl text-xs p-2.5 resize-none"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Question Node Configuration */}
+                      {selectedNode.type === 'question' && (
+                        <div className="space-y-3 pt-3 border-t border-zinc-850">
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Ask Configuration</span>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Field Mapping Object</Label>
+                            <Select 
+                              value={selectedNode.data.questionConfig?.fieldBinding || 'contact'} 
+                              onValueChange={(val: 'contact' | 'deal') => updateSelectedNode({ 
+                                questionConfig: { ...selectedNode.data.questionConfig, fieldBinding: val } 
+                              })}
+                            >
+                              <SelectTrigger className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-zinc-955 border-zinc-800 text-zinc-100">
+                                <SelectItem value="contact">Contact Profile</SelectItem>
+                                <SelectItem value="deal">Active Deal Record</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Target CRM Field Name</Label>
+                            <Input
+                              value={selectedNode.data.questionConfig?.fieldName || ''}
+                              onChange={(e) => updateSelectedNode({ 
+                                questionConfig: { ...selectedNode.data.questionConfig, fieldName: e.target.value } 
+                              })}
+                              placeholder="e.g. email, budget, tags"
+                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Input Field Type</Label>
+                            <Select 
+                              value={selectedNode.data.questionConfig?.fieldType || 'text'} 
+                              onValueChange={(val: any) => updateSelectedNode({ 
+                                questionConfig: { ...selectedNode.data.questionConfig, fieldType: val } 
+                              })}
+                            >
+                              <SelectTrigger className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-zinc-955 border-zinc-800 text-zinc-100">
+                                <SelectItem value="text">Single Line Text</SelectItem>
+                                <SelectItem value="number">Numeric Value</SelectItem>
+                                <SelectItem value="select">Dropdown Selector</SelectItem>
+                                <SelectItem value="datepicker">Calendar Date</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {selectedNode.data.questionConfig?.fieldType === 'select' && (
+                            <div className="space-y-1">
+                              <Label className="text-[8px] font-bold text-zinc-400 uppercase">Dropdown Options (Comma-separated)</Label>
+                              <Input
+                                value={selectedNode.data.questionConfig?.selectOptions?.join(', ') || ''}
+                                onChange={(e) => updateSelectedNode({ 
+                                  questionConfig: { 
+                                    ...selectedNode.data.questionConfig, 
+                                    selectOptions: e.target.value.split(',').map(s => s.trim()).filter(Boolean) 
+                                  } 
+                                })}
+                                placeholder="Option A, Option B, Option C"
+                                className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                              />
+                            </div>
+                          )}
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Regex Validation Pattern (Optional)</Label>
+                            <Input
+                              value={selectedNode.data.questionConfig?.validationPattern || ''}
+                              onChange={(e) => updateSelectedNode({ 
+                                questionConfig: { ...selectedNode.data.questionConfig, validationPattern: e.target.value } 
+                              })}
+                              placeholder="e.g. ^[0-9]{10}$"
+                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Objection Node Configuration */}
+                      {selectedNode.type === 'objection' && (
+                        <div className="space-y-3 pt-3 border-t border-zinc-850">
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Objection Trigger Config</span>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Objection Keyword Triggers (Comma-separated)</Label>
+                            <Input
+                              value={selectedNode.data.objectionConfig?.keywordTriggers?.join(', ') || ''}
+                              onChange={(e) => updateSelectedNode({ 
+                                objectionConfig: { 
+                                  keywordTriggers: e.target.value.split(',').map(s => s.trim()).filter(Boolean) 
+                                } 
+                              })}
+                              placeholder="too expensive, no time, send email"
+                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Outcome Node Configuration */}
+                      {selectedNode.type === 'outcome' && (
+                        <div className="space-y-3 pt-3 border-t border-zinc-850">
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Outcome Configuration</span>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Map Call Outcome Tag</Label>
+                            <Select 
+                              value={selectedNode.data.outcomeValue || 'Interested'} 
+                              onValueChange={(val) => updateSelectedNode({ 
+                                outcomeValue: val, 
+                                label: `Set Outcome: ${val}` 
+                              })}
+                            >
+                              <SelectTrigger className="h-8 bg-zinc-955 border-zinc-855 rounded-lg text-xs">
+                                <SelectValue placeholder="Select outcome" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-zinc-955 border-zinc-800 text-zinc-100">
+                                <SelectItem value="Interested">Interested</SelectItem>
+                                <SelectItem value="Not Interested">Not Interested</SelectItem>
+                                <SelectItem value="Callback Scheduled">Callback Scheduled</SelectItem>
+                                <SelectItem value="Deferred / Retry">Deferred / Retry</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Lead Suppression Period (Days)</Label>
+                            <Input
+                              type="number"
+                              value={selectedNode.data.outcomeConfig?.suppressDays || 0}
+                              onChange={(e) => updateSelectedNode({ 
+                                outcomeConfig: { ...selectedNode.data.outcomeConfig, suppressDays: Number(e.target.value) || 0 } 
+                              })}
+                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Transfer to Campaign ID (Optional)</Label>
+                            <Input
+                              value={selectedNode.data.outcomeConfig?.followUpCampaignId || ''}
+                              onChange={(e) => updateSelectedNode({ 
+                                outcomeConfig: { ...selectedNode.data.outcomeConfig, followUpCampaignId: e.target.value } 
+                              })}
+                              placeholder="campaign_id_to_transfer"
+                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Node Configuration */}
                       {selectedNode.type === 'action' && (
-                        <div className="space-y-1">
-                          <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Automation Action</Label>
-                          <Select 
-                            value={selectedNode.data.actionType || 'SEND_SMS'} 
-                            onValueChange={(val) => updateSelectedNode({ actionType: val, label: `Action: ${val.replace('_', ' ')}` })}
-                          >
-                            <SelectTrigger className="h-8 bg-zinc-955 border-zinc-855 rounded-lg text-xs">
-                              <SelectValue placeholder="Select action" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-zinc-955 border-zinc-805 text-zinc-100">
-                              <SelectItem value="SEND_SMS">Send SMS</SelectItem>
-                              <SelectItem value="SEND_EMAIL">Send Email</SelectItem>
-                              <SelectItem value="CREATE_TASK">Create Follow-up Task</SelectItem>
-                              <SelectItem value="CHANGE_STAGE">Change CRM Pipeline Stage</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        <div className="space-y-3 pt-3 border-t border-zinc-850">
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Action Configuration</span>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Automation Trigger Type</Label>
+                            <Select 
+                              value={selectedNode.data.actionType || 'SEND_SMS'} 
+                              onValueChange={(val) => updateSelectedNode({ 
+                                actionType: val, 
+                                label: `Action: ${val.replace('_', ' ')}` 
+                              })}
+                            >
+                              <SelectTrigger className="h-8 bg-zinc-955 border-zinc-855 rounded-lg text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-zinc-955 border-zinc-800 text-zinc-100">
+                                <SelectItem value="SEND_SMS">Send SMS</SelectItem>
+                                <SelectItem value="SEND_EMAIL">Send Email</SelectItem>
+                                <SelectItem value="CREATE_TASK">Create Follow-up Task</SelectItem>
+                                <SelectItem value="CHANGE_STAGE">Change CRM Pipeline Stage</SelectItem>
+                                <SelectItem value="WEBHOOK">Trigger Custom HTTP Webhook</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {selectedNode.data.actionType === 'WEBHOOK' && (
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <Label className="text-[8px] font-bold text-zinc-400 uppercase">Webhook Target URL</Label>
+                                <Input
+                                  value={selectedNode.data.actionConfig?.webhookUrl || ''}
+                                  onChange={(e) => updateSelectedNode({ 
+                                    actionConfig: { ...selectedNode.data.actionConfig, webhookUrl: e.target.value } 
+                                  })}
+                                  placeholder="https://api.thirdparty.com/webhook"
+                                  className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[8px] font-bold text-zinc-400 uppercase">Custom Headers (JSON format)</Label>
+                                <Textarea
+                                  value={selectedNode.data.actionConfig?.webhookHeaders || ''}
+                                  onChange={(e) => updateSelectedNode({ 
+                                    actionConfig: { ...selectedNode.data.actionConfig, webhookHeaders: e.target.value } 
+                                  })}
+                                  placeholder='{ "Authorization": "Bearer key" }'
+                                  rows={2}
+                                  className="bg-zinc-950 border-zinc-850 rounded-xl text-xs p-2 resize-none"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Trigger Delay (Seconds)</Label>
+                            <Input
+                              type="number"
+                              value={selectedNode.data.actionConfig?.triggerDelaySeconds || 0}
+                              onChange={(e) => updateSelectedNode({ 
+                                actionConfig: { ...selectedNode.data.actionConfig, triggerDelaySeconds: Number(e.target.value) || 0 } 
+                              })}
+                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* End Node Configuration */}
+                      {selectedNode.type === 'end' && (
+                        <div className="space-y-3 pt-3 border-t border-zinc-850">
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">End Call Configuration</span>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Post-Call Wrap-Up Template ID</Label>
+                            <Input
+                              value={selectedNode.data.endConfig?.wrapUpTemplateId || ''}
+                              onChange={(e) => updateSelectedNode({ 
+                                endConfig: { ...selectedNode.data.endConfig, wrapUpTemplateId: e.target.value } 
+                              })}
+                              placeholder="default_wrap_up"
+                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                            />
+                          </div>
                         </div>
                       )}
 
