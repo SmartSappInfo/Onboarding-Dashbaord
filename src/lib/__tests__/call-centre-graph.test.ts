@@ -153,5 +153,67 @@ describe('Call Centre Visual Script Graph Traversal Engine', () => {
       const result = validateScriptGraph(graph);
       expect(result.warnings).toContain('The script contains loop cycles (nodes referencing each other). Ensure this is intended.');
     });
+
+    it('should warn when question node lacks a fieldName binding', () => {
+      const graph: BranchingScriptGraph = {
+        nodes: [
+          { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start', text: '' } },
+          { id: 'q1', type: 'question', position: { x: 0, y: 0 }, data: { label: 'Ask Budget', text: '', questionConfig: { fieldBinding: 'contact' } } },
+          { id: 'end', type: 'end', position: { x: 0, y: 0 }, data: { label: 'End', text: '' } }
+        ],
+        edges: [
+          { id: 'e1', source: 'start', target: 'q1' },
+          { id: 'e2', source: 'q1', target: 'end' }
+        ]
+      };
+      const result = validateScriptGraph(graph);
+      expect(result.warnings.some(w => w.includes('lacks a CRM data field binding'))).toBe(true);
+    });
+
+    it('should warn when select question node has no options configured', () => {
+      const graph: BranchingScriptGraph = {
+        nodes: [
+          { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start', text: '' } },
+          { id: 'q1', type: 'question', position: { x: 0, y: 0 }, data: { label: 'Choose course', text: '', questionConfig: { fieldBinding: 'contact', fieldName: 'course', fieldType: 'select', selectOptions: [] } } },
+          { id: 'end', type: 'end', position: { x: 0, y: 0 }, data: { label: 'End', text: '' } }
+        ],
+        edges: [
+          { id: 'e1', source: 'start', target: 'q1' },
+          { id: 'e2', source: 'q1', target: 'end' }
+        ]
+      };
+      const result = validateScriptGraph(graph);
+      expect(result.warnings.some(w => w.includes('has no options configured'))).toBe(true);
+    });
+
+    it('should warn when start node allowed hours are not in HH:MM format', () => {
+      const graph: BranchingScriptGraph = {
+        nodes: [
+          { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start', text: '', startConfig: { checkTimezone: true, allowedHoursStart: '9am' } } },
+          { id: 'end', type: 'end', position: { x: 0, y: 0 }, data: { label: 'End', text: '' } }
+        ],
+        edges: [
+          { id: 'e1', source: 'start', target: 'end' }
+        ]
+      };
+      const result = validateScriptGraph(graph);
+      expect(result.warnings.some(w => w.includes('allowed start hours must match HH:MM 24h format'))).toBe(true);
+    });
+
+    it('should warn when webhook action node has invalid URL', () => {
+      const graph: BranchingScriptGraph = {
+        nodes: [
+          { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start', text: '' } },
+          { id: 'act1', type: 'action', position: { x: 0, y: 0 }, data: { label: 'Trigger webhook', text: '', actionType: 'WEBHOOK', actionConfig: { webhookUrl: 'invalid_url' } } },
+          { id: 'end', type: 'end', position: { x: 0, y: 0 }, data: { label: 'End', text: '' } }
+        ],
+        edges: [
+          { id: 'e1', source: 'start', target: 'act1' },
+          { id: 'e2', source: 'act1', target: 'end' }
+        ]
+      };
+      const result = validateScriptGraph(graph);
+      expect(result.warnings.some(w => w.includes('requires a valid HTTP/HTTPS Webhook URL'))).toBe(true);
+    });
   });
 });

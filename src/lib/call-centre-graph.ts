@@ -148,6 +148,7 @@ export function validateScriptGraph(graph: BranchingScriptGraph): { isValid: boo
   }
 
   // Check for orphaned nodes (no incoming and no outgoing connections)
+  // Check for orphaned nodes and specific configuration constraints
   graph.nodes.forEach(node => {
     const incoming = graph.edges.filter(e => e.target === node.id);
     const outgoing = graph.edges.filter(e => e.source === node.id);
@@ -155,6 +156,14 @@ export function validateScriptGraph(graph: BranchingScriptGraph): { isValid: boo
     if (node.type === 'start') {
       if (outgoing.length === 0) {
         warnings.push(`Start node "${node.data.label}" has no outgoing connections.`);
+      }
+      const sc = node.data.startConfig;
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (sc?.allowedHoursStart && !timeRegex.test(sc.allowedHoursStart)) {
+        warnings.push(`Start Node "${node.data.label}" allowed start hours must match HH:MM 24h format.`);
+      }
+      if (sc?.allowedHoursEnd && !timeRegex.test(sc.allowedHoursEnd)) {
+        warnings.push(`Start Node "${node.data.label}" allowed end hours must match HH:MM 24h format.`);
       }
     } else if (node.type === 'end') {
       if (incoming.length === 0) {
@@ -167,6 +176,24 @@ export function validateScriptGraph(graph: BranchingScriptGraph): { isValid: boo
         warnings.push(`Node "${node.data.label}" has no incoming connections.`);
       } else if (outgoing.length === 0 && node.type !== 'outcome') {
         warnings.push(`Node "${node.data.label}" is a dead end (no outgoing connections).`);
+      }
+    }
+
+    // Node configuration validations
+    if (node.type === 'question') {
+      const qc = node.data.questionConfig;
+      if (!qc?.fieldName) {
+        warnings.push(`Ask Node "${node.data.label}" lacks a CRM data field binding.`);
+      }
+      if (qc?.fieldType === 'select' && (!qc.selectOptions || qc.selectOptions.length === 0)) {
+        warnings.push(`Ask Node "${node.data.label}" is set to select dropdown but has no options configured.`);
+      }
+    }
+
+    if (node.type === 'action') {
+      const ac = node.data.actionConfig;
+      if (node.data.actionType === 'WEBHOOK' && (!ac?.webhookUrl || !ac.webhookUrl.startsWith('http'))) {
+        warnings.push(`Action Node "${node.data.label}" requires a valid HTTP/HTTPS Webhook URL.`);
       }
     }
   });
