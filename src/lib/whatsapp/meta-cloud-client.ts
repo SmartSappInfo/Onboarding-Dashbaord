@@ -69,6 +69,28 @@ export function parseGraphError(data: unknown): string {
   return err?.message || 'Unknown Meta Graph API error';
 }
 
+/**
+ * Embedded Signup (OAuth): exchange the authorization code returned by the
+ * hosted flow for a long-lived business-integration access token, using the
+ * PLATFORM Meta app's id + secret. The secret travels only in the request to
+ * Meta and is never logged.
+ */
+export async function exchangeEmbeddedSignupCode(
+  code: string,
+  opts: { appId: string; appSecret: string; fetchImpl?: typeof fetch; graphVersion?: string },
+): Promise<string> {
+  const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+  const url =
+    buildGraphUrl('oauth/access_token', opts.graphVersion ?? GRAPH_VERSION) +
+    `?${new URLSearchParams({ client_id: opts.appId, client_secret: opts.appSecret, code }).toString()}`;
+  const res = await fetchImpl(url, { method: 'GET' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`[meta-cloud] ${parseGraphError(data)}`);
+  const token = (data as { access_token?: string }).access_token;
+  if (!token) throw new Error('[meta-cloud] Embedded Signup did not return an access token.');
+  return token;
+}
+
 // ── Client ───────────────────────────────────────────────────────────────────
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -161,6 +183,15 @@ export class MetaCloudApiClient {
       { body: payload },
     );
     return { metaMessageId: data.messages?.[0]?.id ?? null, raw: data };
+  }
+
+  /**
+   * Subscribe the app to a WABA's webhooks (Embedded Signup auto-wiring) — the
+   * org never has to paste a callback URL. Idempotent on Meta's side.
+   */
+  async subscribeAppToWaba(wabaId: string): Promise<boolean> {
+    const data = await this.request<{ success?: boolean }>('POST', `${wabaId}/subscribed_apps`);
+    return data?.success !== false;
   }
 
   /** Fetch quality rating / messaging tier for the configured phone number. */

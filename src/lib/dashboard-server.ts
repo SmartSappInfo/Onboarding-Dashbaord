@@ -2,6 +2,7 @@ import { adminDb } from './firebase-admin';
 import { cache } from 'react';
 import type { Workspace, DashboardLayout, OnboardingStage, Entity, WorkspaceEntity, Meeting, Survey, Task, Activity, MessageLog, Zone, UserProfile, Pipeline } from './types';
 import { startOfToday, format, isAfter } from 'date-fns';
+import { countActiveEntities, getEntityProjections, sumActiveCapacity } from './dashboard/dashboard-repository';
 
 /**
  * Shared fetcher for the active workspace.
@@ -45,24 +46,24 @@ export const getOnboardingStages = cache(async () => {
  * Fetch stats for the metrics widgets.
  */
 export const getMetricStats = async (workspaceId: string) => {
-    const entities = await getWorkspaceEntities(workspaceId);
-    const totalStudents = entities.reduce((sum, we) => sum + (we.nominalRoll || 0), 0);
-    
-    // For meetings and surveys, we do separate quick counts
-    const meetingsSnap = await adminDb.collection('meetings')
-        .where('workspaceIds', 'array-contains', workspaceId)
-        .get();
-    
-    const surveysSnap = await adminDb.collection('surveys')
-        .where('workspaceIds', 'array-contains', workspaceId)
-        .where('status', '==', 'published')
-        .get();
+    // All three are server-side aggregation queries — no document reads/transfer.
+    // (The previous `totalStudents` sum over all entities was never rendered by
+    // MetricsWidgetServer — removed as dead work.)
+    const [totalEntities, meetingsSnap, surveysSnap] = await Promise.all([
+        countActiveEntities(workspaceId),
+        adminDb.collection('meetings')
+            .where('workspaceIds', 'array-contains', workspaceId)
+            .count().get(),
+        adminDb.collection('surveys')
+            .where('workspaceIds', 'array-contains', workspaceId)
+            .where('status', '==', 'published')
+            .count().get(),
+    ]);
 
     return {
-        totalEntities: entities.length,
-        totalStudents,
-        upcomingMeetings: meetingsSnap.size, // This is a rough count, filtering by date usually happens in logic
-        publishedSurveys: surveysSnap.size,
+        totalEntities,
+        upcomingMeetings: meetingsSnap.data().count,
+        publishedSurveys: surveysSnap.data().count,
     };
 };
 
@@ -171,7 +172,7 @@ export const getLatestSurveys = async (workspaceId: string) => {
  * Fetch monthly registration trends.
  */
 export const getMonthlyTrend = async (workspaceId: string) => {
-    const entities = await getWorkspaceEntities(workspaceId);
+    const entities = await getEntityProjections(workspaceId);
     const monthlyTrends: Record<string, number> = {};
     
     entities.forEach((we: any) => {
@@ -205,7 +206,7 @@ export const getWorkspacePipelines = async (workspaceId: string) => {
  * Fetch module implementation footprint.
  */
 export const getModuleFootprint = async (workspaceId: string) => {
-    const entities = await getWorkspaceEntities(workspaceId);
+    const entities = await getEntityProjections(workspaceId);
     const moduleCounts: Record<string, { abbreviation: string; name: string; count: number }> = {};
     
     entities.forEach((we: any) => {
@@ -226,17 +227,17 @@ export const getModuleFootprint = async (workspaceId: string) => {
 export const getZoneDistribution = async (workspaceId: string) => {
     const snap = await adminDb.collection('zones').get();
     const zones = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Zone));
-    const entities = await getWorkspaceEntities(workspaceId);
+    const entities = await getEntityProjections(workspaceId);
     
     return zones.map((zone: Zone) => {
         const entitiesInZone = entities.filter((we: any) => we.zone?.id === zone.id);
         const totalCount = entitiesInZone.length;
-        const studentCount = entitiesInZone.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
-        
+        const capacity = entitiesInZone.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
+
         return {
           name: zone.name,
           schoolCount: totalCount,
-          studentCount: studentCount
+          capacity,
         };
     }).filter((zd: any) => zd.schoolCount > 0);
 };
@@ -262,7 +263,7 @@ export const getUserAssignments = async (workspaceId: string) => {
     }
 
     const [entities, users] = await Promise.all([
-        getWorkspaceEntities(workspaceId),
+        getEntityProjections(workspaceId),
         getAuthorizedUsers(workspace.organizationId)
     ]);
 
@@ -271,12 +272,12 @@ export const getUserAssignments = async (workspaceId: string) => {
     return users.map((user: UserProfile) => {
         const assignedEntities = entities.filter((we: any) => we.assignedTo?.userId === user.id);
         const totalAssigned = assignedEntities.length;
-        const totalStudentsAssigned = assignedEntities.reduce((acc: number, we: any) => acc + (we.nominalRoll || 0), 0);
+        const totalCapacityAssigned = assignedEntities.reduce((acc: number, we: any) => acc + (we.nominalRoll || 0), 0);
 
         return {
             user,
             totalAssigned,
-            totalStudents: totalStudentsAssigned,
+            totalCapacity: totalCapacityAssigned,
             assignmentPercentage: totalEntities > 0 ? (totalAssigned / totalEntities) * 100 : 0,
         };
     }).filter((ua: any) => ua.totalAssigned > 0);

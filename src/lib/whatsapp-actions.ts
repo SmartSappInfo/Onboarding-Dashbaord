@@ -10,7 +10,7 @@
 import * as z from 'zod';
 import { requireOrgAdmin } from './auth/require-org-admin';
 import { WhatsAppCredentialRepository } from './whatsapp/whatsapp-credential-repository';
-import { MetaCloudApiClient } from './whatsapp/meta-cloud-client';
+import { MetaCloudApiClient, exchangeEmbeddedSignupCode } from './whatsapp/meta-cloud-client';
 import type { WhatsAppConnectionPublic } from './whatsapp/whatsapp-types';
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
@@ -42,6 +42,74 @@ export async function saveWhatsAppConnection(
     const { uid } = await requireOrgAdmin(idToken, input.organizationId);
     const data = await WhatsAppCredentialRepository.save({ ...input, createdBy: uid });
     return { success: true, data };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+const OAuthConnectSchema = z.object({
+  organizationId: z.string().min(1),
+  code: z.string().min(1),
+  wabaId: z.string().min(1),
+  phoneNumberId: z.string().min(1),
+});
+
+/**
+ * Embedded Signup (OAuth) — "just connect & synchronize". The client runs Meta's
+ * hosted popup and returns an auth `code` plus the selected `wabaId`/`phoneNumberId`.
+ * This exchanges the code for a token (via the platform Meta app), provisions the
+ * connection, auto-subscribes webhooks, and runs a health check — no manual paste.
+ */
+export async function connectWhatsAppViaOAuth(
+  idToken: string,
+  payload: z.infer<typeof OAuthConnectSchema>,
+): Promise<ActionResult<WhatsAppConnectionPublic>> {
+  try {
+    const { organizationId, code, wabaId, phoneNumberId } = OAuthConnectSchema.parse(payload);
+    const { uid } = await requireOrgAdmin(idToken, organizationId);
+
+    const appId = process.env.META_APP_ID;
+    const appSecret = process.env.META_APP_SECRET;
+    if (!appId || !appSecret) {
+      return { success: false, error: 'Embedded Signup is not configured on this platform (META_APP_ID/SECRET).' };
+    }
+
+    // 1. Exchange the auth code for a long-lived access token.
+    const accessToken = await exchangeEmbeddedSignupCode(code, { appId, appSecret });
+
+    // 2. Read the number's display + health using the new token.
+    const client = new MetaCloudApiClient({ accessToken, phoneNumberId, wabaId });
+    const health = await client.getPhoneNumberHealth();
+
+    // 3. Persist (encrypted) as an embedded-signup connection.
+    await WhatsAppCredentialRepository.save({
+      organizationId,
+      connectionType: 'embedded_signup',
+      wabaId,
+      phoneNumberId,
+      displayPhoneNumber: health.displayPhoneNumber || '',
+      businessName: health.verifiedName,
+      accessToken,
+      createdBy: uid,
+    });
+
+    // 4. Auto-wire webhooks (no callback URL for the org to configure).
+    try {
+      await client.subscribeAppToWaba(wabaId);
+    } catch (subErr) {
+      console.warn('[WA-OAUTH] subscribed_apps failed:', (subErr as Error).message);
+    }
+
+    // 5. Mark health.
+    await WhatsAppCredentialRepository.updateHealth(organizationId, {
+      status: 'connected',
+      qualityRating: health.qualityRating,
+      messagingLimit: health.messagingLimit,
+      lastError: null,
+    });
+
+    const data = await WhatsAppCredentialRepository.getPublic(organizationId);
+    return { success: true, data: data! };
   } catch (e) {
     return fail(e);
   }

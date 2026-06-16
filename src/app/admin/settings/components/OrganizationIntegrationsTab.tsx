@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
 import { Key, Loader2, Save, Eye, EyeOff } from 'lucide-react';
-import WhatsAppSettings from './WhatsAppSettings';
+import Link from 'next/link';
+import { MessageCircle, ChevronRight } from 'lucide-react';
 
 interface OrganizationIntegrationsTabProps {
     organization: Organization;
@@ -156,7 +157,22 @@ export default function OrganizationIntegrationsTab({ organization }: Organizati
             </CardContent>
         </Card>
 
-        <WhatsAppSettings organizationId={organization.id} />
+        <Link
+            href="/admin/settings/whatsapp"
+            className="block rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden hover:ring-primary/20 hover:shadow-md transition-all duration-200"
+        >
+            <div className="px-5 py-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-primary/5 text-primary">
+                        <MessageCircle className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-base font-bold tracking-tight">WhatsApp Business (Meta Cloud API)</h3>
+                </div>
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary shrink-0">
+                    Configure <ChevronRight className="h-4 w-4" />
+                </span>
+            </div>
+        </Link>
         </div>
     );
 }

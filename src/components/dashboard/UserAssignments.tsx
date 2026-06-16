@@ -20,12 +20,12 @@ const getFirstName = (name?: string | null) => name ? name.split(' ')[0] : 'User
 export function UserAssignments({ 
     data, 
     totalSchools, 
-    totalStudents,
+    totalCapacity,
     terminology = { singular: 'Entity', plural: 'Entities' }
 }: { 
     data: any[], 
     totalSchools: number, 
-    totalStudents: number,
+    totalCapacity: number,
     terminology?: { singular: string; plural: string }
 }) {
     const isMobile = useIsMobile();
@@ -45,7 +45,7 @@ export function UserAssignments({
         .map((d: any, index: number) => ({
             user: d.user,
             totalAssigned: d.totalAssigned,
-            totalStudents: d.totalStudents,
+            totalCapacity: d.totalCapacity,
             percentage: d.assignmentPercentage,
             color: d.user.color || CHART_COLORS[index % CHART_COLORS.length]
         }));
@@ -69,8 +69,8 @@ export function UserAssignments({
                                 <User className="h-6 w-6 text-green-500" />
                             </div>
                             <div>
-                                <p className="text-3xl font-semibold">{totalStudents.toLocaleString()}</p>
-                                <p className="text-sm text-muted-foreground">Total Students</p>
+                                <p className="text-3xl font-semibold">{totalCapacity.toLocaleString()}</p>
+                                <p className="text-sm text-muted-foreground">Total Capacity</p>
                             </div>
                         </div>
                     </div>
@@ -124,7 +124,7 @@ export function UserAssignments({
                                 <User className="h-5 w-5 text-emerald-500" />
                             </div>
                             <div className="space-y-0.5">
-                                <p className="text-2xl font-semibold tracking-tight">{totalStudents.toLocaleString()}</p>
+                                <p className="text-2xl font-semibold tracking-tight">{totalCapacity.toLocaleString()}</p>
                                 <p className="text-[10px] font-medium text-muted-foreground tracking-wider opacity-60">Cumulative Nominal Roll</p>
                             </div>
                         </div>
@@ -171,7 +171,7 @@ export function UserAssignments({
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-1 text-[9px] font-medium text-emerald-500/80 tracking-tighter">
-                                                {item.totalStudents.toLocaleString()} <span className="opacity-60">Students</span>
+                                                {item.totalCapacity.toLocaleString()} <span className="opacity-60">Capacity</span>
                                             </div>
                                         </div>
                                     </div>

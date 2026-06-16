@@ -1,6 +1,6 @@
 'use server';
 
-import { getWorkspaceEntities, getMetricStats, getPipelineStats, getUpcomingMeetings, getLatestSurveys, getRecentActivities } from '@/lib/dashboard-server';
+import { getMetricStats, getPipelineStats, getUpcomingMeetings, getLatestSurveys, getRecentActivities } from '@/lib/dashboard-server';
 import { adminDb } from '@/lib/firebase-admin';
 import { cache } from 'react';
 

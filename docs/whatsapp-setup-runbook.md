@@ -23,6 +23,22 @@ Optional (key rotation): `WHATSAPP_ENCRYPTION_KEY_ID` (label for the current key
 
 > Without `WHATSAPP_ENCRYPTION_KEY`, saving a connection fails fast with a clear error.
 
+### Optional: Embedded Signup (OAuth — "one-click connect")
+
+To offer orgs the **Connect with WhatsApp** button (no manual credential paste), configure the platform's single Meta app and set:
+
+```
+META_APP_ID=<platform meta app id>
+META_APP_SECRET=<platform meta app secret>
+META_WEBHOOK_VERIFY_TOKEN=<any strong random string>   # the one webhook configured on the platform app
+NEXT_PUBLIC_META_APP_ID=<same app id>                   # exposed to the browser for the FB SDK
+NEXT_PUBLIC_META_ES_CONFIG_ID=<embedded signup configuration id>
+```
+
+**Hard prerequisite (Meta-side, not code):** the platform Meta app must complete **Business Verification** and **App Review** for **Advanced Access** to `whatsapp_business_management` + `whatsapp_business_messaging`, and have a **Facebook Login for Business** configuration (the `config_id`). Until then, Embedded Signup only works for the app's own test WABA. The **Connect with WhatsApp** button is hidden automatically when these env vars are unset, so the manual flow stays the default.
+
+When enabled, the OAuth flow auto-provisions the org's WABA ID, Phone Number ID, and access token, **auto-subscribes the webhook** (no callback URL for the org to paste), and runs a health check — see [WhatsAppEmbeddedSignup.tsx](../src/app/admin/settings/components/WhatsAppEmbeddedSignup.tsx) and `connectWhatsAppViaOAuth` in [whatsapp-actions.ts](../src/lib/whatsapp-actions.ts). Inbound webhooks for Embedded-Signup orgs are signed with the **platform** `META_APP_SECRET` (one Meta app); manual orgs use their own per-connection app secret — both handled in the webhook route.
+
 ---
 
 ## 2. What the org needs from Meta

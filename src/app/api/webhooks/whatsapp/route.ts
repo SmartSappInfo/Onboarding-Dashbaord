@@ -29,6 +29,11 @@ export async function GET(req: NextRequest) {
   const challenge = searchParams.get('hub.challenge');
 
   if (mode === 'subscribe' && token) {
+    // Embedded Signup orgs share the platform-level verify token (one webhook
+    // configured on the platform Meta app). Manual orgs use their per-connection token.
+    if (process.env.META_WEBHOOK_VERIFY_TOKEN && token === process.env.META_WEBHOOK_VERIFY_TOKEN) {
+      return new Response(challenge ?? '', { status: 200 });
+    }
     const conn = await WhatsAppCredentialRepository.findByVerifyToken(token);
     if (conn) return new Response(challenge ?? '', { status: 200 });
   }
@@ -61,14 +66,21 @@ export async function POST(req: NextRequest) {
     return new Response('OK', { status: 200 });
   }
 
-  // Verify signature when an app secret is configured.
-  if (conn.appSecret) {
-    const appSecret = decrypt(conn.appSecret);
+  // Resolve the signing secret: Embedded Signup orgs are signed with the
+  // PLATFORM app secret (one Meta app); manual orgs use their own app secret.
+  const appSecret =
+    conn.connectionType === 'embedded_signup'
+      ? process.env.META_APP_SECRET || null
+      : conn.appSecret
+        ? decrypt(conn.appSecret)
+        : null;
+
+  if (appSecret) {
     if (!verifySignature(rawBody, signature, appSecret)) {
       return new Response('Invalid signature', { status: 401 });
     }
   } else {
-    console.warn('[WA-WEBHOOK] No app secret configured; processing unverified payload for', conn.organizationId);
+    console.warn('[WA-WEBHOOK] No app secret available; processing unverified payload for', conn.organizationId);
   }
 
   after(async () => {

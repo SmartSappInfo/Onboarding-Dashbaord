@@ -143,6 +143,48 @@ describe('MetaCloudApiClient.getPhoneNumberHealth', () => {
   });
 });
 
+describe('exchangeEmbeddedSignupCode (OAuth)', () => {
+  it('exchanges the auth code for an access token (token never in any log)', async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      const u = String(url);
+      expect(u).toContain('/oauth/access_token');
+      expect(u).toContain('client_id=APP_ID');
+      expect(u).toContain('client_secret=APP_SECRET');
+      expect(u).toContain('code=THE_CODE');
+      return { ok: true, status: 200, json: async () => ({ access_token: 'EAAG-provisioned', token_type: 'bearer' }), text: async () => '{}' } as Response;
+    });
+    const { exchangeEmbeddedSignupCode } = await import('../meta-cloud-client');
+    const token = await exchangeEmbeddedSignupCode('THE_CODE', {
+      appId: 'APP_ID',
+      appSecret: 'APP_SECRET',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(token).toBe('EAAG-provisioned');
+  });
+
+  it('throws the Graph error on failure', async () => {
+    const fetchImpl = fetchSequence([
+      { status: 400, body: { error: { message: 'Invalid verification code format' } } },
+    ]);
+    const { exchangeEmbeddedSignupCode } = await import('../meta-cloud-client');
+    await expect(
+      exchangeEmbeddedSignupCode('bad', { appId: 'A', appSecret: 'B', fetchImpl: fetchImpl as unknown as typeof fetch }),
+    ).rejects.toThrow(/Invalid verification code/);
+  });
+});
+
+describe('MetaCloudApiClient.subscribeAppToWaba', () => {
+  it('POSTs to {wabaId}/subscribed_apps to auto-wire webhooks', async () => {
+    const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {
+      expect(String(url)).toContain('/waba_1/subscribed_apps');
+      expect(init.method).toBe('POST');
+      return { ok: true, status: 200, json: async () => ({ success: true }), text: async () => '{}' } as Response;
+    });
+    const client = makeClient(fetchImpl as unknown as typeof fetch);
+    await expect(client.subscribeAppToWaba('waba_1')).resolves.toBe(true);
+  });
+});
+
 describe('MetaCloudApiClient.sendMessage', () => {
   it('POSTs to {phoneNumberId}/messages and returns the wamid', async () => {
     const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {

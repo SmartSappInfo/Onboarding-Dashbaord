@@ -10,7 +10,7 @@ import { MapPin, Users } from 'lucide-react';
 interface ZoneMetric {
     name: string;
     schoolCount: number;
-    studentCount: number;
+    capacity: number;
 }
 
 export function ZoneDistribution({ 
@@ -68,8 +68,8 @@ export function ZoneDistribution({
                                                     <span className="font-semibold">{d.schoolCount}</span>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-4">
-                                                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium tracking-tighter"><Users className="h-2 w-2" /> Students:</span>
-                                                    <span className="font-semibold">{d.studentCount.toLocaleString()}</span>
+                                                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium tracking-tighter"><Users className="h-2 w-2" /> Capacity:</span>
+                                                    <span className="font-semibold">{d.capacity.toLocaleString()}</span>
                                                 </div>
                                             </div>
                                         );
@@ -96,8 +96,8 @@ export function ZoneDistribution({
                                 </Badge>
                             </div>
                             <div className="flex items-end justify-between">
-                                <span className="text-xl font-semibold tracking-tight tabular-nums">{zone.studentCount.toLocaleString()}</span>
-                                <span className="text-[9px] font-medium text-muted-foreground opacity-40 mb-1">Students</span>
+                                <span className="text-xl font-semibold tracking-tight tabular-nums">{zone.capacity.toLocaleString()}</span>
+                                <span className="text-[9px] font-medium text-muted-foreground opacity-40 mb-1">Capacity</span>
                             </div>
                         </div>
                     ))}
