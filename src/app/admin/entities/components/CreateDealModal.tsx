@@ -23,7 +23,7 @@ import { getEntityDealDefaultsAction, type EntityAssignee } from '@/app/actions/
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useSortedEntities } from '@/context/EntityCacheContext';
+import { useEntitySearch } from '@/hooks/use-entity-search';
 import { cn } from '@/lib/utils';
 import type { EntityContact, DealFocalContact } from '@/lib/types';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -83,12 +83,14 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     [firestore, activeWorkspaceId]);
     const { data: stages } = useCollection<any>(stagesQuery);
 
-    // Fetch workspace entities when creating a global deal without contact context
-    const { sortedEntities } = useSortedEntities();
-    const entities = React.useMemo(() => {
-        if (entityId) return null;
-        return sortedEntities;
-    }, [sortedEntities, entityId]);
+    // Server-side, paginated entity search (Phase 5.2) — only when picking an
+    // entity for a global deal (no contact context). Never loads the whole set.
+    const [entitySearch, setEntitySearch] = React.useState('');
+    const { results: entities, hasMore, loadMore } = useEntitySearch({
+        search: entitySearch,
+        enabled: open && !entityId,
+        pageSize: 25,
+    });
 
     React.useEffect(() => {
         if (open) {
@@ -249,12 +251,16 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent data-scroll-lock-scrollable className="w-[var(--radix-popover-trigger-width)] p-0 border border-border shadow-2xl rounded-xl overflow-hidden bg-background z-[200]" align="start">
-                                        <Command>
-                                            <CommandInput placeholder={`Search ${plural.toLowerCase()}...`} />
+                                        <Command shouldFilter={false}>
+                                            <CommandInput
+                                                placeholder={`Search ${plural.toLowerCase()}...`}
+                                                value={entitySearch}
+                                                onValueChange={setEntitySearch}
+                                            />
                                             <CommandList data-scroll-lock-scrollable className="max-h-[220px] overflow-y-auto overflow-x-hidden scrollbar-thin">
                                                 <CommandEmpty>No {singular.toLowerCase()} found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {entities?.map((e: any) => (
+                                                    {entities.map((e: any) => (
                                                         <CommandItem
                                                             key={e.id}
                                                             value={e.name || e.displayName}
@@ -270,6 +276,15 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                                             </div>
                                                         </CommandItem>
                                                     ))}
+                                                    {hasMore && (
+                                                        <CommandItem
+                                                            value="__load_more__"
+                                                            onSelect={() => loadMore()}
+                                                            className="justify-center text-[10px] font-bold text-primary cursor-pointer"
+                                                        >
+                                                            Load more…
+                                                        </CommandItem>
+                                                    )}
                                                 </CommandGroup>
                                             </CommandList>
                                         </Command>

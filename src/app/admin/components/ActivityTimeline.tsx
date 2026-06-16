@@ -4,7 +4,6 @@ import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Activity, UserProfile, WorkspaceEntity } from '@/lib/types';
-import { useEntityCache } from '@/context/EntityCacheContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isSameDay } from 'date-fns';
 import ActivityItem from './ActivityItem';
@@ -68,21 +67,12 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
 
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
   
-  const { entities, isLoading: isLoadingEntities } = useEntityCache();
-
-  const isLoading = isLoadingActivities || isLoadingUsers || isLoadingEntities;
+  const isLoading = isLoadingActivities || isLoadingUsers;
 
   const usersMap = React.useMemo(() => {
     if (!users) return new Map<string, UserProfile>();
     return new Map(users.map(user => [user.id, user]));
   }, [users]);
-
-  const entitiesInZone = React.useMemo(() => {
-    // Note: Zone filtering might need identity join if zones move to global Entity InstitutionalData
-    // For now, we look for entities that might have zone context or we filter by entityId list
-    if (!entities || !zoneId || zoneId === 'all') return null;
-    return new Set(entities.map(s => s.id)); // Placeholder until zone mapping is finalized in WE
-  }, [entities, zoneId]);
 
   // CLIENT-SIDE FILTERING: Refine the workspace-specific pool by sub-filters.
   // Updated to support entityId filtering with entityId fallback (Requirement 4.3, 4.5)
@@ -91,8 +81,11 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
 
     let filtered = allActivities;
 
-    if (zoneId && zoneId !== 'all' && entitiesInZone) {
-        filtered = filtered.filter(a => a.entityId && entitiesInZone.has(a.entityId));
+    if (zoneId && zoneId !== 'all') {
+        // Placeholder zone filter — keep activities that reference an entity.
+        // (Real zone mapping is still TODO; previously this loaded ALL entities
+        // just to build an existence set — removed in the Phase 5 cache refactor.)
+        filtered = filtered.filter(a => !!a.entityId);
     }
     // Filter by entityId (Requirement 4.3, 4.5)
     if (entityId && entityId !== 'all') {
@@ -106,7 +99,7 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
     }
 
     return filtered.slice(0, dataLimit);
-  }, [allActivities, entityId, userId, type, zoneId, entitiesInZone, dataLimit]);
+  }, [allActivities, entityId, userId, type, zoneId, dataLimit]);
 
   const groupedActivities = React.useMemo(() => {
     const grouped = filteredActivities.reduce((acc, activity) => {

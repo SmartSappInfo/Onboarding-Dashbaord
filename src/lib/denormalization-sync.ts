@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { toSearchKey } from './entities/entity-cache-domain';
 import type { Entity } from './types';
 
 /**
@@ -14,6 +15,7 @@ const BATCH_SIZE = 500;
 
 interface DenormalizedFields {
   displayName?: string;
+  displayNameLower?: string;
   primaryEmail?: string;
   primaryPhone?: string;
 }
@@ -111,6 +113,7 @@ export async function extractDenormalizedFields(entity: Entity): Promise<Denorma
   
   return {
     displayName: entity.name,
+    displayNameLower: toSearchKey(entity.name), // searchable (Phase 5.2)
     primaryEmail: primaryEmail || undefined,
     primaryPhone: primaryPhone || undefined,
   };

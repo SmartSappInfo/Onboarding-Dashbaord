@@ -1,16 +1,22 @@
-
+import type { Metadata } from 'next';
 import NewSchoolSignupForm from '@/app/register-new-signup-form';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
+import { getCustomPageMetadata } from '@/lib/seo-server';
 
 // Force dynamic rendering for this page
 export const dynamic = 'force-dynamic';
 
+export async function generateMetadata(): Promise<Metadata> {
+  return getCustomPageMetadata('register-new-signup', {
+    title: 'School Registration — SmartSapp',
+    description: 'Tell us about your school to get started with SmartSapp.',
+  });
+}
+
 export default function RegisterNewSignupPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#09090b] transition-colors duration-500">
-      {/* Header removed for focused experience */}
-      
       {/* Background Ambient Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -right-[10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />

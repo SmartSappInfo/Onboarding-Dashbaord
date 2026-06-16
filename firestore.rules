@@ -686,6 +686,12 @@ service cloud.firestore {
       allow read, write: if isAuthorized();
     }
 
+    // --- Custom Pages SEO ---
+    match /custom_pages_seo/{pageId} {
+      allow read: if true;
+      allow write: if isAuthorized();
+    }
+
     // --- Landing Pages / Campaign Pages ---
     match /campaign_pages/{pageId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));

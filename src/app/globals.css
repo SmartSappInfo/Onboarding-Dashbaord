@@ -121,12 +121,21 @@
   body {
     @apply text-foreground;
   }
+  /* ── Dark mode: Deep gradient + subtle dot grid ──────────────── */
   .dark body {
-    background: linear-gradient(135deg, hsl(225 21% 7.5%), #050608);
+    background-color: hsl(225 21% 7.5%);
+    background-image:
+      radial-gradient(circle, hsl(227 18% 20.2% / 0.7) 1px, transparent 1px);
+    background-size: 28px 28px;
     background-attachment: fixed;
   }
+  /* ── Light mode: Warm off-white + fine dot grid ─────────────── */
   :not(.dark) body {
-    @apply bg-background;
+    background-color: hsl(210 40% 98%);
+    background-image:
+      radial-gradient(circle, hsl(214.3 31.8% 91.4% / 0.9) 1px, transparent 1px);
+    background-size: 22px 22px;
+    background-attachment: fixed;
   }
 }
 

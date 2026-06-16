@@ -1,5 +1,5 @@
-'use client';
-
+import type { Metadata } from 'next';
+import { getCustomPageMetadata } from '@/lib/seo-server';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import AppDownloadSection from '@/components/app-download-section';
@@ -7,6 +7,15 @@ import HelpSection from '@/components/help-section';
 import SetupProfileSection from '@/components/setup-profile-section';
 import TestimonialsSection from '@/components/testimonials-section';
 import WelcomeHeroSection from '@/components/welcome-hero-section';
+
+export const dynamic = 'force-dynamic';
+
+export async function generateMetadata(): Promise<Metadata> {
+  return getCustomPageMetadata('/', {
+    title: 'Welcome To SmartSapp Family',
+    description: "Onboarding for SmartsApp Schools - Child Security, Parents' Convenience, Smarter Schools.",
+  });
+}
 
 export default function Home() {
   const helpVideos = [

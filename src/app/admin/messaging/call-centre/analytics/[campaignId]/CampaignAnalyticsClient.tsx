@@ -151,28 +151,28 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
   const isLoading = campaignsLoading || queueItemsLoading;
 
   return (
-    <div className="h-full overflow-y-auto bg-zinc-950 text-zinc-100">
+    <div className="h-full overflow-y-auto bg-background text-foreground">
       <PageContainer>
         <div className="space-y-8 py-6">
           {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-zinc-900 pb-5">
+          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border pb-5">
             <div className="flex items-center gap-3">
               <Button
                 onClick={() => router.push(wrapHref('/admin/messaging/call-centre'))}
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
+                className="h-9 w-9 rounded-xl border border-border bg-muted hover:bg-accent text-muted-foreground"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-black uppercase text-zinc-100 tracking-wider">
+                  <h1 className="text-xl font-black uppercase text-foreground tracking-wider">
                     {campaign?.name || 'Campaign Analytics'}
                   </h1>
                   {campaign?.status && getStatusBadge(campaign.status)}
                 </div>
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                   Detailed outcomes, duration metrics, and call history logs
                 </p>
               </div>
@@ -180,15 +180,15 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
           </div>
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-40 gap-3 text-zinc-500">
+            <div className="flex flex-col items-center justify-center py-40 gap-3 text-muted-foreground">
               <RefreshCw className="h-8 w-8 text-primary animate-spin" />
               <span className="text-xs font-semibold">Loading campaign analytics...</span>
             </div>
           ) : !campaign ? (
             <div className="text-center py-20 space-y-3">
-              <AlertCircle className="h-10 w-10 text-zinc-650 mx-auto" />
-              <h4 className="text-sm font-bold text-zinc-400">Campaign not found</h4>
-              <p className="text-xs text-zinc-500 max-w-xs mx-auto">The requested campaign does not exist or you do not have permission to view it.</p>
+              <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto" />
+              <h4 className="text-sm font-bold text-muted-foreground">Campaign not found</h4>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto">The requested campaign does not exist or you do not have permission to view it.</p>
               <Button onClick={() => router.push(wrapHref('/admin/messaging/call-centre'))} className="rounded-xl font-bold text-xs">
                 Back to Dashboard
               </Button>
@@ -197,52 +197,52 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
             <>
               {/* Premium KPI Metric Cards Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="p-3 bg-primary/10 text-primary rounded-xl border border-primary/20">
                       <Phone className="h-6 w-6" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Queue Contacts</p>
-                      <p className="text-2xl font-black text-zinc-100">{queueItems.length}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Queue Contacts</p>
+                      <p className="text-2xl font-black text-foreground">{queueItems.length}</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
                       <CheckCircle2 className="h-6 w-6" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Completed Calls</p>
-                      <p className="text-2xl font-black text-zinc-100">{completedCalls.length}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Completed Calls</p>
+                      <p className="text-2xl font-black text-foreground">{completedCalls.length}</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
                       <Clock className="h-6 w-6" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Callbacks Pending</p>
-                      <p className="text-2xl font-black text-zinc-100">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Callbacks Pending</p>
+                      <p className="text-2xl font-black text-foreground">
                         {queueItems.filter(i => i.status === 'callback_scheduled').length}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl border border-purple-500/20">
                       <UserCheck className="h-6 w-6" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Deferred Calls</p>
-                      <p className="text-2xl font-black text-zinc-100">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Deferred Calls</p>
+                      <p className="text-2xl font-black text-foreground">
                         {queueItems.filter(i => i.status === 'deferred').length}
                       </p>
                     </div>
@@ -256,40 +256,39 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                 {/* Left Columns: Tabs for Distribution & Logs */}
                 <div className="lg:col-span-2 space-y-6">
                   <Tabs defaultValue="distribution" className="w-full">
-                    <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
                       <TabsList className="bg-transparent h-10 p-0 rounded-none border-b border-transparent gap-6">
                         <TabsTrigger 
                           value="distribution" 
-                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-zinc-400 data-[state=active]:text-zinc-100"
+                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-muted-foreground data-[state=active]:text-foreground"
                         >
                           Outcomes Distribution
                         </TabsTrigger>
                         <TabsTrigger 
                           value="logs" 
-                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-zinc-400 data-[state=active]:text-zinc-100"
+                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-muted-foreground data-[state=active]:text-foreground"
                         >
                           Call Logs ({completedCalls.length})
                         </TabsTrigger>
                       </TabsList>
                     </div>
 
-                    {/* Distribution Tab Content */}
                     <TabsContent value="distribution" className="pt-6 space-y-8">
                       {queueItems.length === 0 ? (
-                        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
-                          <AlertCircle className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
-                          <h4 className="text-sm font-bold text-zinc-400">No dialer records found</h4>
-                          <p className="text-xs text-zinc-500">This campaign does not have any contacts in its queue yet.</p>
+                        <div className="text-center py-20 border border-dashed border-border rounded-2xl bg-muted/20">
+                          <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                          <h4 className="text-sm font-bold text-muted-foreground">No dialer records found</h4>
+                          <p className="text-xs text-muted-foreground">This campaign does not have any contacts in its queue yet.</p>
                         </div>
                       ) : (
-                        <Card className="border border-zinc-800 bg-zinc-900/20 rounded-2xl">
-                          <div className="p-6 border-b border-zinc-850 bg-zinc-900/30">
-                            <h3 className="text-sm font-bold text-zinc-300 font-sans">Visual Outcomes Distribution</h3>
+                        <Card className="border border-border bg-card rounded-2xl">
+                          <div className="p-6 border-b border-border bg-muted/20">
+                            <h3 className="text-sm font-bold text-foreground font-sans">Visual Outcomes Distribution</h3>
                           </div>
                           <div className="p-6 space-y-8">
                             {/* Stacked Horizontal Progress Bar */}
                             <div className="space-y-3">
-                              <div className="h-6 w-full rounded-xl overflow-hidden flex bg-zinc-900 border border-zinc-800">
+                              <div className="h-6 w-full rounded-xl overflow-hidden flex bg-muted border border-border">
                                 {analytics.map((group, idx) => {
                                   if (group.percentage === 0) return null;
                                   return (
@@ -305,21 +304,21 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                             </div>
 
                             {/* Group Legend & Metrics list */}
-                            <div className="space-y-4 pt-4 border-t border-zinc-850">
-                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Outcomes & Statuses breakdown</span>
+                            <div className="space-y-4 pt-4 border-t border-border">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Outcomes &amp; Statuses breakdown</span>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {analytics.map((group, idx) => (
                                   <div
                                     key={idx}
-                                    className="p-3.5 bg-zinc-900/40 border border-zinc-800/80 rounded-xl flex items-center justify-between hover:border-zinc-700 transition-colors"
+                                    className="p-3.5 bg-muted/40 border border-border rounded-xl flex items-center justify-between hover:border-primary/30 transition-colors"
                                   >
                                     <div className="flex items-center gap-3 min-w-0">
                                       <span className={`w-3.5 h-3.5 rounded-md ${group.color} shrink-0`} />
-                                      <span className="text-xs font-bold text-zinc-200 truncate">{group.label}</span>
+                                      <span className="text-xs font-bold text-foreground truncate">{group.label}</span>
                                     </div>
                                     <div className="flex items-center gap-3 font-mono text-xs shrink-0 pl-2">
-                                      <span className="text-zinc-400 font-medium">{group.count} calls</span>
-                                      <span className="text-zinc-100 font-bold w-10 text-right">{group.percentage}%</span>
+                                      <span className="text-muted-foreground font-medium">{group.count} calls</span>
+                                      <span className="text-foreground font-bold w-10 text-right">{group.percentage}%</span>
                                     </div>
                                   </div>
                                 ))}
@@ -333,10 +332,10 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                     {/* Logs Tab Content */}
                     <TabsContent value="logs" className="pt-6" style={{ contentVisibility: 'auto' }}>
                       {completedCalls.length === 0 ? (
-                        <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
-                          <PhoneOff className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
-                          <h4 className="text-sm font-bold text-zinc-400">No completed calls</h4>
-                          <p className="text-xs text-zinc-500">No contacts have been resolved in this campaign yet.</p>
+                        <div className="text-center py-20 border border-dashed border-border rounded-2xl bg-muted/20">
+                          <PhoneOff className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                          <h4 className="text-sm font-bold text-muted-foreground">No completed calls</h4>
+                          <p className="text-xs text-muted-foreground">No contacts have been resolved in this campaign yet.</p>
                         </div>
                       ) : (
                         <div className="space-y-4">
@@ -347,13 +346,13 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                             return (
                               <div 
                                 key={item.id} 
-                                className="p-5 bg-zinc-900/30 border border-zinc-800/80 rounded-2xl space-y-4 hover:border-zinc-700 transition-colors"
+                                className="p-5 bg-card border border-border rounded-2xl space-y-4 hover:border-primary/30 hover:shadow-sm transition-all"
                               >
                                 {/* Contact Info Header */}
                                 <div className="flex items-start justify-between gap-4">
                                   <div>
-                                    <h4 className="text-sm font-bold text-zinc-100">{item.entityName}</h4>
-                                    <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-400 font-medium">
+                                    <h4 className="text-sm font-bold text-foreground">{item.entityName}</h4>
+                                    <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground font-medium">
                                       <span className="font-mono">{item.entityPhone || 'No Phone'}</span>
                                       {item.entityEmail && (
                                         <>
@@ -370,13 +369,13 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                                 </div>
 
                                 {/* Log stats (Duration, Date, attempts) */}
-                                <div className="grid grid-cols-3 gap-2 bg-zinc-950 p-3.5 border border-zinc-800/80 rounded-xl text-center text-xs font-mono text-zinc-400">
+                                <div className="grid grid-cols-3 gap-2 bg-muted/60 p-3.5 border border-border rounded-xl text-center text-xs font-mono text-muted-foreground">
                                   <div className="flex items-center justify-center gap-1.5">
-                                    <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                                    <Clock className="h-3.5 w-3.5" />
                                     <span>{formatCallDuration(item.duration)}</span>
                                   </div>
                                   <div>
-                                    <span className="font-bold text-zinc-300">{item.attempts}</span> attempts
+                                    <span className="font-bold text-foreground">{item.attempts}</span> attempts
                                   </div>
                                   <div>
                                     <span>{item.lastAttemptAt ? new Date(item.lastAttemptAt).toLocaleDateString() : '—'}</span>
@@ -385,16 +384,16 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
 
                                 {/* Post-Call Actions / Automations badges */}
                                 <div className="pt-1 space-y-2">
-                                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-450 uppercase tracking-widest">
-                                    <Settings className="h-3.5 w-3.5 text-zinc-500" />
+                                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                    <Settings className="h-3.5 w-3.5" />
                                     <span>Triggered Automations ({rules.length})</span>
                                   </div>
                                   <div className="flex flex-wrap gap-1.5">
                                     {rules.length === 0 ? (
-                                      <span className="text-[10px] text-zinc-550 italic">No automations mapped to this outcome</span>
+                                      <span className="text-[10px] text-muted-foreground italic">No automations mapped to this outcome</span>
                                     ) : (
                                       rules.map((rule, idx) => (
-                                        <Badge key={idx} variant="outline" className="text-[8px] font-bold uppercase tracking-wider bg-zinc-950 border-zinc-800 text-zinc-350">
+                                        <Badge key={idx} variant="outline" className="text-[8px] font-bold uppercase tracking-wider bg-muted border-border text-muted-foreground">
                                           {rule.type === 'CHANGE_STAGE' && 'Stage Changed'}
                                           {rule.type === 'ADD_TAG' && 'Applied Tag'}
                                           {rule.type === 'CREATE_TASK' && 'Created Task'}
@@ -408,7 +407,7 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
 
                                 {/* Call Notes Collapsible toggler */}
                                 {item.notesDraft && (
-                                  <div className="border-t border-zinc-800/60 pt-3">
+                                  <div className="border-t border-border pt-3">
                                     <button
                                       type="button"
                                       onClick={() => setExpandedNotesId(isExpanded ? null : item.id)}
@@ -420,7 +419,7 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                                     </button>
                                     
                                     {isExpanded && (
-                                      <div className="mt-2.5 p-3.5 bg-zinc-950 border border-zinc-850 rounded-xl text-xs text-zinc-300 font-serif leading-relaxed italic whitespace-pre-line select-text animate-in slide-in-from-top-2 duration-200">
+                                      <div className="mt-2.5 p-3.5 bg-muted border border-border rounded-xl text-xs text-foreground font-serif leading-relaxed italic whitespace-pre-line select-text animate-in slide-in-from-top-2 duration-200">
                                         "{item.notesDraft}"
                                       </div>
                                     )}
@@ -437,45 +436,45 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
 
                 {/* Right Column: Campaign Details & Information Card */}
                 <div className="space-y-6">
-                  <Card className="border border-zinc-800 bg-zinc-900/20 rounded-2xl">
-                    <div className="p-6 border-b border-zinc-850 bg-zinc-900/30">
-                      <h3 className="text-sm font-bold text-zinc-300">Campaign Details</h3>
+                  <Card className="border border-border bg-card rounded-2xl">
+                    <div className="p-6 border-b border-border bg-muted/20">
+                      <h3 className="text-sm font-bold text-foreground">Campaign Details</h3>
                     </div>
                     <div className="p-6 space-y-5">
                       <div className="space-y-1.5">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Description</span>
-                        <p className="text-xs text-zinc-350 leading-relaxed">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Description</span>
+                        <p className="text-xs text-foreground/80 leading-relaxed">
                           {campaign.description || 'No description provided for this campaign.'}
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 border-t border-zinc-800/60 pt-4">
+                      <div className="grid grid-cols-2 gap-4 border-t border-border pt-4">
                         <div className="space-y-1">
-                          <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Call Script</span>
-                          <span className="text-xs font-bold text-zinc-300 truncate block">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Call Script</span>
+                          <span className="text-xs font-bold text-foreground truncate block">
                             {campaign.scriptId ? 'Assigned' : 'None'}
                           </span>
                         </div>
                         <div className="space-y-1">
-                          <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Workspace ID</span>
-                          <span className="text-xs font-bold text-zinc-350 truncate block">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Workspace ID</span>
+                          <span className="text-xs font-bold text-foreground/80 truncate block">
                             {activeWorkspaceId || 'Default'}
                           </span>
                         </div>
                       </div>
 
-                      <div className="border-t border-zinc-800/60 pt-4 space-y-2.5">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Summary Stats</span>
+                      <div className="border-t border-border pt-4 space-y-2.5">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Summary Stats</span>
                         <div className="space-y-2">
-                          <div className="flex justify-between text-xs text-zinc-400">
+                          <div className="flex justify-between text-xs text-muted-foreground">
                             <span>Pending Contacts</span>
-                            <span className="font-bold text-zinc-200">
+                            <span className="font-bold text-foreground">
                               {queueItems.filter(i => i.status === 'scheduled' || i.status === 'in_progress').length}
                             </span>
                           </div>
-                          <div className="flex justify-between text-xs text-zinc-400">
+                          <div className="flex justify-between text-xs text-muted-foreground">
                             <span>Total Calls Attempted</span>
-                            <span className="font-bold text-zinc-200">
+                            <span className="font-bold text-foreground">
                               {queueItems.reduce((acc, curr) => acc + (curr.attempts || 0), 0)}
                             </span>
                           </div>

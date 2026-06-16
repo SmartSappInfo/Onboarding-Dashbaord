@@ -138,19 +138,19 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-zinc-950 text-zinc-100">
+    <div className="h-full overflow-y-auto bg-background text-foreground">
       <PageContainer>
         <div className="space-y-8 py-6">
           
           {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-zinc-900 pb-5">
+          <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border pb-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner">
                 <PhoneCall className="h-5 w-5 text-primary animate-pulse" />
               </div>
               <div>
-                <h1 className="text-xl font-black uppercase text-zinc-100 tracking-wider">Call Centre</h1>
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">
+                <h1 className="text-xl font-black uppercase text-foreground tracking-wider">Call Centre</h1>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                   Outreach scripts, dialer queues, and AI-powered workflows
                 </p>
               </div>
@@ -159,7 +159,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
               <Button
                 onClick={() => router.push(wrapHref('/admin/messaging/call-centre/scripts/new'))}
                 variant="outline"
-                className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
+                className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 border-border bg-muted hover:bg-accent text-muted-foreground hover:text-foreground"
               >
                 <FileText className="h-3.5 w-3.5" /> New Script
               </Button>
@@ -174,38 +174,38 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
 
           {/* Stats Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+            <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="p-3 bg-primary/10 text-primary rounded-xl border border-primary/20">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Calls Completed</p>
-                  <p className="text-2xl font-black text-zinc-100">{stats.completedCalls}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Calls Completed</p>
+                  <p className="text-2xl font-black text-foreground">{stats.completedCalls}</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+            <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
                   <Clock className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Callbacks Pending</p>
-                  <p className="text-2xl font-black text-zinc-100">{stats.callbackCalls}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Callbacks Pending</p>
+                  <p className="text-2xl font-black text-foreground">{stats.callbackCalls}</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl shadow-sm hover:shadow-md transition-all">
+            <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl border border-indigo-500/20">
                   <UserCheck className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Deferred / Retries</p>
-                  <p className="text-2xl font-black text-zinc-100">{stats.deferredCalls}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Deferred / Retries</p>
+                  <p className="text-2xl font-black text-foreground">{stats.deferredCalls}</p>
                 </div>
               </CardContent>
             </Card>
@@ -247,7 +247,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                     return (
                       <div 
                         key={camp.id} 
-                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-zinc-900/40 border border-zinc-800/80 rounded-xl hover:border-zinc-700 transition-all gap-4"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/30 hover:shadow-sm transition-all gap-4"
                       >
                         {/* Left Section: Icon & Info */}
                         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -256,10 +256,10 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="text-sm font-bold text-zinc-100 truncate">{camp.name}</h4>
+                              <h4 className="text-sm font-bold text-foreground truncate">{camp.name}</h4>
                               {getStatusBadge(camp.status)}
                             </div>
-                            <p className="text-[10px] text-zinc-400 truncate mt-0.5 max-w-sm sm:max-w-md">
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5 max-w-sm sm:max-w-md">
                               {camp.description || 'Calling campaign.'}
                             </p>
                           </div>
@@ -268,20 +268,20 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                         {/* Middle Section: Progress & Stats */}
                         <div className="flex items-center gap-6 shrink-0 flex-wrap sm:flex-nowrap">
                           <div className="w-40 space-y-1">
-                            <div className="flex justify-between text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                            <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
                               <span>Progress</span>
                               <span>{progressVal}% ({camp.progress?.completed}/{camp.progress?.total})</span>
                             </div>
-                            <Progress value={progressVal} className="h-1.5 bg-zinc-850" />
+                            <Progress value={progressVal} className="h-1.5 bg-muted" />
                           </div>
 
                           <div className="flex gap-4 text-center">
                             <div>
-                              <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block">Pending</span>
-                              <span className="text-xs font-black text-zinc-200">{camp.progress?.pending}</span>
+                              <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block">Pending</span>
+                              <span className="text-xs font-black text-foreground">{camp.progress?.pending}</span>
                             </div>
-                            <div className="border-l border-zinc-800 pl-4">
-                              <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block">Callbacks</span>
+                            <div className="border-l border-border pl-4">
+                              <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block">Callbacks</span>
                               <span className="text-xs font-black text-amber-500">{camp.progress?.callbacks}</span>
                             </div>
                           </div>
@@ -293,7 +293,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                             onClick={() => handleDeleteCampaign(camp.id)}
                             variant="ghost" 
                             size="icon" 
-                            className="text-zinc-400 hover:text-rose-500 hover:bg-zinc-800 rounded-lg h-8 w-8 border border-zinc-800"
+                            className="text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg h-8 w-8 border border-border"
                             aria-label="Delete campaign"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -304,7 +304,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                               onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/analytics/${camp.id}`))}
                               variant="ghost" 
                               size="icon" 
-                              className="text-zinc-400 hover:text-primary hover:bg-zinc-800 rounded-lg h-8 w-8 border border-zinc-800"
+                              className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg h-8 w-8 border border-border"
                               title="View Outcome Analytics"
                               aria-label="View outcome analytics"
                             >
@@ -316,7 +316,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                             <Button 
                               onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?id=${camp.id}`))}
                               variant="outline" 
-                              className="h-8 px-3 rounded-lg text-[10px] uppercase font-bold tracking-wider border-zinc-850 bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
+                              className="h-8 px-3 rounded-lg text-[10px] uppercase font-bold tracking-wider border-border bg-muted hover:bg-accent text-muted-foreground"
                             >
                               Resume
                             </Button>
@@ -359,20 +359,20 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {scripts.map((script) => (
-                    <Card key={script.id} className="group relative border border-zinc-800/80 transition-all duration-500 rounded-2xl overflow-hidden bg-zinc-900/10 shadow-sm hover:shadow-2xl flex flex-col h-[420px]">
+                    <Card key={script.id} className="group relative border border-border transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-xl flex flex-col h-[420px]">
                       {/* Top Bar: Actions */}
-                      <div className="h-12 shrink-0 border-b border-zinc-800/80 flex items-center justify-between px-4 bg-zinc-950 transition-colors duration-500">
+                      <div className="h-12 shrink-0 border-b border-border flex items-center justify-between px-4 bg-muted/30 transition-colors duration-500">
                         <div className="flex items-center gap-1.5">
                           <div className="p-1.5 rounded-lg border border-primary/20 bg-primary/10 text-primary">
                             <FileText className="h-3 w-3" />
                           </div>
-                          <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">Outbound Call Script</span>
+                          <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Outbound Call Script</span>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
                             onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/scripts/new?id=${script.id}`))}
                             title="Edit Script"
                           >
@@ -381,7 +381,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-rose-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg"
+                            className="h-8 w-8 text-rose-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg"
                             onClick={() => handleDeleteScript(script.id)}
                             title="Delete Script"
                           >
@@ -391,39 +391,39 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                       </div>
 
                       {/* Middle: Dialogue Simulator Panel */}
-                      <div className="flex-1 overflow-hidden relative bg-zinc-950/20 flex flex-col items-center justify-center p-4">
-                        <div className="w-full h-full bg-zinc-900/40 rounded-xl p-4 flex flex-col justify-between gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-zinc-800 shadow-inner">
+                      <div className="flex-1 overflow-hidden relative bg-muted/20 flex flex-col items-center justify-center p-4">
+                        <div className="w-full h-full bg-muted/40 rounded-xl p-4 flex flex-col justify-between gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-border shadow-inner">
                           <div className="absolute -right-4 -top-4 opacity-5 rotate-12 text-primary">
                             <PhoneCall size={120} />
                           </div>
-                          <div className="p-4 bg-zinc-900 border border-zinc-800/80 rounded-2xl shadow-xl backdrop-blur-sm flex-1 overflow-y-auto max-h-[160px] custom-scrollbar">
-                            <p className="text-[9px] font-bold text-zinc-300 leading-relaxed italic font-serif">
+                          <div className="p-4 bg-background border border-border rounded-2xl shadow-sm backdrop-blur-sm flex-1 overflow-y-auto max-h-[160px] custom-scrollbar">
+                            <p className="text-[9px] font-bold text-foreground/80 leading-relaxed italic font-serif">
                               &ldquo;{script.content || 'Start editing this script...'}&rdquo;
                             </p>
                           </div>
-                          <div className="flex items-center justify-between opacity-30 border-t border-zinc-800/80 pt-2 shrink-0">
+                          <div className="flex items-center justify-between opacity-40 border-t border-border pt-2 shrink-0">
                             <div className="flex items-center gap-1">
                               <Phone className="h-3 w-3 text-primary" />
-                              <span className="text-[7px] font-semibold text-zinc-300">Outbound Dial Preview</span>
+                              <span className="text-[7px] font-semibold text-foreground/70">Outbound Dial Preview</span>
                             </div>
-                            <span className="text-[7px] font-semibold text-zinc-400">Duration Est. ~2m</span>
+                            <span className="text-[7px] font-semibold text-muted-foreground">Duration Est. ~2m</span>
                           </div>
                         </div>
                         <div className="absolute inset-0 bg-transparent z-10" />
                       </div>
 
                       {/* Bottom: Info Card */}
-                      <CardHeader className="p-5 shrink-0 bg-zinc-950 border-t border-zinc-800/80">
+                      <CardHeader className="p-5 shrink-0 bg-card border-t border-border">
                         <div className="min-w-0">
-                          <CardTitle className="text-sm font-semibold truncate text-zinc-100 group-hover:text-primary transition-colors leading-tight tracking-tight">
+                          <CardTitle className="text-sm font-semibold truncate text-card-foreground group-hover:text-primary transition-colors leading-tight tracking-tight">
                             {script.name}
                           </CardTitle>
-                          <p className="text-[9px] font-medium text-zinc-400 truncate mt-1">
+                          <p className="text-[9px] font-medium text-muted-foreground truncate mt-1">
                             {script.description || 'Call outreach script template.'}
                           </p>
                           <div className="flex flex-wrap gap-1 mt-3 max-h-[48px] overflow-hidden">
                             {script.variables.map(v => (
-                              <Badge key={v} variant="outline" className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-zinc-900/50 border-zinc-800 text-zinc-300">
+                              <Badge key={v} variant="outline" className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted border-border text-muted-foreground">
                                 {v}
                               </Badge>
                             ))}
@@ -442,15 +442,15 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
 
       {/* Script Deletion Confirmation Dialog */}
       <AlertDialog open={!!scriptToDelete} onOpenChange={(o) => !o && setScriptToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl max-w-md p-6 bg-zinc-900 border border-zinc-800 text-zinc-100">
+        <AlertDialogContent className="rounded-2xl max-w-md p-6 bg-card border border-border text-foreground">
           <AlertDialogHeader className="space-y-3">
-            <AlertDialogTitle className="font-bold text-base text-zinc-100">Delete Call Script</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-zinc-400 leading-relaxed">
+            <AlertDialogTitle className="font-bold text-base text-foreground">Delete Call Script</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
               Are you sure you want to delete this script? This action cannot be undone and will permanently remove this script definition.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 flex justify-end gap-3">
-            <AlertDialogCancel className="rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 text-xs font-bold px-4 py-2">
+            <AlertDialogCancel className="rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-bold px-4 py-2">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -469,15 +469,15 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
 
       {/* Campaign Deletion Confirmation Dialog */}
       <AlertDialog open={!!campaignToDelete} onOpenChange={(o) => !o && setCampaignToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl max-w-md p-6 bg-zinc-900 border border-zinc-800 text-zinc-100">
+        <AlertDialogContent className="rounded-2xl max-w-md p-6 bg-card border border-border text-foreground">
           <AlertDialogHeader className="space-y-3">
-            <AlertDialogTitle className="font-bold text-base text-zinc-100">Delete Call Campaign</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-zinc-400 leading-relaxed">
+            <AlertDialogTitle className="font-bold text-base text-foreground">Delete Call Campaign</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
               Are you sure you want to delete this campaign and all its call queue items? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 flex justify-end gap-3">
-            <AlertDialogCancel className="rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 text-xs font-bold px-4 py-2">
+            <AlertDialogCancel className="rounded-xl border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent text-xs font-bold px-4 py-2">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

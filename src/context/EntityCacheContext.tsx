@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
   useEffect,
+  useCallback,
   type ReactNode,
 } from 'react';
 import {
@@ -14,12 +15,14 @@ import {
   query,
   where,
   onSnapshot,
+  getDocs,
   type FirestoreError,
 } from 'firebase/firestore';
 import { useFirestore, useUser, useAuth } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { chunkIds, dedupeIds } from '@/lib/entities/entity-cache-domain';
 import type { WorkspaceEntity } from '@/lib/types';
 
 /**
@@ -59,6 +62,19 @@ export interface EntityCacheContextValue {
   error: FirestoreError | Error | null;
   /** Force-invalidate the cache and re-subscribe. Use after batch mutations. */
   invalidate: () => void;
+  /**
+   * Opt in to the full-collection subscription. Called by the full-set hooks
+   * (`useEntityCache`/`useSortedEntities`/`useActiveEntities`/`useEntityLookup`).
+   * Consumers using only `useEntityResolver` never call this, so as consumers
+   * migrate off the full set the unbounded subscription stops activating
+   * (Phase 5 strangler-fig — see the entity-cache-scale spec).
+   */
+  requestFullSet: () => void;
+  /**
+   * Resolve specific entities by their canonical `entityId` (deduped, batched,
+   * cached) — O(referenced) instead of loading the whole collection.
+   */
+  resolve: (entityIds: string[]) => Promise<Map<string, CachedEntity>>;
 }
 
 // ── Module-level cache (§8.1: init once, §7.4: cache function results) ───────
@@ -118,6 +134,55 @@ export function EntityCacheProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(!entities);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  // Lazy gate: the unbounded subscription only activates once a full-set consumer
+  // requests it. Resolver-only consumers never request it (Phase 5 strangler-fig).
+  const [fullSetRequested, setFullSetRequested] = useState(false);
+  const requestFullSet = useCallback(() => setFullSetRequested(true), []);
+
+  // Per-workspace by-entityId cache for `resolve` (independent of the full set).
+  const resolveCacheRef = useRef<Map<string, CachedEntity>>(new Map());
+  useEffect(() => {
+    resolveCacheRef.current = new Map(); // reset on workspace switch
+  }, [activeWorkspaceId]);
+
+  const resolve = useCallback(
+    async (entityIds: string[]): Promise<Map<string, CachedEntity>> => {
+      const result = new Map<string, CachedEntity>();
+      if (!firestore || !activeWorkspaceId) return result;
+
+      const wanted = dedupeIds(entityIds);
+      const missing: string[] = [];
+      for (const id of wanted) {
+        const cached = resolveCacheRef.current.get(id);
+        if (cached) result.set(id, cached);
+        else missing.push(id);
+      }
+      if (missing.length === 0) return result;
+
+      // Batched `entityId in [...]` queries (≤30 per chunk), run concurrently.
+      await Promise.all(
+        chunkIds(missing, 30).map(async (chunk) => {
+          const snap = await getDocs(
+            query(
+              collection(firestore, 'workspace_entities'),
+              where('workspaceId', '==', activeWorkspaceId),
+              where('entityId', 'in', chunk),
+            ),
+          );
+          for (const d of snap.docs) {
+            const ent = { ...(d.data() as WorkspaceEntity), id: d.id } as CachedEntity;
+            if (ent.entityId) {
+              resolveCacheRef.current.set(ent.entityId, ent);
+              result.set(ent.entityId, ent);
+            }
+          }
+        }),
+      );
+      return result;
+    },
+    [firestore, activeWorkspaceId],
+  );
+
   // Invalidation counter — increment to force re-subscription
   const invalidateCountRef = useRef(0);
   const [invalidateCount, setInvalidateCount] = useState(0);
@@ -133,6 +198,13 @@ export function EntityCacheProvider({ children }: { children: ReactNode }) {
       setEntities(null);
       setIsLoading(false);
       setError(null);
+      return;
+    }
+
+    // Strangler-fig gate: do not open the unbounded subscription until a full-set
+    // consumer has requested it. Resolver-only pages never trigger this.
+    if (!fullSetRequested) {
+      setIsLoading(false);
       return;
     }
 
@@ -249,7 +321,7 @@ export function EntityCacheProvider({ children }: { children: ReactNode }) {
     );
 
     return () => unsubscribe();
-  }, [firestore, activeWorkspaceId, user, invalidateCount]);
+  }, [firestore, activeWorkspaceId, user, invalidateCount, fullSetRequested]);
 
   // §5.11: functional setState for stable callback
   const invalidate = useMemo(
@@ -265,8 +337,8 @@ export function EntityCacheProvider({ children }: { children: ReactNode }) {
 
   // Memoize context value to prevent unnecessary consumer re-renders
   const value = useMemo<EntityCacheContextValue>(
-    () => ({ entities, isLoading, error, invalidate }),
-    [entities, isLoading, error, invalidate],
+    () => ({ entities, isLoading, error, invalidate, requestFullSet, resolve }),
+    [entities, isLoading, error, invalidate, requestFullSet, resolve],
   );
 
   return (
@@ -291,7 +363,47 @@ export function useEntityCache(): EntityCacheContextValue {
       'useEntityCache must be used within an EntityCacheProvider',
     );
   }
+  // Reading the full set opts this consumer into the unbounded subscription.
+  // (Migrate to useEntityResolver / useEntitySearch to stop triggering it.)
+  const { requestFullSet } = ctx;
+  useEffect(() => {
+    requestFullSet();
+  }, [requestFullSet]);
   return ctx;
+}
+
+/**
+ * Resolve specific entities by `entityId` on demand — batched, deduped, cached —
+ * WITHOUT loading the whole workspace. Use this instead of `useEntityLookup`
+ * when you only need a handful of entities (e.g. names/tags for visible rows).
+ *
+ * Returns `entitiesById` (accumulated results) and `resolveIds(ids)` to request
+ * more. Does NOT activate the full-collection subscription.
+ */
+export function useEntityResolver() {
+  const ctx = useContext(EntityCacheContext);
+  if (!ctx) {
+    throw new Error('useEntityResolver must be used within an EntityCacheProvider');
+  }
+  const { resolve } = ctx;
+  const [entitiesById, setEntitiesById] = useState<Map<string, CachedEntity>>(new Map());
+
+  const resolveIds = useCallback(
+    async (entityIds: string[]) => {
+      const resolved = await resolve(entityIds);
+      if (resolved.size > 0) {
+        setEntitiesById((prev) => {
+          const next = new Map(prev);
+          resolved.forEach((v, k) => next.set(k, v));
+          return next;
+        });
+      }
+      return resolved;
+    },
+    [resolve],
+  );
+
+  return { entitiesById, resolveIds };
 }
 
 /**
@@ -390,6 +502,8 @@ export function EntityCacheTestProvider({
     isLoading: false,
     error: null,
     invalidate: () => {},
+    requestFullSet: () => {},
+    resolve: async () => new Map(),
     ...value,
   };
 
@@ -418,6 +532,8 @@ export function createMockEntityCacheValue(
     isLoading: false,
     error: null,
     invalidate: () => {},
+    requestFullSet: () => {},
+    resolve: async () => new Map(),
     ...overrides,
   };
 }

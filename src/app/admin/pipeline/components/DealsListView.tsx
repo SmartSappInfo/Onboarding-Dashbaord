@@ -7,7 +7,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Deal } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { useEntityLookup } from '@/context/EntityCacheContext';
+import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +36,9 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
   const router = useRouter();
   const { activeWorkspaceId } = useWorkspace();
   const { assignedUserId } = useGlobalFilter();
-  const { byEntityId } = useEntityLookup();
+  // Resolve only the entities referenced by the visible deals (names + tags),
+  // not the whole workspace (Phase 5).
+  const { entitiesById, resolveIds } = useEntityResolver();
   const { singular } = useTerminology();
 
   const [sort, setSort] = React.useState<{ key: SortKey; dir: SortDir }>({ key: 'forecast', dir: 'asc' });
@@ -51,14 +53,20 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
   );
   const { data: deals, isLoading } = useCollection<Deal>(dealsQuery);
 
+  // Resolve the entities referenced by the current deals (deduped + batched).
+  React.useEffect(() => {
+    const ids = (deals || []).map((d) => d.entityId).filter((x): x is string => !!x);
+    if (ids.length > 0) resolveIds(ids);
+  }, [deals, resolveIds]);
+
   const entityName = React.useCallback(
-    (entityId: string) => byEntityId.get(entityId)?.displayName || 'Unknown',
-    [byEntityId]
+    (entityId: string) => entitiesById.get(entityId)?.displayName || 'Unknown',
+    [entitiesById]
   );
 
   const getEntityTags = React.useCallback(
-    (entityId: string) => byEntityId.get(entityId)?.workspaceTags ?? [],
-    [byEntityId]
+    (entityId: string) => entitiesById.get(entityId)?.workspaceTags ?? [],
+    [entitiesById]
   );
 
   const filteredDeals = React.useMemo(

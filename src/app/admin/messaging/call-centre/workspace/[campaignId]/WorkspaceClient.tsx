@@ -784,41 +784,41 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
+    <div className="h-full flex flex-col bg-background text-foreground overflow-hidden">
       
       {/* ─── Top Bar Banner ────────────────────────────────────────────────────── */}
-      <div className="px-6 py-4 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between shrink-0">
+      <div className="px-6 py-4 bg-card border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <Button
             onClick={() => router.push(wrapHref('/admin/messaging/call-centre'))}
             variant="ghost"
             size="icon"
-            className="rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100"
+            className="rounded-xl border border-border bg-muted hover:bg-accent text-muted-foreground hover:text-foreground"
             aria-label="Exit workspace"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h2 className="text-sm font-black uppercase text-zinc-100 tracking-wider line-clamp-1">{campaign?.name || 'Call Campaign'}</h2>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+            <h2 className="text-sm font-black uppercase text-foreground tracking-wider line-clamp-1">{campaign?.name || 'Call Campaign'}</h2>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               Manual Outreach Campaign Workspace
             </p>
           </div>
         </div>
 
         {/* Live Call Timer */}
-        <div className="flex items-center gap-3 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl">
+        <div className="flex items-center gap-3 px-4 py-2 bg-muted border border-border rounded-xl">
           <div className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </div>
-          <span className="text-xs font-bold text-zinc-300">Live Call Timer</span>
+          <span className="text-xs font-bold text-foreground">Live Call Timer</span>
           <span className="font-mono text-xs font-bold text-primary">{formatTime(seconds)}</span>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsTimerActive(!isTimerActive)}
-            className="h-6 w-6 text-zinc-400 hover:text-zinc-100 rounded"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground rounded"
             aria-label={isTimerActive ? "Pause call timer" : "Resume call timer"}
           >
             {isTimerActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
@@ -830,11 +830,11 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       <div className="flex-grow flex overflow-hidden">
         
         {/* Left Column: Call Queue Sidebar (Width 1/4) */}
-        <div className="w-80 bg-zinc-900/50 border-r border-zinc-800 flex flex-col justify-between overflow-hidden shrink-0">
-          <div className="p-4 border-b border-zinc-800 space-y-3 shrink-0">
+        <div className="w-80 bg-card/50 border-r border-border flex flex-col justify-between overflow-hidden shrink-0">
+          <div className="p-4 border-b border-border space-y-3 shrink-0">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Campaign Queue</span>
-              <Badge className="bg-zinc-800 border-zinc-700 text-zinc-300 font-mono text-[9px] font-bold">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Campaign Queue</span>
+              <Badge className="bg-muted border border-border text-foreground font-mono text-[9px] font-bold">
                 {groupedQueue.pending.length} Pending
               </Badge>
             </div>
@@ -844,7 +844,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
               <select
                 value={sortOption}
                 onChange={(e: any) => setSortOption(e.target.value)}
-                className="bg-zinc-950 border border-zinc-800 rounded-lg text-[10px] font-semibold text-zinc-300 p-1.5 focus:border-primary focus:ring-0 outline-none"
+                className="bg-background border border-border rounded-lg text-[10px] font-semibold text-foreground p-1.5 focus:border-primary focus:ring-0 outline-none"
                 aria-label="Sort queue items"
               >
                 <option value="default">Default Sort</option>
@@ -857,7 +857,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
               <select
                 value={filterOption}
                 onChange={(e: any) => setFilterOption(e.target.value)}
-                className="bg-zinc-950 border border-zinc-800 rounded-lg text-[10px] font-semibold text-zinc-300 p-1.5 focus:border-primary focus:ring-0 outline-none"
+                className="bg-background border border-border rounded-lg text-[10px] font-semibold text-foreground p-1.5 focus:border-primary focus:ring-0 outline-none"
                 aria-label="Filter queue items by entity type"
               >
                 <option value="all">All Types</option>
@@ -871,7 +871,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
           {/* List items (content-visibility virtual loading style) */}
           <div className="flex-grow overflow-y-auto p-3 space-y-2" style={{ contentVisibility: 'auto' }}>
             {processedPendingQueue.length === 0 ? (
-              <div className="p-8 text-center text-xs text-zinc-500 italic">No matching contacts.</div>
+              <div className="p-8 text-center text-xs text-muted-foreground italic">No matching contacts.</div>
             ) : (
               processedPendingQueue.map((item) => (
                 <div
@@ -881,7 +881,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                     "p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between",
                     item.id === currentItemId
                       ? "bg-primary/10 border-primary text-primary shadow"
-                      : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800/50 hover:border-zinc-700 hover:text-zinc-200"
+                      : "bg-card border-border text-muted-foreground hover:bg-muted hover:border-primary/30 hover:text-foreground"
                   )}
                 >
                   <div className="space-y-1">
@@ -889,7 +889,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                     <p className="text-[10px] font-mono">{item.entityPhone || 'No Phone'}</p>
                   </div>
                   {item.attempts > 0 && (
-                    <Badge variant="outline" className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-zinc-950 border-zinc-800 text-zinc-400">
+                    <Badge variant="outline" className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted border-border text-muted-foreground">
                       {item.attempts} attempts
                     </Badge>
                   )}
@@ -899,13 +899,13 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
           </div>
 
           {/* Statistics summary */}
-          <div className="p-4 bg-zinc-900 border-t border-zinc-800 text-center shrink-0">
-            <div className="grid grid-cols-2 gap-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-              <div className="p-2 bg-zinc-950 rounded-lg">
+          <div className="p-4 bg-card border-t border-border text-center shrink-0">
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              <div className="p-2 bg-muted rounded-lg">
                 <p>Completed</p>
-                <p className="text-sm font-black text-zinc-100">{groupedQueue.completed.length}</p>
+                <p className="text-sm font-black text-foreground">{groupedQueue.completed.length}</p>
               </div>
-              <div className="p-2 bg-zinc-950 rounded-lg">
+              <div className="p-2 bg-muted rounded-lg">
                 <p>Callbacks</p>
                 <p className="text-sm font-black text-amber-500">{groupedQueue.callbacks.length}</p>
               </div>
@@ -919,15 +919,15 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
           {currentItem ? (
             <>
               {/* Contact Profile Context Panel */}
-              <div className="p-5 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl space-y-4">
+              <div className="p-5 bg-card border border-border rounded-2xl space-y-4">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300">
+                    <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-muted-foreground">
                       <User className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-zinc-100">{currentItem.entityName}</h3>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{currentItem.entityType}</p>
+                      <h3 className="text-base font-bold text-foreground">{currentItem.entityName}</h3>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{currentItem.entityType}</p>
                     </div>
                   </div>
 
@@ -940,12 +940,12 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   </a>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-zinc-800 text-xs">
-                  <div className="flex items-center gap-2 text-zinc-400">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-border text-xs">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Mail className="h-4 w-4" />
-                    <span>Email: <span className="text-zinc-200 font-medium">{currentItem.entityEmail || 'No Email'}</span></span>
+                    <span>Email: <span className="text-foreground font-medium">{currentItem.entityEmail || 'No Email'}</span></span>
                   </div>
-                  <div className="flex items-center gap-2 text-zinc-400">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <FolderOpen className="h-4 w-4 text-primary" />
                     <span>Contact Stage: <span className="text-primary font-bold">{currentItem.status}</span></span>
                   </div>
@@ -953,21 +953,21 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
               </div>
 
               {/* Call Script Reading panel */}
-              <div className="flex-grow bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-inner relative flex flex-col justify-between min-h-[300px]">
-                <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+              <div className="flex-grow bg-card border border-border rounded-2xl p-6 shadow-sm relative flex flex-col justify-between min-h-[300px]">
+                <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
                   <FileText className="h-3.5 w-3.5" />
                   <span>Interactive Script View</span>
                 </div>
                 
                 {isBranching ? (
                   showGuardrailWarning ? (
-                    <div className="flex flex-col items-center justify-center text-center p-8 bg-zinc-900 border border-amber-500/20 rounded-2xl max-w-xl mx-auto my-6 space-y-4">
+                    <div className="flex flex-col items-center justify-center text-center p-8 bg-amber-50 dark:bg-zinc-900 border border-amber-500/20 rounded-2xl max-w-xl mx-auto my-6 space-y-4">
                       <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
                         <AlertTriangle className="h-6 w-6" />
                       </div>
                       <div className="space-y-2">
                         <h3 className="text-sm font-black uppercase text-amber-500 tracking-wider">Pre-Call Guardrail Alert</h3>
-                        <p className="text-xs text-zinc-300 max-w-sm">
+                        <p className="text-xs text-foreground/80 max-w-sm">
                           {currentNode?.data.startConfig?.checkDnc && isDncContact && (
                             <span>This contact is registered on the Do Not Call (DNC) list. Calling them may violate compliance regulations.</span>
                           )}
@@ -980,7 +980,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                         <Button
                           onClick={handleSkip}
                           variant="outline"
-                          className="flex-grow h-10 border-zinc-800 bg-zinc-950 text-xs font-bold hover:bg-zinc-900"
+                          className="flex-grow h-10 border-border bg-muted text-xs font-bold hover:bg-accent"
                         >
                           Skip Contact
                         </Button>
@@ -995,22 +995,22 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   ) : (
                     <div className="flex h-full min-h-[260px] overflow-hidden pt-4">
                       {/* Left Timeline */}
-                      <div className="flex flex-col gap-2 border-r border-zinc-805 pr-4 mr-4 shrink-0 w-48 overflow-y-auto">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">Conversation Path</span>
+                      <div className="flex flex-col gap-2 border-r border-border pr-4 mr-4 shrink-0 w-48 overflow-y-auto">
+                        <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Conversation Path</span>
                         {pathHistory.length === 0 ? (
-                          <span className="text-[10px] text-zinc-650 italic">No steps taken yet.</span>
+                          <span className="text-[10px] text-muted-foreground italic">No steps taken yet.</span>
                         ) : (
-                          <div className="space-y-4 relative pl-3 before:absolute before:left-1.5 before:top-1 before:bottom-1 before:w-[1px] before:bg-zinc-800">
+                          <div className="space-y-4 relative pl-3 before:absolute before:left-1.5 before:top-1 before:bottom-1 before:w-[1px] before:bg-border">
                             {pathHistory.map((histNodeId, idx) => {
                               const histNode = scriptGraph?.nodes.find(n => n.id === histNodeId);
                               if (!histNode) return null;
                               return (
                                 <div key={`${histNodeId}-${idx}`} className="relative flex items-center gap-2 text-[10px]">
-                                  <span className="absolute -left-[10px] w-2 h-2 rounded-full bg-zinc-700 border border-zinc-950" />
+                                  <span className="absolute -left-[10px] w-2 h-2 rounded-full bg-muted-foreground border border-background" />
                                   <button
                                     type="button"
                                     onClick={() => handleHistoryClick(histNodeId, idx)}
-                                    className="text-left font-bold text-zinc-400 hover:text-primary transition-colors hover:underline truncate max-w-[130px]"
+                                    className="text-left font-bold text-muted-foreground hover:text-primary transition-colors hover:underline truncate max-w-[130px]"
                                     title={`Jump back to ${histNode.data.label}`}
                                   >
                                     {histNode.data.label || histNode.id}
@@ -1021,10 +1021,10 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                           </div>
                         )}
                         {currentNode && (
-                          <div className="mt-4 pt-4 border-t border-zinc-805 pl-3 relative">
+                          <div className="mt-4 pt-4 border-t border-border pl-3 relative">
                             <span className="absolute -left-[10px] top-[22px] w-2 h-2 rounded-full bg-primary animate-pulse" />
                             <span className="text-[9px] font-black uppercase text-primary tracking-wider block">Active Node</span>
-                            <span className="text-[10px] font-bold text-zinc-200 block truncate max-w-[130px]">{currentNode.data.label}</span>
+                            <span className="text-[10px] font-bold text-foreground block truncate max-w-[130px]">{currentNode.data.label}</span>
                           </div>
                         )}
                       </div>
@@ -1043,8 +1043,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                             <div className="space-y-4 max-w-xl">
                               <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-2">
                                 <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wide">Outcome Step Reached</h4>
-                                <p className="text-xs text-zinc-300">
-                                  The conversation has reached the outcome: <span className="font-extrabold text-purple-300">"{currentNode.data.outcomeValue}"</span>.
+                                <p className="text-xs text-foreground">
+                                  The conversation has reached the outcome: <span className="font-extrabold text-purple-600">"{currentNode.data.outcomeValue}"</span>.
                                 </p>
                               </div>
                               <Button
@@ -1062,9 +1062,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                               <div className={cn(
                                 "p-4 border rounded-xl space-y-2",
                                 actionStatus === 'loading' ? "bg-primary/5 border-primary/20 text-primary" :
-                                actionStatus === 'success' ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400" :
-                                actionStatus === 'error' ? "bg-rose-500/5 border-rose-500/20 text-rose-400" :
-                                "bg-zinc-900 border-zinc-800 text-zinc-350"
+                                actionStatus === 'success' ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600" :
+                                actionStatus === 'error' ? "bg-rose-500/5 border-rose-500/20 text-rose-600" :
+                                "bg-muted border-border text-muted-foreground"
                               )}>
                                 <div className="flex items-center justify-between">
                                   <h4 className="text-xs font-bold uppercase tracking-wide">
@@ -1074,14 +1074,14 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                      'Automation Action Step'}
                                   </h4>
                                   {actionStatus === 'loading' && <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />}
-                                  {actionStatus === 'success' && <Check className="h-3.5 w-3.5 text-emerald-400" />}
-                                  {actionStatus === 'error' && <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />}
+                                  {actionStatus === 'success' && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                                  {actionStatus === 'error' && <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />}
                                 </div>
-                                <p className="text-xs text-zinc-350">
+                                <p className="text-xs text-foreground">
                                   This step triggers the automation action: <span className="font-extrabold">{currentNode.data.actionType?.replace('_', ' ')}</span>.
                                 </p>
                                 {actionError && (
-                                  <p className="text-[11px] text-rose-400 font-mono border-t border-rose-500/10 pt-2 mt-2">
+                                  <p className="text-[11px] text-rose-600 font-mono border-t border-rose-500/10 pt-2 mt-2">
                                     Error: {actionError}
                                   </p>
                                 )}
@@ -1090,7 +1090,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                           )}
 
                           {currentNode?.data?.text && (
-                            <div className="text-base font-serif text-zinc-200 leading-relaxed max-w-2xl pr-4 whitespace-pre-line select-text">
+                            <div className="text-base font-serif text-foreground leading-relaxed max-w-2xl pr-4 whitespace-pre-line select-text">
                               {resolvedActiveNodeText}
                             </div>
                           )}
@@ -1103,10 +1103,10 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                 id="compliance-checkbox"
                                 checked={complianceChecked}
                                 onChange={(e) => setComplianceChecked(e.target.checked)}
-                                className="mt-0.5 rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-0"
+                                className="mt-0.5 rounded border-border bg-background text-primary focus:ring-0"
                               />
-                              <label htmlFor="compliance-checkbox" className="text-xs text-zinc-350 cursor-pointer select-none">
-                                <span className="font-extrabold text-amber-400 block mb-1">Compliance Verification Required</span>
+                              <label htmlFor="compliance-checkbox" className="text-xs text-foreground/80 cursor-pointer select-none">
+                                <span className="font-extrabold text-amber-600 block mb-1">Compliance Verification Required</span>
                                 I verify that I have read the compliance statement exactly as written.
                               </label>
                             </div>
@@ -1114,12 +1114,12 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
                           {/* Dynamic Input Fields rendering for Question nodes */}
                           {currentNode?.type === 'question' && currentNode.data.questionConfig?.fieldName && (
-                            <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl max-w-xl space-y-3 shadow-inner">
+                            <div className="p-4 bg-muted/60 border border-border rounded-xl max-w-xl space-y-3 shadow-inner">
                               <div className="flex justify-between items-center">
-                                <Label htmlFor="question-input" className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
+                                <Label htmlFor="question-input" className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                                   Response for <span className="text-primary font-mono">{currentNode.data.questionConfig.fieldName}</span>
                                 </Label>
-                                <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-wider border-zinc-800 text-zinc-400 bg-zinc-900/40">
+                                <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-wider border-border text-muted-foreground bg-muted">
                                   {currentNode.data.questionConfig.fieldType || 'text'}
                                 </Badge>
                               </div>
@@ -1133,7 +1133,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                     setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
                                     setValidationError(null);
                                   }}
-                                  className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-lg text-xs p-2 focus:border-primary focus:ring-0 outline-none"
+                                  className="w-full bg-background border border-border text-foreground rounded-lg text-xs p-2 focus:border-primary focus:ring-0 outline-none"
                                 >
                                   <option value="">-- Choose Option --</option>
                                   {currentNode.data.questionConfig.selectOptions?.map(opt => (
@@ -1150,7 +1150,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                     setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
                                     setValidationError(null);
                                   }}
-                                  className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg h-9"
+                                  className="w-full bg-background border-border text-foreground text-xs rounded-lg h-9"
                                 />
                               ) : currentNode.data.questionConfig.fieldType === 'number' ? (
                                 <Input
@@ -1163,7 +1163,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                     setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
                                     setValidationError(null);
                                   }}
-                                  className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg h-9"
+                                  className="w-full bg-background border-border text-foreground text-xs rounded-lg h-9"
                                 />
                               ) : (
                                 <Input
@@ -1176,11 +1176,11 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                     setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
                                     setValidationError(null);
                                   }}
-                                  className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg h-9"
+                                  className="w-full bg-background border-border text-foreground text-xs rounded-lg h-9"
                                 />
                               )}
                               {currentNode.data.questionConfig.validationPattern && (
-                                <p className="text-[9px] text-zinc-500 font-mono">
+                                <p className="text-[9px] text-muted-foreground font-mono">
                                   Validation Regex: {currentNode.data.questionConfig.validationPattern}
                                 </p>
                               )}
@@ -1189,17 +1189,17 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
                           {/* Field level Validation Error banner */}
                           {validationError && (
-                            <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg text-xs flex items-center gap-2 max-w-xl">
+                            <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 rounded-lg text-xs flex items-center gap-2 max-w-xl">
                               <AlertTriangle className="h-4 w-4 shrink-0" />
                               <span>{validationError}</span>
                             </div>
                           )}
                         </div>
 
-                        <div className="pt-6 border-t border-zinc-800/80 mt-6 space-y-3 shrink-0">
+                        <div className="pt-6 border-t border-border mt-6 space-y-3 shrink-0">
                           {choices.length > 0 ? (
                             <>
-                              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Choose Customer's Response:</span>
+                              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Choose Customer's Response:</span>
                               <div className="flex flex-wrap gap-2">
                                 {choices.map((choice) => (
                                   <Button
@@ -1207,7 +1207,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                     type="button"
                                     disabled={currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked}
                                     onClick={() => handleChoiceClick(choice.targetNode.id)}
-                                    className="h-9 px-4 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-200 hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black"
+                                    className="h-9 px-4 rounded-xl border border-border bg-card text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black"
                                   >
                                     {choice.edgeLabel}
                                   </Button>
@@ -1216,7 +1216,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                             </>
                           ) : (
                             currentNode?.type !== 'outcome' && (
-                              <div className="text-xs text-zinc-500 italic">
+                              <div className="text-xs text-muted-foreground italic">
                                 No further choices. You can log the outcome in the right panel to complete this call.
                               </div>
                             )
@@ -1228,7 +1228,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                               size="sm"
                               type="button"
                               onClick={handleGoBack}
-                              className="h-8 text-[10px] font-bold text-zinc-400 hover:text-zinc-100 rounded-lg gap-1 px-2.5 mt-2"
+                              className="h-8 text-[10px] font-bold text-muted-foreground hover:text-foreground rounded-lg gap-1 px-2.5 mt-2"
                             >
                               <ChevronLeft className="h-3.5 w-3.5" /> Back to Previous Step
                             </Button>
@@ -1255,14 +1255,14 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         </div>
 
         {/* Right Column: Outcomes, Notes & History (Width 1/4) */}
-        <div className="w-96 bg-zinc-900/50 border-l border-zinc-800 flex flex-col overflow-hidden shrink-0">
+        <div className="w-96 bg-card/50 border-l border-border flex flex-col overflow-hidden shrink-0">
           
           <Tabs defaultValue="notes" className="flex-grow flex flex-col overflow-hidden">
-            <TabsList className="bg-zinc-900 border-b border-zinc-800 h-12 p-1 rounded-none shrink-0 flex">
-              <TabsTrigger value="notes" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-zinc-950 text-xs font-bold">Notes</TabsTrigger>
-              <TabsTrigger value="deals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-zinc-950 text-xs font-bold">Deals ({contactDeals.length})</TabsTrigger>
-              <TabsTrigger value="history" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-zinc-950 text-xs font-bold">Timeline ({contactHistory.length})</TabsTrigger>
-              <TabsTrigger value="rebuttals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-zinc-950 text-xs font-bold">Rebuttals ({objectionNodes.length})</TabsTrigger>
+            <TabsList className="bg-card border-b border-border h-12 p-1 rounded-none shrink-0 flex">
+              <TabsTrigger value="notes" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Notes</TabsTrigger>
+              <TabsTrigger value="deals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Deals ({contactDeals.length})</TabsTrigger>
+              <TabsTrigger value="history" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Timeline ({contactHistory.length})</TabsTrigger>
+              <TabsTrigger value="rebuttals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Rebuttals ({objectionNodes.length})</TabsTrigger>
             </TabsList>
 
             {/* Notes & Outcomes Tab */}
@@ -1272,32 +1272,32 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                 <>
                   {/* Notes input */}
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Call Notes & Log</Label>
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Call Notes &amp; Log</Label>
                     <Textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Document discussion here… Notes auto-save to database in real-time."
-                      className="min-h-[160px] bg-zinc-950 border-zinc-800 text-zinc-100 rounded-xl resize-none leading-relaxed p-3 focus:border-primary focus:ring-0"
+                      className="min-h-[160px] bg-background border-border text-foreground rounded-xl resize-none leading-relaxed p-3 focus:border-primary focus:ring-0"
                     />
                   </div>
 
                   {/* Secondary Queue controls */}
-                  <div className="space-y-2 border-t border-zinc-800 pt-4">
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Secondary Actions</span>
+                  <div className="space-y-2 border-t border-border pt-4">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Secondary Actions</span>
                     
                     {showCallbackPicker ? (
-                      <form onSubmit={handleScheduleCallback} className="space-y-3 p-3 bg-zinc-950 border border-zinc-800 rounded-xl">
-                        <Label className="text-[9px] font-bold text-zinc-400 uppercase">Select Callback Date/Time</Label>
+                      <form onSubmit={handleScheduleCallback} className="space-y-3 p-3 bg-muted border border-border rounded-xl">
+                        <Label className="text-[9px] font-bold text-muted-foreground uppercase">Select Callback Date/Time</Label>
                         <Input
                           type="datetime-local"
                           value={callbackDate}
                           onChange={(e) => setCallbackDate(e.target.value)}
-                          className="h-9 bg-zinc-900 border-zinc-800 text-zinc-200 text-xs rounded-lg"
+                          className="h-9 bg-background border-border text-foreground text-xs rounded-lg"
                           required
                         />
                         <div className="flex gap-2">
                           <Button type="submit" disabled={isActionsLoading} size="sm" className="h-8 rounded-lg font-bold text-[10px] flex-grow">Confirm</Button>
-                          <Button type="button" onClick={() => setShowCallbackPicker(false)} variant="outline" size="sm" className="h-8 rounded-lg border-zinc-800 text-[10px] flex-grow">Cancel</Button>
+                          <Button type="button" onClick={() => setShowCallbackPicker(false)} variant="outline" size="sm" className="h-8 rounded-lg border-border text-[10px] flex-grow">Cancel</Button>
                         </div>
                       </form>
                     ) : (
@@ -1306,7 +1306,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                           onClick={() => setShowCallbackPicker(true)}
                           variant="outline"
                           disabled={isActionsLoading}
-                          className="h-9 text-[10px] font-bold rounded-xl border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+                          className="h-9 text-[10px] font-bold rounded-xl border-border bg-muted hover:bg-accent"
                         >
                           Callback
                         </Button>
@@ -1314,7 +1314,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                           onClick={handleDefer}
                           variant="outline"
                           disabled={isActionsLoading}
-                          className="h-9 text-[10px] font-bold rounded-xl border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+                          className="h-9 text-[10px] font-bold rounded-xl border-border bg-muted hover:bg-accent"
                         >
                           Defer Call
                         </Button>
@@ -1322,7 +1322,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                           onClick={handleSkip}
                           variant="outline"
                           disabled={isActionsLoading}
-                          className="h-9 text-[10px] font-bold rounded-xl border-zinc-800 bg-zinc-900 hover:bg-zinc-800"
+                          className="h-9 text-[10px] font-bold rounded-xl border-border bg-muted hover:bg-accent"
                         >
                           Skip
                         </Button>
@@ -1331,8 +1331,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   </div>
 
                   {/* Call Outcomes grid buttons */}
-                  <div className="space-y-3 border-t border-zinc-800 pt-4">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Select Outcome (Completes Call)</span>
+                  <div className="space-y-3 border-t border-border pt-4">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Select Outcome (Completes Call)</span>
                     <div className="grid grid-cols-2 gap-2">
                       {campaign?.outcomes?.map(out => (
                         <Button
@@ -1348,7 +1348,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   </div>
                 </>
               ) : (
-                <div className="text-center text-xs text-zinc-500 italic py-20">No contact loaded.</div>
+                <div className="text-center text-xs text-muted-foreground italic py-20">No contact loaded.</div>
               )}
 
             </TabsContent>
@@ -1360,13 +1360,13 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   <RefreshCw className="h-6 w-6 text-primary animate-spin" />
                 </div>
               ) : contactDeals.length === 0 ? (
-                <p className="text-xs text-zinc-500 italic text-center py-20">No active CRM deals found for this contact.</p>
+                <p className="text-xs text-muted-foreground italic text-center py-20">No active CRM deals found for this contact.</p>
               ) : (
                 <div className="space-y-3">
                   {contactDeals.map((deal: any) => (
-                    <div key={deal.id} className="p-3 bg-zinc-950 border border-zinc-800/80 rounded-xl space-y-2">
+                    <div key={deal.id} className="p-3 bg-muted/40 border border-border rounded-xl space-y-2">
                       <div className="flex justify-between items-start">
-                        <h4 className="text-xs font-bold text-zinc-100 line-clamp-1">{deal.name}</h4>
+                        <h4 className="text-xs font-bold text-foreground line-clamp-1">{deal.name}</h4>
                         <Badge variant="outline" className={cn(
                           "text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
                           deal.status === 'won' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
@@ -1376,12 +1376,12 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                           {deal.status}
                         </Badge>
                       </div>
-                      <div className="flex justify-between items-center text-[10px] text-zinc-400 font-medium">
-                        <span>Stage: <span className="text-zinc-200">{deal.stageName || 'Unknown'}</span></span>
-                        <span className="font-mono text-zinc-100 font-bold">GHS {deal.value?.toLocaleString() || '0'}</span>
+                      <div className="flex justify-between items-center text-[10px] text-muted-foreground font-medium">
+                        <span>Stage: <span className="text-foreground">{deal.stageName || 'Unknown'}</span></span>
+                        <span className="font-mono text-foreground font-bold">GHS {deal.value?.toLocaleString() || '0'}</span>
                       </div>
                       {deal.expectedCloseDate && (
-                        <p className="text-[8px] text-zinc-500 font-medium uppercase">Expected Close: {new Date(deal.expectedCloseDate).toLocaleDateString()}</p>
+                        <p className="text-[8px] text-muted-foreground font-medium uppercase">Expected Close: {new Date(deal.expectedCloseDate).toLocaleDateString()}</p>
                       )}
                     </div>
                   ))}
@@ -1392,23 +1392,23 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             {/* History Tab */}
             <TabsContent value="history" className="flex-grow overflow-y-auto p-4 space-y-3">
               {contactHistory.length === 0 ? (
-                <p className="text-xs text-zinc-500 italic text-center py-20">No historical CRM activities found for this contact.</p>
+                <p className="text-xs text-muted-foreground italic text-center py-20">No historical CRM activities found for this contact.</p>
               ) : (
-                <div className="relative border-l border-zinc-800 pl-4 ml-2 space-y-6 py-2">
+                <div className="relative border-l border-border pl-4 ml-2 space-y-6 py-2">
                   {contactHistory.map((act: any) => (
                     <div key={act.id} className="relative space-y-1">
                       {/* Dot Indicator */}
-                      <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-zinc-950" />
+                      <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-background" />
                       
-                      <div className="flex items-center justify-between text-[9px] font-bold text-zinc-400">
-                        <Badge variant="outline" className="text-[8px] font-bold tracking-wider uppercase border-zinc-800 text-zinc-300 bg-zinc-900/50">
+                      <div className="flex items-center justify-between text-[9px] font-bold text-muted-foreground">
+                        <Badge variant="outline" className="text-[8px] font-bold tracking-wider uppercase border-border text-foreground bg-card">
                           {act.type.replace('_', ' ')}
                         </Badge>
                         <span>{new Date(act.timestamp).toLocaleDateString()}</span>
                       </div>
-                      <p className="text-xs text-zinc-200 leading-normal">{act.description}</p>
+                      <p className="text-xs text-foreground leading-normal">{act.description}</p>
                       {act.metadata?.notes && (
-                        <div className="p-2 bg-zinc-900/50 border border-zinc-800/50 rounded-lg text-[10px] text-zinc-400 italic">
+                        <div className="p-2 bg-muted/50 border border-border rounded-lg text-[10px] text-muted-foreground italic">
                           Notes: {act.metadata.notes}
                         </div>
                       )}
@@ -1421,18 +1421,18 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             {/* Rebuttals & Objections Tab */}
             <TabsContent value="rebuttals" className="flex-grow overflow-y-auto p-4 space-y-4 flex flex-col">
               <div className="space-y-3 flex-grow overflow-y-auto">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Objection Rebuttals Quick-Access</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Objection Rebuttals Quick-Access</span>
                 
                 <Input
                   type="text"
                   placeholder="Search objections by keyword..."
                   value={objectionSearch}
                   onChange={(e) => setObjectionSearch(e.target.value)}
-                  className="bg-zinc-950 border-zinc-800 text-zinc-150 text-xs rounded-xl h-9"
+                  className="bg-background border-border text-foreground text-xs rounded-xl h-9"
                 />
                 
                 {filteredObjections.length === 0 ? (
-                  <p className="text-xs text-zinc-500 italic text-center py-20">No matching objections found.</p>
+                  <p className="text-xs text-muted-foreground italic text-center py-20">No matching objections found.</p>
                 ) : (
                   <div className="space-y-2">
                     {filteredObjections.map((node) => (
@@ -1443,7 +1443,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                           "p-3 rounded-xl border cursor-pointer transition-all flex flex-col gap-1 text-left",
                           currentNodeId === node.id
                             ? "bg-amber-500/10 border-amber-500 text-amber-500 shadow"
-                            : "bg-zinc-950 border-zinc-850 text-zinc-400 hover:bg-zinc-900 hover:border-zinc-750 hover:text-zinc-200"
+                            : "bg-muted border-border text-muted-foreground hover:bg-card hover:border-primary/30 hover:text-foreground"
                         )}
                       >
                         <div className="flex justify-between items-center">
@@ -1455,7 +1455,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                         {node.data.objectionConfig?.keywordTriggers && node.data.objectionConfig.keywordTriggers.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {node.data.objectionConfig.keywordTriggers.map((kw: string) => (
-                              <Badge key={kw} variant="outline" className="text-[8px] border-zinc-805 text-zinc-400 bg-zinc-900/50">
+                              <Badge key={kw} variant="outline" className="text-[8px] border-border text-muted-foreground bg-muted">
                                 {kw}
                               </Badge>
                             ))}

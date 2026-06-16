@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "workspace_entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "displayNameLower", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "whatsapp_templates",
       "queryScope": "COLLECTION",
       "fields": [

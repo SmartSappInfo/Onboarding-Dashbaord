@@ -4,8 +4,9 @@ import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, CalendarPlus } from 'lucide-react';
+import { Loader2, CalendarPlus, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { backfillDisplayNameLower } from '@/lib/entities/backfill-display-name-lower';
 import { seedEnrichedMeetingTemplatesAction } from '@/app/actions/seed-meeting-invitation-templates-action';
 import { seedDefaultStyleBlueprintsAction } from '@/app/actions/seed-default-style-blueprints-action';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
@@ -69,6 +70,37 @@ export default function SeedsClient() {
         setIsSeeding(false);
     };
 
+    // ── Entity search-index backfill (Phase 5.2) ──
+    const [isBackfilling, setIsBackfilling] = React.useState(false);
+    const [backfillStats, setBackfillStats] = React.useState<{ processed: number; updated: number } | null>(null);
+
+    const handleBackfillSearchIndex = async () => {
+        setIsBackfilling(true);
+        setBackfillStats({ processed: 0, updated: 0 });
+        try {
+            let afterId: string | undefined = undefined;
+            let processed = 0;
+            let updated = 0;
+            // Client-driven loop: each call backfills one page (≤400 docs) and
+            // returns the next cursor, so no single request runs long.
+            do {
+                const res = await backfillDisplayNameLower(afterId ? { afterId } : undefined);
+                processed += res.processed;
+                updated += res.updated;
+                setBackfillStats({ processed, updated });
+                afterId = res.nextCursor ?? undefined;
+            } while (afterId);
+            toast({
+                title: 'Search index backfilled',
+                description: `${processed.toLocaleString()} scanned · ${updated.toLocaleString()} updated.`,
+            });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Backfill failed', description: error.message });
+        } finally {
+            setIsBackfilling(false);
+        }
+    };
+
     const [isStyleSeeding, setIsStyleSeeding] = React.useState(false);
 
     const handleSeedDefaultStyleBlueprints = async () => {
@@ -112,6 +144,43 @@ export default function SeedsClient() {
 
                 {/* Seeding Section */}
                 <div className="grid gap-6">
+                    <Card className="border-blue-100 bg-blue-50/30 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Search className="h-24 w-24 text-blue-600" />
+                        </div>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Entity Search Index</span>
+                            </div>
+                            <CardTitle className="text-xl text-blue-950">Backfill Entity Search Index</CardTitle>
+                            <CardDescription className="max-w-2xl text-blue-900/70">
+                                Adds the searchable <code>displayNameLower</code> field to existing entities so the new paginated entity search (deal picker, audiences, dropdowns) can find them. New and edited entities get it automatically — this one-time pass covers legacy records. Safe to re-run (only touches rows missing the field).
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700">Cursor-based</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700">Idempotent</Badge>
+                                    {backfillStats && (
+                                        <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700 tabular-nums">
+                                            {backfillStats.processed.toLocaleString()} scanned · {backfillStats.updated.toLocaleString()} updated
+                                        </Badge>
+                                    )}
+                                </div>
+                                <Button
+                                    onClick={handleBackfillSearchIndex}
+                                    disabled={isBackfilling}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-none min-w-[180px]"
+                                >
+                                    {isBackfilling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                                    {isBackfilling ? 'Backfilling…' : 'Backfill Search Index'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     <Card className="border-teal-100 bg-teal-50/30 overflow-hidden relative group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <CalendarPlus className="h-24 w-24 text-teal-600" />

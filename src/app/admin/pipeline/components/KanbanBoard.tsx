@@ -31,7 +31,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Workflow } from 'lucide-react';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { useEntityLookup } from '@/context/EntityCacheContext';
+import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { updateDealStageAction, updateDealStatusAction } from '@/app/actions/deal-actions';
@@ -68,10 +68,12 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { user } = useUser();
-  const { byEntityId } = useEntityLookup();
+  // Resolve only the entities referenced by the visible deals (for tag filtering)
+  // instead of loading the entire workspace into memory (Phase 5).
+  const { entitiesById, resolveIds } = useEntityResolver();
   const getEntityTags = React.useCallback(
-    (entityId: string) => byEntityId.get(entityId)?.workspaceTags ?? [],
-    [byEntityId]
+    (entityId: string) => entitiesById.get(entityId)?.workspaceTags ?? [],
+    [entitiesById]
   );
 
   // 1. Fetch Stages for specific Pipeline
@@ -151,6 +153,13 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   const allDeals = React.useMemo(() => {
     return deals || [];
   }, [deals]);
+
+  // Resolve the entities referenced by the current deals (deduped + batched) so
+  // tag filtering has the data it needs — O(deals), not O(all entities).
+  React.useEffect(() => {
+    const ids = allDeals.map((d) => d.entityId).filter((x): x is string => !!x);
+    if (ids.length > 0) resolveIds(ids);
+  }, [allDeals, resolveIds]);
 
   // 4. Apply Multi-Layer Filtering (shared with the list view)
   const filteredDeals = React.useMemo(

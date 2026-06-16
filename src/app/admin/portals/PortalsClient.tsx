@@ -21,9 +21,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
-import { useEntityLookup } from '@/context/EntityCacheContext';
+import { useEntityResolver } from '@/context/EntityCacheContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { PortalCard } from './components/PortalCard';
+import { CustomPageSeoDialog } from './components/CustomPageSeoDialog';
 
 // ─── Skeleton grid — hoisted to module level (rerender-hoist-jsx) ─────────────
 
@@ -110,9 +111,20 @@ export default function PortalsClient() {
   const firestore             = useFirestore();
   const { toast }             = useToast();
   const { activeWorkspaceId } = useTenant();
-  const { byEntityId }        = useEntityLookup();
+  // Resolve only the entities referenced by the listed portals (for logos),
+  // not the whole workspace (Phase 5).
+  const { entitiesById, resolveIds } = useEntityResolver();
 
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [editingSeoPage, setEditingSeoPage] = React.useState<{
+    pageKey: string;
+    title: string;
+    path: string;
+  } | null>(null);
+
+  const handleEditSeo = React.useCallback((pageKey: string, title: string, path: string) => {
+    setEditingSeoPage({ pageKey, title, path });
+  }, []);
 
   // ── Queries ───────────────────────────────────────────────────────────────
 
@@ -142,6 +154,18 @@ export default function PortalsClient() {
   const { data: meetings, isLoading: isLoadingMeetings } = useCollection<Meeting>(meetingsQuery);
 
   const isLoading = isLoadingSurveys || isLoadingPdfs || isLoadingMeetings;
+
+  // Resolve the entities referenced by the listed portals (deduped + batched).
+  React.useEffect(() => {
+    const ids = [
+      ...(surveys ?? []),
+      ...(pdfs ?? []),
+      ...(meetings ?? []),
+    ]
+      .map((p) => p.entityId)
+      .filter((x): x is string => !!x);
+    if (ids.length > 0) resolveIds(ids);
+  }, [surveys, pdfs, meetings, resolveIds]);
 
   // ── Filtered lists — derived during render (rerender-derived-state-no-effect) ─
 
@@ -242,6 +266,7 @@ export default function PortalsClient() {
                     pageKey="/"
                     themeColor="#3B5FFF"
                     onCopy={handleCopy}
+                    onEditSeo={handleEditSeo}
                   />
                   <PortalCard
                     kind="custom"
@@ -250,6 +275,16 @@ export default function PortalsClient() {
                     pageKey="/collect-fees-within-four-weeks"
                     themeColor="#5f30e2"
                     onCopy={handleCopy}
+                    onEditSeo={handleEditSeo}
+                  />
+                  <PortalCard
+                    kind="custom"
+                    title="/number-one-choice"
+                    path="/number-one-choice"
+                    pageKey="/number-one-choice"
+                    themeColor="#ec4899"
+                    onCopy={handleCopy}
+                    onEditSeo={handleEditSeo}
                   />
                   <PortalCard
                     kind="custom"
@@ -258,14 +293,15 @@ export default function PortalsClient() {
                     pageKey="/thank-you"
                     themeColor="#10b981"
                     onCopy={handleCopy}
+                    onEditSeo={handleEditSeo}
                   />
                   {activeWorkspaceId === 'onboarding' && (
                     <>
-                      <PortalCard kind="custom" title="Campaign Landing"    path="/campaign/school-comparison"            pageKey="/campaign/school-comparison"            themeColor="#6366f1" onCopy={handleCopy} />
-                      <PortalCard kind="custom" title="Campaign Stats"       path="/campaign/school-comparison/statistics" pageKey="/campaign/school-comparison/statistics" themeColor="#10b981" onCopy={handleCopy} />
-                      <PortalCard kind="custom" title="Subscription Payment" path="/p/subscription-payment"               pageKey="/p/subscription-payment"               themeColor="#6366f1" onCopy={handleCopy} />
-                      <PortalCard kind="custom" title="New School Signup"    path="/register-new-signup"                  pageKey="/register-new-signup"                  themeColor="#10b981" onCopy={handleCopy} />
-                      <PortalCard kind="custom" title="Results Directory"    path="/forms/results"                        pageKey="/forms/results"                        themeColor="#6366f1" onCopy={handleCopy} />
+                      <PortalCard kind="custom" title="Campaign Landing"    path="/campaign/school-comparison"            pageKey="/campaign/school-comparison"            themeColor="#6366f1" onCopy={handleCopy} onEditSeo={handleEditSeo} />
+                      <PortalCard kind="custom" title="Campaign Stats"       path="/campaign/school-comparison/statistics" pageKey="/campaign/school-comparison/statistics" themeColor="#10b981" onCopy={handleCopy} onEditSeo={handleEditSeo} />
+                      <PortalCard kind="custom" title="Subscription Payment" path="/p/subscription-payment"               pageKey="/p/subscription-payment"               themeColor="#6366f1" onCopy={handleCopy} onEditSeo={handleEditSeo} />
+                      <PortalCard kind="custom" title="New School Signup"    path="/register-new-signup"                  pageKey="/register-new-signup"                  themeColor="#10b981" onCopy={handleCopy} onEditSeo={handleEditSeo} />
+                      <PortalCard kind="custom" title="Results Directory"    path="/forms/results"                        pageKey="/forms/results"                        themeColor="#6366f1" onCopy={handleCopy} onEditSeo={handleEditSeo} />
                     </>
                   )}
                 </div>
@@ -284,7 +320,7 @@ export default function PortalsClient() {
                       title={s.title}
                       description={s.description}
                       entityName={s.entityName ?? undefined}
-                      logoUrl={s.logoUrl ?? (s.entityId ? byEntityId.get(s.entityId)?.logoUrl : undefined)}
+                      logoUrl={s.logoUrl ?? (s.entityId ? entitiesById.get(s.entityId)?.logoUrl : undefined)}
                       entityId={s.entityId ?? undefined}
                       path={`/surveys/${s.slug}`}
                       backgroundColor={s.backgroundColor}
@@ -307,7 +343,7 @@ export default function PortalsClient() {
                       kind="pdf"
                       title={p.publicTitle || p.name}
                       entityName={p.entityName ?? undefined}
-                      logoUrl={p.logoUrl ?? (p.entityId ? byEntityId.get(p.entityId)?.logoUrl : undefined)}
+                      logoUrl={p.logoUrl ?? (p.entityId ? entitiesById.get(p.entityId)?.logoUrl : undefined)}
                       entityId={p.entityId ?? undefined}
                       path={`/forms/${p.slug || p.id}`}
                       backgroundColor={p.backgroundColor}
@@ -334,7 +370,7 @@ export default function PortalsClient() {
                         title={m.type?.name || 'Session'}
                         description={m.heroDescription}
                         entityName={m.entityName ?? undefined}
-                        logoUrl={m.logoUrl ?? (m.entityId ? byEntityId.get(m.entityId)?.logoUrl : undefined)}
+                        logoUrl={m.logoUrl ?? (m.entityId ? entitiesById.get(m.entityId)?.logoUrl : undefined)}
                         entityId={m.entityId}
                         path={`/meetings/${typeSlug}/${m.entitySlug}`}
                         meetingTime={m.meetingTime}
@@ -351,6 +387,15 @@ export default function PortalsClient() {
           </div>
         )}
       </div>
+      {editingSeoPage && (
+        <CustomPageSeoDialog
+          open={!!editingSeoPage}
+          onOpenChange={(open) => !open && setEditingSeoPage(null)}
+          pageKey={editingSeoPage.pageKey}
+          currentTitle={editingSeoPage.title}
+          currentPath={editingSeoPage.path}
+        />
+      )}
     </PageContainerFluid>
   );
 }

@@ -19,6 +19,7 @@ import { after } from 'next/server';
 import { BulkVerificationService } from './bulk-verifier';
 import { BulkPhoneVerificationService } from './bulk-phone-verifier';
 import { applyIndustryDataDefaults } from './entity-utils';
+import { toSearchKey } from './entities/entity-cache-domain';
 
 /**
  * Runs background contact verification for a primary contact.
@@ -418,6 +419,7 @@ export async function createEntityAction(
         addedAt: timestamp,
         updatedAt: timestamp,
         displayName: displayName,
+        displayNameLower: toSearchKey(displayName), // searchable (Phase 5.2)
         // Denormalized contact fields from entityContacts (FER-01)
         primaryContactName,
         primaryEmail,
@@ -683,6 +685,7 @@ export async function updateEntityAction(
         
         const weUpdate: any = {
           displayName: displayName,
+          displayNameLower: toSearchKey(displayName), // searchable (Phase 5.2)
           updatedAt: timestamp,
         };
         

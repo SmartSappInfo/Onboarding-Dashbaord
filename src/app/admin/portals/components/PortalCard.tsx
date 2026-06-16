@@ -41,6 +41,7 @@ export interface PortalCardProps {
   fieldCount?: number;
   themeColor?: string;
   onCopy: (path: string) => void;
+  onEditSeo?: (pageKey: string, currentTitle: string, currentPath: string) => void;
 }
 
 // ─── Kind display config ──────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ export const PortalCard = React.memo(function PortalCard({
   fieldCount,
   themeColor: themeColorProp,
   onCopy,
+  onEditSeo,
 }: PortalCardProps) {
   const cfg        = KIND_CONFIG[kind] ?? KIND_CONFIG.custom;
   const themeColor = themeColorProp ?? THEME_COLOR[kind];
@@ -170,7 +172,7 @@ export const PortalCard = React.memo(function PortalCard({
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem asChild>
                 <a href={path} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                  <Globe className="h-3.5 w-3.5" />
+                  <ExternalLink className="h-3.5 w-3.5" />
                   Open Portal
                 </a>
               </DropdownMenuItem>
@@ -181,6 +183,18 @@ export const PortalCard = React.memo(function PortalCard({
                 <Link2 className="h-3.5 w-3.5" />
                 Copy Link
               </DropdownMenuItem>
+              {onEditSeo && pageKey && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditSeo(pageKey, title, path);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Configure SEO
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -201,6 +215,19 @@ export const PortalCard = React.memo(function PortalCard({
           <OverlayBtn label="Copy Link" onClick={handleCopy}>
             <Link2 className="h-4 w-4" />
           </OverlayBtn>
+
+          {/* Edit SEO */}
+          {onEditSeo && pageKey && (
+            <OverlayBtn
+              label="Configure SEO"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditSeo(pageKey, title, path);
+              }}
+            >
+              <Globe className="h-4 w-4" />
+            </OverlayBtn>
+          )}
 
           {/* QR — wrapped in span to allow tooltip without breaking CreateQRButton */}
           <div className="group/btn relative flex h-9 w-9 items-center justify-center rounded-xl border border-white/25 bg-white/12 backdrop-blur-sm text-white transition-all duration-150 hover:bg-primary hover:border-white/50 hover:scale-110 active:scale-95">

@@ -1069,6 +1069,8 @@ export interface WorkspaceEntity {
   updatedAt: string;
   // Denormalized read-model fields for performance
   displayName: string;
+  /** Lowercased, trimmed displayName for case-insensitive search (Phase 5.2). */
+  displayNameLower?: string;
   primaryContactName?: string;
   primaryEmail?: string;  // Denormalized from entityContacts where isPrimary
   primaryPhone?: string;  // Denormalized from entityContacts where isPrimary

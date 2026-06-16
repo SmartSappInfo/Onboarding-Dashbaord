@@ -58,7 +58,7 @@ import type { ScriptNode, ScriptEdge, ScriptNodeType } from '@/lib/types';
 // Lazy load the ReactFlow canvas to optimize initial bundle sizes
 const VisualScriptCanvas = dynamic(
   () => import('../components/VisualScriptCanvas').then(mod => mod.VisualScriptCanvas),
-  { ssr: false, loading: () => <div className="h-[550px] bg-zinc-950/20 border border-zinc-900 rounded-2xl flex items-center justify-center text-zinc-500">Loading Flow Canvas...</div> }
+  { ssr: false, loading: () => <div className="h-[550px] bg-muted/20 border border-border rounded-2xl flex items-center justify-center text-muted-foreground">Loading Flow Canvas...</div> }
 );
 
 interface ScriptBuilderClientProps {
@@ -361,13 +361,13 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
       <Tabs defaultValue="flow" value={editorTab} onValueChange={(v: any) => setEditorTab(v)} className="w-full space-y-8 max-w-7xl mx-auto">
         
         {/* Header Navigation */}
-        <div className="flex items-center justify-between flex-wrap gap-4 border-b border-zinc-900 pb-5">
+        <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border pb-5">
           <div className="flex items-center gap-3">
             <Button
               onClick={() => router.push(wrapHref('/admin/messaging/call-centre?tab=scripts'))}
               variant="outline"
               size="icon"
-              className="rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 shrink-0"
+              className="rounded-xl border border-border bg-muted hover:bg-accent text-muted-foreground shrink-0"
               type="button"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -380,7 +380,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                     onChange={(e) => setName(e.target.value)}
                     onBlur={() => setIsEditingTitle(false)}
                     onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
-                    className="h-8 bg-zinc-950 border-zinc-800 text-sm font-bold text-zinc-100 rounded-lg w-64 focus:border-primary focus:ring-0 px-2.5"
+                    className="h-8 bg-muted border-border text-sm font-bold text-foreground rounded-lg w-64 focus:border-primary focus:ring-0 px-2.5"
                     autoFocus
                     placeholder="Script Title"
                   />
@@ -389,14 +389,14 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                     variant="ghost"
                     type="button"
                     onClick={() => setIsEditingTitle(false)}
-                    className="h-7 w-7 text-zinc-400 hover:text-zinc-200"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
                   >
                     <Check className="h-4 w-4" />
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setIsEditingTitle(true)}>
-                  <h1 className="text-xl font-black uppercase text-zinc-100 tracking-wider">
+                  <h1 className="text-xl font-black uppercase text-foreground tracking-wider">
                     {name || 'Untitled Script'}
                   </h1>
                   <Pencil className="h-3.5 w-3.5 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity hover:text-zinc-300" />
@@ -410,7 +410,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                     onChange={(e) => setDescription(e.target.value)}
                     onBlur={() => setIsEditingDesc(false)}
                     onKeyDown={(e) => e.key === 'Enter' && setIsEditingDesc(false)}
-                    className="h-7 bg-zinc-950 border-zinc-800 text-xs text-zinc-300 rounded-lg w-96 focus:border-primary focus:ring-0 px-2"
+                    className="h-7 bg-muted border-border text-xs text-foreground rounded-lg w-96 focus:border-primary focus:ring-0 px-2"
                     autoFocus
                     placeholder="Campaign context description"
                   />
@@ -426,7 +426,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                 </div>
               ) : (
                 <div className="flex items-center gap-2 mt-0.5 group cursor-pointer" onClick={() => setIsEditingDesc(true)}>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-normal">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-normal">
                     {description || 'Script Description Here'}
                   </p>
                   <Pencil className="h-3 w-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity hover:text-zinc-300" />
@@ -437,24 +437,24 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
           
           <div className="flex items-center gap-4">
             {/* View Switcher Tabs next to Save Flow button */}
-            <TabsList className="bg-zinc-900/60 border border-zinc-850 h-9 p-0.5 rounded-xl gap-1 shrink-0">
+            <TabsList className="bg-muted border border-border h-9 p-0.5 rounded-xl gap-1 shrink-0">
               <TabsTrigger 
                 value="flow" 
-                className="rounded-lg text-[10px] font-bold px-3 py-1 text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 transition-colors"
+                className="rounded-lg text-[10px] font-bold px-3 py-1 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground transition-colors"
               >
                 <GitBranch className="h-3.5 w-3.5 mr-1" />
                 Visual Flow
               </TabsTrigger>
               <TabsTrigger 
                 value="playbook" 
-                className="rounded-lg text-[10px] font-bold px-3 py-1 text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 transition-colors"
+                className="rounded-lg text-[10px] font-bold px-3 py-1 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground transition-colors"
               >
                 <List className="h-3.5 w-3.5 mr-1" />
                 Playbook Outline
               </TabsTrigger>
               <TabsTrigger 
                 value="text" 
-                className="rounded-lg text-[10px] font-bold px-3 py-1 text-zinc-400 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100 transition-colors"
+                className="rounded-lg text-[10px] font-bold px-3 py-1 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground transition-colors"
               >
                 <FileText className="h-3.5 w-3.5 mr-1" />
                 Legacy Text
@@ -467,7 +467,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                 onClick={() => setIsAiOpen(true)}
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-xl text-[10px] uppercase font-bold tracking-wider gap-1.5 border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300"
+                className="h-9 rounded-xl text-[10px] uppercase font-bold tracking-wider gap-1.5 border-border bg-muted hover:bg-accent text-muted-foreground"
               >
                 <Wand2 className="h-3.5 w-3.5" /> AI Generator
               </Button>
@@ -500,12 +500,12 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         <AlertTriangle className="h-4 w-4" />
                         <span>Canvas Warnings ({graphValidation.warnings.length})</span>
                       </div>
-                      <ul className="text-[10px] text-zinc-400 space-y-1.5 list-disc pl-4 leading-normal">
+                      <ul className="text-[10px] text-muted-foreground space-y-1.5 list-disc pl-4 leading-normal">
                         {graphValidation.warnings.slice(0, 3).map((w, idx) => (
                           <li key={idx}>{w}</li>
                         ))}
                         {graphValidation.warnings.length > 3 && (
-                          <li className="italic font-bold text-zinc-500">And {graphValidation.warnings.length - 3} more...</li>
+                          <li className="italic font-bold text-muted-foreground">And {graphValidation.warnings.length - 3} more...</li>
                         )}
                       </ul>
                     </CardContent>
@@ -513,17 +513,17 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                 )}
 
                 {/* Active Placeholders Detected */}
-                <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl flex-grow overflow-y-auto">
+                <Card className="border border-border bg-card rounded-2xl flex-grow overflow-y-auto">
                   <CardContent className="p-4 space-y-3">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
                       Active Placeholders Detected ({detectedVariables.length})
                     </span>
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {detectedVariables.length === 0 ? (
-                        <span className="text-[10px] text-zinc-500 italic">No curly-brace placeholders detected in nodes.</span>
+                        <span className="text-[10px] text-muted-foreground italic">No curly-brace placeholders detected in nodes.</span>
                       ) : (
                         detectedVariables.map(v => (
-                          <Badge key={v} variant="outline" className="text-[8px] font-bold bg-zinc-950 border-zinc-800 text-zinc-350 tracking-wider px-2 py-0.5 rounded">
+                          <Badge key={v} variant="outline" className="text-[8px] font-bold bg-muted border-border text-muted-foreground tracking-wider px-2 py-0.5 rounded">
                             {v}
                           </Badge>
                         ))
@@ -537,7 +537,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
             {/* Center Canvas Container */}
             <div 
               className={cn(
-                "relative border border-zinc-800 bg-zinc-950/20 rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-300",
+                "relative border border-border bg-muted/20 rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-300",
                 (leftPanelCollapsed && rightPanelCollapsed) ? "lg:col-span-12" :
                 (leftPanelCollapsed && !rightPanelCollapsed) ? "lg:col-span-9" :
                 (!leftPanelCollapsed && rightPanelCollapsed) ? "lg:col-span-9" :
@@ -550,7 +550,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                 onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
                 variant="outline"
                 size="icon"
-                className="absolute left-4 top-4 z-20 h-8 w-8 rounded-lg border border-zinc-800 bg-zinc-900/90 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 shadow-md backdrop-blur-sm transition-colors"
+                className="absolute left-4 top-4 z-20 h-8 w-8 rounded-lg border border-border bg-background/90 text-muted-foreground hover:text-foreground hover:bg-muted shadow-md backdrop-blur-sm transition-colors"
                 title={leftPanelCollapsed ? "Expand left panel" : "Collapse left panel"}
               >
                 {leftPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -561,14 +561,14 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                 onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
                 variant="outline"
                 size="icon"
-                className="absolute right-4 top-4 z-20 h-8 w-8 rounded-lg border border-zinc-800 bg-zinc-900/90 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 shadow-md backdrop-blur-sm transition-colors"
+                className="absolute right-4 top-4 z-20 h-8 w-8 rounded-lg border border-border bg-background/90 text-muted-foreground hover:text-foreground hover:bg-muted shadow-md backdrop-blur-sm transition-colors"
                 title={rightPanelCollapsed ? "Expand right panel" : "Collapse right panel"}
               >
                 {rightPanelCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </Button>
 
               {/* Floating Visual Node Toolbar (Figma-style) */}
-              <div className="absolute left-4 top-16 z-20 flex flex-col gap-1.5 p-1.5 bg-zinc-900/95 border border-zinc-800 rounded-xl shadow-2xl backdrop-blur-sm">
+              <div className="absolute left-4 top-16 z-20 flex flex-col gap-1.5 p-1.5 bg-background/95 border border-border rounded-xl shadow-2xl backdrop-blur-sm">
                 <TooltipProvider delayDuration={150}>
                   {/* Start Node */}
                   <Tooltip>
@@ -584,7 +584,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         <PlayCircle className="h-4.5 w-4.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-zinc-950 border-zinc-850 text-zinc-200 text-[9px] font-black uppercase tracking-wider">
+                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
                       Add Start Node
                     </TooltipContent>
                   </Tooltip>
@@ -603,7 +603,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         <MessageSquare className="h-4.5 w-4.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-zinc-950 border-zinc-850 text-zinc-200 text-[9px] font-black uppercase tracking-wider">
+                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
                       Add Say Node
                     </TooltipContent>
                   </Tooltip>
@@ -622,7 +622,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         <HelpCircle className="h-4.5 w-4.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-zinc-950 border-zinc-855 text-zinc-200 text-[9px] font-black uppercase tracking-wider">
+                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
                       Add Ask Node
                     </TooltipContent>
                   </Tooltip>
@@ -641,7 +641,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         <AlertTriangle className="h-4.5 w-4.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-zinc-950 border-zinc-855 text-zinc-200 text-[9px] font-black uppercase tracking-wider">
+                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
                       Add Objection Node
                     </TooltipContent>
                   </Tooltip>
@@ -660,7 +660,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         <Zap className="h-4.5 w-4.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-zinc-950 border-zinc-855 text-zinc-200 text-[9px] font-black uppercase tracking-wider">
+                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
                       Add Action Node
                     </TooltipContent>
                   </Tooltip>
@@ -679,7 +679,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         <CheckCircle2 className="h-4.5 w-4.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-zinc-955 border-zinc-855 text-zinc-200 text-[9px] font-black uppercase tracking-wider">
+                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
                       Add Outcome Node
                     </TooltipContent>
                   </Tooltip>
@@ -698,7 +698,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         <XCircle className="h-4.5 w-4.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-zinc-955 border-zinc-855 text-zinc-200 text-[9px] font-black uppercase tracking-wider">
+                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
                       Add End Node
                     </TooltipContent>
                   </Tooltip>
@@ -721,11 +721,11 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
             {!rightPanelCollapsed && (
               <div className="lg:col-span-3 h-full overflow-hidden">
                 {selectedNode ? (
-                  <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl flex flex-col justify-between h-full">
-                    <div className="p-4 border-b border-zinc-850 bg-zinc-900/30 flex items-center justify-between shrink-0">
+                  <Card className="border border-border bg-card rounded-2xl flex flex-col justify-between h-full">
+                    <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between shrink-0">
                       <div className="min-w-0">
-                        <h3 className="text-xs font-bold text-zinc-200 truncate">Config node: "{selectedNode.data.label}"</h3>
-                        <p className="text-[8px] font-mono text-zinc-400 uppercase tracking-widest mt-0.5">ID: {selectedNode.id}</p>
+                        <h3 className="text-xs font-bold text-foreground truncate">Config node: "{selectedNode.data.label}"</h3>
+                        <p className="text-[8px] font-mono text-muted-foreground uppercase tracking-widest mt-0.5">ID: {selectedNode.id}</p>
                       </div>
                       <Button onClick={handleDeleteSelectedNode} variant="ghost" size="icon" className="h-7 w-7 text-rose-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg"><X className="h-4 w-4" /></Button>
                     </div>
@@ -733,62 +733,62 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                       
                       {/* Node Label Title */}
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Title label</Label>
+                        <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Title label</Label>
                         <Input
                           value={selectedNode.data.label || ''}
                           onChange={(e) => updateSelectedNode({ label: e.target.value })}
-                          className="h-8 bg-zinc-950 border-zinc-855 rounded-lg text-xs"
+                          className="h-8 bg-background border-border rounded-lg text-xs"
                         />
                       </div>
 
                       {/* Start Node Configuration */}
                       {selectedNode.type === 'start' && (
-                        <div className="space-y-3 pt-3 border-t border-zinc-850">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Start Configuration</span>
+                        <div className="space-y-3 pt-3 border-t border-border">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Start Configuration</span>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs text-zinc-350">Check DNC List</Label>
+                            <Label className="text-xs text-foreground/80">Check DNC List</Label>
                             <input 
                               type="checkbox"
                               checked={selectedNode.data.startConfig?.checkDnc || false}
                               onChange={(e) => updateSelectedNode({ 
                                 startConfig: { ...selectedNode.data.startConfig, checkDnc: e.target.checked } 
                               })}
-                              className="rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-0"
+                              className="rounded border-border bg-background text-primary focus:ring-0"
                             />
                           </div>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs text-zinc-350">Guard Timezones</Label>
+                            <Label className="text-xs text-foreground/80">Guard Timezones</Label>
                             <input 
                               type="checkbox"
                               checked={selectedNode.data.startConfig?.checkTimezone || false}
                               onChange={(e) => updateSelectedNode({ 
                                 startConfig: { ...selectedNode.data.startConfig, checkTimezone: e.target.checked } 
                               })}
-                              className="rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-0"
+                              className="rounded border-border bg-background text-primary focus:ring-0"
                             />
                           </div>
                           {selectedNode.data.startConfig?.checkTimezone && (
                             <div className="grid grid-cols-2 gap-2">
                               <div className="space-y-1">
-                                <Label className="text-[8px] font-bold text-zinc-400 uppercase">Start (HH:MM)</Label>
+                                <Label className="text-[8px] font-bold text-muted-foreground uppercase">Start (HH:MM)</Label>
                                 <Input
                                   value={selectedNode.data.startConfig?.allowedHoursStart || '08:00'}
                                   onChange={(e) => updateSelectedNode({ 
                                     startConfig: { ...selectedNode.data.startConfig, allowedHoursStart: e.target.value } 
                                   })}
                                   placeholder="08:00"
-                                  className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                                  className="h-8 bg-background border-border rounded-lg text-xs px-2"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-[8px] font-bold text-zinc-400 uppercase">End (HH:MM)</Label>
+                                <Label className="text-[8px] font-bold text-muted-foreground uppercase">End (HH:MM)</Label>
                                 <Input
                                   value={selectedNode.data.startConfig?.allowedHoursEnd || '20:00'}
                                   onChange={(e) => updateSelectedNode({ 
                                     startConfig: { ...selectedNode.data.startConfig, allowedHoursEnd: e.target.value } 
                                   })}
                                   placeholder="20:00"
-                                  className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                                  className="h-8 bg-background border-border rounded-lg text-xs px-2"
                                 />
                               </div>
                             </div>
@@ -798,22 +798,22 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
                       {/* Say/Script Block Node Configuration */}
                       {selectedNode.type === 'script_block' && (
-                        <div className="space-y-3 pt-3 border-t border-zinc-850">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Say Configuration</span>
+                        <div className="space-y-3 pt-3 border-t border-border">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Say Configuration</span>
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs text-zinc-350">Verify compliance read</Label>
+                            <Label className="text-xs text-foreground/80">Verify compliance read</Label>
                             <input 
                               type="checkbox"
                               checked={selectedNode.data.sayConfig?.complianceVerify || false}
                               onChange={(e) => updateSelectedNode({ 
                                 sayConfig: { ...selectedNode.data.sayConfig, complianceVerify: e.target.checked } 
                               })}
-                              className="rounded border-zinc-800 bg-zinc-950 text-primary focus:ring-0"
+                              className="rounded border-border bg-background text-primary focus:ring-0"
                             />
                           </div>
                           {selectedNode.data.sayConfig?.complianceVerify && (
                             <div className="space-y-1">
-                              <Label className="text-[8px] font-bold text-zinc-400 uppercase">Compliance Text Required</Label>
+                              <Label className="text-[8px] font-bold text-muted-foreground uppercase">Compliance Text Required</Label>
                               <Textarea
                                 value={selectedNode.data.sayConfig?.complianceText || ''}
                                 onChange={(e) => updateSelectedNode({ 
@@ -821,7 +821,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                                 })}
                                 placeholder="Legal notice or disclosures agents must read verbatim..."
                                 rows={3}
-                                className="bg-zinc-950 border-zinc-850 rounded-xl text-xs p-2.5 resize-none"
+                                className="bg-background border-border rounded-xl text-xs p-2.5 resize-none"
                               />
                             </div>
                           )}
@@ -830,48 +830,48 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
                       {/* Question Node Configuration */}
                       {selectedNode.type === 'question' && (
-                        <div className="space-y-3 pt-3 border-t border-zinc-850">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Ask Configuration</span>
+                        <div className="space-y-3 pt-3 border-t border-border">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Ask Configuration</span>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Field Mapping Object</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Field Mapping Object</Label>
                             <Select 
                               value={selectedNode.data.questionConfig?.fieldBinding || 'contact'} 
                               onValueChange={(val: 'contact' | 'deal') => updateSelectedNode({ 
                                 questionConfig: { ...selectedNode.data.questionConfig, fieldBinding: val } 
                               })}
                             >
-                              <SelectTrigger className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs">
+                              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="bg-zinc-955 border-zinc-800 text-zinc-100">
+                              <SelectContent className="bg-popover border-border text-popover-foreground">
                                 <SelectItem value="contact">Contact Profile</SelectItem>
                                 <SelectItem value="deal">Active Deal Record</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Target CRM Field Name</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Target CRM Field Name</Label>
                             <Input
                               value={selectedNode.data.questionConfig?.fieldName || ''}
                               onChange={(e) => updateSelectedNode({ 
                                 questionConfig: { ...selectedNode.data.questionConfig, fieldName: e.target.value } 
                               })}
                               placeholder="e.g. email, budget, tags"
-                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Input Field Type</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Input Field Type</Label>
                             <Select 
                               value={selectedNode.data.questionConfig?.fieldType || 'text'} 
                               onValueChange={(val: any) => updateSelectedNode({ 
                                 questionConfig: { ...selectedNode.data.questionConfig, fieldType: val } 
                               })}
                             >
-                              <SelectTrigger className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs">
+                              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="bg-zinc-955 border-zinc-800 text-zinc-100">
+                              <SelectContent className="bg-popover border-border text-popover-foreground">
                                 <SelectItem value="text">Single Line Text</SelectItem>
                                 <SelectItem value="number">Numeric Value</SelectItem>
                                 <SelectItem value="select">Dropdown Selector</SelectItem>
@@ -881,7 +881,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                           </div>
                           {selectedNode.data.questionConfig?.fieldType === 'select' && (
                             <div className="space-y-1">
-                              <Label className="text-[8px] font-bold text-zinc-400 uppercase">Dropdown Options (Comma-separated)</Label>
+                              <Label className="text-[8px] font-bold text-muted-foreground uppercase">Dropdown Options (Comma-separated)</Label>
                               <Input
                                 value={selectedNode.data.questionConfig?.selectOptions?.join(', ') || ''}
                                 onChange={(e) => updateSelectedNode({ 
@@ -891,19 +891,19 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                                   } 
                                 })}
                                 placeholder="Option A, Option B, Option C"
-                                className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                                className="h-8 bg-background border-border rounded-lg text-xs px-2"
                               />
                             </div>
                           )}
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Regex Validation Pattern (Optional)</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Regex Validation Pattern (Optional)</Label>
                             <Input
                               value={selectedNode.data.questionConfig?.validationPattern || ''}
                               onChange={(e) => updateSelectedNode({ 
                                 questionConfig: { ...selectedNode.data.questionConfig, validationPattern: e.target.value } 
                               })}
                               placeholder="e.g. ^[0-9]{10}$"
-                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
                             />
                           </div>
                         </div>
@@ -911,10 +911,10 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
                       {/* Objection Node Configuration */}
                       {selectedNode.type === 'objection' && (
-                        <div className="space-y-3 pt-3 border-t border-zinc-850">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Objection Trigger Config</span>
+                        <div className="space-y-3 pt-3 border-t border-border">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Objection Trigger Config</span>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Objection Keyword Triggers (Comma-separated)</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Objection Keyword Triggers (Comma-separated)</Label>
                             <Input
                               value={selectedNode.data.objectionConfig?.keywordTriggers?.join(', ') || ''}
                               onChange={(e) => updateSelectedNode({ 
@@ -923,7 +923,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                                 } 
                               })}
                               placeholder="too expensive, no time, send email"
-                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
                             />
                           </div>
                         </div>
@@ -931,10 +931,10 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
                       {/* Outcome Node Configuration */}
                       {selectedNode.type === 'outcome' && (
-                        <div className="space-y-3 pt-3 border-t border-zinc-850">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Outcome Configuration</span>
+                        <div className="space-y-3 pt-3 border-t border-border">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Outcome Configuration</span>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Map Call Outcome Tag</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Map Call Outcome Tag</Label>
                             <Select 
                               value={selectedNode.data.outcomeValue || 'Interested'} 
                               onValueChange={(val) => updateSelectedNode({ 
@@ -942,10 +942,10 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                                 label: `Set Outcome: ${val}` 
                               })}
                             >
-                              <SelectTrigger className="h-8 bg-zinc-955 border-zinc-855 rounded-lg text-xs">
+                              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
                                 <SelectValue placeholder="Select outcome" />
                               </SelectTrigger>
-                              <SelectContent className="bg-zinc-955 border-zinc-800 text-zinc-100">
+                              <SelectContent className="bg-popover border-border text-popover-foreground">
                                 <SelectItem value="Interested">Interested</SelectItem>
                                 <SelectItem value="Not Interested">Not Interested</SelectItem>
                                 <SelectItem value="Callback Scheduled">Callback Scheduled</SelectItem>
@@ -954,25 +954,25 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Lead Suppression Period (Days)</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Lead Suppression Period (Days)</Label>
                             <Input
                               type="number"
                               value={selectedNode.data.outcomeConfig?.suppressDays || 0}
                               onChange={(e) => updateSelectedNode({ 
                                 outcomeConfig: { ...selectedNode.data.outcomeConfig, suppressDays: Number(e.target.value) || 0 } 
                               })}
-                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Transfer to Campaign ID (Optional)</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Transfer to Campaign ID (Optional)</Label>
                             <Input
                               value={selectedNode.data.outcomeConfig?.followUpCampaignId || ''}
                               onChange={(e) => updateSelectedNode({ 
                                 outcomeConfig: { ...selectedNode.data.outcomeConfig, followUpCampaignId: e.target.value } 
                               })}
                               placeholder="campaign_id_to_transfer"
-                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
                             />
                           </div>
                         </div>
@@ -980,10 +980,10 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
                       {/* Action Node Configuration */}
                       {selectedNode.type === 'action' && (
-                        <div className="space-y-3 pt-3 border-t border-zinc-850">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Action Configuration</span>
+                        <div className="space-y-3 pt-3 border-t border-border">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Action Configuration</span>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Automation Trigger Type</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Automation Trigger Type</Label>
                             <Select 
                               value={selectedNode.data.actionType || 'SEND_SMS'} 
                               onValueChange={(val) => updateSelectedNode({ 
@@ -991,10 +991,10 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                                 label: `Action: ${val.replace('_', ' ')}` 
                               })}
                             >
-                              <SelectTrigger className="h-8 bg-zinc-955 border-zinc-855 rounded-lg text-xs">
+                              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="bg-zinc-955 border-zinc-800 text-zinc-100">
+                              <SelectContent className="bg-popover border-border text-popover-foreground">
                                 <SelectItem value="SEND_SMS">Send SMS</SelectItem>
                                 <SelectItem value="SEND_EMAIL">Send Email</SelectItem>
                                 <SelectItem value="CREATE_TASK">Create Follow-up Task</SelectItem>
@@ -1006,18 +1006,18 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                           {selectedNode.data.actionType === 'WEBHOOK' && (
                             <div className="space-y-3">
                               <div className="space-y-1">
-                                <Label className="text-[8px] font-bold text-zinc-400 uppercase">Webhook Target URL</Label>
+                                <Label className="text-[8px] font-bold text-muted-foreground uppercase">Webhook Target URL</Label>
                                 <Input
                                   value={selectedNode.data.actionConfig?.webhookUrl || ''}
                                   onChange={(e) => updateSelectedNode({ 
                                     actionConfig: { ...selectedNode.data.actionConfig, webhookUrl: e.target.value } 
                                   })}
                                   placeholder="https://api.thirdparty.com/webhook"
-                                  className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                                  className="h-8 bg-background border-border rounded-lg text-xs px-2"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-[8px] font-bold text-zinc-400 uppercase">Custom Headers (JSON format)</Label>
+                                <Label className="text-[8px] font-bold text-muted-foreground uppercase">Custom Headers (JSON format)</Label>
                                 <Textarea
                                   value={selectedNode.data.actionConfig?.webhookHeaders || ''}
                                   onChange={(e) => updateSelectedNode({ 
@@ -1025,20 +1025,20 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                                   })}
                                   placeholder='{ "Authorization": "Bearer key" }'
                                   rows={2}
-                                  className="bg-zinc-950 border-zinc-850 rounded-xl text-xs p-2 resize-none"
+                                  className="bg-background border-border rounded-xl text-xs p-2 resize-none"
                                 />
                               </div>
                             </div>
                           )}
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Trigger Delay (Seconds)</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Trigger Delay (Seconds)</Label>
                             <Input
                               type="number"
                               value={selectedNode.data.actionConfig?.triggerDelaySeconds || 0}
                               onChange={(e) => updateSelectedNode({ 
                                 actionConfig: { ...selectedNode.data.actionConfig, triggerDelaySeconds: Number(e.target.value) || 0 } 
                               })}
-                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
                             />
                           </div>
                         </div>
@@ -1046,17 +1046,17 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
                       {/* End Node Configuration */}
                       {selectedNode.type === 'end' && (
-                        <div className="space-y-3 pt-3 border-t border-zinc-850">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">End Call Configuration</span>
+                        <div className="space-y-3 pt-3 border-t border-border">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">End Call Configuration</span>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-zinc-400 uppercase">Post-Call Wrap-Up Template ID</Label>
+                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Post-Call Wrap-Up Template ID</Label>
                             <Input
                               value={selectedNode.data.endConfig?.wrapUpTemplateId || ''}
                               onChange={(e) => updateSelectedNode({ 
                                 endConfig: { ...selectedNode.data.endConfig, wrapUpTemplateId: e.target.value } 
                               })}
                               placeholder="default_wrap_up"
-                              className="h-8 bg-zinc-950 border-zinc-850 rounded-lg text-xs px-2"
+                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
                             />
                           </div>
                         </div>
@@ -1065,45 +1065,45 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                       {/* Dialogue body editor */}
                       <div className="space-y-1">
                         <div className="flex items-center justify-between mb-1">
-                          <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Dialogue script body</Label>
+                          <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Dialogue script body</Label>
                         </div>
                         <Textarea
                           value={selectedNode.data.text || ''}
                           onChange={(e) => updateSelectedNode({ text: e.target.value })}
                           placeholder="Type dialog block script here..."
                           rows={8}
-                          className="bg-zinc-950 border-zinc-850 rounded-xl text-xs leading-relaxed p-3 font-serif"
+                          className="bg-background border-border rounded-xl text-xs leading-relaxed p-3 font-serif"
                         />
                       </div>
 
                       {/* Node variables picker helper */}
-                      <div className="space-y-2 pt-2 border-t border-zinc-850">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block">Double-click field below to insert at cursor:</span>
-                        <div className="flex bg-zinc-950 border border-zinc-850 rounded-lg p-0.5 shrink-0">
+                      <div className="space-y-2 pt-2 border-t border-border">
+                        <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block">Double-click field below to insert at cursor:</span>
+                        <div className="flex bg-muted border border-border rounded-lg p-0.5 shrink-0">
                           <button
                             type="button"
                             onClick={() => setVariableCategory('entity')}
-                            className={`flex-grow py-1 text-[8px] uppercase tracking-wider font-black rounded-md transition-all ${variableCategory === 'entity' ? 'bg-zinc-900 text-zinc-100 border border-zinc-800 shadow' : 'text-zinc-500 hover:text-zinc-300'}`}
+                            className={`flex-grow py-1 text-[8px] uppercase tracking-wider font-black rounded-md transition-all ${variableCategory === 'entity' ? 'bg-background text-foreground border border-border shadow' : 'text-muted-foreground hover:text-foreground'}`}
                           >
                             Entity Fields
                           </button>
                           <button
                             type="button"
                             onClick={() => setVariableCategory('deal')}
-                            className={`flex-grow py-1 text-[8px] uppercase tracking-wider font-black rounded-md transition-all ${variableCategory === 'deal' ? 'bg-zinc-900 text-zinc-100 border border-zinc-800 shadow' : 'text-zinc-500 hover:text-zinc-300'}`}
+                            className={`flex-grow py-1 text-[8px] uppercase tracking-wider font-black rounded-md transition-all ${variableCategory === 'deal' ? 'bg-background text-foreground border border-border shadow' : 'text-muted-foreground hover:text-foreground'}`}
                           >
                             Deal Fields
                           </button>
                         </div>
 
-                        <div className="flex flex-wrap gap-1 max-h-[100px] overflow-y-auto p-1 bg-zinc-950/40 rounded-lg border border-zinc-850/60">
+                        <div className="flex flex-wrap gap-1 max-h-[100px] overflow-y-auto p-1 bg-muted/40 rounded-lg border border-border">
                           {variableCategory === 'entity' ? (
                             ['ENTITY_NAME', 'ENTITY_EMAIL', 'ENTITY_PHONE', 'ENTITY_TYPE', 'PRIMARY_CONTACT_NAME', 'PRIMARY_CONTACT_PHONE', 'AGENT_NAME'].map(v => (
-                              <Badge key={v} onClick={() => handleInsertVariable(v)} variant="secondary" className="cursor-pointer font-mono text-[7px] border border-zinc-800 hover:bg-zinc-800 py-0.5 px-1.5 rounded">{v}</Badge>
+                              <Badge key={v} onClick={() => handleInsertVariable(v)} variant="secondary" className="cursor-pointer font-mono text-[7px] border border-border hover:bg-muted py-0.5 px-1.5 rounded">{v}</Badge>
                             ))
                           ) : (
                             ['DEAL_NAME', 'DEAL_VALUE', 'DEAL_STAGE', 'DEAL_STATUS', 'DEAL_EXPECTED_CLOSE'].map(v => (
-                              <Badge key={v} onClick={() => handleInsertVariable(v)} variant="secondary" className="cursor-pointer font-mono text-[7px] border border-zinc-800 hover:bg-zinc-800 py-0.5 px-1.5 rounded">{v}</Badge>
+                              <Badge key={v} onClick={() => handleInsertVariable(v)} variant="secondary" className="cursor-pointer font-mono text-[7px] border border-border hover:bg-muted py-0.5 px-1.5 rounded">{v}</Badge>
                             ))
                           )}
                         </div>
@@ -1112,7 +1112,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card className="border border-zinc-850 bg-zinc-900/10 rounded-2xl flex items-center justify-center p-8 text-center text-xs text-zinc-500 italic h-full min-h-[450px]">
+                  <Card className="border border-border bg-card rounded-2xl flex items-center justify-center p-8 text-center text-xs text-muted-foreground italic h-full min-h-[450px]">
                     Select a node on the canvas to configure its dialogue script and branching options.
                   </Card>
                 )}
@@ -1123,9 +1123,9 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
         {/* Tab 2: Playbook Outline Preview */}
         <TabsContent value="playbook" className="pt-6 m-0 outline-none">
-          <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl">
+          <Card className="border border-border bg-card rounded-2xl">
             <CardHeader>
-              <CardTitle className="text-xs font-bold text-zinc-200 uppercase tracking-wider">Playbook Outline Preview</CardTitle>
+              <CardTitle className="text-xs font-bold text-foreground uppercase tracking-wider">Playbook Outline Preview</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <ScriptPlaybookView graph={cleanGraph} />
@@ -1135,41 +1135,41 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
         {/* Tab 3: Legacy plain text fallback editor */}
         <TabsContent value="text" className="pt-6 m-0 outline-none">
-          <Card className="border border-zinc-800 bg-zinc-900/40 rounded-2xl">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-zinc-850 bg-zinc-900/30 p-4">
+          <Card className="border border-border bg-card rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border bg-muted/30 p-4">
               <div>
-                <CardTitle className="text-xs font-bold text-zinc-200 uppercase tracking-wider">Legacy Plain Text Script</CardTitle>
-                <p className="text-[10px] text-zinc-500 mt-0.5">This campaign uses a linear text script. Convert it to a visual flow to build branching Objections, Questions, and Actions.</p>
+                <CardTitle className="text-xs font-bold text-foreground uppercase tracking-wider">Legacy Plain Text Script</CardTitle>
+                <p className="text-[10px] text-muted-foreground mt-0.5">This campaign uses a linear text script. Convert it to a visual flow to build branching Objections, Questions, and Actions.</p>
               </div>
               <Button
                 type="button"
                 onClick={handleConvertToGraph}
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-xl text-[10px] uppercase font-bold border-zinc-850 hover:bg-zinc-800 text-zinc-350"
+                className="h-8 rounded-xl text-[10px] uppercase font-bold border-border hover:bg-muted text-muted-foreground"
               >
                 Convert to Visual Flow
               </Button>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Script Content Text</Label>
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Script Content Text</Label>
                 <Textarea
                   value={legacyText}
                   onChange={(e) => setLegacyText(e.target.value)}
                   placeholder="Paste or write linear text here..."
                   rows={15}
-                  className="bg-zinc-950 border-zinc-850 rounded-xl text-xs leading-relaxed p-4 font-serif"
+                  className="bg-background border-border rounded-xl text-xs leading-relaxed p-4 font-serif"
                 />
               </div>
-              <div className="space-y-2 pt-4 border-t border-zinc-850">
-                <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Detected Variables in Legacy Text</Label>
+              <div className="space-y-2 pt-4 border-t border-border">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Detected Variables in Legacy Text</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {detectedVariables.length === 0 ? (
-                    <span className="text-[10px] text-zinc-500 italic">No variables detected. Use double curly braces like {"{{FIRST_NAME}}"} to define them.</span>
+                    <span className="text-[10px] text-muted-foreground italic">No variables detected. Use double curly braces like {"{{FIRST_NAME}}"} to define them.</span>
                   ) : (
                     detectedVariables.map(v => (
-                      <Badge key={v} variant="outline" className="text-[8px] font-bold bg-zinc-950 border-zinc-800 text-zinc-350 tracking-wider px-2 py-0.5 rounded">
+                      <Badge key={v} variant="outline" className="text-[8px] font-bold bg-muted border-border text-muted-foreground tracking-wider px-2 py-0.5 rounded">
                         {v}
                       </Badge>
                     ))
@@ -1182,23 +1182,23 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
       {/* AI Assist Modal */}
       {isAiOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
             
             {/* Modal Header */}
-            <div className="p-5 border-b border-zinc-850 flex items-center justify-between bg-zinc-950/40">
+            <div className="p-5 border-b border-border flex items-center justify-between bg-muted/40">
               <div className="flex items-center gap-2.5">
                 <Sparkles className="h-5 w-5 text-primary" />
                 <div>
-                  <h3 className="text-xs font-bold text-zinc-200 uppercase tracking-wider">AI Script Assistant</h3>
-                  <p className="text-[8px] text-zinc-500 font-mono tracking-widest uppercase">Powered by Claude 3.5 Sonnet</p>
+                  <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">AI Script Assistant</h3>
+                  <p className="text-[8px] text-muted-foreground font-mono tracking-widest uppercase">Powered by Claude 3.5 Sonnet</p>
                 </div>
               </div>
               <Button
                 onClick={() => setIsAiOpen(false)}
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-lg text-zinc-450 hover:text-zinc-200 hover:bg-zinc-850"
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -1206,18 +1206,18 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
             {/* Modal Body */}
             <div className="p-6 space-y-4 flex-grow max-h-[70vh] overflow-y-auto">
-              <div className="flex border border-zinc-850 rounded-xl p-1 bg-zinc-950">
+              <div className="flex border border-border rounded-xl p-1 bg-muted">
                 <button
                   type="button"
                   onClick={() => setAiTab('write')}
-                  className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition-all ${aiTab === 'write' ? 'bg-zinc-900 text-zinc-100 border border-zinc-800 shadow' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition-all ${aiTab === 'write' ? 'bg-background text-foreground border border-border shadow' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   Write Script
                 </button>
                 <button
                   type="button"
                   onClick={() => setAiTab('refine')}
-                  className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition-all ${aiTab === 'refine' ? 'bg-zinc-900 text-zinc-100 border border-zinc-800 shadow' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  className={`flex-grow py-1.5 text-xs font-bold rounded-lg transition-all ${aiTab === 'refine' ? 'bg-background text-foreground border border-border shadow' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   Refine Existing
                 </button>
@@ -1226,58 +1226,58 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
               {aiTab === 'write' ? (
                 <div className="space-y-4 pt-2">
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Campaign Objective</Label>
+                    <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Campaign Objective</Label>
                     <Input
                       value={aiObjective}
                       onChange={(e) => setAiObjective(e.target.value)}
                       placeholder="e.g., Book an admissions demo for next week"
-                      className="bg-zinc-950 border-zinc-850 text-xs h-9 rounded-lg"
+                      className="bg-background border-border text-xs h-9 rounded-lg"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Target Audience</Label>
+                    <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Target Audience</Label>
                     <Input
                       value={aiAudience}
                       onChange={(e) => setAiAudience(e.target.value)}
                       placeholder="e.g., Primary school headteachers and owners"
-                      className="bg-zinc-950 border-zinc-850 text-xs h-9 rounded-lg"
+                      className="bg-background border-border text-xs h-9 rounded-lg"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Tone</Label>
+                    <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Tone</Label>
                     <Select value={aiTone} onValueChange={setAiTone}>
-                      <SelectTrigger className="bg-zinc-950 border-zinc-850 text-xs h-9 rounded-lg">
+                      <SelectTrigger className="bg-background border-border text-xs h-9 rounded-lg">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-950 border-zinc-800 text-zinc-200">
-                        <SelectItem value="professional">Professional & Direct</SelectItem>
-                        <SelectItem value="warm">Warm & Conversational</SelectItem>
-                        <SelectItem value="urgent">Urgent & Direct Value</SelectItem>
-                        <SelectItem value="authoritative">Authoritative & Confident</SelectItem>
+                      <SelectContent className="bg-popover border-border text-popover-foreground">
+                        <SelectItem value="professional">Professional &amp; Direct</SelectItem>
+                        <SelectItem value="warm">Warm &amp; Conversational</SelectItem>
+                        <SelectItem value="urgent">Urgent &amp; Direct Value</SelectItem>
+                        <SelectItem value="authoritative">Authoritative &amp; Confident</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Custom Guidelines (Optional)</Label>
+                    <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Custom Guidelines (Optional)</Label>
                     <Textarea
                       value={aiGuidelines}
                       onChange={(e) => setAiGuidelines(e.target.value)}
                       placeholder="e.g., Mention Kwame from admissions, ask about fee collection pain points..."
                       rows={3}
-                      className="bg-zinc-950 border-zinc-850 text-xs rounded-lg resize-none"
+                      className="bg-background border-border text-xs rounded-lg resize-none"
                     />
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4 pt-2">
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Refinement Instructions</Label>
+                    <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Refinement Instructions</Label>
                     <Textarea
                       value={refineInstructions}
                       onChange={(e) => setRefineInstructions(e.target.value)}
                       placeholder="e.g., Make it shorter, add objection handling for pricing, or translate to local slang..."
                       rows={5}
-                      className="bg-zinc-950 border-zinc-850 text-xs rounded-lg resize-none"
+                      className="bg-background border-border text-xs rounded-lg resize-none"
                     />
                   </div>
                 </div>
@@ -1285,12 +1285,12 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-5 border-t border-zinc-850 bg-zinc-950/20 flex justify-end gap-2 shrink-0">
+            <div className="p-5 border-t border-border bg-muted/20 flex justify-end gap-2 shrink-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsAiOpen(false)}
-                className="h-9 px-4 rounded-xl text-xs font-bold border-zinc-800 bg-zinc-950 hover:bg-zinc-850 text-zinc-400"
+                className="h-9 px-4 rounded-xl text-xs font-bold border-border bg-muted hover:bg-accent text-muted-foreground"
               >
                 Cancel
               </Button>

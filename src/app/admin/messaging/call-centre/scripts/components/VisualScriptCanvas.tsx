@@ -21,14 +21,14 @@ import 'reactflow/dist/style.css';
 
 function CustomNodeWrapper({ children, title, colorClass, typeLabel }: { children: React.ReactNode, title: string, colorClass: string, typeLabel: string }) {
   return (
-    <div className="bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl min-w-[200px] overflow-hidden hover:border-zinc-700 transition-all select-none">
+    <div className="bg-card border border-border rounded-xl shadow-md min-w-[200px] overflow-hidden hover:border-primary/40 hover:shadow-lg transition-all select-none">
       <div className={`h-1 w-full ${colorClass}`} />
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-bold text-zinc-100 truncate max-w-[120px]">{title}</span>
-          <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-wider">{typeLabel}</span>
+          <span className="text-[10px] font-bold text-card-foreground truncate max-w-[120px]">{title}</span>
+          <span className="text-[8px] font-mono text-muted-foreground uppercase tracking-wider">{typeLabel}</span>
         </div>
-        <div className="text-[9px] text-zinc-400 font-medium leading-relaxed max-h-[40px] overflow-hidden line-clamp-2 italic font-serif">
+        <div className="text-[9px] text-muted-foreground font-medium leading-relaxed max-h-[40px] overflow-hidden line-clamp-2 italic font-serif">
           {children}
         </div>
       </div>
@@ -106,7 +106,7 @@ export function VisualScriptCanvas({
   onNodeClick
 }: VisualScriptCanvasProps) {
   return (
-    <div className="w-full h-full bg-zinc-950/20 border border-zinc-900 rounded-2xl overflow-hidden relative" style={{ minHeight: '550px' }}>
+    <div className="w-full h-full bg-muted/20 dark:bg-zinc-950/20 border border-border rounded-2xl overflow-hidden relative" style={{ minHeight: '550px' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -116,14 +116,13 @@ export function VisualScriptCanvas({
         onNodeClick={onNodeClick}
         nodeTypes={customNodeTypes}
         fitView
-        className="custom-reactflow-dark"
         defaultEdgeOptions={{
           type: 'smoothstep',
           style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 }
         }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#27272a" />
-        <Controls className="!bg-zinc-900 !border-zinc-800 !text-zinc-300 [&>button]:!border-zinc-800 hover:[&>button]:!bg-zinc-800" />
+        <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="hsl(var(--border))" />
+        <Controls className="!bg-card !border-border !text-muted-foreground [&>button]:!border-border hover:[&>button]:!bg-muted" />
         <MiniMap 
           nodeColor={(n) => {
             if (n.type === 'start') return '#10b981';
@@ -134,8 +133,8 @@ export function VisualScriptCanvas({
             if (n.type === 'outcome') return '#a855f7';
             return 'hsl(var(--primary))';
           }}
-          maskColor="rgba(9, 9, 11, 0.7)"
-          className="!bg-zinc-900 !border-zinc-800"
+          maskColor="rgba(0, 0, 0, 0.08)"
+          className="!bg-card !border-border"
         />
       </ReactFlow>
     </div>

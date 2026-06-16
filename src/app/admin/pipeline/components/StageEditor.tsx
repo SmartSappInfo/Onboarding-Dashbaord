@@ -43,7 +43,6 @@ import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useEntityCache } from '@/context/EntityCacheContext';
 
 interface StageEditorProps {
     pipelineId: string;
@@ -160,12 +159,6 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
   }, [firestore, pipelineId]);
   
   const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesQuery);
-  const { entities: allEntities } = useEntityCache();
-  const entities = React.useMemo(() => {
-    if (!allEntities || !pipelineId) return null;
-    return allEntities.filter(e => (e as any).pipelineId === pipelineId);
-  }, [allEntities, pipelineId]);
-  
   const [localStages, setLocalStages] = React.useState<OnboardingStage[]>([]);
   const [newStageName, setNewStageName] = React.useState('');
   const [isAdding, setIsAdding] = React.useState(false);
@@ -180,20 +173,10 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
     }
   }, [stages]);
 
-  // TODO: Stage counts need to be refactored for Deal-based pipeline
-  // Calculate lead counts per stage
-  const stageCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {};
-    // Commented out - stageId no longer exists on WorkspaceEntity
-    // if (entities) {
-    //     entities.forEach(s => {
-    //         if (s.stageId) {
-    //             counts[s.stageId] = (counts[s.stageId] || 0) + 1;
-    //         }
-    //     });
-    // }
-    return counts;
-  }, [entities]);
+  // TODO: Stage counts need to be refactored for Deal-based pipeline (currently
+  // always empty — the WorkspaceEntity stageId source was removed). Kept as a
+  // stable empty map so render sites are unchanged.
+  const stageCounts = React.useMemo<Record<string, number>>(() => ({}), []);
   
   const sensors = useSensors(useSensor(PointerSensor));
 
