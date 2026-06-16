@@ -10,7 +10,8 @@ import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
-import { useEntityCache } from '@/context/EntityCacheContext';
+import { useEntityByDocId } from '@/context/EntityCacheContext';
+import { EntityCombobox } from '@/components/entities/EntityCombobox';
 
 import { 
     Calendar, 
@@ -84,6 +85,10 @@ import MeetingPreviewPanel from '../components/MeetingPreviewPanel';
 import MeetingLeadCaptureSection from '../components/MeetingLeadCaptureSection';
 import MeetingMessagingTab from '../components/MeetingMessagingTab';
 import { MeetingFacilitatorsSection } from '../components/MeetingFacilitatorsSection';
+import dynamic from 'next/dynamic';
+
+const MeetingQRDialog = dynamic(() => import('../components/MeetingQRDialog'), { ssr: false });
+
 
 const formSchema = z.object({
   // V3: Entity is now optional — standalone meetings supported
@@ -217,10 +222,13 @@ export default function NewMeetingPage() {
   const [hasInitialized, setHasInitialized] = React.useState(false);
   const [currentStep, setCurrentStep] = React.useState(0);
   const [selectedTemplateId, setSelectedTemplateId] = React.useState<string | null>(null);
+  const [showQrDialog, setShowQrDialog] = React.useState(false);
+
 
 
   
-  const { entities, isLoading: isLoadingEntities } = useEntityCache();
+  const entityIdFromUrl = searchParams.get('entityId');
+  const urlEntity = useEntityByDocId(entityIdFromUrl);
 
   const customTemplatesCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
@@ -308,21 +316,17 @@ export default function NewMeetingPage() {
   };
 
   React.useEffect(() => {
-    const entityIdFromUrl = searchParams.get('entityId');
-    if (entityIdFromUrl && entities && !hasInitialized) {
-      const selectedEntity = entities.find(s => s.id === entityIdFromUrl);
-      if (selectedEntity) {
-        reset({
-            ...form.getValues(),
-            entity: selectedEntity,
-            meetingSlug: selectedEntity.slug || '',
-            type: MEETING_TYPES[0],
-            brandingEnabled: true,
-        });
-        setHasInitialized(true);
-      }
+    if (entityIdFromUrl && urlEntity && !hasInitialized) {
+      reset({
+          ...form.getValues(),
+          entity: urlEntity,
+          meetingSlug: urlEntity.slug || '',
+          type: MEETING_TYPES[0],
+          brandingEnabled: true,
+      });
+      setHasInitialized(true);
     }
-  }, [searchParams, entities, reset, form, hasInitialized]);
+  }, [entityIdFromUrl, urlEntity, reset, form, hasInitialized]);
 
   // V3: Automatically toggle branding based on entity selection
   React.useEffect(() => {
@@ -593,7 +597,7 @@ export default function NewMeetingPage() {
     }
   };
 
-  if (isLoadingEntities) {
+  if (isLoadingCustomTemplates) {
       return (
         <div className="h-full w-full overflow-y-auto bg-background">
           <div className="w-full p-8 space-y-8">
@@ -805,32 +809,26 @@ export default function NewMeetingPage() {
                                     render={({ field }) => (
                                     <FormItem>
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Context {singular} <span className="text-primary/60">(Optional)</span></FormLabel>
-                                        <Select
-                                            onValueChange={(entityId: string) => {
-                                                if (entityId === '__none__') {
-                                                    field.onChange(null);
-                                                    return;
-                                                }
-                                                const entity = entities?.find((s) => s.id === entityId);
-                                                field.onChange(entity);
-                                                if (entity && !form.getValues('meetingSlug')) {
-                                                    form.setValue('meetingSlug', entity.slug || '', { shouldValidate: true });
-                                                }
-                                            }}
-                                            value={field.value?.id || '__none__'}
-                                        >
-                                            <FormControl>
- <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
-                                                    <SelectValue placeholder={`Select ${singular.toLowerCase()}...`} />
-                                                </SelectTrigger>
-                                            </FormControl>
- <SelectContent className="rounded-xl">
-                                                <SelectItem value="__none__">No Entity Context Binding</SelectItem>
-                                                {entities?.map((entity) => (
-                                                    <SelectItem key={entity.id} value={entity.id}>{entity.displayName}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <EntityCombobox
+                                                value={field.value?.id || '__none__'}
+                                                valueKey="id"
+                                                noneLabel="No Entity Context Binding"
+                                                noneValue="__none__"
+                                                placeholder={`Select ${singular.toLowerCase()}...`}
+                                                className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"
+                                                onChange={(val, entity) => {
+                                                    if (val === '__none__' || !entity) {
+                                                        field.onChange(null);
+                                                        return;
+                                                    }
+                                                    field.onChange(entity);
+                                                    if (!form.getValues('meetingSlug')) {
+                                                        form.setValue('meetingSlug', entity.slug || '', { shouldValidate: true });
+                                                    }
+                                                }}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                     )}
@@ -1583,6 +1581,16 @@ export default function NewMeetingPage() {
                                     </div>
                                     <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl border">
                                         <code className="flex-1 text-xs font-mono text-primary truncate">{publicUrl}</code>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 rounded-lg font-bold gap-1 text-xs hover:bg-primary/10 hover:text-primary transition-colors shrink-0"
+                                            onClick={() => setShowQrDialog(true)}
+                                        >
+                                            <QrCode className="h-3.5 w-3.5" />
+                                            QR Code
+                                        </Button>
                                     </div>
                                 </div>
                             )}
@@ -1641,6 +1649,15 @@ export default function NewMeetingPage() {
                     </Button>
                 )}
             </div>
+            
+            {publicUrl && (
+                <MeetingQRDialog
+                    open={showQrDialog}
+                    onOpenChange={setShowQrDialog}
+                    meetingTitle={form.getValues('title') || 'Meeting'}
+                    publicUrl={publicUrl}
+                />
+            )}
 
           </form>
         </FormProvider>

@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import type { Survey } from '@/lib/types';
-import { useEntityCache } from '@/context/EntityCacheContext';
+import { useEntityResolver } from '@/context/EntityCacheContext';
 import { cloneSurvey, deleteSurveyAction, updateSurveyStatusAction } from '@/lib/survey-actions';
 import { usePermissions } from '@/hooks/use-permissions';
 import { getAssigneeDetails, sendSurveyLinkToAssignee } from '@/app/actions/survey-assignee-actions';
@@ -106,12 +106,19 @@ export default function SurveysClient() {
 
 
   const { data: surveys, isLoading: isLoadingSurveys, error } = useCollection<Survey>(surveysQuery);
-  const { entities } = useEntityCache();
+  const { entitiesById, resolveIds } = useEntityResolver();
+
+  // Resolve only the entities referenced by the loaded surveys (logo fallback).
+  useEffect(() => {
+    const ids = [...new Set((surveys || []).map(s => s.entityId).filter(Boolean) as string[])];
+    if (ids.length) resolveIds(ids);
+  }, [surveys, resolveIds]);
 
   const entityLogoMap = useMemo(() => {
-    if (!entities) return new Map<string, string>();
-    return new Map(entities.map((e: any) => [e.entityId, e.logoUrl]));
-  }, [entities]);
+    const map = new Map<string, string>();
+    entitiesById.forEach((e, id) => { if (e.logoUrl) map.set(id, e.logoUrl); });
+    return map;
+  }, [entitiesById]);
 
   const isLoading = isLoadingSurveys;
 

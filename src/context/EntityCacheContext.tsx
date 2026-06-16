@@ -16,6 +16,8 @@ import {
   where,
   onSnapshot,
   getDocs,
+  getDoc,
+  doc,
   type FirestoreError,
 } from 'firebase/firestore';
 import { useFirestore, useUser, useAuth } from '@/firebase';
@@ -473,6 +475,38 @@ export function useActiveEntities() {
   );
 
   return { activeEntities, isLoading, error };
+}
+
+/**
+ * Resolve a SINGLE entity by its workspace_entities **document id**, reactively.
+ * The doc-id sibling of `useEntityResolver` (which keys by `entityId`). For
+ * consumers that store/pass the doc id and need the entity object elsewhere
+ * (e.g. a selected entity fed to child components). Does NOT activate the full
+ * subscription.
+ */
+export function useEntityByDocId(id: string | null | undefined): CachedEntity | null {
+  const firestore = useFirestore();
+  const [entity, setEntity] = useState<CachedEntity | null>(null);
+
+  useEffect(() => {
+    if (!firestore || !id || id === 'none') {
+      setEntity(null);
+      return;
+    }
+    let active = true;
+    getDoc(doc(firestore, 'workspace_entities', id))
+      .then((snap) => {
+        if (active) setEntity(snap.exists() ? ({ ...(snap.data() as WorkspaceEntity), id: snap.id }) : null);
+      })
+      .catch(() => {
+        if (active) setEntity(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [firestore, id]);
+
+  return entity;
 }
 
 // ── Test Utilities ───────────────────────────────────────────────────────────

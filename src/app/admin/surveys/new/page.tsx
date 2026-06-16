@@ -9,7 +9,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, addDoc, setDoc, doc, query, where, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Button } from '@/components/ui/button';
-import { useSortedEntities } from '@/context/EntityCacheContext';
 import { 
     Check, 
     Loader2, 
@@ -169,7 +168,6 @@ export default function NewSurveyPage() {
     const [mobileMode, setMobileMode] = React.useState<'edit' | 'preview'>('edit');
 
 
-    const { sortedEntities: institutions } = useSortedEntities();
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -986,7 +984,7 @@ export default function NewSurveyPage() {
 
  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
  <div className={cn("space-y-8", mobileMode === 'preview' && "hidden md:block")}>
-                                            <Step1Details institutions={institutions || []} />
+                                            <Step1Details />
                                         </div>
  <div className={cn("sticky top-0 h-[calc(100vh-250px)]", mobileMode === 'edit' && "hidden md:block")}>
                                             <LivePreviewPane />

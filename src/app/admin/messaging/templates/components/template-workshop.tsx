@@ -52,6 +52,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -1822,7 +1823,6 @@ interface TemplateWorkshopProps {
     initialTemplate?: MessageTemplate | null;
     variables: VariableDefinition[];
     styles: MessageStyle[];
-    entities?: WorkspaceEntity[];
     meetings?: Meeting[];
     surveys?: Survey[];
     pdfs?: PDFForm[];
@@ -1842,7 +1842,6 @@ export function TemplateWorkshop({
     initialTemplate,
     variables: rawVariables,
     styles,
-    entities,
     meetings,
     surveys,
     pdfs,
@@ -3823,16 +3822,23 @@ export function TemplateWorkshop({
                                                 </SelectContent>
                                             </Select>
 
-                                            {simEntity !== 'none' && (
+                                            {simEntity === 'School' ? (
+                                                <EntityCombobox
+                                                    value={simRecordId}
+                                                    onChange={setSimRecordId}
+                                                    valueKey="id"
+                                                    noneLabel="Select..."
+                                                    noneValue="none"
+                                                    placeholder="Record..."
+                                                    className="h-8 w-[130px] text-[10px]"
+                                                />
+                                            ) : simEntity !== 'none' && (
                                                 <Select value={simRecordId} onValueChange={setSimRecordId}>
                                                     <SelectTrigger className="h-8 w-[130px] rounded-lg text-[10px] bg-background border shadow-sm animate-in slide-in-from-left-2 duration-200">
                                                         <SelectValue placeholder="Record..." />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl">
                                                         <SelectItem value="none" className="rounded-lg text-xs">Select...</SelectItem>
-                                                        {simEntity === 'School' && entities?.map(e => (
-                                                            <SelectItem key={e.id} value={e.id} className="rounded-lg text-xs">{e.displayName || e.entityName}</SelectItem>
-                                                        ))}
                                                         {simEntity === 'Meeting' && meetings?.map(m => (
                                                             <SelectItem key={m.id} value={m.id} className="rounded-lg text-xs">{m.heroTitle || m.meetingSlug}</SelectItem>
                                                         ))}
@@ -4066,7 +4072,7 @@ export function TemplateWorkshop({
                             isSimLoading={isSimLoading}
                             simEntity={simEntity} setSimEntity={setSimEntity}
                             simRecordId={simRecordId} setSimRecordId={setSimRecordId}
-                            entities={entities} meetings={meetings} surveys={surveys} pdfs={pdfs}
+                            meetings={meetings} surveys={surveys} pdfs={pdfs}
                             resolvedPreview={(tmpl, vars, isDark) => {
                                 const activeStyle = styleId !== 'none'
                                     ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))

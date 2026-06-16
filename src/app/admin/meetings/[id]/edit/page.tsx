@@ -10,7 +10,8 @@ import { collection, doc, updateDoc, query, where, getDocs, orderBy } from 'fire
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
-import { useSortedEntities } from '@/context/EntityCacheContext';
+import { useEntityResolver } from '@/context/EntityCacheContext';
+import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { 
     Loader2, 
     Save, 
@@ -240,7 +241,8 @@ export default function EditMeetingPage() {
 
 
   
-  const { sortedEntities: entities, isLoading: isLoadingEntities } = useSortedEntities();
+  // Resolve only the meeting's current entity by id (Phase 5.2) — no full load.
+  const { entitiesById, resolveIds } = useEntityResolver();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -323,10 +325,20 @@ export default function EditMeetingPage() {
     }
   }, [watchedEntity?.id, hasInitialized]);
 
+  // Resolve the meeting's bound entity (by entityId) for the init form reset.
   React.useEffect(() => {
-    if (meeting && entities && !hasInitialized) {
-      const selectedEntity = entities.find(s => s.entityId === meeting.entityId);
-      const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) || 
+    if (meeting?.entityId) resolveIds([meeting.entityId]);
+  }, [meeting?.entityId, resolveIds]);
+
+  const selectedEntity = React.useMemo(
+    () => (meeting?.entityId ? entitiesById.get(meeting.entityId) ?? null : null),
+    [meeting?.entityId, entitiesById],
+  );
+
+  React.useEffect(() => {
+    // Wait until the bound entity (if any) is resolved before seeding the form.
+    if (meeting && !hasInitialized && (!meeting.entityId || selectedEntity)) {
+      const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) ||
                           MEETING_TYPES.find(t => t.slug === (meeting.type as any)?.slug) ||
                           MEETING_TYPES.find(t => t.id === (meeting as any).type) ||
                           MEETING_TYPES[0];
@@ -389,7 +401,7 @@ export default function EditMeetingPage() {
       });
       setHasInitialized(true);
     }
-  }, [meeting, entities, form, hasInitialized]);
+  }, [meeting, selectedEntity, form, hasInitialized]);
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !meetingId || !user) return;
@@ -583,7 +595,7 @@ export default function EditMeetingPage() {
     }
   };
 
-  if (isLoadingMeeting || isLoadingEntities || !hasInitialized) {
+  if (isLoadingMeeting || !hasInitialized) {
     return (
  <div className="h-full w-full overflow-y-auto bg-background">
  <div className="w-full p-8 space-y-8">
@@ -750,32 +762,25 @@ export default function EditMeetingPage() {
                                     render={({ field }) => (
                                     <FormItem>
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Context {singular}</FormLabel>
-                                        <Select
-                                            onValueChange={(entityId: string) => {
-                                                if (entityId === 'no_entity') {
-                                                    field.onChange(null);
-                                                    return;
-                                                }
-                                                const entity = entities?.find((s) => s.id === entityId);
-                                                field.onChange(entity);
-                                                if (entity && !form.getValues('meetingSlug')) {
-                                                    form.setValue('meetingSlug', entity.slug || '', { shouldValidate: true });
-                                                }
-                                            }}
-                                            value={field.value?.id || "no_entity"}
-                                        >
-                                            <FormControl>
- <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
-                                                    <SelectValue placeholder={`Select ${singular.toLowerCase()}...`} />
-                                                </SelectTrigger>
-                                            </FormControl>
- <SelectContent className="rounded-xl">
-                                                <SelectItem value="no_entity">No Entity Context Binding</SelectItem>
-                                                {entities?.map((entity) => (
-                                                    <SelectItem key={entity.id} value={entity.id}>{entity.displayName}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <FormControl>
+                                            <EntityCombobox
+                                                value={field.value?.id ?? 'no_entity'}
+                                                valueKey="id"
+                                                noneLabel="No Entity Context Binding"
+                                                noneValue="no_entity"
+                                                placeholder={`Select ${singular.toLowerCase()}...`}
+                                                onChange={(val, entity) => {
+                                                    if (val === 'no_entity' || !entity) {
+                                                        field.onChange(null);
+                                                        return;
+                                                    }
+                                                    field.onChange(entity);
+                                                    if (!form.getValues('meetingSlug')) {
+                                                        form.setValue('meetingSlug', entity.slug || '', { shouldValidate: true });
+                                                    }
+                                                }}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                     )}

@@ -1,13 +1,15 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, where, doc, deleteDoc, addDoc, getDocs, updateDoc } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { Meeting, WorkspaceEntity, Entity } from '@/lib/types';
-import { useEntityCache } from '@/context/EntityCacheContext';
+import { useEntityResolver } from '@/context/EntityCacheContext';
 import { MEETING_TYPES } from '@/lib/types';
+import { cloneMeetingData, getUniqueSlugForType } from '@/lib/meeting-clone-utils';
+import { logActivity } from '@/lib/activity-logger';
 import { getEntityEmail } from '@/lib/entity-helpers';
 import { useTerminology } from '@/hooks/use-terminology';
 import { Button } from '@/components/ui/button';
@@ -154,6 +156,57 @@ export default function MeetingsHubClient() {
   const [editingName, setEditingName] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
+  const { user } = useUser();
+  const [isCloningMeetingId, setIsCloningMeetingId] = useState<string | null>(null);
+
+  const handleCloneMeeting = async (meeting: Meeting) => {
+    if (!firestore || !user || !activeWorkspaceId) return;
+    setIsCloningMeetingId(meeting.id);
+    try {
+      const clonedData = cloneMeetingData(meeting);
+      const baseSlug = meeting.meetingSlug || meeting.entitySlug || "session";
+      const uniqueSlug = await getUniqueSlugForType(firestore, baseSlug, meeting.type.slug);
+      
+      clonedData.meetingSlug = uniqueSlug;
+      if (meeting.entitySlug) {
+        (clonedData as any).entitySlug = uniqueSlug;
+      }
+      
+      clonedData.workspaceIds = [activeWorkspaceId];
+      if (activeOrganizationId) {
+        clonedData.organizationId = activeOrganizationId;
+      }
+
+      const meetingsRef = collection(firestore, 'meetings');
+      const docRef = await addDoc(meetingsRef, clonedData);
+
+      logActivity({
+        organizationId: activeOrganizationId,
+        entityId: meeting.entityId || 'standalone',
+        entityType: meeting.entityType || 'institution',
+        userId: user.uid,
+        workspaceId: activeWorkspaceId,
+        type: 'meeting_created',
+        source: 'user_action',
+        description: `Cloned meeting "${meeting.title}" as "${clonedData.title}" (ID: ${docRef.id})`,
+      });
+
+      toast({
+        title: 'Meeting Cloned',
+        description: `Successfully cloned as "${clonedData.title}". Redirecting...`,
+      });
+
+      router.push(`/admin/meetings/${docRef.id}/edit`);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Cloning failed',
+        description: err.message || 'An error occurred while cloning the meeting.',
+      });
+      setIsCloningMeetingId(null);
+    }
+  };
+
   const handleSaveName = async (meetingId: string) => {
     if (!firestore || !editingName.trim()) return;
     setIsUpdating(true);
@@ -200,38 +253,41 @@ export default function MeetingsHubClient() {
 
 
   const { data: meetings, isLoading: isLoadingMeetings, error } = useCollection<Meeting>(meetingsQuery);
-  const { entities, isLoading: isLoadingEntities } = useEntityCache();
+  const { entitiesById, resolveIds } = useEntityResolver();
 
-  const isLoading = isLoadingMeetings || isLoadingEntities || isLoadingFilter;
+  // Resolve only the entities referenced by the loaded meetings (logo/email/assignee).
+  useEffect(() => {
+    const ids = [...new Set((meetings || []).map(m => m.entityId).filter(Boolean) as string[])];
+    if (ids.length) resolveIds(ids);
+  }, [meetings, resolveIds]);
+
+  const isLoading = isLoadingMeetings || isLoadingFilter;
 
   const entityLogoMap = useMemo(() => {
-    if (!entities) return new Map<string, string | undefined>();
-    return new Map(entities.map(s => [s.entityId, s.logoUrl]));
-  }, [entities]);
+    const map = new Map<string, string | undefined>();
+    entitiesById.forEach((e, id) => map.set(id, e.logoUrl));
+    return map;
+  }, [entitiesById]);
 
   const entityEmailMap = useMemo(() => {
-    if (!entities) return new Map<string, string | undefined>();
-    return new Map(entities.map(s => [s.entityId, getEntityEmail(s as any)]));
-  }, [entities]);
+    const map = new Map<string, string | undefined>();
+    entitiesById.forEach((e, id) => map.set(id, getEntityEmail(e as any)));
+    return map;
+  }, [entitiesById]);
 
   const filteredMeetings = useMemo(() => {
-    if (!meetings || !entities) return [];
-    
+    if (!meetings) return [];
+
     let temp = meetings;
 
-    // Filter by assigned user
+    // Filter by assigned user (looks up each meeting's resolved entity)
     if (assignedUserId) {
-        const filteredEntityIds = new Set(
-            entities.filter(entity => {
-                if (assignedUserId === 'unassigned') {
-                    return !entity.assignedTo?.userId;
-                }
-                return entity.assignedTo?.userId === assignedUserId;
-            }).map(s => s.entityId)
-        );
         temp = temp.filter(m => {
             if (!m.entityId) return assignedUserId === 'all' || !assignedUserId; // Standalone meetings only show if no specific user filter or 'all'
-            return filteredEntityIds.has(m.entityId);
+            const ent = entitiesById.get(m.entityId);
+            if (!ent) return false;
+            if (assignedUserId === 'unassigned') return !ent.assignedTo?.userId;
+            return ent.assignedTo?.userId === assignedUserId;
         });
     }
 
@@ -239,9 +295,9 @@ export default function MeetingsHubClient() {
     if (typeFilter !== 'all') {
         temp = temp.filter(m => m.type?.id === typeFilter);
     }
-    
+
     return temp;
-  }, [meetings, entities, typeFilter, assignedUserId]);
+  }, [meetings, entitiesById, typeFilter, assignedUserId]);
 
   const handleDeleteMeeting = () => {
     if (!firestore || !meetingToDelete) return;
@@ -441,6 +497,17 @@ export default function MeetingsHubClient() {
               <PlusCircle className="mr-2 h-4 w-4" />
               <span>Save as Template</span>
             </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleCloneMeeting(meeting)}
+              disabled={isCloningMeetingId !== null}
+            >
+              {isCloningMeetingId === meeting.id ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              <span>Clone Session</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
   className="text-destructive focus:text-destructive-foreground focus:bg-destructive/10"
@@ -536,7 +603,7 @@ export default function MeetingsHubClient() {
                                 filteredMeetings.map((meeting) => {
                                  const type = meeting.type || MEETING_TYPES[0];
                                  const logoUrl = meeting.entityId ? entityLogoMap.get(meeting.entityId) : undefined;
-                                 const safeEntityName = meeting.title || meeting.entityName || (meeting.entityId ? entities?.find(e => e.entityId === meeting.entityId)?.displayName : null) || meeting.heroTitle || 'Standalone Session';
+                                 const safeEntityName = meeting.title || meeting.entityName || (meeting.entityId ? entitiesById.get(meeting.entityId)?.displayName : null) || meeting.heroTitle || 'Standalone Session';
                                  
                                  const isActive = meeting.status !== 'ended' && meeting.status !== 'cancelled';
                                 return (

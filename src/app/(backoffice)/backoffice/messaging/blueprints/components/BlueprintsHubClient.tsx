@@ -360,7 +360,6 @@ export default function BlueprintsHubClient() {
               } : undefined}
               variables={variables || []}
               styles={[]}
-              entities={[]}
               meetings={[]}
               surveys={[]}
               pdfs={[]}

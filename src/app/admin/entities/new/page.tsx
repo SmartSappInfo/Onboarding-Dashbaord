@@ -188,15 +188,15 @@ export default function NewEntityPage() {
   const [isCustomVarsOpen, setIsCustomVarsOpen] = React.useState(false);
 
   const zonesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'zones'), orderBy('name', 'asc'));
-  }, [firestore]);
+    if (!firestore || !activeOrganizationId) return null;
+    return query(collection(firestore, 'zones'), where('organizationId', '==', activeOrganizationId), orderBy('name', 'asc'));
+  }, [firestore, activeOrganizationId]);
   const { data: zones } = useCollection<any>(zonesQuery);
 
   const modulesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'modules'), orderBy('order', 'asc'));
-  }, [firestore]);
+    if (!firestore || !activeOrganizationId) return null;
+    return query(collection(firestore, 'modules'), where('organizationId', '==', activeOrganizationId), orderBy('order', 'asc'));
+  }, [firestore, activeOrganizationId]);
   const { data: modules } = useCollection<any>(modulesQuery);
 
   const usersQuery = useMemoFirebase(() => {

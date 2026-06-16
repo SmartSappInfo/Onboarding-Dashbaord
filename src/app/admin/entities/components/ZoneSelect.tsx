@@ -2,11 +2,12 @@
 
 import * as React from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { collection, orderBy, query, where } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Zone } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useTenant } from '@/context/TenantContext';
 
 interface ZoneSelectProps {
   value?: { id: string; name: string } | null;
@@ -16,9 +17,15 @@ interface ZoneSelectProps {
 
 export function ZoneSelect({ value, onValueChange, error }: ZoneSelectProps) {
   const firestore = useFirestore();
+  const { activeOrganizationId } = useTenant();
+
   const zonesQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'zones'), orderBy('name', 'asc')) : null),
-    [firestore]
+    () => (firestore && activeOrganizationId ? query(
+      collection(firestore, 'zones'), 
+      where('organizationId', '==', activeOrganizationId),
+      orderBy('name', 'asc')
+    ) : null),
+    [firestore, activeOrganizationId]
   );
   const { data: zones, isLoading } = useCollection<Zone>(zonesQuery);
 

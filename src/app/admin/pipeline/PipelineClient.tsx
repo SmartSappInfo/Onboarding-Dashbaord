@@ -31,6 +31,7 @@ import {
     TooltipTrigger
 } from '@/components/ui/tooltip';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { savePipelineAction } from '@/lib/pipeline-actions';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -39,6 +40,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 export default function PipelineClient() {
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
+  const { activeOrganizationId } = useTenant();
   const { user } = useUser();
   const { toast } = useToast();
   const { plural } = useTerminology();
@@ -58,8 +60,8 @@ export default function PipelineClient() {
   const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
 
   const zonesQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'zones'), orderBy('name', 'asc')) : null, 
-  [firestore]);
+    firestore && activeOrganizationId ? query(collection(firestore, 'zones'), where('organizationId', '==', activeOrganizationId), orderBy('name', 'asc')) : null, 
+  [firestore, activeOrganizationId]);
   const { data: zones } = useCollection<Zone>(zonesQuery);
 
   const [currentPipelineId, setCurrentPipelineId] = React.useState<string | null>(null);

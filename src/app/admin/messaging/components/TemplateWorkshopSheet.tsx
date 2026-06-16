@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where, addDoc } from 'firebase/firestore';
 import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
-import { useSortedEntities } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
@@ -92,7 +91,6 @@ export function TemplateWorkshopSheet({
 
     const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
-    const { sortedEntities: entities } = useSortedEntities();
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
@@ -180,7 +178,6 @@ export function TemplateWorkshopSheet({
                         initialTemplate={initialTemplate}
                         variables={firestoreVariables || []}
                         styles={styles || []}
-                        entities={entities || []}
                         meetings={meetings || []}
                         surveys={surveys || []}
                         pdfs={pdfs || []}

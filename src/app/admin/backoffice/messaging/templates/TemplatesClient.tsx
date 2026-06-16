@@ -282,7 +282,6 @@ export default function TemplatesClient() {
                         initialTemplate={editingTemplate}
                         variables={variables || []}
                         styles={styles || []}
-                        entities={[]}
                         meetings={[]}
                         surveys={[]}
                         pdfs={[]}

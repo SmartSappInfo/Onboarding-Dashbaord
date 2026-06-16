@@ -5,7 +5,6 @@ import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } 
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, AppField } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useSortedEntities } from '@/context/EntityCacheContext';
 import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
 import { TemplatePreviewModal } from './components/template-preview-modal';
@@ -212,7 +211,6 @@ export default function MessageTemplatesPage() {
 
     const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
-    const { sortedEntities: entities } = useSortedEntities();
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
@@ -525,7 +523,6 @@ export default function MessageTemplatesPage() {
                         initialTemplate={editingTemplate}
                         variables={variables || []}
                         styles={styles || []}
-                        entities={entities || []}
                         meetings={meetings || []}
                         surveys={surveys || []}
                         pdfs={pdfs || []}

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { WorkspaceEntity, UserProfile, Activity, Zone } from '@/lib/types';
-import { useSortedEntities } from '@/context/EntityCacheContext';
+import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { X, Building, User, Tag, MapPin, Activity as ActivityIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +66,6 @@ export default function ActivitiesClient() {
         ) : null, 
     [firestore, activeOrganizationId]);
 
-    const { sortedEntities: entities } = useSortedEntities();
     const { data: users } = useCollection<UserProfile>(usersCol);
     const { data: zones } = useCollection<Zone>(zonesCol);
 
@@ -129,17 +128,14 @@ export default function ActivitiesClient() {
  <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5 ml-1 text-left">
  <Building className="h-3 w-3" /> {singular} Context
                                 </Label>
-                                <Select value={entityId || 'all'} onValueChange={setEntityId}>
-                                    <SelectTrigger className="h-10 bg-muted/50 border-border text-foreground rounded-xl transition-all text-left">
-                                        <SelectValue placeholder={`All ${plural}`} />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-border bg-card text-left">
-                                        <SelectItem value="all">All {plural}</SelectItem>
-                                        {entities?.map(s => (
-                                            <SelectItem key={s.id} value={s.entityId}>{s.displayName}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <EntityCombobox
+                                    value={entityId || 'all'}
+                                    onChange={(v) => setEntityId(v)}
+                                    noneValue="all"
+                                    noneLabel={`All ${plural}`}
+                                    placeholder={`All ${plural}`}
+                                    className="h-10 bg-muted/50 border-border rounded-xl"
+                                />
                             </div>
 
  <div className="space-y-2 text-left">

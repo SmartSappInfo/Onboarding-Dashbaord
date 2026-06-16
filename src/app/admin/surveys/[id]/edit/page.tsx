@@ -7,7 +7,6 @@ import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@
 import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSortedEntities } from '@/context/EntityCacheContext';
 import { Button } from '@/components/ui/button';
 import { 
     Check, 
@@ -226,7 +225,6 @@ export default function EditSurveyPage() {
     useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
 
-    const { sortedEntities: institutions } = useSortedEntities();
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -447,7 +445,7 @@ export default function EditSurveyPage() {
  <motion.div key="step1" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
  <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
  <div className={cn("space-y-8")}>
-                                            <Step1Details institutions={institutions || []} />
+                                            <Step1Details />
                                         </div>
  <div className={cn("xl:sticky xl:top-0 h-[700px] xl:h-[calc(100vh-250px)]")}>
                                             <LivePreviewPane />

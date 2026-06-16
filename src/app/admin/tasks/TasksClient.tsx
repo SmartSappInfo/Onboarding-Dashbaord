@@ -4,7 +4,7 @@ import * as React from 'react';
 import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus, WorkspaceEntity } from '@/lib/types';
-import { useSortedEntities } from '@/context/EntityCacheContext';
+import { useEntityResolver } from '@/context/EntityCacheContext';
 import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, addMonths, addWeeks, startOfDay, endOfDay } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
@@ -295,16 +295,23 @@ export default function TasksClient() {
         );
     }, [firestore, activeOrganizationId]);
 
-    const { sortedEntities: entities } = useSortedEntities();
+    const { entitiesById, resolveIds } = useEntityResolver();
 
     const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
-    // Removed duplicate entities subscription
+
+    // Resolve only the entities referenced by the loaded tasks (logo lookup),
+    // instead of streaming the full workspace_entities set.
+    React.useEffect(() => {
+        const ids = [...new Set((allTasks || []).map(t => t.entityId).filter(Boolean) as string[])];
+        if (ids.length) resolveIds(ids);
+    }, [allTasks, resolveIds]);
 
     const entityLogoMap = React.useMemo(() => {
-        if (!entities) return new Map<string, string | undefined>();
-        return new Map(entities.map(e => [e.entityId, e.logoUrl]));
-    }, [entities]);
+        const map = new Map<string, string | undefined>();
+        entitiesById.forEach((e, id) => map.set(id, e.logoUrl));
+        return map;
+    }, [entitiesById]);
 
     const userMap = React.useMemo(() => {
         if (!users) return new Map<string, UserProfile>();

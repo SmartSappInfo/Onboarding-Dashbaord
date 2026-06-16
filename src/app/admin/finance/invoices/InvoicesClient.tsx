@@ -5,7 +5,7 @@ import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Invoice, BillingPeriod, WorkspaceEntity, BillingProfile } from '@/lib/types';
-import { useSortedEntities } from '@/context/EntityCacheContext';
+import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { format } from 'date-fns';
 import { 
     Receipt, 
@@ -109,7 +109,6 @@ export default function InvoicesClient() {
         );
     }, [firestore, activeWorkspaceId]);
 
-    const { sortedEntities: entities, isLoading: isLoadingEntities } = useSortedEntities();
 
     const periodsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -186,7 +185,7 @@ export default function InvoicesClient() {
         return temp;
     }, [invoices, statusFilter, searchTerm]);
 
-    const isLoading = isLoadingInvoices || isLoadingEntities || isLoadingFilter;
+    const isLoading = isLoadingInvoices || isLoadingFilter;
 
     return (
         <PageContainerFluid>
@@ -305,10 +304,12 @@ export default function InvoicesClient() {
                         <div className="p-8 space-y-6 text-left bg-background">
  <div className="space-y-2 text-left">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">1. Target {singular}</Label>
-                                <Select onValueChange={setSelectedEntityId} value={selectedEntityId || ''}>
- <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold text-left"><SelectValue placeholder={`Select ${singular.toLowerCase()}...`} /></SelectTrigger>
- <SelectContent className="rounded-xl text-left">{entities?.map(s => <SelectItem key={s.id} value={s.id} className="text-left">{s.displayName}</SelectItem>)}</SelectContent>
-                                </Select>
+                                <EntityCombobox
+                                    value={selectedEntityId}
+                                    onChange={setSelectedEntityId}
+                                    valueKey="id"
+                                    placeholder={`Select ${singular.toLowerCase()}...`}
+                                />
                             </div>
  <div className="space-y-2 text-left">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">2. Billing Cycle</Label>

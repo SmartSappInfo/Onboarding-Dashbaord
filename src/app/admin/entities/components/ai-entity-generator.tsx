@@ -23,7 +23,7 @@ import {
     Info, 
     AlertCircle
 } from 'lucide-react';
-import { collection, query, orderBy, doc, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, doc, writeBatch, where } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -82,8 +82,8 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   // Fetch contextual mapping data
-  const zonesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
-  const modulesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'modules'), orderBy('order')) : null, [firestore]);
+  const zonesQuery = useMemoFirebase(() => firestore && activeOrganizationId ? query(collection(firestore, 'zones'), where('organizationId', '==', activeOrganizationId), orderBy('name')) : null, [firestore, activeOrganizationId]);
+  const modulesQuery = useMemoFirebase(() => firestore && activeOrganizationId ? query(collection(firestore, 'modules'), where('organizationId', '==', activeOrganizationId), orderBy('order')) : null, [firestore, activeOrganizationId]);
 
   const { data: zones } = useCollection<Zone>(zonesQuery);
   const { data: modules } = useCollection<Module>(modulesQuery);

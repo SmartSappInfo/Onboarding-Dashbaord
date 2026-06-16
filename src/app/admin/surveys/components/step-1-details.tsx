@@ -18,25 +18,30 @@ import { Badge } from '@/components/ui/badge';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import { useEntitySearch } from '@/hooks/use-entity-search';
+import { useEntityResolver } from '@/context/EntityCacheContext';
 
-interface Step1DetailsProps {
-    institutions?: WorkspaceEntity[];
-}
+interface Step1DetailsProps {}
 
 // Sub-component to avoid hooks-in-render-prop violation
-function EntityPickerField({ 
-    field, 
-    institutions, 
+function EntityPickerField({
+    field,
     setValue,
     watch
-}: { 
+}: {
     field: { value: string | null; onChange: (v: string | null) => void };
-    institutions?: WorkspaceEntity[];
     setValue: (name: string, value: any, options?: any) => void;
     watch: (name: string) => any;
 }) {
     const [open, setOpen] = React.useState(false);
     const [search, setSearch] = React.useState('');
+
+    // Server-side paginated search instead of loading all entities (Phase 5.2).
+    const { results, hasMore, loadMore } = useEntitySearch({ search, enabled: open, pageSize: 25 });
+    const { entitiesById, resolveIds } = useEntityResolver();
+    React.useEffect(() => {
+        if (field.value) resolveIds([field.value]);
+    }, [field.value, resolveIds]);
 
     const entityTypeConfig = {
         institution: { label: 'Institution', icon: Building, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
@@ -45,24 +50,29 @@ function EntityPickerField({
         other: { label: 'Other', icon: Layout, color: 'text-slate-500', bgColor: 'bg-muted/100/10' },
     };
 
-    const normalizedEntities = (institutions || []).map(e => ({
+    const normalize = (e: WorkspaceEntity & { id: string }) => ({
         ...e,
         label: e.displayName || e.entityId || e.id || 'Unnamed Entity',
-        type: (e.entityType || 'other').toLowerCase() as keyof typeof entityTypeConfig
-    }));
+        type: (e.entityType || 'other').toLowerCase() as keyof typeof entityTypeConfig,
+    });
 
-    const filtered = normalizedEntities.filter(e =>
-        e.label.toLowerCase().includes(search.toLowerCase())
-    );
+    // Results are already filtered server-side by `search`.
+    const normalizedEntities = results.map(normalize);
 
     const grouped = {
-        institution: filtered.filter(e => e.type === 'institution'),
-        family: filtered.filter(e => e.type === 'family'),
-        person: filtered.filter(e => e.type === 'person'),
-        other: filtered.filter(e => !['institution', 'family', 'person'].includes(e.type)),
+        institution: normalizedEntities.filter(e => e.type === 'institution'),
+        family: normalizedEntities.filter(e => e.type === 'family'),
+        person: normalizedEntities.filter(e => e.type === 'person'),
+        other: normalizedEntities.filter(e => !['institution', 'family', 'person'].includes(e.type)),
     };
 
-    const selectedEntity = normalizedEntities.find(e => e.entityId === field.value);
+    const selectedEntity = React.useMemo(() => {
+        if (!field.value) return null;
+        const inResults = normalizedEntities.find(e => e.entityId === field.value);
+        if (inResults) return inResults;
+        const resolved = entitiesById.get(field.value);
+        return resolved ? normalize(resolved) : null;
+    }, [field.value, normalizedEntities, entitiesById]);
     const selectedConfig = selectedEntity ? (entityTypeConfig[selectedEntity.type] || entityTypeConfig.other) : null;
     const SelectedIcon = selectedConfig ? selectedConfig.icon : Building;
 
@@ -169,6 +179,15 @@ function EntityPickerField({
                                     </CommandGroup>
                                 );
                             })}
+                            {hasMore && (
+                                <CommandItem
+                                    value="__load_more__"
+                                    onSelect={() => loadMore()}
+                                    className="justify-center text-[10px] font-bold text-primary"
+                                >
+                                    Load more…
+                                </CommandItem>
+                            )}
                         </CommandList>
                     </Command>
                 </PopoverContent>
@@ -177,7 +196,7 @@ function EntityPickerField({
     );
 }
 
-export default function Step1Details({ institutions }: Step1DetailsProps) {
+export default function Step1Details(_props: Step1DetailsProps) {
     const { control, setValue, watch } = useFormContext();
 
     return (
@@ -210,7 +229,6 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             render={({ field }) => (
                                 <EntityPickerField
                                     field={field}
-                                    institutions={institutions}
                                     setValue={setValue}
                                     watch={watch}
                                 />

@@ -55,6 +55,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
 
 const CHART_COLORS = [
@@ -73,6 +74,7 @@ const CHART_COLORS = [
 export default function ReportsClient() {
     const firestore = useFirestore();
     const { activeWorkspaceId } = useWorkspace();
+    const { activeOrganizationId } = useTenant();
     const { singular, plural } = useTerminology();
     
     // Subscriptions using the Entity Cache
@@ -87,9 +89,9 @@ export default function ReportsClient() {
     }, [firestore, activeWorkspaceId]);
 
     const zonesCol = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'zones'));
-    }, [firestore]);
+        if (!firestore || !activeOrganizationId) return null;
+        return query(collection(firestore, 'zones'), where('organizationId', '==', activeOrganizationId));
+    }, [firestore, activeOrganizationId]);
 
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksCol);
     const { data: zones, isLoading: isLoadingZones } = useCollection<Zone>(zonesCol);

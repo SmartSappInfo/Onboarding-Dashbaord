@@ -51,7 +51,8 @@ import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { useSortedEntities } from '@/context/EntityCacheContext';
+import { useEntityByDocId } from '@/context/EntityCacheContext';
+import { EntityCombobox } from '@/components/entities/EntityCombobox';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
@@ -156,9 +157,9 @@ export default function EditPdfPage() {
 
   const { reset, watch, setValue, getValues, trigger } = form;
   const watchedSchoolId = watch('entityId');
-  const { sortedEntities: entities } = useSortedEntities();
-
-  const selectedSchool = React.useMemo(() => entities?.find(s => s.id === watchedSchoolId), [entities, watchedSchoolId]);
+  // Resolve the selected entity by doc id (fed to FieldMapper/preview) without
+  // loading the whole workspace (Phase 5.2).
+  const selectedSchool = useEntityByDocId(watchedSchoolId);
 
   const { state: historyState, set: setHistory, undo: undoHistory, redo: redoHistory, canUndo, canRedo, reset: resetHistory } = useUndoRedo<PDFFormField[]>([]);
 
@@ -298,29 +299,20 @@ export default function EditPdfPage() {
                                                 <Controller name="entityId" control={form.control} render={({ field }) => (
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Sample Data Context</Label>
-                                                        <Select 
-                                                            onValueChange={(val) => { 
-                                                                const ent = entities?.find(s => s.id === val); 
-                                                                field.onChange(val === 'none' ? null : val); 
-                                                                setValue('entityName', ent ? ent.displayName : 'SmartSapp', { shouldDirty: true }); 
-                                                                
-                                                                // Sync logo if institution has one
+                                                        <EntityCombobox
+                                                            value={field.value}
+                                                            valueKey="id"
+                                                            noneLabel="Generic (No Context)"
+                                                            placeholder="Select context..."
+                                                            onChange={(val, ent) => {
+                                                                field.onChange(val === 'none' ? null : val);
+                                                                setValue('entityName', ent ? (ent.displayName ?? 'SmartSapp') : 'SmartSapp', { shouldDirty: true });
+                                                                // Sync logo if the entity has one
                                                                 if (ent?.logoUrl) {
                                                                     setValue('logoUrl', ent.logoUrl, { shouldDirty: true });
                                                                 }
-                                                            }} 
-                                                            value={field.value || 'none'}
-                                                        >
-                                                            <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold">
-                                                                <SelectValue placeholder="Select context..." />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="rounded-xl">
-                                                                <SelectItem value="none">Generic (No Context)</SelectItem>
-                                                                {entities?.map(ent => (
-                                                                    <SelectItem key={ent.id} value={ent.id}>{ent.displayName}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
+                                                            }}
+                                                        />
                                                     </div>
                                                 )} />
                                             </CardContent>
@@ -339,7 +331,7 @@ export default function EditPdfPage() {
                             {step === 2 && (
  <motion.div key="step2" {...stepTransition} className="h-full">
  <div className="h-[80vh] border-none ring-1 ring-border rounded-[2rem] overflow-hidden shadow-2xl bg-background">
-                                        <FieldMapper pdf={livePdf} fields={fields} setFields={setFields} namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId} onSave={() => {}} isSaving={isSaving} onPreview={() => setIsPreviewOpen(true)} isStatusChanging={isStatusChanging} onStatusChange={(s) => setValue('status', s, { shouldDirty: true })} onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')} isDetecting={isDetecting} undo={handleUndo} redo={handleRedo} canUndo={canUndo} canRedo={canRedo} password={watch('password')} setPassword={(val) => setValue('password', val, { shouldDirty: true })} passwordProtected={watch('passwordProtected')} setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })} entity={selectedSchool} />
+                                        <FieldMapper pdf={livePdf} fields={fields} setFields={setFields} namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId} onSave={() => {}} isSaving={isSaving} onPreview={() => setIsPreviewOpen(true)} isStatusChanging={isStatusChanging} onStatusChange={(s) => setValue('status', s, { shouldDirty: true })} onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')} isDetecting={isDetecting} undo={handleUndo} redo={handleRedo} canUndo={canUndo} canRedo={canRedo} password={watch('password')} setPassword={(val) => setValue('password', val, { shouldDirty: true })} passwordProtected={watch('passwordProtected')} setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })} entity={selectedSchool ?? undefined} />
                                     </div>
                                 </motion.div>
                             )}
@@ -408,7 +400,7 @@ export default function EditPdfPage() {
                 </div>
             </div>
         </div>
-        <PdfPreviewDialog isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm} entity={selectedSchool} />
+        <PdfPreviewDialog isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm} entity={selectedSchool ?? undefined} />
         
         <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}>
             <AlertDialogContent className="rounded-[1.5rem] border-none shadow-2xl bg-background/95 backdrop-blur-xl max-w-md p-6">

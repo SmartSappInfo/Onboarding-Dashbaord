@@ -19,6 +19,7 @@ import {
     SelectTrigger, 
     SelectValue 
 } from '@/components/ui/select';
+import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,7 +39,6 @@ interface SimulationStudioProps {
     setSimEntity: (val: any) => void;
     simRecordId: string;
     setSimRecordId: (val: string) => void;
-    entities?: WorkspaceEntity[];
     meetings?: Meeting[];
     surveys?: Survey[];
     pdfs?: PDFForm[];
@@ -117,7 +117,6 @@ export function SimulationStudio({
     setSimEntity,
     simRecordId,
     setSimRecordId,
-    entities,
     meetings,
     surveys,
     pdfs,
@@ -188,14 +187,23 @@ export function SimulationStudio({
                                 <SelectItem value="Submission">Doc Signing Submission</SelectItem>
                             </SelectContent>
                         </Select>
-                        {simEntity !== 'none' && (
+                        {simEntity === 'School' ? (
+                            <EntityCombobox
+                                value={simRecordId}
+                                onChange={setSimRecordId}
+                                valueKey="id"
+                                noneLabel="Select Instance..."
+                                noneValue="none"
+                                placeholder="Pick Record..."
+                                className="h-10 w-[200px] text-xs"
+                            />
+                        ) : simEntity !== 'none' && (
                             <Select value={simRecordId} onValueChange={setSimRecordId}>
                                 <SelectTrigger className="h-10 w-[200px] rounded-xl bg-muted/20 border-none font-bold text-xs">
                                     <SelectValue placeholder="Pick Record..." />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
                                     <SelectItem value="none">Select Instance...</SelectItem>
-                                    {simEntity === 'School' && entities?.map(s => <SelectItem key={s.id} value={s.id}>{s.displayName}</SelectItem>)}
                                     {simEntity === 'Meeting' && meetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.entityName} - {m.type.name}</SelectItem>)}
                                     {simEntity === 'Survey' && surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
                                     {simEntity === 'Submission' && pdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}

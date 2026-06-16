@@ -192,7 +192,7 @@ export default function CreateQRWizard() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col space-y-8 pb-32 p-8">
+    <div className="w-full min-h-full flex flex-col space-y-8 pb-32 p-8">
       {/* Header */}
       <div>
         <Button variant="ghost" onClick={handleBack} className="rounded-xl mb-4 text-muted-foreground hover:text-foreground">

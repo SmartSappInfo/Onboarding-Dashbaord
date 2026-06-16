@@ -63,7 +63,7 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebas
 import { collection, orderBy, query, where, limit } from 'firebase/firestore';
 import type { Task, UserProfile, WorkspaceEntity, TaskPriority, TaskCategory, Survey, PDFForm, SurveyResponse, Submission, TaskReminder, TaskNote, TaskAttachment } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useSortedEntities } from '@/context/EntityCacheContext';
+import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -200,11 +200,6 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
         ) : null, 
     [open, firestore, activeOrganizationId]);
     
-    const { sortedEntities } = useSortedEntities();
-    const entities = React.useMemo(() => {
-        if (!open) return null;
-        return sortedEntities;
-    }, [open, sortedEntities]);
 
     const surveysQuery = useMemoFirebase(() => {
         if (!open || !firestore || !activeWorkspaceId) return null;
@@ -579,17 +574,12 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                         <div className="space-y-2 text-left">
                                             <Label className="text-xs font-semibold text-foreground/90 ml-1 flex items-center gap-2 text-left"><Building2 className="h-3.5 w-3.5 text-muted-foreground" /> Link to {singular}</Label>
                                             <Controller name="entityId" control={control} render={({ field }) => (
-                                                <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                                    <SelectTrigger className="h-12 rounded-xl bg-background border border-border text-foreground font-bold focus:ring-2 focus:ring-primary focus:border-primary text-left">
-                                                        <SelectValue placeholder="General (Unlinked)" />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border border-border bg-card text-foreground shadow-2xl text-left">
-                                                        <SelectItem value="none" className="text-left">General / Unlinked</SelectItem>
-                                                        {entities?.map(s => (
-                                                            <SelectItem key={s.id} value={s.entityId} className="text-left">{s.displayName}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                <EntityCombobox
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    placeholder="General (Unlinked)"
+                                                    noneLabel="General / Unlinked"
+                                                />
                                             )} />
                                         </div>
                                     </div>
