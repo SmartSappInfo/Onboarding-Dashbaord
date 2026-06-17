@@ -35,6 +35,13 @@ export class CallCentreService {
   }
 
   static async deleteScript(id: string): Promise<void> {
+    const campaignsSnap = await adminDb.collection('call_campaigns')
+      .where('scriptId', '==', id)
+      .get();
+    if (!campaignsSnap.empty) {
+      const campaignNames = campaignsSnap.docs.map(doc => doc.data().name).join(', ');
+      throw new Error(`Cannot delete script because it is referenced by campaign(s): ${campaignNames}`);
+    }
     await adminDb.collection('call_scripts').doc(id).delete();
   }
 
@@ -127,6 +134,9 @@ export class CallCentreService {
       }
 
       const campaign = campaignSnap.data() as CallCampaign;
+      if (!campaign.scriptId) {
+        return { success: false, count: 0, error: 'Campaign cannot be launched without an assigned script playbook.' };
+      }
 
       const audienceResult = await previewCampaignAudience({
         workspaceId: campaign.workspaceId,

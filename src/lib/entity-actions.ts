@@ -20,6 +20,7 @@ import { BulkVerificationService } from './bulk-verifier';
 import { BulkPhoneVerificationService } from './bulk-phone-verifier';
 import { applyIndustryDataDefaults } from './entity-utils';
 import { toSearchKey } from './entities/entity-cache-domain';
+import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 
 /**
  * Runs background contact verification for a primary contact.
@@ -443,6 +444,9 @@ export async function createEntityAction(
     // Save to Operational Workspace Collection
     await adminDb.collection('workspace_entities').doc(workspaceEntityId).set(workspaceEntityData);
 
+    // Project contacts into workspace_contacts (Phase 6.1) — read-model, never blocks.
+    await syncContactProjectionForWE(workspaceEntityData as any);
+
     // Log Activity
     await logActivity({
       entityId,
@@ -733,6 +737,10 @@ export async function updateEntityAction(
         }
         
         await doc.ref.update(weUpdate);
+
+        // Re-project contacts for this WE (Phase 6.1) — picks up contact, tag,
+        // zone, assignee and status changes. Merge current + delta for full state.
+        await syncContactProjectionForWE({ ...weData, ...weUpdate, id: doc.id } as any);
       }
     } else {
       console.warn(`No workspace entities found for entity ${entityId} during update.`);

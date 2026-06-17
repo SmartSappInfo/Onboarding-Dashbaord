@@ -16,7 +16,7 @@ const BulkMappingInputSchema = z.object({
   })).describe('The dynamic entity schema fields available for mapping in the target workspace.'),
   organizationId: z.string().optional().describe('The organization ID for API key resolution.'),
   provider: z.string().optional().default('anthropic').describe('The AI provider to use.'),
-  modelId: z.string().optional().default('claude-3-5-sonnet').describe('The model ID to use.'),
+  modelId: z.string().optional().default('claude-sonnet-4-6').describe('The model ID to use.'),
 });
 export type BulkMappingInput = z.infer<typeof BulkMappingInputSchema>;
 
@@ -59,7 +59,7 @@ const bulkMappingFlow = ai.defineFlow(
     outputSchema: BulkMappingOutputSchema,
   },
   async (input) => {
-    const { organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
+    const { organizationId, provider = 'anthropic', modelId = 'claude-sonnet-4-6' } = input;
 
     const resolvedModel = await getModel({
       organizationId,

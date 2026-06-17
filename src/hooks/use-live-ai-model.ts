@@ -53,10 +53,10 @@ export function useLiveAiModel() {
           let preferredAiProvider = data.preferredAiProvider || globalDefaultProvider;
           let preferredAiModel = data.preferredAiModel || globalDefaultModelId;
 
-          // Migrate legacy openai/gpt preferences to anthropic/claude-3-5-sonnet
+          // Migrate legacy openai/gpt preferences to anthropic/claude-sonnet-4-6
           if (preferredAiProvider === 'openai') {
             preferredAiProvider = 'anthropic';
-            preferredAiModel = 'claude-3-5-sonnet';
+            preferredAiModel = 'claude-sonnet-4-6';
           }
 
           setProvider(preferredAiProvider);

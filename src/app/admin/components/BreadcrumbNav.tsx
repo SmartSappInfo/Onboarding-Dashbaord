@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight, ArrowLeft, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,6 @@ import { useTerminology } from '@/hooks/use-terminology';
  */
 
 const segmentMap: Record<string, string> = {
-  admin: 'Operational Hub',
   entities: 'Directory',
   schools: 'Directory',
   prospects: 'Lead Pipeline',
@@ -28,6 +27,7 @@ const segmentMap: Record<string, string> = {
   surveys: 'Survey Intelligence',
   pdfs: 'Doc Signing Studio',
   messaging: 'Communications Centre',
+  'call-centre': 'Call Centre',
   activities: 'Platform Audit Trail',
   users: 'Team Access Control',
   profile: 'Account Profile',
@@ -54,11 +54,13 @@ const segmentMap: Record<string, string> = {
 export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const { customLabels } = useNavigation();
   const { plural } = useTerminology();
 
   const segments = pathname.split('/').filter(Boolean);
+  const track = searchParams.get('track');
   
   // LOGIC: Build items while filtering out technical IDs
   const breadcrumbItems = React.useMemo(() => {
@@ -75,9 +77,22 @@ export function BreadcrumbNav() {
       // If we have a human-readable label (from map or resolved from DB), include it.
       // Technical IDs (Firestore UIDs) that don't have a label are skipped.
       if (customLabel || mapLabel) {
+        let path = currentPath;
+        if (currentPath === '/admin/messaging/call-centre') {
+          if (pathname.includes('/scripts/')) {
+            path = '/admin/messaging/call-centre?tab=scripts';
+          } else if (pathname.includes('/campaigns/') || pathname.includes('/workspace/') || pathname.includes('/analytics/')) {
+            path = '/admin/messaging/call-centre?tab=campaigns';
+          }
+        }
+        if (track) {
+          const separator = path.includes('?') ? '&' : '?';
+          path = `${path}${separator}track=${track}`;
+        }
+
         items.push({
           label: customLabel || mapLabel,
-          path: currentPath,
+          path,
           isLast: false // Calculated later
         });
       }
@@ -88,7 +103,7 @@ export function BreadcrumbNav() {
     }
 
     return items;
-  }, [segments, customLabels]);
+  }, [segments, customLabels, pathname, track, plural]);
 
   // ADAPTIVE LOGIC: Collapse intermediate steps on mobile if path is deep
   const displayItems = React.useMemo(() => {

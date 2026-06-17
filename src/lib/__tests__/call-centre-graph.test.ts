@@ -154,11 +154,11 @@ describe('Call Centre Visual Script Graph Traversal Engine', () => {
       expect(result.warnings).toContain('The script contains loop cycles (nodes referencing each other). Ensure this is intended.');
     });
 
-    it('should warn when question node lacks a fieldName binding', () => {
+    it('should warn when question node has fewer than 2 options', () => {
       const graph: BranchingScriptGraph = {
         nodes: [
           { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start', text: '' } },
-          { id: 'q1', type: 'question', position: { x: 0, y: 0 }, data: { label: 'Ask Budget', text: '', questionConfig: { fieldBinding: 'contact' } } },
+          { id: 'q1', type: 'question', position: { x: 0, y: 0 }, data: { label: 'Ask Budget', text: '', options: ['Yes'] } },
           { id: 'end', type: 'end', position: { x: 0, y: 0 }, data: { label: 'End', text: '' } }
         ],
         edges: [
@@ -167,23 +167,43 @@ describe('Call Centre Visual Script Graph Traversal Engine', () => {
         ]
       };
       const result = validateScriptGraph(graph);
-      expect(result.warnings.some(w => w.includes('lacks a CRM data field binding'))).toBe(true);
+      expect(result.warnings.some(w => w.includes('needs at least 2 answer options'))).toBe(true);
     });
 
-    it('should warn when select question node has no options configured', () => {
+    it('should warn when a question node option label is blank', () => {
       const graph: BranchingScriptGraph = {
         nodes: [
           { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start', text: '' } },
-          { id: 'q1', type: 'question', position: { x: 0, y: 0 }, data: { label: 'Choose course', text: '', questionConfig: { fieldBinding: 'contact', fieldName: 'course', fieldType: 'select', selectOptions: [] } } },
+          { id: 'q1', type: 'question', position: { x: 0, y: 0 }, data: { label: 'Choose course', text: '', options: ['Yes', ''] } },
           { id: 'end', type: 'end', position: { x: 0, y: 0 }, data: { label: 'End', text: '' } }
         ],
         edges: [
           { id: 'e1', source: 'start', target: 'q1' },
-          { id: 'e2', source: 'q1', target: 'end' }
+          { id: 'e2', source: 'q1', sourceHandle: 'option-0', target: 'end' },
+          { id: 'e3', source: 'q1', sourceHandle: 'option-1', target: 'end' }
         ]
       };
       const result = validateScriptGraph(graph);
-      expect(result.warnings.some(w => w.includes('has no options configured'))).toBe(true);
+      expect(result.warnings.some(w => w.includes('has an empty label'))).toBe(true);
+    });
+
+    it('should warn when a question node option has no exit connection', () => {
+      const graph: BranchingScriptGraph = {
+        nodes: [
+          { id: 'start', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start', text: '' } },
+          { id: 'q1', type: 'question', position: { x: 0, y: 0 }, data: { label: 'Ask Callback', text: '', options: ['Yes', 'No'] } },
+          { id: 'yes-block', type: 'script_block', position: { x: 0, y: 0 }, data: { label: 'Yes block', text: 'Great!' } },
+          { id: 'end', type: 'end', position: { x: 0, y: 0 }, data: { label: 'End', text: '' } }
+        ],
+        edges: [
+          { id: 'e1', source: 'start', target: 'q1' },
+          { id: 'e2', source: 'q1', sourceHandle: 'option-0', target: 'yes-block' },
+          { id: 'e3', source: 'yes-block', target: 'end' }
+        ]
+      };
+      const result = validateScriptGraph(graph);
+      // option-1 ("No") has no exit edge — should warn
+      expect(result.warnings.some(w => w.includes('has no exit connection'))).toBe(true);
     });
 
     it('should warn when start node allowed hours are not in HH:MM format', () => {

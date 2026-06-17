@@ -42,53 +42,35 @@ export default function StepMode({ state, updateState, validationErrors = [] }: 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-bold text-foreground">Static or Dynamic?</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Choose whether your QR code should be trackable and editable, or permanently fixed.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        {MODE_OPTIONS.map((option) => {
-          const isSelected = state.mode === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => updateState({ mode: option.value, tracking: { ...state.tracking, enabled: option.value === 'dynamic' } })}
-              className={`text-left p-6 rounded-xl border transition-all duration-200 cursor-pointer ${
-                isSelected
-                  ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10 ring-1 ring-primary/20'
-                  : 'border-border bg-card hover:border-primary/30 hover:bg-muted/20'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <h3 className={`text-base font-bold ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                  {option.label}
-                </h3>
-                {option.tagline && (
-                  <span className={`text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full ${
-                    option.value === 'dynamic'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {option.tagline}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">{option.description}</p>
-              <div className="space-y-2">
-                {option.features.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2.5">
-                    <f.icon className={`h-4 w-4 shrink-0 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <span className="text-sm text-foreground">{f.text}</span>
-                  </div>
-                ))}
-              </div>
-            </button>
-          );
-        })}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <Label className="text-sm font-bold text-foreground">Routing Type</Label>
+          <p className="text-xs text-muted-foreground">Dynamic routes through SmartSapp to track scans and edit links later.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-1 bg-muted/40 p-1 rounded-xl w-full sm:w-64 border border-border shrink-0">
+          <button
+            type="button"
+            onClick={() => updateState({ mode: 'dynamic', tracking: { ...state.tracking, enabled: true } })}
+            className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+              state.mode === 'dynamic'
+                ? 'bg-card text-foreground shadow-sm border border-border'
+                : 'text-muted-foreground hover:text-foreground border border-transparent'
+            }`}
+          >
+            Dynamic
+          </button>
+          <button
+            type="button"
+            onClick={() => updateState({ mode: 'static', tracking: { ...state.tracking, enabled: false } })}
+            className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+              state.mode === 'static'
+                ? 'bg-card text-foreground shadow-sm border border-border'
+                : 'text-muted-foreground hover:text-foreground border border-transparent'
+            }`}
+          >
+            Static
+          </button>
+        </div>
       </div>
 
       {state.mode === 'dynamic' && (

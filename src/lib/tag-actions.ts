@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Tag, TagCategory, TagAuditLog } from './types';
@@ -860,11 +861,14 @@ export async function bulkApplyTagsAction(
     const errors: string[] = [];
     const total = contactIds.length;
     const partialFailures: string[] = [];
+    // Updated WE state (with new tags) to re-project after a successful commit.
+    const weToResync: Array<Record<string, any>> = [];
 
     for (let i = 0; i < contactIds.length; i += batchSize) {
       const chunk = contactIds.slice(i, i + batchSize);
       const batch = adminDb.batch();
       const chunkProcessed: string[] = [];
+      const chunkWe: Array<Record<string, any>> = [];
 
       for (const contactId of chunk) {
         try {
@@ -892,6 +896,10 @@ export async function bulkApplyTagsAction(
           });
 
           chunkProcessed.push(contactId);
+          // Workspace-tag changes feed audience segmentation → re-project.
+          if (contactType === 'workspace_entity') {
+            chunkWe.push({ ...data, id: contactId, workspaceTags: Array.from(existingTags) });
+          }
         } catch (readErr: any) {
           partialFailures.push(contactId);
           failedCount++;
@@ -902,6 +910,7 @@ export async function bulkApplyTagsAction(
       try {
         await batch.commit();
         processedCount += chunkProcessed.length;
+        weToResync.push(...chunkWe);
       } catch (commitErr: any) {
         const msg = `Batch commit failed for contacts ${i}–${i + chunk.length - 1}: ${commitErr.message}`;
         console.error('bulkApplyTagsAction batch error:', commitErr);
@@ -911,6 +920,11 @@ export async function bulkApplyTagsAction(
       }
 
       // onProgress callback removed - not part of function signature
+    }
+
+    // Re-project contacts for the re-tagged workspace_entities (Phase 6.1/6.3).
+    for (const we of weToResync) {
+      await syncContactProjectionForWE(we as any);
     }
 
     // Update tag usage counts — chunk to stay within the 500-op batch limit

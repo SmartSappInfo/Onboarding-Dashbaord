@@ -38,8 +38,7 @@ function loadBurnerDomains(): Set<string> {
     // Works from both Next.js API routes (server) and direct Node execution.
     // __dirname resolves to .next/server/... at runtime, so we anchor from cwd.
     const candidates = [
-      path.resolve(process.cwd(), 'disposable_email_blocklist.conf'),
-      path.resolve(__dirname, '../../../../disposable_email_blocklist.conf'),
+      path.join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'disposable_email_blocklist.conf'),
     ];
 
     for (const filePath of candidates) {

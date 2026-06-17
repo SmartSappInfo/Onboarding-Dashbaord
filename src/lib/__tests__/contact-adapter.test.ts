@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { resolveContact, clearContactCache, getWorkspaceContacts } from '../contact-adapter';
+import { resolveContact, clearContactCache } from '../contact-adapter';
 import { adminDb } from '../firebase-admin';
 import type { Entity, WorkspaceEntity } from '../types';
 
@@ -110,71 +110,4 @@ describe('Contact Adapter Core Tests', () => {
     });
   });
 
-  describe('getWorkspaceContacts', () => {
-    it('should retrieve and filter workspace contacts based on tags', async () => {
-      const mockWorkspaceEntity: WorkspaceEntity = {
-        id: 'we_1',
-        organizationId: 'org_1',
-        workspaceId: 'workspace_1',
-        entityId: 'entity_1',
-        status: 'active',
-        entityType: 'person',
-        workspaceTags: ['important'],
-        displayName: 'Person Entity',
-        entityContacts: [],
-        addedAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
-      };
-
-      const mockEntity: Entity = {
-        id: 'entity_1',
-        organizationId: 'org_1',
-        name: 'Person Entity',
-        entityType: 'person',
-        entityContacts: [],
-        globalTags: [],
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
-      };
-
-      const mockCollection = vi.fn((collectionName: string) => {
-        if (collectionName === 'workspace_entities') {
-          return {
-            where: vi.fn().mockReturnThis(),
-            get: vi.fn().mockResolvedValue({
-              docs: [
-                {
-                  id: 'we_1',
-                  data: () => mockWorkspaceEntity,
-                },
-              ],
-            }),
-            limit: vi.fn().mockReturnThis(),
-          };
-        } else if (collectionName === 'entities') {
-          return {
-            doc: vi.fn().mockReturnValue({
-              get: vi.fn().mockResolvedValue({
-                exists: true,
-                id: 'entity_1',
-                data: () => mockEntity,
-              }),
-            }),
-          };
-        }
-        return {};
-      });
-
-      (adminDb.collection as any) = mockCollection;
-
-      // Filter by tag that matches
-      const contactsHit = await getWorkspaceContacts('workspace_1', { tags: ['important'] });
-      expect(contactsHit).toHaveLength(1);
-      expect(contactsHit[0].name).toBe('Person Entity');
-
-      // Filter by tag that doesn't match
-      const contactsMiss = await getWorkspaceContacts('workspace_1', { tags: ['other'] });
-      expect(contactsMiss).toHaveLength(0);
-    });
-  });
 });

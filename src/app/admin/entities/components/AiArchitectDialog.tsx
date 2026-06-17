@@ -49,7 +49,7 @@ export function AiArchitectDialog({
       const result = await extractSchoolData({ 
         text,
         provider: 'anthropic',
-        modelId: 'claude-3-5-sonnet'
+        modelId: 'claude-sonnet-4-6'
       });
       if (!result || !result.name) {
         throw new Error('AI was unable to identify a name for this record.');

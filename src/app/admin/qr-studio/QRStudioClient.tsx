@@ -25,12 +25,17 @@ import {
   X,
   Check,
   Link2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import {
   Select,
   SelectContent,
@@ -70,6 +75,7 @@ import {
   pauseQRCode,
   resumeQRCode,
   archiveQRCode,
+  deleteQRCode,
   duplicateQRCode,
   getQRStudioStats,
   bulkQRAction,
@@ -98,11 +104,69 @@ const QR_TYPE_LABELS: Record<string, string> = {
   file: 'File',
 };
 
-const STATUS_STYLES: Record<QRStatus, { label: string; className: string }> = {
-  active: { label: 'Active', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
-  paused: { label: 'Paused', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
-  archived: { label: 'Archived', className: 'bg-muted text-muted-foreground border-border' },
+const STATUS_STYLES: Record<QRStatus, { label: string; className: string; dotClassName: string }> = {
+  active: {
+    label: 'Active',
+    className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    dotClassName: 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]',
+  },
+  paused: {
+    label: 'Paused',
+    className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    dotClassName: 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.4)]',
+  },
+  archived: {
+    label: 'Archived',
+    className: 'bg-muted text-muted-foreground border-border',
+    dotClassName: 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.4)]',
+  },
 };
+
+// ─── Sort types ────────────────────────────────────
+type SortField = 'name' | 'type' | 'scans' | 'date';
+type SortDirection = 'asc' | 'desc';
+
+// ─── Copy Button with Success State ────────────────
+interface CopyButtonProps {
+  value: string;
+  toastTitle: string;
+  className?: string;
+  icon?: React.ComponentType<any>;
+}
+
+function CopyButton({ value, toastTitle, className, icon: Icon = Copy }: CopyButtonProps) {
+  const [copied, setCopied] = React.useState(false);
+  const { toast } = useToast();
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    toast({
+      title: toastTitle,
+      description: value,
+    });
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn(
+        "h-6 w-6 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all shrink-0",
+        className
+      )}
+      onClick={handleCopy}
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-emerald-500 animate-in zoom-in-50 duration-150" />
+      ) : (
+        <Icon className="h-3.5 w-3.5" />
+      )}
+    </Button>
+  );
+}
 
 /**
  * Debounce hook — delays value updates by `delay` ms.
@@ -128,6 +192,8 @@ export default function QRStudioClient() {
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [modeFilter, setModeFilter] = React.useState<string>('all');
   const [typeFilter, setTypeFilter] = React.useState<string>('all');
+  const [sortField, setSortField] = React.useState<SortField>('date');
+  const [sortDirection, setSortDirection] = React.useState<SortDirection>('desc');
 
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [isBulkActionLoading, setIsBulkActionLoading] = React.useState(false);
@@ -135,6 +201,9 @@ export default function QRStudioClient() {
 
   // Archive confirmation dialog state
   const [archiveTarget, setArchiveTarget] = React.useState<QRCodeType | null>(null);
+
+  // Delete confirmation dialog state (archived links only)
+  const [deleteTarget, setDeleteTarget] = React.useState<QRCodeType | null>(null);
 
   // Rename state
   const [renameId, setRenameId] = React.useState<string | null>(null);
@@ -239,9 +308,74 @@ export default function QRStudioClient() {
     finally { setArchiveTarget(null); }
   };
 
-  const filteredCodes = qrCodes.filter((qr) =>
-    qr.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-  );
+  const handleDeleteConfirmed = async () => {
+    if (!activeOrganizationId || !activeWorkspaceId || !deleteTarget) return;
+    try {
+      await deleteQRCode(activeOrganizationId, activeWorkspaceId, deleteTarget.id);
+      toast({ title: 'QR Code deleted', description: `${deleteTarget.name} has been permanently deleted.` });
+      fetchData();
+    } catch { toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete.' }); }
+    finally { setDeleteTarget(null); }
+  };
+
+  // ─── Search across name, destination URL, resource name, short path, and type label ───
+  const filteredCodes = React.useMemo(() => {
+    const q = debouncedSearch.toLowerCase();
+    const searched = qrCodes.filter((qr) => {
+      // When filter is 'all', hide archived links — user must explicitly select 'Archived'
+      if (statusFilter === 'all' && qr.status === 'archived') return false;
+      if (!q) return true;
+      const typeLabel = (QR_TYPE_LABELS[qr.type] || qr.type).toLowerCase();
+      return (
+        qr.name.toLowerCase().includes(q) ||
+        (qr.destination.url || '').toLowerCase().includes(q) ||
+        (qr.destination.resourceName || '').toLowerCase().includes(q) ||
+        (qr.shortPath || '').toLowerCase().includes(q) ||
+        typeLabel.includes(q)
+      );
+    });
+
+    // ─── Sort ───
+    return searched.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'name':
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case 'type': {
+          const labelA = (QR_TYPE_LABELS[a.type] || a.type).toLowerCase();
+          const labelB = (QR_TYPE_LABELS[b.type] || b.type).toLowerCase();
+          cmp = labelA.localeCompare(labelB);
+          break;
+        }
+        case 'scans':
+          cmp = a.stats.totalScans - b.stats.totalScans;
+          break;
+        case 'date':
+        default:
+          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+      }
+      return sortDirection === 'asc' ? cmp : -cmp;
+    });
+  }, [qrCodes, debouncedSearch, sortField, sortDirection]);
+
+  // Toggle sort or switch field
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'name' || field === 'type' ? 'asc' : 'desc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-0 group-hover/sort:opacity-50 transition-opacity" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-3 w-3 ml-1 text-primary" />
+      : <ArrowDown className="h-3 w-3 ml-1 text-primary" />;
+  };
 
   const startRename = (qr: QRCodeType, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -337,7 +471,7 @@ export default function QRStudioClient() {
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search QR codes..."
+              placeholder="Search by name, URL, link, type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 rounded-xl border-border bg-background h-10 w-full"
@@ -376,6 +510,29 @@ export default function QRStudioClient() {
                 {Object.entries(QR_TYPE_LABELS).map(([val, label]) => (
                   <SelectItem key={val} value={val}>{label}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={`${sortField}-${sortDirection}`} onValueChange={(v) => {
+              const [f, d] = v.split('-') as [SortField, SortDirection];
+              setSortField(f);
+              setSortDirection(d);
+            }}>
+              <SelectTrigger className="w-full sm:w-44 rounded-xl border-border bg-background h-10">
+                <div className="flex items-center gap-1.5">
+                  <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Sort by" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="date-desc">Newest first</SelectItem>
+                <SelectItem value="date-asc">Oldest first</SelectItem>
+                <SelectItem value="name-asc">Name A → Z</SelectItem>
+                <SelectItem value="name-desc">Name Z → A</SelectItem>
+                <SelectItem value="type-asc">Type A → Z</SelectItem>
+                <SelectItem value="type-desc">Type Z → A</SelectItem>
+                <SelectItem value="scans-desc">Most scans</SelectItem>
+                <SelectItem value="scans-asc">Fewest scans</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -461,163 +618,178 @@ export default function QRStudioClient() {
             </Button>
           </motion.div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={filteredCodes.length > 0 && selectedIds.length === filteredCodes.length}
-                    onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                  />
-                </TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground min-w-[200px]">Name</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap hidden lg:table-cell">Type</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-48 hidden sm:table-cell">Destination</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap hidden md:table-cell">Mode</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap">Status</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-right w-px whitespace-nowrap">Scans</TableHead>
-                <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <AnimatePresence>
-                {filteredCodes.map((qr) => {
-                  const statusStyle = STATUS_STYLES[qr.status];
-                  return (
-                    <motion.tr
-                      key={qr.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="border-border cursor-pointer hover:bg-muted/30 transition-colors"
-                      onClick={() => router.push(`/admin/qr-studio/${qr.id}`)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedIds.includes(qr.id)}
-                          onCheckedChange={(checked) => handleSelect(qr.id, checked as boolean)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-semibold text-sm text-foreground min-w-[200px]">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-lg bg-primary/5 flex items-center justify-center shrink-0">
-                            <QrCode className="h-4 w-4 text-primary" />
+          <TooltipProvider delayDuration={200}>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="w-10 pl-4 pr-2">
+                    <Checkbox
+                      checked={filteredCodes.length > 0 && selectedIds.length === filteredCodes.length}
+                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-[290px] cursor-pointer select-none group/sort hover:text-foreground transition-colors px-2"
+                    onClick={() => handleSort('name')}
+                  >
+                    <span className="flex items-center">Name<SortIcon field="name" /></span>
+                  </TableHead>
+                  <TableHead
+                    className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap hidden lg:table-cell cursor-pointer select-none group/sort hover:text-foreground transition-colors px-2"
+                    onClick={() => handleSort('type')}
+                  >
+                    <span className="flex items-center">Type<SortIcon field="type" /></span>
+                  </TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-40 hidden md:table-cell px-2">Short Link</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-52 hidden sm:table-cell px-2">Destination</TableHead>
+                  <TableHead
+                    className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-center w-12 whitespace-nowrap cursor-pointer select-none group/sort hover:text-foreground transition-colors px-2"
+                    onClick={() => handleSort('scans')}
+                  >
+                    <span className="flex items-center justify-center">Scans<SortIcon field="scans" /></span>
+                  </TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground w-px whitespace-nowrap px-2"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <AnimatePresence>
+                  {filteredCodes.map((qr) => {
+                    const statusStyle = STATUS_STYLES[qr.status];
+                    return (
+                      <motion.tr
+                        key={qr.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="border-border cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => router.push(`/admin/qr-studio/${qr.id}`)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()} className="pl-4 pr-2">
+                          <Checkbox
+                            checked={selectedIds.includes(qr.id)}
+                            onCheckedChange={(checked) => handleSelect(qr.id, checked as boolean)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-semibold text-sm text-foreground w-[290px] max-w-[290px] px-2 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-lg bg-primary/5 flex items-center justify-center shrink-0">
+                              <QrCode className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              {renameId === qr.id ? (
+                                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                  <input
+                                    ref={renameInputRef}
+                                    value={renameValue}
+                                    onChange={e => setRenameValue(e.target.value)}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') commitRename(qr);
+                                      if (e.key === 'Escape') cancelRename();
+                                    }}
+                                    onBlur={() => commitRename(qr)}
+                                    disabled={isSavingRename}
+                                    className="flex-1 min-w-0 h-7 px-2 text-sm font-semibold rounded-lg border border-primary/50 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    autoFocus
+                                  />
+                                  <button type="button" onClick={() => commitRename(qr)} className="h-6 w-6 flex items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-500/10">
+                                    <Check className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button type="button" onClick={cancelRename} className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="group/name flex items-center gap-1.5 min-w-0">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <p className="font-semibold text-sm truncate cursor-help flex-1 min-w-0">{qr.name}</p>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[300px] break-words">
+                                      {qr.name}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <button
+                                    type="button"
+                                    onClick={e => startRename(qr, e)}
+                                    className="opacity-0 group-hover/name:opacity-100 transition-opacity h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              )}
+                              {qr.description && <p className="text-[10px] text-muted-foreground truncate">{qr.description}</p>}
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            {renameId === qr.id ? (
-                              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                <input
-                                  ref={renameInputRef}
-                                  value={renameValue}
-                                  onChange={e => setRenameValue(e.target.value)}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') commitRename(qr);
-                                    if (e.key === 'Escape') cancelRename();
-                                  }}
-                                  onBlur={() => commitRename(qr)}
-                                  disabled={isSavingRename}
-                                  className="flex-1 min-w-0 h-7 px-2 text-sm font-semibold rounded-lg border border-primary/50 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                  autoFocus
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell w-px whitespace-nowrap px-2 py-3">
+                          <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider rounded-lg">
+                            {QR_TYPE_LABELS[qr.type] || qr.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell w-40 max-w-[160px] truncate px-2 py-3">
+                          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={cn("h-2.5 w-2.5 rounded-full shrink-0 cursor-help", statusStyle.dotClassName)} />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Status: {statusStyle.label}
+                              </TooltipContent>
+                            </Tooltip>
+                            {qr.mode === 'dynamic' && qr.shortPath ? (
+                              <div className="flex items-center gap-1.5 group/link min-w-0 flex-1">
+                                <span className="text-xs font-mono text-foreground truncate min-w-0 flex-1">{qr.shortPath}</span>
+                                <CopyButton
+                                  value={`${window.location.origin}/q/${qr.shortPath}`}
+                                  toastTitle="Copied Short Link"
+                                  icon={Link2}
+                                  className="opacity-0 group-hover/link:opacity-100 focus:opacity-100 transition-opacity"
                                 />
-                                <button type="button" onClick={() => commitRename(qr)} className="h-6 w-6 flex items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-500/10">
-                                  <Check className="h-3.5 w-3.5" />
-                                </button>
-                                <button type="button" onClick={cancelRename} className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
                               </div>
                             ) : (
-                              <div className="group/name flex items-center gap-1.5">
-                                <p className="font-semibold text-sm truncate">{qr.name}</p>
-                                <button
-                                  type="button"
-                                  onClick={e => startRename(qr, e)}
-                                  className="opacity-0 group-hover/name:opacity-100 transition-opacity h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                              </div>
+                              <span className="text-xs text-muted-foreground/45 font-mono select-none flex-1">—</span>
                             )}
-                            {qr.description && <p className="text-[10px] text-muted-foreground truncate">{qr.description}</p>}
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell w-px whitespace-nowrap">
-                        <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider rounded-lg">
-                          {QR_TYPE_LABELS[qr.type] || qr.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell max-w-[192px] truncate">
-                        <p className="text-xs text-muted-foreground truncate">
-                          {qr.destination.resourceName || qr.destination.url || '—'}
-                        </p>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell w-px whitespace-nowrap">
-                        <Badge
-                          variant="outline"
-                          className={`text-[9px] uppercase font-bold tracking-wider rounded-lg ${
-                            qr.mode === 'dynamic'
-                              ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20'
-                              : 'bg-muted text-muted-foreground border-border'
-                          }`}
-                        >
-                          {qr.mode}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="w-px whitespace-nowrap">
-                        <Badge variant="outline" className={`text-[9px] uppercase font-bold tracking-wider rounded-lg ${statusStyle.className}`}>
-                          {statusStyle.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-sm tabular-nums w-px whitespace-nowrap">
-                        {qr.stats.totalScans.toLocaleString()}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()} className="w-px whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          {qr.destination.url && (
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell w-52 max-w-[200px] truncate px-2 py-3">
+                          <div className="flex items-center gap-1.5 group/dest min-w-0" onClick={e => e.stopPropagation()}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-xs text-muted-foreground truncate cursor-help block min-w-0 flex-1">
+                                  {qr.destination.resourceName || qr.destination.url || '—'}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-[400px] break-all">
+                                {qr.destination.url || '—'}
+                              </TooltipContent>
+                            </Tooltip>
+                            {qr.destination.url && (
+                              <CopyButton
+                                value={qr.destination.url}
+                                toastTitle="Copied Destination Link"
+                                icon={Copy}
+                                className="opacity-0 group-hover/dest:opacity-100 focus:opacity-100 transition-opacity"
+                              />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-bold text-sm tabular-nums w-12 whitespace-nowrap text-foreground px-2 py-3">
+                          {qr.stats.totalScans.toLocaleString()}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()} className="w-px whitespace-nowrap px-2 py-3">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
-                              onClick={() => {
-                                navigator.clipboard.writeText(qr.destination.url || '');
-                                toast({ title: 'Copied Destination Link!', description: qr.destination.url });
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/admin/qr-studio/${qr.id}`);
                               }}
-                              title="Copy Destination Link"
+                              title="Edit QR Code"
                             >
-                              <Copy className="h-4 w-4" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
-                          )}
-                          {qr.mode === 'dynamic' && qr.shortPath && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
-                              onClick={() => {
-                                const link = `${window.location.origin}/q/${qr.shortPath}`;
-                                navigator.clipboard.writeText(link);
-                                toast({
-                                  title: 'Copied Short Link!',
-                                  description: link,
-                                });
-                              }}
-                              title="Copy Short Link"
-                            >
-                              <Link2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/admin/qr-studio/${qr.id}`);
-                            }}
-                            title="Edit QR Code"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
@@ -645,12 +817,21 @@ export default function QRStudioClient() {
                               </DropdownMenuItem>
                             ) : null}
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={(e) => { e.stopPropagation(); setArchiveTarget(qr); }}
-                              className="rounded-lg cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" /> Archive
-                            </DropdownMenuItem>
+                            {qr.status === 'archived' ? (
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); setDeleteTarget(qr); }}
+                                className="rounded-lg cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete Permanently
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); setArchiveTarget(qr); }}
+                                className="rounded-lg cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Archive
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                         </div>
@@ -661,6 +842,7 @@ export default function QRStudioClient() {
               </AnimatePresence>
             </TableBody>
           </Table>
+          </TooltipProvider>
         )}
       </Card>
 
@@ -688,6 +870,33 @@ export default function QRStudioClient() {
               className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog (archived links only) */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 rounded-xl bg-destructive/10">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <AlertDialogTitle className="text-lg font-bold">Delete QR Code?</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              <strong className="text-foreground">{deleteTarget?.name}</strong> will be permanently deleted.
+              This action cannot be undone and all scan data will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirmed}
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

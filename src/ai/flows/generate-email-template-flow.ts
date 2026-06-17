@@ -28,7 +28,7 @@ const GenerateEmailTemplateInputSchema = z.object({
   availableVariables: z.array(z.string()).optional().describe('A list of dynamic variables available for this specific context.'),
   organizationId: z.string().optional().describe('The organization ID for API key resolution.'),
   provider: z.string().optional().default('anthropic').describe('The AI provider to use.'),
-  modelId: z.string().optional().default('claude-3-5-sonnet').describe('The model ID to use.'),
+  modelId: z.string().optional().default('claude-sonnet-4-6').describe('The model ID to use.'),
 });
 export type GenerateEmailTemplateInput = z.infer<typeof GenerateEmailTemplateInputSchema>;
 
@@ -90,7 +90,7 @@ const generateEmailTemplateFlow = ai.defineFlow(
     outputSchema: GenerateEmailTemplateOutputSchema,
   },
   async (input) => {
-    const { organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
+    const { organizationId, provider = 'anthropic', modelId = 'claude-sonnet-4-6' } = input;
 
     // Resolve dynamic credentials/model based on tenant preference
     const resolvedModel = await getModel({

@@ -7,7 +7,8 @@ import { collection, query, where, doc, orderBy, updateDoc } from 'firebase/fire
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
-import { useEntityCache } from '@/context/EntityCacheContext';
+import { resolveInvitationRecipients, type InvitationRecipient } from '@/lib/contacts/contact-repository';
+import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import { useAudiences } from '@/lib/audience-hooks';
 import { useToast } from '@/hooks/use-toast';
 import { useMeetingContext } from '../layout';
@@ -135,7 +136,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   const meetingId = params.id as string;
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
-  const { activeOrganizationId } = useTenant();
+  const { activeOrganizationId, activeWorkspace } = useTenant();
   const { user: currentUser } = useUser();
   const { toast } = useToast();
 
@@ -229,18 +230,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     return false;
   }, [selectedChannels, emailTemplateId, smsTemplateId]);
 
-  // Fetch all workspace entities for live client-side filtering
-
-
-  const { entities: workspaceEntities, isLoading: isLoadingEntities } = useEntityCache();
-
-  // Fetch all base entities for canonical contacts
-  const baseEntitiesColRef = useMemoFirebase(() => {
-    if (!firestore || !activeOrganizationId) return null;
-    return query(collection(firestore, 'entities'), where('organizationId', '==', activeOrganizationId));
-  }, [firestore, activeOrganizationId]);
-
-  const { data: baseEntities } = useCollection<any>(baseEntitiesColRef);
+  // Recipients are now resolved server-side from the workspace_contacts
+  // projection (see filteredRecipients below) — no full entity-set load.
 
   // Fetch saved audiences for the audience selector
   const { audiences: savedAudiences } = useAudiences(activeWorkspaceId);
@@ -328,21 +319,21 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     };
   }, [registrants, invitedGuests, registeredAttendees]);
 
-  // Derive all unique contact roles from canonical base entities
-  const availableRoles = React.useMemo(() => {
-    if (!workspaceEntities) return [];
-    const seen = new Map<string, string>();
-    workspaceEntities.forEach((e: any) => {
-      const baseEntity = baseEntities?.find((be: any) => be.id === e.entityId);
-      const contacts = baseEntity?.entityContacts || baseEntity?.contacts || e.entityContacts || e.contacts || [];
-      contacts.forEach((c: any) => {
-        if (c.typeKey && !seen.has(c.typeKey)) {
-          seen.set(c.typeKey, c.typeLabel || c.typeKey);
-        }
-      });
-    });
-    return Array.from(seen.entries()).map(([key, label]) => ({ key, label }));
-  }, [workspaceEntities, baseEntities]);
+  // Contact roles come from the workspace's effective contact types (authoritative),
+  // not from scanning the entity set.
+  const [availableRoles, setAvailableRoles] = React.useState<{ key: string; label: string }[]>([]);
+  React.useEffect(() => {
+    const scope = activeWorkspace?.contactScope as any;
+    if (!scope || !activeWorkspaceId) return;
+    let cancelled = false;
+    getEffectiveContactTypes(scope, activeOrganizationId, activeWorkspaceId)
+      .then((types) => {
+        if (cancelled) return;
+        setAvailableRoles(types.filter((t) => t.active).map((t) => ({ key: t.key, label: t.label })));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [activeWorkspace?.contactScope, activeOrganizationId, activeWorkspaceId]);
 
   // Compute all available custom registration fields safely and efficiently
   const allAvailableFields = React.useMemo(() => {
@@ -415,79 +406,47 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     }
   }, [savedAudiences]);
 
-  // Filter contacts client-side for Bulk Invitations
-  const filteredRecipients = React.useMemo(() => {
-    if (!workspaceEntities) return [];
+  // Bulk-invitation recipients — resolved SERVER-side from the workspace_contacts
+  // projection (multi-tag/scope/role/channel/assignee filter), debounced. No
+  // full entity-set load in the browser.
+  const [filteredRecipients, setFilteredRecipients] = React.useState<InvitationRecipient[]>([]);
+  const [isResolvingRecipients, setIsResolvingRecipients] = React.useState(false);
 
-    let pool = workspaceEntities;
+  const recipientFilterKey = JSON.stringify({
+    channels: selectedChannels,
+    assignee: assigneeFilter === 'mine' ? currentUser?.uid ?? null : null,
+    inc: tagSegment.includeTagIds,
+    exc: tagSegment.excludeTagIds,
+    logic: tagSegment.includeLogic,
+    scope: contactScope,
+    roles: selectedRoles,
+  });
 
-    // 0. Assignee filtering
-    if (assigneeFilter === 'mine' && currentUser?.uid) {
-      pool = pool.filter((e: any) => {
-        const assignedUserId = e.assignedTo?.userId || e.assignedTo;
-        return assignedUserId === currentUser.uid;
-      });
-    }
-
-    // 1. Tag filtering
-    if (tagSegment.includeTagIds.length > 0) {
-      pool = pool.filter((e: any) => {
-        const tags = e.workspaceTags || e.tags || [];
-        if (tagSegment.includeLogic === 'AND') {
-          return tagSegment.includeTagIds.every(id => tags.includes(id));
-        } else {
-          return tagSegment.includeTagIds.some(id => tags.includes(id));
-        }
-      });
-    }
-
-    if (tagSegment.excludeTagIds.length > 0) {
-      pool = pool.filter((e: any) => {
-        const tags = e.workspaceTags || e.tags || [];
-        return !tagSegment.excludeTagIds.some(id => tags.includes(id));
-      });
-    }
-
-    // 2. Resolve matching contacts based on selected channels and contact scope / roles
-    const recipients: any[] = [];
-    pool.forEach((e: any) => {
-      const baseEntity = baseEntities?.find((be: any) => be.id === e.entityId);
-      const contacts = baseEntity?.entityContacts || baseEntity?.contacts || e.entityContacts || e.contacts || [];
-      let matchedContacts: any[] = [];
-
-      if (contactScope === 'primary') {
-        const primary = contacts.find((c: any) => c.isPrimary) || contacts[0];
-        if (primary) matchedContacts = [primary];
-      } else if (contactScope === 'signatories') {
-        matchedContacts = contacts.filter((c: any) => c.isSignatory);
-      } else if (contactScope === 'roles') {
-        matchedContacts = contacts.filter((c: any) => selectedRoles.includes(c.typeKey || ''));
-      } else {
-        matchedContacts = contacts;
+  React.useEffect(() => {
+    if (!activeWorkspaceId) return;
+    let cancelled = false;
+    setIsResolvingRecipients(true);
+    const t = setTimeout(async () => {
+      try {
+        const f = JSON.parse(recipientFilterKey);
+        const { recipients } = await resolveInvitationRecipients(activeWorkspaceId, {
+          channels: (f.channels || []).filter((c: string) => c === 'email' || c === 'sms'),
+          assignedUserId: f.assignee,
+          includeTagIds: f.inc || [],
+          excludeTagIds: f.exc || [],
+          includeLogic: f.logic === 'AND' ? 'AND' : 'OR',
+          contactScope: f.scope,
+          roles: f.roles || [],
+        });
+        if (!cancelled) setFilteredRecipients(recipients);
+      } catch {
+        if (!cancelled) setFilteredRecipients([]);
+      } finally {
+        if (!cancelled) setIsResolvingRecipients(false);
       }
-
-      matchedContacts.forEach((c: any) => {
-        const hasEmail = !!c.email;
-        const hasPhone = !!c.phone;
-
-        const isEmailSelected = selectedChannels.includes('email');
-        const isSmsSelected = selectedChannels.includes('sms');
-
-        if ((isEmailSelected && hasEmail) || (isSmsSelected && hasPhone)) {
-          const entityName = baseEntity?.displayName || baseEntity?.name || e.displayName || e.name || '';
-          recipients.push({
-            entityId: e.entityId || e.id,
-            entityName,
-            name: c.name || entityName,
-            email: c.email || '',
-            phone: c.phone || '',
-          });
-        }
-      });
-    });
-
-    return recipients;
-  }, [workspaceEntities, baseEntities, tagSegment, contactScope, selectedRoles, selectedChannels, assigneeFilter, currentUser?.uid]);
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [activeWorkspaceId, recipientFilterKey]);
 
   // Filtered List for Invited Guests table search and filters
   const filteredInvites = React.useMemo(() => {
@@ -998,7 +957,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     link.click();
   };
 
-  if (isLoadingMeeting || isLoadingRegistrants || isLoadingEntities) {
+  if (isLoadingMeeting || isLoadingRegistrants) {
     return (
       <div className="h-full flex items-center justify-center p-8 bg-background">
         <div className="text-center space-y-4">
@@ -1391,7 +1350,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-xs font-semibold text-muted-foreground">
                       <span>Matched Recipients:</span>
-                      <Badge variant="secondary" className="font-bold text-xs">
+                      <Badge variant="secondary" className="font-bold text-xs gap-1">
+                        {isResolvingRecipients && <Loader2 className="h-3 w-3 animate-spin" />}
                         {filteredRecipients.length}
                       </Badge>
                     </div>

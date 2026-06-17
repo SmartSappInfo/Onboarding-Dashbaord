@@ -43,10 +43,68 @@ import {
   PhoneOff,
   User,
   AlertTriangle,
-  FolderOpen
+  FolderOpen,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Clock,
+  SkipForward,
+  MessageSquare,
+  Bookmark,
+  History,
+  ShieldAlert,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+
+const getOutcomeIcon = (outcome: string) => {
+  const lower = outcome.toLowerCase();
+  if (lower.includes('interested') && !lower.includes('not')) {
+    return <Check className="h-3.5 w-3.5 mr-1.5 shrink-0 text-emerald-400" />;
+  }
+  if (lower.includes('not interested')) {
+    return <X className="h-3.5 w-3.5 mr-1.5 shrink-0 text-rose-400" />;
+  }
+  if (lower.includes('no answer')) {
+    return <PhoneOff className="h-3.5 w-3.5 mr-1.5 shrink-0 text-amber-400" />;
+  }
+  if (lower.includes('callback') || lower.includes('call back')) {
+    return <Clock className="h-3.5 w-3.5 mr-1.5 shrink-0 text-cyan-400" />;
+  }
+  if (lower.includes('wrong number')) {
+    return <AlertTriangle className="h-3.5 w-3.5 mr-1.5 shrink-0 text-red-400" />;
+  }
+  if (lower.includes('defer')) {
+    return <Pause className="h-3.5 w-3.5 mr-1.5 shrink-0 text-indigo-400" />;
+  }
+  return <ChevronRight className="h-3.5 w-3.5 mr-1.5 shrink-0 text-muted-foreground" />;
+};
+
+const getOutcomeIconCollapsed = (outcome: string) => {
+  const lower = outcome.toLowerCase();
+  if (lower.includes('interested') && !lower.includes('not')) {
+    return <Check className="h-3.5 w-3.5 text-emerald-400" />;
+  }
+  if (lower.includes('not interested')) {
+    return <X className="h-3.5 w-3.5 text-rose-400" />;
+  }
+  if (lower.includes('no answer')) {
+    return <PhoneOff className="h-3.5 w-3.5 text-amber-400" />;
+  }
+  if (lower.includes('callback') || lower.includes('call back')) {
+    return <Clock className="h-3.5 w-3.5 text-cyan-400" />;
+  }
+  if (lower.includes('wrong number')) {
+    return <AlertTriangle className="h-3.5 w-3.5 text-red-400" />;
+  }
+  if (lower.includes('defer')) {
+    return <Pause className="h-3.5 w-3.5 text-indigo-400" />;
+  }
+  return <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />;
+};
 
 interface WorkspaceClientProps {
   campaignId: string;
@@ -63,6 +121,22 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const { queueItems, isLoading: queueLoading } = useCallQueueItems(campaignId);
 
   const campaign = React.useMemo(() => campaigns.find(c => c.id === campaignId), [campaigns, campaignId]);
+
+  const hasCallbackOutcome = React.useMemo(() => {
+    return campaign?.outcomes?.some(out => {
+      const lower = out.toLowerCase();
+      return lower.includes('callback') || lower.includes('call back');
+    }) || false;
+  }, [campaign?.outcomes]);
+
+  const hasDeferOutcome = React.useMemo(() => {
+    return campaign?.outcomes?.some(out => {
+      const lower = out.toLowerCase();
+      return lower.includes('defer');
+    }) || false;
+  }, [campaign?.outcomes]);
+
+  useSetBreadcrumb(campaign?.name ? `${campaign.name} Workspace` : 'Workspace');
 
   // Selected queue item state
   const [currentItemId, setCurrentItemId] = React.useState<string | null>(null);
@@ -82,7 +156,13 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   // Queue sorting & filtering states
   const [sortOption, setSortOption] = React.useState<'default' | 'attempts-asc' | 'attempts-desc' | 'active' | 'alpha'>('default');
-  const [filterOption, setFilterOption] = React.useState<'all' | 'institution' | 'person' | 'family'>('all');
+
+  // Panel collapse states
+  const [isLeftCollapsed, setIsLeftCollapsed] = React.useState(false);
+  const [isRightCollapsed, setIsRightCollapsed] = React.useState(false);
+
+  // Left panel view: 'queue' | 'completed' | 'callbacks'
+  const [leftView, setLeftView] = React.useState<'queue' | 'completed' | 'callbacks'>('queue');
 
   // Interactive node integration states
   const [collectedAnswers, setCollectedAnswers] = React.useState<Record<string, any>>(() => ({}));
@@ -110,14 +190,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     return { pending, completed, skipped, callbacks, deferred };
   }, [queueItems]);
 
-  // Processed Pending Queue (Apply Filter + Sort + Virtual Slicing)
+  // Processed Pending Queue (Apply Sort + Virtual Slicing)
   const processedPendingQueue = React.useMemo(() => {
     let items = [...groupedQueue.pending];
-
-    // Apply Filter
-    if (filterOption !== 'all') {
-      items = items.filter(item => item.entityType === filterOption);
-    }
 
     // Apply Sort
     if (sortOption === 'attempts-asc') {
@@ -136,7 +211,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
     // Slice to 150 items to optimize browser DOM size
     return items.slice(0, 150);
-  }, [groupedQueue.pending, sortOption, filterOption]);
+  }, [groupedQueue.pending, sortOption]);
 
   // Current Active Queue Item
   const currentItem = React.useMemo(() => {
@@ -209,19 +284,24 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   // Load draft notes on item change
   React.useEffect(() => {
-    if (!currentItem) return;
+    if (!currentItemId) return;
+
+    // Look up active item from queueItems using currentItemId
+    const activeItem = queueItems.find(item => item.id === currentItemId);
+    if (!activeItem) return;
     
     // Check local storage recovery backup first
-    const backupKey = `workspace:call-draft-${currentItem.id}`;
+    const backupKey = `workspace:call-draft-${currentItemId}`;
     const backup = localStorage.getItem(backupKey);
     
     if (backup) {
       setNotes(backup);
       toast({ title: 'Draft Notes Recovered', description: 'Restored un-saved draft text from your local browser backup.' });
     } else {
-      setNotes(currentItem.notesDraft || '');
+      setNotes(activeItem.notesDraft || '');
     }
-  }, [currentItem]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentItemId]);
 
   // Refs to track current state for immediate flush on change/unmount
   const notesRef = React.useRef(notes);
@@ -258,6 +338,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   React.useEffect(() => {
     if (!currentItem || !activeWorkspaceId || !user) return;
     
+    // Prevent feedback loop: don't save if notes state already matches the db value
+    if (notes === (currentItem.notesDraft || '')) return;
+    
     // Save backup to local storage immediately
     const backupKey = `workspace:call-draft-${currentItem.id}`;
     localStorage.setItem(backupKey, notes);
@@ -267,7 +350,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     }, 2000); // 2 second debounce
 
     return () => clearTimeout(timeout);
-  }, [notes, currentItem, activeWorkspaceId, user]);
+  }, [notes, currentItem?.id, currentItem?.notesDraft, activeWorkspaceId, user]);
 
   // ─── Query Entity Contact History ──────────────────────────────────────────
 
@@ -673,6 +756,19 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const handleOutcomeSubmit = async (outcome: string) => {
     if (!currentItem || !activeWorkspaceId || !user) return;
 
+    // Intercept callback outcomes to trigger the date picker instead of raw completion
+    const lower = outcome.toLowerCase();
+    if (lower.includes('callback') || lower.includes('call back')) {
+      setShowCallbackPicker(true);
+      return;
+    }
+
+    // Intercept defer outcomes to trigger queue defer action instead of raw completion
+    if (lower.includes('defer')) {
+      handleDefer();
+      return;
+    }
+
     setIsSaving(true);
     setIsTimerActive(false);
     isSubmittingOutcomeRef.current = true;
@@ -829,97 +925,231 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       {/* ─── Main Content Workspace Grid ───────────────────────────────────────── */}
       <div className="flex-grow flex overflow-hidden">
         
-        {/* Left Column: Call Queue Sidebar (Width 1/4) */}
-        <div className="w-80 bg-card/50 border-r border-border flex flex-col justify-between overflow-hidden shrink-0">
-          <div className="p-4 border-b border-border space-y-3 shrink-0">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Campaign Queue</span>
-              <Badge className="bg-muted border border-border text-foreground font-mono text-[9px] font-bold">
-                {groupedQueue.pending.length} Pending
-              </Badge>
-            </div>
-            
-            {/* Sorting and Filtering Dropdowns */}
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={sortOption}
-                onChange={(e: any) => setSortOption(e.target.value)}
-                className="bg-background border border-border rounded-lg text-[10px] font-semibold text-foreground p-1.5 focus:border-primary focus:ring-0 outline-none"
-                aria-label="Sort queue items"
-              >
-                <option value="default">Default Sort</option>
-                <option value="attempts-asc">Attempts: Low-High</option>
-                <option value="attempts-desc">Attempts: High-Low</option>
-                <option value="active">Recently Active</option>
-                <option value="alpha">Alphabetical</option>
-              </select>
-              
-              <select
-                value={filterOption}
-                onChange={(e: any) => setFilterOption(e.target.value)}
-                className="bg-background border border-border rounded-lg text-[10px] font-semibold text-foreground p-1.5 focus:border-primary focus:ring-0 outline-none"
-                aria-label="Filter queue items by entity type"
-              >
-                <option value="all">All Types</option>
-                <option value="institution">Institutions</option>
-                <option value="person">Persons</option>
-                <option value="family">Families</option>
-              </select>
-            </div>
-          </div>
+        {/* Left Column: Call Queue Sidebar */}
+        <div className={cn(
+          "bg-card/50 border-r border-border flex flex-col overflow-hidden shrink-0 transition-all duration-300 ease-in-out relative",
+          isLeftCollapsed ? "w-16" : "w-80"
+        )}>
+          {/* Collapse Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsLeftCollapsed(!isLeftCollapsed)}
+            className="absolute top-3 right-2 z-10 w-6 h-6 rounded-md bg-muted border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            aria-label={isLeftCollapsed ? "Expand contact queue" : "Collapse contact queue"}
+          >
+            {isLeftCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
+          </button>
 
-          {/* List items (content-visibility virtual loading style) */}
-          <div className="flex-grow overflow-y-auto p-3 space-y-2" style={{ contentVisibility: 'auto' }}>
-            {processedPendingQueue.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground italic">No matching contacts.</div>
-            ) : (
-              processedPendingQueue.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => setCurrentItemId(item.id)}
-                  className={cn(
-                    "p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between",
-                    item.id === currentItemId
-                      ? "bg-primary/10 border-primary text-primary shadow"
-                      : "bg-card border-border text-muted-foreground hover:bg-muted hover:border-primary/30 hover:text-foreground"
+          {!isLeftCollapsed && (
+            <div className="p-4 border-b border-border space-y-3 shrink-0">
+              {/* Header row */}
+              <div className="flex items-center justify-between pr-6 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {leftView !== 'queue' && (
+                    <button
+                      type="button"
+                      onClick={() => setLeftView('queue')}
+                      className="flex items-center gap-0.5 text-[9px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider transition-colors shrink-0"
+                      aria-label="Back to call queue"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5 -ml-1" />
+                      <span>Back</span>
+                    </button>
                   )}
-                >
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold truncate line-clamp-1">{item.entityName}</p>
-                    <p className="text-[10px] font-mono">{item.entityPhone || 'No Phone'}</p>
-                  </div>
-                  {item.attempts > 0 && (
-                    <Badge variant="outline" className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted border-border text-muted-foreground">
-                      {item.attempts} attempts
-                    </Badge>
-                  )}
+                  {leftView !== 'queue' && <span className="text-muted-foreground/30 mx-0.5">|</span>}
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">
+                    {leftView === 'completed' ? 'Completed Calls' : leftView === 'callbacks' ? 'Scheduled Callbacks' : 'Campaign Queue'}
+                  </span>
                 </div>
-              ))
+              </div>
+
+              {/* Sort & Count Row — only in queue view */}
+              {leftView === 'queue' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={sortOption}
+                    onChange={(e: any) => setSortOption(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg text-[10px] font-semibold text-foreground p-1.5 focus:border-primary focus:ring-0 outline-none"
+                    aria-label="Sort queue items"
+                  >
+                    <option value="default">Default Sort</option>
+                    <option value="attempts-asc">Attempts: Low → High</option>
+                    <option value="attempts-desc">Attempts: High → Low</option>
+                    <option value="active">Recently Active</option>
+                    <option value="alpha">Alphabetical</option>
+                  </select>
+
+                  <div className="flex items-center justify-center gap-1.5 bg-muted/60 border border-border text-foreground font-mono text-[9px] font-bold rounded-lg py-1.5 px-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+                    <span className="truncate">{groupedQueue.pending.length} Contacts</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* List area */}
+          <div className={cn("flex-grow overflow-y-auto space-y-2", isLeftCollapsed ? "p-1.5 pt-12" : "p-3")} style={{ contentVisibility: 'auto' }}>
+
+            {leftView === 'completed' && !isLeftCollapsed ? (
+              /* ── Completed contacts view ── */
+              groupedQueue.completed.length === 0 ? (
+                <div className="p-8 text-center text-xs text-muted-foreground italic">No completed calls yet.</div>
+              ) : (
+                groupedQueue.completed.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-xl border border-border bg-card text-foreground flex flex-col gap-1.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-0.5 min-w-0">
+                        <p className="text-xs font-bold truncate">{item.entityName}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground">{item.entityPhone || 'No Phone'}</p>
+                      </div>
+                      {item.outcome && (
+                        <Badge className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                          {item.outcome}
+                        </Badge>
+                      )}
+                    </div>
+                    {item.duration != null && item.duration > 0 && (
+                      <p className="text-[9px] text-muted-foreground font-mono">
+                        Duration: {Math.floor(item.duration / 60)}m {item.duration % 60}s
+                      </p>
+                    )}
+                  </div>
+                ))
+              )
+            ) : leftView === 'callbacks' && !isLeftCollapsed ? (
+              /* ── Callbacks contacts view ── */
+              groupedQueue.callbacks.length === 0 ? (
+                <div className="p-8 text-center text-xs text-muted-foreground italic">No scheduled callbacks.</div>
+              ) : (
+                groupedQueue.callbacks.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setCurrentItemId(item.id)}
+                    className={cn(
+                      "p-3 rounded-xl border cursor-pointer transition-all flex flex-col gap-1.5",
+                      item.id === currentItemId
+                        ? "bg-primary/10 border-primary text-primary shadow"
+                        : "bg-card border-border text-muted-foreground hover:bg-muted hover:border-primary/30 hover:text-foreground"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-0.5 min-w-0">
+                        <p className="text-xs font-bold truncate text-foreground">{item.entityName}</p>
+                        <p className="text-[10px] font-mono">{item.entityPhone || 'No Phone'}</p>
+                      </div>
+                      <Badge className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500">
+                        Callback
+                      </Badge>
+                    </div>
+                    {item.callbackDate && (
+                      <div className="flex items-center gap-1 text-[9px] font-mono text-amber-500">
+                        <Clock className="h-3 w-3 shrink-0" />
+                        <span className="truncate">
+                          Scheduled: {new Date(item.callbackDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )
+            ) : (
+              /* ── Pending queue view ── */
+              processedPendingQueue.length === 0 ? (
+                <div className="p-8 text-center text-xs text-muted-foreground italic">
+                  {isLeftCollapsed ? '—' : 'No contacts in queue.'}
+                </div>
+              ) : (
+                processedPendingQueue.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setCurrentItemId(item.id)}
+                    className={cn(
+                      "rounded-xl border cursor-pointer transition-all",
+                      isLeftCollapsed ? "p-1.5 flex items-center justify-center" : "p-3 flex items-center justify-between",
+                      item.id === currentItemId
+                        ? "bg-primary/10 border-primary text-primary shadow"
+                        : "bg-card border-border text-muted-foreground hover:bg-muted hover:border-primary/30 hover:text-foreground"
+                    )}
+                    title={isLeftCollapsed ? `${item.entityName} — ${item.entityPhone || 'No Phone'}` : undefined}
+                  >
+                    {isLeftCollapsed ? (
+                      /* Avatar-only view */
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black uppercase shrink-0",
+                        item.id === currentItemId
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted border border-border text-muted-foreground"
+                      )}>
+                        {(item.entityName || '?')[0]}
+                      </div>
+                    ) : (
+                      /* Full view */
+                      <>
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold truncate line-clamp-1">{item.entityName}</p>
+                          <p className="text-[10px] font-mono">{item.entityPhone || 'No Phone'}</p>
+                        </div>
+                        {item.attempts > 0 && (
+                          <Badge variant="outline" className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted border-border text-muted-foreground">
+                            {item.attempts}×
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))
+              )
             )}
           </div>
 
-          {/* Statistics summary */}
-          <div className="p-4 bg-card border-t border-border text-center shrink-0">
-            <div className="grid grid-cols-2 gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              <div className="p-2 bg-muted rounded-lg">
-                <p>Completed</p>
-                <p className="text-sm font-black text-foreground">{groupedQueue.completed.length}</p>
-              </div>
-              <div className="p-2 bg-muted rounded-lg">
-                <p>Callbacks</p>
-                <p className="text-sm font-black text-amber-500">{groupedQueue.callbacks.length}</p>
+          {/* Statistics footer */}
+          {!isLeftCollapsed && (
+            <div className="p-4 bg-card border-t border-border shrink-0">
+              <div className="grid grid-cols-2 gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => setLeftView('completed')}
+                  className={cn(
+                    "p-2 rounded-lg text-left transition-colors border border-transparent",
+                    leftView === 'completed'
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                      : "bg-muted hover:bg-emerald-500/10 hover:border-emerald-500/20 hover:text-emerald-400"
+                  )}
+                  aria-label="View completed calls"
+                >
+                  <p>Completed</p>
+                  <p className="text-sm font-black text-foreground mt-0.5">{groupedQueue.completed.length}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeftView('callbacks')}
+                  className={cn(
+                    "p-2 rounded-lg text-left transition-colors border border-transparent",
+                    leftView === 'callbacks'
+                      ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
+                      : "bg-muted hover:bg-amber-500/10 hover:border-amber-500/20 hover:text-amber-500"
+                  )}
+                  aria-label="View scheduled callbacks"
+                >
+                  <p>Callbacks</p>
+                  <p className="text-sm font-black text-foreground mt-0.5">{groupedQueue.callbacks.length}</p>
+                </button>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Center Column: Contact Profile Context & Script Text (Width 2/4) */}
-        <div className="flex-grow flex flex-col justify-between overflow-y-auto p-6 space-y-6">
+        <div className="flex-grow flex flex-col overflow-hidden p-6 space-y-6">
           
           {currentItem ? (
             <>
               {/* Contact Profile Context Panel */}
-              <div className="p-5 bg-card border border-border rounded-2xl space-y-4">
+              <div className="p-5 bg-card border border-border rounded-2xl space-y-4 shrink-0">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-muted-foreground">
@@ -953,7 +1183,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
               </div>
 
               {/* Call Script Reading panel */}
-              <div className="flex-grow bg-card border border-border rounded-2xl p-6 shadow-sm relative flex flex-col justify-between min-h-[300px]">
+              <div className="flex-grow bg-card border border-border rounded-2xl p-6 shadow-sm relative flex flex-col min-h-0 overflow-hidden">
                 <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
                   <FileText className="h-3.5 w-3.5" />
                   <span>Interactive Script View</span>
@@ -993,7 +1223,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex h-full min-h-[260px] overflow-hidden pt-4">
+                    <div className="flex flex-grow min-h-0 overflow-hidden pt-4">
                       {/* Left Timeline */}
                       <div className="flex flex-col gap-2 border-r border-border pr-4 mr-4 shrink-0 w-48 overflow-y-auto">
                         <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Conversation Path</span>
@@ -1238,7 +1468,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                     </div>
                   )
                 ) : (
-                  <div className="text-base font-serif text-zinc-200 leading-relaxed max-w-3xl pr-4 whitespace-pre-line select-text pt-4">
+                  <div className="text-base font-serif text-zinc-200 leading-relaxed max-w-3xl pr-4 whitespace-pre-line select-text pt-4 flex-grow overflow-y-auto min-h-0">
                     {renderedScript}
                   </div>
                 )}
@@ -1254,16 +1484,109 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
         </div>
 
-        {/* Right Column: Outcomes, Notes & History (Width 1/4) */}
-        <div className="w-96 bg-card/50 border-l border-border flex flex-col overflow-hidden shrink-0">
-          
-          <Tabs defaultValue="notes" className="flex-grow flex flex-col overflow-hidden">
-            <TabsList className="bg-card border-b border-border h-12 p-1 rounded-none shrink-0 flex">
-              <TabsTrigger value="notes" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Notes</TabsTrigger>
-              <TabsTrigger value="deals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Deals ({contactDeals.length})</TabsTrigger>
-              <TabsTrigger value="history" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Timeline ({contactHistory.length})</TabsTrigger>
-              <TabsTrigger value="rebuttals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Rebuttals ({objectionNodes.length})</TabsTrigger>
-            </TabsList>
+        {/* Right Column: Outcomes, Notes & History */}
+        <div className={cn(
+          "bg-card/50 border-l border-border flex flex-col overflow-hidden shrink-0 transition-all duration-300 ease-in-out relative",
+          isRightCollapsed ? "w-14" : "w-96"
+        )}>
+          {/* Collapse Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsRightCollapsed(!isRightCollapsed)}
+            className="absolute top-3 left-2 z-10 w-6 h-6 rounded-md bg-muted border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            aria-label={isRightCollapsed ? "Expand panel" : "Collapse panel"}
+          >
+            {isRightCollapsed ? <PanelRightOpen className="h-3.5 w-3.5" /> : <PanelRightClose className="h-3.5 w-3.5" />}
+          </button>
+
+          {isRightCollapsed ? (
+            /* Collapsed: vertical icon bar */
+            <div className="flex flex-col items-center pt-12 gap-2 flex-grow overflow-y-auto px-1 pb-4">
+              {/* Tab Icons */}
+              <button
+                type="button"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Notes & Actions"
+                onClick={() => setIsRightCollapsed(false)}
+              >
+                <MessageSquare className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Deals"
+                onClick={() => setIsRightCollapsed(false)}
+              >
+                <Bookmark className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Timeline"
+                onClick={() => setIsRightCollapsed(false)}
+              >
+                <History className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Rebuttals"
+                onClick={() => setIsRightCollapsed(false)}
+              >
+                <ShieldAlert className="h-4 w-4" />
+              </button>
+
+              {/* Divider */}
+              <div className="w-6 border-t border-border my-1" />
+
+              {/* Compact Outcome Buttons */}
+              {currentItem && campaign?.outcomes?.map(out => (
+                <button
+                  key={out}
+                  type="button"
+                  onClick={() => handleOutcomeSubmit(out)}
+                  disabled={isSaving}
+                  className="w-9 h-9 rounded-lg bg-muted/40 border border-border flex items-center justify-center hover:bg-muted hover:border-primary/30 transition-colors disabled:opacity-50"
+                  title={out}
+                >
+                  {getOutcomeIconCollapsed(out)}
+                </button>
+              ))}
+
+              {/* Quick Actions */}
+              {currentItem && (
+                <>
+                  <div className="w-6 border-t border-border my-1" />
+                  <button
+                    type="button"
+                    onClick={() => { setIsRightCollapsed(false); setShowCallbackPicker(true); }}
+                    disabled={isActionsLoading}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                    title="Schedule Callback"
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    disabled={isActionsLoading}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                    title="Skip Contact"
+                  >
+                    <SkipForward className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            /* Expanded: Full Tabs UI */
+            <Tabs defaultValue="notes" className="flex-grow flex flex-col overflow-hidden">
+              <TabsList className="bg-card border-b border-border h-12 p-1 rounded-none shrink-0 flex pl-10">
+                <TabsTrigger value="notes" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Notes</TabsTrigger>
+                <TabsTrigger value="deals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Deals ({contactDeals.length})</TabsTrigger>
+                <TabsTrigger value="history" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Timeline ({contactHistory.length})</TabsTrigger>
+                <TabsTrigger value="rebuttals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Rebuttals ({objectionNodes.length})</TabsTrigger>
+              </TabsList>
 
             {/* Notes & Outcomes Tab */}
             <TabsContent value="notes" className="flex-grow flex flex-col justify-between overflow-y-auto p-5 space-y-6">
@@ -1281,10 +1604,11 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                     />
                   </div>
 
-                  {/* Secondary Queue controls */}
-                  <div className="space-y-2 border-t border-border pt-4">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Secondary Actions</span>
+                  {/* Unified Call Actions */}
+                  <div className="space-y-3 border-t border-border pt-4">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Call Actions</span>
                     
+                    {/* Quick Actions Row */}
                     {showCallbackPicker ? (
                       <form onSubmit={handleScheduleCallback} className="space-y-3 p-3 bg-muted border border-border rounded-xl">
                         <Label className="text-[9px] font-bold text-muted-foreground uppercase">Select Callback Date/Time</Label>
@@ -1301,47 +1625,55 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                         </div>
                       </form>
                     ) : (
-                      <div className="grid grid-cols-3 gap-2">
-                        <Button
-                          onClick={() => setShowCallbackPicker(true)}
-                          variant="outline"
-                          disabled={isActionsLoading}
-                          className="h-9 text-[10px] font-bold rounded-xl border-border bg-muted hover:bg-accent"
-                        >
-                          Callback
-                        </Button>
-                        <Button
-                          onClick={handleDefer}
-                          variant="outline"
-                          disabled={isActionsLoading}
-                          className="h-9 text-[10px] font-bold rounded-xl border-border bg-muted hover:bg-accent"
-                        >
-                          Defer Call
-                        </Button>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {!hasCallbackOutcome && (
+                          <Button
+                            onClick={() => setShowCallbackPicker(true)}
+                            variant="outline"
+                            size="sm"
+                            disabled={isActionsLoading}
+                            className="h-6 text-[8px] font-bold rounded-md border-border bg-muted hover:bg-accent gap-1 px-1.5 py-0.5"
+                          >
+                            <Clock className="h-3 w-3" />
+                            Callback
+                          </Button>
+                        )}
+                        {!hasDeferOutcome && (
+                          <Button
+                            onClick={handleDefer}
+                            variant="outline"
+                            size="sm"
+                            disabled={isActionsLoading}
+                            className="h-6 text-[8px] font-bold rounded-md border-border bg-muted hover:bg-accent gap-1 px-1.5 py-0.5"
+                          >
+                            <Pause className="h-3 w-3" />
+                            Defer
+                          </Button>
+                        )}
                         <Button
                           onClick={handleSkip}
                           variant="outline"
+                          size="sm"
                           disabled={isActionsLoading}
-                          className="h-9 text-[10px] font-bold rounded-xl border-border bg-muted hover:bg-accent"
+                          className="h-6 text-[8px] font-bold rounded-md border-border bg-muted hover:bg-accent gap-1 px-1.5 py-0.5"
                         >
+                          <SkipForward className="h-3 w-3" />
                           Skip
                         </Button>
                       </div>
                     )}
-                  </div>
 
-                  {/* Call Outcomes grid buttons */}
-                  <div className="space-y-3 border-t border-border pt-4">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Select Outcome (Completes Call)</span>
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* Outcome Buttons */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                       {campaign?.outcomes?.map(out => (
                         <Button
                           key={out}
                           onClick={() => handleOutcomeSubmit(out)}
                           disabled={isSaving}
-                          className="h-11 font-bold text-xs rounded-xl shadow-md transition-all hover:scale-[1.02]"
+                          className="h-8 font-bold text-[10px] rounded-lg border border-border bg-card text-foreground/90 flex items-center justify-start px-2.5 transition-all hover:scale-[1.01] hover:bg-muted hover:text-foreground shadow-sm"
                         >
-                          {out}
+                          {getOutcomeIcon(out)}
+                          <span className="truncate">{out}</span>
                         </Button>
                       ))}
                     </div>
@@ -1468,6 +1800,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
               </div>
             </TabsContent>
           </Tabs>
+          )}
 
         </div>
 

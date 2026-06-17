@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { ResolvedContact, EntityContact } from '@/lib/types';
+import type { EntityContact, EntityType } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,117 +9,89 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, X, Building, ChevronLeft, ChevronRight, Filter, Loader2 } from 'lucide-react';
+import { Search, X, Building, Filter, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AsyncEntityAvatar } from '../../../components/AsyncEntityAvatar';
+import { useEntitySearch, type SearchedEntity } from '@/hooks/use-entity-search';
+import { useEntityResolver } from '@/context/EntityCacheContext';
+import { useTenant } from '@/context/TenantContext';
+import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 
 export interface EntitySelectorProps {
-  /** Pre-loaded entities from the parent (lifted query). */
-  entities: ResolvedContact[];
-  isLoading: boolean;
   channel: 'email' | 'sms';
   onSelectionChange: (entityIds: string[]) => void;
   selectedEntityIds: string[];
   onContactTypeFilterChange?: (typeKeys: string[]) => void;
   activeContactTypeFilter?: string[];
-  /** Kept for backward-compat with tests */
+  /** Kept for backward-compat with callers/tests. */
   maxSelections?: number;
 }
 
-const ENTITIES_PER_PAGE = 50;
+const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 300;
 
-function ContactChip({ contact }: { contact: EntityContact }) {
-  const initials = (contact.name || '?')
-    .split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-  return (
-    <span
-      title={`${contact.name}${contact.typeLabel ? ` · ${contact.typeLabel}` : ''}`}
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border/60 text-[10px] font-semibold text-foreground/80 whitespace-nowrap"
-    >
-      <span className="flex items-center justify-center h-4 w-4 rounded-full bg-primary/20 text-primary text-[8px] font-bold shrink-0">
-        {initials}
-      </span>
-      <span className="max-w-[80px] truncate">{contact.name}</span>
-      {contact.typeLabel && (
-        <span className="text-muted-foreground/70 font-normal">· {contact.typeLabel}</span>
-      )}
-    </span>
-  );
-}
+const eidOf = (e: { entityId?: string; id: string }) => e.entityId || e.id;
 
 export function EntitySelector({
-  entities,
-  isLoading,
   onSelectionChange,
   selectedEntityIds,
   onContactTypeFilterChange,
   activeContactTypeFilter = [],
 }: EntitySelectorProps) {
+  const { activeOrganizationId, activeWorkspaceId, activeWorkspace } = useTenant();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
-  const [currentPage, setCurrentPage] = React.useState(1);
   const [showSelectAllDialog, setShowSelectAllDialog] = React.useState(false);
 
-  // Debounce search
   React.useEffect(() => {
-    const t = setTimeout(() => { setDebouncedSearch(searchTerm); setCurrentPage(1); }, SEARCH_DEBOUNCE_MS);
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  // Collect all unique contact type keys
-  const allContactTypes = React.useMemo<{ key: string; label: string }[]>(() => {
-    const seen = new Map<string, string>();
-    entities.forEach(e => {
-      (e.entityContacts || []).forEach(c => {
-        if (c.typeKey && !seen.has(c.typeKey)) seen.set(c.typeKey, c.typeLabel || c.typeKey);
-      });
-    });
-    return Array.from(seen.entries()).map(([key, label]) => ({ key, label }));
-  }, [entities]);
+  // Server-side, paginated entity search (replaces the streamed full set).
+  const { results, isLoading, hasMore, loadMore } = useEntitySearch({
+    search: debouncedSearch,
+    pageSize: PAGE_SIZE,
+  });
 
-  // Filter
-  const filtered = React.useMemo(() => {
-    const lower = debouncedSearch.toLowerCase().trim();
-    
-    // 1. First filter by contact type if active
-    let pool = entities;
-    if (activeContactTypeFilter.length > 0) {
-      pool = entities.filter(e => 
-        (e.entityContacts || []).some(c => activeContactTypeFilter.includes(c.typeKey || ''))
-      );
-    }
-
-    if (!lower) return pool;
-    return pool.filter(e => {
-      const nameMatch = e.name?.toLowerCase().includes(lower);
-      const typeMatch = e.entityType?.toLowerCase().includes(lower);
-      const contactMatch = (e.entityContacts || []).some(c =>
-        c.name?.toLowerCase().includes(lower) ||
-        c.typeLabel?.toLowerCase().includes(lower) ||
-        c.email?.toLowerCase().includes(lower)
-      );
-      return nameMatch || typeMatch || contactMatch;
-    });
-  }, [entities, debouncedSearch]);
-
-  const totalPages = Math.ceil(filtered.length / ENTITIES_PER_PAGE);
-  const paginated = React.useMemo(() => {
-    const start = (currentPage - 1) * ENTITIES_PER_PAGE;
-    return filtered.slice(start, start + ENTITIES_PER_PAGE);
-  }, [filtered, currentPage]);
-
+  // Resolve the selected entities (which may be off the current page) for the strip.
+  const { entitiesById, resolveIds } = useEntityResolver();
+  React.useEffect(() => {
+    if (selectedEntityIds.length) resolveIds(selectedEntityIds);
+  }, [selectedEntityIds, resolveIds]);
   const selectedEntities = React.useMemo(
-    () => entities.filter(e => selectedEntityIds.includes(e.entityId || e.id)),
-    [entities, selectedEntityIds]
+    () => selectedEntityIds.map((id) => entitiesById.get(id)).filter(Boolean) as SearchedEntity[],
+    [selectedEntityIds, entitiesById],
   );
+
+  // Contact-type chips come from the workspace's effective contact types
+  // (authoritative), not from scanning the entity set.
+  const [contactTypes, setContactTypes] = React.useState<{ key: string; label: string }[]>([]);
+  React.useEffect(() => {
+    const scope = activeWorkspace?.contactScope as EntityType | undefined;
+    if (!scope || !activeWorkspaceId) return;
+    let cancelled = false;
+    getEffectiveContactTypes(scope, activeOrganizationId, activeWorkspaceId)
+      .then((types) => {
+        if (cancelled) return;
+        setContactTypes(types.filter((t) => t.active).map((t) => ({ key: t.key, label: t.label })));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [activeWorkspace?.contactScope, activeOrganizationId, activeWorkspaceId]);
 
   const toggle = (eid: string) => {
     onSelectionChange(
       selectedEntityIds.includes(eid)
-        ? selectedEntityIds.filter(id => id !== eid)
-        : [...selectedEntityIds, eid]
+        ? selectedEntityIds.filter((id) => id !== eid)
+        : [...selectedEntityIds, eid],
     );
+  };
+
+  const handleSelectAllLoaded = () => {
+    const ids = results.map(eidOf);
+    onSelectionChange([...new Set([...selectedEntityIds, ...ids])]);
+    setShowSelectAllDialog(false);
   };
 
   return (
@@ -128,9 +100,9 @@ export function EntitySelector({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by name, contact, or type…"
+          placeholder="Search by name…"
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 h-10 rounded-xl bg-muted/30 border-border/50"
         />
         {searchTerm && (
@@ -141,7 +113,7 @@ export function EntitySelector({
       </div>
 
       {/* Contact-type filter chips */}
-      {allContactTypes.length > 0 && (
+      {contactTypes.length > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
             <Filter className="h-3 w-3" /> Filter by contact type
@@ -151,24 +123,24 @@ export function EntitySelector({
               type="button"
               onClick={() => onContactTypeFilterChange?.([])}
               className={cn('px-3 py-1 rounded-full text-[10px] font-bold border transition-all',
-                activeContactTypeFilter.length === 0 ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-muted/40 border-border/50 text-muted-foreground hover:border-primary/40'
+                activeContactTypeFilter.length === 0 ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-muted/40 border-border/50 text-muted-foreground hover:border-primary/40',
               )}
             >
               All contacts
             </button>
-            {allContactTypes.map(({ key, label }) => {
+            {contactTypes.map(({ key, label }) => {
               const isActive = activeContactTypeFilter.includes(key);
               return (
                 <button key={key}
                   type="button"
                   onClick={() => {
-                    const next = isActive 
-                      ? activeContactTypeFilter.filter(k => k !== key)
+                    const next = isActive
+                      ? activeContactTypeFilter.filter((k) => k !== key)
                       : [...activeContactTypeFilter, key];
                     onContactTypeFilterChange?.(next);
                   }}
                   className={cn('px-3 py-1 rounded-full text-[10px] font-bold border transition-all capitalize',
-                    isActive ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-muted/40 border-border/50 text-muted-foreground hover:border-primary/40'
+                    isActive ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-muted/40 border-border/50 text-muted-foreground hover:border-primary/40',
                   )}
                 >
                   {label}
@@ -183,14 +155,13 @@ export function EntitySelector({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="font-bold">{selectedEntityIds.length} selected</Badge>
-          <span className="text-xs text-muted-foreground">{filtered.length} available</span>
         </div>
         <div className="flex gap-2">
           {selectedEntityIds.length > 0 && (
             <Button type="button" variant="outline" size="sm" className="h-7 text-xs rounded-lg" onClick={() => onSelectionChange([])}>Clear all</Button>
           )}
-          {filtered.length > 0 && (
-            <Button type="button" variant="outline" size="sm" className="h-7 text-xs rounded-lg" onClick={() => setShowSelectAllDialog(true)}>Select all</Button>
+          {results.length > 0 && (
+            <Button type="button" variant="outline" size="sm" className="h-7 text-xs rounded-lg" onClick={() => setShowSelectAllDialog(true)}>Select all loaded</Button>
           )}
         </div>
       </div>
@@ -201,15 +172,15 @@ export function EntitySelector({
           <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Selected</p>
           <div className="max-h-28 overflow-y-auto pr-2">
             <div className="space-y-1.5">
-              {selectedEntities.map(entity => {
-                const eid = entity.entityId || entity.id;
+              {selectedEntities.map((entity) => {
+                const eid = eidOf(entity);
                 return (
                   <div key={eid} className="flex items-center justify-between gap-2 py-0.5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <AsyncEntityAvatar entityId={eid} src={entity.logoUrl} name={entity.name} className="h-6 w-6 rounded-md shrink-0" fallbackClassName="text-[7px]" />
-                      <span className="text-xs font-semibold truncate">{entity.name}</span>
+                      <AsyncEntityAvatar entityId={eid} src={entity.logoUrl} name={entity.displayName} className="h-6 w-6 rounded-md shrink-0" fallbackClassName="text-[7px]" />
+                      <span className="text-xs font-semibold truncate">{entity.displayName}</span>
                     </div>
-                    <button type="button" onClick={() => onSelectionChange(selectedEntityIds.filter(id => id !== eid))}>
+                    <button type="button" onClick={() => onSelectionChange(selectedEntityIds.filter((id) => id !== eid))}>
                       <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
                     </button>
                   </div>
@@ -227,7 +198,7 @@ export function EntitySelector({
           {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </div>
 
-        {isLoading ? (
+        {isLoading && results.length === 0 ? (
           <div className="p-4 space-y-3">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex items-center gap-3 p-2">
@@ -240,41 +211,41 @@ export function EntitySelector({
               </div>
             ))}
           </div>
-        ) : paginated.length === 0 ? (
+        ) : results.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Building className="h-7 w-7 mx-auto mb-2 opacity-40" />
             <p className="text-xs">{searchTerm ? 'No contacts match your search' : 'No contacts in this workspace'}</p>
           </div>
         ) : (
-          <div className="h-[420px] overflow-y-auto">
+          <div className="max-h-[420px] overflow-y-auto">
             <div className="divide-y divide-border/40">
-              {paginated.map(entity => {
-                const eid = entity.entityId || entity.id;
+              {results.map((entity) => {
+                const eid = eidOf(entity);
                 const isSelected = selectedEntityIds.includes(eid);
                 const contacts: EntityContact[] = entity.entityContacts || [];
                 const visibleContacts = activeContactTypeFilter.length > 0
-                  ? contacts.filter(c => activeContactTypeFilter.includes(c.typeKey || ''))
+                  ? contacts.filter((c) => activeContactTypeFilter.includes(c.typeKey || ''))
                   : contacts;
 
                 return (
                   <div key={eid} onClick={() => toggle(eid)}
                     className={cn('flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors select-none',
-                      isSelected ? 'bg-primary/[0.04]' : 'hover:bg-muted/40'
+                      isSelected ? 'bg-primary/[0.04]' : 'hover:bg-muted/40',
                     )}
                   >
-                    <input 
-                      type="checkbox" 
-                      checked={isSelected} 
-                      onChange={() => toggle(eid)} 
-                      onClick={e => e.stopPropagation()} 
-                      className="mt-2 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary shrink-0 accent-primary cursor-pointer" 
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggle(eid)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-2 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary shrink-0 accent-primary cursor-pointer"
                     />
-                    <AsyncEntityAvatar entityId={eid} src={entity.logoUrl} name={entity.name} className="h-9 w-9 rounded-xl shrink-0 mt-0.5" fallbackClassName="text-[10px]" />
+                    <AsyncEntityAvatar entityId={eid} src={entity.logoUrl} name={entity.displayName} className="h-9 w-9 rounded-xl shrink-0 mt-0.5" fallbackClassName="text-[10px]" />
                     <div className="flex-1 min-w-0 space-y-1.5">
-                      <p className="text-sm font-bold leading-tight truncate text-primary">{entity.name}</p>
+                      <p className="text-sm font-bold leading-tight truncate text-primary">{entity.displayName}</p>
                       {visibleContacts.length > 0 ? (
                         <p className="text-[11px] text-muted-foreground font-medium truncate">
-                          {visibleContacts.map(c => c.name).join(', ')}
+                          {visibleContacts.map((c) => c.name).join(', ')}
                         </p>
                       ) : contacts.length > 0 && activeContactTypeFilter.length > 0 ? (
                         <p className="text-[10px] text-muted-foreground italic">No matching contacts found</p>
@@ -290,17 +261,16 @@ export function EntitySelector({
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/10">
-            <span className="text-xs text-muted-foreground">Page {currentPage} of {totalPages}</span>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" className="h-7 rounded-lg" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 rounded-lg" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+        {hasMore && (
+          <div className="px-4 py-3 border-t bg-muted/10">
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={isLoading}
+              className="w-full py-1.5 text-center text-[10px] font-bold text-primary hover:bg-primary/5 rounded-lg disabled:opacity-50"
+            >
+              {isLoading ? 'Loading…' : 'Load more'}
+            </button>
           </div>
         )}
       </div>
@@ -308,14 +278,14 @@ export function EntitySelector({
       <AlertDialog open={showSelectAllDialog} onOpenChange={setShowSelectAllDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Select all {filtered.length} contacts?</AlertDialogTitle>
-            <AlertDialogDescription>This will queue approximately {filtered.length} messages.</AlertDialogDescription>
+            <AlertDialogTitle>Select all {results.length} loaded contacts?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This selects the entities currently loaded. To reach a larger audience, load more or use the tag-based audience for bulk sends.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { onSelectionChange(filtered.map(e => e.entityId || e.id)); setShowSelectAllDialog(false); }}>
-              Confirm
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleSelectAllLoaded}>Confirm</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

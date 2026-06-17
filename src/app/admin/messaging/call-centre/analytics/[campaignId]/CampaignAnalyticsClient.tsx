@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageContainer } from '@/components/ui/page-container';
 import { cn } from '@/lib/utils';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { 
   RefreshCw, 
   ArrowLeft, 
@@ -22,7 +23,8 @@ import {
   Settings,
   CheckCircle2,
   PhoneOff,
-  UserCheck
+  UserCheck,
+  ChevronRight
 } from 'lucide-react';
 import type { CallCampaign } from '@/lib/types';
 
@@ -40,6 +42,7 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
   const { queueItems, isLoading: queueItemsLoading } = useCallQueueItems(campaignId);
 
   const campaign = React.useMemo(() => campaigns.find(c => c.id === campaignId), [campaigns, campaignId]);
+  useSetBreadcrumb(campaign?.name ? `${campaign.name} Analytics` : 'Campaign Analytics');
 
   const [expandedNotesId, setExpandedNotesId] = React.useState<string | null>(null);
 

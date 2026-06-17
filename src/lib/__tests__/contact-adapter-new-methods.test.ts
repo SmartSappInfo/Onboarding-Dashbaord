@@ -13,7 +13,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   resolveContact,
-  contactExists,
   clearContactCache,
 } from '../contact-adapter';
 import { adminDb } from '../firebase-admin';
@@ -161,82 +160,6 @@ describe('Contact Adapter New Methods', () => {
       expect(result).not.toBeNull();
       expect(result?.id).toBe('entity_1');
       expect(result?.name).toBe('Entity Name');
-    });
-  });
-
-  describe('contactExists', () => {
-    it('should return true when entity exists', async () => {
-      const mockCollection = vi.fn((collectionName: string) => {
-        if (collectionName === 'entities') {
-          return {
-            doc: vi.fn().mockReturnValue({
-              get: vi.fn().mockResolvedValue({
-                exists: true,
-              }),
-            }),
-          };
-        }
-        return {};
-      });
-
-      (adminDb.collection as any) = mockCollection;
-
-      const result = await contactExists('entity_1');
-
-      expect(result).toBe(true);
-    });
-
-    it('should return false when checking non-existent legacy school (deprecated)', async () => {
-      // Note: contactExists now only checks entities collection
-      // Legacy schools are no longer supported in this function
-      const mockCollection = vi.fn((collectionName: string) => {
-        if (collectionName === 'entities') {
-          return {
-            doc: vi.fn().mockReturnValue({
-              get: vi.fn().mockResolvedValue({
-                exists: false, // Legacy school IDs won't exist in entities
-              }),
-            }),
-          };
-        }
-        return {};
-      });
-
-      (adminDb.collection as any) = mockCollection;
-
-      const result = await contactExists('school_1');
-
-      // Should return false since legacy schools are not checked
-      expect(result).toBe(false);
-    });
-
-    it('should return false when contact does not exist', async () => {
-      const mockCollection = vi.fn((collectionName: string) => {
-        if (collectionName === 'entities') {
-          return {
-            doc: vi.fn().mockReturnValue({
-              get: vi.fn().mockResolvedValue({
-                exists: false,
-              }),
-            }),
-          };
-        } else if (collectionName === 'schools') {
-          return {
-            doc: vi.fn().mockReturnValue({
-              get: vi.fn().mockResolvedValue({
-                exists: false,
-              }),
-            }),
-          };
-        }
-        return {};
-      });
-
-      (adminDb.collection as any) = mockCollection;
-
-      const result = await contactExists('nonexistent');
-
-      expect(result).toBe(false);
     });
   });
 

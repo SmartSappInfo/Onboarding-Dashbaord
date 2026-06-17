@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { logActivity } from './activity-logger';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { DuplicateStrategy } from './import-types';
@@ -508,6 +509,8 @@ export async function processImportChunkBackground(importLogId: string): Promise
             } else {
                 await adminDb.collection('entities').doc(extracted.entityId).set(extracted.entityDoc);
                 await adminDb.collection('workspace_entities').doc(extracted.workspaceEntityId).set(extracted.workspaceEntityDoc);
+                // Project contacts for the imported entity (Phase 6.1)
+                await syncContactProjectionForWE({ ...extracted.workspaceEntityDoc, id: extracted.workspaceEntityId } as any);
 
                 // Build deal document if configured (Risk 1 — no nested after)
                 const dealConfig = isDealImportConfig(cfg.dealConfig) ? cfg.dealConfig : null;

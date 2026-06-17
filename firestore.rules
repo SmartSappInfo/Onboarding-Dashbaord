@@ -998,6 +998,16 @@ service cloud.firestore {
          hasWorkspaceAccess(resource.data.workspaceId));
     }
 
+    // Read-model projection of contacts (Phase 6). Flattened one-row-per-contact
+    // view of workspace_entities.entityContacts, written ONLY by the server
+    // (Admin SDK, which bypasses rules) so client writes are denied. Reads mirror
+    // workspace_entities; application-layer queries already filter by workspaceId.
+    match /workspace_contacts/{contactDocId} {
+      allow read: if request.auth != null && request.auth.token.email == 'admin@smartsapp.com';
+      allow read: if isAuthorized();
+      allow write: if false;
+    }
+
     match /workspace_users/{docId} {
       allow read, list: if isAuthorized();
       allow write: if isSystemAdmin();

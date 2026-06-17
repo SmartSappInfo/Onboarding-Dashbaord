@@ -103,14 +103,14 @@ export default function JoinMeetingForm({ meetingId, entityId, meetingLink, meet
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl"
+                    className="p-10 bg-slate-100/90 dark:bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-slate-200/50 dark:border-white/10 text-center space-y-6 shadow-2xl"
                 >
-                    <div className="mx-auto bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center mb-2">
+                    <div className="mx-auto bg-primary/10 dark:bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center mb-2">
                         <Clock className="h-8 w-8 text-primary animate-pulse" />
                     </div>
                     <div className="space-y-3">
-                        <p className="text-2xl font-black text-white leading-tight">😃 You're In Too Early!</p>
-                        <p className="text-base font-medium text-white/70 leading-relaxed px-4">
+                        <p className="text-2xl font-black text-black dark:text-white leading-tight">😃 You're In Too Early!</p>
+                        <p className="text-base font-medium text-slate-800 dark:text-white/70 leading-relaxed px-4">
                             You'll be able to join from here, when the countdown is over
                         </p>
                     </div>

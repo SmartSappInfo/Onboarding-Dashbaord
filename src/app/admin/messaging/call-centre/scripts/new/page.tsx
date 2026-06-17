@@ -3,8 +3,8 @@ import { ScriptBuilderClient } from './ScriptBuilderClient';
 export default async function NewScriptPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }>;
+  searchParams: Promise<{ id?: string; returnCampaignId?: string }>;
 }) {
-  const { id } = await searchParams;
-  return <ScriptBuilderClient scriptId={id} />;
+  const { id, returnCampaignId } = await searchParams;
+  return <ScriptBuilderClient scriptId={id} returnCampaignId={returnCampaignId} />;
 }

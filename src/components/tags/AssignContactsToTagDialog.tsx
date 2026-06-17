@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useId } from 'react';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
-import { useSortedEntities } from '@/context/EntityCacheContext';
-import { useWorkspace } from '@/context/WorkspaceContext';
-import type { Tag, WorkspaceEntity } from '@/lib/types';
+import { useState, useMemo, useEffect } from 'react';
+import { useUser } from '@/firebase';
+import { useEntitySearch, type SearchedEntity } from '@/hooks/use-entity-search';
+import type { Tag } from '@/lib/types';
 import { bulkApplyTagsAction } from '@/lib/tag-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -38,42 +36,40 @@ export function AssignContactsToTagDialog({
   tag,
   onComplete,
 }: AssignContactsToTagDialogProps) {
-  const firestore = useFirestore();
   const { user } = useUser();
-  const { activeWorkspaceId } = useWorkspace() as any;
   const { toast } = useToast();
 
-  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  // Selection persists across search pages: keep the full entity objects (keyed
+  // by doc id) so the preview badges render without the full entity set.
+  const [selectedById, setSelectedById] = useState<Record<string, SearchedEntity>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: boolean; count: number; partialFailures?: number } | null>(null);
 
-  // Load all workspace entities to allow searching/selection using the cache
-  const { sortedEntities: allEntities } = useSortedEntities();
+  // Server-side entity search — only while the dialog is open.
+  const { results, isLoading, hasMore, loadMore } = useEntitySearch({
+    search: searchTerm,
+    enabled: open,
+    pageSize: 25,
+  });
 
-  const filteredEntities = useMemo(() => {
-    if (!allEntities) return [];
-    
-    // First remove entities that ALREADY have this tag
-    const actionableEntities = allEntities.filter(e => !tag || !(e.workspaceTags || []).includes(tag.id));
-    
-    const lower = searchTerm.toLowerCase();
-    return actionableEntities.filter(e =>
-      e.displayName?.toLowerCase().includes(lower) || 
-      e.primaryEmail?.toLowerCase().includes(lower)
-    );
-  }, [allEntities, searchTerm, tag]);
-
-  const selectedEntityObjects = useMemo(
-    () => (allEntities || []).filter(e => selectedContactIds.includes(e.id)),
-    [allEntities, selectedContactIds]
+  // Hide entities that already carry this tag.
+  const filteredEntities = useMemo(
+    () => results.filter(e => !tag || !(e.workspaceTags || []).includes(tag.id)),
+    [results, tag],
   );
 
-  const toggleEntity = (entityId: string) => {
-    setSelectedContactIds(prev =>
-      prev.includes(entityId) ? prev.filter(id => id !== entityId) : [...prev, entityId]
-    );
+  const selectedContactIds = useMemo(() => Object.keys(selectedById), [selectedById]);
+  const selectedEntityObjects = useMemo(() => Object.values(selectedById), [selectedById]);
+
+  const toggleEntity = (entity: SearchedEntity) => {
+    setSelectedById(prev => {
+      const next = { ...prev };
+      if (next[entity.id]) delete next[entity.id];
+      else next[entity.id] = entity;
+      return next;
+    });
   };
 
   const handleExecute = async () => {
@@ -116,17 +112,16 @@ export function AssignContactsToTagDialog({
 
   const handleClose = () => {
     if (isProcessing) return;
-    setSelectedContactIds([]);
+    setSelectedById({});
     setSearchTerm('');
     setProgress(0);
     setResult(null);
     onOpenChange(false);
   };
 
-  // Pre-load tags cache
   useEffect(() => {
     if (!open) {
-      setSelectedContactIds([]);
+      setSelectedById({});
       setSearchTerm('');
       setResult(null);
     }
@@ -188,17 +183,17 @@ export function AssignContactsToTagDialog({
               <div
                 className="max-h-56 overflow-y-auto border rounded-xl p-2 space-y-1"
               >
-                {!allEntities ? (
-                   <p className="text-[10px] text-muted-foreground text-center py-4 font-medium">Loading contacts...</p>
+                {isLoading && filteredEntities.length === 0 ? (
+                   <p className="text-[10px] text-muted-foreground text-center py-4 font-medium">Searching contacts...</p>
                 ) : filteredEntities.length === 0 ? (
                   <p className="text-[10px] text-muted-foreground text-center py-4 font-medium">No available contacts found</p>
                 ) : (
                   filteredEntities.map((entity) => {
-                    const isSelected = selectedContactIds.includes(entity.id);
+                    const isSelected = !!selectedById[entity.id];
                     return (
                       <button
                         key={entity.id}
-                        onClick={() => toggleEntity(entity.id)}
+                        onClick={() => toggleEntity(entity)}
                         className={cn(
                           'w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors text-left',
                           'cursor-pointer touch-manipulation',
@@ -219,6 +214,16 @@ export function AssignContactsToTagDialog({
                     );
                   })
                 )}
+                {hasMore && (
+                  <button
+                    type="button"
+                    onClick={loadMore}
+                    disabled={isLoading}
+                    className="w-full py-2 text-center text-[10px] font-bold text-primary hover:bg-primary/5 rounded-lg disabled:opacity-50"
+                  >
+                    {isLoading ? 'Loading…' : 'Load more'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -237,7 +242,7 @@ export function AssignContactsToTagDialog({
                     >
                       {e.displayName}
                       <button
-                        onClick={() => toggleEntity(e.id)}
+                        onClick={() => toggleEntity(e)}
                         className="ml-0.5 hover:bg-black/10 rounded-full p-0.5"
                       >
                         <X className="h-2.5 w-2.5" />

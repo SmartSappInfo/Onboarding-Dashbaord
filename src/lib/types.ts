@@ -4407,6 +4407,7 @@ export interface ScriptNode {
     text: string;           // Script text to display to agent (supports variable injection)
     outcomeValue?: string;  // Value mapped if node type is 'outcome'
     actionType?: string;    // Action type mapped if node type is 'action'
+    options?: string[];     // Answer options for question nodes
     
     // Node Specific Configurations
     startConfig?: {
@@ -4427,7 +4428,14 @@ export interface ScriptNode {
       validationPattern?: string; // Regex
     };
     objectionConfig?: {
+      // Legacy flat field kept for backwards compatibility
       keywordTriggers?: string[];
+      // Multi-entry objection list — each entry is a named objection with triggers + a response
+      objections?: Array<{
+        title: string;           // Short name, e.g. "Too expensive"
+        keywordTriggers: string[]; // Words/phrases that trigger this objection
+        description: string;     // Agent response / talking-point for this objection
+      }>;
     };
     actionConfig?: {
       webhookUrl?: string;
@@ -4448,6 +4456,8 @@ export interface ScriptEdge {
   id: string;
   source: string;
   target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
   label?: string;           // Text label shown on the branch button (e.g., "Yes", "No", "Busy")
 }
 

@@ -15,7 +15,7 @@ const QuerySurveyDataInputSchema = z.object({
   query: z.string().describe('The user\'s natural language query about the data.'),
   organizationId: z.string().optional().describe('The organization ID for API key resolution.'),
   provider: z.string().optional().default('anthropic').describe('The AI provider to use.'),
-  modelId: z.string().optional().default('claude-3-5-sonnet').describe('The model ID to use.'),
+  modelId: z.string().optional().default('claude-sonnet-4-6').describe('The model ID to use.'),
 });
 export type QuerySurveyDataInput = z.infer<typeof QuerySurveyDataInputSchema>;
 
@@ -79,7 +79,7 @@ const querySurveyDataFlow = ai.defineFlow(
         outputSchema: QuerySurveyDataOutputSchema,
     },
     async (input) => {
-        const { survey, responses, query: userQuery, organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
+        const { survey, responses, query: userQuery, organizationId, provider = 'anthropic', modelId = 'claude-sonnet-4-6' } = input;
         const surveyElementsJson = JSON.stringify(survey.elements, null, 2);
         const responsesJson = JSON.stringify(responses, null, 2);
         

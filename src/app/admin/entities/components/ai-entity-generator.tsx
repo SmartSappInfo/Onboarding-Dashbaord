@@ -50,7 +50,7 @@ type ModuleOption = Pick<Module, 'id' | 'name' | 'abbreviation' | 'color'>;
 const formSchema = z.object({
   text: z.string().min(50, { message: 'Please provide at least 50 characters of descriptive text.' }),
   provider: z.string().default('anthropic'),
-  modelId: z.string().default('claude-3-5-sonnet'),
+  modelId: z.string().default('claude-sonnet-4-6'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -74,7 +74,7 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
     defaultValues: { 
         text: '',
         provider: 'anthropic',
-        modelId: 'claude-3-5-sonnet'
+        modelId: 'claude-sonnet-4-6'
     },
   });
 
@@ -99,7 +99,7 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
           let modelId = data.preferredAiModel;
           if (provider === 'openai') {
             provider = 'anthropic';
-            modelId = 'claude-3-5-sonnet';
+            modelId = 'claude-sonnet-4-6';
           }
           if (provider) {
             form.setValue('provider', provider);

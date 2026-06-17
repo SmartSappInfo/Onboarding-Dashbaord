@@ -49,7 +49,7 @@ import {
     removeDealContactAction
 } from '@/app/actions/deal-actions';
 import { createTaskAction, updateTaskAction, deleteTaskAction } from '@/lib/task-server-actions';
-import { useEntityCache } from '@/context/EntityCacheContext';
+import { useEntitySearch } from '@/hooks/use-entity-search';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import dynamic from 'next/dynamic';
 import EntityNotesTab from '../../entities/components/EntityNotesTab';
@@ -160,8 +160,14 @@ export default function DealDetailsPage() {
     const [contactRole, setContactRole] = React.useState('Decision Maker');
     const [isContactAssociating, setIsContactAssociating] = React.useState(false);
 
-    // Fetch workspace entities for secondary contacts
-    const { entities: workspaceEntities } = useEntityCache();
+    // Server-side entity search for the "add contact" picker — only while the
+    // dialog is open. Replaces streaming the full workspace entity set.
+    const {
+        results: contactSearchResults,
+        isLoading: isSearchingContacts,
+        hasMore: hasMoreContacts,
+        loadMore: loadMoreContacts,
+    } = useEntitySearch({ search: contactSearchTerm, enabled: isAddContactOpen, pageSize: 25 });
 
     // Fetch Tasks for this Deal
     const dealTasksQuery = useMemoFirebase(() => {
@@ -312,21 +318,13 @@ export default function DealDetailsPage() {
         });
     }, [dealTasks]);
 
+    // Exclude entities already linked to the deal (and the deal's own entity)
+    // from the server-search results.
     const filteredEntities = React.useMemo(() => {
-        if (!workspaceEntities) return [];
-        const associatedIds = deal?.contacts?.map(c => c.entityId) || [];
-        associatedIds.push(deal?.entityId || '');
-
-        return workspaceEntities.filter(e => {
-            if (associatedIds.includes(e.entityId)) return false;
-            const search = contactSearchTerm.toLowerCase();
-            return (
-                e.displayName?.toLowerCase().includes(search) ||
-                e.entityName?.toLowerCase().includes(search) ||
-                e.primaryEmail?.toLowerCase().includes(search)
-            );
-        });
-    }, [workspaceEntities, contactSearchTerm, deal?.contacts, deal?.entityId]);
+        const associatedIds = new Set(deal?.contacts?.map(c => c.entityId) || []);
+        if (deal?.entityId) associatedIds.add(deal.entityId);
+        return contactSearchResults.filter(e => !associatedIds.has(e.entityId));
+    }, [contactSearchResults, deal?.contacts, deal?.entityId]);
 
     React.useEffect(() => {
         if (deal) {
@@ -917,7 +915,19 @@ export default function DealDetailsPage() {
                                         </div>
                                     ))
                                 ) : (
-                                    <p className="p-4 text-center text-[10px] text-muted-foreground font-semibold">No eligible contacts found</p>
+                                    <p className="p-4 text-center text-[10px] text-muted-foreground font-semibold">
+                                        {isSearchingContacts ? 'Searching…' : 'No eligible contacts found'}
+                                    </p>
+                                )}
+                                {hasMoreContacts && (
+                                    <button
+                                        type="button"
+                                        onClick={loadMoreContacts}
+                                        disabled={isSearchingContacts}
+                                        className="w-full p-2.5 text-center text-[10px] font-bold text-primary hover:bg-primary/5 disabled:opacity-50"
+                                    >
+                                        {isSearchingContacts ? 'Loading…' : 'Load more'}
+                                    </button>
                                 )}
                             </div>
                         </div>

@@ -10,7 +10,7 @@ export const ai = genkit({
     googleAI(),
     anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'placeholder-key-to-prevent-load-time-error' }), // System default Anthropic
   ],
-  model: 'anthropic/claude-3-5-sonnet',
+  model: 'anthropic/claude-sonnet-4-6',
 });
 
 // In-memory cache for custom Genkit instances to avoid plugin initialization overhead
@@ -107,7 +107,7 @@ export async function getModel(params: {
   if (provider === 'openai') {
     provider = 'anthropic';
     if (modelId.startsWith('gpt-')) {
-      modelId = 'claude-3-5-sonnet';
+      modelId = 'claude-sonnet-4-6';
     }
   }
 

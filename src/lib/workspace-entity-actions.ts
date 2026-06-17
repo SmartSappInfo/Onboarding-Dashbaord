@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { deleteContactProjectionForEntity } from './contacts/contact-projection-writer';
 import { logActivity } from './activity-logger';
 import { validateScopeMatch } from './scope-guard';
 import { revalidatePath } from 'next/cache';
@@ -305,6 +306,9 @@ export async function unlinkEntityFromWorkspaceAction(input: UnlinkEntityFromWor
     // 3. Delete workspace_entities document
     await workspaceEntityRef.delete();
 
+    // Cascade-delete projected contacts for this entity (Phase 6.1)
+    await deleteContactProjectionForEntity(workspaceEntity.workspaceId, workspaceEntity.entityId);
+
     // 4. Log audit trail (Requirement 29.4)
     await logWorkspaceEntityDeleted({
       organizationId: workspaceEntity.organizationId,
@@ -517,6 +521,9 @@ export async function deleteEntityPermanentlyAction(input: DeleteEntityPermanent
     }
 
     await weRef.delete();
+
+    // Cascade-delete projected contacts for this entity (Phase 6.1)
+    await deleteContactProjectionForEntity(weData.workspaceId, input.entityId);
 
     let rootEntityDeleted = false;
     if (input.purgeRootEntity !== false) {

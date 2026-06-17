@@ -4,7 +4,8 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { 
   createCallScriptAction, 
   updateCallScriptAction, 
@@ -12,7 +13,7 @@ import {
   generateCallScriptAction,
   refineCallScriptAction
 } from '@/lib/call-centre-actions';
-import { isJsonGraph, parseGraph, validateScriptGraph } from '@/lib/call-centre-graph';
+import { isJsonGraph, parseGraph, validateScriptGraph, extractPreviewText } from '@/lib/call-centre-graph';
 import { useToast } from '@/hooks/use-toast';
 import { PageContainer } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
@@ -46,48 +47,98 @@ import {
   XCircle,
   MessageSquare,
   HelpCircle,
-  Zap
+  Zap,
+  Layers
 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import type { Node, Edge } from 'reactflow';
 import { addEdge, useNodesState, useEdgesState } from 'reactflow';
 import { ScriptPlaybookView } from '../components/ScriptPlaybookView';
+import { LegacyScriptEditor } from '../components/LegacyScriptEditor';
+import type { LegacyScriptEditorHandle, VariableGroup } from '../components/LegacyScriptEditor';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { cn } from '@/lib/utils';
 import type { ScriptNode, ScriptEdge, ScriptNodeType } from '@/lib/types';
+import type { VisualScriptCanvasHandle, VisualScriptCanvasProps } from '../components/VisualScriptCanvas';
 
 // Lazy load the ReactFlow canvas to optimize initial bundle sizes
 const VisualScriptCanvas = dynamic(
   () => import('../components/VisualScriptCanvas').then(mod => mod.VisualScriptCanvas),
   { ssr: false, loading: () => <div className="h-[550px] bg-muted/20 border border-border rounded-2xl flex items-center justify-center text-muted-foreground">Loading Flow Canvas...</div> }
+) as React.ForwardRefExoticComponent<
+  VisualScriptCanvasProps & React.RefAttributes<VisualScriptCanvasHandle>
+>;
+
+const InteractiveScriptView = dynamic(
+  () => import('../components/InteractiveScriptView').then(mod => mod.InteractiveScriptView),
+  { ssr: false, loading: () => <div className="h-[550px] bg-muted/20 border border-border rounded-2xl flex items-center justify-center text-muted-foreground">Loading Interactive View...</div> }
 );
+
+// ─── Script variable name constants (module scope) ────────────────────────────
+const NATIVE_ENTITY_VAR_NAMES = [
+  'ENTITY_NAME', 'ENTITY_EMAIL', 'ENTITY_PHONE', 'ENTITY_TYPE',
+  'PRIMARY_CONTACT_NAME', 'PRIMARY_CONTACT_PHONE', 'AGENT_NAME',
+  'STATUS', 'LOCATION', 'CURRENT_NEEDS', 'CURRENT_CHALLENGES',
+  'INITIALS', 'SLOGAN', 'CAPACITY', 'CURRENCY', 'SUBSCRIPTION_RATE',
+  'WEBSITE', 'DIGITAL_ADDRESS', 'FACEBOOK', 'WHATSAPP', 'INSTAGRAM',
+  'LINKEDIN', 'X_TWITTER', 'YOUTUBE', 'TIKTOK',
+  'FIRST_NAME', 'LAST_NAME', 'COMPANY', 'JOB_TITLE', 'LEAD_SOURCE',
+];
+
+const NATIVE_DEAL_VAR_NAMES = [
+  'DEAL_NAME', 'DEAL_VALUE', 'DEAL_STAGE', 'DEAL_STATUS', 'DEAL_EXPECTED_CLOSE',
+];
 
 interface ScriptBuilderClientProps {
   scriptId?: string;
+  returnCampaignId?: string;
 }
 
-export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
+export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilderClientProps) {
   const router = useRouter();
   const { user } = useUser();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+  const firestore = useFirestore();
   const { toast } = useToast();
 
   const [name, setName] = React.useState('Untitled Script');
   const [description, setDescription] = React.useState('Script Description Here');
+  useSetBreadcrumb(scriptId ? `Edit Script: ${name}` : 'New Script');
   const [isEditingTitle, setIsEditingTitle] = React.useState(false);
   const [isEditingDesc, setIsEditingDesc] = React.useState(false);
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = React.useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = React.useState(false);
+  const [toolbarExpanded, setToolbarExpanded] = React.useState(false);
   
   // Editor tabs: 'flow' (visual), 'playbook' (outline), 'text' (legacy raw text)
   const [editorTab, setEditorTab] = React.useState<'flow' | 'playbook' | 'text'>('flow');
 
   // Branching graph state
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [nodes, setNodes, _onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
 
+  // Guard: prevent the start node from being removed by any change event (e.g. keyboard delete)
+  const onNodesChange = React.useCallback<typeof _onNodesChange>((changes) => {
+    const safe = changes.filter(c => {
+      if (c.type === 'remove') {
+        const target = nodes.find(n => n.id === c.id);
+        if (target?.type === 'start') return false; // block
+      }
+      return true;
+    });
+    _onNodesChange(safe);
+  }, [_onNodesChange, nodes]);
+
   // Legacy fallback text state
   const [legacyText, setLegacyText] = React.useState('');
+  const legacyEditorRef = React.useRef<LegacyScriptEditorHandle>(null);
+  // Node dialogue body editor ref (for the visual flow node inspector)
+  const nodeEditorRef = React.useRef<LegacyScriptEditorHandle>(null);
+  // Canvas Ref to retrieve bottom-center viewport coordinate for dropping new steps
+  const canvasRef = React.useRef<VisualScriptCanvasHandle>(null);
+  
+  // Ref to track if DB loading/seeding is complete to enable autosaving changes
+  const hasLoadedRef = React.useRef(false);
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -103,7 +154,28 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
   const [isAiLoading, setIsAiLoading] = React.useState(false);
 
   // Variable Picker state
-  const [variableCategory, setVariableCategory] = React.useState<'entity' | 'deal'>('entity');
+  const [variableCategory, setVariableCategory] = React.useState<'entity' | 'deal' | 'used'>('entity');
+
+  // ─── Load app_fields + field_groups for dynamic variable lists ───────────
+  const appFieldsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'app_fields'),
+      where('workspaceId', '==', activeWorkspaceId),
+      where('status', '==', 'active')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: appFields } = useCollection<any>(appFieldsQuery);
+
+  const fieldGroupsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'field_groups'),
+      where('workspaceId', '==', activeWorkspaceId),
+      orderBy('order', 'asc')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: fieldGroups } = useCollection<any>(fieldGroupsQuery);
 
   const wrapHref = React.useCallback((href: string) => {
     if (!activeWorkspaceId) return href;
@@ -128,6 +200,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
             const graph = parseGraph(script.content);
             setNodes(graph.nodes);
             setEdges(graph.edges);
+            setLegacyText(extractPreviewText(script.content, '\n\n'));
             setEditorTab('flow');
           } else {
             setLegacyText(script.content);
@@ -146,6 +219,145 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
     loadScript();
   }, [scriptId, activeWorkspaceId, user?.uid, router, toast, wrapHref, setNodes, setEdges]);
+
+  // ─── Seed a default Start node for brand-new scripts ─────────────────────
+  React.useEffect(() => {
+    if (scriptId) return; // editing existing — don't seed
+    setNodes(nds => {
+      if (nds.some(n => n.type === 'start')) return nds; // already has one
+      return [{
+        id: 'start-default',
+        type: 'start',
+        position: { x: 300, y: 100 },
+        data: {
+          label: 'Start Call',
+          text: 'Initiate outbound call conversation.',
+        },
+        deletable: false,
+      }];
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scriptId]);
+
+  // Reset hasLoadedRef when scriptId changes so draft check can run again
+  React.useEffect(() => {
+    hasLoadedRef.current = false;
+  }, [scriptId]);
+
+  // ─── Draft Autosave & Recovery ──────────────────────────────────────────
+
+  // Check and restore draft from localStorage on load completion
+  React.useEffect(() => {
+    if (isLoading || !activeWorkspaceId) return;
+
+    const draftKey = `script-draft:${activeWorkspaceId}:${scriptId || 'new'}`;
+    const rawDraft = localStorage.getItem(draftKey);
+    if (!rawDraft) {
+      hasLoadedRef.current = true;
+      return;
+    }
+
+    try {
+      const draft = JSON.parse(rawDraft);
+      const currentValues = {
+        name,
+        description,
+        nodes,
+        edges,
+        legacyText,
+        editorTab,
+      };
+
+      // Helper function to check if local draft differs from active loaded state
+      const isDraftDifferent = (d: any, c: any) => {
+        if (d.name !== c.name) return true;
+        if (d.description !== c.description) return true;
+        if (d.editorTab !== c.editorTab) return true;
+        if (d.legacyText !== c.legacyText) return true;
+        if (d.nodes?.length !== c.nodes?.length) return true;
+        if (d.edges?.length !== c.edges?.length) return true;
+        try {
+          if (JSON.stringify(d.nodes) !== JSON.stringify(c.nodes)) return true;
+          if (JSON.stringify(d.edges) !== JSON.stringify(c.edges)) return true;
+        } catch {
+          return true;
+        }
+        return false;
+      };
+
+      if (isDraftDifferent(draft, currentValues)) {
+        toast({
+          title: 'Unsaved Draft Found',
+          description: (
+            <div className="flex flex-col gap-2.5 mt-1.5">
+              <p className="text-[10px] leading-relaxed text-muted-foreground">
+                We found an unsaved local backup from {new Date(draft.timestamp).toLocaleTimeString()}. Would you like to restore it?
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  className="h-7 rounded-lg text-[9px] font-bold uppercase tracking-wider px-3"
+                  onClick={() => {
+                    setName(draft.name);
+                    setDescription(draft.description);
+                    setNodes(draft.nodes || []);
+                    setEdges(draft.edges || []);
+                    setLegacyText(draft.legacyText || '');
+                    setEditorTab(draft.editorTab || 'flow');
+                    hasLoadedRef.current = true;
+                    toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
+                  }}
+                >
+                  Restore
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="h-7 rounded-lg text-[9px] font-bold uppercase tracking-wider px-3 border-border bg-transparent hover:bg-muted text-muted-foreground"
+                  onClick={() => {
+                    localStorage.removeItem(draftKey);
+                    hasLoadedRef.current = true;
+                    toast({ title: 'Draft Dismissed', description: 'The local backup draft has been removed.' });
+                  }}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          ),
+          duration: 15000,
+        });
+      } else {
+        hasLoadedRef.current = true;
+      }
+    } catch (e) {
+      console.error('Failed to parse script draft', e);
+      hasLoadedRef.current = true;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, activeWorkspaceId, scriptId]);
+
+  // Debounced effect to write autosaves to localStorage on change
+  React.useEffect(() => {
+    if (!hasLoadedRef.current || !activeWorkspaceId) return;
+
+    const draftKey = `script-draft:${activeWorkspaceId}:${scriptId || 'new'}`;
+    const timer = setTimeout(() => {
+      const draft = {
+        version: 1,
+        timestamp: Date.now(),
+        name,
+        description,
+        nodes,
+        edges,
+        legacyText,
+        editorTab,
+      };
+      localStorage.setItem(draftKey, JSON.stringify(draft));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [name, description, nodes, edges, legacyText, editorTab, activeWorkspaceId, scriptId]);
 
   // ─── Active Node Selection & Manipulation ─────────────────────────────────
 
@@ -171,14 +383,27 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
   const handleAddNode = (type: string) => {
     const id = `node-${Date.now()}`;
+    const defaultData: Record<string, any> = {
+      label: `New ${type.replace('_', ' ')}`,
+      text: type === 'start' ? 'Start of call outreach.' : type === 'end' ? 'End of call.' : 'Script body text.',
+    };
+    // Question nodes always start with Yes / No options
+    if (type === 'question') {
+      defaultData.options = ['Yes', 'No'];
+      defaultData.text = 'Ask your question here…';
+      defaultData.label = 'New question';
+    }
+
+    // Position at bottom center of the current canvas viewport if available
+    const position = canvasRef.current
+      ? canvasRef.current.getDropPosition()
+      : { x: 150 + Math.random() * 50, y: 150 + Math.random() * 50 };
+
     const newNode: Node = {
       id,
       type,
-      position: { x: 150 + Math.random() * 50, y: 150 + Math.random() * 50 },
-      data: { 
-        label: `New ${type.replace('_', ' ')}`, 
-        text: type === 'start' ? 'Start of call outreach.' : type === 'end' ? 'End of call.' : 'Script body text.' 
-      }
+      position,
+      data: defaultData,
     };
     setNodes(nds => [...nds, newNode]);
     setSelectedNodeId(id);
@@ -186,10 +411,20 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
   const handleDeleteSelectedNode = () => {
     if (!selectedNodeId) return;
+    const target = nodes.find(n => n.id === selectedNodeId);
+    if (target?.type === 'start') {
+      toast({ variant: 'destructive', title: 'Cannot delete Start node', description: 'The Start trigger is required and cannot be removed.' });
+      return;
+    }
     setNodes(nds => nds.filter(n => n.id !== selectedNodeId));
     setEdges(eds => eds.filter(e => e.source !== selectedNodeId && e.target !== selectedNodeId));
     setSelectedNodeId(null);
   };
+
+  // Delete an edge by ID (called from the custom edge ✕ button or Delete key)
+  const handleEdgeDelete = React.useCallback((edgeId: string) => {
+    setEdges(eds => eds.filter(e => e.id !== edgeId));
+  }, [setEdges]);
 
   const onConnect = React.useCallback(
     (params: any) => setEdges((eds) => addEdge({ 
@@ -212,13 +447,12 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
     toast({ title: 'Converted to Flow', description: 'Plain text script has been wrapped in a starting flowchart node structure.' });
   };
 
-  // Variable selector clicked
+  // Variable selector clicked — delegates to the correct rich editor via ref
   const handleInsertVariable = (variable: string) => {
     if (editorTab === 'text') {
-      setLegacyText(prev => prev + ` {{${variable}}}`);
+      legacyEditorRef.current?.insertVariable(variable);
     } else if (selectedNode) {
-      const currentText = selectedNode.data.text || '';
-      updateSelectedNode({ text: currentText + ` {{${variable}}}` });
+      nodeEditorRef.current?.insertVariable(variable);
     }
   };
 
@@ -244,6 +478,32 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
     return Array.from(matches);
   }, [nodes, legacyText, editorTab]);
 
+  // ─── Build dynamic variable groups for the script editor panel ────────────
+  const scriptVariableGroups = React.useMemo((): VariableGroup[] => {
+    // Build custom entity variable names from app_fields (only non-system groups)
+    const nonSystemGroupIds = new Set(
+      (fieldGroups || []).filter((g: any) => !g.isSystem).map((g: any) => g.id)
+    );
+    const customEntityVars: string[] = (appFields || [])
+      .filter((f: any) => {
+        const isActive = f.status === 'active';
+        const isNotHidden = f.type !== 'hidden';
+        const inNonSystemGroup = f.groupId && nonSystemGroupIds.has(f.groupId);
+        return isActive && isNotHidden && inNonSystemGroup;
+      })
+      .map((f: any) => {
+        const key = (f.id || f.name || '').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+        return key;
+      })
+      .filter(Boolean);
+
+    return [
+      { group: 'Entity Fields', items: [...NATIVE_ENTITY_VAR_NAMES, ...customEntityVars] },
+      { group: 'Deal Fields', items: NATIVE_DEAL_VAR_NAMES },
+    ];
+  }, [appFields, fieldGroups]);
+
+
   // Clean structure graph matching backend types
   const cleanGraph = React.useMemo(() => {
     const cleanNodes: ScriptNode[] = nodes.map(n => ({
@@ -255,15 +515,34 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
         text: n.data.text || '',
         outcomeValue: n.data.outcomeValue,
         actionType: n.data.actionType,
+        options: n.data.options,
+        startConfig: n.data.startConfig,
+        sayConfig: n.data.sayConfig,
+        questionConfig: n.data.questionConfig,
+        objectionConfig: n.data.objectionConfig,
+        actionConfig: n.data.actionConfig,
+        outcomeConfig: n.data.outcomeConfig,
+        endConfig: n.data.endConfig,
       }
     }));
 
-    const cleanEdges: ScriptEdge[] = edges.map(e => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      label: typeof e.label === 'string' ? e.label : undefined
-    }));
+    const cleanEdges: ScriptEdge[] = edges.map(e => {
+      const sourceNode = nodes.find(n => n.id === e.source);
+      let label = e.label;
+      if (sourceNode?.type === 'question' && e.sourceHandle?.startsWith('option-')) {
+        const idx = parseInt(e.sourceHandle.replace('option-', ''), 10);
+        const options = sourceNode.data?.options || ['Yes', 'No'];
+        label = options[idx] || label;
+      }
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle || undefined,
+        targetHandle: e.targetHandle || undefined,
+        label: typeof label === 'string' ? label : undefined
+      };
+    });
 
     return { nodes: cleanNodes, edges: cleanEdges };
   }, [nodes, edges]);
@@ -302,6 +581,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
 
     setIsSaving(true);
     try {
+      const draftKey = `script-draft:${activeWorkspaceId}:${scriptId || 'new'}`;
       if (scriptId) {
         // Edit mode
         const result = await updateCallScriptAction(
@@ -317,7 +597,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
         );
         if (result.success) {
           toast({ title: 'Script Updated', description: 'Modifications saved successfully.' });
-          router.push(wrapHref('/admin/messaging/call-centre?tab=scripts'));
+          localStorage.removeItem(draftKey);
         } else {
           toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
         }
@@ -336,7 +616,9 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
         );
         if (result.success) {
           toast({ title: 'Script Created', description: 'New call script registered successfully.' });
-          router.push(wrapHref('/admin/messaging/call-centre?tab=scripts'));
+          localStorage.removeItem(draftKey);
+          const newUrl = `/admin/messaging/call-centre/scripts/new?id=${result.id}${returnCampaignId ? `&returnCampaignId=${returnCampaignId}` : ''}`;
+          router.replace(wrapHref(newUrl));
         } else {
           toast({ variant: 'destructive', title: 'Creation Failed', description: result.error });
         }
@@ -357,14 +639,49 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
   }
 
   return (
-    <PageContainer>
-      <Tabs defaultValue="flow" value={editorTab} onValueChange={(v: any) => setEditorTab(v)} className="w-full space-y-8 max-w-7xl mx-auto">
+    <PageContainer noPadding>
+      <Tabs
+        defaultValue="flow"
+        value={editorTab}
+        onValueChange={(v: any) => {
+          if (v === 'text') {
+            const plainText = extractPreviewText(JSON.stringify(cleanGraph), '\n\n');
+            setLegacyText(plainText);
+          }
+          setEditorTab(v);
+        }}
+        className="w-full space-y-8 p-8"
+      >
+        {returnCampaignId && (
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <span className="text-xs font-semibold text-primary">
+                Editing script for campaign setup. Saving will return you to step 2 of the wizard.
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-[10px] uppercase font-bold hover:bg-primary/10 text-primary h-7 rounded-lg"
+              onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?id=${returnCampaignId}&step=2`))}
+            >
+              Cancel & Return
+            </Button>
+          </div>
+        )}
         
         {/* Header Navigation */}
         <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border pb-5">
           <div className="flex items-center gap-3">
             <Button
-              onClick={() => router.push(wrapHref('/admin/messaging/call-centre?tab=scripts'))}
+              onClick={() => {
+                if (returnCampaignId) {
+                  router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?id=${returnCampaignId}&step=2`));
+                } else {
+                  router.push(wrapHref('/admin/messaging/call-centre?tab=scripts'));
+                }
+              }}
               variant="outline"
               size="icon"
               className="rounded-xl border border-border bg-muted hover:bg-accent text-muted-foreground shrink-0"
@@ -453,6 +770,13 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                 Playbook Outline
               </TabsTrigger>
               <TabsTrigger 
+                value="interactive" 
+                className="rounded-lg text-[10px] font-bold px-3 py-1 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground transition-colors"
+              >
+                <Layers className="h-3.5 w-3.5 mr-1" />
+                Interactive Script
+              </TabsTrigger>
+              <TabsTrigger 
                 value="text" 
                 className="rounded-lg text-[10px] font-bold px-3 py-1 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground transition-colors"
               >
@@ -461,17 +785,15 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
               </TabsTrigger>
             </TabsList>
 
-            {editorTab === 'flow' && (
-              <Button
-                type="button"
-                onClick={() => setIsAiOpen(true)}
-                variant="outline"
-                size="sm"
-                className="h-9 rounded-xl text-[10px] uppercase font-bold tracking-wider gap-1.5 border-border bg-muted hover:bg-accent text-muted-foreground"
-              >
-                <Wand2 className="h-3.5 w-3.5" /> AI Generator
-              </Button>
-            )}
+            <Button
+              type="button"
+              onClick={() => setIsAiOpen(true)}
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-xl text-[10px] uppercase font-bold tracking-wider gap-1.5 border-border bg-muted hover:bg-accent text-muted-foreground"
+            >
+              <Wand2 className="h-3.5 w-3.5" /> AI Generator
+            </Button>
 
             <Button
               onClick={handleSave}
@@ -480,82 +802,23 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
               type="button"
             >
               {isSaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              Save Flow
+              Save Script
             </Button>
           </div>
         </div>
 
         {/* Tab 1: Visual flowchart Editor */}
-        <TabsContent value="flow" className="pt-6 m-0 outline-none">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[650px] overflow-hidden relative">
-            
-            {/* Left Panel: Warnings & Active Placeholders Detected */}
-            {!leftPanelCollapsed && (
-              <div className="lg:col-span-3 flex flex-col gap-4 overflow-y-auto pr-1 h-full select-none">
-                {/* Validation Warnings */}
-                {graphValidation.warnings.length > 0 && (
-                  <Card className="border border-amber-500/20 bg-amber-500/5 rounded-2xl shrink-0">
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500 uppercase tracking-wider">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span>Canvas Warnings ({graphValidation.warnings.length})</span>
-                      </div>
-                      <ul className="text-[10px] text-muted-foreground space-y-1.5 list-disc pl-4 leading-normal">
-                        {graphValidation.warnings.slice(0, 3).map((w, idx) => (
-                          <li key={idx}>{w}</li>
-                        ))}
-                        {graphValidation.warnings.length > 3 && (
-                          <li className="italic font-bold text-muted-foreground">And {graphValidation.warnings.length - 3} more...</li>
-                        )}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Active Placeholders Detected */}
-                <Card className="border border-border bg-card rounded-2xl flex-grow overflow-y-auto">
-                  <CardContent className="p-4 space-y-3">
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                      Active Placeholders Detected ({detectedVariables.length})
-                    </span>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {detectedVariables.length === 0 ? (
-                        <span className="text-[10px] text-muted-foreground italic">No curly-brace placeholders detected in nodes.</span>
-                      ) : (
-                        detectedVariables.map(v => (
-                          <Badge key={v} variant="outline" className="text-[8px] font-bold bg-muted border-border text-muted-foreground tracking-wider px-2 py-0.5 rounded">
-                            {v}
-                          </Badge>
-                        ))
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+        <TabsContent value="flow" className="pt-3 m-0 outline-none">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[680px] overflow-hidden relative">
 
             {/* Center Canvas Container */}
             <div 
               className={cn(
                 "relative border border-border bg-muted/20 rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-300",
-                (leftPanelCollapsed && rightPanelCollapsed) ? "lg:col-span-12" :
-                (leftPanelCollapsed && !rightPanelCollapsed) ? "lg:col-span-9" :
-                (!leftPanelCollapsed && rightPanelCollapsed) ? "lg:col-span-9" :
-                "lg:col-span-6"
+                rightPanelCollapsed ? "lg:col-span-12" : "lg:col-span-8"
               )}
             >
-              {/* Floating Panels Toggle Buttons */}
-              <Button
-                type="button"
-                onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-                variant="outline"
-                size="icon"
-                className="absolute left-4 top-4 z-20 h-8 w-8 rounded-lg border border-border bg-background/90 text-muted-foreground hover:text-foreground hover:bg-muted shadow-md backdrop-blur-sm transition-colors"
-                title={leftPanelCollapsed ? "Expand left panel" : "Collapse left panel"}
-              >
-                {leftPanelCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </Button>
-
+              {/* Floating Panel Toggle Button */}
               <Button
                 type="button"
                 onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
@@ -567,167 +830,207 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                 {rightPanelCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </Button>
 
-              {/* Floating Visual Node Toolbar (Figma-style) */}
-              <div className="absolute left-4 top-16 z-20 flex flex-col gap-1.5 p-1.5 bg-background/95 border border-border rounded-xl shadow-2xl backdrop-blur-sm">
-                <TooltipProvider delayDuration={150}>
-                  {/* Start Node */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        onClick={() => handleAddNode('start')}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-lg text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors"
-                        aria-label="Add Start Node"
-                      >
-                        <PlayCircle className="h-4.5 w-4.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
-                      Add Start Node
-                    </TooltipContent>
-                  </Tooltip>
+              {/* ── Expandable Visual Node Toolbar ── */}
+              {(() => {
+                const NODE_TYPES = [
+                  {
+                    type: 'start',
+                    label: 'Start Call',
+                    description: 'Entry point for the call flow. Sets greeting rules and DNC checks before branching.',
+                    icon: <PlayCircle className="h-4 w-4 shrink-0" />,
+                    color: 'text-emerald-500',
+                    hoverBg: 'hover:bg-emerald-500/10',
+                    dot: 'bg-emerald-500',
+                  },
+                  {
+                    type: 'script_block',
+                    label: 'Say',
+                    description: 'Agent reads a scripted statement to the contact. Supports dynamic variable pills.',
+                    icon: <MessageSquare className="h-4 w-4 shrink-0" />,
+                    color: 'text-blue-500',
+                    hoverBg: 'hover:bg-blue-500/10',
+                    dot: 'bg-blue-500',
+                  },
+                  {
+                    type: 'question',
+                    label: 'Ask',
+                    description: 'Asks the contact a question and captures their answer into a CRM field.',
+                    icon: <HelpCircle className="h-4 w-4 shrink-0" />,
+                    color: 'text-amber-500',
+                    hoverBg: 'hover:bg-amber-500/10',
+                    dot: 'bg-amber-500',
+                  },
+                  {
+                    type: 'objection',
+                    label: 'Objection',
+                    description: 'Handles a resistance or pushback from the contact with a rebuttal script.',
+                    icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
+                    color: 'text-orange-500',
+                    hoverBg: 'hover:bg-orange-500/10',
+                    dot: 'bg-orange-500',
+                  },
+                  {
+                    type: 'action',
+                    label: 'Action',
+                    description: 'Fires a background automation: webhook, tag, CRM update, or notification.',
+                    icon: <Zap className="h-4 w-4 shrink-0" />,
+                    color: 'text-indigo-500',
+                    hoverBg: 'hover:bg-indigo-500/10',
+                    dot: 'bg-indigo-500',
+                  },
+                  {
+                    type: 'outcome',
+                    label: 'Outcome',
+                    description: 'Marks the result of the call (e.g. Interested, Not Now, DNC) and ends a branch.',
+                    icon: <CheckCircle2 className="h-4 w-4 shrink-0" />,
+                    color: 'text-purple-500',
+                    hoverBg: 'hover:bg-purple-500/10',
+                    dot: 'bg-purple-500',
+                  },
+                  {
+                    type: 'end',
+                    label: 'End Call',
+                    description: 'Closes the call script path. Triggers wrap-up sequence for the agent.',
+                    icon: <XCircle className="h-4 w-4 shrink-0" />,
+                    color: 'text-rose-500',
+                    hoverBg: 'hover:bg-rose-500/10',
+                    dot: 'bg-rose-500',
+                  },
+                ];
 
-                  {/* Say Node */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        onClick={() => handleAddNode('script_block')}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-lg text-blue-500 hover:bg-blue-500/10 hover:text-blue-405 transition-colors"
-                        aria-label="Add Say Node"
-                      >
-                        <MessageSquare className="h-4.5 w-4.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
-                      Add Say Node
-                    </TooltipContent>
-                  </Tooltip>
+                return (
+                  <div
+                    className={cn(
+                      'absolute left-4 top-16 z-20 flex flex-col',
+                      'bg-background/95 border border-border rounded-2xl shadow-2xl backdrop-blur-sm',
+                      'transition-all duration-300 ease-in-out overflow-hidden',
+                      toolbarExpanded ? 'w-52' : 'w-12',
+                    )}
+                  >
+                    {/* Toggle strip at top */}
+                    <button
+                      type="button"
+                      onClick={() => setToolbarExpanded(v => !v)}
+                      className="flex items-center justify-center gap-1.5 w-full px-2 py-2 border-b border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                      title={toolbarExpanded ? 'Collapse toolbar' : 'Expand toolbar'}
+                    >
+                      {toolbarExpanded ? (
+                        <>
+                          <ChevronLeft className="h-3 w-3 shrink-0" />
+                          <span className="text-[8px] font-bold uppercase tracking-widest whitespace-nowrap overflow-hidden">Script Blocks</span>
+                        </>
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                    </button>
 
-                  {/* Ask Node */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        onClick={() => handleAddNode('question')}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-lg text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 transition-colors"
-                        aria-label="Add Ask Node"
-                      >
-                        <HelpCircle className="h-4.5 w-4.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
-                      Add Ask Node
-                    </TooltipContent>
-                  </Tooltip>
+                    {/* Node buttons */}
+                    <TooltipProvider delayDuration={200}>
+                      <div className="flex flex-col p-1.5 gap-0.5">
+                        {NODE_TYPES.map(nt => (
+                          <Tooltip key={nt.type}>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => handleAddNode(nt.type)}
+                                aria-label={`Add ${nt.label} node`}
+                                className={cn(
+                                  'flex items-center gap-2.5 rounded-xl transition-all duration-150 text-left group',
+                                  'px-2 py-1.5',
+                                  nt.color,
+                                  nt.hoverBg,
+                                  'hover:shadow-sm',
+                                )}
+                              >
+                                {/* Icon */}
+                                <span className="shrink-0">{nt.icon}</span>
 
-                  {/* Objection Node */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        onClick={() => handleAddNode('objection')}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-lg text-orange-500 hover:bg-orange-500/10 hover:text-orange-400 transition-colors"
-                        aria-label="Add Objection Node"
-                      >
-                        <AlertTriangle className="h-4.5 w-4.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
-                      Add Objection Node
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {/* Action Node */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        onClick={() => handleAddNode('action')}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-lg text-indigo-500 hover:bg-indigo-500/10 hover:text-indigo-400 transition-colors"
-                        aria-label="Add Action Node"
-                      >
-                        <Zap className="h-4.5 w-4.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
-                      Add Action Node
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {/* Outcome Node */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        onClick={() => handleAddNode('outcome')}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-lg text-purple-500 hover:bg-purple-500/10 hover:text-purple-400 transition-colors"
-                        aria-label="Add Outcome Node"
-                      >
-                        <CheckCircle2 className="h-4.5 w-4.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
-                      Add Outcome Node
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {/* End Node */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        onClick={() => handleAddNode('end')}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-lg text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 transition-colors"
-                        aria-label="Add End Node"
-                      >
-                        <XCircle className="h-4.5 w-4.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="bg-popover border-border text-popover-foreground text-[9px] font-black uppercase tracking-wider">
-                      Add End Node
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+                                {/* Label + description — only in expanded mode */}
+                                {toolbarExpanded && (
+                                  <span className="flex flex-col min-w-0 overflow-hidden">
+                                    <span className="text-[10px] font-bold leading-tight whitespace-nowrap text-foreground group-hover:text-inherit transition-colors">
+                                      {nt.label}
+                                    </span>
+                                    <span className="text-[8px] text-muted-foreground/60 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                                      {nt.description.split('.')[0]}
+                                    </span>
+                                  </span>
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="right"
+                              sideOffset={8}
+                              className={cn(
+                                'max-w-[200px] p-3 rounded-xl border border-border',
+                                'bg-popover text-popover-foreground shadow-xl',
+                              )}
+                            >
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className={cn('shrink-0', nt.color)}>{nt.icon}</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-foreground">{nt.label}</span>
+                                <span className={cn('ml-auto w-1.5 h-1.5 rounded-full shrink-0', nt.dot)} />
+                              </div>
+                              <p className="text-[9px] text-muted-foreground leading-relaxed">{nt.description}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </TooltipProvider>
+                  </div>
+                );
+              })()}
 
               <div className="flex-grow w-full h-full">
                 <VisualScriptCanvas
+                  ref={canvasRef}
                   nodes={nodes}
                   edges={edges}
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
                   onConnect={onConnect}
                   onNodeClick={onNodeClick}
+                  onEdgeDelete={handleEdgeDelete}
                 />
               </div>
             </div>
 
-            {/* Right Panel: Selected Node Properties Editor */}
+            {/* Right Panel: Canvas Warnings + Selected Node Properties Editor */}
             {!rightPanelCollapsed && (
-              <div className="lg:col-span-3 h-full overflow-hidden">
+              <div className="lg:col-span-4 h-full overflow-hidden flex flex-col gap-3">
+                {/* Canvas Warnings Card */}
+                {graphValidation.warnings.length > 0 && (
+                  <Card className="border border-amber-500/20 bg-amber-500/5 rounded-2xl shrink-0">
+                    <CardContent className="p-3 space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        <span>Canvas Warnings ({graphValidation.warnings.length})</span>
+                      </div>
+                      <ul className="text-[9px] text-muted-foreground space-y-1 list-disc pl-4 leading-normal">
+                        {graphValidation.warnings.slice(0, 3).map((w, idx) => (
+                          <li key={idx}>{w}</li>
+                        ))}
+                        {graphValidation.warnings.length > 3 && (
+                          <li className="italic font-bold text-muted-foreground">And {graphValidation.warnings.length - 3} more...</li>
+                        )}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
                 {selectedNode ? (
-                  <Card className="border border-border bg-card rounded-2xl flex flex-col justify-between h-full">
+                  <Card className="border border-border bg-card rounded-2xl flex flex-col justify-between flex-grow overflow-hidden">
                     <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between shrink-0">
                       <div className="min-w-0">
                         <h3 className="text-xs font-bold text-foreground truncate">Config node: "{selectedNode.data.label}"</h3>
                         <p className="text-[8px] font-mono text-muted-foreground uppercase tracking-widest mt-0.5">ID: {selectedNode.id}</p>
                       </div>
-                      <Button onClick={handleDeleteSelectedNode} variant="ghost" size="icon" className="h-7 w-7 text-rose-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg"><X className="h-4 w-4" /></Button>
+                      {/* Hide delete button for start node — it cannot be removed */}
+                      {selectedNode.type !== 'start' && (
+                        <Button onClick={handleDeleteSelectedNode} variant="ghost" size="icon" className="h-7 w-7 text-rose-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg"><X className="h-4 w-4" /></Button>
+                      )}
+                      {selectedNode.type === 'start' && (
+                        <span className="text-[8px] font-mono text-emerald-500/70 uppercase tracking-widest px-1">Protected</span>
+                      )}
                     </div>
                     <CardContent className="p-4 space-y-4 overflow-y-auto flex-grow">
                       
@@ -831,103 +1134,235 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                       {/* Question Node Configuration */}
                       {selectedNode.type === 'question' && (
                         <div className="space-y-3 pt-3 border-t border-border">
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Ask Configuration</span>
-                          <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Field Mapping Object</Label>
-                            <Select 
-                              value={selectedNode.data.questionConfig?.fieldBinding || 'contact'} 
-                              onValueChange={(val: 'contact' | 'deal') => updateSelectedNode({ 
-                                questionConfig: { ...selectedNode.data.questionConfig, fieldBinding: val } 
-                              })}
-                            >
-                              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="bg-popover border-border text-popover-foreground">
-                                <SelectItem value="contact">Contact Profile</SelectItem>
-                                <SelectItem value="deal">Active Deal Record</SelectItem>
-                              </SelectContent>
-                            </Select>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Answer Options</span>
+                            <span className="text-[8px] text-muted-foreground/50">Each option = 1 exit path</span>
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Target CRM Field Name</Label>
-                            <Input
-                              value={selectedNode.data.questionConfig?.fieldName || ''}
-                              onChange={(e) => updateSelectedNode({ 
-                                questionConfig: { ...selectedNode.data.questionConfig, fieldName: e.target.value } 
-                              })}
-                              placeholder="e.g. email, budget, tags"
-                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
-                            />
+
+                          {/* Options list */}
+                          <div className="space-y-1.5">
+                            {(selectedNode.data.options || ['Yes', 'No']).map((opt: string, i: number) => (
+                              <div key={i} className="flex items-center gap-2">
+                                {/* Coloured index dot */}
+                                <span className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[8px] font-black flex items-center justify-center shrink-0">
+                                  {i + 1}
+                                </span>
+                                <Input
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const updated = [...(selectedNode.data.options || ['Yes', 'No'])];
+                                    updated[i] = e.target.value;
+                                    updateSelectedNode({ options: updated });
+                                  }}
+                                  placeholder={`Option ${i + 1}`}
+                                  className="h-7 bg-background border-border rounded-lg text-xs px-2 flex-1"
+                                />
+                                {/* Remove — only if more than 2 options */}
+                                {(selectedNode.data.options || ['Yes', 'No']).length > 2 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...(selectedNode.data.options || ['Yes', 'No'])];
+                                      updated.splice(i, 1);
+                                      // also remove edges that used this handle
+                                      setEdges(eds => eds.filter(e =>
+                                        !(e.source === selectedNode.id && e.sourceHandle === `option-${i}`)
+                                      ));
+                                      updateSelectedNode({ options: updated });
+                                    }}
+                                    className="text-rose-400 hover:text-rose-500 p-0.5 rounded hover:bg-rose-500/10 transition-colors shrink-0"
+                                    title="Remove option"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Input Field Type</Label>
-                            <Select 
-                              value={selectedNode.data.questionConfig?.fieldType || 'text'} 
-                              onValueChange={(val: any) => updateSelectedNode({ 
-                                questionConfig: { ...selectedNode.data.questionConfig, fieldType: val } 
-                              })}
-                            >
-                              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="bg-popover border-border text-popover-foreground">
-                                <SelectItem value="text">Single Line Text</SelectItem>
-                                <SelectItem value="number">Numeric Value</SelectItem>
-                                <SelectItem value="select">Dropdown Selector</SelectItem>
-                                <SelectItem value="datepicker">Calendar Date</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {selectedNode.data.questionConfig?.fieldType === 'select' && (
-                            <div className="space-y-1">
-                              <Label className="text-[8px] font-bold text-muted-foreground uppercase">Dropdown Options (Comma-separated)</Label>
-                              <Input
-                                value={selectedNode.data.questionConfig?.selectOptions?.join(', ') || ''}
-                                onChange={(e) => updateSelectedNode({ 
-                                  questionConfig: { 
-                                    ...selectedNode.data.questionConfig, 
-                                    selectOptions: e.target.value.split(',').map(s => s.trim()).filter(Boolean) 
-                                  } 
-                                })}
-                                placeholder="Option A, Option B, Option C"
-                                className="h-8 bg-background border-border rounded-lg text-xs px-2"
-                              />
-                            </div>
-                          )}
-                          <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Regex Validation Pattern (Optional)</Label>
-                            <Input
-                              value={selectedNode.data.questionConfig?.validationPattern || ''}
-                              onChange={(e) => updateSelectedNode({ 
-                                questionConfig: { ...selectedNode.data.questionConfig, validationPattern: e.target.value } 
-                              })}
-                              placeholder="e.g. ^[0-9]{10}$"
-                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
-                            />
-                          </div>
+
+                          {/* Add option button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = selectedNode.data.options || ['Yes', 'No'];
+                              updateSelectedNode({ options: [...current, ''] });
+                            }}
+                            className="w-full h-7 rounded-lg border border-dashed border-amber-500/40 text-amber-400 text-[9px] font-bold uppercase tracking-wider hover:bg-amber-500/5 hover:border-amber-500/70 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Plus className="h-3 w-3" /> Add Option
+                          </button>
+
+                          {/* Info tip */}
+                          <p className="text-[8px] text-muted-foreground/50 leading-relaxed">
+                            Connect each option’s exit dot to the next step in the conversation. Minimum 2 options required.
+                          </p>
                         </div>
                       )}
 
                       {/* Objection Node Configuration */}
-                      {selectedNode.type === 'objection' && (
-                        <div className="space-y-3 pt-3 border-t border-border">
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Objection Trigger Config</span>
-                          <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Objection Keyword Triggers (Comma-separated)</Label>
-                            <Input
-                              value={selectedNode.data.objectionConfig?.keywordTriggers?.join(', ') || ''}
-                              onChange={(e) => updateSelectedNode({ 
-                                objectionConfig: { 
-                                  keywordTriggers: e.target.value.split(',').map(s => s.trim()).filter(Boolean) 
-                                } 
-                              })}
-                              placeholder="too expensive, no time, send email"
-                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
-                            />
+                      {selectedNode.type === 'objection' && (() => {
+                        // Normalise: always work from the objections[] list
+                        const objections: Array<{ title: string; keywordTriggers: string[]; description: string }> =
+                          selectedNode.data.objectionConfig?.objections ?? [
+                            {
+                              title: '',
+                              keywordTriggers: selectedNode.data.objectionConfig?.keywordTriggers ?? [],
+                              description: selectedNode.data.text ?? '',
+                            },
+                          ];
+
+                        const updateObjection = (
+                          idx: number,
+                          patch: Partial<{ title: string; keywordTriggers: string[]; description: string }>
+                        ) => {
+                          const updated = objections.map((o, i) => (i === idx ? { ...o, ...patch } : o));
+                          updateSelectedNode({
+                            objectionConfig: {
+                              ...selectedNode.data.objectionConfig,
+                              objections: updated,
+                            },
+                          });
+                        };
+
+                        const addObjection = () => {
+                          const updated = [...objections, { title: '', keywordTriggers: [], description: '' }];
+                          updateSelectedNode({
+                            objectionConfig: {
+                              ...selectedNode.data.objectionConfig,
+                              objections: updated,
+                            },
+                          });
+                        };
+
+                        const removeObjection = (idx: number) => {
+                          if (objections.length <= 1) return; // keep at least one
+                          const updated = objections.filter((_, i) => i !== idx);
+                          updateSelectedNode({
+                            objectionConfig: {
+                              ...selectedNode.data.objectionConfig,
+                              objections: updated,
+                            },
+                          });
+                        };
+
+                        return (
+                          <div className="space-y-3 pt-3 border-t border-border">
+                            {/* Header row */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                Objection Handlers
+                              </span>
+                              <span className="text-[8px] text-muted-foreground/50">{objections.length} entr{objections.length === 1 ? 'y' : 'ies'}</span>
+                            </div>
+
+                            {/* Objection entry list */}
+                            <div className="space-y-3">
+                              {objections.map((obj, idx) => (
+                                <div
+                                  key={idx}
+                                  className="rounded-lg border border-border bg-muted/20 p-3 space-y-2 relative"
+                                >
+                                  {/* Entry index badge + remove button */}
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="text-[8px] font-black text-orange-400 uppercase tracking-widest">
+                                      Objection #{idx + 1}
+                                    </span>
+                                    {objections.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeObjection(idx)}
+                                        className="text-rose-400 hover:text-rose-500 p-0.5 rounded hover:bg-rose-500/10 transition-colors shrink-0"
+                                        title="Remove this objection"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Title */}
+                                  <div className="space-y-1">
+                                    <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                                      Title / Name
+                                    </Label>
+                                    <Input
+                                      value={obj.title}
+                                      onChange={(e) => updateObjection(idx, { title: e.target.value })}
+                                      placeholder='e.g. "Too expensive"'
+                                      className="h-7 bg-background border-border rounded-lg text-xs px-2"
+                                    />
+                                  </div>
+
+                                  {/* Keywords */}
+                                  <div className="space-y-1">
+                                    <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                                      Trigger Keywords <span className="normal-case font-normal">(comma-separated)</span>
+                                    </Label>
+                                    <Input
+                                      value={obj.keywordTriggers.join(', ')}
+                                      onChange={(e) =>
+                                        updateObjection(idx, {
+                                          keywordTriggers: e.target.value
+                                            .split(',')
+                                            .map((s) => s.trim())
+                                            .filter(Boolean),
+                                        })
+                                      }
+                                      placeholder="too expensive, not now, no budget"
+                                      className="h-7 bg-background border-border rounded-lg text-xs px-2"
+                                    />
+                                    {/* Keyword pills preview */}
+                                    {obj.keywordTriggers.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 pt-1">
+                                        {obj.keywordTriggers.map((kw, ki) => (
+                                          <span
+                                            key={ki}
+                                            className="px-1.5 py-0.5 rounded-full text-[7px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/25"
+                                          >
+                                            {kw}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Description / response script — full rich editor with / variable support */}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                                        Agent Response / Description
+                                      </Label>
+                                      <span className="text-[7px] text-muted-foreground/50 font-mono">
+                                        type <kbd className="bg-muted px-0.5 rounded border border-border/50 text-[7px]">/</kbd> to insert variables
+                                      </span>
+                                    </div>
+                                    <LegacyScriptEditor
+                                      value={obj.description}
+                                      onChange={(val) => updateObjection(idx, { description: val })}
+                                      variableGroups={scriptVariableGroups}
+                                      placeholder="What should the agent say in response to this objection?"
+                                      minHeight="120px"
+                                      className=""
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Add objection button */}
+                            <button
+                              type="button"
+                              onClick={addObjection}
+                              className="w-full h-7 rounded-lg border border-dashed border-orange-500/40 text-orange-400 text-[9px] font-bold uppercase tracking-wider hover:bg-orange-500/5 hover:border-orange-500/70 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <Plus className="h-3 w-3" /> Add Objection
+                            </button>
+
+                            <p className="text-[8px] text-muted-foreground/50 leading-relaxed">
+                              Each objection entry defines a separate trigger scenario. The agent will see the response description when the caller raises that objection.
+                            </p>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {/* Outcome Node Configuration */}
                       {selectedNode.type === 'outcome' && (
@@ -1062,57 +1497,30 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                         </div>
                       )}
 
-                      {/* Dialogue body editor */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Dialogue script body</Label>
+                      {/* Dialogue body editor — hidden for objection nodes (each entry has its own description) */}
+                      {selectedNode.type !== 'objection' && (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Dialogue script body</Label>
+                            <span className="text-[8px] text-muted-foreground/50 font-mono">
+                              type <kbd className="bg-muted px-1 rounded border border-border/50">/</kbd> to insert variables
+                            </span>
+                          </div>
+                          <LegacyScriptEditor
+                            ref={nodeEditorRef}
+                            value={selectedNode.data.text || ''}
+                            onChange={(val) => updateSelectedNode({ text: val })}
+                            variableGroups={scriptVariableGroups}
+                            placeholder="Type dialog block script here…"
+                            className=""
+                          />
                         </div>
-                        <Textarea
-                          value={selectedNode.data.text || ''}
-                          onChange={(e) => updateSelectedNode({ text: e.target.value })}
-                          placeholder="Type dialog block script here..."
-                          rows={8}
-                          className="bg-background border-border rounded-xl text-xs leading-relaxed p-3 font-serif"
-                        />
-                      </div>
-
-                      {/* Node variables picker helper */}
-                      <div className="space-y-2 pt-2 border-t border-border">
-                        <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block">Double-click field below to insert at cursor:</span>
-                        <div className="flex bg-muted border border-border rounded-lg p-0.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => setVariableCategory('entity')}
-                            className={`flex-grow py-1 text-[8px] uppercase tracking-wider font-black rounded-md transition-all ${variableCategory === 'entity' ? 'bg-background text-foreground border border-border shadow' : 'text-muted-foreground hover:text-foreground'}`}
-                          >
-                            Entity Fields
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setVariableCategory('deal')}
-                            className={`flex-grow py-1 text-[8px] uppercase tracking-wider font-black rounded-md transition-all ${variableCategory === 'deal' ? 'bg-background text-foreground border border-border shadow' : 'text-muted-foreground hover:text-foreground'}`}
-                          >
-                            Deal Fields
-                          </button>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1 max-h-[100px] overflow-y-auto p-1 bg-muted/40 rounded-lg border border-border">
-                          {variableCategory === 'entity' ? (
-                            ['ENTITY_NAME', 'ENTITY_EMAIL', 'ENTITY_PHONE', 'ENTITY_TYPE', 'PRIMARY_CONTACT_NAME', 'PRIMARY_CONTACT_PHONE', 'AGENT_NAME'].map(v => (
-                              <Badge key={v} onClick={() => handleInsertVariable(v)} variant="secondary" className="cursor-pointer font-mono text-[7px] border border-border hover:bg-muted py-0.5 px-1.5 rounded">{v}</Badge>
-                            ))
-                          ) : (
-                            ['DEAL_NAME', 'DEAL_VALUE', 'DEAL_STAGE', 'DEAL_STATUS', 'DEAL_EXPECTED_CLOSE'].map(v => (
-                              <Badge key={v} onClick={() => handleInsertVariable(v)} variant="secondary" className="cursor-pointer font-mono text-[7px] border border-border hover:bg-muted py-0.5 px-1.5 rounded">{v}</Badge>
-                            ))
-                          )}
-                        </div>
-                      </div>
+                      )}
 
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card className="border border-border bg-card rounded-2xl flex items-center justify-center p-8 text-center text-xs text-muted-foreground italic h-full min-h-[450px]">
+                  <Card className="border border-border bg-card rounded-2xl flex items-center justify-center p-8 text-center text-xs text-muted-foreground italic flex-grow min-h-[300px]">
                     Select a node on the canvas to configure its dialogue script and branching options.
                   </Card>
                 )}
@@ -1133,52 +1541,167 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
           </Card>
         </TabsContent>
 
+        {/* Tab 4: Interactive Script Simulator */}
+        <TabsContent value="interactive" className="pt-3 m-0 outline-none">
+          <InteractiveScriptView nodes={nodes} edges={edges} />
+        </TabsContent>
+
         {/* Tab 3: Legacy plain text fallback editor */}
-        <TabsContent value="text" className="pt-6 m-0 outline-none">
-          <Card className="border border-border bg-card rounded-2xl">
-            <CardHeader className="flex flex-row items-center justify-between border-b border-border bg-muted/30 p-4">
-              <div>
-                <CardTitle className="text-xs font-bold text-foreground uppercase tracking-wider">Legacy Plain Text Script</CardTitle>
-                <p className="text-[10px] text-muted-foreground mt-0.5">This campaign uses a linear text script. Convert it to a visual flow to build branching Objections, Questions, and Actions.</p>
-              </div>
-              <Button
-                type="button"
-                onClick={handleConvertToGraph}
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-xl text-[10px] uppercase font-bold border-border hover:bg-muted text-muted-foreground"
-              >
-                Convert to Visual Flow
-              </Button>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Script Content Text</Label>
-                <Textarea
-                  value={legacyText}
-                  onChange={(e) => setLegacyText(e.target.value)}
-                  placeholder="Paste or write linear text here..."
-                  rows={15}
-                  className="bg-background border-border rounded-xl text-xs leading-relaxed p-4 font-serif"
-                />
-              </div>
-              <div className="space-y-2 pt-4 border-t border-border">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Detected Variables in Legacy Text</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {detectedVariables.length === 0 ? (
-                    <span className="text-[10px] text-muted-foreground italic">No variables detected. Use double curly braces like {"{{FIRST_NAME}}"} to define them.</span>
-                  ) : (
-                    detectedVariables.map(v => (
-                      <Badge key={v} variant="outline" className="text-[8px] font-bold bg-muted border-border text-muted-foreground tracking-wider px-2 py-0.5 rounded">
-                        {v}
-                      </Badge>
-                    ))
-                  )}
+        <TabsContent value="text" className="pt-3 m-0 outline-none">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Script Text Editor</h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Type <kbd className="font-mono text-[9px] bg-muted px-1 py-0.5 rounded border border-border mx-0.5">/</kbd> to insert variables. Click badges on the right panel to insert at cursor.</p>
+            </div>
+            <Button
+              type="button"
+              onClick={handleConvertToGraph}
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-xl text-[10px] uppercase font-bold border-border hover:bg-muted text-muted-foreground shrink-0"
+            >
+              Convert to Visual Flow
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-12 gap-4 h-[640px]">
+            {/* Left: Rich Script Editor */}
+            <div className="col-span-9 flex flex-col overflow-hidden">
+              <LegacyScriptEditor
+                ref={legacyEditorRef}
+                value={legacyText}
+                onChange={setLegacyText}
+                variableGroups={scriptVariableGroups}
+                placeholder="Start typing your call script here…"
+                className="flex-grow"
+              />
+            </div>
+
+            {/* Right: Variables Panel — scrollable list view */}
+            <div className="col-span-3 flex flex-col overflow-hidden bg-card border border-border rounded-xl">
+              {/* Panel header with tab switcher */}
+              <div className="p-3 border-b border-border bg-muted/30 shrink-0">
+                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Available Variables</span>
+                <div className="flex gap-1">
+                  {(['entity', 'deal', 'used'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); setVariableCategory(tab); }}
+                      className={cn(
+                        'flex-1 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest transition-colors',
+                        variableCategory === tab
+                          ? 'bg-primary text-primary-foreground shadow'
+                          : 'text-muted-foreground hover:bg-muted'
+                      )}
+                    >
+                      {tab === 'used' ? `Used (${detectedVariables.length})` : tab}
+                    </button>
+                  ))}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Variable list — scrollable */}
+              <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+                {variableCategory === 'entity' && (
+                  <>
+                    {/* Group header: native */}
+                    <div className="px-2 pt-3 pb-1">
+                      <span className="text-[7px] font-bold text-muted-foreground/50 uppercase tracking-widest">Native Fields</span>
+                    </div>
+                    {scriptVariableGroups[0]?.items
+                      .slice(0, NATIVE_ENTITY_VAR_NAMES.length)
+                      .map(v => (
+                        <button
+                          key={v}
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); legacyEditorRef.current?.insertVariable(v); }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg text-[10px] font-mono font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 group"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary/30 group-hover:bg-primary shrink-0 transition-colors" />
+                          {v}
+                        </button>
+                      ))
+                    }
+                    {/* Group header: custom (only if there are any) */}
+                    {(scriptVariableGroups[0]?.items.length ?? 0) > NATIVE_ENTITY_VAR_NAMES.length && (
+                      <>
+                        <div className="px-2 pt-3 pb-1">
+                          <span className="text-[7px] font-bold text-muted-foreground/50 uppercase tracking-widest">Custom Fields</span>
+                        </div>
+                        {scriptVariableGroups[0]?.items
+                          .slice(NATIVE_ENTITY_VAR_NAMES.length)
+                          .map(v => (
+                            <button
+                              key={v}
+                              type="button"
+                              onMouseDown={(e) => { e.preventDefault(); legacyEditorRef.current?.insertVariable(v); }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-[10px] font-mono font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 group"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400/50 group-hover:bg-amber-400 shrink-0 transition-colors" />
+                              {v}
+                            </button>
+                          ))
+                        }
+                      </>
+                    )}
+                    {(scriptVariableGroups[0]?.items.length ?? 0) === 0 && (
+                      <p className="text-[9px] text-muted-foreground/60 italic px-2 py-3">No entity fields found.</p>
+                    )}
+                  </>
+                )}
+
+                {variableCategory === 'deal' && (
+                  <>
+                    <div className="px-2 pt-3 pb-1">
+                      <span className="text-[7px] font-bold text-muted-foreground/50 uppercase tracking-widest">Deal Fields</span>
+                    </div>
+                    {scriptVariableGroups[1]?.items.map(v => (
+                      <button
+                        key={v}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); legacyEditorRef.current?.insertVariable(v); }}
+                        className="w-full text-left px-2.5 py-1.5 rounded-lg text-[10px] font-mono font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-2 group"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/50 group-hover:bg-emerald-400 shrink-0 transition-colors" />
+                        {v}
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {variableCategory === 'used' && (
+                  <>
+                    <div className="px-2 pt-3 pb-1">
+                      <span className="text-[7px] font-bold text-muted-foreground/50 uppercase tracking-widest">Used in this script</span>
+                    </div>
+                    {detectedVariables.length === 0 ? (
+                      <p className="text-[9px] text-muted-foreground/60 italic px-2 py-3">No variables inserted yet. Type <kbd className="font-mono bg-muted px-1 rounded border border-border/50">/</kbd> to start.</p>
+                    ) : detectedVariables.map(v => (
+                      <button
+                        key={v}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); legacyEditorRef.current?.insertVariable(v); }}
+                        className="w-full text-left px-2.5 py-1.5 rounded-lg text-[10px] font-mono font-semibold text-primary hover:bg-primary/10 transition-colors flex items-center gap-2 group"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary/40 group-hover:bg-primary shrink-0 transition-colors" />
+                        {v}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+
+              {/* Tip footer */}
+              <div className="p-2.5 border-t border-border/50 bg-muted/20 shrink-0">
+                <p className="text-[8px] text-muted-foreground/60 leading-relaxed">
+                  Click any variable to insert at cursor. Type <kbd className="font-mono bg-muted px-1 rounded border border-border/40">/</kbd> in the editor for inline search.
+                </p>
+              </div>
+            </div>
+          </div>
         </TabsContent>
+
 
       {/* AI Assist Modal */}
       {isAiOpen && (
@@ -1191,7 +1714,7 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                 <Sparkles className="h-5 w-5 text-primary" />
                 <div>
                   <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">AI Script Assistant</h3>
-                  <p className="text-[8px] text-muted-foreground font-mono tracking-widest uppercase">Powered by Claude 3.5 Sonnet</p>
+                  <p className="text-[8px] text-muted-foreground font-mono tracking-widest uppercase">Powered by Claude Sonnet 4.6</p>
                 </div>
               </div>
               <Button
@@ -1346,22 +1869,27 @@ export function ScriptBuilderClient({ scriptId }: ScriptBuilderClientProps) {
                     setIsAiLoading(true);
                     try {
                       const res = await refineCallScriptAction({
-                        original: JSON.stringify({ nodes, edges }),
+                        original: editorTab === 'text' ? legacyText : JSON.stringify({ nodes, edges }),
                         instruction: refineInstructions,
                         workspaceId: activeWorkspaceId
                       }, user?.uid || '');
                       
                       if (res.success && res.refined) {
-                        if (isJsonGraph(res.refined)) {
-                          const graph = parseGraph(res.refined);
-                          setNodes(graph.nodes);
-                          setEdges(graph.edges);
+                        if (editorTab === 'text') {
+                          setLegacyText(res.refined);
+                          toast({ title: 'AI Script Refined', description: 'Plain text script updated.' });
                         } else {
-                          const fallbackGraph = parseGraph(res.refined);
-                          setNodes(fallbackGraph.nodes);
-                          setEdges(fallbackGraph.edges);
+                          if (isJsonGraph(res.refined)) {
+                            const graph = parseGraph(res.refined);
+                            setNodes(graph.nodes);
+                            setEdges(graph.edges);
+                          } else {
+                            const fallbackGraph = parseGraph(res.refined);
+                            setNodes(fallbackGraph.nodes);
+                            setEdges(fallbackGraph.edges);
+                          }
+                          toast({ title: 'AI Script Refined', description: 'Visual script layout updated.' });
                         }
-                        toast({ title: 'AI Script Refined', description: 'Visual script layout updated.' });
                         setIsAiOpen(false);
                       } else {
                         toast({ variant: 'destructive', title: 'Refinement Failed', description: res.error });

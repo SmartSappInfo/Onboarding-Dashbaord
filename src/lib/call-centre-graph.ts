@@ -16,6 +16,56 @@ export function isJsonGraph(content: string | undefined): boolean {
 }
 
 /**
+ * Converts script content (plain text OR JSON graph) into a human-readable
+ * preview string suitable for thumbnails, cards, and search snippets.
+ * JSON graphs are converted by concatenating all node text bodies in order.
+ */
+export function extractPreviewText(content: string | undefined, separator: string = ' … '): string {
+  if (!content) return '';
+  if (!isJsonGraph(content)) return content;
+
+  try {
+    const graph = JSON.parse(content);
+    const nodeOrder: string[] = [];
+    // Walk graph from start nodes outward via edges (BFS)
+    const edgeMap = new Map<string, string[]>();
+    for (const e of graph.edges) {
+      if (!edgeMap.has(e.source)) edgeMap.set(e.source, []);
+      edgeMap.get(e.source)!.push(e.target);
+    }
+    const startNodes: any[] = graph.nodes.filter((n: any) => n.type === 'start');
+    const visited = new Set<string>();
+    const queue = startNodes.map((n: any) => n.id);
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (visited.has(id)) continue;
+      visited.add(id);
+      nodeOrder.push(id);
+      for (const next of edgeMap.get(id) || []) queue.push(next);
+    }
+    // Append any unvisited nodes (disconnected)
+    for (const n of graph.nodes) {
+      if (!visited.has(n.id)) nodeOrder.push(n.id);
+    }
+    const nodeById = new Map(graph.nodes.map((n: any) => [n.id, n]));
+    return nodeOrder
+      .map((id) => {
+        const node = nodeById.get(id) as any;
+        if (!node) return '';
+        const text = node.data?.text || '';
+        if (node.type === 'question' && node.data?.options?.length) {
+          return `${text} [${node.data.options.join(' / ')}]`;
+        }
+        return text;
+      })
+      .filter(Boolean)
+      .join(separator);
+  } catch {
+    return content;
+  }
+}
+
+/**
  * Parses script content into a BranchingScriptGraph.
  * If the content is plain text (legacy), it maps it to a default linear graph.
  */
@@ -174,19 +224,38 @@ export function validateScriptGraph(graph: BranchingScriptGraph): { isValid: boo
         warnings.push(`Node "${node.data.label}" is orphaned (no incoming or outgoing connections).`);
       } else if (incoming.length === 0) {
         warnings.push(`Node "${node.data.label}" has no incoming connections.`);
-      } else if (outgoing.length === 0 && node.type !== 'outcome') {
+      } else if (outgoing.length === 0 && node.type !== 'outcome' && node.type !== 'question') {
+        // 'question' is excluded here: per-option connection warnings are generated below
         warnings.push(`Node "${node.data.label}" is a dead end (no outgoing connections).`);
       }
     }
 
     // Node configuration validations
     if (node.type === 'question') {
-      const qc = node.data.questionConfig;
-      if (!qc?.fieldName) {
-        warnings.push(`Ask Node "${node.data.label}" lacks a CRM data field binding.`);
-      }
-      if (qc?.fieldType === 'select' && (!qc.selectOptions || qc.selectOptions.length === 0)) {
-        warnings.push(`Ask Node "${node.data.label}" is set to select dropdown but has no options configured.`);
+      const opts = node.data?.options;
+      if (!opts || opts.length < 2) {
+        // Question node must have at least 2 branching options (e.g. Yes / No)
+        warnings.push(`Ask Node "${node.data.label}" needs at least 2 answer options.`);
+      } else {
+        // Check each option: label must not be blank
+        opts.forEach((opt, idx) => {
+          if (!opt || !opt.trim()) {
+            warnings.push(`Ask Node "${node.data.label}" — Option ${idx + 1} has an empty label.`);
+          }
+        });
+
+        // Check that every option handle (option-0, option-1, …) has at least one outgoing edge
+        const connectedHandles = new Set(
+          outgoing
+            .filter(e => e.sourceHandle?.startsWith('option-'))
+            .map(e => e.sourceHandle)
+        );
+        opts.forEach((opt, idx) => {
+          if (!connectedHandles.has(`option-${idx}`)) {
+            const label = opt?.trim() || `Option ${idx + 1}`;
+            warnings.push(`Ask Node "${node.data.label}" — "${label}" has no exit connection.`);
+          }
+        });
       }
     }
 

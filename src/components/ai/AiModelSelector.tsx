@@ -27,8 +27,8 @@ export const AI_PROVIDERS = [
         color: 'text-orange-500',
         bgColor: 'bg-orange-500/10',
         models: [
-            { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', description: 'Most intelligent & capable Claude model' },
-            { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', description: 'Fastest Claude model for low-latency tasks' },
+            { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', description: 'Best balance of speed & intelligence' },
+            { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', description: 'Fastest Claude model for low-latency tasks' },
         ]
     },
     {
@@ -71,7 +71,7 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
     const { toast } = useToast();
     
     const [selectedProvider, setSelectedProvider] = React.useState<string>('anthropic');
-    const [selectedModel, setSelectedModel] = React.useState<string>('claude-3-5-sonnet');
+    const [selectedModel, setSelectedModel] = React.useState<string>('claude-sonnet-4-6');
     const [isLoading, setIsLoading] = React.useState(true);
 
     const availableProviders = React.useMemo(() => {
@@ -104,7 +104,7 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
                     // Automatically migrate legacy 'openai' to 'anthropic'
                     if (provider === 'openai') {
                         provider = 'anthropic';
-                        model = 'claude-3-5-sonnet';
+                        model = 'claude-sonnet-4-6';
                     }
                     
                     // Only apply if the preferred model is still available under the active organization's rules
@@ -169,7 +169,7 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
                 )}
                 <div className="flex items-center gap-2.5 p-3 bg-orange-500/5 border border-orange-500/10 text-orange-600 rounded-[1.25rem] text-sm font-bold w-[280px]">
                     <Zap className="w-4 h-4 shrink-0 text-orange-500" />
-                    <span>System Default: Claude 3.5 Sonnet</span>
+                    <span>System Default: Claude Sonnet 4.6</span>
                 </div>
             </div>
         );

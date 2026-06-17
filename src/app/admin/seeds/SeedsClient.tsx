@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CalendarPlus, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { backfillDisplayNameLower } from '@/lib/entities/backfill-display-name-lower';
+import { backfillWorkspaceContacts } from '@/lib/contacts/backfill-workspace-contacts';
+import { reconcileWorkspaceContacts } from '@/lib/contacts/contact-projection-writer';
 import { seedEnrichedMeetingTemplatesAction } from '@/app/actions/seed-meeting-invitation-templates-action';
 import { seedDefaultStyleBlueprintsAction } from '@/app/actions/seed-default-style-blueprints-action';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
@@ -101,6 +103,68 @@ export default function SeedsClient() {
         }
     };
 
+    // ── Contact projection backfill (Phase 6.0) ──
+    const [isContactsBackfilling, setIsContactsBackfilling] = React.useState(false);
+    const [contactsBackfillStats, setContactsBackfillStats] = React.useState<{ processed: number; written: number } | null>(null);
+
+    const handleBackfillContacts = async () => {
+        setIsContactsBackfilling(true);
+        setContactsBackfillStats({ processed: 0, written: 0 });
+        try {
+            let afterId: string | undefined = undefined;
+            let processed = 0;
+            let written = 0;
+            // Client-driven loop: each call projects one page of entities (≤100)
+            // into workspace_contacts and returns the next cursor.
+            do {
+                const res = await backfillWorkspaceContacts(afterId ? { afterId } : undefined);
+                processed += res.processed;
+                written += res.written;
+                setContactsBackfillStats({ processed, written });
+                afterId = res.nextCursor ?? undefined;
+            } while (afterId);
+            toast({
+                title: 'Contact projection backfilled',
+                description: `${processed.toLocaleString()} entities scanned · ${written.toLocaleString()} contacts projected.`,
+            });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Backfill failed', description: error.message });
+        } finally {
+            setIsContactsBackfilling(false);
+        }
+    };
+
+    // ── Contact projection reconcile (Phase 6.1) — heals drift (upsert + delete) ──
+    const [isReconciling, setIsReconciling] = React.useState(false);
+    const [reconcileStats, setReconcileStats] = React.useState<{ processed: number; upserts: number; deletes: number } | null>(null);
+
+    const handleReconcileContacts = async () => {
+        setIsReconciling(true);
+        setReconcileStats({ processed: 0, upserts: 0, deletes: 0 });
+        try {
+            let afterId: string | undefined = undefined;
+            let processed = 0;
+            let upserts = 0;
+            let deletes = 0;
+            do {
+                const res = await reconcileWorkspaceContacts(afterId ? { afterId } : undefined);
+                processed += res.processed;
+                upserts += res.upserts;
+                deletes += res.deletes;
+                setReconcileStats({ processed, upserts, deletes });
+                afterId = res.nextCursor ?? undefined;
+            } while (afterId);
+            toast({
+                title: 'Contact projection reconciled',
+                description: `${processed.toLocaleString()} entities · ${upserts.toLocaleString()} upserts · ${deletes.toLocaleString()} deletes.`,
+            });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Reconcile failed', description: error.message });
+        } finally {
+            setIsReconciling(false);
+        }
+    };
+
     const [isStyleSeeding, setIsStyleSeeding] = React.useState(false);
 
     const handleSeedDefaultStyleBlueprints = async () => {
@@ -177,6 +241,60 @@ export default function SeedsClient() {
                                     {isBackfilling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
                                     {isBackfilling ? 'Backfilling…' : 'Backfill Search Index'}
                                 </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-blue-100 bg-blue-50/30 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Search className="h-24 w-24 text-blue-600" />
+                        </div>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Contact Projection</span>
+                            </div>
+                            <CardTitle className="text-xl text-blue-950">Backfill Contact Projection</CardTitle>
+                            <CardDescription className="max-w-2xl text-blue-900/70">
+                                Flattens each entity's <code>entityContacts</code> into the new <code>workspace_contacts</code> collection — one row per contact — so audience builders (composer, campaigns, manual selector, tag assignment) can search and segment contacts server-side instead of loading every entity. New and edited contacts get projected automatically; this one-time pass covers existing records. Idempotent (deterministic ids), so safe to re-run.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700">Cursor-based</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700">Idempotent</Badge>
+                                    {contactsBackfillStats && (
+                                        <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700 tabular-nums">
+                                            {contactsBackfillStats.processed.toLocaleString()} entities · {contactsBackfillStats.written.toLocaleString()} contacts
+                                        </Badge>
+                                    )}
+                                    {reconcileStats && (
+                                        <Badge variant="outline" className="bg-white/50 border-amber-200 text-amber-700 tabular-nums">
+                                            {reconcileStats.upserts.toLocaleString()} upserts · {reconcileStats.deletes.toLocaleString()} deletes
+                                        </Badge>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleReconcileContacts}
+                                        disabled={isReconciling || isContactsBackfilling}
+                                        className="border-blue-200 text-blue-700 hover:bg-blue-100/50"
+                                        title="Heal drift: re-derive every entity's contact rows and delete removed ones"
+                                    >
+                                        {isReconciling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                        {isReconciling ? 'Reconciling…' : 'Reconcile'}
+                                    </Button>
+                                    <Button
+                                        onClick={handleBackfillContacts}
+                                        disabled={isContactsBackfilling || isReconciling}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-none min-w-[180px]"
+                                    >
+                                        {isContactsBackfilling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                                        {isContactsBackfilling ? 'Backfilling…' : 'Backfill Contacts'}
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

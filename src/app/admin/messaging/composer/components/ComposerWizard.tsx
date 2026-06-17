@@ -52,7 +52,6 @@ import { EntitySelector } from './EntitySelector';
 import { VariablePicker } from '@/components/messaging/VariablePicker';
 import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
-import { useEntityCache } from '@/context/EntityCacheContext';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const formSchema = z.object({
@@ -288,64 +287,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const { data: responses } = useCollection<SurveyResponse>(responsesQuery);
     const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
-    const { entities: weRaw, isLoading: isLoadingWE } = useEntityCache();
-
-    const entitiesQuery = useMemoFirebase(() =>
-        firestore && activeOrganizationId
-            ? query(collection(firestore, 'entities'), where('organizationId', '==', activeOrganizationId))
-            : null,
-    [firestore, activeOrganizationId]);
-    const { data: entitiesRaw, isLoading: isLoadingEntities } = useCollection<any>(entitiesQuery);
-
-    const workspaceEntities = React.useMemo(() => {
-        const entities = entitiesRaw || [];
-        const weItems = weRaw || [];
-        
-        const entitiesMap = new Map<string, any>();
-        entities.forEach(e => entitiesMap.set(e.id, e));
-
-        const weMap = new Map<string, any>();
-        weItems.forEach(we => {
-            if (we.entityId) weMap.set(we.entityId, we);
-        });
-
-        // ONLY include entities that are actually linked to this workspace
-        const allIds = Array.from(weMap.keys());
-
-        return allIds.map(id => {
-            const entity = entitiesMap.get(id);
-            const we = weMap.get(id);
-            
-            // Extract contacts, supporting both modern and legacy shapes
-            const rawContacts = entity?.entityContacts || entity?.contacts || we?.entityContacts || we?.contacts || [];
-            const sanitizedContacts = Array.isArray(rawContacts) ? rawContacts.map((c: any, i: number) => ({
-                id: c.id || `c-${id}-${i}`,
-                name: c.name || c.displayName || 'Unknown Contact',
-                email: c.email,
-                phone: c.phone || c.phoneNumber,
-                typeKey: c.typeKey || c.role || 'other',
-                typeLabel: c.typeLabel || c.roleLabel || c.type || 'Contact',
-                isPrimary: !!c.isPrimary,
-                isSignatory: !!c.isSignatory,
-                order: c.order ?? i
-            })) : [];
-
-            return {
-                id: id,
-                entityId: id,
-                workspaceEntityId: we?.id,
-                name: we?.displayName || entity?.name || 'Unnamed Record',
-                logoUrl: entity?.institutionData?.logoUrl || entity?.logoUrl || we?.logoUrl,
-                entityType: we?.entityType || entity?.entityType || 'institution',
-                workspaceTags: we?.workspaceTags || [],
-                status: we?.status || entity?.status || 'active',
-                entityContacts: sanitizedContacts,
-                migrationStatus: 'migrated' as const,
-            };
-        });
-    }, [weRaw, entitiesRaw]);
-
-    const isCombinedLoading = isLoadingEntities || isLoadingWE;
+    // Entity selection is now search-backed inside EntitySelector (no full-set
+    // load). Recipient resolution happens server-side per entity at send time.
 
 
     // ── Effects ────────────────────────────────────────────────────────────────
@@ -581,19 +524,14 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                 setIsSending(true);
                 setSendProgress({ sent: 0, total: data.selectedEntityIds.length, currentEntity: '' });
                 const results: any = { success: true, totalSent: 0, totalFailed: 0, failedEntities: [], logIds: [] };
-                const entityMap = new Map(workspaceEntities.map(e => [e.id, e]));
 
                 for (let i = 0; i < data.selectedEntityIds.length; i++) {
                     const entityId = data.selectedEntityIds[i];
                     setSendProgress(p => ({ ...p, currentEntity: entityId }));
                     try {
-                        const cachedEntity = entityMap.get(entityId);
-                        let entityName = cachedEntity ? (cachedEntity as any).displayName : undefined;
-                        
-                        if (!entityName || entityName === 'Unknown Entity') {
-                            const contactRes = await resolveContact(entityId, activeWorkspace?.id || 'onboarding');
-                            entityName = contactRes?.name || 'Unknown Entity';
-                        }
+                        // Resolve the display name server-side (no client entity cache).
+                        const contactRes = await resolveContact(entityId, activeWorkspace?.id || 'onboarding');
+                        const entityName = contactRes?.name || 'Unknown Entity';
 
                         const recipients = await resolveRecipientContacts({
                             entityId, workspaceId: activeWorkspace?.id,
@@ -656,14 +594,13 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                 }); 
                             }
                         }
-                    } catch (e: any) { 
-                        results.totalFailed++; 
-                            const errorEntity = entityMap.get(entityId);
-                            results.failedEntities.push({ 
-                                entityId, 
-                                entityName: errorEntity ? (errorEntity as any).displayName : 'Unknown Entity',
-                                error: e.message 
-                            }); 
+                    } catch (e: any) {
+                        results.totalFailed++;
+                            results.failedEntities.push({
+                                entityId,
+                                entityName: 'Unknown Entity',
+                                error: e.message
+                            });
                     }
                     setSendProgress(p => ({ ...p, sent: i + 1 }));
                     if (i < data.selectedEntityIds.length - 1) await new Promise(r => setTimeout(r, 500));
@@ -848,8 +785,6 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Individual Selection</Label>
                                         <EntitySelector
-                                            entities={workspaceEntities}
-                                            isLoading={isCombinedLoading}
                                             channel={contactResolutionChannel(watchedChannel)}
                                             selectedEntityIds={watchedSelectedEntityIds}
                                             activeContactTypeFilter={watchedContactTypeFilter || []}

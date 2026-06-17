@@ -2,10 +2,10 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, doc, getDoc, where } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDoc, where, getCountFromServer } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { WorkspaceEntity, Entity, Contract, UserProfile } from '@/lib/types';
-import { useSortedEntities } from '@/context/EntityCacheContext';
+import type { WorkspaceEntity, Contract, UserProfile } from '@/lib/types';
+import { useEntitySearch } from '@/hooks/use-entity-search';
 import { 
     FileCheck, 
     Search, 
@@ -118,25 +118,36 @@ export default function AgreementsClient() {
 
     const canPurge = userPermissions.includes('contracts_delete') || userPermissions.includes('system_admin');
 
-    // Data Subscriptions - SYNCED TO WORKSPACE
-    const { sortedEntities: entities, isLoading: isLoadingEntities } = useSortedEntities();
+    // Paginated entity search (replaces streaming the full WE set + the entire
+    // `entities` collection). Identity fields (zone, signatory) come off the
+    // denormalized workspace_entity, so no separate global-entities load.
+    const { results: entities, isLoading: isLoadingEntities, hasMore, loadMore } = useEntitySearch({
+        search: searchTerm,
+        pageSize: 50,
+    });
 
-    const globalEntitiesCol = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'entities')) : null, 
+    const contractsCol = useMemoFirebase(() =>
+        firestore ? query(collection(firestore, 'contracts'), orderBy('updatedAt', 'desc')) : null,
     [firestore]);
-
-    const contractsCol = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'contracts'), orderBy('updatedAt', 'desc')) : null, 
-    [firestore]);
-    const { data: globalEntities, isLoading: isLoadingGlobal } = useCollection<Entity>(globalEntitiesCol);
     const { data: contracts, isLoading: isLoadingContracts } = useCollection<Contract>(contractsCol);
 
-    const isLoading = isLoadingEntities || isLoadingGlobal || isLoadingContracts || isLoadingFilter;
+    const isLoading = isLoadingEntities || isLoadingContracts || isLoadingFilter;
 
-    // Logic to merge WorkspaceEntities with Core Identity and Contract records
+    // Global coverage stats (independent of the loaded page): total via count(),
+    // signed/pending from the (bounded) contracts collection.
+    const [totalEntities, setTotalEntities] = React.useState(0);
+    React.useEffect(() => {
+        if (!firestore || !activeWorkspaceId) return;
+        let cancelled = false;
+        getCountFromServer(query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId)))
+            .then((snap) => { if (!cancelled) setTotalEntities(snap.data().count); })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [firestore, activeWorkspaceId]);
+
+    // Join the loaded page of entities with their contracts (assignee filtered
+    // client-side on the page).
     const entitiesWithContracts = React.useMemo(() => {
-        if (!entities) return [];
-        
         let baseEntities = entities;
         if (assignedUserId) {
             if (assignedUserId === 'unassigned') {
@@ -147,39 +158,30 @@ export default function AgreementsClient() {
         }
 
         const contractMap = new Map(contracts?.map(c => [c.entityId, c]) || []);
-        const identityMap = new Map(globalEntities?.map(e => [e.id, e]) || []);
 
         return baseEntities.map(we => ({
             ...we,
-            identity: identityMap.get(we.entityId),
             contract: contractMap.get(we.entityId) || null
         }));
-    }, [entities, globalEntities, contracts, assignedUserId]);
+    }, [entities, contracts, assignedUserId]);
 
+    // Search is server-side; only the status filter applies to the loaded page.
     const filteredList = React.useMemo(() => {
-        let list = entitiesWithContracts;
-        if (searchTerm) {
-            const s = searchTerm.toLowerCase();
-            list = list.filter(item => item.displayName.toLowerCase().includes(s));
-        }
-        if (statusFilter !== 'all') {
-            list = list.filter(item => {
-                const status = item.contract?.status || 'no_contract';
-                return status === statusFilter;
-            });
-        }
-        return list;
-    }, [entitiesWithContracts, searchTerm, statusFilter]);
+        if (statusFilter === 'all') return entitiesWithContracts;
+        return entitiesWithContracts.filter(item => (item.contract?.status || 'no_contract') === statusFilter);
+    }, [entitiesWithContracts, statusFilter]);
 
+    // Coverage stats are GLOBAL (not page-bound): total from count(), signed/
+    // pending from the contracts collection.
     const stats = React.useMemo(() => {
-        const total = entitiesWithContracts.length;
-        const signed = filteredList.filter(item => item.contract?.status === 'signed').length;
-        const pending = filteredList.filter(item => item.contract?.status === 'sent').length;
+        const total = totalEntities;
+        const signed = (contracts || []).filter(c => c.status === 'signed').length;
+        const pending = (contracts || []).filter(c => c.status === 'sent').length;
         const actionRequired = total - signed;
         const coverage = total > 0 ? Math.round((signed / total) * 100) : 0;
 
         return { total, signed, pending, actionRequired, coverage };
-    }, [entitiesWithContracts, filteredList]);
+    }, [totalEntities, contracts]);
 
     const toggleSelect = (entity: WorkspaceEntity) => {
         setSelectedEntities(prev => {
@@ -431,7 +433,7 @@ export default function AgreementsClient() {
                                                         </div>
  <div className="flex flex-col">
  <span className="font-semibold text-sm tracking-tight text-foreground">{item.displayName}</span>
- <span className="text-[9px] font-bold text-muted-foreground opacity-60 italic">{item.identity?.location?.zone?.name || 'Unassigned Zone'}</span>
+ <span className="text-[9px] font-bold text-muted-foreground opacity-60 italic">{item.location?.zone?.name || item.zone?.name || 'Unassigned Zone'}</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>
@@ -440,7 +442,7 @@ export default function AgreementsClient() {
                                                     {contract?.updatedAt ? format(new Date(contract.updatedAt), 'MMM d, yyyy') : '—'}
                                                 </TableCell>
  <TableCell className="text-xs font-medium text-foreground/80">
-                                                    {item.identity?.contacts?.find(p => p.isSignatory)?.name || 'No Primary Contact'}
+                                                    {item.entityContacts?.find(c => c.isSignatory)?.name || 'No Primary Contact'}
                                                 </TableCell>
  <TableCell className="text-right pr-8">
  <div className="flex items-center justify-end gap-1">
@@ -575,6 +577,18 @@ export default function AgreementsClient() {
                                 )}
                             </TableBody>
                         </Table>
+                        {hasMore && (
+                            <div className="border-t border-border/40 p-3">
+                                <button
+                                    type="button"
+                                    onClick={loadMore}
+                                    disabled={isLoadingEntities}
+                                    className="w-full py-2 text-center text-[11px] font-bold text-primary hover:bg-primary/5 rounded-lg disabled:opacity-50"
+                                >
+                                    {isLoadingEntities ? 'Loading…' : 'Load more'}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 

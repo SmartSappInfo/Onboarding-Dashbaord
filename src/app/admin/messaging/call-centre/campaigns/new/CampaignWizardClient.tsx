@@ -27,21 +27,46 @@ import {
   Play, 
   Trash2, 
   ChevronRight, 
-  RefreshCw
+  RefreshCw,
+  Save,
+  Edit3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AudienceSelector } from '@/app/admin/messaging/audiences/components/AudienceSelector';
 import { legacyAudienceToFilters } from '@/lib/audience-hooks';
-import type { AudienceFilter } from '@/lib/types';
+import type { AudienceFilter, AudienceDefinition } from '@/lib/types';
 import type { ConditionGroup } from '@/lib/automation-condition';
 import { isJsonGraph, parseGraph } from '@/lib/call-centre-graph';
 import { ScriptPlaybookView } from '../../scripts/components/ScriptPlaybookView';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+
+function buildAudienceDefinition(state: {
+  audienceMode: AudienceDefinition['mode'];
+  filters: AudienceFilter[];
+  filterLogic: 'AND' | 'OR';
+  groups: ConditionGroup[];
+  savedAudienceId: string;
+  selectedContacts: AudienceDefinition['selectedContacts'];
+  contactScope: AudienceDefinition['contactScope'];
+}): AudienceDefinition {
+  return {
+    mode: state.audienceMode,
+    filters: state.filters,
+    filterLogic: state.filterLogic,
+    groups: state.groups,
+    savedAudienceId: state.savedAudienceId,
+    selectedContacts: state.selectedContacts,
+    contactScope: state.contactScope,
+  };
+}
 
 interface CampaignWizardClientProps {
   campaignId?: string;
+  initialStep?: number;
+  initialScriptId?: string;
 }
 
-export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) {
+export function CampaignWizardClient({ campaignId, initialStep, initialScriptId }: CampaignWizardClientProps) {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
@@ -51,10 +76,16 @@ export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) 
   const { scripts } = useCallScripts(activeWorkspaceId);
 
   // ─── Step States ───────────────────────────────────────────────────────────
-  const [step, setStep] = React.useState(1);
+  const [step, setStep] = React.useState<number>(() => {
+    if (initialStep && initialStep >= 1 && initialStep <= 6) {
+      return initialStep;
+    }
+    return 1;
+  });
   const [name, setName] = React.useState('');
   const [description, setDescription] = React.useState('');
-  const [selectedScriptId, setSelectedScriptId] = React.useState('');
+  useSetBreadcrumb(campaignId ? `Edit Campaign: ${name}` : 'New Campaign');
+  const [selectedScriptId, setSelectedScriptId] = React.useState(initialScriptId || '');
   
   // Audience
   const [audienceMode, setAudienceMode] = React.useState<'all' | 'advanced' | 'saved' | 'manual'>('all');
@@ -89,6 +120,8 @@ export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) 
   // Loading/Wizard States
   const [isLoading, setIsLoading] = React.useState(false);
   const [isLaunching, setIsLaunching] = React.useState(false);
+  const [isSavingDraft, setIsSavingDraft] = React.useState(false);
+  const [isEditingScript, setIsEditingScript] = React.useState(false);
 
   const wrapHref = (href: string) => {
     if (!activeWorkspaceId) return href;
@@ -234,28 +267,26 @@ export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) 
     });
   };
 
-  // ─── Launch Campaign ────────────────────────────────────────────────────────
+  // ─── Launch & Draft Persistence Handlers ────────────────────────────────────
 
-  const handleLaunchCampaign = async () => {
-    if (!name.trim()) return;
-    if (!selectedScriptId) return;
+  const persistDraft = async (): Promise<string | null> => {
+    if (!name.trim()) {
+      toast({ variant: 'destructive', title: 'Validation Error', description: 'Campaign name is required to save.' });
+      return null;
+    }
 
-    setIsLaunching(true);
+    const audienceDefinition = buildAudienceDefinition({
+      audienceMode,
+      filters,
+      filterLogic,
+      groups,
+      savedAudienceId,
+      selectedContacts,
+      contactScope,
+    });
+
     try {
-      const audienceDefinition = {
-        mode: audienceMode,
-        filters,
-        filterLogic,
-        groups,
-        savedAudienceId,
-        selectedContacts,
-        contactScope,
-      };
-
-      let currentCampaignId = campaignId;
-
       if (campaignId) {
-        // Update
         const result = await updateCallCampaignAction(
           campaignId,
           {
@@ -271,8 +302,8 @@ export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) 
           user?.uid || ''
         );
         if (!result.success) throw new Error(result.error);
+        return campaignId;
       } else {
-        // Create
         const result = await createCallCampaignAction(
           {
             organizationId: activeOrganizationId,
@@ -289,12 +320,52 @@ export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) 
           user?.uid || ''
         );
         if (!result.success) throw new Error(result.error);
-        currentCampaignId = result.id;
+        return result.id || null;
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+      return null;
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setIsSavingDraft(true);
+    const resolvedId = await persistDraft();
+    setIsSavingDraft(false);
+    if (resolvedId) {
+      toast({ title: 'Campaign Saved as Draft' });
+      router.push(wrapHref('/admin/messaging/call-centre?tab=campaigns'));
+    }
+  };
+
+  const handleEditScript = async () => {
+    if (!selectedScriptId) return;
+    setIsEditingScript(true);
+    const resolvedId = await persistDraft();
+    setIsEditingScript(false);
+    if (resolvedId) {
+      router.push(wrapHref(`/admin/messaging/call-centre/scripts/new?id=${selectedScriptId}&returnCampaignId=${resolvedId}`));
+    }
+  };
+
+  const handleLaunchCampaign = async () => {
+    if (!name.trim()) {
+      toast({ variant: 'destructive', title: 'Validation Error', description: 'Campaign name is required.' });
+      return;
+    }
+    if (!selectedScriptId) {
+      toast({ variant: 'destructive', title: 'Validation Error', description: 'A script playbook must be selected before launching.' });
+      return;
+    }
+
+    setIsLaunching(true);
+    try {
+      const currentCampaignId = await persistDraft();
+      if (!currentCampaignId) {
+        setIsLaunching(false);
+        return;
       }
 
-      if (!currentCampaignId) throw new Error('Failed to resolve campaign identity');
-
-      // Generate call queue snapshot and launch
       const queueResult = await generateCampaignQueueAction(currentCampaignId, activeWorkspaceId, user?.uid || '');
       if (queueResult.success) {
         toast({ title: 'Campaign Launched', description: `Queue initialized with ${(queueResult as any).count} contacts.` });
@@ -357,9 +428,22 @@ export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) 
           ].map((sName, idx) => (
             <React.Fragment key={sName}>
               {idx > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
-              <div className="flex items-center gap-2 shrink-0">
+              <div 
+                className="flex items-center gap-2 shrink-0 cursor-pointer group focus-visible:outline-none"
+                role="button"
+                tabIndex={0}
+                aria-current={step === idx + 1 ? 'step' : undefined}
+                onClick={() => setStep(idx + 1)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setStep(idx + 1);
+                  }
+                }}
+              >
                 <div className={cn(
-                  "w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center border",
+                  "w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center border transition-all duration-200 group-hover:scale-105",
+                  "group-hover:ring-2 group-hover:ring-primary/20 group-focus-visible:ring-2 group-focus-visible:ring-primary/40",
                   step === idx + 1 
                     ? "bg-primary text-primary-foreground border-primary"
                     : step > idx + 1
@@ -369,8 +453,8 @@ export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) 
                   {idx + 1}
                 </div>
                 <span className={cn(
-                  "text-[10px] font-bold uppercase tracking-wider",
-                  step === idx + 1 ? "text-foreground" : "text-muted-foreground"
+                  "text-[10px] font-bold uppercase tracking-wider transition-colors duration-200",
+                  step === idx + 1 ? "text-foreground" : "text-muted-foreground group-hover:text-foreground/80"
                 )}>
                   {sName}
                 </span>
@@ -438,16 +522,35 @@ export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) 
                       <Button onClick={() => router.push(wrapHref('/admin/messaging/call-centre/scripts/new'))} size="sm" className="rounded-xl">Create Script</Button>
                     </div>
                   ) : (
-                    <Select value={selectedScriptId} onValueChange={setSelectedScriptId}>
-                      <SelectTrigger className="h-11 rounded-xl">
-                        <SelectValue placeholder="Select call script" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {scripts.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <Select value={selectedScriptId} onValueChange={setSelectedScriptId}>
+                        <SelectTrigger className="h-11 rounded-xl">
+                          <SelectValue placeholder="Select call script" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {scripts.map(s => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedScriptId && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleEditScript}
+                          disabled={isEditingScript}
+                          className="text-xs text-primary hover:text-primary/80 font-semibold gap-1.5 px-0 h-auto"
+                        >
+                          {isEditingScript ? (
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Edit3 className="h-3 w-3" />
+                          )}
+                          Edit Selected Script
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -773,34 +876,51 @@ export function CampaignWizardClient({ campaignId }: CampaignWizardClientProps) 
               <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" /> Previous Step
             </Button>
 
-            {step < 6 ? (
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                onClick={nextStep}
-                disabled={
-                  (step === 1 && !name.trim()) ||
-                  (step === 2 && !selectedScriptId) ||
-                  (step === 4 && outcomes.length === 0)
-                }
-                className="rounded-xl font-bold text-xs"
+                variant="outline"
+                onClick={handleSaveDraft}
+                disabled={isSavingDraft || isLaunching || !name.trim()}
+                className="rounded-xl font-bold text-xs gap-1.5 border-border bg-card hover:bg-accent text-card-foreground"
               >
-                Next Step <ArrowRight className="h-4 w-4 ml-2" aria-hidden="true" />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={handleLaunchCampaign}
-                disabled={isLaunching}
-                className="rounded-xl font-bold text-xs gap-2 px-6 shadow-lg bg-primary hover:bg-primary/95"
-              >
-                {isLaunching ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                {isSavingDraft ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                  <Save className="h-3.5 w-3.5" aria-hidden="true" />
                 )}
-                Launch & Start Call Queue
+                Save Draft
               </Button>
-            )}
+
+              {step < 6 ? (
+                <Button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={
+                    (step === 1 && !name.trim()) ||
+                    (step === 2 && !selectedScriptId) ||
+                    (step === 4 && outcomes.length === 0)
+                  }
+                  className="rounded-xl font-bold text-xs"
+                >
+                  Next Step <ArrowRight className="h-4 w-4 ml-2" aria-hidden="true" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleLaunchCampaign}
+                  disabled={isLaunching || isSavingDraft || !name.trim()}
+                  className="rounded-xl font-bold text-xs gap-2 px-6 shadow-lg bg-primary hover:bg-primary/95"
+                >
+                  {isLaunching ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                  )}
+                  Launch & Start Call Queue
+                </Button>
+              )}
+            </div>
           </div>
 
         </Card>

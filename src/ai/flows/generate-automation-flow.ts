@@ -69,7 +69,7 @@ const generateAutomationFlow = ai.defineFlow(
     outputSchema: GenerateAutomationOutputSchema,
   },
   async (input) => {
-    const { organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
+    const { organizationId, provider = 'anthropic', modelId = 'claude-sonnet-4-6' } = input;
 
     const resolvedModel = await getModel({
       organizationId,

@@ -366,9 +366,9 @@ export default function SystemDefaultsClient() {
                                     value={aiConfig.defaultModelId}
                                     onChange={(e) => setAiConfig({ ...aiConfig, defaultModelId: e.target.value })}
                                     className="rounded-xl h-11"
-                                    placeholder="e.g. gemini-3-flash-preview, claude-3-5-sonnet"
+                                    placeholder="e.g. gemini-3-flash-preview, claude-sonnet-4-6"
                                 />
-                                <p className="text-[10px] text-muted-foreground">The model ID matching the chosen provider (e.g. <code>gemini-3-flash-preview</code> or <code>claude-3-5-sonnet</code>).</p>
+                                <p className="text-[10px] text-muted-foreground">The model ID matching the chosen provider (e.g. <code>gemini-3-flash-preview</code> or <code>claude-sonnet-4-6</code>).</p>
                             </div>
                         </div>
                     </CardContent>
@@ -400,7 +400,7 @@ export default function SystemDefaultsClient() {
                                 onChange={(e) => setAiKeys({ ...aiKeys, claudeApiKey: e.target.value })}
                                 className="rounded-xl h-11"
                             />
-                            <p className="text-[10px] text-muted-foreground">Primary default fallback key for Anthropic Claude models (e.g. claude-3-5-sonnet).</p>
+                            <p className="text-[10px] text-muted-foreground">Primary default fallback key for Anthropic Claude models (e.g. claude-sonnet-4-6).</p>
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Google Gemini API Key (AIzaSy...)</label>

@@ -16,6 +16,7 @@ import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Entity, WorkspaceEntity } from './types';
+import { syncContactProjectionForEntityWorkspace } from './contacts/contact-projection-writer';
 
 /**
  * Applies tags to an entity, automatically determining scope from tag definitions
@@ -158,6 +159,10 @@ export async function applyTagAction(
       }
     }
 
+    // Propagate the workspaceTags change to the contact projection (Phase 6.1)
+    if (workspaceId) {
+      await syncContactProjectionForEntityWorkspace(entityId, workspaceId);
+    }
     revalidatePath(`/admin/contacts/${entityId}`);
     if (workspaceId) {
       revalidatePath(`/admin/workspaces/${workspaceId}`);
@@ -314,6 +319,10 @@ export async function removeTagAction(
       }
     }
 
+    // Propagate the workspaceTags change to the contact projection (Phase 6.1)
+    if (workspaceId) {
+      await syncContactProjectionForEntityWorkspace(entityId, workspaceId);
+    }
     revalidatePath(`/admin/contacts/${entityId}`);
     if (workspaceId) {
       revalidatePath(`/admin/workspaces/${workspaceId}`);

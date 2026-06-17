@@ -52,7 +52,7 @@ const ModifySurveyInputSchema = z.object({
   }),
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
-  modelId: z.string().optional().default('claude-3-5-sonnet'),
+  modelId: z.string().optional().default('claude-sonnet-4-6'),
 });
 export type ModifySurveyInput = z.infer<typeof ModifySurveyInputSchema>;
 
@@ -167,7 +167,7 @@ const modifySurveyFlow = ai.defineFlow(
                 const resolvedModel = await getModel({
                     organizationId: input.organizationId,
                     provider: input.provider || 'anthropic',
-                    modelId: input.modelId || 'claude-3-5-sonnet',
+                    modelId: input.modelId || 'claude-sonnet-4-6',
                 });
 
                 const generatorAi = resolvedModel.customAi || ai;

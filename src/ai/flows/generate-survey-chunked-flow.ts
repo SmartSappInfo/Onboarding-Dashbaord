@@ -39,7 +39,7 @@ const BlueprintInputSchema = z.object({
   content: z.string(),
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
-  modelId: z.string().optional().default('claude-3-5-sonnet'),
+  modelId: z.string().optional().default('claude-sonnet-4-6'),
 });
 type BlueprintInput = z.infer<typeof BlueprintInputSchema>;
 
@@ -113,7 +113,7 @@ const QuestionsInputSchema = z.object({
   blueprint: BlueprintOutputSchema,
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
-  modelId: z.string().optional().default('claude-3-5-sonnet'),
+  modelId: z.string().optional().default('claude-sonnet-4-6'),
 });
 type QuestionsInput = z.infer<typeof QuestionsInputSchema>;
 
@@ -282,7 +282,7 @@ const LogicInputSchema = z.object({
   elements: z.array(z.any()).describe('Elements from Phase 2'),
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
-  modelId: z.string().optional().default('claude-3-5-sonnet'),
+  modelId: z.string().optional().default('claude-sonnet-4-6'),
 });
 type LogicInput = z.infer<typeof LogicInputSchema>;
 

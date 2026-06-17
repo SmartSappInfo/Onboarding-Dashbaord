@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, AlertCircle, Edit3, BarChart3, Zap, Lock, Globe, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -43,9 +43,8 @@ const INITIAL_STATE: WizardState = {
 const STEPS = [
   { id: 'type', label: 'QR Type', number: 1 },
   { id: 'destination', label: 'Destination', number: 2 },
-  { id: 'mode', label: 'Static / Dynamic', number: 3 },
-  { id: 'design', label: 'Design', number: 4 },
-  { id: 'review', label: 'Review & Create', number: 5 },
+  { id: 'design', label: 'Design', number: 3 },
+  { id: 'review', label: 'Review & Create', number: 4 },
 ];
 
 // ─────────────────────────────────────────────────
@@ -67,10 +66,6 @@ function validateStep(step: number, state: WizardState): StepValidation {
     case 1: {
       const hasUrl = !!(state.destination.url || state.destination.resourceId);
       if (!hasUrl) return { valid: false, errors: ['url'], message: 'Please enter a destination URL or select a resource.' };
-      return { valid: true, errors: [], message: '' };
-    }
-
-    case 2: {
       if (!state.mode) return { valid: false, errors: ['mode'], message: 'Please select static or dynamic mode.' };
       if (state.mode === 'dynamic' && state.customShortPath) {
         if (!/^[a-zA-Z0-9-]+$/.test(state.customShortPath)) {
@@ -80,10 +75,10 @@ function validateStep(step: number, state: WizardState): StepValidation {
       return { valid: true, errors: [], message: '' };
     }
 
-    case 3:
+    case 2:
       return { valid: true, errors: [], message: '' }; // Design is always valid
 
-    case 4: {
+    case 3: {
       if (!state.name.trim()) return { valid: false, errors: ['name'], message: 'Please enter a name for your QR code.' };
       return { valid: true, errors: [], message: '' };
     }
@@ -147,7 +142,7 @@ export default function CreateQRWizard() {
 
   const handleCreate = async () => {
     // Final validation
-    const reviewValidation = validateStep(4, state);
+    const reviewValidation = validateStep(3, state);
     if (!reviewValidation.valid) {
       setValidationErrors(reviewValidation.errors);
       setValidationMessage(reviewValidation.message);
@@ -192,7 +187,7 @@ export default function CreateQRWizard() {
   };
 
   return (
-    <div className="w-full min-h-full flex flex-col space-y-8 pb-32 p-8">
+    <div className="w-full space-y-8 pb-32 p-8">
       {/* Header */}
       <div>
         <Button variant="ghost" onClick={handleBack} className="rounded-xl mb-4 text-muted-foreground hover:text-foreground">
@@ -271,9 +266,18 @@ export default function CreateQRWizard() {
             transition={{ duration: 0.2 }}
           >
             {currentStep === 0 && <StepType state={state} updateState={updateState} />}
-            {currentStep === 1 && <StepDestination state={state} updateState={updateState} validationErrors={validationErrors} />}
-            {currentStep === 2 && <StepMode state={state} updateState={updateState} validationErrors={validationErrors} />}
-            {currentStep === 3 && (
+            {currentStep === 1 && (
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
+                <div className="space-y-8">
+                  <StepDestination state={state} updateState={updateState} validationErrors={validationErrors} />
+                  <div className="border-t border-border pt-8">
+                    <StepMode state={state} updateState={updateState} validationErrors={validationErrors} />
+                  </div>
+                </div>
+                <DestinationSummary state={state} />
+              </div>
+            )}
+            {currentStep === 2 && (
               <div className="space-y-4">
                 <div>
                   <h2 className="text-lg font-bold text-foreground">Customize Design</h2>
@@ -288,7 +292,7 @@ export default function CreateQRWizard() {
                 />
               </div>
             )}
-            {currentStep === 4 && <StepReview state={state} updateState={updateState} validationErrors={validationErrors} />}
+            {currentStep === 3 && <StepReview state={state} updateState={updateState} validationErrors={validationErrors} />}
           </motion.div>
         </AnimatePresence>
       </Card>
@@ -327,6 +331,132 @@ export default function CreateQRWizard() {
             )}
           </Button>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// Destination Summary Component
+// ─────────────────────────────────────────────────
+
+interface DestinationSummaryProps {
+  state: WizardState;
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  url: 'External URL',
+  survey: 'Survey',
+  form: 'Form',
+  landing_page: 'Landing Page',
+  public_portal: 'Public Portal',
+  doc_signing: 'Doc Signing',
+  meeting: 'Meeting',
+  invoice: 'Invoice',
+  vcard: 'vCard',
+  wifi: 'Wi-Fi',
+  email: 'Email',
+  sms: 'SMS',
+  whatsapp: 'WhatsApp',
+  text: 'Text',
+  file: 'File',
+};
+
+function DestinationSummary({ state }: DestinationSummaryProps) {
+  const isDynamic = state.mode === 'dynamic';
+
+  return (
+    <div className="p-5 rounded-2xl bg-muted/30 border border-border/80 space-y-5 lg:sticky lg:top-6">
+      <div>
+        <h3 className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Setup Summary</h3>
+        <p className="text-[10px] text-muted-foreground mt-0.5">Real-time overview of your configuration.</p>
+      </div>
+
+      {/* QR Code Type & Destination */}
+      <div className="space-y-3">
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-muted-foreground font-semibold">QR Type</span>
+          <span className="font-bold text-foreground bg-primary/10 text-primary px-2.5 py-1 rounded-lg text-[9px] uppercase tracking-wider">
+            {TYPE_LABELS[state.type] || state.type}
+          </span>
+        </div>
+
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-semibold">Destination Details</span>
+          <p className="text-xs font-mono bg-muted/65 p-2.5 rounded-xl border border-border/60 break-all text-foreground max-h-[120px] overflow-y-auto">
+            {state.destination.url || 'Not configured yet'}
+          </p>
+        </div>
+      </div>
+
+      <div className="h-px bg-border/50" />
+
+      {/* Mode & Implications */}
+      <div className="space-y-3.5">
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-muted-foreground font-semibold">Routing Mode</span>
+          <span className={`font-bold px-2.5 py-1 rounded-lg text-[9px] uppercase tracking-wider ${
+            isDynamic 
+              ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20' 
+              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+          }`}>
+            {state.mode}
+          </span>
+        </div>
+
+        <div className="space-y-2.5 pt-1">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Routing Implications</p>
+          
+          {isDynamic ? (
+            <div className="space-y-3">
+              <div className="flex gap-2.5 text-xs items-start">
+                <Edit3 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-foreground leading-tight text-[11px]">Editable Destination</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Change where this code scans to at any time, even after printing.</p>
+                </div>
+              </div>
+              <div className="flex gap-2.5 text-xs items-start">
+                <BarChart3 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-foreground leading-tight text-[11px]">Full Analytics</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Track total scans, unique visits, device browsers, and referral parameters.</p>
+                </div>
+              </div>
+              <div className="flex gap-2.5 text-xs items-start">
+                <Zap className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-foreground leading-tight text-[11px]">Active Redirects</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Scans route securely through go.smartsapp.com before landing.</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex gap-2.5 text-xs items-start">
+                <Lock className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-foreground leading-tight text-[11px]">Permanent Link</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">The link is hard-coded into the QR pattern. It can never be changed.</p>
+                </div>
+              </div>
+              <div className="flex gap-2.5 text-xs items-start">
+                <Globe className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-foreground leading-tight text-[11px]">Direct Routing</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Scans directly load the URL without any redirects. Works fully offline.</p>
+                </div>
+              </div>
+              <div className="flex gap-2.5 text-xs items-start">
+                <Shield className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-foreground leading-tight text-[11px]">Zero Analytics</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">No scan counts, visitor tracking, or device analytics will be captured.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

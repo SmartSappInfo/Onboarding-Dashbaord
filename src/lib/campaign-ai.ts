@@ -30,7 +30,7 @@ async function callGenkit(params: {
   const resolvedModel = await getModel({
     organizationId: params.organizationId,
     provider: 'anthropic',
-    modelId: 'claude-3-5-sonnet',
+    modelId: 'claude-sonnet-4-6',
   });
 
   const generatorAi = resolvedModel.customAi || ai;

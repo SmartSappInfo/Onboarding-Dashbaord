@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useEntityCache } from '@/context/EntityCacheContext';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import {
     Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue
@@ -15,27 +14,23 @@ interface ContactScopeSelectorProps {
 }
 
 export function ContactScopeSelector({ value, onChange }: ContactScopeSelectorProps) {
-    const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+    const { activeWorkspaceId, activeOrganizationId, activeWorkspace } = useWorkspace() as any;
     const [roles, setRoles] = React.useState<{ label: string; value: string }[]>([]);
-    const { entities } = useEntityCache();
+
+    // A workspace is scoped to a single entity type (its `contactScope`, enforced
+    // at entity-create), so we read that instead of scanning the entity set.
+    const contactScope = activeWorkspace?.contactScope as string | undefined;
 
     React.useEffect(() => {
-        if (!activeWorkspaceId || !entities) return;
-        const currentEntities = entities;
+        if (!activeWorkspaceId) return;
         async function fetchRoles() {
             try {
-                const activeEntityTypes = new Set<string>();
-                currentEntities.slice(0, 100).forEach(d => {
-                    const type = d.entityType;
-                    if (type) activeEntityTypes.add(type);
-                });
-
-                // Fallback to all types if workspace is empty (for new workspaces)
-                const typesToFetch = activeEntityTypes.size > 0 
-                    ? Array.from(activeEntityTypes) as any[]
+                // Fallback to all types if the workspace scope isn't set yet (new workspace).
+                const typesToFetch = contactScope
+                    ? [contactScope] as any[]
                     : ['institution', 'family', 'person'];
 
-                const rolePromises = typesToFetch.map(type => 
+                const rolePromises = typesToFetch.map(type =>
                     getEffectiveContactTypes(type, activeOrganizationId, activeWorkspaceId)
                 );
                 
@@ -52,7 +47,7 @@ export function ContactScopeSelector({ value, onChange }: ContactScopeSelectorPr
             }
         }
         fetchRoles();
-    }, [activeWorkspaceId, activeOrganizationId, entities]);
+    }, [activeWorkspaceId, activeOrganizationId, contactScope]);
 
     return (
         <Select value={value} onValueChange={onChange}>

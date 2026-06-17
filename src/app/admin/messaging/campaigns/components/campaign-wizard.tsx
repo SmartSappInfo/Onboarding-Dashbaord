@@ -42,7 +42,6 @@ import { cn } from '@/lib/utils';
 import { contactResolutionChannel } from '@/lib/messaging/channel-registry';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
-import { useEntityCache } from '@/context/EntityCacheContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EmailHygieneBadge } from '@/app/admin/components/EmailHygieneBadge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

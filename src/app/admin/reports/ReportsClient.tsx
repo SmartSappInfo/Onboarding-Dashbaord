@@ -49,8 +49,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { WorkspaceEntity, Task, UserProfile, Zone, TaskCategory } from '@/lib/types';
-import { useEntityCache } from '@/context/EntityCacheContext';
-import { format, subDays, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from 'date-fns';
+import { getReportAggregates, type ReportAggregates } from '@/lib/reports/report-actions';
+import { format, subDays, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -77,8 +77,17 @@ export default function ReportsClient() {
     const { activeOrganizationId } = useTenant();
     const { singular, plural } = useTerminology();
     
-    // Subscriptions using the Entity Cache
-    const { entities, isLoading: isLoadingEntities } = useEntityCache();
+    // Server-side aggregation (field-projected) — replaces streaming all entities.
+    const [aggregates, setAggregates] = React.useState<ReportAggregates | null>(null);
+    React.useEffect(() => {
+        if (!activeWorkspaceId) return;
+        let cancelled = false;
+        getReportAggregates(activeWorkspaceId)
+            .then((a) => { if (!cancelled) setAggregates(a); })
+            .catch(() => { if (!cancelled) setAggregates({ velocity: [], zoneHealth: [] }); });
+        return () => { cancelled = true; };
+    }, [activeWorkspaceId]);
+    const isLoadingEntities = aggregates === null;
 
     const tasksCol = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -98,43 +107,22 @@ export default function ReportsClient() {
 
     const isLoading = isLoadingEntities || isLoadingTasks || isLoadingZones;
 
-    // 1. Onboarding Velocity (Last 6 Months)
-    const velocityData = React.useMemo(() => {
-        if (!entities) return [];
-        const months = Array.from({ length: 6 }).map((_, i) => {
-            const date = subDays(new Date(), i * 30);
-            return {
-                name: format(date, 'MMM'),
-                start: startOfMonth(date),
-                end: endOfMonth(date),
-                count: 0
-            };
-        }).reverse();
+    // 1. Onboarding Velocity (Last 6 Months) — computed server-side.
+    const velocityData = aggregates?.velocity ?? [];
 
-        entities.forEach(entity => {
-            const createdDate = new Date(entity.addedAt);
-            months.forEach(m => {
-                if (isWithinInterval(createdDate, { start: m.start, end: m.end })) {
-                    m.count++;
-                }
-            });
-        });
-
-        return months;
-    }, [entities]);
-
-    // 2. Zone Health Breakdown
+    // 2. Zone Health Breakdown — join server-side counts with zone names.
     const zoneHealth = React.useMemo(() => {
-        if (!zones || !entities) return [];
+        if (!zones || !aggregates) return [];
+        const byZone = new Map(aggregates.zoneHealth.map(h => [h.zoneId, h]));
         return zones.map(zone => {
-            const zoneEntities = entities.filter(s => s.zone?.id === zone.id);
+            const h = byZone.get(zone.id);
             return {
                 name: zone.name,
-                entities: zoneEntities.length,
-                students: zoneEntities.reduce((sum, s) => sum + (s.nominalRoll || 0), 0),
+                entities: h?.count ?? 0,
+                students: h?.capacity ?? 0,
             };
         }).sort((a, b) => b.entities - a.entities);
-    }, [zones, entities]);
+    }, [zones, aggregates]);
 
     // 3. Operational Effectiveness (Tasks)
     const taskMetrics = React.useMemo(() => {
