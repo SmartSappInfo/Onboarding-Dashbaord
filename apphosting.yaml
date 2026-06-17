@@ -24,3 +24,5 @@ runConfig:
 env:
   - variable: CRON_SECRET
     secret: cron-secret
+  - variable: WHATSAPP_ENCRYPTION_KEY
+    secret: whatsapp-encryption-key
