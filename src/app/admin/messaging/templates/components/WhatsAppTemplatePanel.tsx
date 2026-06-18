@@ -24,20 +24,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MessageCircle, Loader2, RefreshCw, CheckCircle2, Clock, XCircle, Plus, FilePlus2, Send } from 'lucide-react';
+import { MessageCircle, Loader2, RefreshCw, CheckCircle2, Clock, XCircle, Plus, FilePlus2, Send, Trash2 } from 'lucide-react';
 import {
   listWhatsAppTemplates,
   syncWhatsAppTemplates,
   adoptWhatsAppTemplate,
   createWhatsAppTemplate,
   sendWhatsAppTestMessage,
+  uploadWhatsAppHeaderMedia,
 } from '@/lib/whatsapp-template-actions';
 import { getBodyText, extractParamCount } from '@/lib/whatsapp/whatsapp-domain';
+import type { TemplateButtonInput, MediaHeaderFormat } from '@/lib/whatsapp/whatsapp-domain';
 import type {
   WhatsAppTemplate,
   WhatsAppTemplateStatus,
   WhatsAppTemplateCategory,
 } from '@/lib/whatsapp/whatsapp-types';
+
+type HeaderMode = 'none' | 'text' | 'media';
+type UploadedMedia = { format: MediaHeaderFormat; handle: string; fileName: string };
+
+/** Read a File as raw base64 (no data: prefix) — safe for large files. */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+    reader.onerror = () => reject(new Error('Could not read the file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function newButton(type: TemplateButtonInput['type']): TemplateButtonInput {
+  if (type === 'URL') return { type: 'URL', text: '', url: '' };
+  if (type === 'PHONE_NUMBER') return { type: 'PHONE_NUMBER', text: '', phoneNumber: '' };
+  return { type: 'QUICK_REPLY', text: '' };
+}
+
+/** UI-side validity mirror of the server rules (server still re-validates). */
+function buttonValid(b: TemplateButtonInput): boolean {
+  if (!b.text.trim()) return false;
+  if (b.type === 'URL') return !!b.url.trim() && (!/\{\{\s*1\s*\}\}/.test(b.url) || !!b.urlExample?.trim());
+  if (b.type === 'PHONE_NUMBER') return !!b.phoneNumber.trim();
+  return true;
+}
 
 const LANGUAGES = ['en_US', 'en_GB', 'en', 'fr', 'es', 'pt_BR', 'ar'];
 // AUTHENTICATION omitted: it needs a fixed OTP/button structure this text-body
@@ -395,9 +424,13 @@ function CreateTemplateDialog({
   const [name, setName] = React.useState('');
   const [language, setLanguage] = React.useState('en_US');
   const [category, setCategory] = React.useState<WhatsAppTemplateCategory>('UTILITY');
+  const [headerMode, setHeaderMode] = React.useState<HeaderMode>('none');
   const [headerText, setHeaderText] = React.useState('');
+  const [media, setMedia] = React.useState<UploadedMedia | null>(null);
+  const [uploadingMedia, setUploadingMedia] = React.useState(false);
   const [bodyText, setBodyText] = React.useState('');
   const [footerText, setFooterText] = React.useState('');
+  const [buttons, setButtons] = React.useState<TemplateButtonInput[]>([]);
   // Keyed by param index so we never run an effect to resize an array — the
   // visible inputs are derived from `paramCount` during render
   // (`rerender-derived-state-no-effect`). Stale keys above paramCount are simply
@@ -417,11 +450,37 @@ function CreateTemplateDialog({
   }, []);
 
   const nameValid = /^[a-z0-9_]*$/.test(name);
+  const headerReady = headerMode !== 'media' || !!media;
   const canSubmit =
     !!name.trim() &&
     nameValid &&
     !!bodyText.trim() &&
-    examples.every((e) => e.trim().length > 0);
+    examples.every((e) => e.trim().length > 0) &&
+    headerReady &&
+    buttons.every(buttonValid) &&
+    !uploadingMedia;
+
+  const handleMediaFile = async (file: File) => {
+    if (!user) return;
+    setUploadingMedia(true);
+    setMedia(null);
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const idToken = await user.getIdToken();
+      const res = await uploadWhatsAppHeaderMedia(idToken, {
+        organizationId,
+        fileName: file.name,
+        fileType: file.type,
+        dataBase64,
+      });
+      if (res.success) setMedia({ format: res.data.format, handle: res.data.handle, fileName: file.name });
+      else toast({ variant: 'destructive', title: 'Upload failed', description: res.error });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!user) return;
@@ -435,8 +494,10 @@ function CreateTemplateDialog({
         category,
         bodyText: bodyText.trim(),
         bodyExample: examples.map((e) => e.trim()),
-        headerText: headerText.trim() || undefined,
+        headerText: headerMode === 'text' ? headerText.trim() || undefined : undefined,
+        mediaHeader: headerMode === 'media' && media ? { format: media.format, handle: media.handle } : undefined,
         footerText: footerText.trim() || undefined,
+        buttons: buttons.length ? buttons : undefined,
       });
       if (res.success) onCreated(res.data);
       else toast({ variant: 'destructive', title: 'Create failed', description: res.error });
@@ -506,16 +567,59 @@ function CreateTemplateDialog({
             </Select>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="wa-tpl-header" className="text-[10px] font-semibold text-muted-foreground">Header (optional)</Label>
-            <Input
-              id="wa-tpl-header"
-              value={headerText}
-              onChange={(e) => setHeaderText(e.target.value)}
-              placeholder="e.g. Order update"
-              maxLength={60}
-              className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4"
-            />
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground">Header (optional)</Label>
+            <div className="flex gap-1">
+              {(['none', 'text', 'media'] as HeaderMode[]).map((m) => (
+                <Button
+                  key={m}
+                  type="button"
+                  size="sm"
+                  variant={headerMode === m ? 'default' : 'outline'}
+                  onClick={() => setHeaderMode(m)}
+                  className="rounded-lg h-8 px-3 text-xs font-bold capitalize"
+                >
+                  {m}
+                </Button>
+              ))}
+            </div>
+            {headerMode === 'text' && (
+              <Input
+                id="wa-tpl-header"
+                value={headerText}
+                onChange={(e) => setHeaderText(e.target.value)}
+                placeholder="e.g. Order update"
+                maxLength={60}
+                className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4"
+              />
+            )}
+            {headerMode === 'media' && (
+              <div className="rounded-xl bg-muted/10 p-3 space-y-2">
+                <input
+                  id="wa-tpl-media"
+                  type="file"
+                  accept="image/jpeg,image/png,video/mp4,video/3gpp,application/pdf"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleMediaFile(f);
+                  }}
+                  className="block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:font-bold file:text-white"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  JPEG/PNG (≤5MB), MP4/3GP (≤16MB), or PDF (≤100MB).
+                </p>
+                {uploadingMedia && (
+                  <p className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
+                  </p>
+                )}
+                {media && !uploadingMedia && (
+                  <p className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+                    <CheckCircle2 className="h-3 w-3" /> {media.format} · {media.fileName}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -557,9 +661,24 @@ function CreateTemplateDialog({
             <div className="space-y-1">
               <Label className="text-[10px] font-semibold text-muted-foreground">Preview</Label>
               <div className="rounded-2xl rounded-tl-sm bg-emerald-500/10 ring-1 ring-emerald-500/20 p-3 text-sm space-y-1">
-                {headerText.trim() && <p className="font-bold">{headerText.trim()}</p>}
+                {headerMode === 'text' && headerText.trim() && <p className="font-bold">{headerText.trim()}</p>}
+                {headerMode === 'media' && media && (
+                  <p className="text-[10px] font-semibold text-muted-foreground">📎 {media.format.toLowerCase()} header</p>
+                )}
                 <p className="whitespace-pre-wrap">{renderPreview(bodyText, examples)}</p>
                 {footerText.trim() && <p className="text-[10px] text-muted-foreground">{footerText.trim()}</p>}
+                {buttons.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {buttons.map((b, i) => (
+                      <span
+                        key={i}
+                        className="rounded-md bg-background px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-500/20"
+                      >
+                        {b.text.trim() || b.type.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -575,6 +694,8 @@ function CreateTemplateDialog({
               className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4"
             />
           </div>
+
+          <ButtonsEditor buttons={buttons} onChange={setButtons} />
         </div>
 
         <DialogFooter>
@@ -678,5 +799,99 @@ function AdoptDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ButtonsEditor({
+  buttons,
+  onChange,
+}: {
+  buttons: TemplateButtonInput[];
+  onChange: (b: TemplateButtonInput[]) => void;
+}) {
+  const add = (type: TemplateButtonInput['type']) => {
+    if (buttons.length >= 10) return;
+    onChange([...buttons, newButton(type)]);
+  };
+  const update = (
+    i: number,
+    patch: Partial<{ text: string; url: string; urlExample: string; phoneNumber: string }>,
+  ) => onChange(buttons.map((b, idx) => (idx === i ? ({ ...b, ...patch } as TemplateButtonInput) : b)));
+  const remove = (i: number) => onChange(buttons.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <Label className="text-[10px] font-semibold text-muted-foreground">Buttons (optional)</Label>
+        <div className="flex gap-1">
+          {(['QUICK_REPLY', 'URL', 'PHONE_NUMBER'] as const).map((t) => (
+            <Button
+              key={t}
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => add(t)}
+              disabled={buttons.length >= 10}
+              className="h-7 rounded-lg text-[10px] font-bold"
+            >
+              + {t === 'PHONE_NUMBER' ? 'Phone' : t === 'QUICK_REPLY' ? 'Quick reply' : 'URL'}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {buttons.map((b, i) => (
+        <div key={i} className="rounded-xl bg-muted/10 p-2 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="w-20 shrink-0 text-[10px] font-bold uppercase text-muted-foreground">
+              {b.type.replace('_', ' ')}
+            </span>
+            <Input
+              value={b.text}
+              onChange={(e) => update(i, { text: e.target.value })}
+              placeholder="Button label"
+              maxLength={25}
+              className="h-8 rounded-lg bg-background border-none shadow-inner text-sm px-3"
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={() => remove(i)}
+              aria-label="Remove button"
+              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          {b.type === 'URL' && (
+            <div className="space-y-1">
+              <Input
+                value={b.url}
+                onChange={(e) => update(i, { url: e.target.value })}
+                placeholder="https://example.com/{{1}}"
+                className="h-8 rounded-lg bg-background border-none shadow-inner text-sm px-3"
+              />
+              {/\{\{\s*1\s*\}\}/.test(b.url) && (
+                <Input
+                  value={b.urlExample ?? ''}
+                  onChange={(e) => update(i, { urlExample: e.target.value })}
+                  placeholder="Sample full URL (for {{1}})"
+                  className="h-8 rounded-lg bg-background border-none shadow-inner text-sm px-3"
+                />
+              )}
+            </div>
+          )}
+          {b.type === 'PHONE_NUMBER' && (
+            <Input
+              value={b.phoneNumber}
+              onChange={(e) => update(i, { phoneNumber: e.target.value })}
+              placeholder="+233201234567"
+              className="h-8 rounded-lg bg-background border-none shadow-inner text-sm px-3"
+            />
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

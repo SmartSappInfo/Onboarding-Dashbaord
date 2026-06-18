@@ -155,6 +155,21 @@ export async function sendWhatsAppTestMessage(
   }
 }
 
+const ButtonSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('QUICK_REPLY'), text: z.string().trim().min(1).max(25) }),
+  z.object({
+    type: z.literal('URL'),
+    text: z.string().trim().min(1).max(25),
+    url: z.string().trim().min(1).max(2000),
+    urlExample: z.string().trim().max(2000).optional(),
+  }),
+  z.object({
+    type: z.literal('PHONE_NUMBER'),
+    text: z.string().trim().min(1).max(25),
+    phoneNumber: z.string().trim().min(1).max(20),
+  }),
+]);
+
 const CreateSchema = z.object({
   organizationId: z.string().min(1),
   name: z
@@ -168,7 +183,11 @@ const CreateSchema = z.object({
   bodyText: z.string().trim().min(1).max(1024),
   bodyExample: z.array(z.string()).default([]),
   headerText: z.string().trim().max(60).optional(),
+  mediaHeader: z
+    .object({ format: z.enum(['IMAGE', 'VIDEO', 'DOCUMENT']), handle: z.string().min(1) })
+    .optional(),
   footerText: z.string().trim().max(60).optional(),
+  buttons: z.array(ButtonSchema).max(10).optional(),
 });
 
 /**
