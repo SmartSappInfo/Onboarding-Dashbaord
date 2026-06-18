@@ -7,7 +7,7 @@ import { EmailHygieneHoverCard } from '../../components/EmailHygieneHoverCard';
 import { PhoneHygieneHoverCard } from '../../components/PhoneHygieneHoverCard';
 import { logActivity } from '@/lib/activity-logger';
 import { 
-    Plus, User, Mail, Phone, ShieldCheck, BadgeCheck, X, AlertCircle, Loader2, Save, Trash2, Pencil, MoreHorizontal, UserCheck, Video
+    Plus, User, Mail, Phone, ShieldCheck, BadgeCheck, X, AlertCircle, Loader2, Save, Trash2, Pencil, MoreHorizontal, UserCheck, Video, PhoneCall
 } from 'lucide-react';
 import BulkMeetingInviteModal from './BulkMeetingInviteModal';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AddToCampaignDialog } from './AddToCampaignDialog';
+import dynamic from 'next/dynamic';
 
 interface EntityContactDirectoryProps {
     entityId: string;
@@ -72,6 +74,9 @@ export default function EntityContactDirectory({
     // Invitation states
     const [isInviteModalOpen, setIsInviteModalOpen] = React.useState(false);
     const [selectedContactForInvite, setSelectedContactForInvite] = React.useState<string | null>(null);
+
+    // Campaign dialog state
+    const [campaignDialogContactId, setCampaignDialogContactId] = React.useState<string | null>(null);
     
     // Role selection state
     const [availableRoles, setAvailableRoles] = React.useState<ContactTypeEntry[]>(getSystemContactTypes(entityData.entityType));
@@ -258,6 +263,7 @@ export default function EntityContactDirectory({
                                         setSelectedContactForInvite(contact.id);
                                         setIsInviteModalOpen(true);
                                     }}
+                                    onAddToCampaign={() => setCampaignDialogContactId(contact.id)}
                                     disabled={!!editingId || isAdding}
                                 />
                             )
@@ -313,15 +319,29 @@ export default function EntityContactDirectory({
                 entityIds={[entityId]}
                 preSelectedContactIds={selectedContactForInvite ? [selectedContactForInvite] : undefined}
             />
+
+            {/* Campaign dialog — opens when user clicks "Add to Call Campaign" on a contact row */}
+            {campaignDialogContactId && (
+                <AddToCampaignDialog
+                    open={!!campaignDialogContactId}
+                    onOpenChange={(open) => { if (!open) setCampaignDialogContactId(null); }}
+                    entityIds={[entityId]}
+                    workspaceId={workspaceId || ''}
+                    entityContacts={contacts}
+                    preSelectedContactId={campaignDialogContactId}
+                    entityName={entityData.name}
+                />
+            )}
         </Card>
     );
 }
 
-function ContactRow({ contact, onEdit, onDelete, onInvite, disabled }: { 
+function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disabled }: { 
     contact: EntityContact, 
     onEdit: () => void, 
     onDelete: () => void,
     onInvite: () => void,
+    onAddToCampaign: () => void,
     disabled: boolean 
 }) {
     const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
@@ -510,6 +530,10 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, disabled }: {
                         <DropdownMenuItem onClick={onInvite} className="rounded-lg p-2.5 gap-3 cursor-pointer hover:bg-zinc-900 focus:bg-zinc-900">
                             <div className="p-1.5 bg-emerald-500/10 rounded-md text-emerald-600"><Video className="h-3.5 w-3.5" /></div>
                             <span className="font-bold text-sm">Invite to Meeting</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={onAddToCampaign} className="rounded-lg p-2.5 gap-3 cursor-pointer hover:bg-zinc-900 focus:bg-zinc-900">
+                            <div className="p-1.5 bg-indigo-500/10 rounded-md text-indigo-500"><PhoneCall className="h-3.5 w-3.5" /></div>
+                            <span className="font-bold text-sm">Add to Call Campaign</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="my-1 border-zinc-800" />
                         <DropdownMenuItem onClick={onDelete} className="text-destructive focus:bg-destructive/10 rounded-lg p-2.5 gap-3 cursor-pointer">
