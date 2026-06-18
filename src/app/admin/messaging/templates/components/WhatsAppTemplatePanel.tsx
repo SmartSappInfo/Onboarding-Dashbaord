@@ -33,7 +33,7 @@ import {
   sendWhatsAppTestMessage,
   uploadWhatsAppHeaderMedia,
 } from '@/lib/whatsapp-template-actions';
-import { getBodyText, extractParamCount, getTemplateRuntimeNeeds } from '@/lib/whatsapp/whatsapp-domain';
+import { getBodyText, extractParamCount, getTemplateRuntimeNeeds, MAX_TEMPLATE_BUTTONS } from '@/lib/whatsapp/whatsapp-domain';
 import type { TemplateButtonInput, MediaHeaderFormat } from '@/lib/whatsapp/whatsapp-domain';
 import type {
   WhatsAppTemplate,
@@ -859,7 +859,7 @@ function ButtonsEditor({
   onChange: (b: TemplateButtonInput[]) => void;
 }) {
   const add = (type: TemplateButtonInput['type']) => {
-    if (buttons.length >= 10) return;
+    if (buttons.length >= MAX_TEMPLATE_BUTTONS) return;
     onChange([...buttons, newButton(type)]);
   };
   const update = (
@@ -880,7 +880,7 @@ function ButtonsEditor({
               size="sm"
               variant="outline"
               onClick={() => add(t)}
-              disabled={buttons.length >= 10}
+              disabled={buttons.length >= MAX_TEMPLATE_BUTTONS}
               className="h-7 rounded-lg text-[10px] font-bold"
             >
               + {t === 'PHONE_NUMBER' ? 'Phone' : t === 'QUICK_REPLY' ? 'Quick reply' : 'URL'}

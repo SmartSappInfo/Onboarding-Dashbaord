@@ -24,6 +24,7 @@ import {
   validateApprovedSend,
   validateHeaderMedia,
   getTemplateRuntimeNeeds,
+  MAX_TEMPLATE_BUTTONS,
 } from './whatsapp/whatsapp-domain';
 import { buildTemplatePayload, normalizeWaPhone } from './whatsapp/whatsapp-send';
 import type { MediaHeaderFormat } from './whatsapp/whatsapp-domain';
@@ -208,7 +209,10 @@ const CreateSchema = z.object({
     .max(512)
     .regex(/^[a-z0-9_]+$/, 'Name may only contain lowercase letters, numbers, and underscores.'),
   language: z.string().trim().min(2),
-  category: z.enum(['MARKETING', 'UTILITY', 'AUTHENTICATION']),
+  // AUTHENTICATION excluded: it needs a fixed OTP/button structure the text-body
+  // builder can't produce, so Meta would auto-reject. (Synced Meta-Manager auth
+  // templates still display — the WhatsAppTemplateCategory type is unchanged.)
+  category: z.enum(['MARKETING', 'UTILITY']),
   bodyText: z.string().trim().min(1).max(1024),
   bodyExample: z.array(z.string()).default([]),
   headerText: z.string().trim().max(60).optional(),
@@ -216,7 +220,7 @@ const CreateSchema = z.object({
     .object({ format: z.enum(['IMAGE', 'VIDEO', 'DOCUMENT']), handle: z.string().min(1) })
     .optional(),
   footerText: z.string().trim().max(60).optional(),
-  buttons: z.array(ButtonSchema).max(10).optional(),
+  buttons: z.array(ButtonSchema).max(MAX_TEMPLATE_BUTTONS).optional(),
 });
 
 /**
