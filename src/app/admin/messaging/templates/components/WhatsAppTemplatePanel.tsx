@@ -71,7 +71,10 @@ function buttonValid(b: TemplateButtonInput): boolean {
 const LANGUAGES = ['en_US', 'en_GB', 'en', 'fr', 'es', 'pt_BR', 'ar'];
 // AUTHENTICATION omitted: it needs a fixed OTP/button structure this text-body
 // builder can't produce, so Meta would auto-reject it.
-const CATEGORIES: WhatsAppTemplateCategory[] = ['UTILITY', 'MARKETING'];
+// The builder only authors UTILITY/MARKETING (AUTHENTICATION needs an OTP
+// structure it can't produce); the create action's schema enforces the same.
+type CreateCategory = 'MARKETING' | 'UTILITY';
+const CATEGORIES: CreateCategory[] = ['UTILITY', 'MARKETING'];
 
 // Hoisted so it isn't recreated per render (`js-hoist-regexp`).
 const PREVIEW_PARAM_RE = /\{\{\s*(\d+)\s*\}\}/g;
@@ -472,7 +475,7 @@ function CreateTemplateDialog({
   const { toast } = useToast();
   const [name, setName] = React.useState('');
   const [language, setLanguage] = React.useState('en_US');
-  const [category, setCategory] = React.useState<WhatsAppTemplateCategory>('UTILITY');
+  const [category, setCategory] = React.useState<CreateCategory>('UTILITY');
   const [headerMode, setHeaderMode] = React.useState<HeaderMode>('none');
   const [headerText, setHeaderText] = React.useState('');
   const [media, setMedia] = React.useState<UploadedMedia | null>(null);
@@ -604,7 +607,7 @@ function CreateTemplateDialog({
 
           <div className="space-y-1">
             <Label className="text-[10px] font-semibold text-muted-foreground">Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as WhatsAppTemplateCategory)}>
+            <Select value={category} onValueChange={(v) => setCategory(v as CreateCategory)}>
               <SelectTrigger aria-label="Template category" className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium">
                 <SelectValue />
               </SelectTrigger>
