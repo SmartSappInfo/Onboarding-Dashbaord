@@ -23,6 +23,7 @@ import {
   deriveParamCount,
   validateApprovedSend,
   validateHeaderMedia,
+  getTemplateRuntimeNeeds,
 } from './whatsapp/whatsapp-domain';
 import { buildTemplatePayload, normalizeWaPhone } from './whatsapp/whatsapp-send';
 import type { MediaHeaderFormat } from './whatsapp/whatsapp-domain';
@@ -120,6 +121,22 @@ const SendTestSchema = z.object({
   templateId: z.string().min(1),
   to: z.string().trim().min(5),
   params: z.array(z.string()).default([]),
+  headerMedia: z
+    .object({
+      type: z.enum(['image', 'video', 'document']),
+      link: z.string().trim().url().optional(),
+      id: z.string().trim().optional(),
+    })
+    .optional(),
+  buttonParams: z
+    .array(
+      z.object({
+        subType: z.enum(['url', 'quick_reply']),
+        index: z.number().int().min(0),
+        text: z.string().trim().min(1),
+      }),
+    )
+    .optional(),
 });
 
 /**
@@ -132,12 +149,22 @@ export async function sendWhatsAppTestMessage(
   payload: z.infer<typeof SendTestSchema>,
 ): Promise<ActionResult<{ metaMessageId: string | null }>> {
   try {
-    const { organizationId, templateId, to, params } = SendTestSchema.parse(payload);
+    const { organizationId, templateId, to, params, headerMedia, buttonParams } =
+      SendTestSchema.parse(payload);
     await requireOrgAdmin(idToken, organizationId);
 
     const wa = await WhatsAppTemplateRepository.get(templateId);
     const check = validateApprovedSend(wa, organizationId, params.length);
     if (!check.valid) return { success: false, error: check.error ?? 'Cannot send this template.' };
+
+    // Media headers / dynamic URL buttons must be supplied at send time.
+    const needs = getTemplateRuntimeNeeds(wa!.components);
+    if (needs.mediaFormat && !headerMedia?.link && !headerMedia?.id) {
+      return { success: false, error: 'This template has a media header — provide a media URL.' };
+    }
+    if (needs.dynamicUrlButtons.length > (buttonParams?.length ?? 0)) {
+      return { success: false, error: 'Provide a value for each dynamic URL button.' };
+    }
 
     const creds = await WhatsAppCredentialRepository.getCredentials(organizationId);
     if (!creds) return { success: false, error: 'No WhatsApp connection configured.' };
@@ -147,6 +174,8 @@ export async function sendWhatsAppTestMessage(
       name: wa!.name,
       language: wa!.language,
       params: params.map((p) => p.trim()),
+      headerMedia,
+      buttonParams,
     });
     const { metaMessageId } = await new MetaCloudApiClient(creds).sendMessage(message);
     return { success: true, data: { metaMessageId } };

@@ -11,6 +11,7 @@ import {
   buildCreateTemplatePayload,
   validateApprovedSend,
   validateHeaderMedia,
+  getTemplateRuntimeNeeds,
   parseTemplateStatusEvents,
   type MetaTemplateRaw,
   type CreateTemplateInput,
@@ -284,6 +285,42 @@ describe('validateHeaderMedia', () => {
 
   it('rejects a file over the per-format cap', () => {
     expect(validateHeaderMedia('image/png', 6 * 1024 * 1024).valid).toBe(false); // >5MB image cap
+  });
+});
+
+describe('getTemplateRuntimeNeeds', () => {
+  it('detects a media header format', () => {
+    const needs = getTemplateRuntimeNeeds([
+      { type: 'HEADER', format: 'IMAGE', example: { header_handle: ['h'] } },
+      { type: 'BODY', text: 'hi' },
+    ]);
+    expect(needs.mediaFormat).toBe('IMAGE');
+    expect(needs.dynamicUrlButtons).toEqual([]);
+  });
+
+  it('ignores a TEXT header', () => {
+    const needs = getTemplateRuntimeNeeds([{ type: 'HEADER', format: 'TEXT', text: 'Hi' }]);
+    expect(needs.mediaFormat).toBeUndefined();
+  });
+
+  it('flags only dynamic {{1}} URL buttons by index', () => {
+    const needs = getTemplateRuntimeNeeds([
+      { type: 'BODY', text: 'hi' },
+      {
+        type: 'BUTTONS',
+        buttons: [
+          { type: 'QUICK_REPLY', text: 'Yes' },
+          { type: 'URL', text: 'Track', url: 'https://x.co/{{1}}' },
+          { type: 'URL', text: 'Home', url: 'https://x.co' },
+        ],
+      },
+    ]);
+    expect(needs.dynamicUrlButtons).toEqual([1]);
+  });
+
+  it('returns empty needs for body-only or undefined', () => {
+    expect(getTemplateRuntimeNeeds([{ type: 'BODY', text: 'hi' }])).toEqual({ dynamicUrlButtons: [] });
+    expect(getTemplateRuntimeNeeds(undefined)).toEqual({ dynamicUrlButtons: [] });
   });
 });
 

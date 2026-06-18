@@ -33,7 +33,7 @@ import {
   sendWhatsAppTestMessage,
   uploadWhatsAppHeaderMedia,
 } from '@/lib/whatsapp-template-actions';
-import { getBodyText, extractParamCount } from '@/lib/whatsapp/whatsapp-domain';
+import { getBodyText, extractParamCount, getTemplateRuntimeNeeds } from '@/lib/whatsapp/whatsapp-domain';
 import type { TemplateButtonInput, MediaHeaderFormat } from '@/lib/whatsapp/whatsapp-domain';
 import type {
   WhatsAppTemplate,
@@ -312,6 +312,8 @@ function SendTestDialog({
   const { toast } = useToast();
   const [to, setTo] = React.useState('');
   const [valuesByIndex, setValuesByIndex] = React.useState<Record<number, string>>({});
+  const [mediaUrl, setMediaUrl] = React.useState('');
+  const [urlSuffixByIndex, setUrlSuffixByIndex] = React.useState<Record<number, string>>({});
   const [sending, setSending] = React.useState(false);
 
   // Derived during render — no effect.
@@ -319,19 +321,34 @@ function SendTestDialog({
     () => Array.from({ length: template.paramCount }, (_, i) => valuesByIndex[i] ?? ''),
     [template.paramCount, valuesByIndex],
   );
+  const needs = React.useMemo(() => getTemplateRuntimeNeeds(template.components), [template.components]);
   const body = getBodyText(template.components);
-  const canSend = to.trim().length >= 5 && values.every((v) => v.trim().length > 0);
+
+  const mediaOk = !needs.mediaFormat || mediaUrl.trim().length > 0;
+  const buttonsOk = needs.dynamicUrlButtons.every((idx) => (urlSuffixByIndex[idx] ?? '').trim().length > 0);
+  const canSend =
+    to.trim().length >= 5 && values.every((v) => v.trim().length > 0) && mediaOk && buttonsOk;
 
   const handleSend = async () => {
     if (!user) return;
     setSending(true);
     try {
       const idToken = await user.getIdToken();
+      const headerMedia = needs.mediaFormat
+        ? { type: needs.mediaFormat.toLowerCase() as 'image' | 'video' | 'document', link: mediaUrl.trim() }
+        : undefined;
+      const buttonParams = needs.dynamicUrlButtons.map((idx) => ({
+        subType: 'url' as const,
+        index: idx,
+        text: (urlSuffixByIndex[idx] ?? '').trim(),
+      }));
       const res = await sendWhatsAppTestMessage(idToken, {
         organizationId,
         templateId: template.id,
         to: to.trim(),
         params: values.map((v) => v.trim()),
+        headerMedia,
+        buttonParams: buttonParams.length ? buttonParams : undefined,
       });
       if (res.success) onSent(res.data.metaMessageId);
       else toast({ variant: 'destructive', title: 'Send failed', description: res.error });
@@ -381,6 +398,38 @@ function SendTestDialog({
                 />
               </div>
             ))}
+
+          {needs.mediaFormat && (
+            <div className="space-y-1">
+              <Label htmlFor="wa-test-media" className="text-[10px] font-semibold text-muted-foreground">
+                Header media URL ({needs.mediaFormat.toLowerCase()})
+              </Label>
+              <Input
+                id="wa-test-media"
+                value={mediaUrl}
+                onChange={(e) => setMediaUrl(e.target.value)}
+                placeholder="https://example.com/file"
+                inputMode="url"
+                className="h-9 rounded-lg bg-muted/20 border-none shadow-inner font-medium px-3"
+              />
+              <p className="text-[10px] text-muted-foreground">Publicly reachable URL Meta can fetch at send time.</p>
+            </div>
+          )}
+
+          {needs.dynamicUrlButtons.map((idx) => (
+            <div key={`btn-${idx}`} className="flex items-center gap-2">
+              <Label htmlFor={`wa-test-btn-${idx}`} className="text-[10px] font-mono text-muted-foreground w-16">
+                URL btn {idx + 1}
+              </Label>
+              <Input
+                id={`wa-test-btn-${idx}`}
+                value={urlSuffixByIndex[idx] ?? ''}
+                onChange={(e) => setUrlSuffixByIndex((prev) => ({ ...prev, [idx]: e.target.value }))}
+                placeholder="{{1}} suffix value"
+                className="h-9 rounded-lg bg-muted/20 border-none shadow-inner font-medium px-3"
+              />
+            </div>
+          ))}
 
           {body.trim() && (
             <div className="space-y-1">

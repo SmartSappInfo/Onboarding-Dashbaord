@@ -297,6 +297,42 @@ export function validateHeaderMedia(
   return { valid: true, format: spec.format };
 }
 
+/** What a stored template needs supplied at SEND time (beyond body params). */
+export interface TemplateRuntimeNeeds {
+  /** Set when the template has a media header — a media URL/id is required. */
+  mediaFormat?: MediaHeaderFormat;
+  /** Button indexes whose URL has a {{1}} suffix — each needs a value. */
+  dynamicUrlButtons: number[];
+}
+
+/**
+ * Inspect a template's stored Meta components to determine which runtime values
+ * a send must supply: a media header (image/video/document) and any dynamic
+ * `{{1}}` URL buttons. Pure — drives the send-test UI and the server guard.
+ */
+export function getTemplateRuntimeNeeds(components: unknown[] | undefined): TemplateRuntimeNeeds {
+  const needs: TemplateRuntimeNeeds = { dynamicUrlButtons: [] };
+  for (const c of components ?? []) {
+    const comp = c as {
+      type?: string;
+      format?: string;
+      buttons?: Array<{ type?: string; url?: string }>;
+    };
+    if (comp?.type === 'HEADER' && comp.format) {
+      const f = comp.format.toUpperCase();
+      if (f === 'IMAGE' || f === 'VIDEO' || f === 'DOCUMENT') needs.mediaFormat = f;
+    }
+    if (comp?.type === 'BUTTONS' && Array.isArray(comp.buttons)) {
+      comp.buttons.forEach((b, i) => {
+        if (b?.type === 'URL' && typeof b.url === 'string' && /\{\{\s*1\s*\}\}/.test(b.url)) {
+          needs.dynamicUrlButtons.push(i);
+        }
+      });
+    }
+  }
+  return needs;
+}
+
 const KNOWN_STATUSES: WhatsAppTemplateStatus[] = [
   'APPROVED',
   'PENDING',
