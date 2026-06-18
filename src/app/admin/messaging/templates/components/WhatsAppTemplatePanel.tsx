@@ -35,11 +35,7 @@ import {
 } from '@/lib/whatsapp-template-actions';
 import { getBodyText, extractParamCount, getTemplateRuntimeNeeds, MAX_TEMPLATE_BUTTONS } from '@/lib/whatsapp/whatsapp-domain';
 import type { TemplateButtonInput, MediaHeaderFormat } from '@/lib/whatsapp/whatsapp-domain';
-import type {
-  WhatsAppTemplate,
-  WhatsAppTemplateStatus,
-  WhatsAppTemplateCategory,
-} from '@/lib/whatsapp/whatsapp-types';
+import type { WhatsAppTemplate, WhatsAppTemplateStatus } from '@/lib/whatsapp/whatsapp-types';
 
 type HeaderMode = 'none' | 'text' | 'media';
 type UploadedMedia = { format: MediaHeaderFormat; handle: string; fileName: string };
