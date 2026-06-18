@@ -21,7 +21,9 @@ import {
   buildCreateTemplatePayload,
   buildWhatsAppTemplateId,
   deriveParamCount,
+  validateApprovedSend,
 } from './whatsapp/whatsapp-domain';
+import { buildTemplatePayload, normalizeWaPhone } from './whatsapp/whatsapp-send';
 import type { WhatsAppTemplate, WhatsAppTemplateStatus, WhatsAppTemplateCategory } from './whatsapp/whatsapp-types';
 import type { MessageTemplate } from './types';
 
@@ -61,6 +63,46 @@ export async function listWhatsAppTemplates(
     await requireOrgAdmin(idToken, organizationId);
     const data = await WhatsAppTemplateRepository.list(organizationId, opts);
     return { success: true, data };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+const SendTestSchema = z.object({
+  organizationId: z.string().min(1),
+  templateId: z.string().min(1),
+  to: z.string().trim().min(5),
+  params: z.array(z.string()).default([]),
+});
+
+/**
+ * Send an APPROVED template to a single recipient as a one-off test. Reuses the
+ * shared `whatsapp-send` builders (DRY) — no separate send path. Template
+ * messages open the 24h window, so this works regardless of session state.
+ */
+export async function sendWhatsAppTestMessage(
+  idToken: string,
+  payload: z.infer<typeof SendTestSchema>,
+): Promise<ActionResult<{ metaMessageId: string | null }>> {
+  try {
+    const { organizationId, templateId, to, params } = SendTestSchema.parse(payload);
+    await requireOrgAdmin(idToken, organizationId);
+
+    const wa = await WhatsAppTemplateRepository.get(templateId);
+    const check = validateApprovedSend(wa, organizationId, params.length);
+    if (!check.valid) return { success: false, error: check.error ?? 'Cannot send this template.' };
+
+    const creds = await WhatsAppCredentialRepository.getCredentials(organizationId);
+    if (!creds) return { success: false, error: 'No WhatsApp connection configured.' };
+
+    const message = buildTemplatePayload({
+      to: normalizeWaPhone(to),
+      name: wa!.name,
+      language: wa!.language,
+      params: params.map((p) => p.trim()),
+    });
+    const { metaMessageId } = await new MetaCloudApiClient(creds).sendMessage(message);
+    return { success: true, data: { metaMessageId } };
   } catch (e) {
     return fail(e);
   }

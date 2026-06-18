@@ -338,3 +338,57 @@ export async function refineCallScriptAction(
     return { success: false, error: error.message };
   }
 }
+
+export async function cloneCallCampaignAction(campaignId: string, workspaceId: string, userId: string) {
+  const perm = await verifyPermission(userId, 'create', workspaceId);
+  if (!perm.granted) return { success: false, error: perm.reason };
+
+  try {
+    const id = await CallCentreService.cloneCampaign(campaignId, userId);
+    revalidatePath('/admin/messaging/call-centre');
+    return { success: true, id };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function addContactsToCallCampaignAction(campaignId: string, entityIds: string[], workspaceId: string, userId: string) {
+  const perm = await verifyPermission(userId, 'edit', workspaceId);
+  if (!perm.granted) return { success: false, error: perm.reason };
+
+  try {
+    const result = await CallCentreService.addContactsToCampaign(campaignId, entityIds, workspaceId);
+    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
+    return result;
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function archiveCallCampaignAction(campaignId: string, workspaceId: string, userId: string) {
+  const perm = await verifyPermission(userId, 'edit', workspaceId);
+  if (!perm.granted) return { success: false, error: perm.reason };
+
+  try {
+    await CallCentreService.archiveCampaign(campaignId);
+    revalidatePath('/admin/messaging/call-centre');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function endCallCampaignAction(campaignId: string, workspaceId: string, userId: string) {
+  const perm = await verifyPermission(userId, 'edit', workspaceId);
+  if (!perm.granted) return { success: false, error: perm.reason };
+
+  try {
+    await CallCentreService.endCampaign(campaignId);
+    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

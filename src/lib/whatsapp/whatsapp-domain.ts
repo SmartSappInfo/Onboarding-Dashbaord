@@ -68,6 +68,29 @@ export function buildWhatsAppTemplateId(orgId: string, name: string, language: s
   return `${orgId}_${name}_${language}`;
 }
 
+/**
+ * Guard a template send: the template must exist, belong to this org, be
+ * APPROVED, and receive exactly its parameter count. Pure so the rule is
+ * unit-tested without Firebase; the action wires it to the repo lookup.
+ */
+export function validateApprovedSend(
+  wa: { organizationId: string; status: WhatsAppTemplateStatus; paramCount: number } | null,
+  organizationId: string,
+  paramCount: number,
+): { valid: boolean; error?: string } {
+  if (!wa) return { valid: false, error: 'WhatsApp template not found.' };
+  if (wa.organizationId !== organizationId) {
+    return { valid: false, error: 'Template belongs to another organization.' };
+  }
+  if (wa.status !== 'APPROVED') {
+    return { valid: false, error: `Template is ${wa.status}; only APPROVED templates can be sent.` };
+  }
+  if (paramCount !== wa.paramCount) {
+    return { valid: false, error: `Expected ${wa.paramCount} value(s), got ${paramCount}.` };
+  }
+  return { valid: true };
+}
+
 // ── Authoring (create → submit to Meta for approval) ────────────────────────
 
 /** Meta's allowed template-name shape: lowercase letters, digits, underscores. */

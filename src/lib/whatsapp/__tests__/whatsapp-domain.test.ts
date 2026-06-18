@@ -9,6 +9,7 @@ import {
   normalizeMetaTemplate,
   validateCreateTemplateInput,
   buildCreateTemplatePayload,
+  validateApprovedSend,
   type MetaTemplateRaw,
   type CreateTemplateInput,
 } from '../whatsapp-domain';
@@ -176,5 +177,33 @@ describe('buildCreateTemplatePayload', () => {
     const body = p.components.find((c) => c.type === 'BODY');
     expect(body?.example).toBeUndefined();
     expect(p.components).toHaveLength(1);
+  });
+});
+
+describe('validateApprovedSend', () => {
+  const approved = { organizationId: 'org_1', status: 'APPROVED' as const, paramCount: 2 };
+
+  it('allows an approved template for its own org with the right param count', () => {
+    expect(validateApprovedSend(approved, 'org_1', 2).valid).toBe(true);
+  });
+
+  it('rejects a missing template', () => {
+    expect(validateApprovedSend(null, 'org_1', 0).valid).toBe(false);
+  });
+
+  it('rejects a template from another org', () => {
+    expect(validateApprovedSend(approved, 'org_2', 2).valid).toBe(false);
+  });
+
+  it('rejects a non-approved template', () => {
+    const r = validateApprovedSend({ ...approved, status: 'PENDING' }, 'org_1', 2);
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('PENDING');
+  });
+
+  it('rejects a param-count mismatch', () => {
+    const r = validateApprovedSend(approved, 'org_1', 1);
+    expect(r.valid).toBe(false);
+    expect(r.error).toContain('Expected 2');
   });
 });

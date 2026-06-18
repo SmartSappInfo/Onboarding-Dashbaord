@@ -5,7 +5,11 @@ import {
   createCallCampaignAction,
   deleteCallCampaignAction,
   lockQueueItemAction,
-  submitCallOutcomeAction
+  submitCallOutcomeAction,
+  cloneCallCampaignAction,
+  addContactsToCallCampaignAction,
+  archiveCallCampaignAction,
+  endCallCampaignAction
 } from '../call-centre-actions';
 import { CallCentreService } from '../services/call-centre-service';
 
@@ -157,6 +161,38 @@ describe('Call Centre Campaign Engine tests', () => {
       });
 
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Campaign Enhancements Actions', () => {
+    it('clones a campaign successfully', async () => {
+      const spy = vi.spyOn(CallCentreService, 'cloneCampaign').mockResolvedValue('new_campaign_id');
+      const result = await cloneCallCampaignAction('campaign_123', 'workspace_1', 'user_123');
+      expect(result.success).toBe(true);
+      expect(result.id).toBe('new_campaign_id');
+      expect(spy).toHaveBeenCalledWith('campaign_123', 'user_123');
+    });
+
+    it('archives a campaign successfully', async () => {
+      const spy = vi.spyOn(CallCentreService, 'archiveCampaign').mockResolvedValue(undefined);
+      const result = await archiveCallCampaignAction('campaign_123', 'workspace_1', 'user_123');
+      expect(result.success).toBe(true);
+      expect(spy).toHaveBeenCalledWith('campaign_123');
+    });
+
+    it('ends a campaign successfully', async () => {
+      const spy = vi.spyOn(CallCentreService, 'endCampaign').mockResolvedValue(undefined);
+      const result = await endCallCampaignAction('campaign_123', 'workspace_1', 'user_123');
+      expect(result.success).toBe(true);
+      expect(spy).toHaveBeenCalledWith('campaign_123');
+    });
+
+    it('adds contacts to a campaign successfully', async () => {
+      const spy = vi.spyOn(CallCentreService, 'addContactsToCampaign').mockResolvedValue({ success: true, count: 2 });
+      const result = await addContactsToCallCampaignAction('campaign_123', ['contact_1', 'contact_2'], 'workspace_1', 'user_123');
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(2);
+      expect(spy).toHaveBeenCalledWith('campaign_123', ['contact_1', 'contact_2'], 'workspace_1');
     });
   });
 });

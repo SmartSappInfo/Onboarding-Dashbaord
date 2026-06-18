@@ -1,4 +1,4 @@
-import { adminDb } from '../firebase-admin';
+import { adminDb, FieldValue } from '../firebase-admin';
 import type { 
   CallScript, 
   CallCampaign, 
@@ -85,6 +85,212 @@ export class CallCentreService {
       ...data,
       updatedAt: timestamp,
     });
+  }
+
+  static async cloneCampaign(campaignId: string, userId: string): Promise<string> {
+    const timestamp = new Date().toISOString();
+    const sourceRef = adminDb.collection('call_campaigns').doc(campaignId);
+    const sourceSnap = await sourceRef.get();
+    if (!sourceSnap.exists) {
+      throw new Error('Campaign not found');
+    }
+    const campaign = sourceSnap.data() as CallCampaign;
+    const isFixed = campaign.allowAddContactsAfterLaunch === false;
+
+    // Build copy definition
+    const copyData: Omit<CallCampaign, 'id' | 'createdAt' | 'updatedAt'> = {
+      organizationId: campaign.organizationId,
+      workspaceId: campaign.workspaceId,
+      name: `${campaign.name} (Copy)`,
+      description: campaign.description || '',
+      scriptId: campaign.scriptId,
+      scriptSnapshot: campaign.scriptSnapshot || '',
+      audienceDefinition: {
+        ...campaign.audienceDefinition,
+        // If fixed audience, clear out specific manual selections for the clone
+        selectedContacts: isFixed ? [] : (campaign.audienceDefinition?.selectedContacts || []),
+      },
+      outcomes: campaign.outcomes || [],
+      automationRules: campaign.automationRules || {},
+      status: 'draft',
+      allowAddContactsAfterLaunch: campaign.allowAddContactsAfterLaunch ?? false,
+      progress: {
+        total: 0,
+        completed: 0,
+        pending: 0,
+        skipped: 0,
+        callbacks: 0,
+        deferred: 0,
+      },
+      createdBy: userId,
+    };
+
+    const docRef = await adminDb.collection('call_campaigns').add({
+      ...copyData,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    return docRef.id;
+  }
+
+  static async archiveCampaign(campaignId: string): Promise<void> {
+    const timestamp = new Date().toISOString();
+    await adminDb.collection('call_campaigns').doc(campaignId).update({
+      status: 'archived',
+      updatedAt: timestamp,
+    });
+  }
+
+  static async endCampaign(campaignId: string): Promise<void> {
+    const timestamp = new Date().toISOString();
+    await adminDb.collection('call_campaigns').doc(campaignId).update({
+      status: 'completed',
+      updatedAt: timestamp,
+    });
+  }
+
+  static async addContactsToCampaign(
+    campaignId: string,
+    entityIds: string[],
+    workspaceId: string
+  ): Promise<{ success: boolean; count: number; error?: string }> {
+    try {
+      const campaignRef = adminDb.collection('call_campaigns').doc(campaignId);
+      const campaignSnap = await campaignRef.get();
+      if (!campaignSnap.exists) {
+        return { success: false, count: 0, error: 'Campaign not found' };
+      }
+      const campaign = campaignSnap.data() as CallCampaign;
+
+      // Filter out entityIds that are already in call_queue_items for this campaign
+      const filteredEntityIds: string[] = [];
+      const batchCheckLimit = 30; // Firestore "in" queries can have at most 30 items
+      for (let i = 0; i < entityIds.length; i += batchCheckLimit) {
+        const chunk = entityIds.slice(i, i + batchCheckLimit);
+        const docsToCheck = chunk.map(eid => `${campaignId}_${eid}`);
+        const snaps = await adminDb.collection('call_queue_items')
+          .where('__name__', 'in', docsToCheck)
+          .get();
+        const existingIds = new Set(snaps.docs.map(doc => doc.id.substring(campaignId.length + 1)));
+        for (const eid of chunk) {
+          if (!existingIds.has(eid)) {
+            filteredEntityIds.push(eid);
+          }
+        }
+      }
+
+      if (filteredEntityIds.length === 0) {
+        return { success: true, count: 0 };
+      }
+
+      const timestamp = new Date().toISOString();
+      const queueItems: Omit<CallQueueItem, 'id'>[] = [];
+
+      // Query entity documents to get details (e.g. name, type)
+      const entitiesData: Record<string, { name: string; entityType: string }> = {};
+      for (let i = 0; i < filteredEntityIds.length; i += batchCheckLimit) {
+        const chunk = filteredEntityIds.slice(i, i + batchCheckLimit);
+        const snaps = await adminDb.collection('workspace_entities')
+          .where('entityId', 'in', chunk)
+          .where('workspaceId', '==', workspaceId)
+          .get();
+        snaps.forEach(doc => {
+          const data = doc.data();
+          entitiesData[data.entityId] = {
+            name: data.displayName || 'Unknown Contact',
+            entityType: data.entityType || 'person',
+          };
+        });
+      }
+
+      for (const entityId of filteredEntityIds) {
+        const entityMeta = entitiesData[entityId] || { name: 'Unknown Contact', entityType: 'person' };
+        let phone = '';
+        let email = '';
+
+        const [smsResolved, emailResolved] = await Promise.all([
+          resolveRecipientContacts({
+            entityId,
+            workspaceId,
+            contactScope: campaign.audienceDefinition?.contactScope || 'primary',
+            channel: 'sms',
+          }).catch(() => []),
+          resolveRecipientContacts({
+            entityId,
+            workspaceId,
+            contactScope: campaign.audienceDefinition?.contactScope || 'primary',
+            channel: 'email',
+          }).catch(() => []),
+        ]);
+
+        if (smsResolved && smsResolved.length > 0) {
+          phone = smsResolved[0].contact;
+        }
+        if (emailResolved && emailResolved.length > 0) {
+          email = emailResolved[0].contact;
+        }
+
+        queueItems.push({
+          campaignId,
+          organizationId: campaign.organizationId,
+          workspaceId: campaign.workspaceId,
+          entityId,
+          entityType: entityMeta.entityType as any,
+          entityName: entityMeta.name,
+          entityPhone: phone,
+          entityEmail: email,
+          status: 'scheduled',
+          assignedTo: null,
+          lockExpiresAt: null,
+          callbackDate: null,
+          attempts: 0,
+          lastAttemptAt: null,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+
+      // Write queue items in batches of 500
+      const writeChunks: Promise<any>[] = [];
+      let writeBatch = adminDb.batch();
+      let writeCount = 0;
+
+      for (const item of queueItems) {
+        const itemRef = adminDb.collection('call_queue_items').doc(`${campaignId}_${item.entityId}`);
+        writeBatch.set(itemRef, {
+          id: itemRef.id,
+          ...item,
+        });
+        writeCount++;
+        if (writeCount === 500) {
+          writeChunks.push(writeBatch.commit());
+          writeBatch = adminDb.batch();
+          writeCount = 0;
+        }
+      }
+      if (writeCount > 0) {
+        writeChunks.push(writeBatch.commit());
+      }
+      await Promise.all(writeChunks);
+
+      // Increment campaign stats and reset status back to running if it was completed
+      const updateFields: Record<string, any> = {
+        'progress.total': FieldValue.increment(queueItems.length),
+        'progress.pending': FieldValue.increment(queueItems.length),
+        updatedAt: timestamp,
+      };
+
+      if (campaign.status === 'completed') {
+        updateFields.status = 'running';
+      }
+
+      await campaignRef.update(updateFields);
+
+      return { success: true, count: queueItems.length };
+    } catch (error: any) {
+      console.error('[CALL_CENTRE_SERVICE] Dynamic contact addition failed:', error);
+      return { success: false, count: 0, error: error.message };
+    }
   }
 
   static async getCampaign(id: string): Promise<CallCampaign | null> {
