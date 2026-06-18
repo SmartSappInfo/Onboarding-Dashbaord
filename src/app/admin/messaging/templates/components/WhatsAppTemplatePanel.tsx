@@ -31,7 +31,6 @@ import {
   adoptWhatsAppTemplate,
   createWhatsAppTemplate,
   sendWhatsAppTestMessage,
-  uploadWhatsAppHeaderMedia,
 } from '@/lib/whatsapp-template-actions';
 import {
   getBodyText,
@@ -46,13 +45,41 @@ import type { WhatsAppTemplate, WhatsAppTemplateStatus } from '@/lib/whatsapp/wh
 type HeaderMode = 'none' | 'text' | 'media';
 type UploadedMedia = { format: MediaHeaderFormat; handle: string; fileName: string };
 
-/** Read a File as raw base64 (no data: prefix) — safe for large files. */
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
-    reader.onerror = () => reject(new Error('Could not read the file.'));
-    reader.readAsDataURL(file);
+type UploadResult = { success: boolean; handle?: string; format?: MediaHeaderFormat; error?: string };
+
+/**
+ * Upload header media to the route handler with real upload progress. Uses
+ * XHR because `fetch` can't report `upload.onprogress`. Resolves (never throws)
+ * with the server's `{ success, ... }` body.
+ */
+function uploadHeaderMedia(
+  file: File,
+  organizationId: string,
+  idToken: string,
+  onProgress: (pct: number) => void,
+  signal: AbortSignal,
+): Promise<UploadResult> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/whatsapp/upload-media');
+    xhr.setRequestHeader('Authorization', `Bearer ${idToken}`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      try {
+        resolve(JSON.parse(xhr.responseText) as UploadResult);
+      } catch {
+        resolve({ success: false, error: 'Unexpected server response.' });
+      }
+    };
+    xhr.onerror = () => resolve({ success: false, error: 'Network error during upload.' });
+    xhr.onabort = () => resolve({ success: false, error: 'Upload cancelled.' });
+    signal.addEventListener('abort', () => xhr.abort());
+    const fd = new FormData();
+    fd.append('organizationId', organizationId);
+    fd.append('file', file);
+    xhr.send(fd);
   });
 }
 
@@ -491,6 +518,10 @@ function CreateTemplateDialog({
   const [headerText, setHeaderText] = React.useState('');
   const [media, setMedia] = React.useState<UploadedMedia | null>(null);
   const [uploadingMedia, setUploadingMedia] = React.useState(false);
+  const [uploadPct, setUploadPct] = React.useState(0);
+  const uploadAbortRef = React.useRef<AbortController | null>(null);
+  // Abort an in-flight upload if the dialog unmounts mid-upload.
+  React.useEffect(() => () => uploadAbortRef.current?.abort(), []);
   const [bodyText, setBodyText] = React.useState('');
   const [footerText, setFooterText] = React.useState('');
   const [buttons, setButtons] = React.useState<TemplateButtonInput[]>([]);
@@ -526,22 +557,21 @@ function CreateTemplateDialog({
   const handleMediaFile = async (file: File) => {
     if (!user) return;
     setUploadingMedia(true);
+    setUploadPct(0);
     setMedia(null);
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
     try {
-      const dataBase64 = await fileToBase64(file);
       const idToken = await user.getIdToken();
-      const res = await uploadWhatsAppHeaderMedia(idToken, {
-        organizationId,
-        fileName: file.name,
-        fileType: file.type,
-        dataBase64,
-      });
-      if (res.success) setMedia({ format: res.data.format, handle: res.data.handle, fileName: file.name });
-      else toast({ variant: 'destructive', title: 'Upload failed', description: res.error });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+      const res = await uploadHeaderMedia(file, organizationId, idToken, setUploadPct, controller.signal);
+      if (res.success && res.handle && res.format) {
+        setMedia({ format: res.format, handle: res.handle, fileName: file.name });
+      } else if (res.error !== 'Upload cancelled.') {
+        toast({ variant: 'destructive', title: 'Upload failed', description: res.error });
+      }
     } finally {
       setUploadingMedia(false);
+      uploadAbortRef.current = null;
     }
   };
 
@@ -662,19 +692,25 @@ function CreateTemplateDialog({
                   id="wa-tpl-media"
                   type="file"
                   accept="image/jpeg,image/png,video/mp4,video/3gpp,application/pdf"
+                  disabled={uploadingMedia}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f) handleMediaFile(f);
                   }}
-                  className="block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:font-bold file:text-white"
+                  className="block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:font-bold file:text-white disabled:opacity-50"
                 />
                 <p className="text-[10px] text-muted-foreground">
                   JPEG/PNG (≤5MB), MP4/3GP (≤16MB), or PDF (≤30MB).
                 </p>
                 {uploadingMedia && (
-                  <p className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
-                  </p>
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Uploading… {uploadPct}%
+                    </p>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-emerald-600 transition-all" style={{ width: `${uploadPct}%` }} />
+                    </div>
+                  </div>
                 )}
                 {media && !uploadingMedia && (
                   <p className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
