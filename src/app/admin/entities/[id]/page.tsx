@@ -46,6 +46,7 @@ import {
     Pencil,
     Save,
     Hash,
+    PhoneCall,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -93,6 +94,11 @@ const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline
 
 const LogActivityModal = dynamic(() => import('../components/LogActivityModal'), { ssr: false });
 
+const AddToCampaignDialog = dynamic(
+  () => import('../components/AddToCampaignDialog').then(m => m.AddToCampaignDialog),
+  { ssr: false, loading: () => <Skeleton className="h-10 w-full rounded-xl" /> }
+);
+
 const getStatusBadgeVariant = (status: any) => {
     switch (status) {
         case 'active':
@@ -128,6 +134,7 @@ export default function EntityDetailPage() {
     const [isLogoDialogOpen, setIsLogoDialogOpen] = React.useState(false);
     const [isUpdatingLogo, setIsUpdatingLogo] = React.useState(false);
     const [isManageWorkspacesOpen, setIsManageWorkspacesOpen] = React.useState(false);
+    const [isCampaignDialogOpen, setIsCampaignDialogOpen] = React.useState(false);
     
 
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
@@ -346,6 +353,9 @@ export default function EntityDetailPage() {
                     <div className="flex items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
                         <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm" onClick={() => setIsLogModalOpen(true)}>
                             <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> Log
+                        </Button>
+                        <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm gap-2" onClick={() => setIsCampaignDialogOpen(true)}>
+                            <PhoneCall className="h-4 w-4 text-indigo-500" /> Call Campaign
                         </Button>
                         <Button className="flex-1 md:flex-none rounded-xl font-bold shadow-md h-11" onClick={() => router.push(`/admin/entities/${entityId}/edit`)}>
                             <PenSquare className="mr-2 h-4 w-4" /> Edit Profile
@@ -632,6 +642,15 @@ export default function EntityDetailPage() {
                     open={isManageWorkspacesOpen}
                     onOpenChange={setIsManageWorkspacesOpen}
                 />
+            )}
+
+            {isCampaignDialogOpen && (
+              <AddToCampaignDialog
+                open={isCampaignDialogOpen}
+                onOpenChange={setIsCampaignDialogOpen}
+                entityIds={[entityId]}
+                workspaceId={activeWorkspaceId}
+              />
             )}
         </PageContainerFluid>
     );

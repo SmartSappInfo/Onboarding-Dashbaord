@@ -24,9 +24,23 @@ import {
   CheckCircle2,
   PhoneOff,
   UserCheck,
-  ChevronRight
+  ChevronRight,
+  UserPlus
 } from 'lucide-react';
 import type { CallCampaign } from '@/lib/types';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
+import dynamic from 'next/dynamic';
+
+const AddContactsDialog = dynamic(
+  () => import('../../components/AddContactsDialog').then(m => m.AddContactsDialog),
+  { ssr: false, loading: () => <Skeleton className="h-10 w-full rounded-xl" /> }
+);
 
 interface CampaignAnalyticsClientProps {
   campaignId: string;
@@ -45,6 +59,7 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
   useSetBreadcrumb(campaign?.name ? `${campaign.name} Analytics` : 'Campaign Analytics');
 
   const [expandedNotesId, setExpandedNotesId] = React.useState<string | null>(null);
+  const [isAddContactsOpen, setIsAddContactsOpen] = React.useState(false);
 
   const wrapHref = (href: string) => {
     if (!activeWorkspaceId) return href;
@@ -201,14 +216,46 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
               {/* Premium KPI Metric Cards Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card className="border border-border bg-card rounded-2xl shadow-sm hover:shadow-md transition-all">
-                  <CardContent className="p-6 flex items-center gap-4">
-                    <div className="p-3 bg-primary/10 text-primary rounded-xl border border-primary/20">
-                      <Phone className="h-6 w-6" />
+                  <CardContent className="p-6 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-primary/10 text-primary rounded-xl border border-primary/20">
+                        <Phone className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Queue Contacts</p>
+                        <p className="text-2xl font-black text-foreground">{queueItems.length}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Queue Contacts</p>
-                      <p className="text-2xl font-black text-foreground">{queueItems.length}</p>
-                    </div>
+                    {campaign.allowAddContactsAfterLaunch === false && campaign.status !== 'draft' ? (
+                      <TooltipProvider delayDuration={150}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="opacity-50 cursor-not-allowed">
+                              <Button
+                                disabled
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-lg font-bold text-[10px] uppercase tracking-wider gap-1"
+                              >
+                                <UserPlus className="h-3.5 w-3.5" /> Add
+                              </Button>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="text-[10px] font-bold">Audience is fixed after launch.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <Button
+                        onClick={() => setIsAddContactsOpen(true)}
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-lg font-bold text-[10px] uppercase tracking-wider text-primary border-primary/20 hover:bg-primary/5 gap-1"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" /> Add
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -492,6 +539,15 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
           )}
         </div>
       </PageContainer>
+      {isAddContactsOpen && campaign && (
+        <AddContactsDialog
+          open={isAddContactsOpen}
+          onOpenChange={setIsAddContactsOpen}
+          campaignId={campaign.id}
+          workspaceId={activeWorkspaceId}
+          campaignName={campaign.name}
+        />
+      )}
     </div>
   );
 }

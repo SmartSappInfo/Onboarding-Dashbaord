@@ -138,7 +138,8 @@ export default function WhatsAppTemplatePanel({ organizationId }: Props) {
               WhatsApp Templates
             </CardTitle>
             <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-              Meta-registered templates. Only approved templates can be used to send.
+              Meta-registered templates. Approval status updates automatically (or hit Sync). Only
+              approved templates can be used to send.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

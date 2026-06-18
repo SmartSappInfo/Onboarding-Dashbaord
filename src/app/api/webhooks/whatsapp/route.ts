@@ -3,6 +3,7 @@ import { after } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { decrypt } from '@/lib/whatsapp/crypto-vault';
 import { WhatsAppCredentialRepository } from '@/lib/whatsapp/whatsapp-credential-repository';
+import { WhatsAppTemplateRepository } from '@/lib/whatsapp/whatsapp-template-repository';
 import {
   verifySignature,
   parseWebhookEvents,
@@ -11,6 +12,7 @@ import {
   type InboundMessageEvent,
   type StatusEvent,
 } from '@/lib/whatsapp/whatsapp-webhook';
+import { parseTemplateStatusEvents, type TemplateStatusEvent } from '@/lib/whatsapp/whatsapp-domain';
 import type { WhatsAppConnection } from '@/lib/whatsapp/whatsapp-types';
 
 // AES-GCM + Admin SDK need full Node crypto (spec R4).
@@ -57,12 +59,17 @@ export async function POST(req: NextRequest) {
   }
 
   const events = parseWebhookEvents(body);
-  if (events.length === 0) return new Response('OK', { status: 200 });
+  const templateEvents = parseTemplateStatusEvents(body);
+  if (events.length === 0 && templateEvents.length === 0) return new Response('OK', { status: 200 });
 
-  const conn = await WhatsAppCredentialRepository.getByPhoneNumberId(events[0].phoneNumberId);
+  // Messages/statuses carry a phone_number_id; template-status events carry only
+  // the WABA id (`entry[].id`). One delivery belongs to a single connection.
+  const conn = events.length
+    ? await WhatsAppCredentialRepository.getByPhoneNumberId(events[0].phoneNumberId)
+    : await WhatsAppCredentialRepository.getByWabaId(templateEvents[0].wabaId);
   if (!conn) {
-    // Unknown number — ACK to stop retries; nothing actionable.
-    console.warn('[WA-WEBHOOK] No connection for phone_number_id', events[0].phoneNumberId);
+    // Unknown number/WABA — ACK to stop retries; nothing actionable.
+    console.warn('[WA-WEBHOOK] No connection for', events[0]?.phoneNumberId ?? templateEvents[0]?.wabaId);
     return new Response('OK', { status: 200 });
   }
 
@@ -85,13 +92,36 @@ export async function POST(req: NextRequest) {
 
   after(async () => {
     try {
-      await processWebhookEvents(conn, events);
+      if (events.length) await processWebhookEvents(conn, events);
+      if (templateEvents.length) await processTemplateStatusEvents(templateEvents);
     } catch (err) {
       console.error('[WA-WEBHOOK] Processing error:', (err as Error).message);
     }
   });
 
   return new Response('OK', { status: 200 });
+}
+
+/**
+ * Apply template approval/rejection/category events to the local mirror,
+ * idempotently (keyed on template + outcome, so re-delivery is a no-op). A
+ * template not yet mirrored locally is skipped — a later sync reconciles it.
+ */
+async function processTemplateStatusEvents(events: TemplateStatusEvent[]) {
+  for (const ev of events) {
+    const eventKey = `tpl_${ev.metaTemplateId}_${ev.status ?? ev.category ?? 'x'}`;
+    const ref = adminDb.collection('webhook_events').doc(eventKey);
+    try {
+      await ref.create({ provider: 'whatsapp', processedAt: new Date().toISOString() });
+    } catch {
+      continue; // already processed
+    }
+    await WhatsAppTemplateRepository.updateStatusByMetaId(ev.metaTemplateId, {
+      status: ev.status,
+      rejectedReason: ev.rejectedReason,
+      category: ev.category,
+    });
+  }
 }
 
 /** Process events idempotently — each Meta event id is handled at most once. */

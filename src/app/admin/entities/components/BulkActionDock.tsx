@@ -15,7 +15,8 @@ import {
   ChevronDown,
   MoreHorizontal,
   Archive,
-  Trash2
+  Trash2,
+  PhoneCall
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,6 +37,7 @@ interface BulkActionDockProps {
   onInitiateDeals: () => void;
   onCreateTasks: () => void;
   onInviteMeetings: () => void;
+  onAddToCampaign: () => void;
   onArchive: () => void;
   onDelete: () => void;
   className?: string;
@@ -51,6 +53,7 @@ export function BulkActionDock({
   onInitiateDeals,
   onCreateTasks,
   onInviteMeetings,
+  onAddToCampaign,
   onArchive,
   onDelete,
   className,
@@ -178,6 +181,16 @@ export function BulkActionDock({
                   <CalendarDays className="h-3.5 w-3.5" />
                 </div>
                 <span className="font-bold text-sm">Invite to Session</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                onClick={onAddToCampaign}
+                className="rounded-xl p-2.5 gap-3 hover:bg-slate-800 cursor-pointer focus:bg-primary/25 focus:text-white"
+              >
+                <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-400">
+                  <PhoneCall className="h-3.5 w-3.5" />
+                </div>
+                <span className="font-bold text-sm">Add to Call Campaign</span>
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="my-2 border-slate-800" />

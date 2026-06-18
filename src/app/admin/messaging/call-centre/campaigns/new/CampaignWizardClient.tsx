@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import {
@@ -100,6 +101,8 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
   });
   const [name, setName] = React.useState('');
   const [description, setDescription] = React.useState('');
+  const [allowAddContactsAfterLaunch, setAllowAddContactsAfterLaunch] = React.useState(false);
+  const [campaignProgressCompleted, setCampaignProgressCompleted] = React.useState(0);
   useSetBreadcrumb(campaignId ? `Edit Campaign: ${name}` : 'New Campaign');
   const [selectedScriptId, setSelectedScriptId] = React.useState(initialScriptId || '');
   
@@ -212,6 +215,8 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
           setContactScope(audDef.contactScope || 'primary');
           
           setOutcomes(campaign.outcomes || []);
+          setAllowAddContactsAfterLaunch(campaign.allowAddContactsAfterLaunch ?? false);
+          setCampaignProgressCompleted(campaign.progress?.completed || 0);
           
           // Normalize loaded automation rules for backward compat
           const rawRules: Record<string, any[]> = campaign.automationRules ?? {};
@@ -338,6 +343,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
             audienceDefinition,
             outcomes,
             automationRules,
+            allowAddContactsAfterLaunch,
             workspaceId: activeWorkspaceId,
           },
           user?.uid || ''
@@ -356,6 +362,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
             audienceDefinition,
             outcomes,
             automationRules,
+            allowAddContactsAfterLaunch,
             status: 'draft',
           },
           user?.uid || ''
@@ -542,6 +549,20 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
                     spellCheck={false}
                   />
                 </div>
+                <div className="pt-2 flex flex-col space-y-3 border-t border-border mt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Audience Management</Label>
+                      <span className="text-[10px] font-semibold text-muted-foreground">
+                        {allowAddContactsAfterLaunch ? 'Dynamic Audience (Loose campaign - allows adding contacts after launch)' : 'Fixed Audience (Tight campaign - locked audience after launch)'}
+                      </span>
+                    </div>
+                    <Switch
+                      checked={allowAddContactsAfterLaunch}
+                      onCheckedChange={setAllowAddContactsAfterLaunch}
+                    />
+                  </div>
+                </div>
               </div>
             </CardContent>
           )}
@@ -564,7 +585,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <Select value={selectedScriptId} onValueChange={setSelectedScriptId}>
+                      <Select disabled={campaignProgressCompleted > 0} value={selectedScriptId} onValueChange={setSelectedScriptId}>
                         <SelectTrigger className="h-11 rounded-xl">
                           <SelectValue placeholder="Select call script" />
                         </SelectTrigger>
@@ -574,6 +595,12 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
                           ))}
                         </SelectContent>
                       </Select>
+                      {campaignProgressCompleted > 0 && (
+                        <p className="text-[10px] font-semibold text-rose-500 flex items-center gap-1.5 mt-1">
+                          <Info className="h-3.5 w-3.5 shrink-0" />
+                          This campaign has active progress. Playbook script swapping is locked to maintain outcome reporting integrity.
+                        </p>
+                      )}
                       {selectedScriptId && (
                         <Button
                           type="button"

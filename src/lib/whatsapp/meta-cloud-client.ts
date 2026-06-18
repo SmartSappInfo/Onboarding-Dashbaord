@@ -172,6 +172,51 @@ export class MetaCloudApiClient {
   }
 
   /**
+   * Upload header sample media via Meta's Resumable Upload API and return the
+   * `header_handle` used in a template's `example`. Two steps: create an upload
+   * session, then POST the bytes (Meta uses the `OAuth` auth scheme + a
+   * `file_offset` header for the data step). Not retried — uploads aren't
+   * idempotent and the file is large.
+   */
+  async uploadResumable(input: {
+    appId: string;
+    fileName: string;
+    fileType: string;
+    data: Uint8Array;
+  }): Promise<string> {
+    const { appId, fileName, fileType, data } = input;
+
+    const sessionUrl =
+      buildGraphUrl(`${appId}/uploads`, this.version) +
+      `?${new URLSearchParams({
+        file_name: fileName,
+        file_length: String(data.byteLength),
+        file_type: fileType,
+      }).toString()}`;
+    const sessionRes = await this.fetchImpl(sessionUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.creds.accessToken}` },
+    });
+    const session = await sessionRes.json().catch(() => ({}));
+    if (!sessionRes.ok) throw new Error(`[meta-cloud] ${parseGraphError(session)}`);
+    const sessionId = (session as { id?: string }).id;
+    if (!sessionId) throw new Error('[meta-cloud] Upload session was not created.');
+
+    const uploadRes = await this.fetchImpl(buildGraphUrl(sessionId, this.version), {
+      method: 'POST',
+      headers: { Authorization: `OAuth ${this.creds.accessToken}`, file_offset: '0' },
+      // Uint8Array is a valid fetch body at runtime; TS 5.7's generic
+      // Uint8Array<ArrayBufferLike> doesn't match BodyInit, so cast.
+      body: data as unknown as BodyInit,
+    });
+    const uploaded = await uploadRes.json().catch(() => ({}));
+    if (!uploadRes.ok) throw new Error(`[meta-cloud] ${parseGraphError(uploaded)}`);
+    const handle = (uploaded as { h?: string }).h;
+    if (!handle) throw new Error('[meta-cloud] Upload did not return a file handle.');
+    return handle;
+  }
+
+  /**
    * Submit a new message template for Meta approval via
    * `POST /{wabaId}/message_templates`. Returns Meta's id + initial status
    * (typically PENDING). Approval happens asynchronously on Meta's side — poll

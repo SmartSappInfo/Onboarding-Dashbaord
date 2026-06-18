@@ -10,6 +10,8 @@ import {
   validateCreateTemplateInput,
   buildCreateTemplatePayload,
   validateApprovedSend,
+  validateHeaderMedia,
+  parseTemplateStatusEvents,
   type MetaTemplateRaw,
   type CreateTemplateInput,
 } from '../whatsapp-domain';
@@ -180,6 +182,111 @@ describe('buildCreateTemplatePayload', () => {
   });
 });
 
+describe('media headers & buttons', () => {
+  const base: CreateTemplateInput = {
+    name: 'receipt',
+    language: 'en_US',
+    category: 'UTILITY',
+    bodyText: 'Thanks for your order.',
+  };
+
+  it('rejects a media header with no handle', () => {
+    const r = validateCreateTemplateInput({ ...base, mediaHeader: { format: 'IMAGE', handle: '' } });
+    expect(r.valid).toBe(false);
+  });
+
+  it('rejects more than 10 buttons', () => {
+    const buttons = Array.from({ length: 11 }, (_, i) => ({ type: 'QUICK_REPLY' as const, text: `b${i}` }));
+    expect(validateCreateTemplateInput({ ...base, buttons }).valid).toBe(false);
+  });
+
+  it('rejects a URL button missing its URL', () => {
+    const r = validateCreateTemplateInput({
+      ...base,
+      buttons: [{ type: 'URL', text: 'Visit', url: '' }],
+    });
+    expect(r.valid).toBe(false);
+  });
+
+  it('rejects a {{1}} URL with no sample', () => {
+    const r = validateCreateTemplateInput({
+      ...base,
+      buttons: [{ type: 'URL', text: 'Track', url: 'https://x.co/{{1}}' }],
+    });
+    expect(r.valid).toBe(false);
+  });
+
+  it('accepts a valid mix of buttons', () => {
+    const r = validateCreateTemplateInput({
+      ...base,
+      buttons: [
+        { type: 'QUICK_REPLY', text: 'Yes' },
+        { type: 'URL', text: 'Track', url: 'https://x.co/{{1}}', urlExample: 'https://x.co/123' },
+        { type: 'PHONE_NUMBER', text: 'Call', phoneNumber: '+233200000000' },
+      ],
+    });
+    expect(r.valid).toBe(true);
+  });
+
+  it('builds a media HEADER with header_handle (precedence over text)', () => {
+    const p = buildCreateTemplatePayload({
+      ...base,
+      headerText: 'ignored',
+      mediaHeader: { format: 'IMAGE', handle: 'HANDLE_123' },
+    });
+    const header = p.components.find((c) => c.type === 'HEADER');
+    expect(header?.format).toBe('IMAGE');
+    expect(header?.text).toBeUndefined();
+    expect(header?.example?.header_handle).toEqual(['HANDLE_123']);
+  });
+
+  it('emits BUTTONS last with correct wire shape', () => {
+    const p = buildCreateTemplatePayload({
+      ...base,
+      footerText: 'MineX360',
+      buttons: [
+        { type: 'QUICK_REPLY', text: 'Yes' },
+        { type: 'URL', text: 'Track', url: 'https://x.co/{{1}}', urlExample: 'https://x.co/123' },
+        { type: 'PHONE_NUMBER', text: 'Call', phoneNumber: '+233200000000' },
+      ],
+    });
+    expect(p.components[p.components.length - 1].type).toBe('BUTTONS');
+    const btns = p.components.find((c) => c.type === 'BUTTONS')!.buttons!;
+    expect(btns[0]).toEqual({ type: 'QUICK_REPLY', text: 'Yes' });
+    expect(btns[1]).toMatchObject({ type: 'URL', url: 'https://x.co/{{1}}', example: ['https://x.co/123'] });
+    expect(btns[2]).toMatchObject({ type: 'PHONE_NUMBER', phone_number: '+233200000000' });
+  });
+});
+
+describe('validateHeaderMedia', () => {
+  it('accepts a JPEG within the size cap and derives IMAGE', () => {
+    const r = validateHeaderMedia('image/jpeg', 1024);
+    expect(r.valid).toBe(true);
+    expect(r.format).toBe('IMAGE');
+  });
+
+  it('derives VIDEO and DOCUMENT formats', () => {
+    expect(validateHeaderMedia('video/mp4', 1024).format).toBe('VIDEO');
+    expect(validateHeaderMedia('application/pdf', 1024).format).toBe('DOCUMENT');
+  });
+
+  it('is case-insensitive on MIME type', () => {
+    expect(validateHeaderMedia('IMAGE/PNG', 1024).valid).toBe(true);
+  });
+
+  it('rejects an unsupported type', () => {
+    expect(validateHeaderMedia('image/gif', 1024).valid).toBe(false);
+  });
+
+  it('rejects an empty file', () => {
+    expect(validateHeaderMedia('image/png', 0).valid).toBe(false);
+  });
+
+  it('rejects a file over the per-format cap', () => {
+    expect(validateHeaderMedia('image/png', 6 * 1024 * 1024).valid).toBe(false); // >5MB image cap
+  });
+});
+
 describe('validateApprovedSend', () => {
   const approved = { organizationId: 'org_1', status: 'APPROVED' as const, paramCount: 2 };
 
@@ -205,5 +312,86 @@ describe('validateApprovedSend', () => {
     const r = validateApprovedSend(approved, 'org_1', 1);
     expect(r.valid).toBe(false);
     expect(r.error).toContain('Expected 2');
+  });
+});
+
+describe('parseTemplateStatusEvents', () => {
+  const statusBody = (event: string, reason?: string) => ({
+    entry: [
+      {
+        id: 'WABA_1',
+        changes: [
+          {
+            field: 'message_template_status_update',
+            value: {
+              event,
+              message_template_id: 9001,
+              message_template_name: 'order_update',
+              message_template_language: 'en_US',
+              ...(reason ? { reason } : {}),
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  it('parses an APPROVED status with the WABA id from entry.id', () => {
+    const [ev] = parseTemplateStatusEvents(statusBody('APPROVED'));
+    expect(ev).toMatchObject({
+      wabaId: 'WABA_1',
+      metaTemplateId: '9001',
+      name: 'order_update',
+      language: 'en_US',
+      status: 'APPROVED',
+    });
+    expect(ev.rejectedReason).toBeUndefined();
+  });
+
+  it('carries the rejected reason on REJECTED', () => {
+    const [ev] = parseTemplateStatusEvents(statusBody('REJECTED', 'INVALID_FORMAT'));
+    expect(ev.status).toBe('REJECTED');
+    expect(ev.rejectedReason).toBe('INVALID_FORMAT');
+  });
+
+  it('omits a "NONE" reason', () => {
+    const [ev] = parseTemplateStatusEvents(statusBody('APPROVED', 'NONE'));
+    expect(ev.rejectedReason).toBeUndefined();
+  });
+
+  it('parses a category update without forcing a status', () => {
+    const [ev] = parseTemplateStatusEvents({
+      entry: [
+        {
+          id: 'WABA_1',
+          changes: [
+            {
+              field: 'template_category_update',
+              value: {
+                message_template_id: 9001,
+                message_template_name: 'order_update',
+                new_category: 'UTILITY',
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(ev.category).toBe('UTILITY');
+    expect(ev.status).toBeUndefined();
+  });
+
+  it('ignores unrelated fields and malformed bodies', () => {
+    expect(parseTemplateStatusEvents({ entry: [{ id: 'W', changes: [{ field: 'messages', value: {} }] }] })).toEqual([]);
+    expect(parseTemplateStatusEvents(null)).toEqual([]);
+    expect(parseTemplateStatusEvents({})).toEqual([]);
+  });
+
+  it('skips changes without a template id', () => {
+    expect(
+      parseTemplateStatusEvents({
+        entry: [{ id: 'W', changes: [{ field: 'message_template_status_update', value: { event: 'APPROVED' } }] }],
+      }),
+    ).toEqual([]);
   });
 });

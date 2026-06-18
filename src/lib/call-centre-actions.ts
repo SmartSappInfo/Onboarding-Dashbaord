@@ -352,9 +352,9 @@ export async function cloneCallCampaignAction(campaignId: string, workspaceId: s
   }
 }
 
-export async function addContactsToCallCampaignAction(campaignId: string, entityIds: string[], workspaceId: string, userId: string) {
+export async function addContactsToCallCampaignAction(campaignId: string, entityIds: string[], workspaceId: string, userId: string): Promise<{ success: boolean; count: number; error?: string }> {
   const perm = await verifyPermission(userId, 'edit', workspaceId);
-  if (!perm.granted) return { success: false, error: perm.reason };
+  if (!perm.granted) return { success: false, count: 0, error: perm.reason };
 
   try {
     const result = await CallCentreService.addContactsToCampaign(campaignId, entityIds, workspaceId);
@@ -362,7 +362,7 @@ export async function addContactsToCallCampaignAction(campaignId: string, entity
     revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
     return result;
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, count: 0, error: error.message };
   }
 }
 

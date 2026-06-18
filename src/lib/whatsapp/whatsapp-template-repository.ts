@@ -5,7 +5,11 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { WhatsAppTemplate, WhatsAppTemplateStatus } from './whatsapp-types';
+import type {
+  WhatsAppTemplate,
+  WhatsAppTemplateStatus,
+  WhatsAppTemplateCategory,
+} from './whatsapp-types';
 
 const COLLECTION = 'whatsapp_templates';
 const BATCH_LIMIT = 400; // Firestore allows 500 writes/batch; stay under.
@@ -40,5 +44,35 @@ export class WhatsAppTemplateRepository {
   static async get(id: string): Promise<WhatsAppTemplate | null> {
     const snap = await adminDb.collection(COLLECTION).doc(id).get();
     return snap.exists ? (snap.data() as WhatsAppTemplate) : null;
+  }
+
+  /**
+   * Idempotently patch a template's status/category from a Meta webhook, keyed
+   * by the global `metaTemplateId`. No-op (returns false) when the template
+   * isn't mirrored locally yet — a later sync will pick it up. Only defined
+   * patch fields are written.
+   */
+  static async updateStatusByMetaId(
+    metaTemplateId: string,
+    patch: {
+      status?: WhatsAppTemplateStatus;
+      rejectedReason?: string;
+      category?: WhatsAppTemplateCategory;
+    },
+  ): Promise<boolean> {
+    const snap = await adminDb
+      .collection(COLLECTION)
+      .where('metaTemplateId', '==', metaTemplateId)
+      .limit(1)
+      .get();
+    if (snap.empty) return false;
+
+    const update: Record<string, unknown> = { syncedAt: new Date().toISOString() };
+    if (patch.status) update.status = patch.status;
+    if (patch.category) update.category = patch.category;
+    if (patch.rejectedReason) update.rejectedReason = patch.rejectedReason;
+
+    await snap.docs[0].ref.set(update, { merge: true });
+    return true;
   }
 }

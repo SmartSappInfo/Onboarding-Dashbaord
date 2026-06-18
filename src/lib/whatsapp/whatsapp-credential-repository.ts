@@ -63,6 +63,19 @@ export class WhatsAppCredentialRepository {
     return snap.empty ? null : (snap.docs[0].data() as WhatsAppConnection);
   }
 
+  /**
+   * Resolve the connection that owns a WABA — used by template-status webhooks,
+   * whose payload carries the WABA id (`entry[].id`) rather than a phone number.
+   */
+  static async getByWabaId(wabaId: string): Promise<WhatsAppConnection | null> {
+    const snap = await adminDb
+      .collection(COLLECTION)
+      .where('wabaId', '==', wabaId)
+      .limit(1)
+      .get();
+    return snap.empty ? null : (snap.docs[0].data() as WhatsAppConnection);
+  }
+
   /** Find a connection by webhook verify token (GET handshake). */
   static async findByVerifyToken(token: string): Promise<WhatsAppConnection | null> {
     const snap = await adminDb

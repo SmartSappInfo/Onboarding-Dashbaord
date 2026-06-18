@@ -4302,7 +4302,7 @@ export interface CallScript {
   createdBy: string;
 }
 
-export type CallCampaignStatus = 'draft' | 'scheduled' | 'running' | 'paused' | 'completed' | 'cancelled';
+export type CallCampaignStatus = 'draft' | 'scheduled' | 'running' | 'paused' | 'completed' | 'cancelled' | 'archived';
 
 export interface CallOutcomeAutomation {
   type: CallActionType;
@@ -4321,6 +4321,7 @@ export interface CallCampaign {
   outcomes: string[];
   automationRules: Record<string, CallOutcomeAutomation[]>;
   status: CallCampaignStatus;
+  allowAddContactsAfterLaunch?: boolean;
   createdAt: string;
   updatedAt: string;
   createdBy: string;

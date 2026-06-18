@@ -203,6 +203,49 @@ describe('MetaCloudApiClient.sendMessage', () => {
   });
 });
 
+describe('MetaCloudApiClient.uploadResumable', () => {
+  it('creates a session, posts the bytes (OAuth scheme), and returns the handle', async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url: String(url), init });
+      const body =
+        calls.length === 1 ? { id: 'upload:SESSION' } : { h: 'HANDLE_xyz' };
+      return { ok: true, status: 200, json: async () => body, text: async () => '{}' } as Response;
+    });
+    const client = makeClient(fetchImpl as unknown as typeof fetch);
+    const handle = await client.uploadResumable({
+      appId: 'APP_ID',
+      fileName: 'logo.png',
+      fileType: 'image/png',
+      data: new Uint8Array([1, 2, 3]),
+    });
+    expect(handle).toBe('HANDLE_xyz');
+    expect(calls[0].url).toContain('/APP_ID/uploads');
+    expect(calls[0].url).toContain('file_length=3');
+    expect((calls[1].init.headers as Record<string, string>).Authorization).toBe('OAuth EAAG-secret-token');
+    expect(calls[1].url).toContain('/upload:SESSION');
+  });
+
+  it('throws when no file handle is returned', async () => {
+    const fetchImpl = fetchSequence([
+      { status: 200, body: { id: 'upload:SESSION' } },
+      { status: 200, body: {} },
+    ]);
+    const client = makeClient(fetchImpl as unknown as typeof fetch);
+    await expect(
+      client.uploadResumable({ appId: 'A', fileName: 'f', fileType: 'image/png', data: new Uint8Array([1]) }),
+    ).rejects.toThrow(/file handle/);
+  });
+
+  it('throws the Graph error when the session fails to create', async () => {
+    const fetchImpl = fetchSequence([{ status: 400, body: { error: { message: 'bad app' } } }]);
+    const client = makeClient(fetchImpl as unknown as typeof fetch);
+    await expect(
+      client.uploadResumable({ appId: 'A', fileName: 'f', fileType: 'image/png', data: new Uint8Array([1]) }),
+    ).rejects.toThrow(/bad app/);
+  });
+});
+
 describe('MetaCloudApiClient.listMessageTemplates', () => {
   it('follows cursor pagination until exhausted', async () => {
     const fetchImpl = fetchSequence([

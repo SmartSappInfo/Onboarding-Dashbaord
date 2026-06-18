@@ -26,7 +26,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList, Video } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList, Video, PhoneCall } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
 import AiEntityGenerator from './components/ai-entity-generator';
 import {
@@ -92,6 +92,12 @@ import { BulkActionDock } from './components/BulkActionDock';
 import BulkCreateDealModal from './components/BulkCreateDealModal';
 import BulkCreateTaskModal from './components/BulkCreateTaskModal';
 import BulkMeetingInviteModal from './components/BulkMeetingInviteModal';
+import dynamic from 'next/dynamic';
+
+const AddToCampaignDialog = dynamic(
+  () => import('./components/AddToCampaignDialog').then(m => m.AddToCampaignDialog),
+  { ssr: false, loading: () => <Skeleton className="h-10 w-full rounded-xl" /> }
+);
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -400,6 +406,8 @@ export default function EntitiesClient() {
   const [isBulkMeetingOpen, setIsBulkMeetingOpen] = useState(false);
   const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
   const [singleMeetingEntityId, setSingleMeetingEntityId] = useState<string | null>(null);
+  const [isCampaignDialogOpen, setIsCampaignDialogOpen] = useState(false);
+  const [campaignEntityIds, setCampaignEntityIds] = useState<string[]>([]);
 
 
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -1528,6 +1536,13 @@ export default function EntitiesClient() {
                                                                     <span className="font-bold text-sm">Send Message</span>
                                                                 </Link>
                                                             </DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl p-2.5 gap-3 cursor-pointer" onClick={() => {
+                                                                setCampaignEntityIds([entity.entityId]);
+                                                                setIsCampaignDialogOpen(true);
+                                                            }}>
+                                                                <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><PhoneCall className="h-3.5 w-3.5" /></div>
+                                                                <span className="font-bold text-sm">Add to Call Campaign</span>
+                                                            </DropdownMenuItem>
                                                             
                                                             <DropdownMenuSeparator className="my-2" />
                                                             <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setManagingWorkspacesEntity(entity)}>
@@ -1711,6 +1726,16 @@ export default function EntitiesClient() {
               />
             )}
 
+            {isCampaignDialogOpen && (
+              <AddToCampaignDialog
+                open={isCampaignDialogOpen}
+                onOpenChange={setIsCampaignDialogOpen}
+                entityIds={campaignEntityIds}
+                workspaceId={activeWorkspaceId}
+                onComplete={() => clearSelection()}
+              />
+            )}
+
             {/* Reassignment modal with bulk support */}
             <AssignUserModal 
               entity={assigningEntity} 
@@ -1735,6 +1760,10 @@ export default function EntitiesClient() {
               onInitiateDeals={() => setIsBulkDealOpen(true)}
               onCreateTasks={() => setIsBulkTaskOpen(true)}
               onInviteMeetings={() => setIsBulkMeetingOpen(true)}
+              onAddToCampaign={() => {
+                setCampaignEntityIds(selectedEntities.map(e => e.entityId));
+                setIsCampaignDialogOpen(true);
+              }}
               onArchive={() => setIsBulkArchiveOpen(true)}
               onDelete={() => setIsBulkDeleteOpen(true)}
               hideAssign={restrictToAssigned}
