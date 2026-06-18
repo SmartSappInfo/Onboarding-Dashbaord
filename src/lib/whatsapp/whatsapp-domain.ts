@@ -68,6 +68,102 @@ export function buildWhatsAppTemplateId(orgId: string, name: string, language: s
   return `${orgId}_${name}_${language}`;
 }
 
+// ── Authoring (create → submit to Meta for approval) ────────────────────────
+
+/** Meta's allowed template-name shape: lowercase letters, digits, underscores. */
+export const TEMPLATE_NAME_RE = /^[a-z0-9_]+$/;
+
+/** What the builder UI collects to author a new template. */
+export interface CreateTemplateInput {
+  name: string;
+  language: string;
+  category: WhatsAppTemplateCategory;
+  /** BODY text, may contain positional {{1..n}} params. */
+  bodyText: string;
+  /** Sample value for each {{n}} — required by Meta when the body has params. */
+  bodyExample?: string[];
+  /** Optional plain-text header (no variables in this MVP). */
+  headerText?: string;
+  /** Optional footer line. */
+  footerText?: string;
+}
+
+/** A single Meta template component (the subset the builder emits). */
+export interface MetaTemplateComponent {
+  type: 'HEADER' | 'BODY' | 'FOOTER';
+  format?: 'TEXT';
+  text?: string;
+  example?: { body_text?: string[][]; header_text?: string[] };
+}
+
+/**
+ * Validate authoring input before it's sent to Meta. Keeps the failure local
+ * (and unit-testable) instead of round-tripping a Graph rejection.
+ */
+export function validateCreateTemplateInput(
+  input: CreateTemplateInput,
+): { valid: boolean; error?: string } {
+  const name = input.name?.trim() ?? '';
+  if (!name) return { valid: false, error: 'Template name is required.' };
+  if (!TEMPLATE_NAME_RE.test(name)) {
+    return { valid: false, error: 'Name may only contain lowercase letters, numbers, and underscores.' };
+  }
+  if (!input.language?.trim()) return { valid: false, error: 'Language is required.' };
+  if (!input.bodyText?.trim()) return { valid: false, error: 'Body text is required.' };
+
+  const paramCount = extractParamCount(input.bodyText);
+  const examples = input.bodyExample ?? [];
+  if (paramCount > 0) {
+    if (examples.length !== paramCount) {
+      return { valid: false, error: `Provide a sample value for each of the ${paramCount} body parameter(s).` };
+    }
+    if (examples.some((e) => !e || !e.trim())) {
+      return { valid: false, error: 'Every body parameter needs a non-empty sample value.' };
+    }
+  }
+  // Params must be exactly {{1}}..{{n}} (no gaps), or Meta rejects the template.
+  const unique = [...new Set(extractParamIndices(input.bodyText))];
+  if (unique.length && Math.max(...unique) !== unique.length) {
+    return { valid: false, error: 'Body parameters must be numbered consecutively from {{1}} (no gaps).' };
+  }
+  return { valid: true };
+}
+
+/**
+ * Build the `POST /{wabaId}/message_templates` payload from authoring input.
+ * Pure — assumes {@link validateCreateTemplateInput} already passed.
+ */
+export function buildCreateTemplatePayload(input: CreateTemplateInput): {
+  name: string;
+  language: string;
+  category: WhatsAppTemplateCategory;
+  components: MetaTemplateComponent[];
+} {
+  const components: MetaTemplateComponent[] = [];
+
+  if (input.headerText?.trim()) {
+    components.push({ type: 'HEADER', format: 'TEXT', text: input.headerText.trim() });
+  }
+
+  const paramCount = extractParamCount(input.bodyText);
+  const body: MetaTemplateComponent = { type: 'BODY', text: input.bodyText.trim() };
+  if (paramCount > 0) {
+    body.example = { body_text: [(input.bodyExample ?? []).map((e) => e.trim())] };
+  }
+  components.push(body);
+
+  if (input.footerText?.trim()) {
+    components.push({ type: 'FOOTER', text: input.footerText.trim() });
+  }
+
+  return {
+    name: input.name.trim(),
+    language: input.language.trim(),
+    category: input.category,
+    components,
+  };
+}
+
 const KNOWN_STATUSES: WhatsAppTemplateStatus[] = [
   'APPROVED',
   'PENDING',

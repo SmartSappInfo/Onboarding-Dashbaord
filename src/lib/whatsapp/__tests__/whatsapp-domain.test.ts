@@ -7,7 +7,10 @@ import {
   validateParamMap,
   buildWhatsAppTemplateId,
   normalizeMetaTemplate,
+  validateCreateTemplateInput,
+  buildCreateTemplatePayload,
   type MetaTemplateRaw,
+  type CreateTemplateInput,
 } from '../whatsapp-domain';
 
 /**
@@ -105,5 +108,73 @@ describe('normalizeMetaTemplate', () => {
     );
     expect(t.status).toBe('REJECTED');
     expect(t.rejectedReason).toBe('INVALID_FORMAT');
+  });
+});
+
+describe('validateCreateTemplateInput', () => {
+  const base: CreateTemplateInput = {
+    name: 'order_update',
+    language: 'en_US',
+    category: 'UTILITY',
+    bodyText: 'Hi {{1}}, your order {{2}} is ready.',
+    bodyExample: ['John', '#123'],
+  };
+
+  it('accepts a valid template with matching examples', () => {
+    expect(validateCreateTemplateInput(base).valid).toBe(true);
+  });
+
+  it('rejects an invalid name', () => {
+    const r = validateCreateTemplateInput({ ...base, name: 'Order Update' });
+    expect(r.valid).toBe(false);
+  });
+
+  it('requires a sample value per body param', () => {
+    const r = validateCreateTemplateInput({ ...base, bodyExample: ['John'] });
+    expect(r.valid).toBe(false);
+  });
+
+  it('rejects non-contiguous params (gap)', () => {
+    const r = validateCreateTemplateInput({
+      ...base,
+      bodyText: 'Hi {{1}} {{3}}',
+      bodyExample: ['a', 'b'],
+    });
+    expect(r.valid).toBe(false);
+  });
+
+  it('accepts a param-free body with no examples', () => {
+    const r = validateCreateTemplateInput({ ...base, bodyText: 'Static body', bodyExample: [] });
+    expect(r.valid).toBe(true);
+  });
+});
+
+describe('buildCreateTemplatePayload', () => {
+  it('emits HEADER/BODY/FOOTER with a body example', () => {
+    const p = buildCreateTemplatePayload({
+      name: 'order_update',
+      language: 'en_US',
+      category: 'UTILITY',
+      headerText: 'Order update',
+      bodyText: 'Hi {{1}}',
+      bodyExample: ['John'],
+      footerText: 'MineX360',
+    });
+    expect(p.name).toBe('order_update');
+    expect(p.components.map((c) => c.type)).toEqual(['HEADER', 'BODY', 'FOOTER']);
+    const body = p.components.find((c) => c.type === 'BODY');
+    expect(body?.example?.body_text).toEqual([['John']]);
+  });
+
+  it('omits the example when the body has no params', () => {
+    const p = buildCreateTemplatePayload({
+      name: 'welcome',
+      language: 'en',
+      category: 'MARKETING',
+      bodyText: 'Welcome aboard!',
+    });
+    const body = p.components.find((c) => c.type === 'BODY');
+    expect(body?.example).toBeUndefined();
+    expect(p.components).toHaveLength(1);
   });
 });

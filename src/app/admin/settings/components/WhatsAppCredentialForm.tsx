@@ -22,6 +22,7 @@ import type {
   WhatsAppConnectionStatus,
   WhatsAppQualityRating,
 } from '@/lib/whatsapp/whatsapp-types';
+import { parseDraft, serializeDraft, isDraftEmpty, type CredentialDraft } from '@/lib/whatsapp/whatsapp-draft';
 
 // Derived display maps — computed during render, never in effects. Status/quality
 // keep semantic state colours (with dark: variants) per the QR Studio convention.
@@ -40,22 +41,9 @@ const QUALITY_STYLE: Record<WhatsAppQualityRating, string> = {
 const INPUT_CLS = 'h-10 rounded-xl border-border bg-background px-4 font-medium';
 
 // localStorage key prefix for the unsaved-credential draft. Scoped per org so
-// switching organizations never bleeds one tenant's draft into another.
+// switching organizations never bleeds one tenant's draft into another. The
+// draft itself is versioned + token-free — see whatsapp-draft.ts.
 const DRAFT_PREFIX = 'whatsapp-cred-draft:';
-
-/**
- * Fields safe to keep in a browser draft until the connection is saved. The
- * System User access token is DELIBERATELY excluded — it is the most sensitive,
- * long-lived secret and must never persist in localStorage. (`accessToken` is
- * always typed fresh and cleared on load.)
- */
-interface CredentialDraft {
-  wabaId: string;
-  phoneNumberId: string;
-  displayPhoneNumber: string;
-  businessName: string;
-  appSecret: string;
-}
 
 /**
  * Left column of the WhatsApp setup page: the credential form + live status.
@@ -107,22 +95,23 @@ export default function WhatsAppCredentialForm() {
   }, [draftKey]);
 
   // Restore unsaved input on top of the server values after a reload. Treated
-  // as dirty so it survives until an explicit save clears it.
+  // as dirty so it survives until an explicit save clears it. A version-mismatch
+  // or corrupt payload yields null and is ignored.
   const restoreDraft = React.useCallback(() => {
     if (!draftKey) return;
+    let d: CredentialDraft | null = null;
     try {
-      const raw = localStorage.getItem(draftKey);
-      if (!raw) return;
-      const d = JSON.parse(raw) as Partial<CredentialDraft>;
-      if (typeof d.wabaId === 'string') setWabaId(d.wabaId);
-      if (typeof d.phoneNumberId === 'string') setPhoneNumberId(d.phoneNumberId);
-      if (typeof d.displayPhoneNumber === 'string') setDisplayPhoneNumber(d.displayPhoneNumber);
-      if (typeof d.businessName === 'string') setBusinessName(d.businessName);
-      if (typeof d.appSecret === 'string') setAppSecret(d.appSecret);
-      dirtyRef.current = true;
+      d = parseDraft(localStorage.getItem(draftKey));
     } catch {
-      /* corrupt draft — ignore */
+      return; // storage unavailable
     }
+    if (!d) return;
+    setWabaId(d.wabaId);
+    setPhoneNumberId(d.phoneNumberId);
+    setDisplayPhoneNumber(d.displayPhoneNumber);
+    setBusinessName(d.businessName);
+    setAppSecret(d.appSecret);
+    dirtyRef.current = true;
   }, [draftKey]);
 
   const hydrate = React.useCallback((c: WhatsAppConnectionPublic | null) => {
@@ -165,11 +154,8 @@ export default function WhatsAppCredentialForm() {
     if (loading || !draftKey || !dirtyRef.current) return;
     const draft: CredentialDraft = { wabaId, phoneNumberId, displayPhoneNumber, businessName, appSecret };
     try {
-      if (Object.values(draft).some((v) => v.trim() !== '')) {
-        localStorage.setItem(draftKey, JSON.stringify(draft));
-      } else {
-        localStorage.removeItem(draftKey);
-      }
+      if (isDraftEmpty(draft)) localStorage.removeItem(draftKey);
+      else localStorage.setItem(draftKey, serializeDraft(draft));
     } catch {
       /* storage unavailable — non-fatal */
     }

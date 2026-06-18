@@ -172,6 +172,25 @@ export class MetaCloudApiClient {
   }
 
   /**
+   * Submit a new message template for Meta approval via
+   * `POST /{wabaId}/message_templates`. Returns Meta's id + initial status
+   * (typically PENDING). Approval happens asynchronously on Meta's side — poll
+   * via `listMessageTemplates` / the sync action.
+   */
+  async createMessageTemplate(payload: {
+    name: string;
+    language: string;
+    category: string;
+    components: unknown[];
+  }): Promise<{ id: string; status?: string; category?: string }> {
+    return this.request<{ id: string; status?: string; category?: string }>(
+      'POST',
+      `${this.creds.wabaId}/message_templates`,
+      { body: payload },
+    );
+  }
+
+  /**
    * Send a pre-built message payload (template or text) via
    * `POST /{phoneNumberId}/messages`. Returns the Meta message id (wamid) for
    * status reconciliation.

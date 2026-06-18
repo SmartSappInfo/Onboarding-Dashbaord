@@ -16,14 +16,43 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { MessageCircle, Loader2, RefreshCw, CheckCircle2, Clock, XCircle, Plus } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { MessageCircle, Loader2, RefreshCw, CheckCircle2, Clock, XCircle, Plus, FilePlus2 } from 'lucide-react';
 import {
   listWhatsAppTemplates,
   syncWhatsAppTemplates,
   adoptWhatsAppTemplate,
+  createWhatsAppTemplate,
 } from '@/lib/whatsapp-template-actions';
-import { getBodyText } from '@/lib/whatsapp/whatsapp-domain';
-import type { WhatsAppTemplate, WhatsAppTemplateStatus } from '@/lib/whatsapp/whatsapp-types';
+import { getBodyText, extractParamCount } from '@/lib/whatsapp/whatsapp-domain';
+import type {
+  WhatsAppTemplate,
+  WhatsAppTemplateStatus,
+  WhatsAppTemplateCategory,
+} from '@/lib/whatsapp/whatsapp-types';
+
+const LANGUAGES = ['en_US', 'en_GB', 'en', 'fr', 'es', 'pt_BR', 'ar'];
+// AUTHENTICATION omitted: it needs a fixed OTP/button structure this text-body
+// builder can't produce, so Meta would auto-reject it.
+const CATEGORIES: WhatsAppTemplateCategory[] = ['UTILITY', 'MARKETING'];
+
+// Hoisted so it isn't recreated per render (`js-hoist-regexp`).
+const PREVIEW_PARAM_RE = /\{\{\s*(\d+)\s*\}\}/g;
+
+/** Substitute {{n}} with its sample value, keeping the {{n}} token when blank. */
+function renderPreview(body: string, examples: string[]): string {
+  return body.replace(PREVIEW_PARAM_RE, (_m, n: string) => {
+    const v = examples[Number(n) - 1];
+    return v && v.trim() ? v : `{{${n}}}`;
+  });
+}
 
 interface Props {
   organizationId: string;
@@ -49,6 +78,7 @@ export default function WhatsAppTemplatePanel({ organizationId }: Props) {
   const [syncing, setSyncing] = React.useState(false);
   const [templates, setTemplates] = React.useState<WhatsAppTemplate[]>([]);
   const [adopting, setAdopting] = React.useState<WhatsAppTemplate | null>(null);
+  const [creating, setCreating] = React.useState(false);
 
   const load = React.useCallback(async () => {
     if (!user) return;
@@ -109,9 +139,14 @@ export default function WhatsAppTemplatePanel({ organizationId }: Props) {
               Meta-registered templates. Only approved templates can be used to send.
             </CardDescription>
           </div>
-          <Button onClick={handleSync} disabled={syncing} variant="outline" className="rounded-xl font-bold">
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} /> Sync from Meta
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button onClick={() => setCreating(true)} className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700">
+              <FilePlus2 className="h-4 w-4 mr-2" /> Create template
+            </Button>
+            <Button onClick={handleSync} disabled={syncing} variant="outline" className="rounded-xl font-bold">
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} /> Sync from Meta
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
@@ -186,7 +221,236 @@ export default function WhatsAppTemplatePanel({ organizationId }: Props) {
           }}
         />
       )}
+
+      {creating && (
+        <CreateTemplateDialog
+          organizationId={organizationId}
+          onClose={() => setCreating(false)}
+          onCreated={(t) => {
+            setCreating(false);
+            setTemplates((prev) => [t, ...prev.filter((x) => x.id !== t.id)]);
+            toast({
+              title: 'Submitted to Meta',
+              description: 'Template sent for approval (usually minutes). It can send once APPROVED.',
+            });
+          }}
+        />
+      )}
     </Card>
+  );
+}
+
+function CreateTemplateDialog({
+  organizationId,
+  onClose,
+  onCreated,
+}: {
+  organizationId: string;
+  onClose: () => void;
+  onCreated: (t: WhatsAppTemplate) => void;
+}) {
+  const { user } = useUser();
+  const { toast } = useToast();
+  const [name, setName] = React.useState('');
+  const [language, setLanguage] = React.useState('en_US');
+  const [category, setCategory] = React.useState<WhatsAppTemplateCategory>('UTILITY');
+  const [headerText, setHeaderText] = React.useState('');
+  const [bodyText, setBodyText] = React.useState('');
+  const [footerText, setFooterText] = React.useState('');
+  // Keyed by param index so we never run an effect to resize an array — the
+  // visible inputs are derived from `paramCount` during render
+  // (`rerender-derived-state-no-effect`). Stale keys above paramCount are simply
+  // never read, and dropped on submit.
+  const [examplesByIndex, setExamplesByIndex] = React.useState<Record<number, string>>({});
+  const [saving, setSaving] = React.useState(false);
+
+  // Derived during render — no effect, no second source of truth.
+  const paramCount = React.useMemo(() => extractParamCount(bodyText), [bodyText]);
+  const examples = React.useMemo(
+    () => Array.from({ length: paramCount }, (_, i) => examplesByIndex[i] ?? ''),
+    [paramCount, examplesByIndex],
+  );
+
+  const setExample = React.useCallback((i: number, v: string) => {
+    setExamplesByIndex((prev) => ({ ...prev, [i]: v }));
+  }, []);
+
+  const nameValid = /^[a-z0-9_]*$/.test(name);
+  const canSubmit =
+    !!name.trim() &&
+    nameValid &&
+    !!bodyText.trim() &&
+    examples.every((e) => e.trim().length > 0);
+
+  const handleCreate = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await createWhatsAppTemplate(idToken, {
+        organizationId,
+        name: name.trim(),
+        language,
+        category,
+        bodyText: bodyText.trim(),
+        bodyExample: examples.map((e) => e.trim()),
+        headerText: headerText.trim() || undefined,
+        footerText: footerText.trim() || undefined,
+      });
+      if (res.success) onCreated(res.data);
+      else toast({ variant: 'destructive', title: 'Create failed', description: res.error });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create WhatsApp template</DialogTitle>
+          <DialogDescription className="text-xs">
+            Submitted to Meta for approval. Use <code>{'{{1}}'}</code>, <code>{'{{2}}'}</code> … in the
+            body for variables; give each a sample value so Meta can review it.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="wa-tpl-name" className="text-[10px] font-semibold text-muted-foreground">Name</Label>
+              <Input
+                id="wa-tpl-name"
+                value={name}
+                onChange={(e) => setName(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                placeholder="order_update"
+                aria-invalid={!nameValid}
+                aria-describedby={!nameValid ? 'wa-tpl-name-err' : undefined}
+                className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4"
+              />
+              {!nameValid && (
+                <p id="wa-tpl-name-err" role="alert" className="text-[10px] text-red-600 font-semibold">
+                  Only lowercase letters, numbers, and underscores.
+                </p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-semibold text-muted-foreground">Language</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger aria-label="Template language" className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((l) => (
+                    <SelectItem key={l} value={l}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[10px] font-semibold text-muted-foreground">Category</Label>
+            <Select value={category} onValueChange={(v) => setCategory(v as WhatsAppTemplateCategory)}>
+              <SelectTrigger aria-label="Template category" className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="wa-tpl-header" className="text-[10px] font-semibold text-muted-foreground">Header (optional)</Label>
+            <Input
+              id="wa-tpl-header"
+              value={headerText}
+              onChange={(e) => setHeaderText(e.target.value)}
+              placeholder="e.g. Order update"
+              maxLength={60}
+              className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="wa-tpl-body" className="text-[10px] font-semibold text-muted-foreground">Body</Label>
+            <Textarea
+              id="wa-tpl-body"
+              value={bodyText}
+              onChange={(e) => setBodyText(e.target.value)}
+              placeholder="Hi {{1}}, your order {{2}} is on the way."
+              rows={4}
+              className="rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 py-3"
+            />
+          </div>
+
+          {paramCount > 0 && (
+            <div className="space-y-2 rounded-xl bg-muted/10 p-3">
+              <Label className="text-[10px] font-semibold text-muted-foreground">
+                Sample values (for Meta review)
+              </Label>
+              {examples.map((val, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Label htmlFor={`wa-tpl-ex-${i}`} className="text-[10px] font-mono text-muted-foreground w-10">
+                    {`{{${i + 1}}}`}
+                  </Label>
+                  <Input
+                    id={`wa-tpl-ex-${i}`}
+                    value={val}
+                    onChange={(e) => setExample(i, e.target.value)}
+                    placeholder={i === 0 ? 'e.g. John' : 'e.g. #12345'}
+                    className="h-9 rounded-lg bg-background border-none shadow-inner font-medium px-3"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Live WhatsApp-bubble preview — derived during render. */}
+          {bodyText.trim() && (
+            <div className="space-y-1">
+              <Label className="text-[10px] font-semibold text-muted-foreground">Preview</Label>
+              <div className="rounded-2xl rounded-tl-sm bg-emerald-500/10 ring-1 ring-emerald-500/20 p-3 text-sm space-y-1">
+                {headerText.trim() && <p className="font-bold">{headerText.trim()}</p>}
+                <p className="whitespace-pre-wrap">{renderPreview(bodyText, examples)}</p>
+                {footerText.trim() && <p className="text-[10px] text-muted-foreground">{footerText.trim()}</p>}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Label htmlFor="wa-tpl-footer" className="text-[10px] font-semibold text-muted-foreground">Footer (optional)</Label>
+            <Input
+              id="wa-tpl-footer"
+              value={footerText}
+              onChange={(e) => setFooterText(e.target.value)}
+              placeholder="e.g. MineX360"
+              maxLength={60}
+              className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} className="rounded-xl font-bold">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCreate}
+            disabled={saving || !canSubmit}
+            className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FilePlus2 className="h-4 w-4 mr-2" />}
+            Submit for approval
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
