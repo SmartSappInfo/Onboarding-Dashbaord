@@ -268,13 +268,18 @@ export function buildCreateTemplatePayload(input: CreateTemplateInput): {
   };
 }
 
-/** Allowed header media by MIME type, with Meta's per-format size cap (bytes). */
+/**
+ * Allowed header media by MIME type, with a per-format size cap (bytes). Caps
+ * are bounded by the upload transport's Cloud Run ~32MB request ceiling, not
+ * Meta's higher limits — so documents are capped at 30MB (Meta allows 100MB).
+ * Raising the doc cap requires raising the Cloud Run request limit too.
+ */
 const HEADER_MEDIA: Record<string, { format: MediaHeaderFormat; maxBytes: number }> = {
   'image/jpeg': { format: 'IMAGE', maxBytes: 5 * 1024 * 1024 },
   'image/png': { format: 'IMAGE', maxBytes: 5 * 1024 * 1024 },
   'video/mp4': { format: 'VIDEO', maxBytes: 16 * 1024 * 1024 },
   'video/3gpp': { format: 'VIDEO', maxBytes: 16 * 1024 * 1024 },
-  'application/pdf': { format: 'DOCUMENT', maxBytes: 100 * 1024 * 1024 },
+  'application/pdf': { format: 'DOCUMENT', maxBytes: 30 * 1024 * 1024 },
 };
 
 /**
@@ -331,6 +336,15 @@ export function getTemplateRuntimeNeeds(components: unknown[] | undefined): Temp
     }
   }
   return needs;
+}
+
+/**
+ * Whether a template requires runtime values (media header and/or dynamic URL
+ * button) that the campaign/automation engine can't supply yet — so it must NOT
+ * be adopted and can only be reached via the per-send test flow.
+ */
+export function hasRuntimeNeeds(needs: TemplateRuntimeNeeds): boolean {
+  return !!needs.mediaFormat || needs.dynamicUrlButtons.length > 0;
 }
 
 const KNOWN_STATUSES: WhatsAppTemplateStatus[] = [

@@ -9,6 +9,7 @@
  */
 
 import type { MessageTemplate } from '@/lib/types';
+import { getTemplateRuntimeNeeds, hasRuntimeNeeds } from './whatsapp-domain';
 
 const WINDOW_HOURS = 24;
 
@@ -39,6 +40,18 @@ export function buildTemplateParams(paramMap: string[], variables: Record<string
   });
 }
 
+type TemplateTextParam = { type: 'text'; text: string };
+type MediaRef = { link: string } | { id: string };
+type HeaderMediaParam =
+  | { type: 'image'; image: MediaRef }
+  | { type: 'video'; video: MediaRef }
+  | { type: 'document'; document: MediaRef };
+
+export type TemplateComponent =
+  | { type: 'header'; parameters: HeaderMediaParam[] }
+  | { type: 'body'; parameters: TemplateTextParam[] }
+  | { type: 'button'; sub_type: string; index: string; parameters: TemplateTextParam[] };
+
 export interface TemplatePayload {
   messaging_product: 'whatsapp';
   to: string;
@@ -46,20 +59,64 @@ export interface TemplatePayload {
   template: {
     name: string;
     language: { code: string };
-    components?: Array<{ type: 'body'; parameters: Array<{ type: 'text'; text: string }> }>;
+    components?: TemplateComponent[];
   };
 }
 
+/** Runtime media supplied at send time for a media-header template. */
+export interface HeaderMediaRef {
+  type: 'image' | 'video' | 'document';
+  /** A public URL, or a Meta media id — exactly one. */
+  link?: string;
+  id?: string;
+}
+
+/** A dynamic button parameter (e.g. the {{1}} suffix of a URL button). */
+export interface ButtonParam {
+  subType: 'url' | 'quick_reply';
+  index: number;
+  text: string;
+}
+
+function buildHeaderComponent(media: HeaderMediaRef): TemplateComponent {
+  const ref: MediaRef = media.id ? { id: media.id } : { link: media.link ?? '' };
+  if (media.type === 'image') return { type: 'header', parameters: [{ type: 'image', image: ref }] };
+  if (media.type === 'video') return { type: 'header', parameters: [{ type: 'video', video: ref }] };
+  return { type: 'header', parameters: [{ type: 'document', document: ref }] };
+}
+
+/**
+ * Build a Meta template message. Body params are the common case; the optional
+ * `headerMedia` and `buttonParams` emit header/button components only when a
+ * template actually has those dynamic parts. With neither supplied, the output
+ * is byte-identical to the body-only payload (regression-guarded by tests).
+ * Component order follows Meta's: header → body → button.
+ */
 export function buildTemplatePayload(input: {
   to: string;
   name: string;
   language: string;
   params: string[];
+  headerMedia?: HeaderMediaRef;
+  buttonParams?: ButtonParam[];
 }): TemplatePayload {
-  const components =
-    input.params.length > 0
-      ? [{ type: 'body' as const, parameters: input.params.map((text) => ({ type: 'text' as const, text })) }]
-      : undefined;
+  const components: TemplateComponent[] = [];
+
+  if (input.headerMedia) components.push(buildHeaderComponent(input.headerMedia));
+
+  if (input.params.length > 0) {
+    components.push({ type: 'body', parameters: input.params.map((text) => ({ type: 'text', text })) });
+  }
+
+  for (const b of input.buttonParams ?? []) {
+    components.push({
+      type: 'button',
+      sub_type: b.subType,
+      index: String(b.index),
+      parameters: [{ type: 'text', text: b.text }],
+    });
+  }
+
   return {
     messaging_product: 'whatsapp',
     to: input.to,
@@ -67,7 +124,7 @@ export function buildTemplatePayload(input: {
     template: {
       name: input.name,
       language: { code: input.language },
-      ...(components ? { components } : {}),
+      ...(components.length > 0 ? { components } : {}),
     },
   };
 }
@@ -148,6 +205,14 @@ export async function sendWhatsApp(input: SendWhatsAppInput): Promise<SendWhatsA
     if (!wa) throw new Error(`WhatsApp template "${template.whatsappTemplateName}" not found — re-sync from Meta.`);
     if (wa.status !== 'APPROVED') {
       throw new Error(`WhatsApp template "${wa.name}" is ${wa.status}; cannot send.`);
+    }
+    // The engine can't supply per-send media / dynamic-URL values, so refuse
+    // rather than let Meta reject. Adoption is blocked for such templates, so
+    // this guards any adopted before that rule existed.
+    if (hasRuntimeNeeds(getTemplateRuntimeNeeds(wa.components))) {
+      throw new Error(
+        `WhatsApp template "${wa.name}" needs a media header or dynamic URL value, which campaign sends don't support — use the per-message test send.`,
+      );
     }
     payload = buildTemplatePayload({
       to,

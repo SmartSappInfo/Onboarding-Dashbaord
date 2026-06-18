@@ -22,12 +22,11 @@ import {
   buildWhatsAppTemplateId,
   deriveParamCount,
   validateApprovedSend,
-  validateHeaderMedia,
   getTemplateRuntimeNeeds,
+  hasRuntimeNeeds,
   MAX_TEMPLATE_BUTTONS,
 } from './whatsapp/whatsapp-domain';
 import { buildTemplatePayload, normalizeWaPhone } from './whatsapp/whatsapp-send';
-import type { MediaHeaderFormat } from './whatsapp/whatsapp-domain';
 import type { WhatsAppTemplate, WhatsAppTemplateStatus, WhatsAppTemplateCategory } from './whatsapp/whatsapp-types';
 import type { MessageTemplate } from './types';
 
@@ -72,50 +71,8 @@ export async function listWhatsAppTemplates(
   }
 }
 
-const UploadMediaSchema = z.object({
-  organizationId: z.string().min(1),
-  fileName: z.string().trim().min(1).max(240),
-  fileType: z.string().trim().min(1),
-  /** base64-encoded file bytes (the system-user token never leaves the server). */
-  dataBase64: z.string().min(1),
-});
-
-/**
- * Upload a header media file (image/video/document) and return the Meta
- * `header_handle` to embed in a template's media header. Requires `META_APP_ID`
- * — the Resumable Upload API is app-scoped.
- */
-export async function uploadWhatsAppHeaderMedia(
-  idToken: string,
-  payload: z.infer<typeof UploadMediaSchema>,
-): Promise<ActionResult<{ handle: string; format: MediaHeaderFormat }>> {
-  try {
-    const { organizationId, fileName, fileType, dataBase64 } = UploadMediaSchema.parse(payload);
-    await requireOrgAdmin(idToken, organizationId);
-
-    const appId = process.env.META_APP_ID;
-    if (!appId) {
-      return { success: false, error: 'Media headers require META_APP_ID to be configured on the server.' };
-    }
-
-    const data = Buffer.from(dataBase64, 'base64');
-    const check = validateHeaderMedia(fileType, data.byteLength);
-    if (!check.valid || !check.format) return { success: false, error: check.error ?? 'Invalid media.' };
-
-    const creds = await WhatsAppCredentialRepository.getCredentials(organizationId);
-    if (!creds) return { success: false, error: 'No WhatsApp connection configured.' };
-
-    const handle = await new MetaCloudApiClient(creds).uploadResumable({
-      appId,
-      fileName,
-      fileType,
-      data: new Uint8Array(data),
-    });
-    return { success: true, data: { handle, format: check.format } };
-  } catch (e) {
-    return fail(e);
-  }
-}
+// Header-media upload lives in the route handler `app/api/whatsapp/upload-media`
+// (Server Actions are capped at 2mb — too small for real media).
 
 const SendTestSchema = z.object({
   organizationId: z.string().min(1),
@@ -292,6 +249,16 @@ export async function adoptWhatsAppTemplate(
     if (!wa) return { success: false, error: 'WhatsApp template not found.' };
     if (wa.organizationId !== organizationId) return { success: false, error: 'Template belongs to another organization.' };
     if (wa.status !== 'APPROVED') return { success: false, error: `Template is ${wa.status}; only APPROVED templates can be adopted.` };
+
+    // Media headers / dynamic URL buttons need per-send runtime values the
+    // campaign engine can't supply yet — keep them out of adoptable templates.
+    if (hasRuntimeNeeds(getTemplateRuntimeNeeds(wa.components))) {
+      return {
+        success: false,
+        error:
+          'This template has a media header or dynamic URL button, which campaigns don’t support yet — use “Send test” instead.',
+      };
+    }
 
     const check = validateParamMap(paramMap, wa.paramCount);
     if (!check.valid) return { success: false, error: check.error ?? 'Invalid parameter mapping.' };

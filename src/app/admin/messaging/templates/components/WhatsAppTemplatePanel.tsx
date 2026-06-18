@@ -33,7 +33,13 @@ import {
   sendWhatsAppTestMessage,
   uploadWhatsAppHeaderMedia,
 } from '@/lib/whatsapp-template-actions';
-import { getBodyText, extractParamCount, getTemplateRuntimeNeeds, MAX_TEMPLATE_BUTTONS } from '@/lib/whatsapp/whatsapp-domain';
+import {
+  getBodyText,
+  extractParamCount,
+  getTemplateRuntimeNeeds,
+  hasRuntimeNeeds,
+  MAX_TEMPLATE_BUTTONS,
+} from '@/lib/whatsapp/whatsapp-domain';
 import type { TemplateButtonInput, MediaHeaderFormat } from '@/lib/whatsapp/whatsapp-domain';
 import type { WhatsAppTemplate, WhatsAppTemplateStatus } from '@/lib/whatsapp/whatsapp-types';
 
@@ -224,14 +230,23 @@ export default function WhatsAppTemplatePanel({ organizationId }: Props) {
                       )}
                       {t.status === 'APPROVED' && (
                         <div className="flex items-center gap-1 flex-wrap">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setAdopting(t)}
-                            className="rounded-lg font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/5 h-8"
-                          >
-                            <Plus className="h-3.5 w-3.5 mr-1" /> Adopt as template
-                          </Button>
+                          {hasRuntimeNeeds(getTemplateRuntimeNeeds(t.components)) ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                            >
+                              Test-send only
+                            </Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setAdopting(t)}
+                              className="rounded-lg font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/5 h-8"
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1" /> Adopt as template
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"
@@ -654,7 +669,7 @@ function CreateTemplateDialog({
                   className="block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:font-bold file:text-white"
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  JPEG/PNG (≤5MB), MP4/3GP (≤16MB), or PDF (≤100MB).
+                  JPEG/PNG (≤5MB), MP4/3GP (≤16MB), or PDF (≤30MB).
                 </p>
                 {uploadingMedia && (
                   <p className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">

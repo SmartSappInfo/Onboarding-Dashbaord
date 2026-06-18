@@ -12,6 +12,7 @@ import {
   validateApprovedSend,
   validateHeaderMedia,
   getTemplateRuntimeNeeds,
+  hasRuntimeNeeds,
   parseTemplateStatusEvents,
   type MetaTemplateRaw,
   type CreateTemplateInput,
@@ -321,6 +322,12 @@ describe('getTemplateRuntimeNeeds', () => {
   it('returns empty needs for body-only or undefined', () => {
     expect(getTemplateRuntimeNeeds([{ type: 'BODY', text: 'hi' }])).toEqual({ dynamicUrlButtons: [] });
     expect(getTemplateRuntimeNeeds(undefined)).toEqual({ dynamicUrlButtons: [] });
+  });
+
+  it('hasRuntimeNeeds is true for media or dynamic buttons, false otherwise', () => {
+    expect(hasRuntimeNeeds({ mediaFormat: 'IMAGE', dynamicUrlButtons: [] })).toBe(true);
+    expect(hasRuntimeNeeds({ dynamicUrlButtons: [1] })).toBe(true);
+    expect(hasRuntimeNeeds({ dynamicUrlButtons: [] })).toBe(false);
   });
 });
 
