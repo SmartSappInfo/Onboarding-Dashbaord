@@ -18,16 +18,20 @@ import type { UserProfile } from '@/lib/types';
 
 /**
  * Whether a profile may manage this org's integrations/credentials. Mirrors how
- * `/admin/settings` is gated: management → systemSettings (edit). A
- * `system_admin` short-circuits to allow.
+ * `/admin/settings` is gated: management → systemSettings (edit).
+ *
+ * A platform `system_admin` is a cross-tenant operator (tenant-switching in
+ * TenantContext, the backoffice control plane) so it may manage ANY org's
+ * integrations. Everyone else is bound to their own org and needs the
+ * systemSettings edit permission there.
  */
 export function canManageOrgIntegrations(
   profile: UserProfile | undefined,
   organizationId: string,
 ): boolean {
   if (!profile?.isAuthorized) return false;
-  if (profile.organizationId !== organizationId) return false;
   if (profile.permissions?.includes('system_admin')) return true;
+  if (profile.organizationId !== organizationId) return false;
   return evaluatePermission(profile.permissionsSchema, 'management', 'systemSettings', 'edit');
 }
 

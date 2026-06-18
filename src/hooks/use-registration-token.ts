@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Meeting, MeetingRegistrant } from '@/lib/types';
+import { validateRegistrantToken } from '@/app/actions/meeting-attendance-actions';
 
 interface UseRegistrationTokenResult {
   /** The current token from the URL, or null */
@@ -54,14 +55,11 @@ export function useRegistrationToken(meeting: Meeting): UseRegistrationTokenResu
 
     const resolveToken = async () => {
       try {
-        const registrantsRef = collection(firestore, `meetings/${meeting.id}/registrants`);
-        const q = query(registrantsRef, where('token', '==', token), limit(1));
-        const snapshot = await getDocs(q);
+        const validationResult = await validateRegistrantToken(meeting.id, token);
 
         if (!cancelled) {
-          if (!snapshot.empty) {
-            const doc = snapshot.docs[0];
-            setRegistrant({ id: doc.id, ...doc.data() } as MeetingRegistrant);
+          if (validationResult.valid && validationResult.registrant) {
+            setRegistrant(validationResult.registrant as any);
           } else {
             // Invalid token — clear it
             setRegistrant(null);

@@ -17,6 +17,7 @@ import {
   Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getActionMeta } from '@/lib/call-action-types';
 
 interface InteractiveScriptViewProps {
   nodes: Node[];
@@ -105,8 +106,32 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
         return 'Script body text.';
       case 'objection':
         return 'Objection response details here…';
-      case 'action':
-        return `Trigger Action: ${node.data?.actionType || 'None'}`;
+      case 'action': {
+        const meta = getActionMeta(node.data?.actionType || '');
+        let details = `Trigger Action: ${meta.label}`;
+        const config = node.data?.actionConfig || {};
+        if (node.data?.actionType === 'SEND_SMS' || node.data?.actionType === 'SEND_EMAIL' || node.data?.actionType === 'SEND_WHATSAPP') {
+          details += ` (Template ID: ${config.templateId || 'Not configured'})`;
+        } else if (node.data?.actionType === 'CREATE_TASK') {
+          details += ` (Task: "${config.taskTitle || 'Follow up'}" - Priority: ${config.taskPriority || 'medium'})`;
+        } else if (node.data?.actionType === 'CHANGE_STAGE') {
+          details += ` (Stage ID: ${config.stageId || 'Not configured'})`;
+        } else if (node.data?.actionType === 'ADD_TAG' || node.data?.actionType === 'REMOVE_TAG') {
+          details += ` (Tag ID: ${config.tagId || 'Not configured'})`;
+        } else if (node.data?.actionType === 'WEBHOOK') {
+          details += ` (${config.webhookMethod || 'POST'} to ${config.webhookUrl || 'No URL'})`;
+        } else if (node.data?.actionType === 'LOG_NOTE') {
+          details += ` (Note: ${config.noteContent || 'Empty'})`;
+        } else if (node.data?.actionType === 'SCHEDULE_MEETING') {
+          details += ` (Meeting Type ID: ${config.meetingTypeId || 'Not configured'})`;
+        } else if (node.data?.actionType === 'TRANSFER_CALL') {
+          details += ` (Transfer to: ${config.transferTarget || 'No target'} via ${config.transferMode || 'phone'})`;
+        }
+        if (config.triggerDelaySeconds) {
+          details += ` [Delayed by ${config.triggerDelaySeconds}s]`;
+        }
+        return details;
+      }
       case 'outcome':
         return `Outcome Resolution: ${node.data?.outcomeValue || 'None'}`;
       default:
@@ -486,7 +511,12 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
                         onClick={() => setSelectedActionId(act.id)}
                         className="w-full flex items-start gap-2 p-2.5 rounded-xl text-left border border-border/60 bg-card hover:bg-muted text-muted-foreground hover:text-foreground text-[11px] transition-all"
                       >
-                        <Settings className="h-3.5 w-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                        {(() => {
+                          const m = getActionMeta(act.data?.actionType || '');
+                          const Icon = m.icon;
+                          const iconColor = m.colorClass.replace('bg-', 'text-');
+                          return <Icon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", iconColor)} />;
+                        })()}
                         <span className="truncate">{act.data.label || 'Action'}</span>
                       </button>
                     ))

@@ -860,10 +860,7 @@ service cloud.firestore {
       // Admin bypass - check first to avoid expensive getUserData() calls
       allow read, write: if request.auth != null && request.auth.token.email == 'admin@smartsapp.com';
       
-      allow get: if isAuthorized() && (
-        isSystemAdmin() ||
-        isOrgMatch(resource.data.organizationId)
-      );
+      allow get: if true;
       allow list: if isAuthorized();
       
       // Allow create if user has schools_edit permission

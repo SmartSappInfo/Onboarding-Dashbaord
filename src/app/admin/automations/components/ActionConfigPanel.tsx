@@ -979,12 +979,15 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         <div className="space-y-6">
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Filter by Pipeline</Label>
-            <Select value={config.pipelineId || ''} onValueChange={(val) => updateConfig({ pipelineId: val, stageId: '' })}>
+            <Select
+              value={config.pipelineId && config.pipelineId.length > 0 ? config.pipelineId : '__all__'}
+              onValueChange={(val) => updateConfig({ pipelineId: val === '__all__' ? '' : val, stageId: '' })}
+            >
               <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
                 <SelectValue placeholder="All Pipelines..." />
               </SelectTrigger>
               <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
-                <SelectItem value="">All Pipelines</SelectItem>
+                <SelectItem value="__all__">All Pipelines</SelectItem>
                 {pipelines?.map(p => (
                   <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                 ))}

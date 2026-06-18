@@ -39,6 +39,24 @@ const QUALITY_STYLE: Record<WhatsAppQualityRating, string> = {
 
 const INPUT_CLS = 'h-10 rounded-xl border-border bg-background px-4 font-medium';
 
+// localStorage key prefix for the unsaved-credential draft. Scoped per org so
+// switching organizations never bleeds one tenant's draft into another.
+const DRAFT_PREFIX = 'whatsapp-cred-draft:';
+
+/**
+ * Fields safe to keep in a browser draft until the connection is saved. The
+ * System User access token is DELIBERATELY excluded — it is the most sensitive,
+ * long-lived secret and must never persist in localStorage. (`accessToken` is
+ * always typed fresh and cleared on load.)
+ */
+interface CredentialDraft {
+  wabaId: string;
+  phoneNumberId: string;
+  displayPhoneNumber: string;
+  businessName: string;
+  appSecret: string;
+}
+
 /**
  * Left column of the WhatsApp setup page: the credential form + live status.
  * Resolves the active organization from tenant context. Styling conforms to the
@@ -63,10 +81,49 @@ export default function WhatsAppCredentialForm() {
   const [accessToken, setAccessToken] = React.useState('');
   const [appSecret, setAppSecret] = React.useState('');
 
+  // True once the admin has actually edited a field, so we never overwrite a
+  // server-loaded form with an auto-written "draft" the user never touched.
+  const dirtyRef = React.useRef(false);
+  const draftKey = activeOrganizationId ? `${DRAFT_PREFIX}${activeOrganizationId}` : null;
+
   const getToken = React.useCallback(async () => {
     if (!user) throw new Error('Not signed in.');
     return user.getIdToken();
   }, [user]);
+
+  const markDirty = React.useCallback(() => {
+    dirtyRef.current = true;
+  }, []);
+
+  // Drop the saved draft once it's persisted server-side (or removed).
+  const clearDraft = React.useCallback(() => {
+    dirtyRef.current = false;
+    if (!draftKey) return;
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {
+      /* storage unavailable (private mode / quota) — non-fatal */
+    }
+  }, [draftKey]);
+
+  // Restore unsaved input on top of the server values after a reload. Treated
+  // as dirty so it survives until an explicit save clears it.
+  const restoreDraft = React.useCallback(() => {
+    if (!draftKey) return;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const d = JSON.parse(raw) as Partial<CredentialDraft>;
+      if (typeof d.wabaId === 'string') setWabaId(d.wabaId);
+      if (typeof d.phoneNumberId === 'string') setPhoneNumberId(d.phoneNumberId);
+      if (typeof d.displayPhoneNumber === 'string') setDisplayPhoneNumber(d.displayPhoneNumber);
+      if (typeof d.businessName === 'string') setBusinessName(d.businessName);
+      if (typeof d.appSecret === 'string') setAppSecret(d.appSecret);
+      dirtyRef.current = true;
+    } catch {
+      /* corrupt draft — ignore */
+    }
+  }, [draftKey]);
 
   const hydrate = React.useCallback((c: WhatsAppConnectionPublic | null) => {
     setConn(c);
@@ -90,13 +147,33 @@ export default function WhatsAppCredentialForm() {
       } catch {
         /* surfaced on action use */
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          restoreDraft(); // layer any unsaved input over the server values
+          setLoading(false);
+        }
       }
     })();
     return () => {
       active = false;
     };
-  }, [user, activeOrganizationId, hydrate]);
+  }, [user, activeOrganizationId, hydrate, restoreDraft]);
+
+  // Persist the draft (sans access token) on every edit, so a reload or a
+  // failed save never loses what was typed. Only runs after load and only once
+  // the user has actually changed something.
+  React.useEffect(() => {
+    if (loading || !draftKey || !dirtyRef.current) return;
+    const draft: CredentialDraft = { wabaId, phoneNumberId, displayPhoneNumber, businessName, appSecret };
+    try {
+      if (Object.values(draft).some((v) => v.trim() !== '')) {
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    } catch {
+      /* storage unavailable — non-fatal */
+    }
+  }, [loading, draftKey, wabaId, phoneNumberId, displayPhoneNumber, businessName, appSecret]);
 
   const handleSave = async () => {
     if (!activeOrganizationId) return;
@@ -114,6 +191,7 @@ export default function WhatsAppCredentialForm() {
       });
       if (res.success) {
         hydrate(res.data);
+        clearDraft();
         toast({ title: 'WhatsApp saved', description: 'Credentials stored (encrypted). Run a connection test.' });
       } else {
         toast({ variant: 'destructive', title: 'Save failed', description: res.error });
@@ -160,6 +238,7 @@ export default function WhatsAppCredentialForm() {
       const res = await disconnectWhatsApp(idToken, activeOrganizationId);
       if (res.success) {
         hydrate(null);
+        clearDraft();
         toast({ title: 'Disconnected', description: 'WhatsApp connection removed.' });
       } else {
         toast({ variant: 'destructive', title: 'Disconnect failed', description: res.error });
@@ -229,16 +308,16 @@ export default function WhatsAppCredentialForm() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="WhatsApp Business Account ID (WABA)">
-                <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="1234567890" className={INPUT_CLS} />
+                <Input value={wabaId} onChange={(e) => { markDirty(); setWabaId(e.target.value); }} placeholder="1234567890" className={INPUT_CLS} />
               </Field>
               <Field label="Phone Number ID">
-                <Input value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="1098765432" className={INPUT_CLS} />
+                <Input value={phoneNumberId} onChange={(e) => { markDirty(); setPhoneNumberId(e.target.value); }} placeholder="1098765432" className={INPUT_CLS} />
               </Field>
               <Field label="Display Phone Number">
-                <Input value={displayPhoneNumber} onChange={(e) => setDisplayPhoneNumber(e.target.value)} placeholder="+233 20 000 0000" className={INPUT_CLS} />
+                <Input value={displayPhoneNumber} onChange={(e) => { markDirty(); setDisplayPhoneNumber(e.target.value); }} placeholder="+233 20 000 0000" className={INPUT_CLS} />
               </Field>
               <Field label="Business Name (optional)">
-                <Input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Acme Inc." className={INPUT_CLS} />
+                <Input value={businessName} onChange={(e) => { markDirty(); setBusinessName(e.target.value); }} placeholder="Acme Inc." className={INPUT_CLS} />
               </Field>
             </div>
 
@@ -261,7 +340,7 @@ export default function WhatsAppCredentialForm() {
                   className={INPUT_CLS} />
               </Field>
               <Field label="App Secret (optional — webhook validation)">
-                <Input value={appSecret} onChange={(e) => setAppSecret(e.target.value)}
+                <Input value={appSecret} onChange={(e) => { markDirty(); setAppSecret(e.target.value); }}
                   type={showSecrets ? 'text' : 'password'}
                   placeholder={conn?.hasAppSecret ? '•••• — paste to replace' : 'app secret'}
                   className={INPUT_CLS} />

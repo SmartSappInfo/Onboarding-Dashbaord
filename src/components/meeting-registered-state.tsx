@@ -32,18 +32,11 @@ export default function MeetingRegisteredState({
   const [launchCountdown, setLaunchCountdown] = useState(3);
 
   const markAttendedAndRedirect = useCallback(async () => {
-    if (!firestore || state === 'redirected') return;
+    if (state === 'redirected') return;
     setState('launching');
 
     if (registrant.status !== 'attended') {
       try {
-        // Update registrant status to attended
-        const registrantRef = doc(firestore, `meetings/${meeting.id}/registrants`, registrant.id);
-        await updateDoc(registrantRef, {
-          status: 'attended',
-          attendedAt: new Date().toISOString(),
-        });
-
         // Extract children from registration data if available (look for various potential keys)
         const registrationData = registrant.registrationData || {};
         const childrenFromData = registrationData.children || 
@@ -57,17 +50,12 @@ export default function MeetingRegisteredState({
             ? childrenFromData.split(',').map(s => s.trim()).filter(Boolean)
             : [];
 
-        // Create attendees collection reference
-        const attendeesRef = collection(firestore, 'attendees');
-        
-        await addDoc(attendeesRef, {
-          meetingId: meeting.id,
-          entityId: meeting.entityId || '',
-          parentName: registrant.name,
-          childrenNames: childrenArray,
-          joinedAt: new Date().toISOString(),
-          registrantId: registrant.id,
+        const { logMeetingAttendance } = await import('@/app/actions/meeting-attendance-actions');
+        await logMeetingAttendance(meeting.id, registrant.id, {
+          registrantName: registrant.name,
           registrantToken: registrant.token,
+          entityId: meeting.entityId,
+          childrenNames: childrenArray,
         });
       } catch (error) {
         console.error('Failed to mark attendance:', error);

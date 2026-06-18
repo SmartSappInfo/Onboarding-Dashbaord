@@ -26,14 +26,19 @@ function profile(overrides: Partial<UserProfile> = {}): UserProfile {
 }
 
 describe('canManageOrgIntegrations', () => {
-  it('denies when the profile belongs to a different org', () => {
+  it('allows a system_admin to manage ANY org (cross-tenant operator)', () => {
     const p = profile({ permissions: ['system_admin'] });
-    expect(canManageOrgIntegrations(p, 'someone_else')).toBe(false);
+    expect(canManageOrgIntegrations(p, 'someone_else')).toBe(true);
   });
 
   it('allows a system_admin within their org', () => {
     const p = profile({ permissions: ['system_admin'] });
     expect(canManageOrgIntegrations(p, 'org_123')).toBe(true);
+  });
+
+  it('denies a non-system-admin from managing a different org', () => {
+    const p = profile({ permissionsSchema: getFullAdminPermissions() });
+    expect(canManageOrgIntegrations(p, 'someone_else')).toBe(false);
   });
 
   it('allows a user with management→systemSettings edit permission', () => {

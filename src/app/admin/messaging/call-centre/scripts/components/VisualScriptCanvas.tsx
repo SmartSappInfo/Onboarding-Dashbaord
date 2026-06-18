@@ -20,24 +20,36 @@ import ReactFlow, {
   type OnEdgesChange,
   type Connection,
   type Viewport,
+  type NodeChange,
+  type NodePositionChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { getActionMeta } from '@/lib/call-action-types';
 
 // ─── Custom Node Components ──────────────────────────────────────────────────
 
 // Fixed node width used by every node type — never expands horizontally
 const NODE_W = 'w-[220px]';
+// Active-node ring applied when a node's properties are open in the side panel
+const ACTIVE_RING = 'ring-2 ring-primary ring-offset-1 ring-offset-background shadow-[0_0_12px_2px_hsl(var(--primary)/0.35)]';
 
 function CustomNodeWrapper({
-  children, title, colorClass, typeLabel
+  children, title, colorClass, typeLabel, selected
 }: {
   children: React.ReactNode;
   title: string;
   colorClass: string;
   typeLabel: string;
+  selected?: boolean;
 }) {
   return (
-    <div className={`${NODE_W} bg-card border border-border rounded-xl shadow-md overflow-hidden hover:border-primary/40 hover:shadow-lg transition-all select-none`}>
+    <div className={[
+      NODE_W,
+      'bg-card border rounded-xl shadow-md overflow-hidden transition-all select-none',
+      selected
+        ? `border-primary ${ACTIVE_RING}`
+        : 'border-border hover:border-primary/40 hover:shadow-lg',
+    ].join(' ')}>
       <div className={`h-1 w-full ${colorClass}`} />
       <div className="p-3 space-y-1.5">
         <div className="flex items-center justify-between gap-2">
@@ -55,19 +67,19 @@ function CustomNodeWrapper({
 
 const customNodeTypes = {
   start: (props: NodeProps) => (
-    <CustomNodeWrapper title={props.data.label || 'Start'} colorClass="bg-emerald-500" typeLabel="Start">
+    <CustomNodeWrapper title={props.data.label || 'Start'} colorClass="bg-emerald-500" typeLabel="Start" selected={props.selected}>
       <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-emerald-500 !border-none" />
       {props.data.text || 'Initiate outbound call conversation.'}
     </CustomNodeWrapper>
   ),
   end: (props: NodeProps) => (
-    <CustomNodeWrapper title={props.data.label || 'End'} colorClass="bg-rose-500" typeLabel="End">
+    <CustomNodeWrapper title={props.data.label || 'End'} colorClass="bg-rose-500" typeLabel="End" selected={props.selected}>
       <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-rose-500 !border-none" />
       {props.data.text || 'End of call outreach.'}
     </CustomNodeWrapper>
   ),
   script_block: (props: NodeProps) => (
-    <CustomNodeWrapper title={props.data.label || 'Script Block'} colorClass="bg-primary" typeLabel="Say">
+    <CustomNodeWrapper title={props.data.label || 'Script Block'} colorClass="bg-primary" typeLabel="Say" selected={props.selected}>
       <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-primary !border-none" />
       <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-primary !border-none" />
       {props.data.text || '[No script body configured]'}
@@ -76,7 +88,13 @@ const customNodeTypes = {
   question: (props: NodeProps) => {
     const options: string[] = props.data.options?.length ? props.data.options : ['Yes', 'No'];
     return (
-      <div className={`${NODE_W} bg-card border-2 border-amber-500/60 rounded-xl shadow-md overflow-visible hover:border-amber-500 hover:shadow-lg transition-all select-none`}>
+      <div className={[
+        NODE_W,
+        'bg-card rounded-xl shadow-md overflow-visible transition-all select-none',
+        props.selected
+          ? `border-2 border-amber-500 ${ACTIVE_RING.replace('ring-primary', 'ring-amber-500').replace('hsl(var(--primary)/0.35)', 'hsl(45 93% 47% / 0.35)')}`
+          : 'border-2 border-amber-500/60 hover:border-amber-500 hover:shadow-lg',
+      ].join(' ')}>
         {/* Top accent + target handle */}
         <div className="h-1 w-full bg-amber-500 rounded-t-xl" />
         <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-amber-500 !border-none" />
@@ -128,10 +146,16 @@ const customNodeTypes = {
   },
 
   objection: (props: NodeProps) => {
-    const objections: Array<{ title: string }> = (props.data as any).objectionConfig?.objections;
-    const hasEntries = objections?.length > 0;
+    const objections: Array<{ title: string }> = (props.data as { objectionConfig?: { objections?: Array<{ title: string }> } }).objectionConfig?.objections ?? [];
+    const hasEntries = objections.length > 0;
     return (
-      <div className={`${NODE_W} bg-card border border-border rounded-xl shadow-md overflow-hidden hover:border-orange-500/40 hover:shadow-lg transition-all select-none`}>
+      <div className={[
+        NODE_W,
+        'bg-card rounded-xl shadow-md overflow-hidden transition-all select-none',
+        props.selected
+          ? `border border-orange-500 ${ACTIVE_RING.replace('ring-primary', 'ring-orange-500').replace('hsl(var(--primary)/0.35)', 'hsl(24 95% 53% / 0.35)')}`
+          : 'border border-border hover:border-orange-500/40 hover:shadow-lg',
+      ].join(' ')}>
         <div className="h-1 w-full bg-orange-500" />
         <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-orange-500 !border-none" />
         <div className="p-3 space-y-1.5">
@@ -164,15 +188,18 @@ const customNodeTypes = {
       </div>
     );
   },
-  action: (props: NodeProps) => (
-    <CustomNodeWrapper title={props.data.label || 'Trigger Action'} colorClass="bg-indigo-500" typeLabel="Action">
-      <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-indigo-500 !border-none" />
-      <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-indigo-500 !border-none" />
-      {props.data.text || `Action Type: ${props.data.actionType || 'None'}`}
-    </CustomNodeWrapper>
-  ),
+  action: (props: NodeProps) => {
+    const meta = getActionMeta(props.data.actionType || '');
+    return (
+      <CustomNodeWrapper title={props.data.label || meta.label} colorClass={meta.colorClass} typeLabel="Action" selected={props.selected}>
+        <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-indigo-500 !border-none" />
+        <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-indigo-500 !border-none" />
+        {props.data.text || meta.label}
+      </CustomNodeWrapper>
+    );
+  },
   outcome: (props: NodeProps) => (
-    <CustomNodeWrapper title={props.data.label || 'Set Outcome'} colorClass="bg-purple-500" typeLabel="Outcome">
+    <CustomNodeWrapper title={props.data.label || 'Set Outcome'} colorClass="bg-purple-500" typeLabel="Outcome" selected={props.selected}>
       <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-purple-500 !border-none" />
       <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-purple-500 !border-none" />
       {props.data.text || `Outcome: ${props.data.outcomeValue || 'None'}`}
@@ -285,6 +312,27 @@ export interface VisualScriptCanvasProps {
   onConnect: (connection: Connection) => void;
   onNodeClick: (event: React.MouseEvent, node: Node) => void;
   onEdgeDelete: (edgeId: string) => void;
+  /** Called when the user clicks the blank canvas background — use to deselect the active node */
+  onPaneClick?: () => void;
+}
+
+/** Traverse downstream edges to find all descendant nodes of a given node */
+function getDescendantIds(nodeId: string, edges: Edge[]): Set<string> {
+  const descendants = new Set<string>();
+  const queue = [nodeId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    const children = edges
+      .filter(e => e.source === current)
+      .map(e => e.target);
+    for (const child of children) {
+      if (!descendants.has(child)) {
+        descendants.add(child);
+        queue.push(child);
+      }
+    }
+  }
+  return descendants;
 }
 
 export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, VisualScriptCanvasProps>(
@@ -296,6 +344,7 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
     onConnect,
     onNodeClick,
     onEdgeDelete,
+    onPaneClick,
   }, ref) {
   // Ref for the outer wrapper div so we can read its pixel dimensions
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -332,6 +381,54 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
     [edges, onEdgeDelete]
   );
 
+  // Propagates drag movement downstream to all descendants of the dragged node(s)
+  const handleNodesChange = React.useCallback((changes: NodeChange[]) => {
+    const positionChanges = changes.filter((c): c is NodePositionChange => c.type === 'position');
+    if (positionChanges.length === 0) {
+      onNodesChange(changes);
+      return;
+    }
+
+    const directlyChangedIds = new Set(positionChanges.map(c => c.id));
+    const extraChanges = new Map<string, NodePositionChange>();
+
+    for (const change of positionChanges) {
+      if (!change.position) continue;
+      const currentNode = nodes.find(n => n.id === change.id);
+      if (!currentNode) continue;
+
+      const dx = change.position.x - currentNode.position.x;
+      const dy = change.position.y - currentNode.position.y;
+
+      if (dx !== 0 || dy !== 0) {
+        const descendants = getDescendantIds(change.id, edges);
+        for (const descId of descendants) {
+          if (directlyChangedIds.has(descId)) continue;
+          
+          const descNode = nodes.find(n => n.id === descId);
+          if (!descNode) continue;
+
+          const baseNode = extraChanges.get(descId);
+          const currentPosX = baseNode?.position?.x ?? descNode.position.x;
+          const currentPosY = baseNode?.position?.y ?? descNode.position.y;
+
+          extraChanges.set(descId, {
+            id: descId,
+            type: 'position',
+            position: {
+              x: currentPosX + dx,
+              y: currentPosY + dy,
+            },
+            dragging: change.dragging,
+          });
+        }
+      }
+    }
+
+    const allChanges = [...changes, ...Array.from(extraChanges.values())];
+    onNodesChange(allChanges);
+  }, [onNodesChange, nodes, edges]);
+
   return (
     <div
       ref={containerRef}
@@ -341,16 +438,18 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
       <ReactFlow
         nodes={nodes}
         edges={edgesWithDelete}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         nodeTypes={customNodeTypes}
         edgeTypes={customEdgeTypes}
         defaultViewport={{ x: 200, y: 80, zoom: 0.65 }}
         minZoom={0.2}
         maxZoom={2}
         deleteKeyCode={['Delete', 'Backspace']}
+        selectionOnDrag={false}
         defaultEdgeOptions={{
           type: 'deletable',
           style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 }

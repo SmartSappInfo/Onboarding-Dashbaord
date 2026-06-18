@@ -4305,14 +4305,8 @@ export interface CallScript {
 export type CallCampaignStatus = 'draft' | 'scheduled' | 'running' | 'paused' | 'completed' | 'cancelled';
 
 export interface CallOutcomeAutomation {
-  type: 'CHANGE_STAGE' | 'CREATE_TASK' | 'ADD_TAG' | 'SEND_SMS' | 'SEND_EMAIL';
-  params: {
-    stageId?: string;
-    taskTitle?: string;
-    taskPriority?: 'low' | 'medium' | 'high';
-    tagId?: string;
-    templateId?: string;
-  };
+  type: CallActionType;
+  params: AutomationRuleParams;
 }
 
 export interface CallCampaign {
@@ -4387,6 +4381,20 @@ export interface CallQueueItem {
   updatedAt: string;
 }
 
+/** Canonical set of action types available in call scripts and campaign automations. */
+export type CallActionType =
+  | 'SEND_SMS'
+  | 'SEND_EMAIL'
+  | 'SEND_WHATSAPP'
+  | 'CREATE_TASK'
+  | 'CHANGE_STAGE'
+  | 'ADD_TAG'
+  | 'REMOVE_TAG'
+  | 'WEBHOOK'
+  | 'LOG_NOTE'
+  | 'SCHEDULE_MEETING'
+  | 'TRANSFER_CALL';
+
 export type ScriptNodeType = 
   | 'start'           // Beginning of call
   | 'script_block'    // What agent should say
@@ -4406,7 +4414,7 @@ export interface ScriptNode {
     label: string;
     text: string;           // Script text to display to agent (supports variable injection)
     outcomeValue?: string;  // Value mapped if node type is 'outcome'
-    actionType?: string;    // Action type mapped if node type is 'action'
+    actionType?: CallActionType; // Action type mapped if node type is 'action'
     options?: string[];     // Answer options for question nodes
     
     // Node Specific Configurations
@@ -4438,8 +4446,37 @@ export interface ScriptNode {
       }>;
     };
     actionConfig?: {
+      // Messaging (SEND_SMS, SEND_EMAIL, SEND_WHATSAPP)
+      templateId?: string;
+      // Task (CREATE_TASK)
+      taskTitle?: string;
+      taskDescription?: string;
+      taskPriority?: 'low' | 'medium' | 'high';
+      /** 'days' = N days from call date, 'specific' = fixed calendar date */
+      taskDueDateMode?: 'days' | 'specific';
+      taskDueDays?: number;
+      /** HH:mm — used with both modes (default from config, overridable per-call) */
+      taskDueTimeOfDay?: string;
+      /** ISO date string e.g. "2025-12-31" — only used when taskDueDateMode === 'specific' */
+      taskDueSpecificDate?: string;
+      taskAssigneeMode?: 'caller' | 'specific' | 'round_robin';
+      taskAssigneeId?: string;
+      // Pipeline (CHANGE_STAGE)
+      stageId?: string;
+      // Tags (ADD_TAG, REMOVE_TAG)
+      tagId?: string;
+      // Note (LOG_NOTE)
+      noteContent?: string;
+      // Meeting (SCHEDULE_MEETING)
+      meetingTypeId?: string;
+      // Transfer (TRANSFER_CALL)
+      transferTarget?: string;
+      transferMode?: 'phone' | 'agent' | 'campaign';
+      // Webhook (WEBHOOK)
       webhookUrl?: string;
       webhookHeaders?: string; // JSON string
+      webhookMethod?: 'POST' | 'GET' | 'PUT';
+      // Common
       triggerDelaySeconds?: number;
     };
     outcomeConfig?: {
@@ -4464,5 +4501,36 @@ export interface ScriptEdge {
 export interface BranchingScriptGraph {
   nodes: ScriptNode[];
   edges: ScriptEdge[];
+}
+
+/** Params shape for campaign post-call automation rules — discriminated by parent rule's `type` */
+export interface AutomationRuleParams {
+  templateId?: string;
+  stageId?: string;
+  tagId?: string;
+  // Task (CREATE_TASK)
+  taskTitle?: string;
+  taskDescription?: string;
+  taskPriority?: 'low' | 'medium' | 'high';
+  /** 'days' = N days from call date, 'specific' = fixed calendar date */
+  taskDueDateMode?: 'days' | 'specific';
+  taskDueDays?: number;
+  /** HH:mm — default time for the task, agents may override per-call */
+  taskDueTimeOfDay?: string;
+  /** ISO date string — only used when taskDueDateMode === 'specific' */
+  taskDueSpecificDate?: string;
+  taskAssigneeMode?: 'caller' | 'specific' | 'round_robin';
+  taskAssigneeId?: string;
+  // Webhook
+  webhookUrl?: string;
+  webhookMethod?: 'POST' | 'GET' | 'PUT';
+  webhookHeaders?: string;
+  // Log Note
+  noteContent?: string;
+  // Meeting
+  meetingTypeId?: string;
+  // Transfer
+  transferTarget?: string;
+  transferMode?: 'phone' | 'agent' | 'campaign';
 }
 

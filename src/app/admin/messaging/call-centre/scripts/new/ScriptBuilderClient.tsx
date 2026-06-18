@@ -57,9 +57,11 @@ import { ScriptPlaybookView } from '../components/ScriptPlaybookView';
 import { LegacyScriptEditor } from '../components/LegacyScriptEditor';
 import type { LegacyScriptEditorHandle, VariableGroup } from '../components/LegacyScriptEditor';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { cn } from '@/lib/utils';
 import type { ScriptNode, ScriptEdge, ScriptNodeType } from '@/lib/types';
 import type { VisualScriptCanvasHandle, VisualScriptCanvasProps } from '../components/VisualScriptCanvas';
+import { ActionNodeConfigPanel } from '../components/ActionNodeConfigPanel';
 
 // Lazy load the ReactFlow canvas to optimize initial bundle sizes
 const VisualScriptCanvas = dynamic(
@@ -92,6 +94,41 @@ const NATIVE_DEAL_VAR_NAMES = [
 interface ScriptBuilderClientProps {
   scriptId?: string;
   returnCampaignId?: string;
+}
+
+// ─── Module-scope node layout constants ──────────────────────────────────────
+// Pixel width of every canvas node (must stay in sync with NODE_W in VisualScriptCanvas)
+const NODE_PX_W = 220;
+// Estimated rendered height per node type — used only for vertical spacing.
+// These are conservative upper-bounds so inserted children never overlap.
+const NODE_APPROX_H: Record<string, number> = {
+  start: 90,
+  end: 80,
+  script_block: 130,
+  question: 150,
+  objection: 140,
+  action: 120,
+};
+// Vertical gap (px) between the bottom of the parent and the top of the child
+const VERTICAL_GAP = 80;
+
+/**
+ * Returns the primary source handle id for a given node type.
+ * • question  → option-0  (the first/Yes branch — user can re-wire others manually)
+ * • objection → "handled" (the resolved exit)
+ * • all others → null     (single default bottom handle)
+ */
+function getPrimarySourceHandle(
+  type: string,
+  data: Record<string, unknown>
+): string | null {
+  if (type === 'question') {
+    // Validate options exist; regardless, wire to the first option index
+    void (data.options as string[] | undefined);
+    return 'option-0';
+  }
+  if (type === 'objection') return 'handled';
+  return null;
 }
 
 export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilderClientProps) {
@@ -176,6 +213,37 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     );
   }, [firestore, activeWorkspaceId]);
   const { data: fieldGroups } = useCollection<any>(fieldGroupsQuery);
+
+  // Load tags, stages, meetings for ActionNodeConfigPanel
+  const tagsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'tags'),
+      where('workspaceId', '==', activeWorkspaceId)
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: tagsData } = useCollection<{ id: string; name: string }>(tagsQuery);
+
+  const stagesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'onboardingStages'),
+      where('workspaceId', '==', activeWorkspaceId)
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: stagesData } = useCollection<{ id: string; name: string }>(stagesQuery);
+
+  const meetingsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'meetings'),
+      where('workspaceId', '==', activeWorkspaceId)
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: meetingsData } = useCollection<{ id: string; title: string }>(meetingsQuery);
+
+  const { data: workspaceUsersData } = useWorkspaceUsers(activeWorkspaceId);
+  const workspaceUsers = workspaceUsersData || [];
 
   const wrapHref = React.useCallback((href: string) => {
     if (!activeWorkspaceId) return href;
@@ -344,7 +412,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     const draftKey = `script-draft:${activeWorkspaceId}:${scriptId || 'new'}`;
     const timer = setTimeout(() => {
       const draft = {
-        version: 1,
+        version: 2,
         timestamp: Date.now(),
         name,
         description,
@@ -365,6 +433,23 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     return nodes.find(n => n.id === selectedNodeId) || null;
   }, [nodes, selectedNodeId]);
 
+  // ── Sync selectedNodeId → ReactFlow node.selected ─────────────────────────
+  // ReactFlow's props.selected inside custom nodes is driven by the internal
+  // node.selected field. Without this sync, only canvas-click selection works.
+  // This effect mirrors the parent's selectedNodeId so the active ring lights
+  // up correctly even when a node is selected via the toolbar or handleAddNode.
+  React.useEffect(() => {
+    setNodes(nds =>
+      nds.map(n => ({
+        ...n,
+        selected: n.id === selectedNodeId,
+      }))
+    );
+  // Only run when selectedNodeId changes — not on every nodes update
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNodeId]);
+
+
   const updateSelectedNode = (dataPatch: Record<string, any>) => {
     if (!selectedNodeId) return;
     setNodes(nds => nds.map(node => {
@@ -381,9 +466,10 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     }));
   };
 
+
   const handleAddNode = (type: string) => {
     const id = `node-${Date.now()}`;
-    const defaultData: Record<string, any> = {
+    const defaultData: Record<string, unknown> = {
       label: `New ${type.replace('_', ' ')}`,
       text: type === 'start' ? 'Start of call outreach.' : type === 'end' ? 'End of call.' : 'Script body text.',
     };
@@ -394,10 +480,50 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
       defaultData.label = 'New question';
     }
 
-    // Position at bottom center of the current canvas viewport if available
-    const position = canvasRef.current
-      ? canvasRef.current.getDropPosition()
-      : { x: 150 + Math.random() * 50, y: 150 + Math.random() * 50 };
+    if (type === 'action') {
+      defaultData.actionType = 'SEND_SMS';
+      defaultData.actionConfig = { templateId: '', triggerDelaySeconds: 0 };
+      defaultData.label = 'New action';
+    }
+
+    // ── Smart positioning ─────────────────────────────────────────────────────
+    // If a node is currently selected (active in the properties panel), place
+    // the new node directly below it, perfectly centred on the same X axis.
+    // Otherwise fall back to the canvas viewport centre-bottom.
+    let position: { x: number; y: number };
+    let autoEdge: Edge | null = null;
+
+    if (selectedNode) {
+      const parentH = NODE_APPROX_H[selectedNode.type ?? ''] ?? 120;
+      const parentCentreX = selectedNode.position.x + NODE_PX_W / 2;
+
+      position = {
+        x: parentCentreX - NODE_PX_W / 2,               // horizontally centred
+        y: selectedNode.position.y + parentH + VERTICAL_GAP, // directly below
+      };
+
+      // Build the automatic connecting edge
+      const sourceHandle = getPrimarySourceHandle(
+        selectedNode.type ?? '',
+        selectedNode.data as Record<string, unknown>
+      );
+      autoEdge = {
+        id: `edge-${selectedNode.id}-${id}`,
+        source: selectedNode.id,
+        target: id,
+        sourceHandle,
+        targetHandle: null,
+        label: sourceHandle ? sourceHandle.replace('option-', 'Option ') : undefined,
+        type: 'deletable',
+        className: 'group',
+        data: {},
+      };
+    } else {
+      // No selection → viewport centre-bottom fallback
+      position = canvasRef.current
+        ? canvasRef.current.getDropPosition()
+        : { x: 150 + Math.random() * 50, y: 150 + Math.random() * 50 };
+    }
 
     const newNode: Node = {
       id,
@@ -405,7 +531,12 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
       position,
       data: defaultData,
     };
+
     setNodes(nds => [...nds, newNode]);
+    if (autoEdge) {
+      setEdges(eds => [...eds, autoEdge as Edge]);
+    }
+    // Select the newly inserted node so its properties open immediately
     setSelectedNodeId(id);
   };
 
@@ -520,7 +651,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
         sayConfig: n.data.sayConfig,
         questionConfig: n.data.questionConfig,
         objectionConfig: n.data.objectionConfig,
-        actionConfig: n.data.actionConfig,
+        actionConfig: n.data.actionConfig ? { ...n.data.actionConfig } : undefined,
         outcomeConfig: n.data.outcomeConfig,
         endConfig: n.data.endConfig,
       }
@@ -991,6 +1122,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                   onConnect={onConnect}
                   onNodeClick={onNodeClick}
                   onEdgeDelete={handleEdgeDelete}
+                  onPaneClick={() => setSelectedNodeId(null)}
                 />
               </div>
             </div>
@@ -1415,68 +1547,15 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
 
                       {/* Action Node Configuration */}
                       {selectedNode.type === 'action' && (
-                        <div className="space-y-3 pt-3 border-t border-border">
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Action Configuration</span>
-                          <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Automation Trigger Type</Label>
-                            <Select 
-                              value={selectedNode.data.actionType || 'SEND_SMS'} 
-                              onValueChange={(val) => updateSelectedNode({ 
-                                actionType: val, 
-                                label: `Action: ${val.replace('_', ' ')}` 
-                              })}
-                            >
-                              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="bg-popover border-border text-popover-foreground">
-                                <SelectItem value="SEND_SMS">Send SMS</SelectItem>
-                                <SelectItem value="SEND_EMAIL">Send Email</SelectItem>
-                                <SelectItem value="CREATE_TASK">Create Follow-up Task</SelectItem>
-                                <SelectItem value="CHANGE_STAGE">Change CRM Pipeline Stage</SelectItem>
-                                <SelectItem value="WEBHOOK">Trigger Custom HTTP Webhook</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {selectedNode.data.actionType === 'WEBHOOK' && (
-                            <div className="space-y-3">
-                              <div className="space-y-1">
-                                <Label className="text-[8px] font-bold text-muted-foreground uppercase">Webhook Target URL</Label>
-                                <Input
-                                  value={selectedNode.data.actionConfig?.webhookUrl || ''}
-                                  onChange={(e) => updateSelectedNode({ 
-                                    actionConfig: { ...selectedNode.data.actionConfig, webhookUrl: e.target.value } 
-                                  })}
-                                  placeholder="https://api.thirdparty.com/webhook"
-                                  className="h-8 bg-background border-border rounded-lg text-xs px-2"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-[8px] font-bold text-muted-foreground uppercase">Custom Headers (JSON format)</Label>
-                                <Textarea
-                                  value={selectedNode.data.actionConfig?.webhookHeaders || ''}
-                                  onChange={(e) => updateSelectedNode({ 
-                                    actionConfig: { ...selectedNode.data.actionConfig, webhookHeaders: e.target.value } 
-                                  })}
-                                  placeholder='{ "Authorization": "Bearer key" }'
-                                  rows={2}
-                                  className="bg-background border-border rounded-xl text-xs p-2 resize-none"
-                                />
-                              </div>
-                            </div>
-                          )}
-                          <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-muted-foreground uppercase">Trigger Delay (Seconds)</Label>
-                            <Input
-                              type="number"
-                              value={selectedNode.data.actionConfig?.triggerDelaySeconds || 0}
-                              onChange={(e) => updateSelectedNode({ 
-                                actionConfig: { ...selectedNode.data.actionConfig, triggerDelaySeconds: Number(e.target.value) || 0 } 
-                              })}
-                              className="h-8 bg-background border-border rounded-lg text-xs px-2"
-                            />
-                          </div>
-                        </div>
+                        <ActionNodeConfigPanel
+                          actionType={selectedNode.data.actionType}
+                          actionConfig={selectedNode.data.actionConfig}
+                          onUpdate={updateSelectedNode}
+                          tags={tagsData ?? []}
+                          stages={stagesData ?? []}
+                          meetings={meetingsData ?? []}
+                          workspaceUsers={workspaceUsers}
+                        />
                       )}
 
                       {/* End Node Configuration */}

@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateMeetingFacilitatorAction, logFacilitatorAttendance } from '@/app/actions/meeting-facilitator-actions';
-import { logMeetingAttendance } from '@/app/actions/meeting-attendance-actions';
+import { logMeetingAttendance, validateRegistrantToken } from '@/app/actions/meeting-attendance-actions';
 
 interface JoiningPageClientProps {
   typeSlug: string;
@@ -180,21 +180,18 @@ export default function JoiningPageClient({ typeSlug, entitySlug, token }: Joini
           return;
         }
 
-        // Validate token against registrants
-        const registrantsRef = collection(firestore, `meetings/${meetingDoc.id}/registrants`);
-        const tokenQuery = query(registrantsRef, where('token', '==', token), limit(1));
-        const tokenSnap = await getDocs(tokenQuery);
+        // Validate token against registrants using server action to prevent client-side permission issues
+        const validationResult = await validateRegistrantToken(meetingDoc.id, token);
 
-        if (tokenSnap.empty) {
+        if (!validationResult.valid || !validationResult.registrant) {
           // Invalid token → redirect to registration
           router.replace(`/meetings/${typeSlug}/${entitySlug}`);
           return;
         }
 
-        const regDoc = tokenSnap.docs[0];
-        const regData = regDoc.data();
+        const regData = validationResult.registrant;
         setRegistrant({
-          id: regDoc.id,
+          id: regData.id,
           name: regData.name || '',
           email: regData.email,
           phone: regData.phone,
