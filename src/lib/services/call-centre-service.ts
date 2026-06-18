@@ -152,7 +152,8 @@ export class CallCentreService {
   static async addContactsToCampaign(
     campaignId: string,
     entityIds: string[],
-    workspaceId: string
+    workspaceId: string,
+    contactOverrides?: { entityId: string; contactId: string; contactName: string; phone: string; email: string }[]
   ): Promise<{ success: boolean; count: number; error?: string }> {
     try {
       const campaignRef = adminDb.collection('call_campaigns').doc(campaignId);
@@ -162,9 +163,96 @@ export class CallCentreService {
       }
       const campaign = campaignSnap.data() as CallCampaign;
 
-      // Filter out entityIds that are already in call_queue_items for this campaign
+      const timestamp = new Date().toISOString();
+      const queueItems: Omit<CallQueueItem, 'id'>[] = [];
+      const batchCheckLimit = 30;
+
+      // ─── PATH A: contactOverrides provided — use explicit contact data ─────────
+      if (contactOverrides && contactOverrides.length > 0) {
+        // Build doc IDs to check for deduplication
+        const docsToCheck = contactOverrides.map(o => `${campaignId}_${o.entityId}_${o.contactId}`);
+        const existingDocIds = new Set<string>();
+        for (let i = 0; i < docsToCheck.length; i += batchCheckLimit) {
+          const chunk = docsToCheck.slice(i, i + batchCheckLimit);
+          const snaps = await adminDb.collection('call_queue_items')
+            .where('__name__', 'in', chunk)
+            .get();
+          snaps.docs.forEach(doc => existingDocIds.add(doc.id));
+        }
+
+        // Look up entity metadata (name, type) for all unique entityIds
+        const uniqueEntityIds = [...new Set(contactOverrides.map(o => o.entityId))];
+        const entitiesData: Record<string, { name: string; entityType: string }> = {};
+        for (let i = 0; i < uniqueEntityIds.length; i += batchCheckLimit) {
+          const chunk = uniqueEntityIds.slice(i, i + batchCheckLimit);
+          const snaps = await adminDb.collection('workspace_entities')
+            .where('entityId', 'in', chunk)
+            .where('workspaceId', '==', workspaceId)
+            .get();
+          snaps.forEach(doc => {
+            const data = doc.data();
+            entitiesData[data.entityId] = {
+              name: data.displayName || 'Unknown Entity',
+              entityType: data.entityType || 'person',
+            };
+          });
+        }
+
+        for (const override of contactOverrides) {
+          const docId = `${campaignId}_${override.entityId}_${override.contactId}`;
+          if (existingDocIds.has(docId)) continue; // skip duplicates
+          const entityMeta = entitiesData[override.entityId] || { name: 'Unknown Entity', entityType: 'person' };
+          queueItems.push({
+            campaignId,
+            organizationId: campaign.organizationId,
+            workspaceId: campaign.workspaceId,
+            entityId: override.entityId,
+            entityType: entityMeta.entityType as any,
+            entityName: entityMeta.name,
+            entityPhone: override.phone,
+            entityEmail: override.email,
+            contactId: override.contactId,
+            contactName: override.contactName,
+            status: 'scheduled',
+            assignedTo: null,
+            lockExpiresAt: null,
+            callbackDate: null,
+            attempts: 0,
+            lastAttemptAt: null,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          });
+        }
+
+        // Write in batches
+        const writeChunks: Promise<any>[] = [];
+        let writeBatch = adminDb.batch();
+        let writeCount = 0;
+        for (const item of queueItems) {
+          const itemRef = adminDb.collection('call_queue_items').doc(`${campaignId}_${item.entityId}_${item.contactId}`);
+          writeBatch.set(itemRef, { id: itemRef.id, ...item });
+          writeCount++;
+          if (writeCount === 500) {
+            writeChunks.push(writeBatch.commit());
+            writeBatch = adminDb.batch();
+            writeCount = 0;
+          }
+        }
+        if (writeCount > 0) writeChunks.push(writeBatch.commit());
+        await Promise.all(writeChunks);
+
+        const updateFields: Record<string, any> = {
+          'progress.total': FieldValue.increment(queueItems.length),
+          'progress.pending': FieldValue.increment(queueItems.length),
+          updatedAt: timestamp,
+        };
+        if (campaign.status === 'completed') updateFields.status = 'running';
+        await campaignRef.update(updateFields);
+        return { success: true, count: queueItems.length };
+      }
+
+      // ─── PATH B: No overrides — legacy entity-level resolution ───────────────
       const filteredEntityIds: string[] = [];
-      const batchCheckLimit = 30; // Firestore "in" queries can have at most 30 items
       for (let i = 0; i < entityIds.length; i += batchCheckLimit) {
         const chunk = entityIds.slice(i, i + batchCheckLimit);
         const docsToCheck = chunk.map(eid => `${campaignId}_${eid}`);
@@ -173,9 +261,7 @@ export class CallCentreService {
           .get();
         const existingIds = new Set(snaps.docs.map(doc => doc.id.substring(campaignId.length + 1)));
         for (const eid of chunk) {
-          if (!existingIds.has(eid)) {
-            filteredEntityIds.push(eid);
-          }
+          if (!existingIds.has(eid)) filteredEntityIds.push(eid);
         }
       }
 
@@ -183,11 +269,8 @@ export class CallCentreService {
         return { success: true, count: 0 };
       }
 
-      const timestamp = new Date().toISOString();
-      const queueItems: Omit<CallQueueItem, 'id'>[] = [];
-
-      // Query entity documents to get details (e.g. name, type)
-      const entitiesData: Record<string, { name: string; entityType: string }> = {};
+      // Query entity documents to get details
+      const entitiesData2: Record<string, { name: string; entityType: string }> = {};
       for (let i = 0; i < filteredEntityIds.length; i += batchCheckLimit) {
         const chunk = filteredEntityIds.slice(i, i + batchCheckLimit);
         const snaps = await adminDb.collection('workspace_entities')
@@ -196,7 +279,7 @@ export class CallCentreService {
           .get();
         snaps.forEach(doc => {
           const data = doc.data();
-          entitiesData[data.entityId] = {
+          entitiesData2[data.entityId] = {
             name: data.displayName || 'Unknown Contact',
             entityType: data.entityType || 'person',
           };
@@ -204,7 +287,7 @@ export class CallCentreService {
       }
 
       for (const entityId of filteredEntityIds) {
-        const entityMeta = entitiesData[entityId] || { name: 'Unknown Contact', entityType: 'person' };
+        const entityMeta = entitiesData2[entityId] || { name: 'Unknown Contact', entityType: 'person' };
         let phone = '';
         let email = '';
 
@@ -223,12 +306,8 @@ export class CallCentreService {
           }).catch(() => []),
         ]);
 
-        if (smsResolved && smsResolved.length > 0) {
-          phone = smsResolved[0].contact;
-        }
-        if (emailResolved && emailResolved.length > 0) {
-          email = emailResolved[0].contact;
-        }
+        if (smsResolved && smsResolved.length > 0) phone = smsResolved[0].contact;
+        if (emailResolved && emailResolved.length > 0) email = emailResolved[0].contact;
 
         queueItems.push({
           campaignId,
@@ -749,119 +828,163 @@ export class CallCentreService {
       console.log(`>>> [CALL_CENTRE_SERVICE] Running ${rules.length} automations for outcome "${outcome}" on Entity: ${entityId}`);
 
       for (const rule of rules) {
-        try {
-          switch (rule.type) {
-            case 'CHANGE_STAGE': {
-              if (rule.params.stageId) {
-                // Fetch stage name for currentStageName denormalization
-                const stageSnap = await adminDb.collection('onboardingStages').doc(rule.params.stageId).get();
-                const currentStageName = stageSnap.exists ? stageSnap.data()?.name || 'Unknown' : 'Unknown';
-                
-                await updateEntityAction(
-                  entityId,
-                  { stageId: rule.params.stageId, currentStageName },
-                  `system-call-centre:${userId}`,
-                  workspaceId,
-                  organizationId
-                );
-              }
-              break;
-            }
-
-            case 'ADD_TAG': {
-              if (rule.params.tagId) {
-                await applyTagsAction(
-                  entityId,
-                  'entity',
-                  [rule.params.tagId],
-                  `system-call-centre:${userId}`
-                );
-              }
-              break;
-            }
-
-            case 'CREATE_TASK': {
-              if (rule.params.taskTitle) {
-                await createTaskAction({
-                  organizationId,
-                  workspaceId,
-                  title: rule.params.taskTitle,
-                  description: 'Call campaign automation generated follow-up task.',
-                  priority: rule.params.taskPriority || 'medium',
-                  status: 'todo',
-                  category: 'call_follow_up' as any,
-                  assignedTo: userId,
-                  entityId,
-                  entityType: 'person' as any,
-                  dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // + 2 days default
-                  reminders: [],
-                  reminderSent: false,
-                }, `system-call-centre:${userId}`);
-              }
-              break;
-            }
-
-            case 'SEND_SMS': {
-              if (rule.params.templateId) {
-                const templateSnap = await adminDb.collection('message_templates').doc(rule.params.templateId).get();
-                if (templateSnap.exists) {
-                  const body = templateSnap.data()?.body || '';
-                  
-                  // Fetch contact to obtain phone number
-                  const contactSnap = await adminDb.collection('entities').doc(entityId).get();
-                  let phone = '';
-                  if (contactSnap.exists) {
-                    const contactsList = contactSnap.data()?.entityContacts || [];
-                    const primary = contactsList.find((c: any) => c.isPrimary) || contactsList[0];
-                    phone = primary?.phone || '';
-                  }
-
-                  if (phone) {
-                    await sendSms({
-                      recipient: phone,
-                      message: body,
-                      sender: 'SMARTSAPP',
-                    });
-                  }
-                }
-              }
-              break;
-            }
-
-            case 'SEND_EMAIL': {
-              if (rule.params.templateId) {
-                const templateSnap = await adminDb.collection('message_templates').doc(rule.params.templateId).get();
-                if (templateSnap.exists) {
-                  const subject = templateSnap.data()?.subject || 'Outreach Follow Up';
-                  const html = templateSnap.data()?.body || '';
-
-                  // Fetch contact to obtain email
-                  const contactSnap = await adminDb.collection('entities').doc(entityId).get();
-                  let email = '';
-                  if (contactSnap.exists) {
-                    const contactsList = contactSnap.data()?.entityContacts || [];
-                    const primary = contactsList.find((c: any) => c.isPrimary) || contactsList[0];
-                    email = primary?.email || '';
-                  }
-
-                  if (email) {
-                    await sendEmail({
-                      to: email,
-                      subject,
-                      html,
-                    });
-                  }
-                }
-              }
-              break;
-            }
-          }
-        } catch (ruleErr: any) {
-          console.error(`>>> [CALL_CENTRE_SERVICE] Automation rule execution failed for rule type ${rule.type}:`, ruleErr.message);
+        const result = await this.executeCallActionEffect(rule.type, rule.params || {}, {
+          entityId,
+          userId,
+          workspaceId,
+          organizationId,
+        });
+        if (!result.success && !result.unsupported) {
+          console.error(`>>> [CALL_CENTRE_SERVICE] Automation rule "${rule.type}" failed:`, result.error);
         }
       }
     } catch (err: any) {
       console.error('[CALL_CENTRE_SERVICE] Campaign automations lookup failed:', err.message);
     }
+  }
+
+  /**
+   * Run a single call-action side effect against a contact. Shared by campaign outcome
+   * automations and by per-node script-action triggering, so both paths behave identically.
+   * Never throws — returns a typed result (and `unsupported: true` for action types not yet
+   * handled), so callers can surface friendly status without crashing.
+   */
+  static async executeCallActionEffect(
+    type: string,
+    params: Record<string, any> = {},
+    ctx: { entityId: string; userId: string; workspaceId: string; organizationId: string }
+  ): Promise<{ success: boolean; unsupported?: boolean; error?: string }> {
+    const { entityId, userId, workspaceId, organizationId } = ctx;
+    const systemActor = `system-call-centre:${userId}`;
+
+    try {
+      switch (type) {
+        case 'CHANGE_STAGE': {
+          if (!params.stageId) return { success: false, error: 'No stage configured.' };
+          const stageSnap = await adminDb.collection('onboardingStages').doc(params.stageId).get();
+          const currentStageName = stageSnap.exists ? stageSnap.data()?.name || 'Unknown' : 'Unknown';
+          await updateEntityAction(
+            entityId,
+            { stageId: params.stageId, currentStageName },
+            systemActor,
+            workspaceId,
+            organizationId
+          );
+          return { success: true };
+        }
+
+        case 'ADD_TAG': {
+          if (!params.tagId) return { success: false, error: 'No tag configured.' };
+          await applyTagsAction(entityId, 'entity', [params.tagId], systemActor);
+          return { success: true };
+        }
+
+        case 'CREATE_TASK': {
+          if (!params.taskTitle) return { success: false, error: 'No task title configured.' };
+          await createTaskAction({
+            organizationId,
+            workspaceId,
+            title: params.taskTitle,
+            description: 'Call campaign automation generated follow-up task.',
+            priority: params.taskPriority || 'medium',
+            status: 'todo',
+            category: 'call_follow_up' as any,
+            assignedTo: userId,
+            entityId,
+            entityType: 'person' as any,
+            dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // + 2 days default
+            reminders: [],
+            reminderSent: false,
+          }, systemActor);
+          return { success: true };
+        }
+
+        case 'SEND_SMS': {
+          if (!params.templateId) return { success: false, error: 'No template configured.' };
+          const templateSnap = await adminDb.collection('message_templates').doc(params.templateId).get();
+          if (!templateSnap.exists) return { success: false, error: 'Template not found.' };
+          const body = templateSnap.data()?.body || '';
+          const contactSnap = await adminDb.collection('entities').doc(entityId).get();
+          let phone = '';
+          if (contactSnap.exists) {
+            const contactsList = contactSnap.data()?.entityContacts || [];
+            const primary = contactsList.find((c: any) => c.isPrimary) || contactsList[0];
+            phone = primary?.phone || '';
+          }
+          if (!phone) return { success: false, error: 'Contact has no phone number.' };
+          await sendSms({ recipient: phone, message: body, sender: 'SMARTSAPP' });
+          return { success: true };
+        }
+
+        case 'SEND_EMAIL': {
+          if (!params.templateId) return { success: false, error: 'No template configured.' };
+          const templateSnap = await adminDb.collection('message_templates').doc(params.templateId).get();
+          if (!templateSnap.exists) return { success: false, error: 'Template not found.' };
+          const subject = templateSnap.data()?.subject || 'Outreach Follow Up';
+          const html = templateSnap.data()?.body || '';
+          const contactSnap = await adminDb.collection('entities').doc(entityId).get();
+          let email = '';
+          if (contactSnap.exists) {
+            const contactsList = contactSnap.data()?.entityContacts || [];
+            const primary = contactsList.find((c: any) => c.isPrimary) || contactsList[0];
+            email = primary?.email || '';
+          }
+          if (!email) return { success: false, error: 'Contact has no email address.' };
+          await sendEmail({ to: email, subject, html });
+          return { success: true };
+        }
+
+        case 'WEBHOOK': {
+          if (!params.webhookUrl || !/^https?:\/\//i.test(params.webhookUrl)) {
+            return { success: false, error: 'A valid HTTP/HTTPS webhook URL is required.' };
+          }
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (params.webhookHeaders && typeof params.webhookHeaders === 'object' && !Array.isArray(params.webhookHeaders)) {
+            for (const [k, v] of Object.entries(params.webhookHeaders)) headers[k] = String(v);
+          }
+          const response = await fetch(params.webhookUrl, {
+            method: params.webhookMethod || 'POST',
+            headers,
+            body: JSON.stringify({
+              entityId,
+              workspaceId,
+              organizationId,
+              agentId: userId,
+              source: 'call-script-action',
+              timestamp: new Date().toISOString(),
+            }),
+          });
+          if (!response.ok) return { success: false, error: `Webhook failed with status ${response.status}.` };
+          return { success: true };
+        }
+
+        default:
+          return { success: false, unsupported: true, error: `Action type "${type}" is not supported yet.` };
+      }
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Action execution failed.' };
+    }
+  }
+
+  /**
+   * Execute a single script action node (its configured side effect) against a contact.
+   * Thin wrapper over {@link executeCallActionEffect} using the node's actionConfig as params.
+   */
+  static async executeScriptAction(params: {
+    actionType: string;
+    actionConfig?: Record<string, any>;
+    entityId: string;
+    userId: string;
+    workspaceId: string;
+    organizationId: string;
+  }): Promise<{ success: boolean; unsupported?: boolean; error?: string }> {
+    const { actionType, actionConfig, entityId, userId, workspaceId, organizationId } = params;
+    if (!actionType) return { success: false, error: 'No action type configured on this node.' };
+    return this.executeCallActionEffect(actionType, actionConfig || {}, {
+      entityId,
+      userId,
+      workspaceId,
+      organizationId,
+    });
   }
 }

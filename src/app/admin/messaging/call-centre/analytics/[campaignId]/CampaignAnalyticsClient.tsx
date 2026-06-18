@@ -25,8 +25,12 @@ import {
   PhoneOff,
   UserCheck,
   ChevronRight,
-  UserPlus
+  UserPlus,
+  Play
 } from 'lucide-react';
+import { generateCampaignQueueAction } from '@/lib/call-centre-actions';
+import { useUser } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 import type { CallCampaign } from '@/lib/types';
 import {
   Tooltip,
@@ -49,6 +53,8 @@ interface CampaignAnalyticsClientProps {
 
 export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAnalyticsClientProps) {
   const router = useRouter();
+  const { user } = useUser();
+  const { toast } = useToast();
   const { activeWorkspaceId: contextWorkspaceId } = useWorkspace() as any;
   const activeWorkspaceId = workspaceId || contextWorkspaceId;
 
@@ -60,6 +66,34 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
 
   const [expandedNotesId, setExpandedNotesId] = React.useState<string | null>(null);
   const [isAddContactsOpen, setIsAddContactsOpen] = React.useState(false);
+  const [isLaunching, setIsLaunching] = React.useState(false);
+
+  const handleLaunchOrContinue = async () => {
+    if (!campaign) return;
+    if (campaign.status === 'running' || campaign.status === 'paused') {
+      router.push(wrapHref(`/admin/messaging/call-centre/workspace/${campaign.id}`));
+      return;
+    }
+    // Draft/scheduled → launch
+    if (!campaign.scriptId) {
+      toast({ variant: 'destructive', title: 'Launch Prevented', description: 'Assign a script playbook before launching.' });
+      return;
+    }
+    setIsLaunching(true);
+    try {
+      const result = await generateCampaignQueueAction(campaign.id, activeWorkspaceId, user?.uid || '');
+      if (result.success) {
+        toast({ title: 'Campaign Launched', description: 'Call queue successfully created.' });
+        router.push(wrapHref(`/admin/messaging/call-centre/workspace/${campaign.id}`));
+      } else {
+        toast({ variant: 'destructive', title: 'Launch Failed', description: result.error });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setIsLaunching(false);
+    }
+  };
 
   const wrapHref = (href: string) => {
     if (!activeWorkspaceId) return href;
@@ -174,27 +208,54 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
         <div className="space-y-8 py-6">
           {/* Header */}
           <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border pb-5">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <Button
                 onClick={() => router.push(wrapHref('/admin/messaging/call-centre'))}
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 rounded-xl border border-border bg-muted hover:bg-accent text-muted-foreground"
+                className="h-9 w-9 rounded-xl border border-border bg-muted hover:bg-accent text-muted-foreground shrink-0"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-black uppercase text-foreground tracking-wider">
-                    {campaign?.name || 'Campaign Analytics'}
-                  </h1>
-                  {campaign?.status && getStatusBadge(campaign.status)}
-                </div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
-                  Detailed outcomes, duration metrics, and call history logs
+              <div className="min-w-0">
+                <h1 className="text-xl font-black uppercase text-foreground tracking-wider truncate">
+                  {campaign?.name || 'Campaign Analytics'}
+                </h1>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-lg">
+                  {campaign?.description || 'Detailed outcomes, duration metrics, and call history logs'}
                 </p>
               </div>
             </div>
+            {campaign && (
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Add Contacts button */}
+                {campaign.allowAddContactsAfterLaunch !== false || campaign.status === 'draft' ? (
+                  <Button
+                    onClick={() => setIsAddContactsOpen(true)}
+                    variant="outline"
+                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-1.5 border-border hover:bg-accent"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" /> Add Contacts
+                  </Button>
+                ) : null}
+
+                {/* Launch / Continue button */}
+                {campaign.status !== 'completed' && campaign.status !== 'cancelled' && (
+                  <Button
+                    onClick={handleLaunchOrContinue}
+                    disabled={isLaunching}
+                    className="h-9 px-5 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-1.5 bg-primary hover:bg-primary/90 text-white"
+                  >
+                    {isLaunching ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                    )}
+                    {campaign.status === 'running' || campaign.status === 'paused' ? 'Continue Calling' : 'Launch Campaign'}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {isLoading ? (
@@ -300,240 +361,192 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                 </Card>
               </div>
 
-              {/* Analytics Layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                
-                {/* Left Columns: Tabs for Distribution & Logs */}
-                <div className="lg:col-span-2 space-y-6">
-                  <Tabs defaultValue="distribution" className="w-full">
-                    <div className="flex items-center justify-between border-b border-border pb-2">
-                      <TabsList className="bg-transparent h-10 p-0 rounded-none border-b border-transparent gap-6">
-                        <TabsTrigger 
-                          value="distribution" 
-                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-muted-foreground data-[state=active]:text-foreground"
-                        >
-                          Outcomes Distribution
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="logs" 
-                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-muted-foreground data-[state=active]:text-foreground"
-                        >
-                          Call Logs ({completedCalls.length})
-                        </TabsTrigger>
-                      </TabsList>
-                    </div>
+              {/* Analytics Content — Full Width */}
+              <div className="space-y-6">
+                <Tabs defaultValue="distribution" className="w-full">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <TabsList className="bg-transparent h-10 p-0 rounded-none border-b border-transparent gap-6">
+                      <TabsTrigger 
+                        value="distribution" 
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-muted-foreground data-[state=active]:text-foreground"
+                      >
+                        Outcomes Distribution
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="logs" 
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-muted-foreground data-[state=active]:text-foreground"
+                      >
+                        Call Logs ({completedCalls.length})
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
 
-                    <TabsContent value="distribution" className="pt-6 space-y-8">
-                      {queueItems.length === 0 ? (
-                        <div className="text-center py-20 border border-dashed border-border rounded-2xl bg-muted/20">
-                          <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                          <h4 className="text-sm font-bold text-muted-foreground">No dialer records found</h4>
-                          <p className="text-xs text-muted-foreground">This campaign does not have any contacts in its queue yet.</p>
-                        </div>
-                      ) : (
-                        <Card className="border border-border bg-card rounded-2xl">
-                          <div className="p-6 border-b border-border bg-muted/20">
-                            <h3 className="text-sm font-bold text-foreground font-sans">Visual Outcomes Distribution</h3>
+                  <TabsContent value="distribution" className="pt-6 space-y-8">
+                    {queueItems.length === 0 ? (
+                      <div className="text-center py-20 border border-dashed border-border rounded-2xl bg-muted/20">
+                        <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                        <h4 className="text-sm font-bold text-muted-foreground">No dialer records found</h4>
+                        <p className="text-xs text-muted-foreground">This campaign does not have any contacts in its queue yet.</p>
+                      </div>
+                    ) : (
+                      <Card className="border border-border bg-card rounded-2xl">
+                        <div className="p-6 border-b border-border bg-muted/20">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-foreground">Visual Outcome Distribution</h3>
+                            <span className="text-xs font-bold text-muted-foreground">{queueItems.length} total contacts</span>
                           </div>
-                          <div className="p-6 space-y-8">
-                            {/* Stacked Horizontal Progress Bar */}
-                            <div className="space-y-3">
-                              <div className="h-6 w-full rounded-xl overflow-hidden flex bg-muted border border-border">
-                                {analytics.map((group, idx) => {
-                                  if (group.percentage === 0) return null;
-                                  return (
-                                    <div
-                                      key={idx}
-                                      className={`${group.color} transition-all duration-300 hover:opacity-90`}
-                                      style={{ width: `${group.percentage}%` }}
-                                      title={`${group.label}: ${group.count} (${group.percentage}%)`}
-                                    />
-                                  );
-                                })}
-                              </div>
-                            </div>
+                        </div>
+                        <div className="p-6 space-y-6">
+                          {/* Segmented Bar — one bar per outcome like the reference */}
+                          <div className="h-3 w-full rounded-full overflow-hidden flex bg-muted/50">
+                            {analytics.map((group, idx) => {
+                              if (group.percentage === 0) return null;
+                              return (
+                                <TooltipProvider key={idx} delayDuration={100}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div
+                                        className={`${group.color} transition-all duration-300 hover:brightness-110 cursor-default`}
+                                        style={{ width: `${group.percentage}%` }}
+                                      />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      <p className="text-[10px] font-bold">{group.label}: {group.count} ({group.percentage}%)</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            })}
+                          </div>
 
-                            {/* Group Legend & Metrics list */}
-                            <div className="space-y-4 pt-4 border-t border-border">
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Outcomes &amp; Statuses breakdown</span>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {analytics.map((group, idx) => (
+                          {/* Individual segment bars with labels (like the currency balance reference) */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-5">
+                            {analytics.map((group, idx) => (
+                              <div key={idx} className="space-y-1.5">
+                                <div className="h-2 w-full rounded-full overflow-hidden bg-muted/50">
                                   <div
-                                    key={idx}
-                                    className="p-3.5 bg-muted/40 border border-border rounded-xl flex items-center justify-between hover:border-primary/30 transition-colors"
+                                    className={`${group.color} h-full rounded-full transition-all duration-500`}
+                                    style={{ width: `${group.percentage}%` }}
+                                  />
+                                </div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate" title={group.label}>
+                                  {group.label}
+                                </p>
+                                <p className="text-sm font-black text-foreground">
+                                  {group.percentage}%
+                                  <span className="text-[10px] font-medium text-muted-foreground ml-1">({group.count})</span>
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+                  </TabsContent>
+
+                  {/* Logs Tab Content */}
+                  <TabsContent value="logs" className="pt-6" style={{ contentVisibility: 'auto' }}>
+                    {completedCalls.length === 0 ? (
+                      <div className="text-center py-20 border border-dashed border-border rounded-2xl bg-muted/20">
+                        <PhoneOff className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                        <h4 className="text-sm font-bold text-muted-foreground">No completed calls</h4>
+                        <p className="text-xs text-muted-foreground">No contacts have been resolved in this campaign yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {completedCalls.map((item) => {
+                          const isExpanded = expandedNotesId === item.id;
+                          const rules = campaign?.automationRules?.[item.outcome || ''] || [];
+
+                          return (
+                            <div 
+                              key={item.id} 
+                              className="p-5 bg-card border border-border rounded-2xl space-y-4 hover:border-primary/30 hover:shadow-sm transition-all"
+                            >
+                              {/* Contact Info Header */}
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <h4 className="text-sm font-bold text-foreground">{item.entityName}</h4>
+                                  <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground font-medium">
+                                    <span className="font-mono">{item.entityPhone || 'No Phone'}</span>
+                                    {item.entityEmail && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="truncate max-w-[200px]">{item.entityEmail}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded", getOutcomeBadgeColor(item.outcome))}>
+                                  {item.outcome || 'Completed'}
+                                </Badge>
+                              </div>
+
+                              {/* Log stats (Duration, Date, attempts) */}
+                              <div className="grid grid-cols-3 gap-2 bg-muted/60 p-3.5 border border-border rounded-xl text-center text-xs font-mono text-muted-foreground">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  <span>{formatCallDuration(item.duration)}</span>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-foreground">{item.attempts}</span> attempts
+                                </div>
+                                <div>
+                                  <span>{item.lastAttemptAt ? new Date(item.lastAttemptAt).toLocaleDateString() : '—'}</span>
+                                </div>
+                              </div>
+
+                              {/* Post-Call Actions / Automations badges */}
+                              <div className="pt-1 space-y-2">
+                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                  <Settings className="h-3.5 w-3.5" />
+                                  <span>Triggered Automations ({rules.length})</span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {rules.length === 0 ? (
+                                    <span className="text-[10px] text-muted-foreground italic">No automations mapped to this outcome</span>
+                                  ) : (
+                                    rules.map((rule, idx) => (
+                                      <Badge key={idx} variant="outline" className="text-[8px] font-bold uppercase tracking-wider bg-muted border-border text-muted-foreground">
+                                        {rule.type === 'CHANGE_STAGE' && 'Stage Changed'}
+                                        {rule.type === 'ADD_TAG' && 'Applied Tag'}
+                                        {rule.type === 'CREATE_TASK' && 'Created Task'}
+                                        {rule.type === 'SEND_SMS' && 'Sent SMS'}
+                                        {rule.type === 'SEND_EMAIL' && 'Sent Email'}
+                                      </Badge>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Call Notes Collapsible toggler */}
+                              {item.notesDraft && (
+                                <div className="border-t border-border pt-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedNotesId(isExpanded ? null : item.id)}
+                                    className="flex items-center gap-1.5 text-[9px] font-bold text-primary uppercase tracking-widest hover:text-primary/80"
                                   >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                      <span className={`w-3.5 h-3.5 rounded-md ${group.color} shrink-0`} />
-                                      <span className="text-xs font-bold text-foreground truncate">{group.label}</span>
+                                    <FileText className="h-3.5 w-3.5" />
+                                    <span>Call Notes Logged</span>
+                                    {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                  </button>
+                                  
+                                  {isExpanded && (
+                                    <div className="mt-2.5 p-3.5 bg-muted border border-border rounded-xl text-xs text-foreground font-serif leading-relaxed italic whitespace-pre-line select-text animate-in slide-in-from-top-2 duration-200">
+                                      "{item.notesDraft}"
                                     </div>
-                                    <div className="flex items-center gap-3 font-mono text-xs shrink-0 pl-2">
-                                      <span className="text-muted-foreground font-medium">{group.count} calls</span>
-                                      <span className="text-foreground font-bold w-10 text-right">{group.percentage}%</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        </Card>
-                      )}
-                    </TabsContent>
-
-                    {/* Logs Tab Content */}
-                    <TabsContent value="logs" className="pt-6" style={{ contentVisibility: 'auto' }}>
-                      {completedCalls.length === 0 ? (
-                        <div className="text-center py-20 border border-dashed border-border rounded-2xl bg-muted/20">
-                          <PhoneOff className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                          <h4 className="text-sm font-bold text-muted-foreground">No completed calls</h4>
-                          <p className="text-xs text-muted-foreground">No contacts have been resolved in this campaign yet.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {completedCalls.map((item) => {
-                            const isExpanded = expandedNotesId === item.id;
-                            const rules = campaign?.automationRules?.[item.outcome || ''] || [];
-
-                            return (
-                              <div 
-                                key={item.id} 
-                                className="p-5 bg-card border border-border rounded-2xl space-y-4 hover:border-primary/30 hover:shadow-sm transition-all"
-                              >
-                                {/* Contact Info Header */}
-                                <div className="flex items-start justify-between gap-4">
-                                  <div>
-                                    <h4 className="text-sm font-bold text-foreground">{item.entityName}</h4>
-                                    <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground font-medium">
-                                      <span className="font-mono">{item.entityPhone || 'No Phone'}</span>
-                                      {item.entityEmail && (
-                                        <>
-                                          <span>•</span>
-                                          <span className="truncate max-w-[200px]">{item.entityEmail}</span>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <Badge variant="outline" className={cn("text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded", getOutcomeBadgeColor(item.outcome))}>
-                                    {item.outcome || 'Completed'}
-                                  </Badge>
-                                </div>
-
-                                {/* Log stats (Duration, Date, attempts) */}
-                                <div className="grid grid-cols-3 gap-2 bg-muted/60 p-3.5 border border-border rounded-xl text-center text-xs font-mono text-muted-foreground">
-                                  <div className="flex items-center justify-center gap-1.5">
-                                    <Clock className="h-3.5 w-3.5" />
-                                    <span>{formatCallDuration(item.duration)}</span>
-                                  </div>
-                                  <div>
-                                    <span className="font-bold text-foreground">{item.attempts}</span> attempts
-                                  </div>
-                                  <div>
-                                    <span>{item.lastAttemptAt ? new Date(item.lastAttemptAt).toLocaleDateString() : '—'}</span>
-                                  </div>
-                                </div>
-
-                                {/* Post-Call Actions / Automations badges */}
-                                <div className="pt-1 space-y-2">
-                                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                                    <Settings className="h-3.5 w-3.5" />
-                                    <span>Triggered Automations ({rules.length})</span>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {rules.length === 0 ? (
-                                      <span className="text-[10px] text-muted-foreground italic">No automations mapped to this outcome</span>
-                                    ) : (
-                                      rules.map((rule, idx) => (
-                                        <Badge key={idx} variant="outline" className="text-[8px] font-bold uppercase tracking-wider bg-muted border-border text-muted-foreground">
-                                          {rule.type === 'CHANGE_STAGE' && 'Stage Changed'}
-                                          {rule.type === 'ADD_TAG' && 'Applied Tag'}
-                                          {rule.type === 'CREATE_TASK' && 'Created Task'}
-                                          {rule.type === 'SEND_SMS' && 'Sent SMS'}
-                                          {rule.type === 'SEND_EMAIL' && 'Sent Email'}
-                                        </Badge>
-                                      ))
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Call Notes Collapsible toggler */}
-                                {item.notesDraft && (
-                                  <div className="border-t border-border pt-3">
-                                    <button
-                                      type="button"
-                                      onClick={() => setExpandedNotesId(isExpanded ? null : item.id)}
-                                      className="flex items-center gap-1.5 text-[9px] font-bold text-primary uppercase tracking-widest hover:text-primary/80"
-                                    >
-                                      <FileText className="h-3.5 w-3.5" />
-                                      <span>Call Notes Logged</span>
-                                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                    </button>
-                                    
-                                    {isExpanded && (
-                                      <div className="mt-2.5 p-3.5 bg-muted border border-border rounded-xl text-xs text-foreground font-serif leading-relaxed italic whitespace-pre-line select-text animate-in slide-in-from-top-2 duration-200">
-                                        "{item.notesDraft}"
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                </div>
-
-                {/* Right Column: Campaign Details & Information Card */}
-                <div className="space-y-6">
-                  <Card className="border border-border bg-card rounded-2xl">
-                    <div className="p-6 border-b border-border bg-muted/20">
-                      <h3 className="text-sm font-bold text-foreground">Campaign Details</h3>
-                    </div>
-                    <div className="p-6 space-y-5">
-                      <div className="space-y-1.5">
-                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Description</span>
-                        <p className="text-xs text-foreground/80 leading-relaxed">
-                          {campaign.description || 'No description provided for this campaign.'}
-                        </p>
+                          );
+                        })}
                       </div>
-
-                      <div className="grid grid-cols-2 gap-4 border-t border-border pt-4">
-                        <div className="space-y-1">
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Call Script</span>
-                          <span className="text-xs font-bold text-foreground truncate block">
-                            {campaign.scriptId ? 'Assigned' : 'None'}
-                          </span>
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Workspace ID</span>
-                          <span className="text-xs font-bold text-foreground/80 truncate block">
-                            {activeWorkspaceId || 'Default'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-border pt-4 space-y-2.5">
-                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Summary Stats</span>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Pending Contacts</span>
-                            <span className="font-bold text-foreground">
-                              {queueItems.filter(i => i.status === 'scheduled' || i.status === 'in_progress').length}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Total Calls Attempted</span>
-                            <span className="font-bold text-foreground">
-                              {queueItems.reduce((acc, curr) => acc + (curr.attempts || 0), 0)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
             </>
           )}

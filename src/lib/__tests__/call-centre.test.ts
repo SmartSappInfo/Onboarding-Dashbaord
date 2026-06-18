@@ -193,7 +193,7 @@ describe('Call Centre Campaign Engine tests', () => {
       const result = await addContactsToCallCampaignAction('campaign_123', ['contact_1', 'contact_2'], 'workspace_1', 'user_123');
       expect(result.success).toBe(true);
       expect(result.count).toBe(2);
-      expect(spy).toHaveBeenCalledWith('campaign_123', ['contact_1', 'contact_2'], 'workspace_1');
+      expect(spy).toHaveBeenCalledWith('campaign_123', ['contact_1', 'contact_2'], 'workspace_1', undefined);
     });
   });
 });

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
@@ -12,7 +13,8 @@ import {
   updateNotesDraftAction,
   skipQueueItemAction,
   deferQueueItemAction,
-  scheduleCallbackAction
+  scheduleCallbackAction,
+  executeScriptActionAction
 } from '@/lib/call-centre-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -23,12 +25,13 @@ import { Label } from '@/components/ui/label';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
 import type { ScriptNode } from '@/lib/types';
-import { 
-  isJsonGraph, 
-  parseGraph, 
-  getNextNodeChoices, 
-  resolveScriptVariables 
+import {
+  isJsonGraph,
+  parseGraph,
+  getNextNodeChoices,
+  resolveScriptVariables,
 } from '@/lib/call-centre-graph';
+import { ScriptBodyDisplay } from '../../scripts/components/ScriptBodyDisplay';
 import { 
   ArrowLeft, 
   Phone, 
@@ -54,11 +57,25 @@ import {
   Bookmark,
   History,
   ShieldAlert,
+  Sparkles,
   X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+
+// Heavy ReactFlow-derived view — loaded only when the agent toggles to it (bundle-conditional)
+const InteractiveScriptView = dynamic(
+  () => import('../../scripts/components/InteractiveScriptView').then((m) => m.InteractiveScriptView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex-grow flex items-center justify-center text-xs text-muted-foreground">
+        Loading interactive view…
+      </div>
+    ),
+  },
+);
 
 const getOutcomeIcon = (outcome: string) => {
   const lower = outcome.toLowerCase();
@@ -114,7 +131,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeWorkspaceId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
   const { toast } = useToast();
 
   const { campaigns } = useCallCampaigns(activeWorkspaceId);
@@ -404,25 +421,46 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     return isJsonGraph(campaign?.scriptSnapshot);
   }, [campaign?.scriptSnapshot]);
 
+  // The interactive reference works for any script: branching graphs use their real
+  // nodes; plain-text scripts use the linear fallback graph from parseGraph.
+  const hasScriptNodes = scriptGraph.nodes.length > 0;
+
   // Active node state for branching scripts
   const [currentNodeId, setCurrentNodeId] = React.useState<string | null>(null);
   const [pathHistory, setPathHistory] = React.useState<string[]>([]); // list of node IDs traversed
+  // Live script display mode: the guided runner (default) or the read-only interactive reference
+  const [liveScriptView, setLiveScriptView] = React.useState<'guided' | 'interactive'>('guided');
+  // Action/outcome node ids already triggered for the current contact (prevents double-firing).
+  const [triggeredNodeIds, setTriggeredNodeIds] = React.useState<Set<string>>(() => new Set());
+
+  // Switching to interactive mode collapses both side panels (and the contact card is
+  // hidden via render) to maximise reading room; switching back to guided restores them.
+  const toggleLiveScriptView = React.useCallback(() => {
+    const next = liveScriptView === 'guided' ? 'interactive' : 'guided';
+    const collapse = next === 'interactive';
+    setLiveScriptView(next);
+    setIsLeftCollapsed(collapse);
+    setIsRightCollapsed(collapse);
+  }, [liveScriptView]);
 
   const currentNode = React.useMemo(() => {
     if (!currentNodeId || !scriptGraph) return null;
     return scriptGraph.nodes.find(n => n.id === currentNodeId) || null;
   }, [currentNodeId, scriptGraph]);
 
-  const resolvedActiveNodeText = React.useMemo(() => {
-    if (!currentNode) return '';
-    const rawText = currentNode.data.text || '';
-    return resolveScriptVariables(
-      rawText,
-      entityData || { name: currentItem?.entityName, email: currentItem?.entityEmail, phone: currentItem?.entityPhone },
-      contactDeals?.[0] || null,
-      user?.displayName || 'Akosua'
-    );
-  }, [currentNode, entityData, currentItem, contactDeals, user]);
+  // Single source of truth for substituting the current contact + caller into a script body.
+  // Reused by the guided runner and the interactive reference view.
+  const resolveLiveText = React.useCallback((raw: string) => resolveScriptVariables(
+    raw,
+    entityData || { name: currentItem?.entityName, email: currentItem?.entityEmail, phone: currentItem?.entityPhone },
+    contactDeals?.[0] || null,
+    user?.displayName || 'Akosua'
+  ), [entityData, currentItem, contactDeals, user]);
+
+  const resolvedActiveNodeText = React.useMemo(
+    () => resolveLiveText(currentNode?.data.text || ''),
+    [resolveLiveText, currentNode]
+  );
 
   const choices = React.useMemo(() => {
     if (!currentNodeId || !scriptGraph) return [];
@@ -445,6 +483,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     setActionStatus('idle');
     setActionError(null);
     setGuardrailBypassed(false);
+    setTriggeredNodeIds(new Set());
   }, [currentItem?.id, scriptGraph]);
 
   const handleHistoryClick = (nodeId: string, index: number) => {
@@ -721,14 +760,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   const renderedScript = React.useMemo(() => {
     if (!campaign || !currentItem) return '';
-    const scriptBody = campaign.scriptSnapshot || '';
-    return resolveScriptVariables(
-      scriptBody,
-      entityData || { name: currentItem.entityName, email: currentItem.entityEmail, phone: currentItem.entityPhone },
-      contactDeals?.[0] || null,
-      user?.displayName || 'Akosua'
-    );
-  }, [campaign, currentItem, entityData, contactDeals, user]);
+    return resolveLiveText(campaign.scriptSnapshot || '');
+  }, [campaign, currentItem, resolveLiveText]);
 
   const getNodeBadge = (type: ScriptNode['type']) => {
     switch (type) {
@@ -817,6 +850,42 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     }
   };
 
+  // ─── Interactive-view trigger handlers (passed down to InteractiveScriptView) ──
+  // Execute a single action node's side effect, guarding against double-firing.
+  const handleTriggerAction = React.useCallback(async (node: any): Promise<{ ok: boolean; error?: string }> => {
+    if (!node || !currentItem?.entityId) return { ok: false, error: 'No active contact.' };
+    if (triggeredNodeIds.has(node.id)) return { ok: true };
+
+    const result = await executeScriptActionAction(
+      {
+        actionType: node.data?.actionType,
+        actionConfig: node.data?.actionConfig,
+        entityId: currentItem.entityId,
+        workspaceId: activeWorkspaceId,
+        organizationId: currentItem.organizationId || activeOrganizationId,
+      },
+      user?.uid || ''
+    );
+
+    if (result.success) {
+      setTriggeredNodeIds(prev => new Set(prev).add(node.id));
+      toast({ title: 'Action Triggered', description: `"${node.data?.label || 'Action'}" ran successfully.` });
+      return { ok: true };
+    }
+    toast({ variant: 'destructive', title: 'Action Failed', description: result.error });
+    return { ok: false, error: result.error };
+  }, [currentItem?.entityId, currentItem?.organizationId, activeWorkspaceId, activeOrganizationId, user?.uid, triggeredNodeIds, toast]);
+
+  // Trigger an outcome node — reuses the outcome submit path (completes the call + campaign automations).
+  // Plain function (not memoized) so it always closes over the latest handleOutcomeSubmit/notes/seconds.
+  const handleTriggerOutcome = async (node: any): Promise<{ ok: boolean; error?: string }> => {
+    if (!node) return { ok: false, error: 'No outcome.' };
+    if (triggeredNodeIds.has(node.id)) return { ok: true };
+    setTriggeredNodeIds(prev => new Set(prev).add(node.id));
+    await handleOutcomeSubmit(node.data?.outcomeValue || 'Interested');
+    return { ok: true };
+  };
+
   const handleSkip = async () => {
     if (!currentItem || !activeWorkspaceId || !user) return;
     setIsActionsLoading(true);
@@ -902,23 +971,43 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
           </div>
         </div>
 
-        {/* Live Call Timer */}
-        <div className="flex items-center gap-3 px-4 py-2 bg-muted border border-border rounded-xl">
-          <div className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        {/* Live Call Timer + interactive-view toggle */}
+        <div className="flex items-center gap-2">
+          {hasScriptNodes && !showGuardrailWarning ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={toggleLiveScriptView}
+              aria-pressed={liveScriptView === 'interactive'}
+              className="h-9 rounded-xl text-[10px] uppercase font-bold tracking-wider gap-1.5 border-border bg-muted hover:bg-accent text-muted-foreground"
+              title={liveScriptView === 'interactive' ? 'Switch to step-by-step guided mode' : 'Switch to the full interactive script reference'}
+            >
+              {liveScriptView === 'interactive' ? (
+                <><Play className="h-3.5 w-3.5" /> Guided Mode</>
+              ) : (
+                <><Sparkles className="h-3.5 w-3.5" /> Interactive View</>
+              )}
+            </Button>
+          ) : null}
+
+          <div className="flex items-center gap-3 px-4 py-2 bg-muted border border-border rounded-xl">
+            <div className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </div>
+            <span className="text-xs font-bold text-foreground">Live Call Timer</span>
+            <span className="font-mono text-xs font-bold text-primary">{formatTime(seconds)}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsTimerActive(!isTimerActive)}
+              className="h-6 w-6 text-muted-foreground hover:text-foreground rounded"
+              aria-label={isTimerActive ? "Pause call timer" : "Resume call timer"}
+            >
+              {isTimerActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+            </Button>
           </div>
-          <span className="text-xs font-bold text-foreground">Live Call Timer</span>
-          <span className="font-mono text-xs font-bold text-primary">{formatTime(seconds)}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsTimerActive(!isTimerActive)}
-            className="h-6 w-6 text-muted-foreground hover:text-foreground rounded"
-            aria-label={isTimerActive ? "Pause call timer" : "Resume call timer"}
-          >
-            {isTimerActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-          </Button>
         </div>
       </div>
 
@@ -1148,7 +1237,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
           
           {currentItem ? (
             <>
-              {/* Contact Profile Context Panel */}
+              {/* Contact Profile Context Panel — hidden in interactive mode for more room */}
+              {liveScriptView !== 'interactive' && (
               <div className="p-5 bg-card border border-border rounded-2xl space-y-4 shrink-0">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
@@ -1181,15 +1271,28 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Call Script Reading panel */}
               <div className="flex-grow bg-card border border-border rounded-2xl p-6 shadow-sm relative flex flex-col min-h-0 overflow-hidden">
-                <div className="absolute top-4 right-4 flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
                   <FileText className="h-3.5 w-3.5" />
                   <span>Interactive Script View</span>
                 </div>
-                
-                {isBranching ? (
+
+                {liveScriptView === 'interactive' && hasScriptNodes && !showGuardrailWarning ? (
+                  // Read-only interactive reference with live contact + caller values substituted
+                  <div className="flex-grow min-h-0 overflow-auto pt-4">
+                    <InteractiveScriptView
+                      nodes={scriptGraph.nodes as any}
+                      edges={scriptGraph.edges as any}
+                      resolveText={resolveLiveText}
+                      onTriggerAction={handleTriggerAction}
+                      onTriggerOutcome={handleTriggerOutcome}
+                      triggeredIds={triggeredNodeIds}
+                    />
+                  </div>
+                ) : isBranching ? (
                   showGuardrailWarning ? (
                     <div className="flex flex-col items-center justify-center text-center p-8 bg-amber-50 dark:bg-zinc-900 border border-amber-500/20 rounded-2xl max-w-xl mx-auto my-6 space-y-4">
                       <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
@@ -1320,9 +1423,10 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                           )}
 
                           {currentNode?.data?.text && (
-                            <div className="text-base font-serif text-foreground leading-relaxed max-w-2xl pr-4 whitespace-pre-line select-text">
-                              {resolvedActiveNodeText}
-                            </div>
+                            <ScriptBodyDisplay
+                              text={resolvedActiveNodeText}
+                              className="text-base font-serif text-foreground leading-relaxed max-w-2xl pr-4 select-text"
+                            />
                           )}
 
                           {/* Dynamic Compliance Checkbox for Say nodes */}
@@ -1468,9 +1572,10 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                     </div>
                   )
                 ) : (
-                  <div className="text-base font-serif text-zinc-200 leading-relaxed max-w-3xl pr-4 whitespace-pre-line select-text pt-4 flex-grow overflow-y-auto min-h-0">
-                    {renderedScript}
-                  </div>
+                  <ScriptBodyDisplay
+                    text={renderedScript}
+                    className="text-base font-serif text-zinc-200 leading-relaxed max-w-3xl pr-4 select-text pt-4 flex-grow overflow-y-auto min-h-0"
+                  />
                 )}
               </div>
             </>

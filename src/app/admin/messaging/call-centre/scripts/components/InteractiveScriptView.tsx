@@ -5,38 +5,78 @@ import type { Node, Edge } from 'reactflow';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowRight, 
-  CheckCircle2, 
-  AlertCircle, 
-  Play, 
-  HelpCircle, 
-  Settings, 
+import {
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  AlertCircle,
+  Play,
+  HelpCircle,
+  Settings,
   X,
   Info,
-  Layers
+  Layers,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getActionMeta } from '@/lib/call-action-types';
+import { useZoom } from '@/hooks/use-zoom';
+import { ScriptBodyDisplay } from './ScriptBodyDisplay';
+import { classifyTraversal } from '@/lib/interactive-traversal';
+
+type TriggerResult = { ok: boolean; error?: string };
 
 interface InteractiveScriptViewProps {
   nodes: Node[];
   edges: Edge[];
+  /**
+   * Optional resolver that substitutes live values into `{{VARIABLE}}` tokens
+   * (e.g. the current contact + caller during a live call). When omitted, the
+   * view stays in builder mode and shows variable pills.
+   */
+  resolveText?: (raw: string) => string;
+  /** Live-mode handlers — when present, actions/outcomes can be triggered for real. */
+  onTriggerAction?: (node: Node) => Promise<TriggerResult>;
+  onTriggerOutcome?: (node: Node) => Promise<TriggerResult>;
+  /** Node ids already triggered this conversation (rendered greyed/disabled). */
+  triggeredIds?: Set<string> | string[];
 }
 
-export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewProps) {
+export function InteractiveScriptView({
+  nodes,
+  edges,
+  resolveText,
+  onTriggerAction,
+  onTriggerOutcome,
+  triggeredIds,
+}: InteractiveScriptViewProps) {
+  const { zoom, zoomIn, zoomOut, reset, canZoomIn, canZoomOut } = useZoom();
   const [activeNodeId, setActiveNodeId] = React.useState<string | null>(null);
-  const [rightTab, setRightTab] = React.useState<'objections' | 'actions'>('objections');
+  const [rightTab, setRightTab] = React.useState<'objections' | 'actions' | 'outcomes'>('objections');
   const [selectedObjectionId, setSelectedObjectionId] = React.useState<string | null>(null);
   const [selectedSubObjectionIndex, setSelectedSubObjectionIndex] = React.useState<number | null>(null);
-  const [selectedActionId, setSelectedActionId] = React.useState<string | null>(null);
   const [filterRelatedObjections, setFilterRelatedObjections] = React.useState(true);
 
-  // Logical pre-order DFS ordering of main blocks (excludes objections/actions)
+  // Trigger panel state (shared by the Actions & Outcomes tabs and auto-traversal).
+  const [triggerView, setTriggerView] = React.useState<{ nodeId: string; kind: 'action' | 'outcome' } | null>(null);
+  const [triggerStatus, setTriggerStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [triggerError, setTriggerError] = React.useState<string | null>(null);
+
+  const isTriggered = React.useCallback((id: string) => {
+    if (!triggeredIds) return false;
+    return triggeredIds instanceof Set ? triggeredIds.has(id) : triggeredIds.includes(id);
+  }, [triggeredIds]);
+
+  // Logical pre-order DFS ordering of main blocks (excludes objections/actions/outcomes —
+  // outcomes live in their own right-column tab and are triggered, not navigated to).
   const orderedMainNodes = React.useMemo(() => {
     if (!nodes || nodes.length === 0) return [];
-    
-    const mainNodes = nodes.filter(n => n.type !== 'objection' && n.type !== 'action');
+
+    const mainNodes = nodes.filter(n => n.type !== 'objection' && n.type !== 'action' && n.type !== 'outcome');
     const result: Node[] = [];
     const visited = new Set<string>();
 
@@ -188,27 +228,6 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
     setSelectedSubObjectionIndex(subIndex);
   }, []);
 
-  // Highlights variables in blue
-  const highlightVariables = React.useCallback((text: string | undefined): React.ReactNode => {
-    if (!text) return <span className="italic text-muted-foreground font-serif">No body content text.</span>;
-
-    const parts = text.split(/(\{\{[A-Za-z0-9_]+\}\}|\[[A-Za-z0-9_]+\])/g);
-    return parts.map((part, idx) => {
-      const isVar = (part.startsWith('{{') && part.endsWith('}}')) || (part.startsWith('[') && part.endsWith(']'));
-      if (isVar) {
-        const cleanName = part.replace(/[\{\}\[\]]/g, '');
-        return (
-          <span 
-            key={idx}
-            className="inline-block px-1.5 py-0.5 mx-0.5 text-[10px] font-bold rounded bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400 border border-blue-500/20 font-mono"
-          >
-            {cleanName}
-          </span>
-        );
-      }
-      return <span key={idx}>{part}</span>;
-    });
-  }, []);
 
   // Compute active outgoing choices & actions for navigation
   const outgoingEdges = React.useMemo(() => {
@@ -244,9 +263,186 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
   const displayedObjections = filterRelatedObjections ? relatedObjections : allObjections;
 
   const allActions = React.useMemo(() => nodes.filter(n => n.type === 'action'), [nodes]);
-  const selectedAction = React.useMemo(() => {
-    return allActions.find(a => a.id === selectedActionId) || null;
-  }, [allActions, selectedActionId]);
+  const allOutcomes = React.useMemo(() => nodes.filter(n => n.type === 'outcome'), [nodes]);
+
+  // Body text shown for an action/outcome in its detail view.
+  const bodyOf = React.useCallback((node: Node) => {
+    if (node.type === 'outcome') {
+      return node.data?.text || `Mark this call outcome as "${node.data?.outcomeValue || 'Outcome'}".`;
+    }
+    return getFallbackText(node);
+  }, [getFallbackText]);
+
+  // Execute a trigger for the given node, driving the shared status banner.
+  const runTrigger = React.useCallback(async (node: Node, kind: 'action' | 'outcome') => {
+    const handler = kind === 'action' ? onTriggerAction : onTriggerOutcome;
+    if (!handler) return;
+    if (isTriggered(node.id)) { setTriggerStatus('success'); return; }
+    setTriggerStatus('loading');
+    setTriggerError(null);
+    try {
+      const res = await handler(node);
+      if (res.ok) {
+        setTriggerStatus('success');
+      } else {
+        setTriggerStatus('error');
+        setTriggerError(res.error || 'Trigger failed.');
+      }
+    } catch (err: any) {
+      setTriggerStatus('error');
+      setTriggerError(err?.message || 'Trigger failed.');
+    }
+  }, [onTriggerAction, onTriggerOutcome, isTriggered]);
+
+  const openTrigger = React.useCallback((node: Node, kind: 'action' | 'outcome') => {
+    setRightTab(kind === 'action' ? 'actions' : 'outcomes');
+    setTriggerView({ nodeId: node.id, kind });
+    setTriggerStatus(isTriggered(node.id) ? 'success' : 'idle');
+    setTriggerError(null);
+  }, [isTriggered]);
+
+  // Navigate to a node via the middle controls — auto-triggering actions/outcomes in live mode.
+  const advanceTo = React.useCallback((targetNodeId: string) => {
+    const target = nodes.find(n => n.id === targetNodeId);
+    if (!target) return;
+    const decision = classifyTraversal(target.type, {
+      hasOutcomeHandler: !!onTriggerOutcome,
+      hasActionHandler: !!onTriggerAction,
+    });
+    if (decision === 'trigger-outcome') {
+      openTrigger(target, 'outcome');
+      void runTrigger(target, 'outcome');
+      return;
+    }
+    if (decision === 'trigger-action') {
+      openTrigger(target, 'action');
+      void runTrigger(target, 'action').then(() => {
+        // Continue past the action to its next ordinary main node, if any.
+        const nextEdge = edges.find(e => e.source === target.id);
+        const nxt = nextEdge ? nodes.find(n => n.id === nextEdge.target) : null;
+        if (nxt && nxt.type !== 'action' && nxt.type !== 'outcome') {
+          handleMainNodeClick(nxt.id);
+        }
+      });
+      return;
+    }
+    handleMainNodeClick(targetNodeId);
+  }, [nodes, edges, onTriggerOutcome, onTriggerAction, openTrigger, runTrigger, handleMainNodeClick]);
+
+  // Shared renderer for the Actions and Outcomes tabs (list ⇄ detail/confirm/back + status banner).
+  const renderTriggerTab = (kind: 'action' | 'outcome') => {
+    const list = kind === 'action' ? allActions : allOutcomes;
+    const handler = kind === 'action' ? onTriggerAction : onTriggerOutcome;
+    const open = triggerView?.kind === kind ? list.find(n => n.id === triggerView.nodeId) || null : null;
+    const accentText = kind === 'action' ? 'text-indigo-500' : 'text-purple-500';
+    const accentBox = kind === 'action'
+      ? 'bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10'
+      : 'bg-purple-500/5 dark:bg-purple-500/10 border-purple-500/10';
+    const confirmLabel = kind === 'action' ? 'Trigger Action' : 'Confirm Outcome';
+
+    if (open) {
+      const triggered = isTriggered(open.id);
+      return (
+        <div className="flex-grow flex flex-col h-full overflow-hidden">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border shrink-0 select-none">
+            <button
+              type="button"
+              onClick={() => { setTriggerView(null); setTriggerStatus('idle'); setTriggerError(null); }}
+              className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-3 w-3" /> Back
+            </button>
+            <span className={cn('text-[9px] font-bold uppercase truncate max-w-[150px]', accentText)}>
+              {open.data.label || (kind === 'action' ? 'Action' : open.data.outcomeValue || 'Outcome')}
+            </span>
+          </div>
+
+          <ScriptBodyDisplay
+            text={bodyOf(open)}
+            resolveText={resolveText}
+            highlightVariables={!resolveText}
+            className={cn('flex-grow overflow-y-auto p-3.5 rounded-xl border text-xs leading-relaxed text-foreground select-text font-medium scrollbar-thin', accentBox)}
+          />
+
+          {/* Trigger status banner */}
+          {triggerStatus === 'loading' ? (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] font-bold text-primary shrink-0">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Triggering…
+            </div>
+          ) : triggerStatus === 'success' ? (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[10px] font-bold text-emerald-600 shrink-0">
+              <CheckCircle2 className="h-3.5 w-3.5" /> {kind === 'action' ? 'Action' : 'Outcome'} triggered successfully.
+            </div>
+          ) : triggerStatus === 'error' ? (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-[10px] font-bold text-rose-600 shrink-0">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{triggerError || 'Trigger failed.'}</span>
+            </div>
+          ) : null}
+
+          {/* Footer: confirm / triggered / preview note */}
+          <div className="pt-3 shrink-0">
+            {triggered ? (
+              <div className="text-center text-[10px] font-bold text-emerald-500 uppercase tracking-wider py-2">✓ Already triggered</div>
+            ) : handler ? (
+              <Button
+                onClick={() => runTrigger(open, kind)}
+                disabled={triggerStatus === 'loading'}
+                className="w-full h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider gap-1.5"
+              >
+                {triggerStatus === 'loading' ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                {confirmLabel}
+              </Button>
+            ) : (
+              <div className="text-center text-[9px] text-muted-foreground italic py-2">
+                Preview only — triggering is available during a live call.
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex-grow flex flex-col h-full overflow-hidden">
+        <span className="text-[9px] font-bold text-muted-foreground uppercase pb-2 mb-2 border-b border-border shrink-0 select-none">
+          {kind === 'action' ? 'Available Actions' : 'Call Outcomes'}
+        </span>
+        <div className="flex-grow overflow-y-auto space-y-1.5 scrollbar-thin select-none">
+          {list.length > 0 ? (
+            list.map((node) => {
+              const triggered = isTriggered(node.id);
+              const meta = kind === 'action' ? getActionMeta(node.data?.actionType || '') : null;
+              const Icon = meta ? meta.icon : CheckCircle2;
+              const iconColor = meta ? meta.colorClass.replace('bg-', 'text-') : 'text-purple-500';
+              return (
+                <button
+                  key={node.id}
+                  type="button"
+                  onClick={() => openTrigger(node, kind)}
+                  className={cn(
+                    'w-full flex items-center gap-2 p-2.5 rounded-xl text-left border text-[11px] transition-all',
+                    triggered
+                      ? 'border-border/40 bg-muted/40 text-muted-foreground/50'
+                      : 'border-border/60 bg-card hover:bg-muted text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Icon className={cn('h-3.5 w-3.5 shrink-0', triggered ? 'text-muted-foreground/40' : iconColor)} />
+                  <span className="truncate flex-grow">
+                    {node.data.label || (kind === 'action' ? 'Action' : node.data.outcomeValue || 'Outcome')}
+                  </span>
+                  {triggered ? <span className="text-[8px] font-bold text-emerald-500 uppercase shrink-0">✓ Triggered</span> : null}
+                </button>
+              );
+            })
+          ) : (
+            <div className="text-center py-10 text-[11px] text-muted-foreground italic">
+              {kind === 'action' ? 'No actions found in this script.' : 'No outcomes found in this script.'}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const getNodeIcon = (type: string) => {
     switch (type) {
@@ -305,19 +501,66 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
                   {middleNode.type || 'objection'}
                 </Badge>
               </div>
-              {selectedObjectionId && (
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-6 w-6 text-muted-foreground rounded-lg"
-                  onClick={() => {
-                    setSelectedObjectionId(null);
-                    setSelectedSubObjectionIndex(null);
-                  }}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              )}
+              <div className="flex items-center gap-1">
+                {/* Zoom controls for the dialogue text */}
+                <div className="flex items-center gap-0.5 rounded-lg border border-border bg-background/60 px-0.5">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 text-muted-foreground rounded-md disabled:opacity-40"
+                    onClick={zoomOut}
+                    disabled={!canZoomOut}
+                    aria-label="Zoom out"
+                    title="Zoom out"
+                  >
+                    <ZoomOut className="h-3.5 w-3.5" />
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="min-w-[34px] text-[9px] font-bold tabular-nums text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Reset zoom"
+                    title="Reset zoom"
+                  >
+                    {Math.round(zoom * 100)}%
+                  </button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 text-muted-foreground rounded-md disabled:opacity-40"
+                    onClick={zoomIn}
+                    disabled={!canZoomIn}
+                    aria-label="Zoom in"
+                    title="Zoom in"
+                  >
+                    <ZoomIn className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 text-muted-foreground rounded-md"
+                    onClick={reset}
+                    aria-label="Reset zoom to 100%"
+                    title="Reset zoom to 100%"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </Button>
+                </div>
+                {selectedObjectionId && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 text-muted-foreground rounded-lg"
+                    onClick={() => {
+                      setSelectedObjectionId(null);
+                      setSelectedSubObjectionIndex(null);
+                    }}
+                    aria-label="Close objection response"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="flex-grow overflow-y-auto p-7 flex flex-col justify-between scrollbar-thin select-text">
@@ -328,9 +571,16 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
                   </span>
                 )}
                 
-                <div className="text-lg font-extrabold text-foreground/90 leading-relaxed font-sans whitespace-pre-line tracking-wide">
-                  {highlightVariables(middleText)}
-                </div>
+                <ScriptBodyDisplay
+                  text={middleText}
+                  resolveText={resolveText}
+                  highlightVariables={!resolveText}
+                  zoom={zoom}
+                  className="text-lg leading-relaxed text-foreground font-serif"
+                  emptyFallback={
+                    <span className="italic text-muted-foreground font-serif text-base">No body content text.</span>
+                  }
+                />
               </div>
 
               {!selectedObjectionId && (
@@ -345,7 +595,7 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
                           return (
                             <Button
                               key={idx}
-                              onClick={() => matchingEdge && handleMainNodeClick(matchingEdge.target)}
+                              onClick={() => matchingEdge && advanceTo(matchingEdge.target)}
                               disabled={!targetExists}
                               className="h-8 rounded-lg text-xs font-bold uppercase tracking-wider border-amber-500 bg-amber-500 hover:bg-amber-600 text-white"
                             >
@@ -359,7 +609,7 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
 
                   {middleNode.type !== 'question' && nextMainEdge && (
                     <Button
-                      onClick={() => handleMainNodeClick(nextMainEdge.target)}
+                      onClick={() => advanceTo(nextMainEdge.target)}
                       className="h-8 rounded-lg text-xs font-bold uppercase tracking-wider"
                     >
                       Continue Flow <ArrowRight className="h-3.5 w-3.5 ml-1" />
@@ -377,13 +627,11 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
                             <Button
                               key={actionNode.id}
                               variant="secondary"
-                              onClick={() => {
-                                setRightTab('actions');
-                                setSelectedActionId(actionNode.id);
-                              }}
-                              className="h-8 rounded-lg text-[10px] font-bold uppercase tracking-wider gap-1 border-indigo-500/20 bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20"
+                              disabled={isTriggered(actionNode.id)}
+                              onClick={() => advanceTo(actionNode.id)}
+                              className="h-8 rounded-lg text-[10px] font-bold uppercase tracking-wider gap-1 border-indigo-500/20 bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 disabled:opacity-50"
                             >
-                              ➔ Trigger Action: {actionNode.data.label}
+                              {isTriggered(actionNode.id) ? '✓ Triggered: ' : '➔ Trigger Action: '}{actionNode.data.label}
                             </Button>
                           );
                         })}
@@ -411,11 +659,17 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
             >
               Objections
             </TabsTrigger>
-            <TabsTrigger 
-              value="actions" 
+            <TabsTrigger
+              value="actions"
               className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-[10px] font-bold uppercase tracking-wider h-full transition-colors"
             >
               Actions
+            </TabsTrigger>
+            <TabsTrigger
+              value="outcomes"
+              className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-[10px] font-bold uppercase tracking-wider h-full transition-colors"
+            >
+              Outcomes
             </TabsTrigger>
           </TabsList>
 
@@ -478,56 +732,12 @@ export function InteractiveScriptView({ nodes, edges }: InteractiveScriptViewPro
 
           {/* Actions Tab Content */}
           <TabsContent value="actions" className="flex-grow overflow-hidden flex flex-col m-0 p-3 outline-none">
-            {selectedAction ? (
-              <div className="flex-grow flex flex-col h-full overflow-hidden">
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-border shrink-0 select-none">
-                  <span className="text-[9px] font-bold text-indigo-500 uppercase">
-                    ➔ Action Steps: {selectedAction.data.label}
-                  </span>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-5 w-5 rounded"
-                    onClick={() => setSelectedActionId(null)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-                <div className="flex-grow overflow-y-auto p-3.5 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-xl border border-indigo-500/10 text-xs leading-relaxed text-foreground select-text font-medium scrollbar-thin">
-                  {highlightVariables(getFallbackText(selectedAction))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex-grow flex flex-col h-full overflow-hidden">
-                <span className="text-[9px] font-bold text-muted-foreground uppercase pb-2 mb-2 border-b border-border shrink-0 select-none">
-                  Available Actions
-                </span>
-                <div className="flex-grow overflow-y-auto space-y-1.5 scrollbar-thin select-none">
-                  {allActions.length > 0 ? (
-                    allActions.map((act) => (
-                      <button
-                        key={act.id}
-                        type="button"
-                        onClick={() => setSelectedActionId(act.id)}
-                        className="w-full flex items-start gap-2 p-2.5 rounded-xl text-left border border-border/60 bg-card hover:bg-muted text-muted-foreground hover:text-foreground text-[11px] transition-all"
-                      >
-                        {(() => {
-                          const m = getActionMeta(act.data?.actionType || '');
-                          const Icon = m.icon;
-                          const iconColor = m.colorClass.replace('bg-', 'text-');
-                          return <Icon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", iconColor)} />;
-                        })()}
-                        <span className="truncate">{act.data.label || 'Action'}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="text-center py-10 text-[11px] text-muted-foreground italic">
-                      No actions found in this script.
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {renderTriggerTab('action')}
+          </TabsContent>
+
+          {/* Outcomes Tab Content */}
+          <TabsContent value="outcomes" className="flex-grow overflow-hidden flex flex-col m-0 p-3 outline-none">
+            {renderTriggerTab('outcome')}
           </TabsContent>
         </Tabs>
       </div>

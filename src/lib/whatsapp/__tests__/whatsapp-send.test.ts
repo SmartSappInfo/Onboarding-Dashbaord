@@ -89,6 +89,57 @@ describe('buildTemplatePayload', () => {
     const p = buildTemplatePayload({ to: '2332', name: 'hello', language: 'en', params: [] });
     expect(p.template.components).toBeUndefined();
   });
+
+  it('emits a media header component (by link)', () => {
+    const p = buildTemplatePayload({
+      to: '2332',
+      name: 'receipt',
+      language: 'en',
+      params: [],
+      headerMedia: { type: 'image', link: 'https://x.co/y.png' },
+    });
+    expect(p.template.components).toEqual([
+      { type: 'header', parameters: [{ type: 'image', image: { link: 'https://x.co/y.png' } }] },
+    ]);
+  });
+
+  it('emits a media header by id when provided (prefers id over link)', () => {
+    const p = buildTemplatePayload({
+      to: '2332',
+      name: 'receipt',
+      language: 'en',
+      params: [],
+      headerMedia: { type: 'document', id: 'MEDIA_1', link: 'ignored' },
+    });
+    expect(p.template.components).toEqual([
+      { type: 'header', parameters: [{ type: 'document', document: { id: 'MEDIA_1' } }] },
+    ]);
+  });
+
+  it('emits a dynamic URL button component', () => {
+    const p = buildTemplatePayload({
+      to: '2332',
+      name: 'track',
+      language: 'en',
+      params: [],
+      buttonParams: [{ subType: 'url', index: 0, text: '12345' }],
+    });
+    expect(p.template.components).toEqual([
+      { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: '12345' }] },
+    ]);
+  });
+
+  it('orders components header → body → button', () => {
+    const p = buildTemplatePayload({
+      to: '2332',
+      name: 'full',
+      language: 'en',
+      params: ['Ama'],
+      headerMedia: { type: 'image', id: 'MID' },
+      buttonParams: [{ subType: 'url', index: 0, text: 's' }],
+    });
+    expect(p.template.components!.map((c) => c.type)).toEqual(['header', 'body', 'button']);
+  });
 });
 
 describe('buildTextPayload', () => {

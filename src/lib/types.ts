@@ -4300,6 +4300,13 @@ export interface CallScript {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  /** Provenance — 'imported' marks scripts recreated from a .cflow file. Absent ⇒ native. */
+  source?: 'native' | 'imported';
+  importMeta?: {
+    importedAt: string;
+    originalName?: string;
+    formatVersion?: number;
+  };
 }
 
 export type CallCampaignStatus = 'draft' | 'scheduled' | 'running' | 'paused' | 'completed' | 'cancelled' | 'archived';
@@ -4353,6 +4360,10 @@ export interface CallQueueItem {
   entityName: string;
   entityPhone: string;
   entityEmail: string;
+  /** When set, this queue item targets a specific contact within the entity rather than the entity's default contact */
+  contactId?: string;
+  /** Display name of the specific contact (populated when contactId is set) */
+  contactName?: string;
   status: CallQueueItemStatus;
   assignedTo: string | null;
   lockExpiresAt: string | null;

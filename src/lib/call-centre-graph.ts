@@ -1,5 +1,78 @@
 import type { BranchingScriptGraph, ScriptNode, ScriptNodeType } from './types';
 
+// ─── Rich-text (formatted) script body helpers ───────────────────────────────
+// Node `data.text` (and the legacy text-builder string) may contain inline HTML
+// produced by the formatting toolbar in the script editor (bold/italic/lists/
+// alignment/font/spacing). Variables are still stored as plain `{{VAR}}` tokens.
+// These helpers let display surfaces render that HTML — or strip it back to plain
+// text for compact previews — without each surface re-implementing the logic.
+
+/** Detect whether a script body string carries inline formatting markup. */
+export function isRichText(input: string | undefined): boolean {
+  if (!input) return false;
+  return /<(?:b|strong|i|em|u|span|div|p|ul|ol|li|br)\b[^>]*>/i.test(input);
+}
+
+/** Strip formatting markup back to readable plain text (for cards/previews/search). */
+export function stripScriptHtml(input: string | undefined): string {
+  if (!input) return '';
+  if (!isRichText(input)) return input;
+  return input
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*li[^>]*>/gi, '• ')
+    .replace(/<\/(?:p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function escapeScriptHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+const SCRIPT_VAR_PILL_STYLE = [
+  'display:inline-block', 'padding:1px 6px', 'margin:0 2px',
+  'font-size:0.85em', 'font-weight:700', 'border-radius:4px',
+  'font-family:ui-monospace,monospace', 'vertical-align:baseline',
+  'background:hsl(217 91% 60% / 0.12)', 'color:hsl(221 83% 53%)',
+  'border:1px solid hsl(217 91% 60% / 0.25)',
+].join(';');
+
+/**
+ * Convert a script body string into HTML suitable for dangerouslySetInnerHTML.
+ * • Already-formatted bodies are passed through (markup is editor-controlled).
+ * • Plain bodies are escaped and newlines become <br>.
+ * • When highlightVariables is set, remaining {{VAR}} / [VAR] tokens become pills.
+ */
+export function scriptTextToDisplayHtml(
+  input: string | undefined,
+  options?: { highlightVariables?: boolean }
+): string {
+  if (!input) return '';
+  let html = isRichText(input)
+    ? input
+    : escapeScriptHtml(input).replace(/\n/g, '<br>');
+
+  if (options?.highlightVariables) {
+    html = html.replace(/\{\{([A-Za-z0-9_]+)\}\}|\[([A-Za-z0-9_]+)\]/g, (_m, a, b) => {
+      const name = a || b;
+      return `<span style="${SCRIPT_VAR_PILL_STYLE}">${name}</span>`;
+    });
+  }
+  return html;
+}
+
+/** Tailwind class fragment so rendered lists/alignment display correctly. */
+export const RICH_SCRIPT_DISPLAY_CLASS =
+  '[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5';
+
 /**
  * Check if the script content string is a serialized JSON branching script graph.
  */
@@ -52,7 +125,7 @@ export function extractPreviewText(content: string | undefined, separator: strin
       .map((id) => {
         const node = nodeById.get(id) as any;
         if (!node) return '';
-        const text = node.data?.text || '';
+        const text = stripScriptHtml(node.data?.text || '');
         if (node.type === 'question' && node.data?.options?.length) {
           return `${text} [${node.data.options.join(' / ')}]`;
         }

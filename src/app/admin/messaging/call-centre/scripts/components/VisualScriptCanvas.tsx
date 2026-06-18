@@ -22,9 +22,11 @@ import ReactFlow, {
   type Viewport,
   type NodeChange,
   type NodePositionChange,
+  type ReactFlowInstance,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { getActionMeta } from '@/lib/call-action-types';
+import { stripScriptHtml } from '@/lib/call-centre-graph';
 
 // ─── Custom Node Components ──────────────────────────────────────────────────
 
@@ -69,20 +71,20 @@ const customNodeTypes = {
   start: (props: NodeProps) => (
     <CustomNodeWrapper title={props.data.label || 'Start'} colorClass="bg-emerald-500" typeLabel="Start" selected={props.selected}>
       <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-emerald-500 !border-none" />
-      {props.data.text || 'Initiate outbound call conversation.'}
+      {stripScriptHtml(props.data.text) || 'Initiate outbound call conversation.'}
     </CustomNodeWrapper>
   ),
   end: (props: NodeProps) => (
     <CustomNodeWrapper title={props.data.label || 'End'} colorClass="bg-rose-500" typeLabel="End" selected={props.selected}>
       <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-rose-500 !border-none" />
-      {props.data.text || 'End of call outreach.'}
+      {stripScriptHtml(props.data.text) || 'End of call outreach.'}
     </CustomNodeWrapper>
   ),
   script_block: (props: NodeProps) => (
     <CustomNodeWrapper title={props.data.label || 'Script Block'} colorClass="bg-primary" typeLabel="Say" selected={props.selected}>
       <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-primary !border-none" />
       <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-primary !border-none" />
-      {props.data.text || '[No script body configured]'}
+      {stripScriptHtml(props.data.text) || '[No script body configured]'}
     </CustomNodeWrapper>
   ),
   question: (props: NodeProps) => {
@@ -108,7 +110,7 @@ const customNodeTypes = {
             <span className="text-[8px] font-mono text-amber-500 uppercase tracking-wider font-bold shrink-0">Ask</span>
           </div>
           <div className="text-[9px] text-muted-foreground font-medium leading-relaxed max-h-[48px] overflow-hidden line-clamp-3 break-words italic font-serif">
-            {props.data.text || '[No question configured]'}
+            {stripScriptHtml(props.data.text) || '[No question configured]'}
           </div>
 
           {/* Option pills — each is an exit path */}
@@ -180,7 +182,7 @@ const customNodeTypes = {
             </ul>
           ) : (
             <div className="text-[9px] text-muted-foreground font-medium leading-relaxed max-h-[48px] overflow-hidden line-clamp-3 break-words italic font-serif">
-              {props.data.text || '[No objection response details]'}
+              {stripScriptHtml(props.data.text) || '[No objection response details]'}
             </div>
           )}
         </div>
@@ -194,7 +196,7 @@ const customNodeTypes = {
       <CustomNodeWrapper title={props.data.label || meta.label} colorClass={meta.colorClass} typeLabel="Action" selected={props.selected}>
         <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-indigo-500 !border-none" />
         <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-indigo-500 !border-none" />
-        {props.data.text || meta.label}
+        {stripScriptHtml(props.data.text) || meta.label}
       </CustomNodeWrapper>
     );
   },
@@ -202,7 +204,7 @@ const customNodeTypes = {
     <CustomNodeWrapper title={props.data.label || 'Set Outcome'} colorClass="bg-purple-500" typeLabel="Outcome" selected={props.selected}>
       <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-purple-500 !border-none" />
       <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-purple-500 !border-none" />
-      {props.data.text || `Outcome: ${props.data.outcomeValue || 'None'}`}
+      {stripScriptHtml(props.data.text) || `Outcome: ${props.data.outcomeValue || 'None'}`}
     </CustomNodeWrapper>
   )
 };
@@ -302,6 +304,8 @@ const customEdgeTypes = { deletable: DeletableEdge };
 export interface VisualScriptCanvasHandle {
   /** Returns the flow-coordinate position at the bottom-center of the current viewport. */
   getDropPosition: () => { x: number; y: number };
+  /** Smoothly pan/centre the viewport on a given node (used by keyboard navigation). */
+  focusNode: (nodeId: string) => void;
 }
 
 export interface VisualScriptCanvasProps {
@@ -352,6 +356,9 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
   // Track the live viewport transform so getDropPosition() is always fresh
   const viewportRef = React.useRef<Viewport>({ x: 200, y: 80, zoom: 0.65 });
 
+  // ReactFlow instance captured on init — used to drive programmatic panning
+  const rfRef = React.useRef<ReactFlowInstance | null>(null);
+
   // Expose getDropPosition() to parent via forwardRef
   React.useImperativeHandle(ref, () => ({
     getDropPosition: () => {
@@ -367,6 +374,18 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
         x: (screenX - vp.x) / vp.zoom - 110, // centre the 220px-wide node
         y: (screenY - vp.y) / vp.zoom,
       };
+    },
+    focusNode: (nodeId: string) => {
+      const inst = rfRef.current;
+      if (!inst) return;
+      const node = inst.getNode(nodeId);
+      if (!node) return;
+      const w = node.width ?? 220;
+      const h = node.height ?? 120;
+      inst.setCenter(node.position.x + w / 2, node.position.y + h / 2, {
+        zoom: viewportRef.current.zoom,
+        duration: 300,
+      });
     },
   }), []);
 
@@ -443,12 +462,16 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
+        onInit={(inst) => { rfRef.current = inst; }}
         nodeTypes={customNodeTypes}
         edgeTypes={customEdgeTypes}
         defaultViewport={{ x: 200, y: 80, zoom: 0.65 }}
         minZoom={0.2}
         maxZoom={2}
         deleteKeyCode={['Delete', 'Backspace']}
+        // Arrow keys are repurposed for step-to-step navigation by the parent builder,
+        // so disable ReactFlow's built-in arrow-key node nudging to avoid conflicts.
+        disableKeyboardA11y
         selectionOnDrag={false}
         defaultEdgeOptions={{
           type: 'deletable',

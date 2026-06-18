@@ -7,15 +7,25 @@ import { useRouter } from 'next/navigation';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
 import { useCallCampaigns, useCallScripts } from '@/lib/call-centre-hooks';
-import { 
-  deleteCallScriptAction, 
-  deleteCallCampaignAction, 
+import {
+  deleteCallScriptAction,
+  deleteCallCampaignAction,
   generateCampaignQueueAction,
   cloneCallCampaignAction,
   archiveCallCampaignAction,
-  endCallCampaignAction
+  endCallCampaignAction,
+  importCallScriptAction
 } from '@/lib/call-centre-actions';
 import { extractPreviewText, isJsonGraph, parseGraph } from '@/lib/call-centre-graph';
+import {
+  buildScriptExport,
+  serializeScriptExport,
+  slugifyScriptName,
+  parseScriptExport,
+  CFLOW_EXTENSION,
+  MAX_CFLOW_BYTES,
+} from '@/lib/call-script-portability';
+import { downloadTextFile } from '@/lib/client-download';
 import { useToast } from '@/hooks/use-toast';
 import { PageContainer } from '@/components/ui/page-container';
 import type { CallCampaign, CallScript } from '@/lib/types';
@@ -79,7 +89,9 @@ import {
   MoreHorizontal,
   Settings,
   Archive,
-  UserPlus
+  UserPlus,
+  Download,
+  Upload
 } from 'lucide-react';
 
 const AddContactsDialog = dynamic(
@@ -90,7 +102,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
   const router = useRouter();
   const { user } = useUser();
   useSetBreadcrumb('Call Centre');
-  const { activeWorkspaceId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
   const { toast } = useToast();
 
   const { campaigns, isLoading: campaignsLoading } = useCallCampaigns(activeWorkspaceId);
@@ -133,6 +145,49 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
   const [previewScript, setPreviewScript] = React.useState<CallScript | null>(null);
   const [campaignForAddContacts, setCampaignForAddContacts] = React.useState<CallCampaign | null>(null);
   const [isCloningId, setIsCloningId] = React.useState<string | null>(null);
+  const [isImporting, setIsImporting] = React.useState(false);
+  const importInputRef = React.useRef<HTMLInputElement>(null);
+
+  // ─── Script export / import (.cflow) ───────────────────────────────────────
+  const handleExportScript = React.useCallback((script: CallScript) => {
+    try {
+      const text = serializeScriptExport(buildScriptExport(script));
+      downloadTextFile(`${slugifyScriptName(script.name)}${CFLOW_EXTENSION}`, text);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Export Failed', description: err.message });
+    }
+  }, [toast]);
+
+  const handleImportFile = React.useCallback(async (file: File) => {
+    if (file.size > MAX_CFLOW_BYTES) {
+      toast({ variant: 'destructive', title: 'File Too Large', description: 'This .cflow file exceeds the size limit.' });
+      return;
+    }
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      // Early client-side validation for a fast, friendly error.
+      const parsed = parseScriptExport(text);
+      if (!parsed.ok) {
+        toast({ variant: 'destructive', title: 'Invalid File', description: parsed.error });
+        return;
+      }
+      const result = await importCallScriptAction(
+        text,
+        { organizationId: activeOrganizationId, workspaceId: activeWorkspaceId },
+        user?.uid || ''
+      );
+      if (result.success) {
+        toast({ title: 'Script Imported', description: `"${parsed.script.name}" was recreated in this workspace.` });
+      } else {
+        toast({ variant: 'destructive', title: 'Import Failed', description: result.error });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Import Failed', description: err.message });
+    } finally {
+      setIsImporting(false);
+    }
+  }, [toast, activeOrganizationId, activeWorkspaceId, user?.uid]);
 
   const handleCloneCampaign = async (campaignId: string) => {
     setIsCloningId(campaignId);
@@ -292,12 +347,34 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                   <Plus className="h-3.5 w-3.5" /> New Campaign
                 </Button>
               ) : (
-                <Button
-                  onClick={() => router.push(wrapHref('/admin/messaging/call-centre/scripts/new'))}
-                  className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white"
-                >
-                  <FileText className="h-3.5 w-3.5" /> New Script
-                </Button>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".cflow,application/json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImportFile(file);
+                      e.target.value = ''; // allow re-importing the same file
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => importInputRef.current?.click()}
+                    disabled={isImporting}
+                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 border-border bg-muted hover:bg-accent text-muted-foreground"
+                  >
+                    {isImporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    Import Script
+                  </Button>
+                  <Button
+                    onClick={() => router.push(wrapHref('/admin/messaging/call-centre/scripts/new'))}
+                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white"
+                  >
+                    <FileText className="h-3.5 w-3.5" /> New Script
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -372,23 +449,25 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                   return (
                     <div 
                       key={camp.id} 
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/30 hover:shadow-sm transition-all gap-4"
+                      className="grid grid-cols-[1fr_auto_auto] items-center p-4 bg-card border border-border rounded-xl hover:border-primary/30 hover:shadow-sm transition-all gap-4"
                     >
-                      {/* Left Section: Icon & Info */}
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {/* Left Section: Icon & Info (clickable → analytics) */}
+                      <div 
+                        className="flex items-center gap-3 min-w-0 cursor-pointer group/name"
+                        onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/analytics/${camp.id}`))}
+                      >
                         <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 text-primary">
                           <PhoneCall className="h-5 w-5" />
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-sm font-bold text-foreground truncate">{camp.name}</h4>
-                            {getStatusBadge(camp.status)}
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-foreground truncate group-hover/name:text-primary group-hover/name:underline transition-colors">{camp.name}</h4>
                             {(camp.status === 'running' || camp.status === 'completed') && (
                               <TooltipProvider delayDuration={150}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className={cn(
-                                      "w-2 h-2 rounded-full",
+                                      "w-2 h-2 rounded-full shrink-0",
                                       camp.status === 'running' ? "bg-emerald-500 animate-pulse" : "bg-blue-500"
                                     )} />
                                   </TooltipTrigger>
@@ -407,8 +486,8 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                         </div>
                       </div>
 
-                      {/* Middle Section: Progress & Stats */}
-                      <div className="flex items-center gap-6 shrink-0 flex-wrap sm:flex-nowrap">
+                      {/* Middle Section: Progress & Stats (fixed column) */}
+                      <div className="flex items-center gap-6 shrink-0">
                         <div 
                           onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/analytics/${camp.id}`))}
                           className="w-40 space-y-1 cursor-pointer hover:opacity-80 hover:shadow-sm transition-all p-1 rounded-lg"
@@ -433,17 +512,51 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                         </div>
                       </div>
 
-                      {/* Right Section: Actions */}
-                      <div className="flex items-center gap-2 shrink-0 justify-end">
+                      {/* Right Section: Quick Actions + Menu (fixed width to prevent layout shift) */}
+                      <div className="flex items-center gap-1.5 shrink-0 justify-end min-w-[7rem]">
+                        {/* Add Contacts quick icon */}
+                        {camp.allowAddContactsAfterLaunch !== false || camp.status === 'draft' ? (
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => setCampaignForAddContacts(camp)}
+                                  className="w-8 h-8 rounded-lg text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10"
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-[10px] font-bold">Add Contacts</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : null}
+
+                        {/* Open Workspace quick icon (running/paused only) */}
                         {(camp.status === 'running' || camp.status === 'paused') && (
-                          <Button 
-                            onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/workspace/${camp.id}`))}
-                            className="h-8 px-4 rounded-lg text-[10px] uppercase font-bold tracking-wider gap-1.5 bg-[#4d69ff] hover:bg-[#3d59ef] text-white"
-                          >
-                            <Play className="h-3 w-3 fill-current" /> Open
-                          </Button>
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/workspace/${camp.id}`))}
+                                  className="w-8 h-8 rounded-lg text-muted-foreground hover:text-[#4d69ff] hover:bg-[#4d69ff]/10"
+                                >
+                                  <Play className="h-4 w-4 fill-current" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-[10px] font-bold">Open Workspace</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
 
+                        {/* Dots menu */}
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -463,6 +576,16 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                               >
                                 <BarChart3 className="h-4 w-4 text-primary" />
                                 View Statistics
+                              </DropdownMenuItem>
+                            )}
+
+                            {(camp.status === 'running' || camp.status === 'paused') && (
+                              <DropdownMenuItem 
+                                onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/workspace/${camp.id}`))}
+                                className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                              >
+                                <Play className="h-4 w-4 text-[#4d69ff]" />
+                                Open Workspace
                               </DropdownMenuItem>
                             )}
 
@@ -617,6 +740,15 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                           <FileText className="h-3 w-3" />
                         </div>
                         <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Outbound Call Script</span>
+                        {script.source === 'imported' ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0 rounded border-amber-500/30 bg-amber-500/10 text-amber-500"
+                            title={script.importMeta?.importedAt ? `Imported ${new Date(script.importMeta.importedAt).toLocaleDateString()}` : 'Imported script'}
+                          >
+                            Imported
+                          </Badge>
+                        ) : null}
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <Button 
@@ -646,9 +778,18 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                         >
                           <Edit3 className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
+                          onClick={() => handleExportScript(script)}
+                          title="Export Script (.cflow)"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-rose-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg"
                           onClick={() => handleDeleteScript(script.id)}
                           title="Delete Script"

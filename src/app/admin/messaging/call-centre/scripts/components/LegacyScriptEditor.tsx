@@ -2,6 +2,11 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { isRichText } from '@/lib/call-centre-graph';
+import {
+  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
+  List, ListOrdered, Type, CaseSensitive, Rows3, Baseline,
+} from 'lucide-react';
 
 /* ── Types ──────────────────────────────────────────────────────────────────── */
 export interface VariableGroup {
@@ -23,7 +28,44 @@ interface LegacyScriptEditorProps {
   className?: string;
   /** Override the minimum height of the inner editable area (default: '420px'). */
   minHeight?: string;
+  /**
+   * Enable the rich-text formatting toolbar (bold/italic/underline, alignment,
+   * bullet & numbered lists, font family, font size, line spacing).
+   * When enabled the editor serializes to HTML (variables still stored as
+   * `{{VAR}}`); otherwise it serializes to plain text as before.
+   */
+  richFormatting?: boolean;
 }
+
+/* ── Rich toolbar option catalogues ───────────────────────────────────────── */
+const FONT_FAMILIES = [
+  { label: 'Default', value: '' },
+  { label: 'Sans Serif', value: 'ui-sans-serif, system-ui, sans-serif' },
+  { label: 'Serif', value: 'ui-serif, Georgia, serif' },
+  { label: 'Monospace', value: 'ui-monospace, monospace' },
+  { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
+  { label: 'Georgia', value: 'Georgia, serif' },
+  { label: 'Times', value: '"Times New Roman", Times, serif' },
+];
+const FONT_SIZES = ['12', '14', '16', '18', '20', '24', '28', '32'];
+const LINE_SPACINGS = [
+  { label: 'Single', value: '1.4' },
+  { label: '1.5×', value: '1.7' },
+  { label: 'Double', value: '2.2' },
+];
+/* Quick-pick font colour swatches (a custom picker is also available). */
+const FONT_COLORS = [
+  { label: 'Default', value: '' },
+  { label: 'Black', value: '#0f172a' },
+  { label: 'Slate', value: '#64748b' },
+  { label: 'Red', value: '#dc2626' },
+  { label: 'Orange', value: '#ea580c' },
+  { label: 'Amber', value: '#d97706' },
+  { label: 'Green', value: '#16a34a' },
+  { label: 'Blue', value: '#2563eb' },
+  { label: 'Indigo', value: '#4f46e5' },
+  { label: 'Purple', value: '#9333ea' },
+];
 
 /* ── Fallback variable catalogue (used when no groups are passed) ──────────── */
 const FALLBACK_VARIABLE_GROUPS: VariableGroup[] = [
@@ -115,13 +157,14 @@ function createPillElement(varName: string): HTMLSpanElement {
 
 /* ── Component ──────────────────────────────────────────────────────────────── */
 export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, LegacyScriptEditorProps>(
-  function LegacyScriptEditor({ value, onChange, variableGroups, placeholder = 'Start typing your script here…', className, minHeight = '420px' }, ref) {
+  function LegacyScriptEditor({ value, onChange, variableGroups, placeholder = 'Start typing your script here…', className, minHeight = '420px', richFormatting = false }, ref) {
     const editorRef = React.useRef<HTMLDivElement>(null);
     const [showMenu, setShowMenu] = React.useState(false);
     const [filter, setFilter] = React.useState('');
     const [menuPos, setMenuPos] = React.useState({ top: 0, left: 0 });
     const [selIdx, setSelIdx] = React.useState(0);
     const [isEmpty, setIsEmpty] = React.useState(!value);
+    const [customColor, setCustomColor] = React.useState('#2563eb');
     const isInternal = React.useRef(false);
     const lastRangeRef = React.useRef<Range | null>(null);
 
@@ -157,22 +200,43 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
       return t.replace(/^\n/, '');
     }, []);
 
+    /* ── Serialize editor DOM → HTML (rich mode), pills back to {{VAR}} ─── */
+    const serializeRich = React.useCallback(() => {
+      if (!editorRef.current) return '';
+      const clone = editorRef.current.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('[data-variable]').forEach((el) => {
+        const varName = (el as HTMLElement).dataset.variable || '';
+        el.replaceWith(document.createTextNode(`{{${varName}}}`));
+      });
+      const html = clone.innerHTML;
+      // Treat a structurally-empty editor as empty string
+      return clone.textContent?.trim() ? html : '';
+    }, []);
+
     /* ── Sync external value → editor HTML ─── */
     React.useEffect(() => {
       if (isInternal.current) { isInternal.current = false; return; }
       if (editorRef.current) {
-        editorRef.current.innerHTML = textToHtml(value);
-        setIsEmpty(!value);
+        if (richFormatting && isRichText(value)) {
+          // value is already formatted HTML — only convert {{VAR}} tokens to pills
+          editorRef.current.innerHTML = value.replace(
+            /\{\{([A-Za-z0-9_]+)\}\}/g,
+            (_, v) => pillHtml(v)
+          );
+        } else {
+          editorRef.current.innerHTML = textToHtml(value);
+        }
+        setIsEmpty(!editorRef.current.textContent?.trim());
       }
-    }, [value]);
+    }, [value, richFormatting]);
 
     /* ── Notify parent of content change ─── */
     const syncAndNotify = React.useCallback(() => {
       isInternal.current = true;
-      const t = extractText();
-      setIsEmpty(!t);
-      onChange(t);
-    }, [extractText, onChange]);
+      const out = richFormatting ? serializeRich() : extractText();
+      setIsEmpty(!editorRef.current?.textContent?.trim());
+      onChange(out);
+    }, [extractText, onChange, richFormatting, serializeRich]);
 
     /* ── Insert a variable pill at cursor ─── */
     const insertVariable = React.useCallback((varName: string) => {
@@ -261,6 +325,105 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
       focus: () => editorRef.current?.focus(),
     }), [insertVariable]);
 
+    /* ── Rich-text formatting helpers ─────────────────────────────────────── */
+
+    /** Re-focus the editor and restore the last saved selection range. */
+    const restoreSelection = React.useCallback(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.focus();
+      if (lastRangeRef.current) {
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(lastRangeRef.current);
+      }
+    }, []);
+
+    /** Run a document.execCommand formatting command on the active selection. */
+    const runCommand = React.useCallback((command: string, value?: string) => {
+      if (!editorRef.current) return;
+      restoreSelection();
+      try { document.execCommand('styleWithCSS', false, 'true'); } catch { /* not supported */ }
+      document.execCommand(command, false, value);
+      saveSelection();
+      syncAndNotify();
+    }, [restoreSelection, saveSelection, syncAndNotify]);
+
+    /** Apply a pixel font-size to the current selection (execCommand fontSize is 1–7 only). */
+    const applyFontSize = React.useCallback((px: string) => {
+      const editor = editorRef.current;
+      if (!editor || !px) return;
+      restoreSelection();
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return; // nothing selected
+      // Use a temporary marker size, then rewrite the generated <font> tags as styled spans.
+      document.execCommand('styleWithCSS', false, 'false');
+      document.execCommand('fontSize', false, '7');
+      editor.querySelectorAll('font[size="7"]').forEach((f) => {
+        const span = document.createElement('span');
+        span.style.fontSize = `${px}px`;
+        while (f.firstChild) span.appendChild(f.firstChild);
+        f.replaceWith(span);
+      });
+      saveSelection();
+      syncAndNotify();
+    }, [restoreSelection, saveSelection, syncAndNotify]);
+
+    /** Apply line-height (vertical spacing) to the selected block(s), or wrap all content. */
+    const applyLineSpacing = React.useCallback((value: string) => {
+      const editor = editorRef.current;
+      if (!editor || !value) return;
+      restoreSelection();
+      const sel = window.getSelection();
+
+      // Climb from a node up to the top-level block child of the editor root.
+      const blockOf = (node: Node | null): HTMLElement | null => {
+        let el: HTMLElement | null = node
+          ? (node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement))
+          : null;
+        while (el && el.parentElement && el.parentElement !== editor) el = el.parentElement;
+        return el && el !== editor ? el : null;
+      };
+
+      let applied = false;
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const startBlock = blockOf(range.startContainer);
+        const endBlock = blockOf(range.endContainer);
+        if (startBlock) {
+          const blocks: HTMLElement[] = [startBlock];
+          let n: ChildNode | null = startBlock;
+          while (n && n !== endBlock) {
+            n = n.nextSibling;
+            if (n && n.nodeType === Node.ELEMENT_NODE) blocks.push(n as HTMLElement);
+          }
+          blocks.forEach((b) => { b.style.lineHeight = value; });
+          applied = true;
+        }
+      }
+
+      if (!applied) {
+        // No block wrapper (e.g. a single bare text line) — wrap the whole body.
+        const wrapper = document.createElement('div');
+        wrapper.style.lineHeight = value;
+        while (editor.firstChild) wrapper.appendChild(editor.firstChild);
+        editor.appendChild(wrapper);
+      }
+      saveSelection();
+      syncAndNotify();
+    }, [restoreSelection, saveSelection, syncAndNotify]);
+
+    /** Apply a text colour to the current selection. Empty value resets to the default. */
+    const applyFontColor = React.useCallback((color: string) => {
+      if (!color) {
+        const editor = editorRef.current;
+        const computed = editor ? getComputedStyle(editor).color : '';
+        runCommand('foreColor', computed || 'inherit');
+        return;
+      }
+      runCommand('foreColor', color);
+    }, [runCommand]);
+
     /* ── Input handler ─── */
     const handleInput = React.useCallback(() => {
       syncAndNotify();
@@ -345,12 +508,143 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
       setTimeout(() => setShowMenu(false), 200);
     }, []);
 
+    /* ── Reusable toolbar button ─── */
+    const ToolbarBtn = ({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) => (
+      <button
+        type="button"
+        title={title}
+        aria-label={title}
+        // preventDefault keeps the editor's text selection intact when the button is pressed
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onClick}
+        className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+      >
+        {children}
+      </button>
+    );
+
+    const toolbarSelectClass =
+      'h-7 rounded-lg bg-background border border-border text-[10px] font-semibold text-foreground px-1.5 outline-none focus:border-primary/40 cursor-pointer';
+
     /* ── Render ─── */
     return (
-      <div className={cn('relative', className)}>
+      <div className={cn('relative flex flex-col', className)}>
+        {/* ── Rich-text formatting toolbar ── */}
+        {richFormatting && (
+          <div className="flex flex-wrap items-center gap-0.5 mb-2 p-1 bg-muted/40 border border-border rounded-xl">
+            <ToolbarBtn title="Bold (Ctrl+B)" onClick={() => runCommand('bold')}><Bold className="h-3.5 w-3.5" /></ToolbarBtn>
+            <ToolbarBtn title="Italic (Ctrl+I)" onClick={() => runCommand('italic')}><Italic className="h-3.5 w-3.5" /></ToolbarBtn>
+            <ToolbarBtn title="Underline (Ctrl+U)" onClick={() => runCommand('underline')}><Underline className="h-3.5 w-3.5" /></ToolbarBtn>
+
+            {/* Font colour: named presets + a custom colour swatch */}
+            <div className="flex items-center gap-0.5">
+              <select
+                title="Text colour"
+                aria-label="Text colour"
+                defaultValue=""
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => { applyFontColor(e.target.value); e.currentTarget.selectedIndex = 0; }}
+                className={toolbarSelectClass}
+              >
+                <option value="" disabled>Colour</option>
+                {FONT_COLORS.map((c) => (
+                  <option key={c.label} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+              <label
+                title="Custom text colour"
+                className="relative h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer"
+              >
+                <Baseline className="h-3.5 w-3.5" />
+                <span
+                  className="absolute bottom-1 left-1.5 right-1.5 h-0.5 rounded-full"
+                  style={{ backgroundColor: customColor }}
+                />
+                <input
+                  type="color"
+                  value={customColor}
+                  onChange={(e) => { setCustomColor(e.target.value); applyFontColor(e.target.value); }}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  aria-label="Pick custom text colour"
+                />
+              </label>
+            </div>
+
+            <span className="w-px h-5 bg-border mx-1" />
+
+            <ToolbarBtn title="Align left" onClick={() => runCommand('justifyLeft')}><AlignLeft className="h-3.5 w-3.5" /></ToolbarBtn>
+            <ToolbarBtn title="Align centre" onClick={() => runCommand('justifyCenter')}><AlignCenter className="h-3.5 w-3.5" /></ToolbarBtn>
+            <ToolbarBtn title="Align right" onClick={() => runCommand('justifyRight')}><AlignRight className="h-3.5 w-3.5" /></ToolbarBtn>
+
+            <span className="w-px h-5 bg-border mx-1" />
+
+            <ToolbarBtn title="Bulleted list" onClick={() => runCommand('insertUnorderedList')}><List className="h-3.5 w-3.5" /></ToolbarBtn>
+            <ToolbarBtn title="Numbered list" onClick={() => runCommand('insertOrderedList')}><ListOrdered className="h-3.5 w-3.5" /></ToolbarBtn>
+
+            <span className="w-px h-5 bg-border mx-1" />
+
+            {/* Font family */}
+            <div className="flex items-center gap-1">
+              <Type className="h-3.5 w-3.5 text-muted-foreground" />
+              <select
+                title="Font family"
+                aria-label="Font family"
+                defaultValue=""
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => { const v = e.target.value; if (v) runCommand('fontName', v); e.currentTarget.selectedIndex = 0; }}
+                className={toolbarSelectClass}
+              >
+                <option value="" disabled>Font</option>
+                {FONT_FAMILIES.filter((f) => f.value).map((f) => (
+                  <option key={f.label} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Font size */}
+            <div className="flex items-center gap-1">
+              <CaseSensitive className="h-3.5 w-3.5 text-muted-foreground" />
+              <select
+                title="Font size"
+                aria-label="Font size"
+                defaultValue=""
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => { const v = e.target.value; if (v) applyFontSize(v); e.currentTarget.selectedIndex = 0; }}
+                className={toolbarSelectClass}
+              >
+                <option value="" disabled>Size</option>
+                {FONT_SIZES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Line spacing */}
+            <div className="flex items-center gap-1">
+              <Rows3 className="h-3.5 w-3.5 text-muted-foreground" />
+              <select
+                title="Line spacing"
+                aria-label="Line spacing"
+                defaultValue=""
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => { const v = e.target.value; if (v) applyLineSpacing(v); e.currentTarget.selectedIndex = 0; }}
+                className={toolbarSelectClass}
+              >
+                <option value="" disabled>Spacing</option>
+                {LINE_SPACINGS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         {/* Placeholder overlay */}
         {isEmpty && (
-          <div className="absolute top-4 left-4 right-4 pointer-events-none select-none flex items-center gap-2">
+          <div className={cn(
+            'absolute left-4 right-4 pointer-events-none select-none flex items-center gap-2',
+            richFormatting ? 'top-[52px]' : 'top-4',
+          )}>
             <span className="text-xs text-muted-foreground/40 font-serif">{placeholder}</span>
             <span className="text-[9px] font-mono text-muted-foreground/25 bg-muted/40 px-1.5 py-0.5 rounded border border-border/30">/</span>
             <span className="text-[9px] text-muted-foreground/30">to insert variables</span>
@@ -370,11 +664,13 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
           onPaste={handlePaste}
           onBlur={handleBlur}
           className={cn(
-            'overflow-y-auto',
+            'overflow-y-auto flex-1 min-h-0',
             'bg-background border border-border rounded-xl',
             'text-sm leading-[1.85] p-4 font-serif text-foreground',
             'outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/10',
             'transition-colors whitespace-pre-wrap break-words resize-y',
+            // Render bullet/number lists correctly inside the editable area
+            '[&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-0.5',
           )}
           style={{ minHeight, maxHeight: minHeight === '420px' ? '600px' : undefined }}
           role="textbox"

@@ -73,7 +73,7 @@ export function useEntitySearch({
         }
         if (searchKey) {
           constraints.push(where('displayNameLower', '>=', searchKey));
-          constraints.push(where('displayNameLower', '<=', searchKey + ''));
+          constraints.push(where('displayNameLower', '<=', searchKey + '\uf8ff'));
         }
         constraints.push(orderBy('displayNameLower'));
         constraints.push(limit(pageSize));

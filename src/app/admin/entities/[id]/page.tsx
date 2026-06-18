@@ -135,7 +135,6 @@ export default function EntityDetailPage() {
     const [isUpdatingLogo, setIsUpdatingLogo] = React.useState(false);
     const [isManageWorkspacesOpen, setIsManageWorkspacesOpen] = React.useState(false);
     const [isCampaignDialogOpen, setIsCampaignDialogOpen] = React.useState(false);
-    
 
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState('overview');
@@ -644,12 +643,14 @@ export default function EntityDetailPage() {
                 />
             )}
 
-            {isCampaignDialogOpen && (
+            {isCampaignDialogOpen && entityData && (
               <AddToCampaignDialog
                 open={isCampaignDialogOpen}
                 onOpenChange={setIsCampaignDialogOpen}
                 entityIds={[entityId]}
                 workspaceId={activeWorkspaceId}
+                entityContacts={resolveEntityContacts(entityData)}
+                entityName={entityData.name}
               />
             )}
         </PageContainerFluid>

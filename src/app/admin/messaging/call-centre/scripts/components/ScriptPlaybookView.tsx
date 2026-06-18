@@ -3,6 +3,7 @@
 import * as React from 'react';
 import type { BranchingScriptGraph, ScriptNode } from '@/lib/types';
 import { getNextNodeChoices } from '@/lib/call-centre-graph';
+import { ScriptBodyDisplay } from './ScriptBodyDisplay';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -166,8 +167,10 @@ export function ScriptPlaybookView({ graph }: ScriptPlaybookViewProps) {
                   <div className="p-4 pt-0 border-t border-border dark:border-zinc-900/80 space-y-4">
                     {/* Script body dialogue */}
                     {node.data.text && (
-                      <div className="p-3.5 bg-background dark:bg-zinc-950 border border-border dark:border-zinc-850 rounded-lg text-xs leading-relaxed text-foreground/90 dark:text-zinc-300 font-serif italic whitespace-pre-line select-text shadow-sm mt-3">
-                        &ldquo;{node.data.text}&rdquo;
+                      <div className="p-3.5 bg-background dark:bg-zinc-950 border border-border dark:border-zinc-850 rounded-lg text-xs leading-relaxed text-foreground/90 dark:text-zinc-300 font-serif italic select-text shadow-sm mt-3">
+                        <span aria-hidden="true">&ldquo;</span>
+                        <ScriptBodyDisplay text={node.data.text} highlightVariables className="inline" />
+                        <span aria-hidden="true">&rdquo;</span>
                       </div>
                     )}
 

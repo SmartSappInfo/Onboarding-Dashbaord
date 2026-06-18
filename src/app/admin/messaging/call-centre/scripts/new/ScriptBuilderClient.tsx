@@ -569,6 +569,74 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     setSelectedNodeId(node.id);
   }, []);
 
+  // ─── Keyboard step-to-step navigation order ───────────────────────────────
+  // Depth-first traversal that fully descends the left-most branch before moving
+  // on to sibling branches. Children are ordered by their question option index
+  // (option-0 first), then left-to-right by x position. Down arrow moves to the
+  // next node in this order, Up arrow to the previous one.
+  const orderedNodeIds = React.useMemo(() => {
+    const adjacency = new Map<string, { target: string; sort: number; x: number }[]>();
+    for (const e of edges) {
+      const list = adjacency.get(e.source) || [];
+      const optIdx = e.sourceHandle?.startsWith('option-')
+        ? parseInt(e.sourceHandle.slice('option-'.length), 10)
+        : Number.MAX_SAFE_INTEGER;
+      const tgt = nodes.find(n => n.id === e.target);
+      list.push({
+        target: e.target,
+        sort: Number.isFinite(optIdx) ? optIdx : Number.MAX_SAFE_INTEGER,
+        x: tgt?.position.x ?? 0,
+      });
+      adjacency.set(e.source, list);
+    }
+    // Order each node's children: option index first, then left-to-right
+    adjacency.forEach(list => list.sort((a, b) => a.sort - b.sort || a.x - b.x));
+
+    const visited = new Set<string>();
+    const order: string[] = [];
+    const dfs = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      order.push(id);
+      for (const child of adjacency.get(id) || []) dfs(child.target);
+    };
+
+    const starts = nodes.filter(n => n.type === 'start').sort((a, b) => a.position.x - b.position.x);
+    const byPosition = [...nodes].sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x);
+    (starts.length ? starts : byPosition.slice(0, 1)).forEach(s => dfs(s.id));
+    // Append any disconnected nodes not reached by the traversal (top-to-bottom)
+    byPosition.forEach(n => { if (!visited.has(n.id)) { visited.add(n.id); order.push(n.id); } });
+    return order;
+  }, [nodes, edges]);
+
+  // Arrow-key navigation between nodes (active only on the visual flow tab).
+  React.useEffect(() => {
+    if (editorTab !== 'flow' || isAiOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      // Ignore while typing in any text field / rich editor
+      const ae = document.activeElement as HTMLElement | null;
+      if (ae?.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]')) return;
+      if (orderedNodeIds.length === 0) return;
+
+      e.preventDefault();
+      const curIdx = selectedNodeId ? orderedNodeIds.indexOf(selectedNodeId) : -1;
+      let nextIdx: number;
+      if (e.key === 'ArrowDown') {
+        nextIdx = curIdx < 0 ? 0 : Math.min(curIdx + 1, orderedNodeIds.length - 1);
+      } else {
+        nextIdx = curIdx < 0 ? orderedNodeIds.length - 1 : Math.max(0, curIdx - 1);
+      }
+      const nextId = orderedNodeIds[nextIdx];
+      if (nextId) {
+        setSelectedNodeId(nextId);
+        canvasRef.current?.focusNode(nextId);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [editorTab, isAiOpen, orderedNodeIds, selectedNodeId]);
+
   // Convert legacy text script to dynamic branching graph
   const handleConvertToGraph = () => {
     const defaultGraph = parseGraph(legacyText);
@@ -1473,6 +1541,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                                       variableGroups={scriptVariableGroups}
                                       placeholder="What should the agent say in response to this objection?"
                                       minHeight="120px"
+                                      richFormatting
                                       className=""
                                     />
                                   </div>
@@ -1591,6 +1660,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                             onChange={(val) => updateSelectedNode({ text: val })}
                             variableGroups={scriptVariableGroups}
                             placeholder="Type dialog block script here…"
+                            richFormatting
                             className=""
                           />
                         </div>
@@ -1652,6 +1722,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                 onChange={setLegacyText}
                 variableGroups={scriptVariableGroups}
                 placeholder="Start typing your call script here…"
+                richFormatting
                 className="flex-grow"
               />
             </div>

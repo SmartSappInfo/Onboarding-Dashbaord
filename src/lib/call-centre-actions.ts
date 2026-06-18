@@ -5,6 +5,7 @@ import { canUser } from './workspace-permissions';
 import type { CallScript, CallCampaign } from './types';
 import { revalidatePath } from 'next/cache';
 import { generateCallScript, refineCallScript } from './campaign-ai';
+import { parseScriptExport, CFLOW_VERSION } from './call-script-portability';
 
 // Helper to check permissions
 async function verifyPermission(userId: string, action: 'view' | 'create' | 'edit' | 'delete', workspaceId: string) {
@@ -72,6 +73,78 @@ export async function getCallScriptAction(id: string, workspaceId: string, userI
     return await CallCentreService.getScript(id);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Recreate a call script from a portable `.cflow` file inside the CURRENT org/workspace.
+ * Scripts are org-agnostic artifacts: any identity fields in the file are ignored, and the
+ * new script is always bound to the authenticated caller's context. The raw file text is
+ * re-validated server-side (the trust boundary) regardless of any client-side checks.
+ */
+export async function importCallScriptAction(
+  rawFileText: string,
+  ctx: { organizationId: string; workspaceId: string },
+  userId: string
+) {
+  const perm = await verifyPermission(userId, 'create', ctx.workspaceId);
+  if (!perm.granted) return { success: false, error: perm.reason };
+
+  const parsed = parseScriptExport(rawFileText);
+  if (!parsed.ok) return { success: false, error: parsed.error };
+
+  try {
+    const { name, description, content, variables } = parsed.script;
+    const data: Omit<CallScript, 'id' | 'createdAt' | 'updatedAt'> = {
+      organizationId: ctx.organizationId,
+      workspaceId: ctx.workspaceId,
+      name,
+      content,
+      variables,
+      createdBy: userId,
+      source: 'imported',
+      importMeta: {
+        importedAt: new Date().toISOString(),
+        originalName: name,
+        formatVersion: CFLOW_VERSION,
+      },
+    };
+    // Firestore rejects `undefined` — only set description when present.
+    if (description) data.description = description;
+
+    const id = await CallCentreService.createScript(data);
+    revalidatePath('/admin/messaging/call-centre');
+    return { success: true, id };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Execute a single script action node's side effect against a contact (live call triggering).
+ * Permission-checked; entity/workspace come from the caller's authenticated context.
+ */
+export async function executeScriptActionAction(
+  params: {
+    actionType: string;
+    actionConfig?: Record<string, any>;
+    entityId: string;
+    workspaceId: string;
+    organizationId: string;
+  },
+  userId: string
+) {
+  const perm = await verifyPermission(userId, 'edit', params.workspaceId);
+  if (!perm.granted) return { success: false, error: perm.reason };
+
+  try {
+    const result = await CallCentreService.executeScriptAction({ ...params, userId });
+    if (!result.success) {
+      return { success: false, error: result.error, unsupported: result.unsupported };
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
 
@@ -352,12 +425,18 @@ export async function cloneCallCampaignAction(campaignId: string, workspaceId: s
   }
 }
 
-export async function addContactsToCallCampaignAction(campaignId: string, entityIds: string[], workspaceId: string, userId: string): Promise<{ success: boolean; count: number; error?: string }> {
+export async function addContactsToCallCampaignAction(
+  campaignId: string,
+  entityIds: string[],
+  workspaceId: string,
+  userId: string,
+  contactOverrides?: { entityId: string; contactId: string; contactName: string; phone: string; email: string }[]
+): Promise<{ success: boolean; count: number; error?: string }> {
   const perm = await verifyPermission(userId, 'edit', workspaceId);
   if (!perm.granted) return { success: false, count: 0, error: perm.reason };
 
   try {
-    const result = await CallCentreService.addContactsToCampaign(campaignId, entityIds, workspaceId);
+    const result = await CallCentreService.addContactsToCampaign(campaignId, entityIds, workspaceId, contactOverrides);
     revalidatePath('/admin/messaging/call-centre');
     revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
     return result;
