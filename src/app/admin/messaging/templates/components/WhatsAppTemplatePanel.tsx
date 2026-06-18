@@ -37,6 +37,7 @@ import {
   extractParamCount,
   getTemplateRuntimeNeeds,
   hasRuntimeNeeds,
+  isLikelyHttpUrl,
   MAX_TEMPLATE_BUTTONS,
 } from '@/lib/whatsapp/whatsapp-domain';
 import type { TemplateButtonInput, MediaHeaderFormat } from '@/lib/whatsapp/whatsapp-domain';
@@ -92,7 +93,10 @@ function newButton(type: TemplateButtonInput['type']): TemplateButtonInput {
 /** UI-side validity mirror of the server rules (server still re-validates). */
 function buttonValid(b: TemplateButtonInput): boolean {
   if (!b.text.trim()) return false;
-  if (b.type === 'URL') return !!b.url.trim() && (!/\{\{\s*1\s*\}\}/.test(b.url) || !!b.urlExample?.trim());
+  if (b.type === 'URL') {
+    if (!isLikelyHttpUrl(b.url)) return false;
+    return !/\{\{\s*1\s*\}\}/.test(b.url) || !!b.urlExample?.trim();
+  }
   if (b.type === 'PHONE_NUMBER') return !!b.phoneNumber.trim();
   return true;
 }
@@ -365,7 +369,8 @@ function SendTestDialog({
   const needs = React.useMemo(() => getTemplateRuntimeNeeds(template.components), [template.components]);
   const body = getBodyText(template.components);
 
-  const mediaOk = !needs.mediaFormat || mediaUrl.trim().length > 0;
+  const mediaUrlInvalid = !!needs.mediaFormat && mediaUrl.trim().length > 0 && !isLikelyHttpUrl(mediaUrl);
+  const mediaOk = !needs.mediaFormat || isLikelyHttpUrl(mediaUrl);
   const buttonsOk = needs.dynamicUrlButtons.every((idx) => (urlSuffixByIndex[idx] ?? '').trim().length > 0);
   const canSend =
     to.trim().length >= 5 && values.every((v) => v.trim().length > 0) && mediaOk && buttonsOk;
@@ -451,9 +456,17 @@ function SendTestDialog({
                 onChange={(e) => setMediaUrl(e.target.value)}
                 placeholder="https://example.com/file"
                 inputMode="url"
+                aria-invalid={mediaUrlInvalid}
+                aria-describedby={mediaUrlInvalid ? 'wa-test-media-err' : undefined}
                 className="h-9 rounded-lg bg-muted/20 border-none shadow-inner font-medium px-3"
               />
-              <p className="text-[10px] text-muted-foreground">Publicly reachable URL Meta can fetch at send time.</p>
+              {mediaUrlInvalid ? (
+                <p id="wa-test-media-err" role="alert" className="text-[10px] font-semibold text-red-600">
+                  Enter a full http(s) URL.
+                </p>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">Publicly reachable URL Meta can fetch at send time.</p>
+              )}
             </div>
           )}
 

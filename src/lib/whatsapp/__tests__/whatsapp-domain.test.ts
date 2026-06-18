@@ -13,6 +13,7 @@ import {
   validateHeaderMedia,
   getTemplateRuntimeNeeds,
   hasRuntimeNeeds,
+  isLikelyHttpUrl,
   parseTemplateStatusEvents,
   type MetaTemplateRaw,
   type CreateTemplateInput,
@@ -328,6 +329,22 @@ describe('getTemplateRuntimeNeeds', () => {
     expect(hasRuntimeNeeds({ mediaFormat: 'IMAGE', dynamicUrlButtons: [] })).toBe(true);
     expect(hasRuntimeNeeds({ dynamicUrlButtons: [1] })).toBe(true);
     expect(hasRuntimeNeeds({ dynamicUrlButtons: [] })).toBe(false);
+  });
+});
+
+describe('isLikelyHttpUrl', () => {
+  it('accepts absolute http(s) URLs (incl. a {{1}} path)', () => {
+    expect(isLikelyHttpUrl('https://example.com')).toBe(true);
+    expect(isLikelyHttpUrl('http://x.co/path')).toBe(true);
+    expect(isLikelyHttpUrl('https://x.co/{{1}}')).toBe(true);
+    expect(isLikelyHttpUrl('  https://x.co  ')).toBe(true);
+  });
+
+  it('rejects non-http, relative, or malformed input', () => {
+    expect(isLikelyHttpUrl('example.com')).toBe(false);
+    expect(isLikelyHttpUrl('ftp://x.co')).toBe(false);
+    expect(isLikelyHttpUrl('not a url')).toBe(false);
+    expect(isLikelyHttpUrl('')).toBe(false);
   });
 });
 

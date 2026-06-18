@@ -347,6 +347,16 @@ export function hasRuntimeNeeds(needs: TemplateRuntimeNeeds): boolean {
   return !!needs.mediaFormat || needs.dynamicUrlButtons.length > 0;
 }
 
+/** True for an absolute http(s) URL — mirrors the server's button/media URL rule. */
+export function isLikelyHttpUrl(s: string): boolean {
+  try {
+    const u = new URL(s.trim());
+    return (u.protocol === 'http:' || u.protocol === 'https:') && !!u.hostname;
+  } catch {
+    return false;
+  }
+}
+
 const KNOWN_STATUSES: WhatsAppTemplateStatus[] = [
   'APPROVED',
   'PENDING',
