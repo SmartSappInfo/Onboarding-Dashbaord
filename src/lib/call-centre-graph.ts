@@ -1,4 +1,4 @@
-import type { BranchingScriptGraph, ScriptNode, ScriptNodeType } from './types';
+import type { BranchingScriptGraph, ScriptNode, ScriptNodeType, Entity, EntityContact } from './types';
 
 // ─── Rich-text (formatted) script body helpers ───────────────────────────────
 // Node `data.text` (and the legacy text-builder string) may contain inline HTML
@@ -22,7 +22,7 @@ export function stripScriptHtml(input: string | undefined): string {
     .replace(/<\s*li[^>]*>/gi, '• ')
     .replace(/<\/(?:p|div|li|h[1-6])>/gi, '\n')
     .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/gi, ' ')
+    .replace(/&nbsp;|\u00a0/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
@@ -56,9 +56,10 @@ export function scriptTextToDisplayHtml(
   options?: { highlightVariables?: boolean }
 ): string {
   if (!input) return '';
-  let html = isRichText(input)
-    ? input
-    : escapeScriptHtml(input).replace(/\n/g, '<br>');
+  const cleanInput = input.replace(/&nbsp;|\u00a0/gi, ' ');
+  let html = isRichText(cleanInput)
+    ? cleanInput
+    : escapeScriptHtml(cleanInput).replace(/\n/g, '<br>');
 
   if (options?.highlightVariables) {
     html = html.replace(/\{\{([A-Za-z0-9_]+)\}\}|\[([A-Za-z0-9_]+)\]/g, (_m, a, b) => {
@@ -211,42 +212,131 @@ export function getNextNodeChoices(
   });
 }
 
+function getValueFromObject(obj: unknown, key: string): string | undefined {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const raw = obj as Record<string, unknown>;
+
+  // Try exact key
+  if (raw[key] !== undefined) return String(raw[key]);
+
+  const lowerKey = key.toLowerCase();
+  // Try lowercase key
+  if (raw[lowerKey] !== undefined) return String(raw[lowerKey]);
+
+  // Try camelCase key
+  const camelKey = lowerKey.replace(/_([a-z0-9])/g, (_, g) => g.toUpperCase());
+  if (raw[camelKey] !== undefined) return String(raw[camelKey]);
+
+  // Special mapping for X_TWITTER -> x
+  if (lowerKey === 'xtwitter' || lowerKey === 'x_twitter') {
+    if (raw['x'] !== undefined) return String(raw['x']);
+  }
+
+  // Try case-insensitive scan
+  const matchKey = Object.keys(raw).find(
+    k => k.toLowerCase() === lowerKey || k.toLowerCase().replace(/[^a-z0-9]/g, '') === lowerKey.replace(/_/g, '')
+  );
+  if (matchKey !== undefined && raw[matchKey] !== undefined) {
+    return String(raw[matchKey]);
+  }
+
+  return undefined;
+}
+
+export interface ScriptVariableEntity extends Partial<Entity> {
+  primaryEmail?: string;
+  email?: string;
+  primaryPhone?: string;
+  phone?: string;
+  tags?: Array<string | { name: string }>;
+  doNotCall?: boolean;
+  dnc?: boolean;
+  timezone?: string;
+  address?: {
+    timezone?: string;
+  };
+}
+
 /**
  * Resolves dynamic curly brace placeholders inside the script block text using Entity and Deal details.
  */
+function getDynamicVariableValue(key: string, entity: ScriptVariableEntity | null | undefined): string | undefined {
+  if (!entity) return undefined;
+
+  // 1. Try root entity fields first
+  const rootVal = getValueFromObject(entity, key);
+  if (rootVal !== undefined) return rootVal;
+
+  // 2. Special location handling (handled as a nested object locationString)
+  const lowerKey = key.toLowerCase();
+  if (lowerKey === 'location') {
+    if (entity.location && typeof entity.location === 'object') {
+      const locObj = entity.location as Record<string, unknown>;
+      if (typeof locObj.locationString === 'string') {
+        return locObj.locationString;
+      }
+    }
+    return typeof entity.location === 'string' ? entity.location : undefined;
+  }
+
+  // 3. Scan sub-objects (personData, onlinePresence, financeData, industryData, customData)
+  const subObjects = ['personData', 'onlinePresence', 'financeData', 'industryData', 'customData'];
+  for (const subKey of subObjects) {
+    const subObj = (entity as Record<string, unknown>)[subKey];
+    if (subObj && typeof subObj === 'object') {
+      const val = getValueFromObject(subObj, key);
+      if (val !== undefined) return val;
+    }
+  }
+
+  return undefined;
+}
+
 export function resolveScriptVariables(
   text: string | undefined,
-  entity: any,
-  deal: any,
-  agentName: string
+  entity: ScriptVariableEntity | null | undefined,
+  deal: { name?: string; value?: number; stageName?: string; status?: string; expectedCloseDate?: string } | null | undefined,
+  agentName: string,
+  currentContact?: EntityContact | null
 ): string {
   if (!text) return '';
 
-  const primaryContact = entity?.entityContacts?.find((c: any) => c.isPrimary) || entity?.entityContacts?.[0];
+  const primaryContact = entity?.entityContacts?.find(c => c.isPrimary) || entity?.entityContacts?.[0];
+  const activeContact = currentContact || primaryContact;
 
   const variables: Record<string, string> = {
     ENTITY_NAME: entity?.name || 'Contact',
-    ENTITY_EMAIL: entity?.email || primaryContact?.email || '',
-    ENTITY_PHONE: entity?.phone || primaryContact?.phone || '',
+    ENTITY_EMAIL: entity?.primaryEmail || entity?.email || primaryContact?.email || '',
+    ENTITY_PHONE: entity?.primaryPhone || entity?.phone || primaryContact?.phone || '',
     ENTITY_TYPE: entity?.entityType || 'prospect',
     PRIMARY_CONTACT_NAME: primaryContact?.name || '',
     PRIMARY_CONTACT_PHONE: primaryContact?.phone || '',
+    CURRENT_CONTACT_NAME: activeContact?.name || '',
+    CURRENT_CONTACT_PHONE: activeContact?.phone || '',
+    CURRENT_CONTACT_EMAIL: activeContact?.email || '',
     DEAL_NAME: deal?.name || '[No Active Deal]',
     DEAL_VALUE: deal?.value !== undefined ? String(deal.value) : '[No Active Deal Value]',
     DEAL_STAGE: deal?.stageName || '[No Stage]',
     DEAL_STATUS: deal?.status || 'open',
     DEAL_EXPECTED_CLOSE: deal?.expectedCloseDate || '',
     AGENT_NAME: agentName || 'Caller',
-    // Legacy backwards compatibility variables
-    FIRST_NAME: entity?.name || 'Contact',
-    SCHOOL_NAME: entity?.name || 'SmartSapp HQ',
-    EMAIL: entity?.email || primaryContact?.email || '',
-    PHONE: entity?.phone || primaryContact?.phone || '',
   };
 
   return text.replace(/\{\{([A-Za-z0-9_]+)\}\}/g, (match, key) => {
     const vName = key.toUpperCase();
-    return variables[vName] !== undefined ? variables[vName] : match;
+    
+    // 1. Try static variables map first
+    if (variables[vName] !== undefined) {
+      return variables[vName];
+    }
+    
+    // 2. Try dynamic lookup from entity object
+    const dynamicVal = getDynamicVariableValue(vName, entity);
+    if (dynamicVal !== undefined) {
+      return dynamicVal;
+    }
+    
+    return match;
   });
 }
 
@@ -263,11 +353,15 @@ export function validateScriptGraph(graph: BranchingScriptGraph): { isValid: boo
   const startNodes = graph.nodes.filter(n => n.type === 'start');
   if (startNodes.length === 0) {
     warnings.push('Script must contain at least one Start node.');
+  } else if (startNodes.length > 1) {
+    warnings.push('A script must have exactly one Start Call node.');
   }
 
   const endNodes = graph.nodes.filter(n => n.type === 'end');
   if (endNodes.length === 0) {
     warnings.push('Script should contain at least one End node.');
+  } else if (endNodes.length > 1) {
+    warnings.push('A script must have exactly one End Call node.');
   }
 
   // Check for orphaned nodes (no incoming and no outgoing connections)
@@ -372,7 +466,7 @@ export function validateScriptGraph(graph: BranchingScriptGraph): { isValid: boo
   }
 
   return {
-    isValid: warnings.length === 0 || !warnings.some(w => w.includes('must contain') || w.includes('orphaned')),
+    isValid: warnings.length === 0 || !warnings.some(w => w.includes('must contain') || w.includes('orphaned') || w.includes('exactly one')),
     warnings
   };
 }

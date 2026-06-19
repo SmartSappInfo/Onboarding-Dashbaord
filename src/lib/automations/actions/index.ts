@@ -57,6 +57,46 @@ export async function processActionNode(
       return await handleCreateEntity(resolvedConfig, context);
     case 'ADD_CONTACT_TO_ENTITY':
       return await handleCreateContactForEntity(resolvedConfig, context);
+    case 'ADD_TO_CALL_CAMPAIGN': {
+      try {
+        const { CallCentreService } = await import('../../services/call-centre-service');
+        const campaignId = String(resolvedConfig.campaignId || '');
+        const contactScope = String(resolvedConfig.contactScope || 'primary');
+        if (!campaignId) {
+          throw new Error('No campaignId specified for ADD_TO_CALL_CAMPAIGN automation step.');
+        }
+
+        if (!context.entityId) {
+          throw new Error('No entityId available in automation context.');
+        }
+
+        // Derives contact overrides if we need custom signaling, or just call service.
+        // Resolve scope and run. We pass target entityId from context.
+        const result = await CallCentreService.addContactsToCampaign(
+          campaignId,
+          [context.entityId],
+          context.workspaceId,
+          'automation-actor',
+          undefined, // overrides derived automatically or passed
+          contactScope as 'primary' | 'signatories' | 'all'
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to add contact to campaign');
+        }
+        return result;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown execution failure';
+        await logAutomationEvent('error', 'action_failed', {
+          automationId: context.automationId,
+          runId: context.runId,
+          workspaceId: context.workspaceId,
+          entityId: context.entityId,
+          error: message
+        });
+        throw err;
+      }
+    }
     case 'UPDATE_LEAD_SCORE':
       return await handleUpdateLeadScore(resolvedConfig, context);
     case 'END_AUTOMATION':

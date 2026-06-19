@@ -267,6 +267,15 @@ const LIBRARY_ITEMS = [
     payload: { type: 'actionNode', label: 'Add Contact to Entity', actionType: 'ADD_CONTACT_TO_ENTITY' }
   },
   {
+    id: 'add_to_call_campaign',
+    title: 'Add to Call Campaign',
+    description: 'Add the target contact or entity to a specific call campaign for automated queueing.',
+    category: 'contacts_data',
+    icon: Tag,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Add to Call Campaign', actionType: 'ADD_TO_CALL_CAMPAIGN', config: { campaignId: '', contactScope: 'primary' } }
+  },
+  {
     id: 'create_entity',
     title: 'Create Entity',
     description: 'Create a new CRM contact or business entity using mapped webhook payload attributes.',

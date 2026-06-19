@@ -153,7 +153,9 @@ export class CallCentreService {
     campaignId: string,
     entityIds: string[],
     workspaceId: string,
-    contactOverrides?: { entityId: string; contactId: string; contactName: string; phone: string; email: string }[]
+    userId: string,
+    contactOverrides?: { entityId: string; contactId: string; contactName: string; phone: string; email: string }[],
+    contactScope?: 'primary' | 'signatories' | 'all'
   ): Promise<{ success: boolean; count: number; error?: string }> {
     try {
       const campaignRef = adminDb.collection('call_campaigns').doc(campaignId);
@@ -295,13 +297,13 @@ export class CallCentreService {
           resolveRecipientContacts({
             entityId,
             workspaceId,
-            contactScope: campaign.audienceDefinition?.contactScope || 'primary',
+            contactScope: contactScope || campaign.audienceDefinition?.contactScope || 'primary',
             channel: 'sms',
           }).catch(() => []),
           resolveRecipientContacts({
             entityId,
             workspaceId,
-            contactScope: campaign.audienceDefinition?.contactScope || 'primary',
+            contactScope: contactScope || campaign.audienceDefinition?.contactScope || 'primary',
             channel: 'email',
           }).catch(() => []),
         ]);
@@ -852,9 +854,9 @@ export class CallCentreService {
   static async executeCallActionEffect(
     type: string,
     params: Record<string, any> = {},
-    ctx: { entityId: string; userId: string; workspaceId: string; organizationId: string }
+    ctx: { entityId: string; userId: string; workspaceId: string; organizationId: string; contactId?: string }
   ): Promise<{ success: boolean; unsupported?: boolean; error?: string }> {
-    const { entityId, userId, workspaceId, organizationId } = ctx;
+    const { entityId, userId, workspaceId, organizationId, contactId } = ctx;
     const systemActor = `system-call-centre:${userId}`;
 
     try {
@@ -903,7 +905,7 @@ export class CallCentreService {
           if (!params.templateId) return { success: false, error: 'No template configured.' };
           const templateSnap = await adminDb.collection('message_templates').doc(params.templateId).get();
           if (!templateSnap.exists) return { success: false, error: 'Template not found.' };
-          const body = templateSnap.data()?.body || '';
+          const body = params.customBody || templateSnap.data()?.body || '';
           const contactSnap = await adminDb.collection('entities').doc(entityId).get();
           let phone = '';
           if (contactSnap.exists) {
@@ -920,8 +922,8 @@ export class CallCentreService {
           if (!params.templateId) return { success: false, error: 'No template configured.' };
           const templateSnap = await adminDb.collection('message_templates').doc(params.templateId).get();
           if (!templateSnap.exists) return { success: false, error: 'Template not found.' };
-          const subject = templateSnap.data()?.subject || 'Outreach Follow Up';
-          const html = templateSnap.data()?.body || '';
+          const subject = params.customSubject || templateSnap.data()?.subject || 'Outreach Follow Up';
+          const html = params.customBody || templateSnap.data()?.body || '';
           const contactSnap = await adminDb.collection('entities').doc(entityId).get();
           let email = '';
           if (contactSnap.exists) {
@@ -932,6 +934,37 @@ export class CallCentreService {
           if (!email) return { success: false, error: 'Contact has no email address.' };
           await sendEmail({ to: email, subject, html });
           return { success: true };
+        }
+
+        case 'SEND_WHATSAPP': {
+          if (!params.templateId) return { success: false, error: 'No template configured.' };
+          const templateSnap = await adminDb.collection('message_templates').doc(params.templateId).get();
+          if (!templateSnap.exists) return { success: false, error: 'Template not found.' };
+          const templateData = templateSnap.data() || {};
+          const body = params.customBody || templateData.body || '';
+
+          const contactSnap = await adminDb.collection('entities').doc(entityId).get();
+          let phone = '';
+          if (contactSnap.exists) {
+            const contactsList = contactSnap.data()?.entityContacts || [];
+            const primary = contactsList.find((c: any) => c.isPrimary) || contactsList[0];
+            phone = primary?.phone || '';
+          }
+          if (!phone) return { success: false, error: 'Contact has no phone number.' };
+
+          try {
+            const { sendWhatsApp } = await import('../whatsapp/whatsapp-send');
+            await sendWhatsApp({
+              recipient: phone,
+              template: templateData as any,
+              resolvedBody: body,
+              variables: {},
+              organizationId,
+            });
+            return { success: true };
+          } catch (e: any) {
+            return { success: false, error: e?.message || 'WhatsApp send failed' };
+          }
         }
 
         case 'WEBHOOK': {
@@ -958,6 +991,119 @@ export class CallCentreService {
           return { success: true };
         }
 
+        case 'ADD_TO_CALL_CAMPAIGN': {
+          if (!params.campaignId) return { success: false, error: 'No campaign ID configured.' };
+          return await this.addContactsToCampaign(
+            params.campaignId,
+            [entityId],
+            workspaceId,
+            userId,
+            undefined,
+            params.contactScope || 'primary'
+          );
+        }
+
+        case 'UPDATE_CONTACT': {
+          const contactName = params.contactName;
+          const contactEmail = params.contactEmail;
+          const contactPhone = params.contactPhone;
+          const updateMode = params.updateMode || 'update'; // 'update' or 'new'
+
+          if (!contactName && !contactEmail && !contactPhone) {
+            return { success: false, error: 'No contact fields to update.' };
+          }
+
+          const entityRef = adminDb.collection('entities').doc(entityId);
+          const entitySnap = await entityRef.get();
+          if (!entitySnap.exists) {
+            return { success: false, error: 'Entity not found.' };
+          }
+
+          const entityData = entitySnap.data();
+          const contacts = (entityData?.entityContacts || []) as any[];
+          
+          if (updateMode === 'new') {
+            const newId = typeof globalThis.crypto !== 'undefined' && globalThis.crypto.randomUUID
+              ? globalThis.crypto.randomUUID()
+              : `cnt_${Math.random().toString(36).substring(2, 11)}`;
+            const targetContact: any = {
+              id: newId,
+              name: contactName || 'New Contact',
+              email: contactEmail || '',
+              phone: '',
+              isPrimary: contacts.length === 0,
+            };
+
+            if (contactPhone) {
+              let phone = contactPhone;
+              try {
+                const { normalizePhoneNumber } = await import('../phone-utils');
+                const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+                const defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
+                const parsed = normalizePhoneNumber(phone, defaultCountryCode);
+                phone = parsed.e164 || phone;
+                if (parsed.countryCode) targetContact.countryCode = parsed.countryCode;
+                if (parsed.callingCode) targetContact.callingCode = parsed.callingCode;
+              } catch (e) {
+                console.error('[CALL_CENTRE_SERVICE] Phone normalization failed:', e);
+              }
+              targetContact.phone = phone;
+            }
+
+            contacts.push(targetContact);
+          } else {
+            let contactIdx = -1;
+            if (contactId) {
+              contactIdx = contacts.findIndex((c: any) => c.id === contactId);
+            }
+            if (contactIdx === -1) {
+              contactIdx = contacts.findIndex((c: any) => c.isPrimary);
+            }
+            if (contactIdx === -1 && contacts.length > 0) {
+              contactIdx = 0;
+            }
+
+            if (contactIdx === -1) {
+              return { success: false, error: 'No contact found to update.' };
+            }
+
+            const targetContact = { ...contacts[contactIdx] };
+            if (contactName) targetContact.name = contactName;
+            if (contactEmail) targetContact.email = contactEmail;
+            
+            if (contactPhone) {
+              let phone = contactPhone;
+              try {
+                const { normalizePhoneNumber } = await import('../phone-utils');
+                const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+                const defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
+                const parsed = normalizePhoneNumber(phone, defaultCountryCode);
+                phone = parsed.e164 || phone;
+                if (parsed.countryCode) targetContact.countryCode = parsed.countryCode;
+                if (parsed.callingCode) targetContact.callingCode = parsed.callingCode;
+              } catch (e) {
+                console.error('[CALL_CENTRE_SERVICE] Phone normalization failed:', e);
+              }
+              targetContact.phone = phone;
+            }
+
+            contacts[contactIdx] = targetContact;
+          }
+
+          const res = await updateEntityAction(
+            entityId,
+            { entityContacts: contacts },
+            systemActor,
+            workspaceId,
+            organizationId
+          );
+
+          if (!res.success) {
+            return { success: false, error: res.error };
+          }
+          return { success: true };
+        }
+
         default:
           return { success: false, unsupported: true, error: `Action type "${type}" is not supported yet.` };
       }
@@ -977,14 +1123,16 @@ export class CallCentreService {
     userId: string;
     workspaceId: string;
     organizationId: string;
+    contactId?: string;
   }): Promise<{ success: boolean; unsupported?: boolean; error?: string }> {
-    const { actionType, actionConfig, entityId, userId, workspaceId, organizationId } = params;
+    const { actionType, actionConfig, entityId, userId, workspaceId, organizationId, contactId } = params;
     if (!actionType) return { success: false, error: 'No action type configured on this node.' };
     return this.executeCallActionEffect(actionType, actionConfig || {}, {
       entityId,
       userId,
       workspaceId,
       organizationId,
+      contactId,
     });
   }
 }

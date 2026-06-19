@@ -18,6 +18,12 @@
       "skillPath": "skills/backend-patterns/SKILL.md",
       "computedHash": "0f4cb3da46b8ce80176f9dbd241242e3033a999b32e952f2467faba4d38d69c9"
     },
+    "better-auth-security-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "security/SKILL.md",
+      "computedHash": "5717187bba9c22030c7174c74012f01c359f21e2ce87e0eb80e24244d8b8c915"
+    },
     "brainstorming": {
       "source": "obra/superpowers",
       "sourceType": "github",
@@ -114,6 +120,12 @@
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "computedHash": "fb86fd4035e8e6379931faeb443557ac6f2e43fde04b397433f287e69b6532a9"
+    },
+    "firebase-security-rules-auditor": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/firebase-security-rules-auditor/SKILL.md",
+      "computedHash": "5a90e991bb9acfd3e43bfb570498dee60b9cef94cbb80cfb99257c7e4f61c1a0"
     },
     "frontend-design": {
       "source": "anthropics/skills",

@@ -4405,7 +4405,9 @@ export type CallActionType =
   | 'WEBHOOK'
   | 'LOG_NOTE'
   | 'SCHEDULE_MEETING'
-  | 'TRANSFER_CALL';
+  | 'TRANSFER_CALL'
+  | 'ADD_TO_CALL_CAMPAIGN'
+  | 'UPDATE_CONTACT';
 
 export type ScriptNodeType = 
   | 'start'           // Beginning of call
@@ -4488,6 +4490,10 @@ export interface ScriptNode {
       webhookUrl?: string;
       webhookHeaders?: string; // JSON string
       webhookMethod?: 'POST' | 'GET' | 'PUT';
+      // Update Contact (UPDATE_CONTACT)
+      contactName?: string;
+      contactEmail?: string;
+      contactPhone?: string;
       // Common
       triggerDelaySeconds?: number;
     };
@@ -4544,5 +4550,9 @@ export interface AutomationRuleParams {
   // Transfer
   transferTarget?: string;
   transferMode?: 'phone' | 'agent' | 'campaign';
+  // Update Contact (UPDATE_CONTACT)
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
 }
 

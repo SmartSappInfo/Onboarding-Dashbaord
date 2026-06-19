@@ -17,6 +17,7 @@ import {
   executeScriptActionAction
 } from '@/lib/call-centre-actions';
 import { useToast } from '@/hooks/use-toast';
+import { logActivity } from '@/lib/activity-logger';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,16 +25,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
-import type { ScriptNode } from '@/lib/types';
+import type { ScriptNode, Entity, EntityContact } from '@/lib/types';
 import {
   isJsonGraph,
   parseGraph,
   getNextNodeChoices,
   resolveScriptVariables,
+  ScriptVariableEntity,
 } from '@/lib/call-centre-graph';
 import { ScriptBodyDisplay } from '../../scripts/components/ScriptBodyDisplay';
 import { 
-  ArrowLeft, 
+  ArrowLeft,
+  ArrowRight,
   Phone, 
   Mail, 
   Play, 
@@ -62,6 +65,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 // Heavy ReactFlow-derived view — loaded only when the agent toggles to it (bundle-conditional)
@@ -189,6 +193,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [objectionSearch, setObjectionSearch] = React.useState('');
   const [guardrailBypassed, setGuardrailBypassed] = React.useState(false);
+  const [selectedContactId, setSelectedContactId] = React.useState<string | null>(null);
 
   const wrapHref = (href: string) => {
     if (!activeWorkspaceId) return href;
@@ -256,9 +261,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       if (!lockRes.success) {
         toast({ variant: 'destructive', title: 'Concurrent User Alert', description: lockRes.error });
       } else {
-        // Start call timer automatically on lock
+        // Do NOT start call timer automatically on lock; wait for start call button
         setSeconds(0);
-        setIsTimerActive(true);
+        setIsTimerActive(false);
       }
     };
 
@@ -410,7 +415,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     return doc(firestore, 'entities', currentItem.entityId);
   }, [firestore, currentItem?.entityId]);
 
-  const { data: entityData } = useDoc<any>(entityRef);
+  const { data: entityData } = useDoc<ScriptVariableEntity>(entityRef);
 
   const scriptGraph = React.useMemo(() => {
     const scriptBody = campaign?.scriptSnapshot || '';
@@ -428,6 +433,10 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   // Active node state for branching scripts
   const [currentNodeId, setCurrentNodeId] = React.useState<string | null>(null);
   const [pathHistory, setPathHistory] = React.useState<string[]>([]); // list of node IDs traversed
+  const [selectedSubObjectionIndex, setSelectedSubObjectionIndex] = React.useState<number | null>(null);
+  const [enteredObjectionFromChoice, setEnteredObjectionFromChoice] = React.useState(false);
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
   // Live script display mode: the guided runner (default) or the read-only interactive reference
   const [liveScriptView, setLiveScriptView] = React.useState<'guided' | 'interactive'>('guided');
   // Action/outcome node ids already triggered for the current contact (prevents double-firing).
@@ -448,14 +457,30 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     return scriptGraph.nodes.find(n => n.id === currentNodeId) || null;
   }, [currentNodeId, scriptGraph]);
 
+  const subObjections = React.useMemo(() => {
+    if (currentNode?.type !== 'objection') return [];
+    return (currentNode.data as any)?.objectionConfig?.objections || [
+      { title: currentNode.data.label || 'Objection', description: currentNode.data.text || '' }
+    ];
+  }, [currentNode]);
+
+  const currentContact = React.useMemo((): EntityContact | null => {
+    const contacts = entityData?.entityContacts || [];
+    if (selectedContactId) {
+      return contacts.find(c => c.id === selectedContactId) || null;
+    }
+    return contacts.find(c => c.isPrimary) || contacts[0] || null;
+  }, [entityData, selectedContactId]);
+
   // Single source of truth for substituting the current contact + caller into a script body.
   // Reused by the guided runner and the interactive reference view.
   const resolveLiveText = React.useCallback((raw: string) => resolveScriptVariables(
     raw,
     entityData || { name: currentItem?.entityName, email: currentItem?.entityEmail, phone: currentItem?.entityPhone },
     contactDeals?.[0] || null,
-    user?.displayName || 'Akosua'
-  ), [entityData, currentItem, contactDeals, user]);
+    user?.displayName || 'Agent',
+    currentContact
+  ), [entityData, currentItem, contactDeals, user, currentContact]);
 
   const resolvedActiveNodeText = React.useMemo(
     () => resolveLiveText(currentNode?.data.text || ''),
@@ -484,11 +509,16 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     setActionError(null);
     setGuardrailBypassed(false);
     setTriggeredNodeIds(new Set());
+    setSelectedContactId(null);
+    setSelectedSubObjectionIndex(null);
+    setEnteredObjectionFromChoice(false);
   }, [currentItem?.id, scriptGraph]);
 
   const handleHistoryClick = (nodeId: string, index: number) => {
     setCurrentNodeId(nodeId);
     setPathHistory(prev => prev.slice(0, index));
+    setSelectedSubObjectionIndex(null);
+    setEnteredObjectionFromChoice(false);
   };
 
   // Weak references to preserve state without causing stale closure updates in callback triggers
@@ -567,9 +597,18 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       }
     }
 
+    const targetNode = scriptGraph?.nodes.find(n => n.id === targetNodeId);
+    if (targetNode?.type === 'objection') {
+      setEnteredObjectionFromChoice(true);
+      setSelectedSubObjectionIndex(null);
+    } else {
+      setEnteredObjectionFromChoice(false);
+      setSelectedSubObjectionIndex(null);
+    }
+
     setPathHistory(prev => [...prev, activeNode.id]);
     setCurrentNodeId(targetNodeId);
-  }, [currentItem?.entityId, contactDeals, firestore, toast]);
+  }, [currentItem?.entityId, contactDeals, firestore, toast, scriptGraph]);
 
   const handleGoBack = () => {
     if (pathHistory.length === 0) return;
@@ -578,13 +617,42 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     setPathHistory(newHistory);
     setCurrentNodeId(prevNodeId || null);
     setValidationError(null);
+    setSelectedSubObjectionIndex(null);
+    setEnteredObjectionFromChoice(false);
   };
 
   const handleObjectionClick = (nodeId: string) => {
     if (!currentNodeId) return;
     setPathHistory(prev => [...prev, currentNodeId]);
     setCurrentNodeId(nodeId);
+    setSelectedSubObjectionIndex(0);
+    setEnteredObjectionFromChoice(false);
     setValidationError(null);
+  };
+
+  const handleObjectionClickFromPanel = (nodeId: string, subIndex: number) => {
+    if (!currentNodeId) return;
+    setPathHistory(prev => [...prev, currentNodeId]);
+    setCurrentNodeId(nodeId);
+    setSelectedSubObjectionIndex(subIndex);
+    setEnteredObjectionFromChoice(false);
+    setValidationError(null);
+  };
+
+  const handleNextStepAfterObjection = () => {
+    if (!currentNode) return;
+    const nextChoices = getNextNodeChoices(scriptGraph, currentNode.id);
+    if (nextChoices.length > 0) {
+      handleChoiceClick(nextChoices[0].targetNode.id);
+    } else {
+      const mainNodeId = [...pathHistory].reverse().find(id => {
+        const node = scriptGraph?.nodes.find(n => n.id === id);
+        return node && node.type !== 'objection';
+      });
+      if (mainNodeId) {
+        setCurrentNodeId(mainNodeId);
+      }
+    }
   };
 
   // Automated Webhook Actions Trigger Effect
@@ -692,7 +760,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     return (
       entityData?.doNotCall === true ||
       entityData?.dnc === true ||
-      entityData?.status === 'dnc' ||
+      (entityData?.status as string) === 'dnc' ||
       !!hasDncTag
     );
   }, [entityData]);
@@ -863,6 +931,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         entityId: currentItem.entityId,
         workspaceId: activeWorkspaceId,
         organizationId: currentItem.organizationId || activeOrganizationId,
+        contactId: selectedContactId || undefined,
       },
       user?.uid || ''
     );
@@ -874,7 +943,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     }
     toast({ variant: 'destructive', title: 'Action Failed', description: result.error });
     return { ok: false, error: result.error };
-  }, [currentItem?.entityId, currentItem?.organizationId, activeWorkspaceId, activeOrganizationId, user?.uid, triggeredNodeIds, toast]);
+  }, [currentItem?.entityId, currentItem?.organizationId, activeWorkspaceId, activeOrganizationId, user?.uid, triggeredNodeIds, selectedContactId, toast]);
 
   // Trigger an outcome node — reuses the outcome submit path (completes the call + campaign automations).
   // Plain function (not memoized) so it always closes over the latest handleOutcomeSubmit/notes/seconds.
@@ -885,6 +954,228 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     await handleOutcomeSubmit(node.data?.outcomeValue || 'Interested');
     return { ok: true };
   };
+
+  const handleStartCall = React.useCallback(() => {
+    if (!currentNode) return;
+    setIsTimerActive(true);
+    const startEdge = scriptGraph?.edges.find(e => e.source === currentNode.id);
+    if (startEdge) {
+      const targetNodeId = startEdge.target;
+      const targetNode = scriptGraph?.nodes.find(n => n.id === targetNodeId);
+      if (targetNode?.type === 'objection') {
+        setEnteredObjectionFromChoice(true);
+        setSelectedSubObjectionIndex(null);
+      } else {
+        setEnteredObjectionFromChoice(false);
+        setSelectedSubObjectionIndex(null);
+      }
+      setPathHistory(prev => [...prev, currentNode.id]);
+      setCurrentNodeId(targetNodeId);
+    }
+  }, [currentNode, scriptGraph]);
+
+  const handleEndCall = React.useCallback(async () => {
+    if (!currentItem || !activeWorkspaceId || !user) return;
+
+    setIsTimerActive(false);
+
+    const contacts = entityData?.entityContacts || [];
+    const activeContactId = selectedContactId || contacts.find(c => c.isPrimary)?.id || contacts[0]?.id || 'primary';
+    const activeContactName = currentContact?.name || currentItem.entityName;
+
+    try {
+      await logActivity({
+        organizationId: currentItem.organizationId,
+        workspaceId: activeWorkspaceId,
+        entityId: currentItem.entityId,
+        entityType: (currentItem.entityType as any) || 'contact',
+        userId: user.uid,
+        type: 'call_completed',
+        source: 'call_campaign',
+        description: `Completed campaign call for contact: ${activeContactName}. Duration: ${seconds}s.`,
+        metadata: {
+          campaignId,
+          outcome: 'Completed',
+          duration: seconds,
+          notes: notes,
+          agentName: user.displayName || 'Agent',
+          contactId: activeContactId,
+          contactName: activeContactName,
+        }
+      });
+      toast({ title: 'Call Details Logged', description: `Logged timeline activity for ${activeContactName}.` });
+    } catch (err: any) {
+      console.error('[WORKSPACE_CLIENT] Failed to log timeline activity:', err);
+      toast({ variant: 'destructive', title: 'Activity Logging Failed', description: err.message });
+    }
+
+    const currentIdx = contacts.findIndex(c => c.id === activeContactId);
+    if (contacts.length > 0 && currentIdx >= 0 && currentIdx < contacts.length - 1) {
+      const nextContact = contacts[currentIdx + 1];
+      setSelectedContactId(nextContact.id);
+      setNotes('');
+      setSeconds(0);
+
+      if (scriptGraph && scriptGraph.nodes.length > 0) {
+        const startNode = scriptGraph.nodes.find(n => n.type === 'start') || scriptGraph.nodes[0];
+        setCurrentNodeId(startNode?.id || null);
+        setPathHistory([]);
+        setSelectedSubObjectionIndex(null);
+        setEnteredObjectionFromChoice(false);
+      }
+      
+      toast({ title: 'Next Contact Selected', description: `Moving to ${nextContact.name} for ${currentItem.entityName}.` });
+    } else {
+      await handleOutcomeSubmit('Completed');
+    }
+  }, [
+    currentItem,
+    activeWorkspaceId,
+    user,
+    entityData,
+    selectedContactId,
+    currentContact,
+    seconds,
+    notes,
+    campaignId,
+    scriptGraph,
+    toast,
+    handleOutcomeSubmit
+  ]);
+
+  // Active navigation handlers for the current step
+  const activeHandlers = React.useMemo(() => {
+    if (!currentNode) return [];
+
+    // 1. If we are on the start node
+    if (currentNode.type === 'start') {
+      return [handleStartCall];
+    }
+
+    // 2. If we are on the end node
+    if (currentNode.type === 'end') {
+      return [handleEndCall];
+    }
+
+    // 3. If we are on an outcome node
+    if (currentNode.type === 'outcome') {
+      return [() => {
+        void handleOutcomeSubmit(currentNode.data.outcomeValue || 'Interested');
+      }];
+    }
+
+    // 4. If we are on an objection node
+    if (currentNode.type === 'objection') {
+      if (selectedSubObjectionIndex === null && subObjections.length > 1) {
+        return subObjections.map((_: any, idx: number) => () => {
+          setSelectedSubObjectionIndex(idx);
+        });
+      }
+      return [handleNextStepAfterObjection];
+    }
+
+    // 5. Choice branches or normal blocks (if choices.length > 0)
+    if (choices.length > 0) {
+      const isComplianceBlocked = currentNode.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked;
+      if (isComplianceBlocked) {
+        return [];
+      }
+      return choices.map(choice => () => {
+        handleChoiceClick(choice.targetNode.id);
+      });
+    }
+
+    return [];
+  }, [
+    currentNode,
+    selectedSubObjectionIndex,
+    subObjections,
+    handleNextStepAfterObjection,
+    choices,
+    complianceChecked,
+    handleOutcomeSubmit,
+    handleChoiceClick,
+    handleStartCall,
+    handleEndCall
+  ]);
+
+  // Keyboard navigation shortcuts
+  React.useEffect(() => {
+    if (!currentNodeId) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+         activeEl.tagName === 'TEXTAREA' ||
+         activeEl.getAttribute('contenteditable') === 'true')
+      ) {
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        scrollContainerRef.current?.scrollBy({ top: -40, behavior: 'smooth' });
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        scrollContainerRef.current?.scrollBy({ top: 40, behavior: 'smooth' });
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        if (pathHistory.length > 0) {
+          e.preventDefault();
+          handleGoBack();
+        }
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          if (pathHistory.length > 0) {
+            handleGoBack();
+          }
+        } else {
+          if (activeHandlers.length > 0) {
+            activeHandlers[0]();
+          }
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        if (activeHandlers.length > 0) {
+          e.preventDefault();
+          activeHandlers[0]();
+        }
+        return;
+      }
+
+      const num = parseInt(e.key);
+      if (!isNaN(num) && num >= 1 && num <= 9) {
+        const idx = num - 1;
+        if (idx >= 0 && idx < activeHandlers.length) {
+          e.preventDefault();
+          activeHandlers[idx]();
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    currentNodeId,
+    pathHistory,
+    handleGoBack,
+    activeHandlers
+  ]);
 
   const handleSkip = async () => {
     if (!currentItem || !activeWorkspaceId || !user) return;
@@ -1251,19 +1542,41 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                     </div>
                   </div>
 
+                  {/* Switcher dropdown */}
+                  {entityData?.entityContacts && entityData.entityContacts.length > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-widest">Dial Target:</span>
+                      <Select
+                        value={currentContact?.id || ''}
+                        onValueChange={setSelectedContactId}
+                      >
+                        <SelectTrigger className="h-8 w-44 rounded-xl bg-background border text-[11px] font-bold">
+                          <SelectValue placeholder="Select contact..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border bg-card">
+                          {entityData.entityContacts.map((c: EntityContact) => (
+                            <SelectItem key={c.id} value={c.id} className="text-xs font-semibold">
+                              {c.name} {c.isPrimary ? '(Primary)' : c.isSignatory ? '(Signatory)' : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   {/* OS Telephony trigger */}
                   <a 
-                    href={`tel:${currentItem.entityPhone}`}
+                    href={`tel:${currentContact?.phone || currentItem.entityPhone}`}
                     className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/95 text-primary-foreground font-bold text-xs rounded-xl shadow-lg transition-transform hover:scale-[1.02]"
                   >
-                    <Phone className="h-4 w-4 fill-current animate-bounce" /> Call Contact: {currentItem.entityPhone || 'Missing phone'}
+                    <Phone className="h-4 w-4 fill-current animate-bounce" /> Call Contact: {currentContact?.name || currentItem.entityName} ({currentContact?.phone || currentItem.entityPhone || 'Missing phone'})
                   </a>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-border text-xs">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Mail className="h-4 w-4" />
-                    <span>Email: <span className="text-foreground font-medium">{currentItem.entityEmail || 'No Email'}</span></span>
+                    <span>Email: <span className="text-foreground font-medium">{currentContact?.email || currentItem.entityEmail || 'No Email'}</span></span>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <FolderOpen className="h-4 w-4 text-primary" />
@@ -1290,6 +1603,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                       onTriggerAction={handleTriggerAction}
                       onTriggerOutcome={handleTriggerOutcome}
                       triggeredIds={triggeredNodeIds}
+                      currentContact={currentContact}
+                      entityData={entityData}
                     />
                   </div>
                 ) : isBranching ? (
@@ -1363,210 +1678,313 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                       </div>
                       
                       {/* Right dialog state & choices */}
-                      <div className="flex-grow flex flex-col justify-between overflow-y-auto min-h-[220px]">
-                        <div className="space-y-4">
+                      <div className="flex-grow flex flex-col min-h-0">
+                        {/* Scrollable Readable Content */}
+                        <div ref={scrollContainerRef} className="flex-grow overflow-y-auto min-h-0 pr-2 space-y-4">
                           {currentNode && (
                             <div className="flex items-center gap-2">
+                              {pathHistory.length > 0 && (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+                                  onClick={handleGoBack}
+                                  aria-label="Go back to previous step"
+                                  title="Go back to previous step"
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                              )}
                               {getNodeBadge(currentNode.type)}
                             </div>
                           )}
-                          
-                          {/* Node Type Specific Overlays */}
-                          {currentNode?.type === 'outcome' && (
-                            <div className="space-y-4 max-w-xl">
-                              <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-2">
-                                <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wide">Outcome Step Reached</h4>
-                                <p className="text-xs text-foreground">
-                                  The conversation has reached the outcome: <span className="font-extrabold text-purple-600">"{currentNode.data.outcomeValue}"</span>.
-                                </p>
-                              </div>
-                              <Button
-                                onClick={() => handleOutcomeSubmit(currentNode.data.outcomeValue || 'Interested')}
-                                disabled={isSaving}
-                                className="w-full h-11 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider shadow-lg flex items-center justify-center gap-2"
-                              >
-                                <Check className="h-4 w-4" /> Confirm & Save Outcome: {currentNode.data.outcomeValue}
-                              </Button>
-                            </div>
-                          )}
 
-                          {currentNode?.type === 'action' && (
-                            <div className="space-y-4 max-w-xl">
-                              <div className={cn(
-                                "p-4 border rounded-xl space-y-2",
-                                actionStatus === 'loading' ? "bg-primary/5 border-primary/20 text-primary" :
-                                actionStatus === 'success' ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600" :
-                                actionStatus === 'error' ? "bg-rose-500/5 border-rose-500/20 text-rose-600" :
-                                "bg-muted border-border text-muted-foreground"
-                              )}>
-                                <div className="flex items-center justify-between">
-                                  <h4 className="text-xs font-bold uppercase tracking-wide">
-                                    {actionStatus === 'loading' ? 'Executing Automation Action...' :
-                                     actionStatus === 'success' ? 'Automation Action Completed' :
-                                     actionStatus === 'error' ? 'Automation Action Failed' :
-                                     'Automation Action Step'}
-                                  </h4>
-                                  {actionStatus === 'loading' && <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />}
-                                  {actionStatus === 'success' && <Check className="h-3.5 w-3.5 text-emerald-600" />}
-                                  {actionStatus === 'error' && <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />}
+                          {currentNode?.type === 'objection' && enteredObjectionFromChoice && selectedSubObjectionIndex === null && subObjections.length > 1 ? (
+                            /* Show list of sub-objections first in the readable area */
+                            <div className="space-y-3">
+                              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                                Select which objection fits:
+                              </span>
+                              <div className="grid gap-2 max-w-xl">
+                                {subObjections.map((sub: any, idx: number) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setSelectedSubObjectionIndex(idx)}
+                                    className="w-full text-left p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-muted/50 transition-all flex flex-col gap-1 shadow-sm"
+                                  >
+                                    <span className="text-sm font-black text-foreground">{sub.title || 'Objection Option'}</span>
+                                    {sub.description && (
+                                      <p className="text-xs text-muted-foreground line-clamp-2">
+                                        {sub.description.replace(/<[^>]+>/g, '')}
+                                      </p>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            /* Normal Script Reading view or active rebuttal text */
+                            <>
+                              {/* Node Type Specific Overlays */}
+                              {currentNode?.type === 'outcome' && (
+                                <div className="space-y-4 max-w-xl">
+                                  <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-2">
+                                    <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wide">Outcome Step Reached</h4>
+                                    <p className="text-xs text-foreground">
+                                      The conversation has reached the outcome: <span className="font-extrabold text-purple-600">"{currentNode.data.outcomeValue}"</span>.
+                                    </p>
+                                  </div>
+                                  <Button
+                                    onClick={() => handleOutcomeSubmit(currentNode.data.outcomeValue || 'Interested')}
+                                    disabled={isSaving}
+                                    className="w-full h-11 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl uppercase tracking-wider shadow-lg flex items-center justify-center gap-2"
+                                  >
+                                    <Check className="h-4 w-4" /> Confirm & Save Outcome: {currentNode.data.outcomeValue}
+                                  </Button>
                                 </div>
-                                <p className="text-xs text-foreground">
-                                  This step triggers the automation action: <span className="font-extrabold">{currentNode.data.actionType?.replace('_', ' ')}</span>.
-                                </p>
-                                {actionError && (
-                                  <p className="text-[11px] text-rose-600 font-mono border-t border-rose-500/10 pt-2 mt-2">
-                                    Error: {actionError}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                              )}
 
-                          {currentNode?.data?.text && (
-                            <ScriptBodyDisplay
-                              text={resolvedActiveNodeText}
-                              className="text-base font-serif text-foreground leading-relaxed max-w-2xl pr-4 select-text"
-                            />
-                          )}
+                              {currentNode?.type === 'action' && (
+                                <div className="space-y-4 max-w-xl">
+                                  <div className={cn(
+                                    "p-4 border rounded-xl space-y-2",
+                                    actionStatus === 'loading' ? "bg-primary/5 border-primary/20 text-primary" :
+                                    actionStatus === 'success' ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600" :
+                                    actionStatus === 'error' ? "bg-rose-500/5 border-rose-500/20 text-rose-600" :
+                                    "bg-muted border-border text-muted-foreground"
+                                  )}>
+                                    <div className="flex items-center justify-between">
+                                      <h4 className="text-xs font-bold uppercase tracking-wide">
+                                        {actionStatus === 'loading' ? 'Executing Automation Action...' :
+                                         actionStatus === 'success' ? 'Automation Action Completed' :
+                                         actionStatus === 'error' ? 'Automation Action Failed' :
+                                         'Automation Action Step'}
+                                      </h4>
+                                      {actionStatus === 'loading' && <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />}
+                                      {actionStatus === 'success' && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                                      {actionStatus === 'error' && <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />}
+                                    </div>
+                                    <p className="text-xs text-foreground">
+                                      This step triggers the automation action: <span className="font-extrabold">{currentNode.data.actionType?.replace('_', ' ')}</span>.
+                                    </p>
+                                    {actionError && (
+                                      <p className="text-[11px] text-rose-600 font-mono border-t border-rose-500/10 pt-2 mt-2">
+                                        Error: {actionError}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
 
-                          {/* Dynamic Compliance Checkbox for Say nodes */}
-                          {currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && (
-                            <div className="mt-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl flex items-start gap-3 max-w-xl">
-                              <input 
-                                type="checkbox"
-                                id="compliance-checkbox"
-                                checked={complianceChecked}
-                                onChange={(e) => setComplianceChecked(e.target.checked)}
-                                className="mt-0.5 rounded border-border bg-background text-primary focus:ring-0"
-                              />
-                              <label htmlFor="compliance-checkbox" className="text-xs text-foreground/80 cursor-pointer select-none">
-                                <span className="font-extrabold text-amber-600 block mb-1">Compliance Verification Required</span>
-                                I verify that I have read the compliance statement exactly as written.
-                              </label>
-                            </div>
-                          )}
+                              {currentNode?.type === 'objection' && (selectedSubObjectionIndex !== null || subObjections.length <= 1) && (
+                                <div className="space-y-2 select-text">
+                                  <span className="text-[9px] font-bold uppercase tracking-widest text-orange-500 block">
+                                    ➔ Viewing Objection Response
+                                  </span>
+                                  <ScriptBodyDisplay
+                                    text={resolveLiveText(subObjections[selectedSubObjectionIndex ?? 0]?.description || '')}
+                                    className="text-base font-serif text-foreground leading-relaxed max-w-2xl pr-4"
+                                  />
+                                </div>
+                              )}
 
-                          {/* Dynamic Input Fields rendering for Question nodes */}
-                          {currentNode?.type === 'question' && currentNode.data.questionConfig?.fieldName && (
-                            <div className="p-4 bg-muted/60 border border-border rounded-xl max-w-xl space-y-3 shadow-inner">
-                              <div className="flex justify-between items-center">
-                                <Label htmlFor="question-input" className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                                  Response for <span className="text-primary font-mono">{currentNode.data.questionConfig.fieldName}</span>
-                                </Label>
-                                <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-wider border-border text-muted-foreground bg-muted">
-                                  {currentNode.data.questionConfig.fieldType || 'text'}
-                                </Badge>
-                              </div>
-                              
-                              {currentNode.data.questionConfig.fieldType === 'select' ? (
-                                <select
-                                  id="question-input"
-                                  value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
-                                    setValidationError(null);
-                                  }}
-                                  className="w-full bg-background border border-border text-foreground rounded-lg text-xs p-2 focus:border-primary focus:ring-0 outline-none"
-                                >
-                                  <option value="">-- Choose Option --</option>
-                                  {currentNode.data.questionConfig.selectOptions?.map(opt => (
-                                    <option key={opt} value={opt}>{opt}</option>
-                                  ))}
-                                </select>
-                              ) : currentNode.data.questionConfig.fieldType === 'datepicker' ? (
-                                <Input
-                                  id="question-input"
-                                  type="date"
-                                  value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
-                                    setValidationError(null);
-                                  }}
-                                  className="w-full bg-background border-border text-foreground text-xs rounded-lg h-9"
-                                />
-                              ) : currentNode.data.questionConfig.fieldType === 'number' ? (
-                                <Input
-                                  id="question-input"
-                                  type="number"
-                                  placeholder="Enter numeric response..."
-                                  value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
-                                    setValidationError(null);
-                                  }}
-                                  className="w-full bg-background border-border text-foreground text-xs rounded-lg h-9"
-                                />
-                              ) : (
-                                <Input
-                                  id="question-input"
-                                  type="text"
-                                  placeholder="Type response..."
-                                  value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
-                                    setValidationError(null);
-                                  }}
-                                  className="w-full bg-background border-border text-foreground text-xs rounded-lg h-9"
+                              {currentNode?.type === 'start' && (
+                                <div className="flex flex-col items-center justify-center py-12 space-y-6 text-center max-w-md mx-auto select-none border border-emerald-500/10 bg-emerald-500/5 rounded-2xl p-6">
+                                  <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-sm animate-pulse">
+                                    <Phone className="h-9 w-9" />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <h3 className="text-lg font-black text-foreground uppercase tracking-wider">Ready to Initiate Call</h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">Press the button below or trigger shortcut (Enter / Tab / Number 1) to start timing and begin the outreach flow.</p>
+                                  </div>
+                                  <Button
+                                    onClick={handleStartCall}
+                                    className="h-12 px-10 rounded-xl font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-600 text-white shadow-md flex items-center gap-2 transition-all"
+                                  >
+                                    <Phone className="h-4 w-4" /> Start Call
+                                  </Button>
+                                </div>
+                              )}
+
+                              {currentNode?.type === 'end' && (
+                                <div className="flex flex-col items-center justify-center py-12 space-y-6 text-center max-w-md mx-auto select-none border border-rose-500/10 bg-rose-500/5 rounded-2xl p-6">
+                                  <div className="w-20 h-20 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shadow-sm">
+                                    <PhoneOff className="h-9 w-9" />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <h3 className="text-lg font-black text-foreground uppercase tracking-wider">Outbound Call Ended</h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">Press the button below or trigger shortcut (Enter / Tab / Number 1) to end this call, log details, and proceed.</p>
+                                  </div>
+                                  <Button
+                                    onClick={handleEndCall}
+                                    className="h-12 px-10 rounded-xl font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-md flex items-center gap-2 transition-all"
+                                  >
+                                    <PhoneOff className="h-4 w-4" /> End Call
+                                  </Button>
+                                </div>
+                              )}
+
+                              {currentNode?.type !== 'objection' && currentNode?.type !== 'start' && currentNode?.type !== 'end' && currentNode?.data?.text && (
+                                <ScriptBodyDisplay
+                                  text={resolvedActiveNodeText}
+                                  className="text-base font-serif text-foreground leading-relaxed max-w-2xl pr-4 select-text"
                                 />
                               )}
-                              {currentNode.data.questionConfig.validationPattern && (
-                                <p className="text-[9px] text-muted-foreground font-mono">
-                                  Validation Regex: {currentNode.data.questionConfig.validationPattern}
-                                </p>
-                              )}
-                            </div>
-                          )}
 
-                          {/* Field level Validation Error banner */}
-                          {validationError && (
-                            <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 rounded-lg text-xs flex items-center gap-2 max-w-xl">
-                              <AlertTriangle className="h-4 w-4 shrink-0" />
-                              <span>{validationError}</span>
-                            </div>
+                              {/* Dynamic Compliance Checkbox for Say nodes */}
+                              {currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && (
+                                <div className="mt-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl flex items-start gap-3 max-w-xl">
+                                  <input 
+                                    type="checkbox"
+                                    id="compliance-checkbox"
+                                    checked={complianceChecked}
+                                    onChange={(e) => setComplianceChecked(e.target.checked)}
+                                    className="mt-0.5 rounded border-border bg-background text-primary focus:ring-0"
+                                  />
+                                  <label htmlFor="compliance-checkbox" className="text-xs text-foreground/80 cursor-pointer select-none">
+                                    <span className="font-extrabold text-amber-600 block mb-1">Compliance Verification Required</span>
+                                    I verify that I have read the compliance statement exactly as written.
+                                  </label>
+                                </div>
+                              )}
+
+                              {/* Dynamic Input Fields rendering for Question nodes */}
+                              {currentNode?.type === 'question' && currentNode.data.questionConfig?.fieldName && (
+                                <div className="p-4 bg-muted/60 border border-border rounded-xl max-w-xl space-y-3 shadow-inner">
+                                  <div className="flex justify-between items-center">
+                                    <Label htmlFor="question-input" className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                                      Response for <span className="text-primary font-mono">{currentNode.data.questionConfig.fieldName}</span>
+                                    </Label>
+                                    <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-wider border-border text-muted-foreground bg-muted">
+                                      {currentNode.data.questionConfig.fieldType || 'text'}
+                                    </Badge>
+                                  </div>
+                                  
+                                  {currentNode.data.questionConfig.fieldType === 'select' ? (
+                                    <select
+                                      id="question-input"
+                                      value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
+                                        setValidationError(null);
+                                      }}
+                                      className="w-full bg-background border border-border text-foreground rounded-lg text-xs p-2 focus:border-primary focus:ring-0 outline-none"
+                                    >
+                                      <option value="">-- Choose Option --</option>
+                                      {currentNode.data.questionConfig.selectOptions?.map(opt => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  ) : currentNode.data.questionConfig.fieldType === 'datepicker' ? (
+                                    <Input
+                                      id="question-input"
+                                      type="date"
+                                      value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
+                                        setValidationError(null);
+                                      }}
+                                      className="w-full bg-background border-border text-foreground text-xs rounded-lg h-9"
+                                    />
+                                  ) : currentNode.data.questionConfig.fieldType === 'number' ? (
+                                    <Input
+                                      id="question-input"
+                                      type="number"
+                                      placeholder="Enter numeric response..."
+                                      value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
+                                        setValidationError(null);
+                                      }}
+                                      className="w-full bg-background border-border text-foreground text-xs rounded-lg h-9"
+                                    />
+                                  ) : (
+                                    <Input
+                                      id="question-input"
+                                      type="text"
+                                      placeholder="Type response..."
+                                      value={collectedAnswers[currentNode.data.questionConfig.fieldName] || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setCollectedAnswers(prev => ({ ...prev, [currentNode.data.questionConfig!.fieldName!]: val }));
+                                        setValidationError(null);
+                                      }}
+                                      className="w-full bg-background border-border text-foreground text-xs rounded-lg h-9"
+                                    />
+                                  )}
+                                  {currentNode.data.questionConfig.validationPattern && (
+                                    <p className="text-[9px] text-muted-foreground font-mono">
+                                      Validation Regex: {currentNode.data.questionConfig.validationPattern}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Field level Validation Error banner */}
+                              {validationError && (
+                                <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 rounded-lg text-xs flex items-center gap-2 max-w-xl">
+                                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                                  <span>{validationError}</span>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
 
-                        <div className="pt-6 border-t border-border mt-6 space-y-3 shrink-0">
-                          {choices.length > 0 ? (
-                            <>
-                              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">Choose Customer's Response:</span>
-                              <div className="flex flex-wrap gap-2">
+                        {/* Fixed Button Panel at the bottom */}
+                        <div className="pt-6 border-t border-border mt-6 shrink-0 select-none bg-card flex items-center justify-between gap-4">
+                          {/* Left side: Back button */}
+                          <div className="min-w-[100px]">
+                            {pathHistory.length > 0 && (
+                              <Button
+                                variant="outline"
+                                type="button"
+                                onClick={handleGoBack}
+                                className="h-10 px-6 rounded-xl text-xs font-bold uppercase tracking-wider border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-sm flex items-center gap-1.5"
+                              >
+                                <ChevronLeft className="h-4 w-4" /> Back
+                              </Button>
+                            )}
+                          </div>
+
+                          {/* Right side: Next Step / Option Buttons */}
+                          <div className="flex items-center gap-2 justify-end ml-auto flex-wrap max-w-[75%]">
+                            {currentNode?.type === 'objection' && (selectedSubObjectionIndex !== null || subObjections.length <= 1) ? (
+                              <Button
+                                type="button"
+                                onClick={handleNextStepAfterObjection}
+                                className="h-10 px-8 min-w-[150px] rounded-xl bg-orange-600 hover:bg-orange-700 border border-orange-600 text-white transition-all text-xs font-black shadow-sm flex items-center justify-center gap-1.5"
+                              >
+                                Continue to Next Step <ArrowRight className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : currentNode?.type !== 'objection' && currentNode?.type !== 'start' && currentNode?.type !== 'end' && choices.length > 0 ? (
+                              <div className="flex flex-wrap gap-2 justify-end items-center">
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Choose Customer's Response:</span>
                                 {choices.map((choice) => (
                                   <Button
                                     key={choice.edgeId}
                                     type="button"
                                     disabled={currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked}
                                     onClick={() => handleChoiceClick(choice.targetNode.id)}
-                                    className="h-9 px-4 rounded-xl border border-border bg-card text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black"
+                                    className="h-10 px-8 min-w-[120px] rounded-xl border border-border bg-card text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black shadow-sm"
                                   >
                                     {choice.edgeLabel}
                                   </Button>
                                 ))}
                               </div>
-                            </>
-                          ) : (
-                            currentNode?.type !== 'outcome' && (
-                              <div className="text-xs text-muted-foreground italic">
-                                No further choices. You can log the outcome in the right panel to complete this call.
-                              </div>
-                            )
-                          )}
-                          
-                          {pathHistory.length > 0 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              type="button"
-                              onClick={handleGoBack}
-                              className="h-8 text-[10px] font-bold text-muted-foreground hover:text-foreground rounded-lg gap-1 px-2.5 mt-2"
-                            >
-                              <ChevronLeft className="h-3.5 w-3.5" /> Back to Previous Step
-                            </Button>
-                          )}
+                            ) : (
+                              currentNode?.type !== 'outcome' && currentNode?.type !== 'objection' && currentNode?.type !== 'start' && currentNode?.type !== 'end' && (
+                                <div className="text-xs text-muted-foreground italic">
+                                  No further choices. You can log the outcome in the right panel to complete this call.
+                                </div>
+                              )
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1871,35 +2289,55 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                 {filteredObjections.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic text-center py-20">No matching objections found.</p>
                 ) : (
-                  <div className="space-y-2">
-                    {filteredObjections.map((node) => (
-                      <div 
-                        key={node.id} 
-                        onClick={() => handleObjectionClick(node.id)}
-                        className={cn(
-                          "p-3 rounded-xl border cursor-pointer transition-all flex flex-col gap-1 text-left",
-                          currentNodeId === node.id
-                            ? "bg-amber-500/10 border-amber-500 text-amber-500 shadow"
-                            : "bg-muted border-border text-muted-foreground hover:bg-card hover:border-primary/30 hover:text-foreground"
-                        )}
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold truncate">{node.data.label || 'Objection'}</span>
-                          <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[8px] font-bold uppercase tracking-wider scale-90">
-                            Objection
-                          </Badge>
-                        </div>
-                        {node.data.objectionConfig?.keywordTriggers && node.data.objectionConfig.keywordTriggers.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {node.data.objectionConfig.keywordTriggers.map((kw: string) => (
-                              <Badge key={kw} variant="outline" className="text-[8px] border-border text-muted-foreground bg-muted">
-                                {kw}
-                              </Badge>
-                            ))}
+                  <div className="space-y-4">
+                    {filteredObjections.map((node) => {
+                      const subObjs = (node.data as any)?.objectionConfig?.objections || [
+                        { title: node.data.label || 'Objection', description: node.data.text || '' }
+                      ];
+                      return (
+                        <div key={node.id} className="space-y-1.5">
+                          <div className="flex items-center justify-between px-1">
+                            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                              {node.data.label || 'Objection'}
+                            </span>
+                            {node.data.objectionConfig?.keywordTriggers && node.data.objectionConfig.keywordTriggers.length > 0 && (
+                              <div className="flex gap-1">
+                                {node.data.objectionConfig.keywordTriggers.slice(0, 2).map((kw: string) => (
+                                  <Badge key={kw} variant="outline" className="text-[7px] border-border text-muted-foreground bg-muted px-1 py-0 scale-90">
+                                    {kw}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          
+                          <div className="space-y-1 pl-1">
+                            {subObjs.map((sub: any, idx: number) => {
+                              const isActive = currentNodeId === node.id && selectedSubObjectionIndex === idx;
+                              return (
+                                <div
+                                  key={`${node.id}-${idx}`}
+                                  onClick={() => handleObjectionClickFromPanel(node.id, idx)}
+                                  className={cn(
+                                    "p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col gap-0.5 text-left",
+                                    isActive
+                                      ? "bg-amber-500/10 border-amber-500 text-amber-500 shadow"
+                                      : "bg-muted border-border text-muted-foreground hover:bg-card hover:border-primary/30 hover:text-foreground"
+                                  )}
+                                >
+                                  <span className="text-xs font-bold truncate">{sub.title || 'Objection Option'}</span>
+                                  {sub.description && (
+                                    <p className="text-[10px] text-muted-foreground line-clamp-1 italic">
+                                      {sub.description.replace(/<[^>]+>/g, '')}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

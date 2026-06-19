@@ -1105,6 +1105,50 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
                                     </div>
                                   </div>
                                 )}
+
+                                {rule.type === 'UPDATE_CONTACT' && (
+                                  <div className="space-y-2">
+                                    <div className="space-y-1">
+                                      <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                                        Contact Name
+                                      </Label>
+                                      <Input
+                                        value={rule.params.contactName ?? ''}
+                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'contactName', e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === '/') e.stopPropagation(); }}
+                                        placeholder="e.g. John Doe or {{CURRENT_CONTACT_NAME}}"
+                                        className="h-8 bg-background border-border rounded-lg text-xs px-2"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                                        Contact Email
+                                      </Label>
+                                      <Input
+                                        value={rule.params.contactEmail ?? ''}
+                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'contactEmail', e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === '/') e.stopPropagation(); }}
+                                        placeholder="e.g. john@example.com"
+                                        className="h-8 bg-background border-border rounded-lg text-xs px-2"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                                        Contact Phone
+                                      </Label>
+                                      <Input
+                                        value={rule.params.contactPhone ?? ''}
+                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'contactPhone', e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === '/') e.stopPropagation(); }}
+                                        placeholder="e.g. +1 (555) 000-0000"
+                                        className="h-8 bg-background border-border rounded-lg text-xs px-2"
+                                      />
+                                    </div>
+                                    <p className="text-[8px] text-muted-foreground/50">
+                                      Use <code className="font-mono bg-muted/40 px-0.5 rounded">{'{{'+'VARIABLE'+'}}'}</code> or <code className="font-mono bg-muted/40 px-0.5 rounded">/field</code> to inject data
+                                    </p>
+                                  </div>
+                                )}
                               </div>
 
                               <Button

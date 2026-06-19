@@ -63,6 +63,13 @@ describe('ScriptBodyDisplay', () => {
     expect(body.style.transform).toContain('scale(1.5)');
   });
 
+  it('converts non-breaking spaces &nbsp; to regular space characters', () => {
+    const { container } = render(
+      <ScriptBodyDisplay text="Hello&nbsp;World" />
+    );
+    expect(container.textContent).toBe('Hello World');
+  });
+
   it('renders the empty fallback when there is no text', () => {
     render(<ScriptBodyDisplay text="" emptyFallback={<span>nothing here</span>} />);
     expect(screen.getByText('nothing here')).toBeInTheDocument();

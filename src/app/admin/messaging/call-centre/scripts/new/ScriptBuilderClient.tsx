@@ -13,7 +13,7 @@ import {
   generateCallScriptAction,
   refineCallScriptAction
 } from '@/lib/call-centre-actions';
-import { isJsonGraph, parseGraph, validateScriptGraph, extractPreviewText } from '@/lib/call-centre-graph';
+import { isJsonGraph, parseGraph, validateScriptGraph, extractPreviewText, resolveScriptVariables } from '@/lib/call-centre-graph';
 import { useToast } from '@/hooks/use-toast';
 import { PageContainer } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
@@ -56,10 +56,11 @@ import { addEdge, useNodesState, useEdgesState } from 'reactflow';
 import { ScriptPlaybookView } from '../components/ScriptPlaybookView';
 import { LegacyScriptEditor } from '../components/LegacyScriptEditor';
 import type { LegacyScriptEditorHandle, VariableGroup } from '../components/LegacyScriptEditor';
+import { ScriptBodyDisplay } from '../components/ScriptBodyDisplay';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { cn } from '@/lib/utils';
-import type { ScriptNode, ScriptEdge, ScriptNodeType } from '@/lib/types';
+import type { ScriptNode, ScriptEdge, ScriptNodeType, EntityContact, Entity } from '@/lib/types';
 import type { VisualScriptCanvasHandle, VisualScriptCanvasProps } from '../components/VisualScriptCanvas';
 import { ActionNodeConfigPanel } from '../components/ActionNodeConfigPanel';
 
@@ -78,13 +79,15 @@ const InteractiveScriptView = dynamic(
 
 // ─── Script variable name constants (module scope) ────────────────────────────
 const NATIVE_ENTITY_VAR_NAMES = [
-  'ENTITY_NAME', 'ENTITY_EMAIL', 'ENTITY_PHONE', 'ENTITY_TYPE',
-  'PRIMARY_CONTACT_NAME', 'PRIMARY_CONTACT_PHONE', 'AGENT_NAME',
+  'ENTITY_NAME', 'ENTITY_TYPE',
+  'PRIMARY_CONTACT_NAME', 'PRIMARY_CONTACT_PHONE',
+  'CURRENT_CONTACT_NAME', 'CURRENT_CONTACT_PHONE', 'CURRENT_CONTACT_EMAIL',
+  'AGENT_NAME',
   'STATUS', 'LOCATION', 'CURRENT_NEEDS', 'CURRENT_CHALLENGES',
   'INITIALS', 'SLOGAN', 'CAPACITY', 'CURRENCY', 'SUBSCRIPTION_RATE',
   'WEBSITE', 'DIGITAL_ADDRESS', 'FACEBOOK', 'WHATSAPP', 'INSTAGRAM',
   'LINKEDIN', 'X_TWITTER', 'YOUTUBE', 'TIKTOK',
-  'FIRST_NAME', 'LAST_NAME', 'COMPANY', 'JOB_TITLE', 'LEAD_SOURCE',
+  'LAST_NAME', 'COMPANY', 'JOB_TITLE', 'LEAD_SOURCE',
 ];
 
 const NATIVE_DEAL_VAR_NAMES = [
@@ -178,7 +181,26 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
   const hasLoadedRef = React.useRef(false);
 
   const [isLoading, setIsLoading] = React.useState(false);
+  const [simulationActive, setSimulationActive] = React.useState(false);
+  const [simulatedEntityId, setSimulatedEntityId] = React.useState<string | null>(null);
+  const [simulatedContactId, setSimulatedContactId] = React.useState<string | null>(null);
+  const [simulatedEntityData, setSimulatedEntityData] = React.useState<(
+    Partial<Entity> & {
+      name: string;
+      primaryEmail: string;
+      primaryPhone: string;
+      entityContacts: EntityContact[];
+    }
+  ) | null>(null);
+  const [simulatedTriggeredIds, setSimulatedTriggeredIds] = React.useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = React.useState(false);
+
+  // Simulation Variable Resolver
+  const resolveSimulatedText = React.useCallback((raw: string): string => {
+    const contacts = simulatedEntityData?.entityContacts;
+    const contact = contacts?.find((c: EntityContact) => c.id === simulatedContactId) || contacts?.[0];
+    return resolveScriptVariables(raw, simulatedEntityData, null, user?.displayName || 'Agent', contact);
+  }, [simulatedEntityData, simulatedContactId, user]);
 
   // AI Assist states
   const [isAiOpen, setIsAiOpen] = React.useState(false);
@@ -1006,6 +1028,108 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
           </div>
         </div>
 
+        {/* Dynamic Simulation Panel */}
+        <div className="flex flex-wrap items-center justify-between p-3.5 bg-card/60 border border-border/80 rounded-2xl gap-3 backdrop-blur-sm shadow-sm">
+          <div className="flex items-center gap-2">
+            <Badge className={cn("uppercase tracking-wider font-extrabold text-[9px] transition-all px-2.5 py-1",
+              simulationActive ? "bg-amber-500/10 text-amber-500 border border-amber-500/25 animate-pulse" : "bg-muted text-muted-foreground"
+            )}>
+              {simulationActive ? 'Simulation Active' : 'Simulation Mode'}
+            </Badge>
+            <p className="text-[10px] text-muted-foreground font-semibold">
+              Select an entity and contact from the workspace database to preview token values in the script body.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Entity Search & Selector */}
+            <div className="w-56 shrink-0">
+              {(() => {
+                const { EntityCombobox } = require('@/components/entities/EntityCombobox');
+                return (
+                  <EntityCombobox
+                    value={simulatedEntityId}
+                    className="h-8 text-xs font-semibold rounded-xl"
+                    placeholder="Search Entity..."
+                    onChange={(val: string | null, entity: { id: string; displayName?: string; primaryEmail?: string; primaryPhone?: string; entityContacts?: EntityContact[] } | null) => {
+                      setSimulatedEntityId(val);
+                      if (entity) {
+                        const resolvedContacts = entity.entityContacts && entity.entityContacts.length > 0
+                          ? entity.entityContacts
+                          : [
+                              { id: 'c1', name: entity.displayName || 'Primary Contact', isPrimary: true, phone: entity.primaryPhone || '', email: entity.primaryEmail || '', typeKey: 'primary', order: 0, isSignatory: false }
+                            ];
+                        setSimulatedEntityData({
+                          ...entity,
+                          name: entity.displayName || 'Unknown Entity',
+                          primaryEmail: entity.primaryEmail || '',
+                          primaryPhone: entity.primaryPhone || '',
+                          entityContacts: resolvedContacts
+                        });
+                        setSimulatedContactId(resolvedContacts[0].id);
+                      } else {
+                        setSimulatedEntityData(null);
+                        setSimulatedContactId(null);
+                      }
+                    }}
+                  />
+                );
+              })()}
+            </div>
+
+            {/* Simulated Contact Selector */}
+            {simulatedEntityData?.entityContacts && (
+              <Select
+                value={simulatedContactId || 'c1'}
+                onValueChange={setSimulatedContactId}
+              >
+                <SelectTrigger className="h-8 w-44 rounded-xl bg-background border text-xs font-bold">
+                  <SelectValue placeholder="Select contact..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border bg-card">
+                  {simulatedEntityData.entityContacts.map((c: EntityContact) => (
+                    <SelectItem key={c.id} value={c.id} className="text-xs font-semibold">
+                      {c.name} {c.isPrimary ? '(Primary)' : c.isSignatory ? '(Signatory)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Simulation controls */}
+            {simulationActive ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  setSimulationActive(false);
+                  setSimulatedTriggeredIds(new Set());
+                }}
+                variant="destructive"
+                size="sm"
+                className="h-8 rounded-xl text-[10px] font-black uppercase tracking-wider px-4"
+              >
+                End Simulation
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={() => {
+                  if (!simulatedEntityId) {
+                    toast({ variant: 'destructive', title: 'No Entity Specified', description: 'Please type an entity name to simulate.' });
+                    return;
+                  }
+                  setSimulationActive(true);
+                }}
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-xl text-[10px] font-black uppercase tracking-wider border-border hover:bg-muted text-muted-foreground px-4"
+              >
+                Start Simulation
+              </Button>
+            )}
+          </div>
+        </div>
+
         {/* Tab 1: Visual flowchart Editor */}
         <TabsContent value="flow" className="pt-3 m-0 outline-none">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[680px] overflow-hidden relative">
@@ -1191,6 +1315,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                   onNodeClick={onNodeClick}
                   onEdgeDelete={handleEdgeDelete}
                   onPaneClick={() => setSelectedNodeId(null)}
+                  resolveText={simulationActive ? resolveSimulatedText : undefined}
                 />
               </div>
             </div>
@@ -1647,22 +1772,37 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
 
                       {/* Dialogue body editor — hidden for objection nodes (each entry has its own description) */}
                       {selectedNode.type !== 'objection' && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Dialogue script body</Label>
-                            <span className="text-[8px] text-muted-foreground/50 font-mono">
-                              type <kbd className="bg-muted px-1 rounded border border-border/50">/</kbd> to insert variables
-                            </span>
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Dialogue script body</Label>
+                              <span className="text-[8px] text-muted-foreground/50 font-mono">
+                                type <kbd className="bg-muted px-1 rounded border border-border/50">/</kbd> to insert variables
+                              </span>
+                            </div>
+                            <LegacyScriptEditor
+                              ref={nodeEditorRef}
+                              value={selectedNode.data.text || ''}
+                              onChange={(val) => updateSelectedNode({ text: val })}
+                              variableGroups={scriptVariableGroups}
+                              placeholder="Type dialog block script here…"
+                              richFormatting
+                              className=""
+                            />
                           </div>
-                          <LegacyScriptEditor
-                            ref={nodeEditorRef}
-                            value={selectedNode.data.text || ''}
-                            onChange={(val) => updateSelectedNode({ text: val })}
-                            variableGroups={scriptVariableGroups}
-                            placeholder="Type dialog block script here…"
-                            richFormatting
-                            className=""
-                          />
+
+                          {simulationActive && (
+                            <div className="space-y-1.5 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/5 mt-3">
+                              <div className="text-[8px] font-extrabold text-amber-500 uppercase tracking-widest">Simulation Preview</div>
+                              <ScriptBodyDisplay
+                                text={selectedNode.data.text || ''}
+                                resolveText={resolveSimulatedText}
+                                highlightVariables={false}
+                                className="text-xs leading-relaxed text-foreground font-serif italic"
+                                emptyFallback={<span className="text-[10px] text-muted-foreground italic">Dialogue is empty</span>}
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1685,14 +1825,38 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
               <CardTitle className="text-xs font-bold text-foreground uppercase tracking-wider">Playbook Outline Preview</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <ScriptPlaybookView graph={cleanGraph} />
+              <ScriptPlaybookView 
+                graph={cleanGraph} 
+                resolveText={simulationActive ? resolveSimulatedText : undefined}
+              />
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Tab 4: Interactive Script Simulator */}
         <TabsContent value="interactive" className="pt-3 m-0 outline-none">
-          <InteractiveScriptView nodes={nodes} edges={edges} />
+          <InteractiveScriptView 
+            nodes={nodes} 
+            edges={edges} 
+            resolveText={simulationActive ? resolveSimulatedText : undefined}
+            currentContact={simulatedEntityData?.entityContacts?.find(c => c.id === simulatedContactId) || simulatedEntityData?.entityContacts?.[0] || null}
+            entityData={simulatedEntityData}
+            triggeredIds={simulatedTriggeredIds}
+            onTriggerAction={async (node) => {
+              setSimulatedTriggeredIds(prev => new Set(prev).add(node.id));
+              return { ok: true };
+            }}
+            onTriggerOutcome={async (node) => {
+              setSimulatedTriggeredIds(prev => new Set(prev).add(node.id));
+              return { ok: true };
+            }}
+            onEndCall={() => {
+              setSimulatedEntityId(null);
+              setSimulatedEntityData(null);
+              setSimulatedContactId(null);
+              setSimulatedTriggeredIds(new Set());
+            }}
+          />
         </TabsContent>
 
         {/* Tab 3: Legacy plain text fallback editor */}

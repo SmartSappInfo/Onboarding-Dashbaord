@@ -715,6 +715,51 @@ const ActionNodeConfigPanel = React.memo(function ActionNodeConfigPanel({
         </div>
       ) : null}
 
+      {/* ── Update Contact ────────────────────────────────────────────────── */}
+      {activeType === 'UPDATE_CONTACT' ? (
+        <div className="space-y-3 transition-opacity duration-200">
+          <div className="space-y-1">
+            <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+              Contact Name
+            </Label>
+            <Input
+              value={config.contactName ?? ''}
+              onChange={(e) => updateConfig({ contactName: e.target.value })}
+              onKeyDown={stopSlashPropagation}
+              placeholder="e.g. John Doe or {{CURRENT_CONTACT_NAME}}"
+              className="h-8 bg-background border-border rounded-lg text-xs px-2"
+            />
+            <VariableHint />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+              Contact Email
+            </Label>
+            <Input
+              value={config.contactEmail ?? ''}
+              onChange={(e) => updateConfig({ contactEmail: e.target.value })}
+              onKeyDown={stopSlashPropagation}
+              placeholder="e.g. john@example.com"
+              className="h-8 bg-background border-border rounded-lg text-xs px-2"
+            />
+            <VariableHint />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+              Contact Phone
+            </Label>
+            <Input
+              value={config.contactPhone ?? ''}
+              onChange={(e) => updateConfig({ contactPhone: e.target.value })}
+              onKeyDown={stopSlashPropagation}
+              placeholder="e.g. +1 (555) 000-0000"
+              className="h-8 bg-background border-border rounded-lg text-xs px-2"
+            />
+            <VariableHint />
+          </div>
+        </div>
+      ) : null}
+
       {/* ── Trigger Delay (shared across all action types) ────────────────── */}
       <div className="space-y-1 pt-2 border-t border-border/30">
         <Label className="text-[8px] font-bold text-muted-foreground uppercase">

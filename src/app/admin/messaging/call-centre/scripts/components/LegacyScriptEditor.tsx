@@ -71,7 +71,12 @@ const FONT_COLORS = [
 const FALLBACK_VARIABLE_GROUPS: VariableGroup[] = [
   {
     group: 'Entity Fields',
-    items: ['ENTITY_NAME', 'ENTITY_EMAIL', 'ENTITY_PHONE', 'ENTITY_TYPE', 'PRIMARY_CONTACT_NAME', 'PRIMARY_CONTACT_PHONE', 'AGENT_NAME'],
+    items: [
+      'ENTITY_NAME', 'ENTITY_TYPE',
+      'PRIMARY_CONTACT_NAME', 'PRIMARY_CONTACT_PHONE',
+      'CURRENT_CONTACT_NAME', 'CURRENT_CONTACT_PHONE', 'CURRENT_CONTACT_EMAIL',
+      'AGENT_NAME'
+    ],
   },
   {
     group: 'Deal Fields',

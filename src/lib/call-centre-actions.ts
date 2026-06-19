@@ -131,6 +131,7 @@ export async function executeScriptActionAction(
     entityId: string;
     workspaceId: string;
     organizationId: string;
+    contactId?: string;
   },
   userId: string
 ) {
@@ -436,7 +437,7 @@ export async function addContactsToCallCampaignAction(
   if (!perm.granted) return { success: false, count: 0, error: perm.reason };
 
   try {
-    const result = await CallCentreService.addContactsToCampaign(campaignId, entityIds, workspaceId, contactOverrides);
+    const result = await CallCentreService.addContactsToCampaign(campaignId, entityIds, workspaceId, userId, contactOverrides);
     revalidatePath('/admin/messaging/call-centre');
     revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
     return result;

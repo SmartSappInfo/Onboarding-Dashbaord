@@ -4,7 +4,8 @@ import {
   parseGraph, 
   getNextNodeChoices, 
   resolveScriptVariables, 
-  validateScriptGraph 
+  validateScriptGraph,
+  ScriptVariableEntity
 } from '../call-centre-graph';
 import type { BranchingScriptGraph } from '../types';
 
@@ -68,13 +69,13 @@ describe('Call Centre Visual Script Graph Traversal Engine', () => {
   });
 
   describe('resolveScriptVariables', () => {
-    const mockEntity = {
+    const mockEntity: ScriptVariableEntity = {
       name: 'Lincoln Academy',
       entityType: 'institution',
       email: 'admissions@lincoln.edu',
       phone: '+233242000000',
       entityContacts: [
-        { name: 'John Doe', email: 'john@lincoln.edu', phone: '+233242111111', isPrimary: true }
+        { name: 'John Doe', email: 'john@lincoln.edu', phone: '+233242111111', isPrimary: true, id: 'c1', typeKey: 'primary', isSignatory: false, order: 0 }
       ]
     };
 
@@ -103,6 +104,62 @@ describe('Call Centre Visual Script Graph Traversal Engine', () => {
       
       expect(resolved).toContain('[No Active Deal]');
       expect(resolved).toContain('Agent Akosua');
+    });
+
+    it('should resolve CURRENT_CONTACT variables if specified', () => {
+      const template = 'Talking to {{CURRENT_CONTACT_NAME}} at {{CURRENT_CONTACT_PHONE}} / {{CURRENT_CONTACT_EMAIL}}';
+      const mockCurrent = { name: 'Ekow Mensah', phone: '+233242222222', email: 'ekow@lincoln.edu', id: 'c2', typeKey: 'signatory', isPrimary: false, isSignatory: true, order: 1 };
+      const resolved = resolveScriptVariables(template, mockEntity, null, 'Agent Akosua', mockCurrent);
+      expect(resolved).toBe('Talking to Ekow Mensah at +233242222222 / ekow@lincoln.edu');
+    });
+
+    it('should fallback CURRENT_CONTACT to primary contact when currentContact is not provided', () => {
+      const template = 'Talking to {{CURRENT_CONTACT_NAME}}';
+      const resolved = resolveScriptVariables(template, mockEntity, null, 'Agent Akosua');
+      expect(resolved).toBe('Talking to John Doe');
+    });
+
+    it('should resolve nested entity variables (personData, onlinePresence, financeData, industryData, customData)', () => {
+      const complexEntity = {
+        name: 'Alpha Tech',
+        entityType: 'institution',
+        personData: {
+          lastName: 'Smith',
+          company: 'Alpha LLC',
+          jobTitle: 'VP Engineering',
+          leadSource: 'Referral',
+        },
+        onlinePresence: {
+          website: 'https://alpha.tech',
+          digitalAddress: 'GA-123-4567',
+          x: '@alphatech',
+        },
+        financeData: {
+          currency: 'USD',
+          subscriptionRate: 299,
+        },
+        industryData: {
+          capacity: 150,
+        },
+        customData: {
+          custom_score: '9.8',
+        },
+      };
+
+      const template = 'Last name: {{LAST_NAME}}, Company: {{COMPANY}}, Job: {{JOB_TITLE}}, Lead: {{LEAD_SOURCE}}, Website: {{WEBSITE}}, Digital Address: {{DIGITAL_ADDRESS}}, Twitter: {{X_TWITTER}}, Currency: {{CURRENCY}}, Sub rate: {{SUBSCRIPTION_RATE}}, Capacity: {{CAPACITY}}, Custom: {{CUSTOM_SCORE}}';
+      const resolved = resolveScriptVariables(template, complexEntity as any, null, 'Agent');
+
+      expect(resolved).toContain('Smith');
+      expect(resolved).toContain('Alpha LLC');
+      expect(resolved).toContain('VP Engineering');
+      expect(resolved).toContain('Referral');
+      expect(resolved).toContain('https://alpha.tech');
+      expect(resolved).toContain('GA-123-4567');
+      expect(resolved).toContain('@alphatech');
+      expect(resolved).toContain('USD');
+      expect(resolved).toContain('299');
+      expect(resolved).toContain('150');
+      expect(resolved).toContain('9.8');
     });
   });
 
@@ -234,6 +291,25 @@ describe('Call Centre Visual Script Graph Traversal Engine', () => {
       };
       const result = validateScriptGraph(graph);
       expect(result.warnings.some(w => w.includes('requires a valid HTTP/HTTPS Webhook URL'))).toBe(true);
+    });
+
+    it('should warn when there is more than one start or end node', () => {
+      const graph: BranchingScriptGraph = {
+        nodes: [
+          { id: 'start-1', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start 1', text: '' } },
+          { id: 'start-2', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start 2', text: '' } },
+          { id: 'end-1', type: 'end', position: { x: 0, y: 0 }, data: { label: 'End 1', text: '' } },
+          { id: 'end-2', type: 'end', position: { x: 0, y: 0 }, data: { label: 'End 2', text: '' } }
+        ],
+        edges: [
+          { id: 'e1', source: 'start-1', target: 'end-1' },
+          { id: 'e2', source: 'start-2', target: 'end-2' }
+        ]
+      };
+      const result = validateScriptGraph(graph);
+      expect(result.isValid).toBe(false);
+      expect(result.warnings.some(w => w.includes('exactly one Start Call node'))).toBe(true);
+      expect(result.warnings.some(w => w.includes('exactly one End Call node'))).toBe(true);
     });
   });
 });

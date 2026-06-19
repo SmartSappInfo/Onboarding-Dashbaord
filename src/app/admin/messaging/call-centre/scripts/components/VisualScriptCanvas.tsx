@@ -27,6 +27,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { getActionMeta } from '@/lib/call-action-types';
 import { stripScriptHtml } from '@/lib/call-centre-graph';
+import { Phone, PhoneOff } from 'lucide-react';
 
 // ─── Custom Node Components ──────────────────────────────────────────────────
 
@@ -69,16 +70,38 @@ function CustomNodeWrapper({
 
 const customNodeTypes = {
   start: (props: NodeProps) => (
-    <CustomNodeWrapper title={props.data.label || 'Start'} colorClass="bg-emerald-500" typeLabel="Start" selected={props.selected}>
-      <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-emerald-500 !border-none" />
-      {stripScriptHtml(props.data.text) || 'Initiate outbound call conversation.'}
-    </CustomNodeWrapper>
+    <div className={[
+      'flex flex-col items-center gap-1 select-none relative',
+      props.selected ? 'scale-105' : ''
+    ].join(' ')}>
+      <div className={[
+        'w-14 h-14 rounded-full flex items-center justify-center bg-emerald-500 text-white shadow-md border-2 border-emerald-400 transition-all duration-200',
+        props.selected ? 'ring-2 ring-emerald-500 ring-offset-2 shadow-[0_0_12px_2px_rgba(16,185,129,0.5)] border-white' : 'hover:scale-105 hover:shadow-lg'
+      ].join(' ')}>
+        <Phone className="w-6 h-6 animate-pulse" />
+      </div>
+      <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shadow-sm">
+        Start Call
+      </span>
+      <Handle type="source" position={Position.Bottom} className="w-2.5 h-2.5 !bg-emerald-500 !border-none" />
+    </div>
   ),
   end: (props: NodeProps) => (
-    <CustomNodeWrapper title={props.data.label || 'End'} colorClass="bg-rose-500" typeLabel="End" selected={props.selected}>
-      <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-rose-500 !border-none" />
-      {stripScriptHtml(props.data.text) || 'End of call outreach.'}
-    </CustomNodeWrapper>
+    <div className={[
+      'flex flex-col items-center gap-1 select-none relative',
+      props.selected ? 'scale-105' : ''
+    ].join(' ')}>
+      <Handle type="target" position={Position.Top} className="w-2.5 h-2.5 !bg-rose-500 !border-none" />
+      <div className={[
+        'w-14 h-14 rounded-full flex items-center justify-center bg-rose-500 text-white shadow-md border-2 border-rose-400 transition-all duration-200',
+        props.selected ? 'ring-2 ring-rose-500 ring-offset-2 shadow-[0_0_12px_2px_rgba(244,63,94,0.5)] border-white' : 'hover:scale-105 hover:shadow-lg'
+      ].join(' ')}>
+        <PhoneOff className="w-6 h-6" />
+      </div>
+      <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 shadow-sm">
+        End Call
+      </span>
+    </div>
   ),
   script_block: (props: NodeProps) => (
     <CustomNodeWrapper title={props.data.label || 'Script Block'} colorClass="bg-primary" typeLabel="Say" selected={props.selected}>
@@ -318,6 +341,8 @@ export interface VisualScriptCanvasProps {
   onEdgeDelete: (edgeId: string) => void;
   /** Called when the user clicks the blank canvas background — use to deselect the active node */
   onPaneClick?: () => void;
+  /** Simulation variable resolver callback */
+  resolveText?: (raw: string) => string;
 }
 
 /** Traverse downstream edges to find all descendant nodes of a given node */
@@ -349,6 +374,7 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
     onNodeClick,
     onEdgeDelete,
     onPaneClick,
+    resolveText,
   }, ref) {
   // Ref for the outer wrapper div so we can read its pixel dimensions
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -455,7 +481,16 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
       style={{ minHeight: '550px' }}
     >
       <ReactFlow
-        nodes={nodes}
+        nodes={React.useMemo(() => {
+          if (!resolveText) return nodes;
+          return nodes.map(n => ({
+            ...n,
+            data: {
+              ...n.data,
+              text: n.data?.text ? resolveText(n.data.text) : ''
+            }
+          }));
+        }, [nodes, resolveText])}
         edges={edgesWithDelete}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}

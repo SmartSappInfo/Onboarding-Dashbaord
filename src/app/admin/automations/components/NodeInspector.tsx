@@ -160,6 +160,7 @@ const ACTION_TYPES = [
     { value: 'SEND_NOTIFICATION_PUSH', label: 'Send Notification (Push)', icon: SmartphoneIconPlaceholder, desc: 'Send a mobile push notification.' },
     { value: 'CREATE_ENTITY', label: 'Create Entity', icon: Building, desc: 'Create a new CRM contact or business entity using mapped webhook payload attributes.' },
     { value: 'ADD_CONTACT_TO_ENTITY', label: 'Add Contact to Entity', icon: Tag, desc: 'Locate an existing business entity via Exact Match and append a secondary contact.' },
+    { value: 'ADD_TO_CALL_CAMPAIGN', label: 'Add to Call Campaign', icon: Tag, desc: 'Add the target contact or entity to a specific call campaign for automated queueing.' },
     { value: 'END_AUTOMATION', label: 'End Automation', icon: CheckSquareIconPlaceholder, desc: 'Mark this automation as completed for the contact.' },
 ];
 

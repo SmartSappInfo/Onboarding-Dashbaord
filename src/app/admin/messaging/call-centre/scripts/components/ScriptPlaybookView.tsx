@@ -10,9 +10,10 @@ import { cn } from '@/lib/utils';
 
 interface ScriptPlaybookViewProps {
   graph: BranchingScriptGraph;
+  resolveText?: (raw: string) => string;
 }
 
-export function ScriptPlaybookView({ graph }: ScriptPlaybookViewProps) {
+export function ScriptPlaybookView({ graph, resolveText }: ScriptPlaybookViewProps) {
   const [expandedNodes, setExpandedNodes] = React.useState<Record<string, boolean>>({});
 
   const toggleNode = (nodeId: string) => {
@@ -169,7 +170,7 @@ export function ScriptPlaybookView({ graph }: ScriptPlaybookViewProps) {
                     {node.data.text && (
                       <div className="p-3.5 bg-background dark:bg-zinc-950 border border-border dark:border-zinc-850 rounded-lg text-xs leading-relaxed text-foreground/90 dark:text-zinc-300 font-serif italic select-text shadow-sm mt-3">
                         <span aria-hidden="true">&ldquo;</span>
-                        <ScriptBodyDisplay text={node.data.text} highlightVariables className="inline" />
+                        <ScriptBodyDisplay text={node.data.text} resolveText={resolveText} highlightVariables className="inline" />
                         <span aria-hidden="true">&rdquo;</span>
                       </div>
                     )}

@@ -1176,6 +1176,58 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         </div>
       ) : null}
 
+      {actionType === 'ADD_TO_CALL_CAMPAIGN' ? (() => {
+        // Fetch campaigns locally or dynamically using Firestore hook safely on client side
+        const { useCallCampaigns } = require('@/lib/call-centre-hooks');
+        const { campaigns = [] } = useCallCampaigns(activeWorkspace?.id);
+        const activeCamps = campaigns.filter((c: any) => c.status !== 'archived');
+
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Call Campaign</Label>
+              <Select 
+                value={config.campaignId || ''} 
+                onValueChange={(val) => onUpdateConfig({ campaignId: val })}
+              >
+                <SelectTrigger className="h-10 rounded-xl bg-card border font-bold">
+                  <SelectValue placeholder="Select call campaign..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border bg-card">
+                  {activeCamps.map((camp: any) => (
+                    <SelectItem key={camp.id} value={camp.id} className="text-xs font-semibold">
+                      {camp.name} ({camp.allowAddContactsAfterLaunch === false ? 'Fixed' : 'Dynamic'})
+                    </SelectItem>
+                  ))}
+                  {activeCamps.length === 0 && (
+                    <SelectItem value="none" disabled className="text-xs font-semibold">
+                      No active campaigns found
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Recipient Contact Scope</Label>
+              <Select 
+                value={config.contactScope || 'primary'} 
+                onValueChange={(val) => onUpdateConfig({ contactScope: val })}
+              >
+                <SelectTrigger className="h-10 rounded-xl bg-card border font-bold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border bg-card">
+                  <SelectItem value="primary" className="text-xs font-semibold">Primary Contact Only</SelectItem>
+                  <SelectItem value="signatories" className="text-xs font-semibold">Signatories Only</SelectItem>
+                  <SelectItem value="all" className="text-xs font-semibold">All Contacts</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+      })() : null}
+
       {actionType === 'UPDATE_LEAD_SCORE' ? (
         <div className="space-y-6">
           <div className="space-y-2">

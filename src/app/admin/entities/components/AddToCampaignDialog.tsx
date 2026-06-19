@@ -105,7 +105,11 @@ export function AddToCampaignDialog({
   }, [open, isSingleEntity, preSelectedContactId, entityContacts]);
 
   const activeCampaigns = React.useMemo(
-    () => campaigns.filter(c => c.status !== 'archived'),
+    () => campaigns.filter(c => {
+      const isArchived = c.status === 'archived';
+      const isFixedLaunched = c.allowAddContactsAfterLaunch === false && c.status !== 'draft';
+      return !isArchived && !isFixedLaunched;
+    }),
     [campaigns]
   );
 

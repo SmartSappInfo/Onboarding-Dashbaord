@@ -15,6 +15,7 @@ import {
   StickyNote,
   Calendar,
   PhoneForwarded,
+  User,
 } from 'lucide-react';
 
 export interface CallActionMeta {
@@ -116,6 +117,13 @@ export const CALL_ACTION_META = new Map<CallActionType, CallActionMeta>([
     colorClass: 'bg-orange-500',
     badgeLabel: '+ Transfer Call',
     defaultParams: () => ({ transferTarget: '', transferMode: 'phone' }),
+  }],
+  ['UPDATE_CONTACT', {
+    label: 'Update Contact',
+    icon: User,
+    colorClass: 'bg-blue-600',
+    badgeLabel: '+ Update Contact',
+    defaultParams: () => ({ contactName: '', contactEmail: '', contactPhone: '' }),
   }],
 ]);
 
