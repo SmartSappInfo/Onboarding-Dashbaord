@@ -50,7 +50,7 @@ export function AddContactsDialog({
   // Search hook
   const { results, isLoading, hasMore, loadMore } = useEntitySearch({
     search: searchTerm,
-    pageSize: 15,
+    pageSize: 60,
     enabled: open,
   });
 

@@ -53,12 +53,14 @@ interface AddToCampaignDialogProps {
 type Step = 'pick-contacts' | 'pick-campaign';
 type BulkScope = 'primary' | 'signatories' | 'all';
 
+const EMPTY_CONTACTS: EntityContact[] = [];
+
 export function AddToCampaignDialog({
   open,
   onOpenChange,
   entityIds,
   workspaceId,
-  entityContacts = [],
+  entityContacts = EMPTY_CONTACTS,
   preSelectedContactId,
   entityName,
   onComplete,
@@ -102,7 +104,8 @@ export function AddToCampaignDialog({
         setSelectedContactIds(new Set());
       }
     }
-  }, [open, isSingleEntity, preSelectedContactId, entityContacts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isSingleEntity, preSelectedContactId]);
 
   const activeCampaigns = React.useMemo(
     () => campaigns.filter(c => {
@@ -170,6 +173,7 @@ export function AddToCampaignDialog({
         workspaceId,
         user?.uid || '',
         overrides,
+        isSingleEntity ? undefined : bulkScope,
       );
 
       if (result.success) {

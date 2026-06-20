@@ -6,7 +6,8 @@ import type {
 } from '../types';
 import { previewCampaignAudience, resolveRecipientContacts } from '../messaging-actions';
 import { updateEntityAction } from '../entity-actions';
-import { applyTagsAction } from '../tag-actions';
+import { applyTagsAction, removeTagsAction } from '../tag-actions';
+import { MEETING_TYPES } from '../types';
 import { createTaskAction } from '../task-server-actions';
 import { sendSms } from '../mnotify-service';
 import { sendEmail } from '../resend-service';
@@ -32,6 +33,39 @@ export class CallCentreService {
       ...data,
       updatedAt: timestamp,
     });
+
+    if (data.content !== undefined) {
+      const campaignsSnap = await adminDb.collection('call_campaigns')
+        .where('scriptId', '==', id)
+        .get();
+
+      if (!campaignsSnap.empty) {
+        const batchLimit = 500;
+        let batch = adminDb.batch();
+        let count = 0;
+
+        for (const campaignDoc of campaignsSnap.docs) {
+          const campaignData = campaignDoc.data() as CallCampaign;
+          if (campaignData.status !== 'completed' && campaignData.status !== 'archived') {
+            batch.update(campaignDoc.ref, {
+              scriptSnapshot: data.content,
+              updatedAt: timestamp,
+            });
+            count++;
+
+            if (count === batchLimit) {
+              await batch.commit();
+              batch = adminDb.batch();
+              count = 0;
+            }
+          }
+        }
+
+        if (count > 0) {
+          await batch.commit();
+        }
+      }
+    }
   }
 
   static async deleteScript(id: string): Promise<void> {
@@ -184,7 +218,14 @@ export class CallCentreService {
 
         // Look up entity metadata (name, type) for all unique entityIds
         const uniqueEntityIds = [...new Set(contactOverrides.map(o => o.entityId))];
-        const entitiesData: Record<string, { name: string; entityType: string }> = {};
+        const entitiesData: Record<
+          string,
+          {
+            name: string;
+            entityType: string;
+            entityContacts: { id: string; typeLabel?: string; typeKey?: string; isPrimary?: boolean; isSignatory?: boolean }[];
+          }
+        > = {};
         for (let i = 0; i < uniqueEntityIds.length; i += batchCheckLimit) {
           const chunk = uniqueEntityIds.slice(i, i + batchCheckLimit);
           const snaps = await adminDb.collection('workspace_entities')
@@ -196,6 +237,7 @@ export class CallCentreService {
             entitiesData[data.entityId] = {
               name: data.displayName || 'Unknown Entity',
               entityType: data.entityType || 'person',
+              entityContacts: (data.entityContacts || []) as { id: string; typeLabel?: string; typeKey?: string; isPrimary?: boolean; isSignatory?: boolean }[],
             };
           });
         }
@@ -203,7 +245,14 @@ export class CallCentreService {
         for (const override of contactOverrides) {
           const docId = `${campaignId}_${override.entityId}_${override.contactId}`;
           if (existingDocIds.has(docId)) continue; // skip duplicates
-          const entityMeta = entitiesData[override.entityId] || { name: 'Unknown Entity', entityType: 'person' };
+          const entityMeta = entitiesData[override.entityId] || {
+            name: 'Unknown Entity',
+            entityType: 'person',
+            entityContacts: [] as { id: string; typeLabel?: string; typeKey?: string; isPrimary?: boolean; isSignatory?: boolean }[]
+          };
+          const contactObj = entityMeta.entityContacts?.find(c => c.id === override.contactId);
+          const contactRole = contactObj?.typeLabel || contactObj?.typeKey || (contactObj?.isPrimary ? 'Primary' : contactObj?.isSignatory ? 'Signatory' : 'Contact');
+
           queueItems.push({
             campaignId,
             organizationId: campaign.organizationId,
@@ -215,6 +264,7 @@ export class CallCentreService {
             entityEmail: override.email,
             contactId: override.contactId,
             contactName: override.contactName,
+            contactRole: contactRole || 'Contact',
             status: 'scheduled',
             assignedTo: null,
             lockExpiresAt: null,
@@ -254,72 +304,109 @@ export class CallCentreService {
       }
 
       // ─── PATH B: No overrides — legacy entity-level resolution ───────────────
-      const filteredEntityIds: string[] = [];
+      const resolvedContactsInfo: { entityId: string; entityMeta: any; contact: any }[] = [];
+      
       for (let i = 0; i < entityIds.length; i += batchCheckLimit) {
         const chunk = entityIds.slice(i, i + batchCheckLimit);
-        const docsToCheck = chunk.map(eid => `${campaignId}_${eid}`);
-        const snaps = await adminDb.collection('call_queue_items')
-          .where('__name__', 'in', docsToCheck)
-          .get();
-        const existingIds = new Set(snaps.docs.map(doc => doc.id.substring(campaignId.length + 1)));
-        for (const eid of chunk) {
-          if (!existingIds.has(eid)) filteredEntityIds.push(eid);
+        
+        const weRefs = chunk.map(eid => adminDb.collection('workspace_entities').doc(`${workspaceId}_${eid}`));
+        const entityRefs = chunk.map(eid => adminDb.collection('entities').doc(eid));
+        
+        const [weSnaps, entitySnaps] = await Promise.all([
+          adminDb.getAll(...weRefs),
+          adminDb.getAll(...entityRefs)
+        ]);
+
+        const tempWE: Record<string, any> = {};
+        weSnaps.forEach(snap => {
+          if (snap.exists) {
+            const data = snap.data();
+            if (data?.entityId) {
+              tempWE[data.entityId] = data;
+            }
+          }
+        });
+
+        const tempEntity: Record<string, any> = {};
+        entitySnaps.forEach(snap => {
+          if (snap.exists) {
+            const data = snap.data();
+            tempEntity[snap.id] = data;
+          }
+        });
+
+        for (const entityId of chunk) {
+          const weData = tempWE[entityId];
+          const entityData = tempEntity[entityId];
+          const entityMeta = {
+            name: weData?.displayName || entityData?.name || 'Unknown Contact',
+            entityType: weData?.entityType || entityData?.entityType || 'person',
+            entityContacts: entityData?.entityContacts || weData?.entityContacts || [],
+          };
+          
+          const contacts = entityMeta.entityContacts;
+          const scopeToUse = contactScope || campaign.audienceDefinition?.contactScope || 'primary';
+          let matchedContacts = contacts;
+          if (scopeToUse === 'primary') {
+            matchedContacts = contacts.filter((c: any) => c.isPrimary);
+          } else if (scopeToUse === 'signatories') {
+            matchedContacts = contacts.filter((c: any) => c.isSignatory);
+          }
+
+          if (matchedContacts.length === 0) {
+            if (contacts.length > 0) {
+              matchedContacts = [contacts[0]];
+            } else {
+              matchedContacts = [{
+                id: 'primary',
+                name: entityMeta.name,
+                phone: '',
+                email: '',
+                typeLabel: 'Contact',
+              }];
+            }
+          }
+
+          for (const c of matchedContacts) {
+            resolvedContactsInfo.push({
+              entityId,
+              entityMeta,
+              contact: c,
+            });
+          }
         }
       }
 
-      if (filteredEntityIds.length === 0) {
-        return { success: true, count: 0 };
+      // 2. Check deduplication for all resolved contacts
+      const existingDocIds = new Set<string>();
+      if (resolvedContactsInfo.length > 0) {
+        const docIdsToCheck = resolvedContactsInfo.map(info => `${campaignId}_${info.entityId}_${info.contact.id}`);
+        for (let i = 0; i < docIdsToCheck.length; i += batchCheckLimit) {
+          const chunk = docIdsToCheck.slice(i, i + batchCheckLimit);
+          const snaps = await adminDb.collection('call_queue_items')
+            .where('__name__', 'in', chunk)
+            .get();
+          snaps.docs.forEach(doc => existingDocIds.add(doc.id));
+        }
       }
 
-      // Query entity documents to get details
-      const entitiesData2: Record<string, { name: string; entityType: string }> = {};
-      for (let i = 0; i < filteredEntityIds.length; i += batchCheckLimit) {
-        const chunk = filteredEntityIds.slice(i, i + batchCheckLimit);
-        const snaps = await adminDb.collection('workspace_entities')
-          .where('entityId', 'in', chunk)
-          .where('workspaceId', '==', workspaceId)
-          .get();
-        snaps.forEach(doc => {
-          const data = doc.data();
-          entitiesData2[data.entityId] = {
-            name: data.displayName || 'Unknown Contact',
-            entityType: data.entityType || 'person',
-          };
-        });
-      }
-
-      for (const entityId of filteredEntityIds) {
-        const entityMeta = entitiesData2[entityId] || { name: 'Unknown Contact', entityType: 'person' };
-        let phone = '';
-        let email = '';
-
-        const [smsResolved, emailResolved] = await Promise.all([
-          resolveRecipientContacts({
-            entityId,
-            workspaceId,
-            contactScope: contactScope || campaign.audienceDefinition?.contactScope || 'primary',
-            channel: 'sms',
-          }).catch(() => []),
-          resolveRecipientContacts({
-            entityId,
-            workspaceId,
-            contactScope: contactScope || campaign.audienceDefinition?.contactScope || 'primary',
-            channel: 'email',
-          }).catch(() => []),
-        ]);
-
-        if (smsResolved && smsResolved.length > 0) phone = smsResolved[0].contact;
-        if (emailResolved && emailResolved.length > 0) email = emailResolved[0].contact;
+      // 3. Filter out existing items and prepare queue items
+      for (const info of resolvedContactsInfo) {
+        const docId = `${campaignId}_${info.entityId}_${info.contact.id}`;
+        if (existingDocIds.has(docId)) continue; // skip duplicates
 
         queueItems.push({
           campaignId,
           organizationId: campaign.organizationId,
           workspaceId: campaign.workspaceId,
-          entityId,
-          entityType: entityMeta.entityType as any,
-          entityName: entityMeta.name,
-          entityPhone: phone,
-          entityEmail: email,
+          entityId: info.entityId,
+          entityType: info.entityMeta.entityType as any,
+          entityName: info.entityMeta.name,
+          entityPhone: info.contact.phone || '',
+          entityEmail: info.contact.email || '',
+          contactId: info.contact.id,
+          contactName: info.contact.name,
+          contactRole: info.contact.typeLabel || info.contact.typeKey || (info.contact.isPrimary ? 'Primary' : info.contact.isSignatory ? 'Signatory' : 'Contact'),
           status: 'scheduled',
           assignedTo: null,
           lockExpiresAt: null,
@@ -337,7 +424,7 @@ export class CallCentreService {
       let writeCount = 0;
 
       for (const item of queueItems) {
-        const itemRef = adminDb.collection('call_queue_items').doc(`${campaignId}_${item.entityId}`);
+        const itemRef = adminDb.collection('call_queue_items').doc(`${campaignId}_${item.entityId}_${item.contactId}`);
         writeBatch.set(itemRef, {
           id: itemRef.id,
           ...item,
@@ -475,49 +562,59 @@ export class CallCentreService {
       const queueItems: Omit<CallQueueItem, 'id'>[] = [];
 
       for (const entity of entities) {
-        let phone = '';
-        let email = '';
+        const entitySnap = await adminDb.collection('workspace_entities')
+          .where('entityId', '==', entity.id)
+          .where('workspaceId', '==', campaign.workspaceId)
+          .get();
+        
+        const entityData = entitySnap.empty ? null : entitySnap.docs[0].data();
+        const contacts = (entityData?.entityContacts || []) as any[];
 
-        const [smsResolved, emailResolved] = await Promise.all([
-          resolveRecipientContacts({
-            entityId: entity.id,
-            workspaceId: campaign.workspaceId,
-            contactScope: campaign.audienceDefinition?.contactScope || 'primary',
-            channel: 'sms',
-          }).catch(() => []),
-          resolveRecipientContacts({
-            entityId: entity.id,
-            workspaceId: campaign.workspaceId,
-            contactScope: campaign.audienceDefinition?.contactScope || 'primary',
-            channel: 'email',
-          }).catch(() => []),
-        ]);
-
-        if (smsResolved && smsResolved.length > 0) {
-          phone = smsResolved[0].contact;
-        }
-        if (emailResolved && emailResolved.length > 0) {
-          email = emailResolved[0].contact;
+        const contactScope = campaign.audienceDefinition?.contactScope || 'primary';
+        let matchedContacts = contacts;
+        if (contactScope === 'primary') {
+          matchedContacts = contacts.filter((c: any) => c.isPrimary);
+        } else if (contactScope === 'signatories') {
+          matchedContacts = contacts.filter((c: any) => c.isSignatory);
         }
 
-        queueItems.push({
-          campaignId,
-          organizationId: campaign.organizationId,
-          workspaceId: campaign.workspaceId,
-          entityId: entity.id,
-          entityType: ((entity as any).entityType || 'person') as any,
-          entityName: entity.name || 'Unknown Contact',
-          entityPhone: phone,
-          entityEmail: email,
-          status: 'scheduled',
-          assignedTo: null,
-          lockExpiresAt: null,
-          callbackDate: null,
-          attempts: 0,
-          lastAttemptAt: null,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        });
+        if (matchedContacts.length === 0) {
+          if (contacts.length > 0) {
+            matchedContacts = [contacts[0]];
+          } else {
+            matchedContacts = [{
+              id: 'primary',
+              name: entity.name || 'Unknown Contact',
+              phone: entityData?.phone || '',
+              email: entityData?.email || '',
+              typeLabel: 'Contact',
+            }];
+          }
+        }
+
+        for (const c of matchedContacts) {
+          queueItems.push({
+            campaignId,
+            organizationId: campaign.organizationId,
+            workspaceId: campaign.workspaceId,
+            entityId: entity.id,
+            entityType: (entityData?.entityType || 'person') as any,
+            entityName: entityData?.displayName || entity.name || 'Unknown Entity',
+            entityPhone: c.phone || '',
+            entityEmail: c.email || '',
+            contactId: c.id,
+            contactName: c.name,
+            contactRole: c.typeLabel || c.typeKey || (c.isPrimary ? 'Primary' : c.isSignatory ? 'Signatory' : 'Contact'),
+            status: 'scheduled',
+            assignedTo: null,
+            lockExpiresAt: null,
+            callbackDate: null,
+            attempts: 0,
+            lastAttemptAt: null,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          });
+        }
       }
 
       // Write queue items in batches of 500
@@ -526,7 +623,7 @@ export class CallCentreService {
       let writeCount = 0;
 
       for (const item of queueItems) {
-        const itemRef = adminDb.collection('call_queue_items').doc(`${campaignId}_${item.entityId}`);
+        const itemRef = adminDb.collection('call_queue_items').doc(`${campaignId}_${item.entityId}_${item.contactId}`);
         writeBatch.set(itemRef, {
           id: itemRef.id,
           ...item,
@@ -881,6 +978,12 @@ export class CallCentreService {
           return { success: true };
         }
 
+        case 'REMOVE_TAG': {
+          if (!params.tagId) return { success: false, error: 'No tag configured.' };
+          await removeTagsAction(entityId, 'entity', [params.tagId], systemActor);
+          return { success: true };
+        }
+
         case 'CREATE_TASK': {
           if (!params.taskTitle) return { success: false, error: 'No task title configured.' };
           await createTaskAction({
@@ -965,6 +1068,111 @@ export class CallCentreService {
           } catch (e: any) {
             return { success: false, error: e?.message || 'WhatsApp send failed' };
           }
+        }
+
+        case 'LOG_NOTE': {
+          const noteContent = params.noteContent;
+          if (!noteContent) return { success: false, error: 'No note content configured.' };
+          
+          const timestamp = new Date().toISOString();
+          
+          let authorName = 'System';
+          try {
+            const userSnap = await adminDb.collection('users').doc(userId).get();
+            if (userSnap.exists) {
+              authorName = userSnap.data()?.displayName || userSnap.data()?.name || 'Agent';
+            }
+          } catch (e) {
+            console.error('[CALL_CENTRE_SERVICE] Failed to fetch user name for note:', e);
+          }
+
+          const noteData = {
+            entityId,
+            organizationId,
+            workspaceId,
+            content: noteContent,
+            type: 'general',
+            replyCount: 0,
+            isPinned: false,
+            createdBy: userId,
+            createdByName: authorName,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          };
+
+          await adminDb.collection('entity_notes').add(noteData);
+
+          await logActivity({
+            organizationId,
+            workspaceId,
+            entityId,
+            entityType: 'person' as any,
+            userId,
+            displayName: authorName,
+            type: 'note_added',
+            source: 'system',
+            description: `logged an outreach call note: "${noteContent.substring(0, 60)}${noteContent.length > 60 ? '...' : ''}"`,
+            metadata: {
+              isAutomation: true,
+              noteContent,
+            }
+          });
+
+          return { success: true };
+        }
+
+        case 'SCHEDULE_MEETING': {
+          if (!params.meetingTypeId) return { success: false, error: 'No meeting type configured.' };
+          
+          const meetingType = MEETING_TYPES.find(t => t.id === params.meetingTypeId);
+          if (!meetingType) return { success: false, error: `Invalid meeting type ID "${params.meetingTypeId}".` };
+
+          const entitySnap = await adminDb.collection('entities').doc(entityId).get();
+          if (!entitySnap.exists) return { success: false, error: 'Entity not found.' };
+          const entityName = entitySnap.data()?.name || '';
+          const entitySlug = entitySnap.data()?.slug || '';
+
+          const timestamp = new Date().toISOString();
+          const meetingTime = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(); // +2 days default
+          const meetingSlug = `${meetingType.slug}-${Math.random().toString(36).substring(2, 9)}`;
+          const meetingLink = `https://smartsapp.com/meetings/${meetingType.slug}/${meetingSlug}`;
+          
+          const meetingData = {
+            title: `Outreach Session: ${meetingType.name} with ${entityName}`,
+            meetingSlug,
+            entityId,
+            entityName,
+            entitySlug,
+            entityType: entitySnap.data()?.entityType || 'person',
+            workspaceIds: [workspaceId],
+            meetingTime,
+            meetingLink,
+            type: meetingType,
+            status: 'scheduled',
+            publishStatus: 'published',
+            organizationId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          };
+
+          const docRef = await adminDb.collection('meetings').add(meetingData);
+
+          await logActivity({
+            organizationId,
+            workspaceId,
+            entityId,
+            entityType: entitySnap.data()?.entityType || 'person',
+            userId,
+            type: 'meeting_created' as any,
+            source: 'system',
+            description: `Scheduled meeting: ${meetingType.name} for ${entityName}`,
+            metadata: {
+              isAutomation: true,
+              meetingId: docRef.id,
+            }
+          });
+
+          return { success: true };
         }
 
         case 'WEBHOOK': {

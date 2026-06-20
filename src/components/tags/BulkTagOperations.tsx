@@ -5,7 +5,7 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Tag, TagCategory } from '@/lib/types';
-import { bulkApplyTagsAction, bulkRemoveTagsAction } from '@/lib/tag-actions';
+import { bulkApplyTagsAction, bulkRemoveTagsAction, createTagAction } from '@/lib/tag-actions';
 import { useToast } from '@/hooks/use-toast';
 import { useTerminology } from '@/hooks/use-terminology';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,23 @@ import {
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Search, Tag as TagIcon, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Tag as TagIcon, X, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const TAG_CATEGORIES: { value: TagCategory; label: string }[] = [
+  { value: 'behavioral', label: 'Behavioral' },
+  { value: 'demographic', label: 'Demographic' },
+  { value: 'interest', label: 'Interest' },
+  { value: 'status', label: 'Status' },
+  { value: 'lifecycle', label: 'Lifecycle' },
+  { value: 'engagement', label: 'Engagement' },
+  { value: 'custom', label: 'Custom' },
+];
+
+const TAG_COLORS = [
+  '#EF4444', '#F97316', '#EAB308', '#22C55E',
+  '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899',
+];
 
 interface BulkTagOperationsProps {
   open: boolean;
@@ -42,7 +57,7 @@ export function BulkTagOperations({
 }: BulkTagOperationsProps) {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeWorkspaceId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
   const { toast } = useToast();
   const { singular, plural } = useTerminology();
 
@@ -53,6 +68,13 @@ export function BulkTagOperations({
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: boolean; count: number; partialFailures?: number } | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+
+  // Inline tag creation state
+  const [isCreatingInline, setIsCreatingInline] = useState(false);
+  const [inlineTagName, setInlineTagName] = useState('');
+  const [inlineCategory, setInlineCategory] = useState<TagCategory>('custom');
+  const [inlineColor, setInlineColor] = useState('#3B82F6');
+  const [isSubmittingInline, setIsSubmittingInline] = useState(false);
 
   const listRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
@@ -78,6 +100,54 @@ export function BulkTagOperations({
       t.description?.toLowerCase().includes(lower)
     );
   }, [allTags, searchTerm]);
+
+  const exactMatchExists = useMemo(() => {
+    const cleanSearch = searchTerm.trim().toLowerCase();
+    if (!cleanSearch) return true;
+    return (allTags || []).some(t => t.name.toLowerCase() === cleanSearch);
+  }, [allTags, searchTerm]);
+
+  const handleCreateInlineTag = async () => {
+    if (!inlineTagName.trim() || !user || !activeWorkspaceId) return;
+    setIsSubmittingInline(true);
+    try {
+      const result = await createTagAction({
+        workspaceId: activeWorkspaceId,
+        organizationId: activeOrganizationId || '',
+        name: inlineTagName.trim(),
+        category: inlineCategory,
+        color: inlineColor,
+        userId: user.uid,
+        userName: user.displayName || undefined,
+      });
+
+      if (result.success && result.data) {
+        // Automatically select the newly created tag
+        const newTagId = result.data.id;
+        setSelectedTagIds(prev => [...prev, newTagId]);
+        toast({
+          title: 'Tag Created',
+          description: `"${inlineTagName.trim()}" has been created and selected.`,
+        });
+        setIsCreatingInline(false);
+        setSearchTerm('');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error Creating Tag',
+          description: result.error || 'Failed to create tag',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'An unexpected error occurred',
+      });
+    } finally {
+      setIsSubmittingInline(false);
+    }
+  };
 
   const selectedTagObjects = useMemo(
     () => (allTags || []).filter(t => selectedTagIds.includes(t.id)),
@@ -164,12 +234,16 @@ export function BulkTagOperations({
     setOperation('add');
     setProgress(0);
     setResult(null);
+    setIsCreatingInline(false);
+    setInlineTagName('');
+    setInlineCategory('custom');
+    setInlineColor('#3B82F6');
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="rounded-2xl max-w-lg" aria-describedby={undefined}>
+      <DialogContent className="rounded-2xl max-w-lg bg-card border-border text-foreground" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="font-black uppercase tracking-tight">Bulk Tag Operations</DialogTitle>
           <DialogDescription>
@@ -235,71 +309,178 @@ export function BulkTagOperations({
 
             {/* Tag selection */}
             <div className="space-y-2">
-              <Label htmlFor="bulk-tag-search" className="text-[10px] font-black uppercase tracking-widest">Select Tags</Label>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" aria-hidden="true" />
-                <Input
-                  id="bulk-tag-search"
-                  placeholder="Search tags…"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  onKeyDown={handleListKeyDown}
-                  className="pl-8 h-9 rounded-xl text-xs focus-visible:ring-2 focus-visible:ring-primary"
-                  aria-label="Search tags"
-                  aria-controls={listboxId}
-                  role="combobox"
-                  aria-expanded={true}
-                  aria-autocomplete="list"
-                  aria-activedescendant={focusedIndex >= 0 ? `bulk-option-${filteredTags[focusedIndex]?.id}` : undefined}
-                />
-              </div>
-              <div
-                ref={listRef}
-                id={listboxId}
-                role="listbox"
-                aria-label="Available tags"
-                aria-multiselectable="true"
-                className="max-h-48 overflow-y-auto border rounded-xl p-2 space-y-1"
-                onKeyDown={handleListKeyDown}
-              >
-                {filteredTags.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground text-center py-4 font-medium" role="status">No tags found</p>
-                ) : (
-                  filteredTags.map((tag, idx) => {
-                    const isSelected = selectedTagIds.includes(tag.id);
-                    const isFocused = focusedIndex === idx;
-                    return (
+              <Label htmlFor="bulk-tag-search" className="text-[10px] font-black uppercase tracking-widest">
+                {isCreatingInline ? 'Create New Tag' : 'Select Tags'}
+              </Label>
+              {isCreatingInline ? (
+                <div className="border border-border/60 rounded-xl p-3.5 space-y-3.5 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      Tag Name
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingInline(false)}
+                      className="text-muted-foreground hover:text-foreground p-0.5 rounded-full"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Input
+                      value={inlineTagName}
+                      onChange={e => setInlineTagName(e.target.value)}
+                      placeholder="Tag name…"
+                      className="h-9 rounded-xl text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                      maxLength={50}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && inlineTagName.trim()) {
+                          e.preventDefault();
+                          handleCreateInlineTag();
+                        }
+                      }}
+                    />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold uppercase text-muted-foreground">Category</label>
+                        <select
+                          value={inlineCategory}
+                          onChange={e => setInlineCategory(e.target.value as TagCategory)}
+                          className="w-full bg-background border border-border rounded-xl p-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          {TAG_CATEGORIES.map(c => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold uppercase text-muted-foreground">Color</label>
+                        <div className="flex flex-wrap gap-1 border border-border rounded-xl p-1.5 bg-background justify-center">
+                          {TAG_COLORS.map(color => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => setInlineColor(color)}
+                              className={cn(
+                                "h-5 w-5 rounded-full transition-transform hover:scale-110",
+                                inlineColor === color ? "ring-2 ring-offset-1 ring-primary" : ""
+                              )}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsCreatingInline(false)}
+                      className="h-8 text-xs font-bold rounded-xl"
+                      disabled={isSubmittingInline}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleCreateInlineTag}
+                      disabled={isSubmittingInline || !inlineTagName.trim()}
+                      className="h-8 text-xs font-bold rounded-xl"
+                    >
+                      {isSubmittingInline ? 'Creating…' : 'Create & Select'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" aria-hidden="true" />
+                    <Input
+                      id="bulk-tag-search"
+                      placeholder="Search tags…"
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      onKeyDown={handleListKeyDown}
+                      className="pl-8 h-9 rounded-xl text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                      aria-label="Search tags"
+                      aria-controls={listboxId}
+                      role="combobox"
+                      aria-expanded={true}
+                      aria-autocomplete="list"
+                      aria-activedescendant={focusedIndex >= 0 ? `bulk-option-${filteredTags[focusedIndex]?.id}` : undefined}
+                    />
+                  </div>
+                  <div
+                    ref={listRef}
+                    id={listboxId}
+                    role="listbox"
+                    aria-label="Available tags"
+                    aria-multiselectable="true"
+                    className="max-h-48 overflow-y-auto border rounded-xl p-2 space-y-1"
+                    onKeyDown={handleListKeyDown}
+                  >
+                    {searchTerm.trim() && !exactMatchExists && (
                       <button
-                        key={tag.id}
-                        id={`bulk-option-${tag.id}`}
-                        role="option"
-                        aria-selected={isSelected}
-                        tabIndex={isFocused ? 0 : -1}
-                        onClick={() => toggleTag(tag.id)}
-                        onFocus={() => setFocusedIndex(idx)}
-                        className={cn(
-                          'w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-colors text-left',
-                          'min-h-[44px] sm:min-h-0 sm:py-1.5',
-                          'cursor-pointer touch-manipulation',
-                          isSelected ? 'bg-primary/10' : 'hover:bg-muted/50',
-                          isFocused
-                            ? 'outline-none ring-2 ring-primary ring-inset'
-                            : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset'
-                        )}
+                        type="button"
+                        onClick={() => {
+                          setInlineTagName(searchTerm.trim());
+                          setIsCreatingInline(true);
+                        }}
+                        className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-primary/10 text-primary text-left min-h-[44px] sm:min-h-0 sm:py-1.5 cursor-pointer font-bold border border-dashed border-primary/30 mb-1"
                       >
-                        <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} aria-hidden="true" />
-                        <span className="text-xs font-bold flex-1 truncate">{tag.name}</span>
-                        <span className="text-[9px] text-muted-foreground uppercase font-bold hidden sm:block">{tag.category}</span>
-                        {isSelected && (
-                          <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center shrink-0" aria-hidden="true">
-                            <X className="h-2.5 w-2.5 text-white" />
-                          </div>
-                        )}
+                        <Plus className="h-3.5 w-3.5 shrink-0" />
+                        <span className="text-xs flex-1 truncate">
+                          Create tag "{searchTerm.trim()}"
+                        </span>
                       </button>
-                    );
-                  })
-                )}
-              </div>
+                    )}
+                    {filteredTags.length === 0 && (!searchTerm.trim() || exactMatchExists) ? (
+                      <p className="text-[10px] text-muted-foreground text-center py-4 font-medium" role="status">No tags found</p>
+                    ) : (
+                      filteredTags.map((tag, idx) => {
+                        const isSelected = selectedTagIds.includes(tag.id);
+                        const isFocused = focusedIndex === idx;
+                        return (
+                          <button
+                            key={tag.id}
+                            id={`bulk-option-${tag.id}`}
+                            role="option"
+                            aria-selected={isSelected}
+                            tabIndex={isFocused ? 0 : -1}
+                            onClick={() => toggleTag(tag.id)}
+                            onFocus={() => setFocusedIndex(idx)}
+                            className={cn(
+                              'w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-colors text-left',
+                              'min-h-[44px] sm:min-h-0 sm:py-1.5',
+                              'cursor-pointer touch-manipulation',
+                              isSelected ? 'bg-primary/10' : 'hover:bg-muted/50',
+                              isFocused
+                                ? 'outline-none ring-2 ring-primary ring-inset'
+                                : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset'
+                            )}
+                          >
+                            <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} aria-hidden="true" />
+                            <span className="text-xs font-bold flex-1 truncate">{tag.name}</span>
+                            <span className="text-[9px] text-muted-foreground uppercase font-bold hidden sm:block">{tag.category}</span>
+                            {isSelected && (
+                              <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center shrink-0" aria-hidden="true">
+                                <X className="h-2.5 w-2.5 text-white" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Selected tags preview */}
@@ -363,7 +544,7 @@ export function BulkTagOperations({
           {!result && (
             <Button
               onClick={handleExecute}
-              disabled={isProcessing || selectedTagIds.length === 0 || selectedContactIds.length === 0}
+              disabled={isProcessing || selectedTagIds.length === 0 || selectedContactIds.length === 0 || isCreatingInline}
               className={cn(
                 'rounded-xl font-bold focus-visible:ring-2 focus-visible:ring-primary min-h-[44px] sm:min-h-0',
                 operation === 'remove' && 'bg-destructive hover:bg-destructive/90'

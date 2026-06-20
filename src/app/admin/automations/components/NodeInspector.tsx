@@ -138,7 +138,8 @@ import {
     Mail as MailIconPlaceholder,
     Settings2 as Settings2IconPlaceholder,
     Bell as BellIconPlaceholder,
-    Smartphone as SmartphoneIconPlaceholder
+    Smartphone as SmartphoneIconPlaceholder,
+    UserCog
 } from 'lucide-react';
 
 const ACTION_TYPES = [
@@ -160,6 +161,7 @@ const ACTION_TYPES = [
     { value: 'SEND_NOTIFICATION_PUSH', label: 'Send Notification (Push)', icon: SmartphoneIconPlaceholder, desc: 'Send a mobile push notification.' },
     { value: 'CREATE_ENTITY', label: 'Create Entity', icon: Building, desc: 'Create a new CRM contact or business entity using mapped webhook payload attributes.' },
     { value: 'ADD_CONTACT_TO_ENTITY', label: 'Add Contact to Entity', icon: Tag, desc: 'Locate an existing business entity via Exact Match and append a secondary contact.' },
+    { value: 'UPDATE_CONTACT', label: 'Update Contact', icon: UserCog, desc: 'Locate an existing contact inside an entity using filters, and update their details.' },
     { value: 'ADD_TO_CALL_CAMPAIGN', label: 'Add to Call Campaign', icon: Tag, desc: 'Add the target contact or entity to a specific call campaign for automated queueing.' },
     { value: 'END_AUTOMATION', label: 'End Automation', icon: CheckSquareIconPlaceholder, desc: 'Mark this automation as completed for the contact.' },
 ];
@@ -875,6 +877,7 @@ export function NodeInspector({
                                         automations={automations}
                                         appFields={appFields}
                                         fieldGroups={fieldGroups}
+                                        allTags={allTags}
                                     />
                                 </div>
                             )}

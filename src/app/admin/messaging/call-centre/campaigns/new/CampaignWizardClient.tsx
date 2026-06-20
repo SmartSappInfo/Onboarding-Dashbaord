@@ -102,6 +102,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
   const [name, setName] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [allowAddContactsAfterLaunch, setAllowAddContactsAfterLaunch] = React.useState(false);
+  const [triggerActionsAutomatically, setTriggerActionsAutomatically] = React.useState(true);
   const [campaignProgressCompleted, setCampaignProgressCompleted] = React.useState(0);
   useSetBreadcrumb(campaignId ? `Edit Campaign: ${name}` : 'New Campaign');
   const [selectedScriptId, setSelectedScriptId] = React.useState(initialScriptId || '');
@@ -216,6 +217,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
           
           setOutcomes(campaign.outcomes || []);
           setAllowAddContactsAfterLaunch(campaign.allowAddContactsAfterLaunch ?? false);
+          setTriggerActionsAutomatically(campaign.triggerActionsAutomatically ?? true);
           setCampaignProgressCompleted(campaign.progress?.completed || 0);
           
           // Normalize loaded automation rules for backward compat
@@ -344,6 +346,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
             outcomes,
             automationRules,
             allowAddContactsAfterLaunch,
+            triggerActionsAutomatically,
             workspaceId: activeWorkspaceId,
           },
           user?.uid || ''
@@ -363,6 +366,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
             outcomes,
             automationRules,
             allowAddContactsAfterLaunch,
+            triggerActionsAutomatically,
             status: 'draft',
           },
           user?.uid || ''
@@ -560,6 +564,18 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
                     <Switch
                       checked={allowAddContactsAfterLaunch}
                       onCheckedChange={setAllowAddContactsAfterLaunch}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                    <div className="space-y-0.5">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Automation Action Behaviour</Label>
+                      <span className="text-[10px] font-semibold text-muted-foreground">
+                        {triggerActionsAutomatically ? 'Trigger actions automatically on node transition' : 'Let representative review and confirm actions manually before triggering'}
+                      </span>
+                    </div>
+                    <Switch
+                      checked={triggerActionsAutomatically}
+                      onCheckedChange={setTriggerActionsAutomatically}
                     />
                   </div>
                 </div>

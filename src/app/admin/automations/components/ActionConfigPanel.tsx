@@ -6,7 +6,10 @@ import {
   Bell,
   X as XIcon,
   Building,
-  UserPlus
+  UserPlus,
+  Zap,
+  Tag as TagIcon,
+  UserCog
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -16,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { MappableInputField } from './MappableInputField';
-import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation } from '@/lib/types';
+import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
 const NATIVE_ENTITY_FIELDS = [
@@ -262,12 +265,36 @@ const UpdateEntityConfigPanel = React.memo(function UpdateEntityConfigPanel({
   );
 });
 
+interface EntityField {
+  id: string;
+  name: string;
+  label: string;
+  compatibilityScope?: string[];
+  type?: string;
+  groupId?: string;
+  status?: string;
+}
+
+interface CreateEntityConfig {
+  entityType?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  customData?: Record<string, unknown>;
+  automationId?: string;
+  automationName?: string;
+  tagIds?: string[];
+  [key: string]: unknown;
+}
+
 interface CreateEntityConfigPanelProps {
-  config: Record<string, any>;
-  updateConfig: (updates: Record<string, any>) => void;
+  config: CreateEntityConfig;
+  updateConfig: (updates: Partial<CreateEntityConfig>) => void;
   singular: string;
-  appFields: any[];
-  fieldGroups: any[];
+  appFields: EntityField[];
+  fieldGroups: Record<string, unknown>[];
+  allTags?: Tag[];
+  automations?: Automation[];
 }
 
 const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
@@ -276,41 +303,43 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
   singular,
   appFields,
   fieldGroups,
+  allTags = [],
+  automations = [],
 }: CreateEntityConfigPanelProps) {
-  const customData = config.customData || {};
+  const customData = (config.customData || {}) as Record<string, unknown>;
   const selectedType = config.entityType || 'institution';
 
   const filteredAppFields = React.useMemo(() => {
     if (!fieldGroups || !appFields) return [];
     const activeNonSystemGroupIds = new Set(
       (fieldGroups || [])
-        .filter((g: any) => !g.isSystem)
-        .map((g: any) => g.id)
+        .filter((g) => !g.isSystem)
+        .map((g) => g.id as string)
     );
 
-    const custom = (appFields || []).filter((f: any) => {
-      const scopes = f.compatibilityScope || ['common'];
+    const custom = (appFields || []).filter((f) => {
+      const scopes = (f.compatibilityScope as string[] | undefined) || ['common'];
       const isCompatible = scopes.includes('common') || scopes.includes(selectedType);
       const isActive = f.status === 'active';
       const isNotHidden = f.type !== 'hidden';
-      const belongsToNonSystemGroup = f.groupId && activeNonSystemGroupIds.has(f.groupId);
+      const belongsToNonSystemGroup = f.groupId && activeNonSystemGroupIds.has(f.groupId as string);
       
       return isCompatible && isActive && isNotHidden && belongsToNonSystemGroup;
     });
 
-    const native = NATIVE_ENTITY_FIELDS.filter((f: any) => {
+    const native = NATIVE_ENTITY_FIELDS.filter((f) => {
       const scopes = f.compatibilityScope || ['common'];
       return scopes.includes('common') || scopes.includes(selectedType);
     });
 
     const seen = new Set<string>();
-    const combined: any[] = [];
+    const combined: EntityField[] = [];
     
     [...native, ...custom].forEach(f => {
-      const key = f.id || f.name;
+      const key = (f.id || f.name) as string;
       if (!seen.has(key)) {
         seen.add(key);
-        combined.push(f);
+        combined.push(f as EntityField);
       }
     });
 
@@ -318,7 +347,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
   }, [appFields, selectedType, fieldGroups]);
 
   const availableToAdd = React.useMemo(() => {
-    return filteredAppFields.filter(f => !Object.prototype.hasOwnProperty.call(customData, f.id || f.name));
+    return filteredAppFields.filter(f => !Object.prototype.hasOwnProperty.call(customData, (f.id || f.name) as string));
   }, [filteredAppFields, customData]);
 
   const handleAddCustomField = (fieldKey: string) => {
@@ -464,22 +493,160 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
           </div>
         )}
       </div>
+
+      <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
+        <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+          <Zap className="h-4 w-4 text-violet-500 animate-pulse" /> Subsequent Actions
+        </h4>
+
+        <div className="space-y-2">
+          <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Trigger Sub-Automation</Label>
+          <Select
+            value={config.automationId || 'none'}
+            onValueChange={(v) => {
+              if (v === 'none') {
+                updateConfig({ automationId: '', automationName: '' });
+              } else {
+                const selectedAuto = (automations || []).find((a) => a.id === v);
+                updateConfig({
+                  automationId: v,
+                  automationName: selectedAuto ? selectedAuto.name : '',
+                });
+              }
+            }}
+          >
+            <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold">
+              <SelectValue placeholder="Select automation to run..." />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl max-h-[250px] overflow-y-auto">
+              <SelectItem value="none" className="rounded-lg text-xs font-semibold text-muted-foreground">
+                None (Do not run subsequent automation)
+              </SelectItem>
+              {(automations || [])
+                .filter((a) => a.isActive && !a.isArchived)
+                .map((a) => (
+                  <SelectItem key={a.id} value={a.id} className="rounded-lg text-xs font-semibold">
+                    {a.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assign Workspace Tags</Label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {(config.tagIds || []).map((id: string) => {
+              const tag = (allTags || []).find((t) => t.id === id);
+              return (
+                <Badge
+                  key={id}
+                  variant="secondary"
+                  className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 border-none animate-in fade-in zoom-in-95 duration-150"
+                  style={tag?.color ? { backgroundColor: `${tag.color}15`, color: tag.color } : undefined}
+                >
+                  <span className="text-[10px] font-black tracking-wide">{tag?.name || `Deleted Tag (${id})`}</span>
+                  <button
+                    type="button"
+                    className="h-4 w-4 rounded-md hover:bg-muted-foreground/10 flex items-center justify-center transition-colors"
+                    onClick={() => {
+                      updateConfig({
+                        tagIds: (config.tagIds || []).filter((t: string) => t !== id),
+                      });
+                    }}
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </button>
+                </Badge>
+              );
+            })}
+            {(config.tagIds || []).length === 0 ? (
+              <span className="text-[10px] font-medium text-muted-foreground italic ml-1 block">No tags selected.</span>
+            ) : null}
+          </div>
+
+          <Select
+            value=""
+            onValueChange={(v) => {
+              const current = (config.tagIds || []) as string[];
+              if (!current.includes(v)) {
+                updateConfig({ tagIds: [...current, v] });
+              }
+            }}
+          >
+            <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm text-xs font-semibold text-muted-foreground">
+              <SelectValue placeholder="+ Assign workspace tags..." />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl max-h-[250px] overflow-y-auto">
+              {(allTags || [])
+                .filter((t) => !(config.tagIds || []).includes(t.id))
+                .map((tag) => (
+                  <SelectItem key={tag.id} value={tag.id} className="rounded-lg text-xs font-semibold">
+                    {tag.name}
+                  </SelectItem>
+                ))}
+              {(allTags || []).filter((t) => !(config.tagIds || []).includes(t.id)).length === 0 ? (
+                <SelectItem value="none" disabled className="text-xs">
+                  All tags assigned
+                </SelectItem>
+              ) : null}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
     </div>
   );
 });
 
+interface AutomationConfig {
+  name?: string;
+  channel?: string;
+  templateId?: string;
+  recipient?: string;
+  customRecipient?: string;
+  title?: string;
+  content?: string;
+  webhookId?: string;
+  status?: string;
+  automationId?: string;
+  automationName?: string;
+  priority?: string;
+  dueOffsetDays?: number;
+  assignedTo?: string;
+  pipelineId?: string;
+  stageId?: string;
+  value?: string | number;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  contactRole?: string;
+  entityName?: string;
+  campaignId?: string;
+  contactScope?: string;
+  operation?: string;
+  contactEmailOrId?: string;
+  recipientRoles?: string[];
+  recipientTargets?: string[];
+  notificationTargets?: string[];
+  notificationUserIds?: string[];
+  tagIds?: string[];
+  customData?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 interface ActionConfigPanelProps {
   actionType: string;
-  config: Record<string, any>;
-  onUpdateConfig: (updates: Record<string, any>) => void;
+  config: AutomationConfig;
+  onUpdateConfig: (updates: Partial<AutomationConfig>) => void;
   users: UserProfile[];
   stages: OnboardingStage[];
   pipelines: Pipeline[];
   variables: VariableDefinition[];
   singular: string;
   automations?: Automation[];
-  appFields?: any[];
-  fieldGroups?: any[];
+  appFields?: EntityField[];
+  fieldGroups?: Record<string, unknown>[];
+  allTags?: Tag[];
 }
 
 export const ActionConfigPanel = React.memo(function ActionConfigPanel({
@@ -494,9 +661,10 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   automations = [],
   appFields = [],
   fieldGroups = [],
+  allTags = [],
 }: ActionConfigPanelProps) {
   const { toast } = useToast();
-  const { activeWorkspace } = useWorkspace() as any;
+  const { activeWorkspace } = useWorkspace() as { activeWorkspace?: Workspace };
 
   React.useEffect(() => {
     if (actionType === 'SEND_MESSAGE' && config.recipientTargets === undefined) {
@@ -504,7 +672,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
     }
   }, [actionType, config.recipientTargets, onUpdateConfig]);
 
-  const updateConfig = (updates: Record<string, any>) => {
+  const updateConfig = (updates: Partial<AutomationConfig>) => {
     onUpdateConfig(updates);
   };
 
@@ -589,7 +757,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-4 w-4 rounded-md hover:bg-primary/20"
-                                onClick={() => updateConfig({ recipientRoles: config.recipientRoles.filter((r: string) => r !== role) })}
+                                onClick={() => updateConfig({ recipientRoles: (config.recipientRoles || []).filter((r: string) => r !== role) })}
                               >
                                 <XIcon className="h-3 w-3" />
                               </Button>
@@ -682,7 +850,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                                   variant="ghost" 
                                   size="icon" 
                                   className="h-4 w-4 rounded-md hover:bg-primary/20"
-                                  onClick={() => updateConfig({ notificationUserIds: config.notificationUserIds.filter((id: string) => id !== uid) })}
+                                  onClick={() => updateConfig({ notificationUserIds: (config.notificationUserIds || []).filter((id: string) => id !== uid) })}
                                 >
                                   <XIcon className="h-3 w-3" />
                                 </Button>
@@ -917,7 +1085,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Deal Title (Tag Supported)</Label>
             <MappableInputField 
               placeholder="e.g. {{1.body.name}} Deal" 
-              value={config.name || ''} 
+              value={(config.name as string) || ''} 
               onChange={(val) => updateConfig({ name: val })} 
               inputClassName="h-12 font-bold text-sm"
             />
@@ -928,7 +1096,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               <Input 
                 type="number"
                 placeholder="0.00" 
-                value={config.value || ''} 
+                value={config.value ? String(config.value) : ''} 
                 onChange={(e) => updateConfig({ value: parseFloat(e.target.value) || 0 })} 
                 className="h-12 rounded-xl bg-card border shadow-sm font-bold"
               />
@@ -1018,7 +1186,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Value ($)</Label>
             <MappableInputField 
               placeholder="e.g. 5000 or {{1.body.value}}" 
-              value={config.value || ''} 
+              value={config.value ? String(config.value) : ''} 
               onChange={(val) => updateConfig({ value: val })} 
               inputClassName="font-mono text-sm"
             />
@@ -1049,11 +1217,13 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
 
       {actionType === 'CREATE_ENTITY' ? (
         <CreateEntityConfigPanel
-          config={config}
-          updateConfig={updateConfig}
+          config={config as CreateEntityConfig}
+          updateConfig={updateConfig as (updates: Partial<CreateEntityConfig>) => void}
           singular={singular}
           appFields={appFields}
           fieldGroups={fieldGroups}
+          allTags={allTags}
+          automations={automations}
         />
       ) : null}
 
@@ -1176,11 +1346,190 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         </div>
       ) : null}
 
+      {actionType === 'UPDATE_CONTACT' ? (
+        <div className="space-y-6">
+          {/* Target Contact Filter section */}
+          <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
+            <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+              <UserCog className="h-4 w-4 text-primary animate-pulse" /> Target Contact Filter
+            </h4>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Define the criteria to locate the contact. If multiple contacts match, the update will fail to prevent data corruption.
+            </p>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Match Criteria Logic</Label>
+              <Select 
+                value={String(config.matchLogic || 'all')} 
+                onValueChange={(val) => updateConfig({ matchLogic: val })}
+              >
+                <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold text-xs">
+                  <SelectValue placeholder="Select Match Logic" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border shadow-md font-semibold text-xs">
+                  <SelectItem value="all">Match All Criteria (AND)</SelectItem>
+                  <SelectItem value="any">Match Any Criterion (OR)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity/Company Name (Variable Supported)</Label>
+              <MappableInputField
+                placeholder="e.g. {{companyName}} or {{contact.company}}"
+                value={String(config.filterEntityName || '')}
+                onChange={(val) => updateConfig({ filterEntityName: val })}
+                inputClassName="h-10 shadow-sm"
+                appFields={appFields}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Name (Variable Supported)</Label>
+              <MappableInputField
+                placeholder="e.g. {{contact.name}}"
+                value={String(config.filterContactName || '')}
+                onChange={(val) => updateConfig({ filterContactName: val })}
+                inputClassName="h-10 shadow-sm"
+                appFields={appFields}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Phone (Variable Supported)</Label>
+                <MappableInputField
+                  placeholder="e.g. {{contact.phone}}"
+                  value={String(config.filterContactPhone || '')}
+                  onChange={(val) => updateConfig({ filterContactPhone: val })}
+                  inputClassName="h-10 shadow-sm"
+                  appFields={appFields}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Email (Variable Supported)</Label>
+                <MappableInputField
+                  placeholder="e.g. {{contact.email}}"
+                  value={String(config.filterContactEmail || '')}
+                  onChange={(val) => updateConfig({ filterContactEmail: val })}
+                  inputClassName="h-10 shadow-sm"
+                  appFields={appFields}
+                />
+              </div>
+            </div>
+
+            <div className="pt-1">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!!config.caseInsensitive}
+                  onChange={(e) => updateConfig({ caseInsensitive: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-[11px] font-bold leading-none mb-0.5 text-foreground">Case-Insensitive Match</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Allow matching even if capitalization differs</span>
+                </div>
+              </label>
+            </div>
+
+            {!config.caseInsensitive ? (
+              <span className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 leading-relaxed block ml-1 pt-1">
+                ⚠️ Exact Case Sensitivity: Matching names and details will be case-sensitive.
+              </span>
+            ) : null}
+          </div>
+
+          {/* Contact Details to Update section */}
+          <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
+            <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+              <UserCog className="h-4 w-4 text-primary" /> Updated Contact Details
+            </h4>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Provide the new details to update. Only fields with values will be overwritten; blank fields will keep their existing database values.
+            </p>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Contact Name (Variable Supported)</Label>
+              <MappableInputField
+                placeholder="e.g. {{contact.name}}"
+                value={String(config.contactName || '')}
+                onChange={(val) => updateConfig({ contactName: val })}
+                inputClassName="h-10 shadow-sm"
+                appFields={appFields}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Contact Phone (Variable Supported)</Label>
+                <MappableInputField
+                  placeholder="e.g. {{contact.phone}}"
+                  value={String(config.contactPhone || '')}
+                  onChange={(val) => updateConfig({ contactPhone: val })}
+                  inputClassName="h-10 shadow-sm"
+                  appFields={appFields}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Contact Email (Variable Supported)</Label>
+                <MappableInputField
+                  placeholder="e.g. {{contact.email}}"
+                  value={String(config.contactEmail || '')}
+                  onChange={(val) => updateConfig({ contactEmail: val })}
+                  inputClassName="h-10 shadow-sm"
+                  appFields={appFields}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Contact Role / Type (e.g. Billing, Manager)</Label>
+              <MappableInputField
+                placeholder="e.g. Billing Officer or {{contact.role}}"
+                value={String(config.contactRole || '')}
+                onChange={(val) => updateConfig({ contactRole: val })}
+                inputClassName="h-10 shadow-sm"
+                appFields={appFields}
+              />
+            </div>
+
+            <div className="flex items-center gap-6 pt-2">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!!config.isPrimary}
+                  onChange={(e) => updateConfig({ isPrimary: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold leading-none mb-0.5 text-foreground">Designated Primary</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Make primary contact of this entity</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!!config.isSignatory}
+                  onChange={(e) => updateConfig({ isSignatory: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold leading-none mb-0.5 text-foreground">Designated Signatory</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Make signatory of this entity</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {actionType === 'ADD_TO_CALL_CAMPAIGN' ? (() => {
         // Fetch campaigns locally or dynamically using Firestore hook safely on client side
         const { useCallCampaigns } = require('@/lib/call-centre-hooks');
-        const { campaigns = [] } = useCallCampaigns(activeWorkspace?.id);
-        const activeCamps = campaigns.filter((c: any) => c.status !== 'archived');
+        const { campaigns = [] } = useCallCampaigns((activeWorkspace as Workspace | undefined)?.id);
+        const activeCamps = campaigns.filter((c: { status?: string }) => c.status !== 'archived');
 
         return (
           <div className="space-y-4">

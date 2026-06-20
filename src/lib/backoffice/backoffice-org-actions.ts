@@ -504,3 +504,106 @@ export async function shareOrgSetupInviteAction(
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Toggles activity logging setting for an organization.
+ */
+export async function toggleOrganizationActivityLogging(
+  orgId: string,
+  enabled: boolean,
+  actor: AuditActor
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+    if (!orgSnap.exists) {
+      return { success: false, error: 'Organization not found' };
+    }
+
+    const before = createAuditSnapshot(orgSnap.data() as Record<string, unknown>);
+
+    await adminDb.collection('organizations').doc(orgId).update({
+      activityLoggingEnabled: enabled,
+      activityLoggingDisabled: !enabled,
+      updatedAt: new Date().toISOString(),
+      updatedBy: actor.userId,
+    });
+
+    const { invalidateOrgLoggingCache } = await import('../activity-logger');
+    await invalidateOrgLoggingCache(orgId);
+
+    const afterSnap = await adminDb.collection('organizations').doc(orgId).get();
+    const after = createAuditSnapshot(afterSnap.data() as Record<string, unknown>);
+
+    await logBackofficeAction(actor, 'organization.toggle_activity_logging', 'organization', orgId, {
+      scope: 'organization',
+      scopeId: orgId,
+      before,
+      after,
+      metadata: { enabled },
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('[BACKOFFICE_ORG] toggleOrganizationActivityLogging failed:', error);
+    return { success: false, error: errMsg };
+  }
+}
+
+/**
+ * Bulk-deletes all activity logs for an organization.
+ */
+export async function clearOrganizationActivityLogs(
+  orgId: string,
+  actor: AuditActor
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+    if (!orgSnap.exists) {
+      return { success: false, error: 'Organization not found' };
+    }
+
+    const before = createAuditSnapshot(orgSnap.data() as Record<string, unknown>);
+
+    let totalDeleted = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const snapshot = await adminDb.collection('activities')
+        .where('organizationId', '==', orgId)
+        .limit(500)
+        .get();
+
+      if (snapshot.empty) {
+        hasMore = false;
+        break;
+      }
+
+      const batch = adminDb.batch();
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+      totalDeleted += snapshot.size;
+
+      if (snapshot.size < 500) {
+        hasMore = false;
+      }
+    }
+
+    await logBackofficeAction(actor, 'organization.clear_activity_logs', 'organization', orgId, {
+      scope: 'organization',
+      scopeId: orgId,
+      before,
+      after: before,
+      metadata: { deletedCount: totalDeleted },
+    });
+
+    return { success: true, count: totalDeleted };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('[BACKOFFICE_ORG] clearOrganizationActivityLogs failed:', error);
+    return { success: false, error: errMsg };
+  }
+}

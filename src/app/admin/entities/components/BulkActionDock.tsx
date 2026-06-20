@@ -16,7 +16,8 @@ import {
   MoreHorizontal,
   Archive,
   Trash2,
-  PhoneCall
+  PhoneCall,
+  Download
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ interface BulkActionDockProps {
   onAddToCampaign: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onExport: () => void;
   className?: string;
   hideAssign?: boolean;
 }
@@ -56,6 +58,7 @@ export function BulkActionDock({
   onAddToCampaign,
   onArchive,
   onDelete,
+  onExport,
   className,
   hideAssign = false,
 }: BulkActionDockProps) {
@@ -195,6 +198,16 @@ export function BulkActionDock({
 
               <DropdownMenuSeparator className="my-2 border-slate-800" />
               <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-3 py-2">Data Management</DropdownMenuLabel>
+
+              <DropdownMenuItem 
+                onClick={onExport}
+                className="rounded-xl p-2.5 gap-3 hover:bg-slate-800 cursor-pointer focus:bg-primary/25 focus:text-white"
+              >
+                <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
+                  <Download className="h-3.5 w-3.5" />
+                </div>
+                <span className="font-bold text-sm">Export Selected (CSV)</span>
+              </DropdownMenuItem>
 
               <DropdownMenuItem 
                 onClick={onArchive}

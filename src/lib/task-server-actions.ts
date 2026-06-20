@@ -18,10 +18,12 @@ import { canUser } from './workspace-permissions';
  */
 export async function createTaskAction(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>, userId: string) {
     try {
-        // 0. Permission Check
-        const permission = await canUser(userId, 'operations', 'tasks', 'create', taskData.workspaceId);
-        if (!permission.granted) {
-            return { success: false, error: permission.reason };
+        // 0. Permission Check — system callers bypass permission checks
+        if (!userId.startsWith('system-')) {
+            const permission = await canUser(userId, 'operations', 'tasks', 'create', taskData.workspaceId);
+            if (!permission.granted) {
+                return { success: false, error: permission.reason };
+            }
         }
 
         const timestamp = new Date().toISOString();

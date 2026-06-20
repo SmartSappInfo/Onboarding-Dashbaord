@@ -79,6 +79,7 @@ interface InteractiveScriptViewProps {
   onEndCall?: () => void;
   currentContact?: { id: string; name?: string; email?: string; phone?: string } | null;
   entityData?: EntityDataInfo | null;
+  triggerActionsAutomatically?: boolean;
 }
 
 export function InteractiveScriptView({
@@ -91,6 +92,7 @@ export function InteractiveScriptView({
   onEndCall,
   currentContact,
   entityData,
+  triggerActionsAutomatically = true,
 }: InteractiveScriptViewProps) {
   const { zoom, zoomIn, zoomOut, reset, canZoomIn, canZoomOut } = useZoom();
   const firestore = useFirestore();
@@ -243,7 +245,7 @@ export function InteractiveScriptView({
     }
   }, [middleNode, localActionConfig?.templateId, firestore]);
 
-  const handleExecuteMiddleAction = async () => {
+  const handleExecuteMiddleAction = async (configOverride?: any) => {
     if (!middleNode || !onTriggerAction) return;
     setActionStatus('loading');
     setActionError(null);
@@ -252,7 +254,7 @@ export function InteractiveScriptView({
         ...middleNode,
         data: {
           ...middleNode.data,
-          actionConfig: localActionConfig,
+          actionConfig: configOverride || localActionConfig,
         }
       };
       const res = await onTriggerAction(modifiedNode);
@@ -268,6 +270,26 @@ export function InteractiveScriptView({
       setActionError(message);
     }
   };
+
+  React.useEffect(() => {
+    if (triggerActionsAutomatically && middleNode?.type === 'action' && actionStatus === 'idle' && !isTriggered(middleNode.id)) {
+      const config = (middleNode.data?.actionConfig as Record<string, string>) || {};
+      const initial: Record<string, string> = { ...config };
+      if (middleNode.data?.actionType === 'UPDATE_CONTACT') {
+        initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
+        initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
+        initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
+        initial.updateMode = initial.updateMode || 'update';
+      } else if (middleNode.data?.actionType === 'CREATE_TASK') {
+        initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
+        initial.taskDescription = initial.taskDescription || '';
+        initial.taskPriority = initial.taskPriority || 'medium';
+      } else if (middleNode.data?.actionType === 'SEND_SMS' || middleNode.data?.actionType === 'SEND_WHATSAPP' || middleNode.data?.actionType === 'SEND_EMAIL') {
+        initial.templateId = initial.templateId || '';
+      }
+      handleExecuteMiddleAction(initial);
+    }
+  }, [middleNode?.id, actionStatus, triggerActionsAutomatically, isTriggered, currentContact]);
 
   const nextEdgeFromAction = React.useMemo(() => {
     if (middleNode?.type !== 'action') return null;
@@ -1336,13 +1358,13 @@ export function InteractiveScriptView({
                           {middleNode.data?.label || 'Action Step'}
                         </h3>
                         {middleNode.data?.text && (
-                          <div className="max-w-md mx-auto text-sm text-muted-foreground leading-relaxed italic">
+                          <div className="max-w-md mx-auto text-[24px] text-muted-foreground leading-relaxed italic">
                             <ScriptBodyDisplay
                               text={middleNode.data.text}
                               resolveText={resolveText}
                               highlightVariables={!resolveText}
                               zoom={zoom}
-                              className="text-sm text-muted-foreground font-serif"
+                              className="text-[24px] text-muted-foreground font-serif"
                             />
                           </div>
                         )}
@@ -1361,9 +1383,9 @@ export function InteractiveScriptView({
                         resolveText={resolveText}
                         highlightVariables={!resolveText}
                         zoom={zoom}
-                        className="text-lg leading-relaxed text-foreground font-serif select-text"
+                        className="text-[24px] leading-relaxed text-foreground font-serif select-text"
                         emptyFallback={
-                          <span className="italic text-muted-foreground font-serif text-base">No body content text.</span>
+                          <span className="italic text-muted-foreground font-serif text-[24px]">No body content text.</span>
                         }
                       />
                     </div>

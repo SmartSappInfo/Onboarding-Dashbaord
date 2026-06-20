@@ -309,6 +309,8 @@ export interface Organization {
     defaultTimezone?: string;
     defaultLanguage?: string;
   };
+  activityLoggingDisabled?: boolean;
+  activityLoggingEnabled?: boolean;
   // AI Configuration (Requirement: Multi-Model Architecture)
   aiKeyMode?: 'platform' | 'custom';
   geminiApiKey?: string;
@@ -4329,6 +4331,7 @@ export interface CallCampaign {
   automationRules: Record<string, CallOutcomeAutomation[]>;
   status: CallCampaignStatus;
   allowAddContactsAfterLaunch?: boolean;
+  triggerActionsAutomatically?: boolean;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -4364,6 +4367,7 @@ export interface CallQueueItem {
   contactId?: string;
   /** Display name of the specific contact (populated when contactId is set) */
   contactName?: string;
+  contactRole?: string;
   status: CallQueueItemStatus;
   assignedTo: string | null;
   lockExpiresAt: string | null;

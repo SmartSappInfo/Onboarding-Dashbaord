@@ -80,6 +80,87 @@ export function serializePersonEntity(
   };
 }
 
+interface ExtendedEntity extends Entity {
+  currentNeeds?: string;
+  currentChallenges?: string;
+}
+
+interface ExtendedWorkspaceEntity extends WorkspaceEntity {
+  currentNeeds?: string;
+  currentChallenges?: string;
+}
+
+/**
+ * Serialize an entity to a flat record for JSON/NTT export
+ */
+export function serializeEntityToImportRow(
+  entity: Entity,
+  workspaceEntity?: WorkspaceEntity
+): Record<string, string> {
+  const entityType = entity.entityType;
+  const row: Record<string, string> = {
+    _entityType: entityType,
+  };
+
+  const extEntity = entity as ExtendedEntity;
+  const extWorkspaceEntity = workspaceEntity as ExtendedWorkspaceEntity;
+
+  if (entityType === 'person') {
+    const contacts = entity.entityContacts || [];
+    const contact = contacts[0];
+    
+    row.firstName = entity.personData?.firstName || '';
+    row.lastName = entity.personData?.lastName || '';
+    row.phone = contact?.phone || '';
+    row.email = contact?.email || '';
+    row.contactName = entity.name || '';
+    row.company = entity.personData?.company || '';
+    row.jobTitle = entity.personData?.jobTitle || '';
+    row.leadSource = entity.personData?.leadSource || '';
+  } else if (entityType === 'family') {
+    const guardians = entity.familyData?.guardians || [];
+    const guardian = guardians[0];
+    const children = entity.familyData?.children || [];
+    const child = children[0];
+
+    row.familyName = entity.name || '';
+    row.guardian1_name = guardian?.name || '';
+    row.guardian1_phone = guardian?.phone || '';
+    row.guardian1_email = guardian?.email || '';
+    row.guardian1_relationship = guardian?.relationship || '';
+    row.child1_firstName = child?.firstName || '';
+    row.child1_lastName = child?.lastName || '';
+    row.child1_gradeLevel = child?.gradeLevel || '';
+    row.leadSource = (entity.familyData as Record<string, unknown> | undefined)?.leadSource as string || '';
+  } else if (entityType === 'institution') {
+    const contacts = entity.entityContacts || [];
+    const contact = contacts[0];
+
+    row.name = entity.name || '';
+    row.contact_name = contact?.name || '';
+    row.contact_phone = contact?.phone || '';
+    row.contact_email = contact?.email || '';
+    row.contact_role = contact?.typeLabel || contact?.typeKey || '';
+    row.nominalRoll = (entity.industryData as unknown as Record<string, unknown>)?.capacity?.toString() || '';
+    row.billingAddress = entity.financeData?.billingAddress || '';
+    row.currency = entity.financeData?.currency || '';
+    row.subscriptionPackageId = entity.financeData?.planType || '';
+    row.locationString = entity.location?.locationString || '';
+    row.leadSource = '';
+  } else {
+    throw new Error(`Unsupported entity type: ${entityType}`);
+  }
+
+  // Common fields
+  row.workspaceTags = extWorkspaceEntity?.workspaceTags?.join(',') || '';
+  row.status = extWorkspaceEntity?.status || 'active';
+  row.currentNeeds = extWorkspaceEntity?.currentNeeds || extEntity?.currentNeeds || '';
+  row.currentChallenges = extWorkspaceEntity?.currentChallenges || extEntity?.currentChallenges || '';
+  row.interests = entity.interests?.join(',') || '';
+
+  return row;
+}
+
 /**
  * Export entities to CSV string
  * Requirement 27: Round-trip safe serialization
@@ -94,25 +175,25 @@ export function exportEntitiesToCSV(
 
   const entityType = entities[0].entityType;
 
-  let rows: any[];
+  let rows: Record<string, string | number | undefined>[];
   let columns: readonly string[];
 
   switch (entityType) {
     case 'institution':
       rows = entities.map((e) =>
-        serializeInstitutionEntity(e, workspaceEntities?.get(e.id))
+        serializeInstitutionEntity(e, workspaceEntities?.get(e.id)) as unknown as Record<string, string | number | undefined>
       );
       columns = INSTITUTION_CSV_COLUMNS;
       break;
     case 'family':
       rows = entities.map((e) =>
-        serializeFamilyEntity(e, workspaceEntities?.get(e.id))
+        serializeFamilyEntity(e, workspaceEntities?.get(e.id)) as unknown as Record<string, string | number | undefined>
       );
       columns = FAMILY_CSV_COLUMNS;
       break;
     case 'person':
       rows = entities.map((e) =>
-        serializePersonEntity(e, workspaceEntities?.get(e.id))
+        serializePersonEntity(e, workspaceEntities?.get(e.id)) as unknown as Record<string, string | number | undefined>
       );
       columns = PERSON_CSV_COLUMNS;
       break;

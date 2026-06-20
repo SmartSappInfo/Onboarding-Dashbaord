@@ -1,8 +1,8 @@
 import { adminDb } from '../../firebase-admin';
 import { resolveContact } from '../../contact-adapter';
 import { logActivity } from '../../activity-logger';
-import type { ExecutionContext } from '../execution-types';
-import type { EntityType } from '../../types';
+import { MAX_AUTOMATION_CHAIN_DEPTH, type ExecutionContext } from '../execution-types';
+import type { EntityType, Automation, EntityContact, Entity } from '../../types';
 
 /**
  * Resolves the workspace's organizationId.
@@ -251,8 +251,8 @@ export async function handleCreateEntity(
   const fieldScopes = new Map<string, string[]>();
   appFieldsSnap.docs.forEach(doc => {
     const data = doc.data();
-    const key = data.id || data.name;
-    fieldScopes.set(key, data.compatibilityScope || ['common']);
+    const key = (data.id || data.name) as string;
+    fieldScopes.set(key, (data.compatibilityScope as string[] | undefined) || ['common']);
   });
 
   // Extract, filter, and validate custom fields by compatibility scope, allowing native fields to bypass
@@ -277,6 +277,10 @@ export async function handleCreateEntity(
 
   const nativePayload = mapNativeFieldsToPayload(nativeInputs, entityType);
 
+  const tagIds = Array.isArray(config.tagIds)
+    ? (config.tagIds as string[])
+    : [];
+
   const { createEntityAction } = await import('../../entity-actions');
   const createRes = await createEntityAction(
     {
@@ -292,7 +296,7 @@ export async function handleCreateEntity(
       ],
       customData,
       globalTags: [],
-      workspaceTags: [],
+      workspaceTags: tagIds,
       ...nativePayload
     },
     `system-automation-create:${context.automationId}`,
@@ -314,6 +318,37 @@ export async function handleCreateEntity(
     entityId: createRes.id,
     updatedAt: new Date().toISOString()
   });
+
+  // Check and execute sub-automation if configured
+  if (config.automationId) {
+    const isTestRun = !!(context.payload.metadata as Record<string, unknown> | undefined)?.testStepRun;
+    if (isTestRun) {
+      console.log(`[CREATE_ENTITY] Skipping subsequent sub-automation "${config.automationId}" trigger because this is a test step dry run.`);
+    } else {
+      const chainDepth = context.chainDepth ?? 0;
+      if (chainDepth >= MAX_AUTOMATION_CHAIN_DEPTH) {
+        throw new Error(`Sub-automation trigger failed: recursion depth limit of ${MAX_AUTOMATION_CHAIN_DEPTH} reached.`);
+      }
+
+      const autoDoc = await adminDb.collection('automations').doc(config.automationId as string).get();
+      if (autoDoc.exists) {
+        const automation = { id: autoDoc.id, ...autoDoc.data() } as Automation;
+        if (automation.isActive && !automation.isArchived) {
+          const subPayload: Record<string, unknown> = {
+            entityId: createRes.id,
+            workspaceId: context.workspaceId,
+            organizationId,
+            entityName: resolvedName,
+            entityType,
+            assignedTo: null,
+            _chainDepth: chainDepth + 1,
+          };
+          const { executeAutomation } = await import('../executor');
+          await executeAutomation(automation, subPayload, chainDepth + 1);
+        }
+      }
+    }
+  }
 
   return { id: createRes.id };
 }
@@ -453,6 +488,337 @@ export async function handleCreateContactForEntity(
 
   await adminDb.collection('automation_runs').doc(context.runId).update({
     entityId,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+export async function handleUpdateContact(
+  config: Record<string, unknown>,
+  context: ExecutionContext
+): Promise<void> {
+  const filterEntityName = (config.filterEntityName as string || '').trim();
+  const filterContactName = (config.filterContactName as string || '').trim();
+  const filterContactPhone = (config.filterContactPhone as string || '').trim();
+  const filterContactEmail = (config.filterContactEmail as string || '').trim();
+  const matchLogic = (config.matchLogic as 'all' | 'any') || 'all';
+  const caseInsensitive = !!config.caseInsensitive;
+
+  if (!filterEntityName && !filterContactName && !filterContactPhone && !filterContactEmail) {
+    throw new Error('Update contact failed: At least one filter criterion must be provided.');
+  }
+
+  // 1. Resolve organization default country code for phone normalization
+  const organizationId = await resolveOrgId(context);
+  let defaultCountryCode = 'GH';
+  try {
+    const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+    if (orgSnap.exists) {
+      defaultCountryCode = (orgSnap.data()?.defaultCountryCode as string) || 'GH';
+    }
+  } catch (err) {}
+
+  const { normalizePhoneNumber } = await import('../../phone-utils');
+  const { normalizeContactType, enforceContactConstraints } = await import('../../entity-contact-helpers');
+
+  const getNormalizedPhone = (p: string): string => {
+    if (!p) return '';
+    const parsed = normalizePhoneNumber(p, defaultCountryCode);
+    return parsed.e164 || p.trim();
+  };
+
+  interface CandidateResult {
+    entityId: string;
+    contactId?: string;
+  }
+
+  const candidateResults: CandidateResult[] = [];
+
+  const queryByEntityName = async (name: string): Promise<CandidateResult[]> => {
+    const results: CandidateResult[] = [];
+    if (caseInsensitive) {
+      const { toSearchKey } = await import('../../entities/entity-cache-domain');
+      const snap = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', context.workspaceId)
+        .where('displayNameLower', '==', toSearchKey(name))
+        .get();
+      snap.docs.forEach((doc) => {
+        const entityId = doc.data().entityId as string;
+        if (entityId) results.push({ entityId });
+      });
+    } else {
+      const snap = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', context.workspaceId)
+        .where('displayName', '==', name)
+        .get();
+      snap.docs.forEach((doc) => {
+        const entityId = doc.data().entityId as string;
+        if (entityId) results.push({ entityId });
+      });
+    }
+    return results;
+  };
+
+  const queryByContactEmail = async (email: string): Promise<CandidateResult[]> => {
+    const results: CandidateResult[] = [];
+    const snap = await adminDb
+      .collection('workspace_contacts')
+      .where('workspaceId', '==', context.workspaceId)
+      .where('emailLower', '==', email.trim().toLowerCase())
+      .get();
+    snap.docs.forEach((doc) => {
+      const data = doc.data();
+      if (data.entityId && data.contactId) {
+        results.push({ entityId: data.entityId as string, contactId: data.contactId as string });
+      }
+    });
+    return results;
+  };
+
+  const queryByContactPhone = async (phone: string): Promise<CandidateResult[]> => {
+    const results: CandidateResult[] = [];
+    const normPhone = getNormalizedPhone(phone);
+    if (!normPhone) return results;
+    const snap = await adminDb
+      .collection('workspace_contacts')
+      .where('workspaceId', '==', context.workspaceId)
+      .where('phone', '==', normPhone)
+      .get();
+    snap.docs.forEach((doc) => {
+      const data = doc.data();
+      if (data.entityId && data.contactId) {
+        results.push({ entityId: data.entityId as string, contactId: data.contactId as string });
+      }
+    });
+    return results;
+  };
+
+  const queryByContactName = async (name: string): Promise<CandidateResult[]> => {
+    const results: CandidateResult[] = [];
+    if (caseInsensitive) {
+      const snap = await adminDb
+        .collection('workspace_contacts')
+        .where('workspaceId', '==', context.workspaceId)
+        .where('nameLower', '==', name.trim().toLowerCase())
+        .get();
+      snap.docs.forEach((doc) => {
+        const data = doc.data();
+        if (data.entityId && data.contactId) {
+          results.push({ entityId: data.entityId as string, contactId: data.contactId as string });
+        }
+      });
+    } else {
+      const snap = await adminDb
+        .collection('workspace_contacts')
+        .where('workspaceId', '==', context.workspaceId)
+        .where('name', '==', name.trim())
+        .get();
+      snap.docs.forEach((doc) => {
+        const data = doc.data();
+        if (data.entityId && data.contactId) {
+          results.push({ entityId: data.entityId as string, contactId: data.contactId as string });
+        }
+      });
+    }
+    return results;
+  };
+
+  // 2. Fetch initial candidate set
+  if (matchLogic === 'all') {
+    // Under AND logic, run the query for the most specific/restrictive field provided.
+    let initialCandidates: CandidateResult[] = [];
+    if (filterContactEmail) {
+      initialCandidates = await queryByContactEmail(filterContactEmail);
+    } else if (filterContactPhone) {
+      initialCandidates = await queryByContactPhone(filterContactPhone);
+    } else if (filterEntityName) {
+      initialCandidates = await queryByEntityName(filterEntityName);
+    } else if (filterContactName) {
+      initialCandidates = await queryByContactName(filterContactName);
+    }
+    candidateResults.push(...initialCandidates);
+  } else {
+    // Under OR logic, run queries for all provided fields in parallel and take the union.
+    const promises: Promise<CandidateResult[]>[] = [];
+    if (filterEntityName) promises.push(queryByEntityName(filterEntityName));
+    if (filterContactEmail) promises.push(queryByContactEmail(filterContactEmail));
+    if (filterContactPhone) promises.push(queryByContactPhone(filterContactPhone));
+    if (filterContactName) promises.push(queryByContactName(filterContactName));
+
+    const resultsList = await Promise.all(promises);
+    const seen = new Set<string>();
+    for (const list of resultsList) {
+      for (const item of list) {
+        const key = `${item.entityId}:${item.contactId || ''}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          candidateResults.push(item);
+        }
+      }
+    }
+  }
+
+  const uniqueEntityIds = [...new Set(candidateResults.map((r) => r.entityId))];
+  if (uniqueEntityIds.length === 0) {
+    throw new Error('Update contact failed: No matching contact/entity found.');
+  }
+
+  // 3. Load full entities and perform in-memory evaluation
+  const entitySnaps = await Promise.all(
+    uniqueEntityIds.map((id) => adminDb.collection('entities').doc(id).get())
+  );
+
+  const entitiesData: Entity[] = entitySnaps
+    .filter((snap) => snap.exists)
+    .map((snap) => ({ id: snap.id, ...(snap.data() as Omit<Entity, 'id'>) } as Entity));
+
+  interface MatchedItem {
+    entity: Entity;
+    entityId: string;
+    contact: EntityContact;
+  }
+
+  const matches: MatchedItem[] = [];
+
+  const isMatch = (entity: Entity, c: EntityContact): boolean => {
+    const eNameMatch = filterEntityName ? (
+      caseInsensitive
+        ? entity.name.trim().toLowerCase() === filterEntityName.toLowerCase()
+        : entity.name.trim() === filterEntityName
+    ) : false;
+
+    const cNameMatch = filterContactName ? (
+      caseInsensitive
+        ? c.name.trim().toLowerCase() === filterContactName.toLowerCase()
+        : c.name.trim() === filterContactName
+    ) : false;
+
+    const cEmailMatch = filterContactEmail ? (
+      c.email ? (
+        c.email.trim().toLowerCase() === filterContactEmail.toLowerCase()
+      ) : false
+    ) : false;
+
+    const cPhoneMatch = filterContactPhone ? (
+      c.phone ? (
+        getNormalizedPhone(c.phone) === getNormalizedPhone(filterContactPhone)
+      ) : false
+    ) : false;
+
+    if (matchLogic === 'all') {
+      const conds: boolean[] = [];
+      if (filterEntityName) conds.push(eNameMatch);
+      if (filterContactName) conds.push(cNameMatch);
+      if (filterContactEmail) conds.push(cEmailMatch);
+      if (filterContactPhone) conds.push(cPhoneMatch);
+      return conds.every(Boolean);
+    } else {
+      if (filterEntityName && eNameMatch) return true;
+      if (filterContactName && cNameMatch) return true;
+      if (filterContactEmail && cEmailMatch) return true;
+      if (filterContactPhone && cPhoneMatch) return true;
+      return false;
+    }
+  };
+
+  for (const entity of entitiesData) {
+    const contacts = entity.entityContacts || [];
+    for (const c of contacts) {
+      if (isMatch(entity, c)) {
+        matches.push({ entity, entityId: entity.id, contact: c });
+      }
+    }
+  }
+
+  // 4. Resolve matches and handle tie-breakers
+  const matchedEntitiesMap = new Map<string, MatchedItem[]>();
+  matches.forEach((item) => {
+    const list = matchedEntitiesMap.get(item.entityId) || [];
+    list.push(item);
+    matchedEntitiesMap.set(item.entityId, list);
+  });
+
+  if (matchedEntitiesMap.size === 0) {
+    throw new Error('Update contact failed: No matching contact/entity found.');
+  }
+
+  if (matchedEntitiesMap.size > 1) {
+    const matchedNames = Array.from(matchedEntitiesMap.values()).map((list) => list[0].entity.name);
+    throw new Error(`Update contact failed: Multiple matching entities found (${matchedNames.join(', ')}). Please make your filters more specific.`);
+  }
+
+  const singleEntityId = Array.from(matchedEntitiesMap.keys())[0];
+  const entityMatches = matchedEntitiesMap.get(singleEntityId)!;
+
+  let targetItem = entityMatches.find((item) => item.contact.isPrimary);
+  if (!targetItem) {
+    targetItem = entityMatches[0];
+  }
+  const targetContact = targetItem.contact;
+
+  // 5. Apply Updates
+  const resolvedName = (config.contactName as string || '').trim();
+  const resolvedPhone = (config.contactPhone as string || '').trim();
+  const resolvedEmail = (config.contactEmail as string || '').trim();
+  const resolvedRole = (config.contactRole as string || '').trim();
+
+  const existingContacts = targetItem.entity.entityContacts || [];
+  const updatedContacts = existingContacts.map((c) => {
+    if (c.id === targetContact.id) {
+      const updated: EntityContact = { ...c };
+      if (resolvedName !== '') {
+        updated.name = resolvedName;
+      }
+      if (resolvedEmail !== '') {
+        updated.email = resolvedEmail;
+      }
+      if (resolvedPhone !== '') {
+        const parsed = normalizePhoneNumber(resolvedPhone, defaultCountryCode);
+        updated.phone = parsed.e164 || resolvedPhone;
+        if (parsed.countryCode) updated.countryCode = parsed.countryCode;
+        if (parsed.callingCode) updated.callingCode = parsed.callingCode;
+      }
+      if (resolvedRole !== '') {
+        updated.typeKey = normalizeContactType(resolvedRole);
+        updated.typeLabel = resolvedRole;
+      }
+      if (config.isPrimary !== undefined) {
+        updated.isPrimary = !!config.isPrimary;
+      }
+      if (config.isSignatory !== undefined) {
+        updated.isSignatory = !!config.isSignatory;
+      }
+      updated.updatedAt = new Date().toISOString();
+      return updated;
+    }
+    return c;
+  });
+
+  const finalContacts = enforceContactConstraints(updatedContacts);
+
+  const { updateEntityAction } = await import('../../entity-actions');
+  const updateRes = await updateEntityAction(
+    singleEntityId,
+    {
+      entityContacts: finalContacts,
+    },
+    `system-automation-contact:${context.automationId}`,
+    context.workspaceId,
+    organizationId
+  );
+
+  if (!updateRes.success) {
+    throw new Error(`Update contact failed: ${updateRes.error || 'Unknown error'}`);
+  }
+
+  // 6. Update context reference and ledger
+  context.entityId = singleEntityId;
+  const targetEntityType = targetItem.entity.entityType || 'institution';
+  context.entityType = targetEntityType;
+
+  await adminDb.collection('automation_runs').doc(context.runId).update({
+    entityId: singleEntityId,
     updatedAt: new Date().toISOString()
   });
 }

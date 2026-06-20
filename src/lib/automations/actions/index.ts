@@ -8,7 +8,7 @@ import { resolveConfigVariables } from '../variables';
 import type { ExecutionContext } from '../execution-types';
 import { handleSendMessage } from './message-actions';
 import { handleCreateTask, handleUpdateTask } from './task-actions';
-import { handleUpdateEntity, handleAssignEntity, handleAddNote, handleCreateEntity, handleCreateContactForEntity } from './entity-actions';
+import { handleUpdateEntity, handleAssignEntity, handleAddNote, handleCreateEntity, handleCreateContactForEntity, handleUpdateContact } from './entity-actions';
 import { handleTriggerOutboundWebhook } from './webhook-actions';
 import { handleRunAutomation } from './run-automation';
 import { handleSendNotification } from './notification-actions';
@@ -57,6 +57,8 @@ export async function processActionNode(
       return await handleCreateEntity(resolvedConfig, context);
     case 'ADD_CONTACT_TO_ENTITY':
       return await handleCreateContactForEntity(resolvedConfig, context);
+    case 'UPDATE_CONTACT':
+      return await handleUpdateContact(resolvedConfig, context);
     case 'ADD_TO_CALL_CAMPAIGN': {
       try {
         const { CallCentreService } = await import('../../services/call-centre-service');

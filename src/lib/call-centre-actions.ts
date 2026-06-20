@@ -431,13 +431,21 @@ export async function addContactsToCallCampaignAction(
   entityIds: string[],
   workspaceId: string,
   userId: string,
-  contactOverrides?: { entityId: string; contactId: string; contactName: string; phone: string; email: string }[]
+  contactOverrides?: { entityId: string; contactId: string; contactName: string; phone: string; email: string }[],
+  contactScope?: 'primary' | 'signatories' | 'all'
 ): Promise<{ success: boolean; count: number; error?: string }> {
   const perm = await verifyPermission(userId, 'edit', workspaceId);
   if (!perm.granted) return { success: false, count: 0, error: perm.reason };
 
   try {
-    const result = await CallCentreService.addContactsToCampaign(campaignId, entityIds, workspaceId, userId, contactOverrides);
+    const result = await CallCentreService.addContactsToCampaign(
+      campaignId,
+      entityIds,
+      workspaceId,
+      userId,
+      contactOverrides,
+      contactScope
+    );
     revalidatePath('/admin/messaging/call-centre');
     revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
     return result;

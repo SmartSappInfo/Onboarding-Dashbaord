@@ -3,15 +3,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { executeScriptActionAction } from '../call-centre-actions';
 import { createTaskAction } from '../task-server-actions';
-import { applyTagsAction } from '../tag-actions';
+import { applyTagsAction, removeTagsAction } from '../tag-actions';
 import { canUser } from '../workspace-permissions';
+
+const mockDocGet = vi.fn().mockResolvedValue({
+  exists: true,
+  data: () => ({ name: 'Test Entity', slug: 'test-entity', displayName: 'Agent User' }),
+});
+const mockAdd = vi.fn().mockResolvedValue({ id: 'mock-doc-id' });
 
 vi.mock('../firebase-admin', () => ({
   adminDb: {
     collection: vi.fn(() => ({
       doc: vi.fn(() => ({
-        get: vi.fn().mockResolvedValue({ exists: false, data: () => ({}) }),
+        get: mockDocGet,
       })),
+      add: mockAdd,
     })),
   },
   FieldValue: {},
@@ -26,6 +33,7 @@ vi.mock('../task-server-actions', () => ({
 }));
 vi.mock('../tag-actions', () => ({
   applyTagsAction: vi.fn().mockResolvedValue({ success: true }),
+  removeTagsAction: vi.fn().mockResolvedValue({ success: true }),
 }));
 vi.mock('../entity-actions', () => ({
   updateEntityAction: vi.fn().mockResolvedValue({ success: true }),
@@ -79,5 +87,30 @@ describe('executeScriptActionAction', () => {
     const res = await executeScriptActionAction({ actionType: 'TRANSFER_CALL', actionConfig: {}, ...ctx }, 'user_1');
     expect(res.success).toBe(false);
     expect(createTaskAction).not.toHaveBeenCalled();
+  });
+
+  it('executes REMOVE_TAG against the contact', async () => {
+    const res = await executeScriptActionAction({ actionType: 'REMOVE_TAG', actionConfig: { tagId: 'tag_9' }, ...ctx }, 'user_1');
+    expect(res.success).toBe(true);
+    expect(removeTagsAction).toHaveBeenCalledWith('ent_1', 'entity', ['tag_9'], expect.any(String));
+  });
+
+  it('executes LOG_NOTE against the contact', async () => {
+    const res = await executeScriptActionAction({ actionType: 'LOG_NOTE', actionConfig: { noteContent: 'Spoke with prospect' }, ...ctx }, 'user_1');
+    expect(res.success).toBe(true);
+    expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({
+      content: 'Spoke with prospect',
+      entityId: 'ent_1',
+    }));
+  });
+
+  it('executes SCHEDULE_MEETING against the contact', async () => {
+    const res = await executeScriptActionAction({ actionType: 'SCHEDULE_MEETING', actionConfig: { meetingTypeId: 'kickoff' }, ...ctx }, 'user_1');
+    expect(res.success).toBe(true);
+    expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({
+      title: expect.stringContaining('Kickoff'),
+      entityId: 'ent_1',
+      status: 'scheduled',
+    }));
   });
 });

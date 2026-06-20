@@ -86,7 +86,7 @@ const FALLBACK_VARIABLE_GROUPS: VariableGroup[] = [
 
 /* ── Inline style constants for pills (needed for dynamically-created DOM) ─ */
 const PILL_STYLE = [
-  'display:inline-flex', 'align-items:center', 'gap:3px',
+  'display:inline-block',
   'padding:2px 8px 2px 8px', 'margin:0 2px', 'border-radius:6px',
   'font-size:11px', 'font-family:ui-monospace,monospace', 'font-weight:700',
   'vertical-align:baseline', 'user-select:none', 'line-height:1.6',
@@ -347,6 +347,59 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
     /** Run a document.execCommand formatting command on the active selection. */
     const runCommand = React.useCallback((command: string, value?: string) => {
       if (!editorRef.current) return;
+
+      let alignValue = '';
+      if (command === 'justifyLeft') alignValue = 'left';
+      else if (command === 'justifyCenter') alignValue = 'center';
+      else if (command === 'justifyRight') alignValue = 'right';
+
+      if (alignValue) {
+        restoreSelection();
+        const sel = window.getSelection();
+        let applied = false;
+        if (sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0);
+          
+          // Climb from a node up to the top-level block child of the editor root
+          const getEditorBlock = (node: Node | null): HTMLElement | null => {
+            let el = node ? (node.nodeType === Node.TEXT_NODE ? node.parentElement : node as HTMLElement) : null;
+            while (el && el.parentElement && el.parentElement !== editorRef.current) {
+              el = el.parentElement;
+            }
+            return el && el !== editorRef.current ? el : null;
+          };
+
+          const startBlock = getEditorBlock(range.startContainer);
+          const endBlock = getEditorBlock(range.endContainer);
+          
+          if (startBlock) {
+            const blocks: HTMLElement[] = [startBlock];
+            let n: ChildNode | null = startBlock;
+            while (n && n !== endBlock) {
+              n = n.nextSibling;
+              if (n && n.nodeType === Node.ELEMENT_NODE) {
+                blocks.push(n as HTMLElement);
+              }
+            }
+            blocks.forEach((b) => {
+              b.style.textAlign = alignValue;
+            });
+            applied = true;
+          }
+        }
+        
+        if (!applied) {
+          const wrapper = document.createElement('div');
+          wrapper.style.textAlign = alignValue;
+          while (editorRef.current.firstChild) wrapper.appendChild(editorRef.current.firstChild);
+          editorRef.current.appendChild(wrapper);
+        }
+        
+        saveSelection();
+        syncAndNotify();
+        return;
+      }
+
       restoreSelection();
       try { document.execCommand('styleWithCSS', false, 'true'); } catch { /* not supported */ }
       document.execCommand(command, false, value);
@@ -671,7 +724,7 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
           className={cn(
             'overflow-y-auto flex-1 min-h-0',
             'bg-background border border-border rounded-xl',
-            'text-sm leading-[1.85] p-4 font-serif text-foreground',
+            'text-[24px] leading-[1.85] p-4 font-serif text-foreground',
             'outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/10',
             'transition-colors whitespace-pre-wrap break-words resize-y',
             // Render bullet/number lists correctly inside the editable area

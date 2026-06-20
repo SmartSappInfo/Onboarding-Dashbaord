@@ -47,6 +47,7 @@ import {
     Save,
     Hash,
     PhoneCall,
+    Download,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +60,7 @@ import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { completeTaskNonBlocking } from '@/lib/task-actions';
 import { useToast } from '@/hooks/use-toast';
+import { serializeEntityToImportRow } from '@/lib/import-export/export-service';
 import EntityBillingTab from '../components/EntityBillingTab';
 import EntityDealsTab from '../components/EntityDealsTab';
 import EntityMeetingsTab from '../components/EntityMeetingsTab';
@@ -280,6 +282,31 @@ export default function EntityDetailPage() {
         }
     };
 
+    const handleExportNTT = () => {
+        if (!entityData) return;
+        
+        try {
+            const rowData = serializeEntityToImportRow(entityData, weData || undefined);
+            
+            const jsonString = JSON.stringify(rowData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const formattedName = (displayName || 'entity').replace(/\s+/g, '_');
+            link.setAttribute('download', `${formattedName}_export_${new Date().toISOString().slice(0, 10)}.ntt`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            toast({ title: 'Export Complete', description: `${displayName} has been exported to .ntt format.` });
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Export Failed', description: message });
+        }
+    };
+
     const isInstitution = entityData.entityType === 'institution';
     // New schema — read directly from root fields and industryData
     const capacity = (entityData.industryData as any)?.capacity ?? 0;
@@ -355,6 +382,9 @@ export default function EntityDetailPage() {
                         </Button>
                         <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm gap-2" onClick={() => setIsCampaignDialogOpen(true)}>
                             <PhoneCall className="h-4 w-4 text-indigo-500" /> Call Campaign
+                        </Button>
+                        <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm gap-2" onClick={handleExportNTT}>
+                            <Download className="h-4 w-4 text-primary" /> Export (.ntt)
                         </Button>
                         <Button className="flex-1 md:flex-none rounded-xl font-bold shadow-md h-11" onClick={() => router.push(`/admin/entities/${entityId}/edit`)}>
                             <PenSquare className="mr-2 h-4 w-4" /> Edit Profile

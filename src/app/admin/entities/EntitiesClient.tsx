@@ -26,7 +26,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList, Video, PhoneCall } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList, Video, PhoneCall, Download } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
 import AiEntityGenerator from './components/ai-entity-generator';
 import {
@@ -83,6 +83,7 @@ import { useIndustry } from '@/context/IndustryContext';
 import { ContactVerificationPanel } from '../components/ContactVerificationPanel';
 import { BulkScanProgress } from '../components/BulkScanProgress';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { exportEntitiesToCSVAction } from '@/lib/import-export/entity-export-actions';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 
 // Pagination & Selection Matrix Imports
@@ -122,7 +123,7 @@ export default function EntitiesClient() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user: currentUser } = useUser();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { industry } = useIndustry();
   const { restrictToAssigned } = useWorkspaceVisibility();
   const { 
@@ -247,6 +248,56 @@ export default function EntitiesClient() {
   const canCreate = can('operations', 'campuses', 'create');
   const canDelete = can('operations', 'campuses', 'delete');
   const canEdit = can('operations', 'campuses', 'edit');
+
+  const [isExporting, startExportTransition] = useTransition();
+
+  const handleExportCSV = (entityIdsToExport?: string[]) => {
+    if (!firestore || !activeWorkspaceId || !currentUser) return;
+
+    const targetIds = entityIdsToExport || filteredEntityIds;
+    if (targetIds.length === 0) {
+      toast({ variant: 'destructive', title: 'Export Failed', description: 'No records to export.' });
+      return;
+    }
+
+    const orgId = activeWorkspace?.organizationId || 'smartsapp-hq';
+
+    startExportTransition(async () => {
+      try {
+        const res = await exportEntitiesToCSVAction(
+          targetIds,
+          activeWorkspaceId,
+          orgId,
+          currentUser.uid
+        );
+
+        if (!res.success || res.data === undefined) {
+          throw new Error(res.error || 'Failed to generate export file.');
+        }
+
+        const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const filename = `${(activeWorkspace?.name || 'SmartSapp').replace(/\s+/g, '_')}_${plural}_Export_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        let description = `${res.count ?? targetIds.length} records successfully exported.`;
+        if (targetIds.length > 5000) {
+          description += ' (Limited to the first 5,000 records)';
+        }
+
+        toast({ title: 'Export Complete', description });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        toast({ variant: 'destructive', title: 'Export Failed', description: message });
+      }
+    });
+  };
 
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const [sortConfig, setSortConfig] = useState<{ key: keyof WorkspaceEntity | string; direction: 'asc' | 'desc' } | null>({ key: 'addedAt', direction: 'desc' });
@@ -949,6 +1000,20 @@ export default function EntitiesClient() {
                                     <Sparkles className="h-4 w-4 text-amber-500" />
                                     Lead Cleanup
                                 </Link>
+                            </Button>
+
+                            <Button
+                                variant="outline"
+                                className="h-11 px-5 gap-2 font-bold text-[10px] uppercase tracking-widest shadow-sm rounded-xl border-border bg-card hover:bg-accent hover:text-accent-foreground gap-2"
+                                onClick={() => handleExportCSV()}
+                                disabled={isExporting || filteredEntityIds.length === 0}
+                            >
+                                {isExporting ? (
+                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                ) : (
+                                    <Download className="h-4 w-4 text-primary" />
+                                )}
+                                Export CSV
                             </Button>
 
                             {canCreate && (
@@ -1766,6 +1831,7 @@ export default function EntitiesClient() {
               }}
               onArchive={() => setIsBulkArchiveOpen(true)}
               onDelete={() => setIsBulkDeleteOpen(true)}
+              onExport={() => handleExportCSV(selectedEntityIds)}
               hideAssign={restrictToAssigned}
             />
 

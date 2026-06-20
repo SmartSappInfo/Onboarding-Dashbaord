@@ -56,40 +56,90 @@ export function UploadStep({ state, updateState, onNext }: Props) {
   };
 
   const processFile = (file: File) => {
-    if (!file.name.endsWith('.csv')) {
-      toast({ title: 'Invalid file type', description: 'Please upload a CSV file', variant: 'destructive' });
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (extension !== 'csv' && extension !== 'ntt' && extension !== 'json') {
+      toast({ title: 'Invalid file type', description: 'Please upload a CSV, NTT or JSON file', variant: 'destructive' });
       return;
     }
     
     setIsParsing(true);
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        setIsParsing(false);
-        if (results.errors.length && !results.data.length) {
-          toast({ title: 'Error reading CSV', description: results.errors[0].message, variant: 'destructive' });
-          return;
-        }
+    if (extension === 'csv') {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          setIsParsing(false);
+          if (results.errors.length && !results.data.length) {
+            toast({ title: 'Error reading CSV', description: results.errors[0].message, variant: 'destructive' });
+            return;
+          }
 
-        const headers = results.meta.fields || [];
-        updateState({
-          file,
-          csvData: results.data as Record<string, string>[],
-          headers,
-          // Auto-infer entity type loosely by headers
-          entityType: headers.some(h => /nominalRoll|contact_name/i.test(h)) 
-            ? 'institution' 
-            : headers.some(h => /family|guardian/i.test(h))
-              ? 'family'
-              : 'person'
-        });
-      },
-      error: () => {
+          const headers = results.meta.fields || [];
+          updateState({
+            file,
+            csvData: results.data as Record<string, string>[],
+            headers,
+            // Auto-infer entity type loosely by headers
+            entityType: headers.some(h => /nominalRoll|contact_name/i.test(h)) 
+              ? 'institution' 
+              : headers.some(h => /family|guardian/i.test(h))
+                ? 'family'
+                : 'person'
+          });
+        },
+        error: () => {
+          setIsParsing(false);
+          toast({ title: 'Failed to parse', description: 'Could not read that CSV format', variant: 'destructive' });
+        }
+      });
+    } else {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
         setIsParsing(false);
-        toast({ title: 'Failed to parse', description: 'Could not read that CSV format', variant: 'destructive' });
-      }
-    });
+        try {
+          const parsed = JSON.parse(evt.target?.result as string);
+          const dataArray = Array.isArray(parsed) ? parsed : [parsed];
+          const validRows = dataArray.filter((row): row is Record<string, unknown> => row !== null && typeof row === 'object');
+          
+          if (validRows.length > 0) {
+            // Check for explicit _entityType metadata in the JSON rows
+            let inferredEntityType: 'person' | 'family' | 'institution' | undefined;
+            const firstRowType = validRows[0]._entityType;
+            if (firstRowType === 'person' || firstRowType === 'family' || firstRowType === 'institution') {
+              inferredEntityType = firstRowType;
+            }
+
+            // Strip metadata property _entityType from import records
+            const cleanedData = validRows.map((row) => {
+              const { _entityType, ...rest } = row;
+              return rest as Record<string, string>;
+            });
+
+            const headers = Object.keys(cleanedData[0]).filter(k => k && k.trim() !== "");
+            
+            updateState({
+              file,
+              csvData: cleanedData,
+              headers,
+              entityType: inferredEntityType || (headers.some(h => /nominalRoll|contact_name/i.test(h)) 
+                ? 'institution' 
+                : headers.some(h => /family|guardian/i.test(h))
+                  ? 'family'
+                  : 'person')
+            });
+          } else {
+            toast({ title: 'Empty file', description: 'The file contains no valid data', variant: 'destructive' });
+          }
+        } catch (err) {
+          toast({ title: 'Failed to parse', description: 'Invalid JSON format in file', variant: 'destructive' });
+        }
+      };
+      reader.onerror = () => {
+        setIsParsing(false);
+        toast({ title: 'Failed to read', description: 'Could not read the file', variant: 'destructive' });
+      };
+      reader.readAsText(file);
+    }
   };
 
   const handleDownloadTemplate = (type: 'person' | 'family' | 'institution') => {
@@ -142,7 +192,7 @@ export function UploadStep({ state, updateState, onNext }: Props) {
       <div className="flex gap-6 w-full max-w-5xl mx-auto items-stretch h-full">
         {/* Left column: File Dropper */}
         <div className="flex-1 flex flex-col space-y-4">
-          <label className="text-sm font-medium text-foreground">Upload CSV File</label>
+          <label className="text-sm font-medium text-foreground">Upload Import File</label>
           <div
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -157,7 +207,7 @@ export function UploadStep({ state, updateState, onNext }: Props) {
           >
             <input
               type="file"
-              accept=".csv"
+              accept=".csv, .ntt, .json"
               onChange={handleChange}
               className="absolute inset-0 opacity-0 cursor-pointer"
             />
@@ -165,7 +215,7 @@ export function UploadStep({ state, updateState, onNext }: Props) {
             {isParsing ? (
               <div className="flex flex-col items-center animate-pulse">
                 <UploadCloud className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground font-medium">Parsing large CSV...</p>
+                <p className="text-muted-foreground font-medium">Parsing large file...</p>
               </div>
             ) : state.file ? (
               <div className="flex flex-col items-center text-center">
@@ -185,9 +235,9 @@ export function UploadStep({ state, updateState, onNext }: Props) {
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                   <UploadCloud className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">Drop your CSV here</h3>
+                <h3 className="text-lg font-semibold text-foreground">Drop your file here</h3>
                 <p className="text-muted-foreground mt-1 text-sm max-w-[250px]">
-                  Supports up to 5,000 rows per batch. Download the templates if you need a schema.
+                  Supports CSV, NTT, and JSON formats up to 5,000 rows. Download templates if you need a schema.
                 </p>
               </div>
             )}

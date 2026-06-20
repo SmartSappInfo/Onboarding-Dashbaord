@@ -16,7 +16,7 @@ function loadEnvFallback(key: string): string | undefined {
 
     const files = ['.env.local', '.env'];
     for (const file of files) {
-      const filePath = path.join(process.cwd(), file);
+      const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), file);
       if (fs.existsSync(filePath)) {
         const content = fs.readFileSync(filePath, 'utf-8');
         const lines = content.split('\n');

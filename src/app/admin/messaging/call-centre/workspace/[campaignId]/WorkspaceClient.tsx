@@ -24,7 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
 import type { ScriptNode, Entity, EntityContact } from '@/lib/types';
 import {
   isJsonGraph,
@@ -61,12 +61,25 @@ import {
   History,
   ShieldAlert,
   Sparkles,
-  X
+  X,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+
+const MessagingTemplateSelector = dynamic(
+  () =>
+    import('@/app/admin/components/MessagingTemplateSelector').then(
+      (m) => m.MessagingTemplateSelector
+    ),
+  {
+    ssr: false,
+    loading: () => <div className="h-10 w-full rounded-xl bg-muted animate-pulse" />,
+  }
+);
 
 // Heavy ReactFlow-derived view — loaded only when the agent toggles to it (bundle-conditional)
 const InteractiveScriptView = dynamic(
@@ -141,7 +154,46 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const { campaigns } = useCallCampaigns(activeWorkspaceId);
   const { queueItems, isLoading: queueLoading } = useCallQueueItems(campaignId);
 
+  // Bulk fetch entities of all queue items to dynamically resolve contact names and roles
+  const [entitiesMap, setEntitiesMap] = React.useState<Record<string, ScriptVariableEntity>>({});
+  const fetchedIdsRef = React.useRef<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    if (!firestore || !queueItems || queueItems.length === 0) return;
+
+    const uniqueIds = Array.from(new Set(queueItems.map(item => item.entityId)))
+      .filter(id => !fetchedIdsRef.current.has(id));
+
+    if (uniqueIds.length === 0) return;
+
+    uniqueIds.forEach(id => fetchedIdsRef.current.add(id));
+
+    const chunks: string[][] = [];
+    for (let i = 0; i < uniqueIds.length; i += 30) {
+      chunks.push(uniqueIds.slice(i, i + 30));
+    }
+
+    chunks.forEach(async (chunk) => {
+      try {
+        const q = query(
+          collection(firestore, 'entities'),
+          where('id', 'in', chunk)
+        );
+        const snap = await getDocs(q);
+        const newEntities: Record<string, ScriptVariableEntity> = {};
+        snap.forEach((doc) => {
+          newEntities[doc.id] = doc.data() as ScriptVariableEntity;
+        });
+        setEntitiesMap(prev => ({ ...prev, ...newEntities }));
+      } catch (err) {
+        console.error('Failed to fetch entities in bulk:', err);
+        chunk.forEach(id => fetchedIdsRef.current.delete(id));
+      }
+    });
+  }, [firestore, queueItems]);
+
   const campaign = React.useMemo(() => campaigns.find(c => c.id === campaignId), [campaigns, campaignId]);
+  const triggerActionsAutomatically = campaign?.triggerActionsAutomatically ?? true;
 
   const hasCallbackOutcome = React.useMemo(() => {
     return campaign?.outcomes?.some(out => {
@@ -417,14 +469,16 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   const { data: entityData } = useDoc<ScriptVariableEntity>(entityRef);
 
+  const [activeScriptSnapshot, setActiveScriptSnapshot] = React.useState<string>('');
+
   const scriptGraph = React.useMemo(() => {
-    const scriptBody = campaign?.scriptSnapshot || '';
+    const scriptBody = activeScriptSnapshot || '';
     return parseGraph(scriptBody);
-  }, [campaign?.scriptSnapshot]);
+  }, [activeScriptSnapshot]);
 
   const isBranching = React.useMemo(() => {
-    return isJsonGraph(campaign?.scriptSnapshot);
-  }, [campaign?.scriptSnapshot]);
+    return isJsonGraph(activeScriptSnapshot);
+  }, [activeScriptSnapshot]);
 
   // The interactive reference works for any script: branching graphs use their real
   // nodes; plain-text scripts use the linear fallback graph from parseGraph.
@@ -441,6 +495,19 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const [liveScriptView, setLiveScriptView] = React.useState<'guided' | 'interactive'>('guided');
   // Action/outcome node ids already triggered for the current contact (prevents double-firing).
   const [triggeredNodeIds, setTriggeredNodeIds] = React.useState<Set<string>>(() => new Set());
+
+  // Action Review and Customization States
+  const [localActionConfig, setLocalActionConfig] = React.useState<Record<string, any>>({});
+  const [templateDetails, setTemplateDetails] = React.useState<{ subject?: string; body?: string } | null>(null);
+  const [loadingTemplate, setLoadingTemplate] = React.useState(false);
+
+  // Lock the script snapshot at the start of a call (when the contact changes)
+  // or when the campaign loads initially.
+  React.useEffect(() => {
+    if (campaign?.scriptSnapshot && (!currentItem || activeScriptSnapshot === '')) {
+      setActiveScriptSnapshot(campaign.scriptSnapshot);
+    }
+  }, [currentItem?.id, campaign?.scriptSnapshot]);
 
   // Switching to interactive mode collapses both side panels (and the contact card is
   // hidden via render) to maximise reading room; switching back to guided restores them.
@@ -655,100 +722,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     }
   };
 
-  // Automated Webhook Actions Trigger Effect
-  React.useEffect(() => {
-    if (!currentNode || currentNode.type !== 'action') return;
-
-    let isMounted = true;
-    const runAction = async () => {
-      const ac = currentNode.data.actionConfig;
-      if (currentNode.data.actionType === 'WEBHOOK' && ac?.webhookUrl) {
-        if (isMounted) {
-          setActionStatus('loading');
-          setActionError(null);
-        }
-
-        try {
-          const response = await fetch('/api/call-centre/webhook', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              url: ac.webhookUrl,
-              headers: ac.webhookHeaders,
-              payload: {
-                campaignId,
-                entityId: currentItem?.entityId,
-                entityName: currentItem?.entityName,
-                entityPhone: currentItem?.entityPhone,
-                entityEmail: currentItem?.entityEmail,
-                collectedAnswers: collectedAnswersRef.current,
-                agentId: user?.uid,
-                agentName: user?.displayName || 'Agent',
-                workspaceId: activeWorkspaceId,
-                timestamp: new Date().toISOString(),
-              }
-            })
-          });
-          const result = await response.json();
-          if (!isMounted) return;
-
-          if (response.ok && result.status >= 200 && result.status < 300) {
-            setActionStatus('success');
-            toast({
-              title: 'Webhook Success',
-              description: `Successfully executed webhook action.`
-            });
-
-            // Automatically transition forward after 1.5 seconds if there's exactly one choice
-            if (choices.length === 1) {
-              setTimeout(() => {
-                if (isMounted) {
-                  handleChoiceClick(choices[0].targetNode.id);
-                }
-              }, 1500);
-            }
-          } else {
-            setActionStatus('error');
-            const errMsg = result.error || `Failed with status ${result.status}`;
-            setActionError(errMsg);
-            toast({
-              variant: 'destructive',
-              title: 'Webhook Failed',
-              description: errMsg
-            });
-          }
-        } catch (err: any) {
-          if (!isMounted) return;
-          setActionStatus('error');
-          setActionError(err.message);
-          toast({
-            variant: 'destructive',
-            title: 'Webhook Error',
-            description: err.message
-          });
-        }
-      } else {
-        if (isMounted) {
-          setActionStatus('success');
-          if (choices.length === 1) {
-            setTimeout(() => {
-              if (isMounted) {
-                handleChoiceClick(choices[0].targetNode.id);
-              }
-            }, 1000);
-          }
-        }
-      }
-    };
-
-    runAction();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentNodeId, choices, handleChoiceClick, campaignId, currentItem, toast]);
+  // Webhook trigger replaced by comprehensive action effects below
 
   // Pre-call Guardrails (DNC/Timezone) calculations
   const isDncContact = React.useMemo(() => {
@@ -828,8 +802,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   const renderedScript = React.useMemo(() => {
     if (!campaign || !currentItem) return '';
-    return resolveLiveText(campaign.scriptSnapshot || '');
-  }, [campaign, currentItem, resolveLiveText]);
+    return resolveLiveText(activeScriptSnapshot);
+  }, [activeScriptSnapshot, currentItem, resolveLiveText]);
 
   const getNodeBadge = (type: ScriptNode['type']) => {
     switch (type) {
@@ -953,6 +927,518 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     setTriggeredNodeIds(prev => new Set(prev).add(node.id));
     await handleOutcomeSubmit(node.data?.outcomeValue || 'Interested');
     return { ok: true };
+  };
+
+  const handleExecuteGuidedAction = async () => {
+    if (!currentNode) return;
+    setActionStatus('loading');
+    setActionError(null);
+    try {
+      const nodeWithResolvedConfig = {
+        ...currentNode,
+        data: {
+          ...currentNode.data,
+          actionConfig: localActionConfig,
+        }
+      };
+      const res = await handleTriggerAction(nodeWithResolvedConfig);
+      if (res.ok) {
+        setActionStatus('success');
+      } else {
+        setActionStatus('error');
+        setActionError(res.error || 'Execution failed.');
+      }
+    } catch (err: any) {
+      setActionStatus('error');
+      setActionError(err.message);
+    }
+  };
+
+  // Action state initialization for Manual Review mode
+  React.useEffect(() => {
+    if (triggerActionsAutomatically) return;
+    if (currentNode?.type === 'action') {
+      const config = (currentNode.data?.actionConfig as Record<string, string>) || {};
+      const initial: Record<string, string> = { ...config };
+      if (currentNode.data?.actionType === 'UPDATE_CONTACT') {
+        initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
+        initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
+        initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
+        initial.updateMode = initial.updateMode || 'update';
+      } else if (currentNode.data?.actionType === 'CREATE_TASK') {
+        initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
+        initial.taskDescription = initial.taskDescription || '';
+        initial.taskPriority = initial.taskPriority || 'medium';
+      } else if (currentNode.data?.actionType === 'SEND_SMS' || currentNode.data?.actionType === 'SEND_WHATSAPP' || currentNode.data?.actionType === 'SEND_EMAIL') {
+        initial.templateId = initial.templateId || '';
+      }
+      setLocalActionConfig(initial);
+      setActionStatus(triggeredNodeIds.has(currentNode.id) ? 'success' : 'idle');
+      setActionError(null);
+    } else {
+      setLocalActionConfig({});
+    }
+  }, [currentNode?.id, currentContact, triggeredNodeIds, triggerActionsAutomatically]);
+
+  // Fetch message template details from firestore client-side in WorkspaceClient
+  React.useEffect(() => {
+    if (triggerActionsAutomatically) return;
+    const config = currentNode?.data?.actionConfig;
+    const templateId = localActionConfig?.templateId || config?.templateId;
+    if (currentNode?.type === 'action' && templateId && firestore) {
+      setLoadingTemplate(true);
+      setTemplateDetails(null);
+      import('firebase/firestore').then(async ({ doc, getDoc }) => {
+        try {
+          const docSnap = await getDoc(doc(firestore, 'message_templates', templateId));
+          if (docSnap.exists()) {
+            setTemplateDetails({
+              subject: docSnap.data()?.subject || '',
+              body: docSnap.data()?.body || '',
+            });
+          }
+        } catch (e) {
+          console.error('Failed to load message template:', e);
+        } finally {
+          setLoadingTemplate(false);
+        }
+      });
+    } else {
+      setTemplateDetails(null);
+      setLoadingTemplate(false);
+    }
+  }, [currentNode?.id, localActionConfig?.templateId, firestore, triggerActionsAutomatically]);
+
+  // Automated Actions Trigger Effect
+  React.useEffect(() => {
+    if (!triggerActionsAutomatically) return;
+    if (!currentNode || currentNode.type !== 'action') return;
+    if (triggeredNodeIds.has(currentNode.id)) {
+      if (choices.length === 1) {
+        const timer = setTimeout(() => {
+          handleChoiceClick(choices[0].targetNode.id);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+      return;
+    }
+
+    let isMounted = true;
+    const runAction = async () => {
+      const ac = currentNode.data.actionConfig;
+      if (currentNode.data.actionType === 'WEBHOOK' && ac?.webhookUrl) {
+        if (isMounted) {
+          setActionStatus('loading');
+          setActionError(null);
+        }
+
+        try {
+          const response = await fetch('/api/call-centre/webhook', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              url: ac.webhookUrl,
+              headers: ac.webhookHeaders,
+              payload: {
+                campaignId,
+                entityId: currentItem?.entityId,
+                entityName: currentItem?.entityName,
+                entityPhone: currentItem?.entityPhone,
+                entityEmail: currentItem?.entityEmail,
+                collectedAnswers: collectedAnswersRef.current,
+                agentId: user?.uid,
+                agentName: user?.displayName || 'Agent',
+                workspaceId: activeWorkspaceId,
+                timestamp: new Date().toISOString(),
+              }
+            })
+          });
+          const result = await response.json();
+          if (!isMounted) return;
+
+          if (response.ok && result.status >= 200 && result.status < 300) {
+            setActionStatus('success');
+            setTriggeredNodeIds(prev => new Set(prev).add(currentNode.id));
+            toast({
+              title: 'Webhook Success',
+              description: `Successfully executed webhook action.`
+            });
+
+            if (choices.length === 1) {
+              setTimeout(() => {
+                if (isMounted) {
+                  handleChoiceClick(choices[0].targetNode.id);
+                }
+              }, 1500);
+            }
+          } else {
+            setActionStatus('error');
+            const errMsg = result.error || `Failed with status ${result.status}`;
+            setActionError(errMsg);
+            toast({
+              variant: 'destructive',
+              title: 'Webhook Failed',
+              description: errMsg
+            });
+          }
+        } catch (err: any) {
+          if (!isMounted) return;
+          setActionStatus('error');
+          setActionError(err.message);
+          toast({
+            variant: 'destructive',
+            title: 'Webhook Error',
+            description: err.message
+          });
+        }
+      } else {
+        if (isMounted) {
+          setActionStatus('loading');
+          setActionError(null);
+        }
+        try {
+          const config = ac || {};
+          const initial: Record<string, unknown> = { ...config } as Record<string, unknown>;
+          if (currentNode.data?.actionType === 'UPDATE_CONTACT') {
+            initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
+            initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
+            initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
+            initial.updateMode = initial.updateMode || 'update';
+          } else if (currentNode.data?.actionType === 'CREATE_TASK') {
+            initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
+            initial.taskDescription = initial.taskDescription || '';
+            initial.taskPriority = initial.taskPriority || 'medium';
+          } else if (currentNode.data?.actionType === 'SEND_SMS' || currentNode.data?.actionType === 'SEND_WHATSAPP' || currentNode.data?.actionType === 'SEND_EMAIL') {
+            initial.templateId = initial.templateId || '';
+          }
+          const nodeWithResolvedConfig = {
+            ...currentNode,
+            data: {
+              ...currentNode.data,
+              actionConfig: initial,
+            }
+          };
+          const res = await handleTriggerAction(nodeWithResolvedConfig);
+          if (!isMounted) return;
+
+          if (res.ok) {
+            setActionStatus('success');
+            if (choices.length === 1) {
+              setTimeout(() => {
+                if (isMounted) {
+                  handleChoiceClick(choices[0].targetNode.id);
+                }
+              }, 1500);
+            }
+          } else {
+            setActionStatus('error');
+            setActionError(res.error || 'Execution failed.');
+          }
+        } catch (err: any) {
+          if (!isMounted) return;
+          setActionStatus('error');
+          setActionError(err.message);
+        }
+      }
+    };
+
+    runAction();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentNode?.id, campaignId, currentItem, user, activeWorkspaceId, choices, handleChoiceClick, toast, triggerActionsAutomatically, triggeredNodeIds, handleTriggerAction, currentContact]);
+
+  const renderGuidedActionConfig = () => {
+    if (!currentNode) return null;
+    const actionType = currentNode.data?.actionType;
+
+    if (actionType === 'UPDATE_CONTACT') {
+      return (
+        <div className="space-y-4 max-w-xl bg-card/60 p-5 rounded-2xl border border-border shadow-sm">
+          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center mb-2">Update Contact Fields</h4>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Contact Name</Label>
+              <Input
+                value={localActionConfig.contactName || ''}
+                onChange={e => setLocalActionConfig(prev => ({ ...prev, contactName: e.target.value }))}
+                placeholder="Name"
+                className="h-9 rounded-xl bg-background border-border text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Contact Email</Label>
+              <Input
+                value={localActionConfig.contactEmail || ''}
+                onChange={e => setLocalActionConfig(prev => ({ ...prev, contactEmail: e.target.value }))}
+                placeholder="Email"
+                type="email"
+                className="h-9 rounded-xl bg-background border-border text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Contact Phone</Label>
+              <Input
+                value={localActionConfig.contactPhone || ''}
+                onChange={e => setLocalActionConfig(prev => ({ ...prev, contactPhone: e.target.value }))}
+                placeholder="Phone number"
+                className="h-9 rounded-xl bg-background border-border text-sm"
+              />
+            </div>
+            
+            <div className="space-y-1.5 pt-2">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Save Option</Label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLocalActionConfig(prev => ({ ...prev, updateMode: 'update' }))}
+                  className={cn(
+                    "flex-grow py-2 rounded-xl text-xs font-bold uppercase border transition-all",
+                    localActionConfig.updateMode === 'update'
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-muted/50 border-transparent hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Update Current
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocalActionConfig(prev => ({ ...prev, updateMode: 'new' }))}
+                  className={cn(
+                    "flex-grow py-2 rounded-xl text-xs font-bold uppercase border transition-all",
+                    localActionConfig.updateMode === 'new'
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-muted/50 border-transparent hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Add as New Contact
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {actionStatus === 'success' && (
+            <div className="text-emerald-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Contact details saved successfully!
+            </div>
+          )}
+          {actionStatus === 'error' && (
+            <div className="text-rose-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {actionError || 'Failed to save details.'}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={handleExecuteGuidedAction}
+            disabled={actionStatus === 'loading'}
+            className="w-full h-10 rounded-xl font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white mt-2 shadow-sm"
+          >
+            {actionStatus === 'loading' ? 'Saving...' : 'Confirm & Save Contact Details'}
+          </Button>
+        </div>
+      );
+    }
+
+    if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
+      const channel = actionType === 'SEND_SMS' ? 'sms' : actionType === 'SEND_WHATSAPP' ? 'whatsapp' : 'email';
+      const label = actionType === 'SEND_SMS' ? 'SMS' : actionType === 'SEND_WHATSAPP' ? 'WhatsApp' : 'Email';
+      const toValue = actionType === 'SEND_EMAIL' ? (currentContact?.email || 'No email configured') : (currentContact?.phone || 'No phone number configured');
+
+      return (
+        <div className="space-y-4 max-w-xl bg-card/60 p-5 rounded-2xl border border-border shadow-sm">
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Select template</Label>
+              <MessagingTemplateSelector
+                category="campaigns"
+                recipientType="entity"
+                channel={channel}
+                value={localActionConfig.templateId ?? ''}
+                onValueChange={(val: string) => setLocalActionConfig(prev => ({ ...prev, templateId: val }))}
+                compact
+              />
+            </div>
+
+            {localActionConfig.templateId ? (
+              loadingTemplate ? (
+                <div className="h-32 w-full rounded-xl bg-muted animate-pulse flex items-center justify-center text-xs text-muted-foreground italic">
+                  Loading template preview...
+                </div>
+              ) : (
+                <div className="space-y-3 pt-2">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block text-center">Preview & Adjust Message</span>
+                  
+                  <div className={cn(
+                    "p-4 rounded-xl border flex flex-col gap-2 text-xs",
+                    actionType === 'SEND_WHATSAPP' ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20" :
+                    actionType === 'SEND_SMS' ? "bg-muted/40 border-border" : "bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/20"
+                  )}>
+                    <div className="flex justify-between border-b border-border/40 pb-1.5 text-[10px] text-muted-foreground">
+                      <span><strong>To:</strong> {toValue}</span>
+                      <span className="font-mono text-[8px] uppercase">{label} Preview</span>
+                    </div>
+
+                    {actionType === 'SEND_EMAIL' && (
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Subject</Label>
+                        <Input
+                          value={localActionConfig.customSubject !== undefined ? localActionConfig.customSubject : (templateDetails?.subject || '')}
+                          onChange={e => setLocalActionConfig(prev => ({ ...prev, customSubject: e.target.value }))}
+                          placeholder="Email subject"
+                          className="h-8 rounded-lg bg-background border-border text-xs"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground">Message Body</Label>
+                      <Textarea
+                        value={localActionConfig.customBody !== undefined ? localActionConfig.customBody : (templateDetails?.body || '')}
+                        onChange={e => setLocalActionConfig(prev => ({ ...prev, customBody: e.target.value }))}
+                        placeholder="Write template body"
+                        rows={5}
+                        className="bg-background border-border rounded-lg text-xs p-2 resize-none font-serif leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )
+            ) : (
+              <div className="text-center py-6 text-xs text-muted-foreground italic border border-dashed border-border rounded-xl">
+                Please select a message template to preview.
+              </div>
+            )}
+          </div>
+
+          {actionStatus === 'success' && (
+            <div className="text-emerald-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Message sent successfully!
+            </div>
+          )}
+          {actionStatus === 'error' && (
+            <div className="text-rose-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {actionError || 'Failed to send message.'}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={handleExecuteGuidedAction}
+            disabled={actionStatus === 'loading' || !localActionConfig.templateId}
+            className={cn(
+              "w-full h-10 rounded-xl font-bold uppercase tracking-wider text-white shadow-sm mt-2",
+              actionType === 'SEND_WHATSAPP' ? "bg-green-600 hover:bg-green-700" :
+              actionType === 'SEND_SMS' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-blue-600 hover:bg-blue-700"
+            )}
+          >
+            {actionStatus === 'loading' ? 'Sending...' : `Confirm & Send ${label}`}
+          </Button>
+        </div>
+      );
+    }
+
+    if (actionType === 'CREATE_TASK') {
+      return (
+        <div className="space-y-4 max-w-xl bg-card/60 p-5 rounded-2xl border border-border shadow-sm">
+          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center mb-2">Create Task</h4>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Task Title</Label>
+              <Input
+                value={localActionConfig.taskTitle || ''}
+                onChange={e => setLocalActionConfig(prev => ({ ...prev, taskTitle: e.target.value }))}
+                placeholder="Task title"
+                className="h-9 rounded-xl bg-background border-border text-sm"
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Task Description</Label>
+              <Textarea
+                value={localActionConfig.taskDescription || ''}
+                onChange={e => setLocalActionConfig(prev => ({ ...prev, taskDescription: e.target.value }))}
+                placeholder="Describe task details..."
+                rows={3}
+                className="bg-background border-border rounded-xl text-xs p-2 resize-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground block mb-1">Priority</Label>
+              <div className="flex gap-2">
+                {['low', 'medium', 'high'].map(prio => (
+                  <button
+                    key={prio}
+                    type="button"
+                    onClick={() => setLocalActionConfig(prev => ({ ...prev, taskPriority: prio }))}
+                    className={cn(
+                      "flex-grow py-1.5 rounded-lg text-xs font-bold uppercase border transition-all",
+                      localActionConfig.taskPriority === prio
+                        ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                        : "bg-muted/50 border-transparent hover:bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {prio}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {actionStatus === 'success' && (
+            <div className="text-emerald-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Task created successfully!
+            </div>
+          )}
+          {actionStatus === 'error' && (
+            <div className="text-rose-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {actionError || 'Failed to create task.'}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={handleExecuteGuidedAction}
+            disabled={actionStatus === 'loading' || !localActionConfig.taskTitle}
+            className="w-full h-10 rounded-xl font-bold uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white mt-2 shadow-sm"
+          >
+            {actionStatus === 'loading' ? 'Creating...' : 'Confirm & Create Task'}
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4 max-w-xl bg-card/60 p-5 rounded-2xl border border-border shadow-sm text-center">
+        <p className="text-xs text-muted-foreground italic leading-relaxed">
+          Configuration properties: {JSON.stringify(localActionConfig)}
+        </p>
+
+        {actionStatus === 'success' && (
+          <div className="text-emerald-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+            <CheckCircle2 className="h-4 w-4" /> Action executed successfully!
+          </div>
+        )}
+        {actionStatus === 'error' && (
+          <div className="text-rose-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+            <AlertCircle className="h-4 w-4 shrink-0" /> {actionError || 'Action execution failed.'}
+          </div>
+        )}
+
+        <Button
+          type="button"
+          onClick={handleExecuteGuidedAction}
+          disabled={actionStatus === 'loading'}
+          className="w-full h-10 rounded-xl font-bold uppercase tracking-wider bg-indigo-600 hover:bg-indigo-700 text-white mt-2 shadow-sm"
+        >
+          {actionStatus === 'loading' ? 'Executing...' : 'Confirm & Execute Action'}
+        </Button>
+      </div>
+    );
   };
 
   const handleStartCall = React.useCallback(() => {
@@ -1376,65 +1862,139 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
               groupedQueue.completed.length === 0 ? (
                 <div className="p-8 text-center text-xs text-muted-foreground italic">No completed calls yet.</div>
               ) : (
-                groupedQueue.completed.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3 rounded-xl border border-border bg-card text-foreground flex flex-col gap-1.5"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-0.5 min-w-0">
-                        <p className="text-xs font-bold truncate">{item.entityName}</p>
-                        <p className="text-[10px] font-mono text-muted-foreground">{item.entityPhone || 'No Phone'}</p>
+                groupedQueue.completed.map((item) => {
+                  const isActive = item.id === currentItemId;
+                  const resolvedEntity = entitiesMap[item.entityId] || (isActive ? entityData : null);
+                  const contactsList = resolvedEntity?.entityContacts || [];
+                  
+                  const resolvedContact = item.contactId 
+                    ? contactsList.find(c => c.id === item.contactId) 
+                    : (isActive && selectedContactId 
+                        ? contactsList.find(c => c.id === selectedContactId) 
+                        : contactsList.find(c => c.isPrimary) || contactsList[0]);
+
+                  const rawContactName = resolvedContact?.name || item.contactName || (isActive ? currentContact?.name : null);
+                  const cardEntityName = item.entityName;
+                  const resolvedContactName = rawContactName || (item.entityType === 'person' ? cardEntityName : 'Primary Contact');
+                  const resolvedEntityName = cardEntityName === resolvedContactName ? '' : cardEntityName;
+
+                  const resolvedContactRole = resolvedContact?.typeLabel || resolvedContact?.typeKey || (resolvedContact?.isPrimary ? 'Primary' : resolvedContact?.isSignatory ? 'Signatory' : null) || item.contactRole || (isActive ? (currentContact?.typeLabel || currentContact?.typeKey) : null) || 'Contact';
+                  const resolvedPhone = resolvedContact?.phone || (isActive ? currentContact?.phone : null) || item.entityPhone || 'No Phone';
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-xl border border-border bg-card text-foreground flex flex-col gap-1.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1 min-w-0">
+                          <p className="text-xs font-bold truncate text-foreground">
+                            {resolvedContactName}
+                          </p>
+                          {resolvedEntityName && (
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {resolvedEntityName}
+                            </p>
+                          )}
+                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/85 font-black">
+                            {resolvedContactRole}
+                          </p>
+                          <p className="text-[10px] font-mono text-muted-foreground">{resolvedPhone}</p>
+                        </div>
+                        {item.outcome && (
+                          <Badge className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                            {item.outcome}
+                          </Badge>
+                        )}
                       </div>
-                      {item.outcome && (
-                        <Badge className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                          {item.outcome}
-                        </Badge>
+                      {item.duration != null && item.duration > 0 && (
+                        <p className="text-[9px] text-muted-foreground font-mono">
+                          Duration: {Math.floor(item.duration / 60)}m {item.duration % 60}s
+                        </p>
                       )}
                     </div>
-                    {item.duration != null && item.duration > 0 && (
-                      <p className="text-[9px] text-muted-foreground font-mono">
-                        Duration: {Math.floor(item.duration / 60)}m {item.duration % 60}s
-                      </p>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )
             ) : leftView === 'callbacks' && !isLeftCollapsed ? (
               /* ── Callbacks contacts view ── */
               groupedQueue.callbacks.length === 0 ? (
                 <div className="p-8 text-center text-xs text-muted-foreground italic">No scheduled callbacks.</div>
               ) : (
-                groupedQueue.callbacks.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setCurrentItemId(item.id)}
-                    className={cn(
-                      "p-3 rounded-xl border cursor-pointer transition-all flex flex-col gap-1.5",
-                      item.id === currentItemId
-                        ? "bg-primary/10 border-primary text-primary shadow"
-                        : "bg-card border-border text-muted-foreground hover:bg-muted hover:border-primary/30 hover:text-foreground"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-0.5 min-w-0">
-                        <p className="text-xs font-bold truncate text-foreground">{item.entityName}</p>
-                        <p className="text-[10px] font-mono">{item.entityPhone || 'No Phone'}</p>
+                groupedQueue.callbacks.map((item) => {
+                  const isActive = item.id === currentItemId;
+                  const resolvedEntity = entitiesMap[item.entityId] || (isActive ? entityData : null);
+                  const contactsList = resolvedEntity?.entityContacts || [];
+                  
+                  const resolvedContact = item.contactId 
+                    ? contactsList.find(c => c.id === item.contactId) 
+                    : (isActive && selectedContactId 
+                        ? contactsList.find(c => c.id === selectedContactId) 
+                        : contactsList.find(c => c.isPrimary) || contactsList[0]);
+
+                  const rawContactName = resolvedContact?.name || item.contactName || (isActive ? currentContact?.name : null);
+                  const cardEntityName = item.entityName;
+                  const resolvedContactName = rawContactName || (item.entityType === 'person' ? cardEntityName : 'Primary Contact');
+                  const resolvedEntityName = cardEntityName === resolvedContactName ? '' : cardEntityName;
+
+                  const resolvedContactRole = resolvedContact?.typeLabel || resolvedContact?.typeKey || (resolvedContact?.isPrimary ? 'Primary' : resolvedContact?.isSignatory ? 'Signatory' : null) || item.contactRole || (isActive ? (currentContact?.typeLabel || currentContact?.typeKey) : null) || 'Contact';
+                  const resolvedPhone = resolvedContact?.phone || (isActive ? currentContact?.phone : null) || item.entityPhone || 'No Phone';
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => setCurrentItemId(item.id)}
+                      className={cn(
+                        "p-3 rounded-xl border cursor-pointer transition-all flex flex-col gap-1.5",
+                        isActive
+                          ? "bg-primary/10 border-primary text-primary shadow"
+                          : "bg-card border-border text-muted-foreground hover:bg-muted hover:border-primary/30 hover:text-foreground"
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-3 w-full">
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs font-bold truncate text-foreground">
+                              {resolvedContactName}
+                            </p>
+                            <Badge className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500">
+                              Callback
+                            </Badge>
+                          </div>
+                          {resolvedEntityName && (
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {resolvedEntityName}
+                            </p>
+                          )}
+                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/85 font-black">
+                            {resolvedContactRole}
+                          </p>
+                          <p className="text-[10px] font-mono text-muted-foreground">{resolvedPhone}</p>
+                          {item.callbackDate && (
+                            <div className="flex items-center gap-1 text-[9px] font-mono text-amber-500 mt-1">
+                              <Clock className="h-3 w-3 shrink-0" />
+                              <span className="truncate">
+                                Scheduled: {new Date(item.callbackDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {isActive && (
+                          <a
+                            href={`tel:${resolvedPhone}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#4d69ff] hover:bg-[#3d59ef] text-white font-bold text-[10px] rounded-full shadow transition-transform hover:scale-[1.02] shrink-0"
+                          >
+                            <Phone className="h-3 w-3 fill-current animate-bounce" />
+                            <span>Call</span>
+                          </a>
+                        )}
                       </div>
-                      <Badge className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500">
-                        Callback
-                      </Badge>
                     </div>
-                    {item.callbackDate && (
-                      <div className="flex items-center gap-1 text-[9px] font-mono text-amber-500">
-                        <Clock className="h-3 w-3 shrink-0" />
-                        <span className="truncate">
-                          Scheduled: {new Date(item.callbackDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )
             ) : (
               /* ── Pending queue view ── */
@@ -1443,45 +2003,90 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   {isLeftCollapsed ? '—' : 'No contacts in queue.'}
                 </div>
               ) : (
-                processedPendingQueue.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setCurrentItemId(item.id)}
-                    className={cn(
-                      "rounded-xl border cursor-pointer transition-all",
-                      isLeftCollapsed ? "p-1.5 flex items-center justify-center" : "p-3 flex items-center justify-between",
-                      item.id === currentItemId
-                        ? "bg-primary/10 border-primary text-primary shadow"
-                        : "bg-card border-border text-muted-foreground hover:bg-muted hover:border-primary/30 hover:text-foreground"
-                    )}
-                    title={isLeftCollapsed ? `${item.entityName} — ${item.entityPhone || 'No Phone'}` : undefined}
-                  >
-                    {isLeftCollapsed ? (
-                      /* Avatar-only view */
-                      <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black uppercase shrink-0",
-                        item.id === currentItemId
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted border border-border text-muted-foreground"
-                      )}>
-                        {(item.entityName || '?')[0]}
-                      </div>
-                    ) : (
-                      /* Full view */
-                      <>
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold truncate line-clamp-1">{item.entityName}</p>
-                          <p className="text-[10px] font-mono">{item.entityPhone || 'No Phone'}</p>
+                processedPendingQueue.map((item) => {
+                  const isActive = item.id === currentItemId;
+                  const resolvedEntity = entitiesMap[item.entityId] || (isActive ? entityData : null);
+                  const contactsList = resolvedEntity?.entityContacts || [];
+                  
+                  const resolvedContact = item.contactId 
+                    ? contactsList.find(c => c.id === item.contactId) 
+                    : (isActive && selectedContactId 
+                        ? contactsList.find(c => c.id === selectedContactId) 
+                        : contactsList.find(c => c.isPrimary) || contactsList[0]);
+
+                  const rawContactName = resolvedContact?.name || item.contactName || (isActive ? currentContact?.name : null);
+                  const cardEntityName = item.entityName;
+                  const resolvedContactName = rawContactName || (item.entityType === 'person' ? cardEntityName : 'Primary Contact');
+                  const resolvedEntityName = cardEntityName === resolvedContactName ? '' : cardEntityName;
+
+                  const resolvedContactRole = resolvedContact?.typeLabel || resolvedContact?.typeKey || (resolvedContact?.isPrimary ? 'Primary' : resolvedContact?.isSignatory ? 'Signatory' : null) || item.contactRole || (isActive ? (currentContact?.typeLabel || currentContact?.typeKey) : null) || 'Contact';
+                  const resolvedPhone = resolvedContact?.phone || (isActive ? currentContact?.phone : null) || item.entityPhone || 'No Phone';
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => setCurrentItemId(item.id)}
+                      className={cn(
+                        "rounded-xl border cursor-pointer transition-all",
+                        isLeftCollapsed ? "p-1.5 flex items-center justify-center" : "p-3 flex items-center justify-between gap-3 relative",
+                        isActive
+                          ? "bg-primary/10 border-primary text-primary shadow"
+                          : "bg-card border-border text-muted-foreground hover:bg-muted hover:border-primary/30 hover:text-foreground"
+                      )}
+                      title={isLeftCollapsed ? `${resolvedContactName} — ${resolvedPhone}` : undefined}
+                    >
+                      {isLeftCollapsed ? (
+                        /* Avatar-only view */
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black uppercase shrink-0",
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted border border-border text-muted-foreground"
+                        )}>
+                          {(resolvedContactName || '?')[0]}
                         </div>
-                        {item.attempts > 0 && (
-                          <Badge variant="outline" className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted border-border text-muted-foreground">
-                            {item.attempts}×
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))
+                      ) : (
+                        /* Full view */
+                        <>
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-bold truncate text-foreground">
+                                {resolvedContactName}
+                              </p>
+                              {item.attempts > 0 && (
+                                <Badge variant="outline" className="shrink-0 text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted border-border text-muted-foreground">
+                                  {item.attempts}×
+                                </Badge>
+                              )}
+                            </div>
+                            {resolvedEntityName && (
+                              <p className="text-[10px] text-muted-foreground truncate">
+                                {resolvedEntityName}
+                              </p>
+                            )}
+                            <p className="text-[9px] uppercase tracking-wider text-muted-foreground/85 font-black">
+                              {resolvedContactRole}
+                            </p>
+                            <p className="text-[10px] font-mono text-muted-foreground">{resolvedPhone}</p>
+                          </div>
+
+                          {isActive && (
+                            <a
+                              href={`tel:${resolvedPhone}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#4d69ff] hover:bg-[#3d59ef] text-white font-bold text-[10px] rounded-full shadow transition-transform hover:scale-[1.02] shrink-0"
+                            >
+                              <Phone className="h-3 w-3 fill-current animate-bounce" />
+                              <span>Call</span>
+                            </a>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })
               )
             )}
           </div>
@@ -1528,64 +2133,6 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
           
           {currentItem ? (
             <>
-              {/* Contact Profile Context Panel — hidden in interactive mode for more room */}
-              {liveScriptView !== 'interactive' && (
-              <div className="p-5 bg-card border border-border rounded-2xl space-y-4 shrink-0">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-muted-foreground">
-                      <User className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-foreground">{currentItem.entityName}</h3>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{currentItem.entityType}</p>
-                    </div>
-                  </div>
-
-                  {/* Switcher dropdown */}
-                  {entityData?.entityContacts && entityData.entityContacts.length > 1 && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-widest">Dial Target:</span>
-                      <Select
-                        value={currentContact?.id || ''}
-                        onValueChange={setSelectedContactId}
-                      >
-                        <SelectTrigger className="h-8 w-44 rounded-xl bg-background border text-[11px] font-bold">
-                          <SelectValue placeholder="Select contact..." />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border bg-card">
-                          {entityData.entityContacts.map((c: EntityContact) => (
-                            <SelectItem key={c.id} value={c.id} className="text-xs font-semibold">
-                              {c.name} {c.isPrimary ? '(Primary)' : c.isSignatory ? '(Signatory)' : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* OS Telephony trigger */}
-                  <a 
-                    href={`tel:${currentContact?.phone || currentItem.entityPhone}`}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/95 text-primary-foreground font-bold text-xs rounded-xl shadow-lg transition-transform hover:scale-[1.02]"
-                  >
-                    <Phone className="h-4 w-4 fill-current animate-bounce" /> Call Contact: {currentContact?.name || currentItem.entityName} ({currentContact?.phone || currentItem.entityPhone || 'Missing phone'})
-                  </a>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-border text-xs">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <span>Email: <span className="text-foreground font-medium">{currentContact?.email || currentItem.entityEmail || 'No Email'}</span></span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <FolderOpen className="h-4 w-4 text-primary" />
-                    <span>Contact Stage: <span className="text-primary font-bold">{currentItem.status}</span></span>
-                  </div>
-                </div>
-              </div>
-              )}
-
               {/* Call Script Reading panel */}
               <div className="flex-grow bg-card border border-border rounded-2xl p-6 shadow-sm relative flex flex-col min-h-0 overflow-hidden">
                 <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -1605,6 +2152,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                       triggeredIds={triggeredNodeIds}
                       currentContact={currentContact}
                       entityData={entityData}
+                      triggerActionsAutomatically={triggerActionsAutomatically}
                     />
                   </div>
                 ) : isBranching ? (
@@ -1642,41 +2190,6 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                     </div>
                   ) : (
                     <div className="flex flex-grow min-h-0 overflow-hidden pt-4">
-                      {/* Left Timeline */}
-                      <div className="flex flex-col gap-2 border-r border-border pr-4 mr-4 shrink-0 w-48 overflow-y-auto">
-                        <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest block mb-2">Conversation Path</span>
-                        {pathHistory.length === 0 ? (
-                          <span className="text-[10px] text-muted-foreground italic">No steps taken yet.</span>
-                        ) : (
-                          <div className="space-y-4 relative pl-3 before:absolute before:left-1.5 before:top-1 before:bottom-1 before:w-[1px] before:bg-border">
-                            {pathHistory.map((histNodeId, idx) => {
-                              const histNode = scriptGraph?.nodes.find(n => n.id === histNodeId);
-                              if (!histNode) return null;
-                              return (
-                                <div key={`${histNodeId}-${idx}`} className="relative flex items-center gap-2 text-[10px]">
-                                  <span className="absolute -left-[10px] w-2 h-2 rounded-full bg-muted-foreground border border-background" />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleHistoryClick(histNodeId, idx)}
-                                    className="text-left font-bold text-muted-foreground hover:text-primary transition-colors hover:underline truncate max-w-[130px]"
-                                    title={`Jump back to ${histNode.data.label}`}
-                                  >
-                                    {histNode.data.label || histNode.id}
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        {currentNode && (
-                          <div className="mt-4 pt-4 border-t border-border pl-3 relative">
-                            <span className="absolute -left-[10px] top-[22px] w-2 h-2 rounded-full bg-primary animate-pulse" />
-                            <span className="text-[9px] font-black uppercase text-primary tracking-wider block">Active Node</span>
-                            <span className="text-[10px] font-bold text-foreground block truncate max-w-[130px]">{currentNode.data.label}</span>
-                          </div>
-                        )}
-                      </div>
-                      
                       {/* Right dialog state & choices */}
                       <div className="flex-grow flex flex-col min-h-0">
                         {/* Scrollable Readable Content */}
@@ -1748,33 +2261,37 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
                               {currentNode?.type === 'action' && (
                                 <div className="space-y-4 max-w-xl">
-                                  <div className={cn(
-                                    "p-4 border rounded-xl space-y-2",
-                                    actionStatus === 'loading' ? "bg-primary/5 border-primary/20 text-primary" :
-                                    actionStatus === 'success' ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600" :
-                                    actionStatus === 'error' ? "bg-rose-500/5 border-rose-500/20 text-rose-600" :
-                                    "bg-muted border-border text-muted-foreground"
-                                  )}>
-                                    <div className="flex items-center justify-between">
-                                      <h4 className="text-xs font-bold uppercase tracking-wide">
-                                        {actionStatus === 'loading' ? 'Executing Automation Action...' :
-                                         actionStatus === 'success' ? 'Automation Action Completed' :
-                                         actionStatus === 'error' ? 'Automation Action Failed' :
-                                         'Automation Action Step'}
-                                      </h4>
-                                      {actionStatus === 'loading' && <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />}
-                                      {actionStatus === 'success' && <Check className="h-3.5 w-3.5 text-emerald-600" />}
-                                      {actionStatus === 'error' && <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />}
-                                    </div>
-                                    <p className="text-xs text-foreground">
-                                      This step triggers the automation action: <span className="font-extrabold">{currentNode.data.actionType?.replace('_', ' ')}</span>.
-                                    </p>
-                                    {actionError && (
-                                      <p className="text-[11px] text-rose-600 font-mono border-t border-rose-500/10 pt-2 mt-2">
-                                        Error: {actionError}
+                                  {triggerActionsAutomatically ? (
+                                    <div className={cn(
+                                      "p-4 border rounded-xl space-y-2",
+                                      actionStatus === 'loading' ? "bg-primary/5 border-primary/20 text-primary" :
+                                      actionStatus === 'success' ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600" :
+                                      actionStatus === 'error' ? "bg-rose-500/5 border-rose-500/20 text-rose-600" :
+                                      "bg-muted border-border text-muted-foreground"
+                                    )}>
+                                      <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-bold uppercase tracking-wide">
+                                          {actionStatus === 'loading' ? 'Executing Automation Action...' :
+                                           actionStatus === 'success' ? 'Automation Action Completed' :
+                                           actionStatus === 'error' ? 'Automation Action Failed' :
+                                           'Automation Action Step'}
+                                        </h4>
+                                        {actionStatus === 'loading' && <RefreshCw className="h-3.5 w-3.5 animate-spin text-primary" />}
+                                        {actionStatus === 'success' && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                                        {actionStatus === 'error' && <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />}
+                                      </div>
+                                      <p className="text-xs text-foreground">
+                                        This step triggers the automation action: <span className="font-extrabold">{currentNode.data.actionType?.replace('_', ' ')}</span>.
                                       </p>
-                                    )}
-                                  </div>
+                                      {actionError && (
+                                        <p className="text-[11px] text-rose-600 font-mono border-t border-rose-500/10 pt-2 mt-2">
+                                          Error: {actionError}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    renderGuidedActionConfig()
+                                  )}
                                 </div>
                               )}
 
@@ -1785,7 +2302,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                   </span>
                                   <ScriptBodyDisplay
                                     text={resolveLiveText(subObjections[selectedSubObjectionIndex ?? 0]?.description || '')}
-                                    className="text-base font-serif text-foreground leading-relaxed max-w-2xl pr-4"
+                                    className="text-[24px] font-serif text-foreground leading-relaxed max-w-2xl pr-4"
                                   />
                                 </div>
                               )}
@@ -1829,7 +2346,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                               {currentNode?.type !== 'objection' && currentNode?.type !== 'start' && currentNode?.type !== 'end' && currentNode?.data?.text && (
                                 <ScriptBodyDisplay
                                   text={resolvedActiveNodeText}
-                                  className="text-base font-serif text-foreground leading-relaxed max-w-2xl pr-4 select-text"
+                                  className="text-[24px] font-serif text-foreground leading-relaxed max-w-2xl pr-4 select-text"
                                 />
                               )}
 
@@ -1992,7 +2509,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                 ) : (
                   <ScriptBodyDisplay
                     text={renderedScript}
-                    className="text-base font-serif text-zinc-200 leading-relaxed max-w-3xl pr-4 select-text pt-4 flex-grow overflow-y-auto min-h-0"
+                    className="text-[24px] font-serif text-zinc-200 leading-relaxed max-w-3xl pr-4 select-text pt-4 flex-grow overflow-y-auto min-h-0"
                   />
                 )}
               </div>

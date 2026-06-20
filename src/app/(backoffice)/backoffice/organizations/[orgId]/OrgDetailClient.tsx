@@ -20,6 +20,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getOrganizationDetail, getOrganizationDiagnostics } from '@/lib/backoffice/backoffice-org-actions';
 import ShareOrgInvite from '../components/ShareOrgInvite';
 import type { Organization } from '@/lib/types';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { useBackoffice } from '../../context/BackofficeProvider';
+import {
+  toggleOrganizationActivityLogging,
+  clearOrganizationActivityLogs,
+} from '@/lib/backoffice/backoffice-org-actions';
 
 // ─────────────────────────────────────────────────
 // Organization Detail Client
@@ -202,6 +209,12 @@ export default function OrgDetailClient({ orgId }: { orgId: string }) {
           >
             Audit History
           </TabsTrigger>
+          <TabsTrigger
+            value="activity-control"
+            className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer"
+          >
+            Activity Control
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -377,7 +390,188 @@ export default function OrgDetailClient({ orgId }: { orgId: string }) {
             </p>
           </div>
         </TabsContent>
+
+        {/* Activity Control Tab */}
+        <TabsContent value="activity-control" className="space-y-4">
+          <ActivityControlPane org={org} onReload={async () => {
+            const orgResult = await getOrganizationDetail(orgId);
+            if (orgResult.success && orgResult.data) setOrg(orgResult.data);
+          }} />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function ActivityControlPane({
+  org,
+  onReload,
+}: {
+  org: OrgDetail;
+  onReload: () => Promise<void>;
+}) {
+  const { profile } = useBackoffice();
+  const { toast } = useToast();
+  const [isToggling, setIsToggling] = React.useState(false);
+  const [isClearing, setIsClearing] = React.useState(false);
+  const [confirmSlug, setConfirmSlug] = React.useState('');
+  const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+
+  const isLoggingEnabled = org.activityLoggingEnabled !== false && org.activityLoggingDisabled !== true;
+
+  async function handleToggle(checked: boolean) {
+    if (!profile) return;
+    setIsToggling(true);
+    try {
+      const result = await toggleOrganizationActivityLogging(org.id, checked, {
+        userId: profile.id || '',
+        name: profile.name || '',
+        email: profile.email || '',
+        role: 'super_admin',
+      });
+      if (result.success) {
+        toast({
+          title: checked ? 'Logging Enabled' : 'Logging Disabled',
+          description: `Activity logging has been successfully turned ${checked ? 'on' : 'off'} for this organization.`,
+        });
+        await onReload();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Failed to update setting',
+          description: result.error,
+        });
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      toast({
+        variant: 'destructive',
+        title: 'Error updating setting',
+        description: errMsg,
+      });
+    } finally {
+      setIsToggling(false);
+    }
+  }
+
+  async function handleClearLogs() {
+    if (confirmSlug !== org.slug) {
+      toast({
+        variant: 'destructive',
+        title: 'Verification Failed',
+        description: 'Organization slug does not match.',
+      });
+      return;
+    }
+    if (!profile) return;
+    setIsClearing(true);
+    try {
+      const result = await clearOrganizationActivityLogs(org.id, {
+        userId: profile.id || '',
+        name: profile.name || '',
+        email: profile.email || '',
+        role: 'super_admin',
+      });
+      if (result.success) {
+        toast({
+          title: 'Logs Cleared',
+          description: `Successfully deleted ${result.count} activity logs.`,
+        });
+        setShowConfirmModal(false);
+        setConfirmSlug('');
+        await onReload();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Clear Failed',
+          description: result.error,
+        });
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      toast({
+        variant: 'destructive',
+        title: 'Error clearing logs',
+        description: errMsg,
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-border bg-muted/50 p-6 space-y-6">
+        <div className="flex items-center justify-between border-b border-border/40 pb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Activity Logging</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Temporarily disable or enable activity persistence across all workspaces for this tenant.
+            </p>
+          </div>
+          <Switch
+            checked={isLoggingEnabled}
+            disabled={isToggling}
+            onCheckedChange={handleToggle}
+          />
+        </div>
+
+        <div className="flex items-start justify-between">
+          <div className="max-w-md">
+            <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Permanently purge all activity records for this organization. This process is irreversible.
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            className="rounded-xl font-semibold text-xs px-4"
+            onClick={() => setShowConfirmModal(true)}
+          >
+            Clear Activity Logs
+          </Button>
+        </div>
+      </div>
+
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md p-6 rounded-2xl border border-border bg-card shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+            <h4 className="text-base font-bold text-foreground">Are you absolutely sure?</h4>
+            <p className="text-xs text-muted-foreground">
+              This will delete all activity logs from the database for <strong>{org.name}</strong>.
+              To confirm, type the organization slug <code className="px-1 py-0.5 rounded bg-muted font-mono text-foreground">{org.slug}</code>:
+            </p>
+            <input
+              type="text"
+              className="w-full p-2.5 rounded-xl border border-border bg-muted text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+              placeholder={org.slug}
+              value={confirmSlug}
+              onChange={(e) => setConfirmSlug(e.target.value)}
+            />
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                variant="ghost"
+                className="rounded-xl text-xs font-semibold"
+                disabled={isClearing}
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setConfirmSlug('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="rounded-xl text-xs font-semibold px-4"
+                disabled={isClearing || confirmSlug !== org.slug}
+                onClick={handleClearLogs}
+              >
+                {isClearing ? 'Deleting...' : 'Confirm Purge'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

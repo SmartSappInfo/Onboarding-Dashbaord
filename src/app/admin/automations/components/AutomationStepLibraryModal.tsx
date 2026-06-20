@@ -31,7 +31,8 @@ import {
   Info,
   Bell,
   SplitSquareVertical,
-  Sparkles
+  Sparkles,
+  UserCog
 } from 'lucide-react';
 
 interface AutomationStepLibraryModalProps {
@@ -265,6 +266,15 @@ const LIBRARY_ITEMS = [
     icon: Tag,
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Add Contact to Entity', actionType: 'ADD_CONTACT_TO_ENTITY' }
+  },
+  {
+    id: 'update_contact',
+    title: 'Update Contact',
+    description: 'Locate an existing contact inside an entity using filters, and update their details.',
+    category: 'contacts_data',
+    icon: UserCog,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Update Contact', actionType: 'UPDATE_CONTACT', config: { matchLogic: 'all', caseInsensitive: false } }
   },
   {
     id: 'add_to_call_campaign',

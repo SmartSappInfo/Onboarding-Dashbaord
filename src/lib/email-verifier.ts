@@ -36,20 +36,16 @@ function loadBurnerDomains(): Set<string> {
 
   try {
     // Works from both Next.js API routes (server) and direct Node execution.
-    // __dirname resolves to .next/server/... at runtime, so we anchor from cwd.
-    const candidates = [
-      path.join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'disposable_email_blocklist.conf'),
-    ];
+    // Statically scoped to 'data' subfolder to prevent Next NFT from tracing the root directory.
+    const targetPath = path.join(process.cwd(), 'data', 'disposable_email_blocklist.conf');
 
-    for (const filePath of candidates) {
-      if (fs.existsSync(filePath)) {
-        const lines = fs.readFileSync(filePath, 'utf-8')
-          .split('\n')
-          .map(l => l.trim().toLowerCase())
-          .filter(l => l.length > 0 && !l.startsWith('#'));
-        console.log(`[EmailVerifier] Loaded ${lines.length} burner domains from ${filePath}`);
-        return new Set(lines);
-      }
+    if (fs.existsSync(targetPath)) {
+      const lines = fs.readFileSync(targetPath, 'utf-8')
+        .split('\n')
+        .map(l => l.trim().toLowerCase())
+        .filter(l => l.length > 0 && !l.startsWith('#'));
+      console.log(`[EmailVerifier] Loaded ${lines.length} burner domains from ${targetPath}`);
+      return new Set(lines);
     }
 
     console.warn('[EmailVerifier] disposable_email_blocklist.conf not found — using fallback list.');

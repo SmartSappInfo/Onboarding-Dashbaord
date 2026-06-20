@@ -167,6 +167,7 @@ export function UploadStep({
 }: UploadStepProps) {
     const [dragActive, setDragActive] = React.useState(false);
     const [fileSizeError, setFileSizeError] = React.useState<string | null>(null);
+    const [uploadError, setUploadError] = React.useState<string | null>(null);
 
     const handleDrag = React.useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -180,6 +181,7 @@ export function UploadStep({
 
     const processDroppedFile = (file: File) => {
         setFileSizeError(null);
+        setUploadError(null);
         if (file.size > MAX_FILE_SIZE_BYTES) {
             setFileSizeError(
                 `File is ${(file.size / 1024 / 1024).toFixed(1)} MB. Maximum allowed size is 2 MB. Please reduce the file size and try again.`
@@ -204,7 +206,39 @@ export function UploadStep({
                 const wb = XLSX.read(evt.target?.result as string, { type: 'binary' });
                 processResults(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { raw: false }));
             };
+            reader.onerror = () => {
+                setUploadError('Failed to read the spreadsheet file.');
+            };
             reader.readAsBinaryString(file);
+        } else if (extension === 'ntt' || extension === 'json') {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const parsed = JSON.parse(evt.target?.result as string);
+                    const dataArray = Array.isArray(parsed) ? parsed : [parsed];
+                    const validRows = dataArray.filter((row): row is Record<string, unknown> => row !== null && typeof row === 'object');
+                    
+                    if (validRows.length === 0) {
+                        setUploadError('The file contains no valid contact records.');
+                        return;
+                    }
+                    
+                    // Strip metadata property _entityType if present
+                    const cleanedData = validRows.map((row) => {
+                        const { _entityType, ...rest } = row;
+                        return rest;
+                    });
+                    
+                    processResults(cleanedData);
+                } catch (err) {
+                    console.error('Failed to parse .ntt JSON file:', err);
+                    setUploadError('Invalid JSON or NTT file format.');
+                }
+            };
+            reader.onerror = () => {
+                setUploadError('Failed to read the JSON/NTT file.');
+            };
+            reader.readAsText(file);
         }
     };
 
@@ -342,6 +376,29 @@ export function UploadStep({
                 </div>
             )}
 
+            {uploadError && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Alert variant="destructive" className="rounded-2xl border-rose-500/20 bg-rose-500/5 text-rose-600 dark:text-rose-400 relative">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle className="font-bold pl-7">Upload Error</AlertTitle>
+                        <AlertDescription className="pl-7 pr-8 font-medium">
+                            {uploadError}
+                        </AlertDescription>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setUploadError(null);
+                            }}
+                            className="absolute top-4 right-4 text-rose-500 hover:text-rose-700 transition-colors"
+                        >
+                            <X size={16} />
+                        </button>
+                    </Alert>
+                </div>
+            )}
+
             <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
                 <CardContent className="p-8 sm:p-12">
                     <label 
@@ -367,13 +424,13 @@ export function UploadStep({
                                     Drop your spreadsheet here
                                 </p>
                                 <p className="text-xs text-muted-foreground font-medium">
-                                    Supports <span className="font-bold text-foreground">.csv</span>, <span className="font-bold text-foreground">.xlsx</span>, and <span className="font-bold text-foreground">.xls</span> files (Max 2 MB)
+                                    Supports <span className="font-bold text-foreground">.csv</span>, <span className="font-bold text-foreground">.xlsx</span>, <span className="font-bold text-foreground">.xls</span>, and <span className="font-bold text-foreground">.ntt</span> files (Max 2 MB)
                                 </p>
                             </div>
                             <div className="px-5 py-1.5 rounded-full border border-border bg-background text-[10px] font-bold text-muted-foreground group-hover:border-primary/50 group-hover:text-primary transition-all">
                                 Click to browse files
                             </div>
-                            <Input id="bulk-file" type="file" className="hidden" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} />
+                            <Input id="bulk-file" type="file" className="hidden" accept=".csv, .xlsx, .xls, .ntt, .json" onChange={handleFileUpload} />
                         </div>
                     </label>
                 </CardContent>
