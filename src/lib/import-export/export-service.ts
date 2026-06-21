@@ -5,7 +5,6 @@
  * Requirements: 27
  */
 
-import { stringify } from 'csv-stringify/sync';
 import type { Entity, WorkspaceEntity } from '../types';
 import {
   INSTITUTION_CSV_COLUMNS,
@@ -13,6 +12,19 @@ import {
 } from './institution-template';
 import { FAMILY_CSV_COLUMNS, type FamilyImportRow } from './family-template';
 import { PERSON_CSV_COLUMNS, type PersonImportRow } from './person-template';
+
+/**
+ * Escapes a field value for CSV format (RFC 4180)
+ */
+function escapeCSVValue(val: unknown): string {
+  if (val === undefined || val === null) {
+    return '""';
+  }
+  const str = String(val);
+  const escaped = str.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
 
 /**
  * Export institution entity to CSV row
@@ -201,8 +213,10 @@ export function exportEntitiesToCSV(
       throw new Error(`Unsupported entity type: ${entityType}`);
   }
 
-  return stringify(rows, {
-    header: true,
-    columns: columns as string[],
-  });
+  const headerLine = columns.map(escapeCSVValue).join(',');
+  const rowLines = rows.map((row) =>
+    columns.map((col) => escapeCSVValue(row[col])).join(',')
+  );
+
+  return [headerLine, ...rowLines].join('\n') + '\n';
 }

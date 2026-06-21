@@ -19,8 +19,11 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { MappableInputField } from './MappableInputField';
-import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace } from '@/lib/types';
+import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, SenderProfile } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useCallCampaigns } from '@/lib/call-centre-hooks';
 
 const NATIVE_ENTITY_FIELDS = [
   // Common
@@ -665,9 +668,27 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
 }: ActionConfigPanelProps) {
   const { toast } = useToast();
   const { activeWorkspace } = useWorkspace() as { activeWorkspace?: Workspace };
+  const { campaigns = [] } = useCallCampaigns((activeWorkspace as Workspace | undefined)?.id);
+  const activeCamps = campaigns.filter((c: { status?: string }) => c.status !== 'archived');
+
+  const firestore = useFirestore();
+  const profilesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const targetChannel = actionType === 'DIRECT_EMAIL' ? 'email' : 'sms';
+    return query(
+      collection(firestore, 'sender_profiles'),
+      where('isActive', '==', true),
+      where('channel', '==', targetChannel)
+    );
+  }, [firestore, actionType]);
+
+  const { data: senderProfiles } = useCollection<SenderProfile>(profilesQuery);
 
   React.useEffect(() => {
-    if (actionType === 'SEND_MESSAGE' && config.recipientTargets === undefined) {
+    if (
+      (actionType === 'SEND_MESSAGE' || actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS') &&
+      config.recipientTargets === undefined
+    ) {
       onUpdateConfig({ recipientTargets: ['triggering'] });
     }
   }, [actionType, config.recipientTargets, onUpdateConfig]);
@@ -804,6 +825,178 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         </div>
       ) : null}
       
+      {actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS' ? (
+        <div className="space-y-6 text-left">
+          {/* Sender Profile Selector */}
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+              Sender Profile
+            </Label>
+            <Select
+              value={(config.senderProfileId as string) || 'default'}
+              onValueChange={(v) => updateConfig({ senderProfileId: v })}
+            >
+              <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-bold px-4 active:scale-[0.97] transition-all duration-150 ease-out">
+                <SelectValue placeholder="Default Profile" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="default">Default Active Profile</SelectItem>
+                {senderProfiles?.map((profile) => (
+                  <SelectItem key={profile.id} value={profile.id}>
+                    {profile.name} ({profile.identifier})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Subject Input (DIRECT_EMAIL only) */}
+          {actionType === 'DIRECT_EMAIL' ? (
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                Subject Line
+              </Label>
+              <MappableInputField
+                placeholder="e.g. Update for {{entity.displayName}}"
+                value={(config.directSubject as string) || ''}
+                onChange={(val) => updateConfig({ directSubject: val })}
+                inputClassName="font-semibold text-xs px-4"
+                appFields={appFields}
+              />
+            </div>
+          ) : null}
+
+          {/* Message Body Input */}
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+              Message Body
+            </Label>
+            <MappableInputField
+              placeholder={
+                actionType === 'DIRECT_EMAIL' 
+                  ? "Write your email message here..." 
+                  : "Write your SMS text message here..."
+              }
+              value={(config.directBody as string) || ''}
+              onChange={(val) => updateConfig({ directBody: val })}
+              isTextArea={true}
+              inputClassName="font-medium text-xs px-4 min-h-[120px]"
+              appFields={appFields}
+            />
+          </div>
+
+          {/* Wrap in Brand Layout (DIRECT_EMAIL only) */}
+          {actionType === 'DIRECT_EMAIL' ? (
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                type="checkbox"
+                id="useBrandLayout"
+                checked={config.useBrandLayout !== false}
+                onChange={(e) => updateConfig({ useBrandLayout: e.target.checked })}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer active:scale-95 transition-transform"
+              />
+              <label htmlFor="useBrandLayout" className="text-xs font-semibold cursor-pointer select-none">
+                Wrap message in brand email layout/wrapper
+              </label>
+            </div>
+          ) : null}
+
+          {/* Target Contact Recipients */}
+          <div className="space-y-4">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+              Target Recipients
+            </Label>
+            <div className="space-y-3 p-4 rounded-2xl bg-muted/20 border border-border/50">
+              {[
+                { key: 'triggering', label: 'Triggering Contact', desc: 'The contact that triggered this automation' },
+                { key: 'primary', label: 'Primary Contact', desc: 'The designated primary contact of the entity' },
+                { key: 'signatories', label: 'Campus Signatories', desc: 'All contacts flagged as campus signatories' },
+                { key: 'roles', label: 'Specific Role(s)', desc: 'Contacts with specific custom roles' },
+                { key: 'all', label: 'All Contacts', desc: 'Send to all contacts associated with the entity' },
+                { key: 'fixed', label: 'Manual Identity Entry', desc: 'Specify static destination addresses manually' },
+              ].map((target) => {
+                const currentTargets = config.recipientTargets === undefined ? ['triggering'] : (config.recipientTargets || []);
+                const isChecked = currentTargets.includes(target.key as any);
+                return (
+                  <div key={target.key} className="flex flex-col space-y-1.5 animate-in fade-in duration-200">
+                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const current = config.recipientTargets === undefined ? ['triggering'] : (config.recipientTargets || []);
+                          const updated = e.target.checked
+                            ? [...current, target.key]
+                            : current.filter((k: string) => k !== target.key);
+                          updateConfig({ recipientTargets: updated });
+                        }}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5 active:scale-95 transition-transform"
+                      />
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-bold leading-none mb-0.5 text-foreground">{target.label}</span>
+                        <span className="text-[9px] font-medium text-muted-foreground leading-none">{target.desc}</span>
+                      </div>
+                    </label>
+
+                    {target.key === 'roles' && isChecked ? (
+                      <div className="pl-6 pt-2 space-y-2 animate-in slide-in-from-top-1 duration-200">
+                        <div className="flex flex-wrap gap-1.5 mb-1.5">
+                          {(config.recipientRoles || []).map((role: string) => (
+                            <Badge key={role} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-primary border-none">
+                              <span className="text-[10px] font-bold tracking-tight">{role}</span>
+                              <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-4 w-4 rounded-md hover:bg-primary/20 active:scale-[0.85] transition-all duration-100"
+                                onClick={() => updateConfig({ recipientRoles: (config.recipientRoles || []).filter((r: string) => r !== role) })}
+                              >
+                                <XIcon className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          ))}
+                        </div>
+                        <Input
+                          placeholder="Type role and press Enter (e.g. Signatory, Billing)..."
+                          id="new-direct-role-input"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = (e.target as HTMLInputElement).value.trim();
+                              if (val) {
+                                const current = config.recipientRoles || [];
+                                if (!current.includes(val)) {
+                                  updateConfig({ recipientRoles: [...current, val] });
+                                }
+                                (e.target as HTMLInputElement).value = '';
+                              }
+                            }
+                          }}
+                          className="h-8 rounded-lg bg-background text-xs"
+                        />
+                      </div>
+                    ) : null}
+
+                    {target.key === 'fixed' && isChecked ? (
+                      <div className="pl-6 pt-2 animate-in slide-in-from-top-1 duration-200">
+                        <Label className="text-[9px] font-bold text-primary ml-1 block mb-1">Static Target (Tag Supported)</Label>
+                        <MappableInputField 
+                          placeholder={actionType === 'DIRECT_EMAIL' ? "e.g. admin@domain.com or {{1.body.email}}" : "e.g. +12345678 or {{1.body.phone}}"} 
+                          value={(config.recipient as string) || ''} 
+                          onChange={(val) => updateConfig({ recipient: val })} 
+                          inputClassName="font-mono text-xs px-4"
+                          appFields={appFields}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {actionType.startsWith('SEND_NOTIFICATION_') ? (
         <div className="space-y-6">
           <div className="space-y-2">
@@ -1525,57 +1718,50 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         </div>
       ) : null}
 
-      {actionType === 'ADD_TO_CALL_CAMPAIGN' ? (() => {
-        // Fetch campaigns locally or dynamically using Firestore hook safely on client side
-        const { useCallCampaigns } = require('@/lib/call-centre-hooks');
-        const { campaigns = [] } = useCallCampaigns((activeWorkspace as Workspace | undefined)?.id);
-        const activeCamps = campaigns.filter((c: { status?: string }) => c.status !== 'archived');
-
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Call Campaign</Label>
-              <Select 
-                value={config.campaignId || ''} 
-                onValueChange={(val) => onUpdateConfig({ campaignId: val })}
-              >
-                <SelectTrigger className="h-10 rounded-xl bg-card border font-bold">
-                  <SelectValue placeholder="Select call campaign..." />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border bg-card">
-                  {activeCamps.map((camp: any) => (
-                    <SelectItem key={camp.id} value={camp.id} className="text-xs font-semibold">
-                      {camp.name} ({camp.allowAddContactsAfterLaunch === false ? 'Fixed' : 'Dynamic'})
-                    </SelectItem>
-                  ))}
-                  {activeCamps.length === 0 && (
-                    <SelectItem value="none" disabled className="text-xs font-semibold">
-                      No active campaigns found
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Recipient Contact Scope</Label>
-              <Select 
-                value={config.contactScope || 'primary'} 
-                onValueChange={(val) => onUpdateConfig({ contactScope: val })}
-              >
-                <SelectTrigger className="h-10 rounded-xl bg-card border font-bold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border bg-card">
-                  <SelectItem value="primary" className="text-xs font-semibold">Primary Contact Only</SelectItem>
-                  <SelectItem value="signatories" className="text-xs font-semibold">Signatories Only</SelectItem>
-                  <SelectItem value="all" className="text-xs font-semibold">All Contacts</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      {actionType === 'ADD_TO_CALL_CAMPAIGN' ? (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Call Campaign</Label>
+            <Select 
+              value={config.campaignId || ''} 
+              onValueChange={(val) => onUpdateConfig({ campaignId: val })}
+            >
+              <SelectTrigger className="h-10 rounded-xl bg-card border font-bold">
+                <SelectValue placeholder="Select call campaign..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border bg-card">
+                {activeCamps.map((camp: any) => (
+                  <SelectItem key={camp.id} value={camp.id} className="text-xs font-semibold">
+                    {camp.name} ({camp.allowAddContactsAfterLaunch === false ? 'Fixed' : 'Dynamic'})
+                  </SelectItem>
+                ))}
+                {activeCamps.length === 0 ? (
+                  <SelectItem value="none" disabled className="text-xs font-semibold">
+                    No active campaigns found
+                  </SelectItem>
+                ) : null}
+              </SelectContent>
+            </Select>
           </div>
-        );
-      })() : null}
+
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Recipient Contact Scope</Label>
+            <Select 
+              value={config.contactScope || 'primary'} 
+              onValueChange={(val) => onUpdateConfig({ contactScope: val })}
+            >
+              <SelectTrigger className="h-10 rounded-xl bg-card border font-bold">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border bg-card">
+                <SelectItem value="primary" className="text-xs font-semibold">Primary Contact Only</SelectItem>
+                <SelectItem value="signatories" className="text-xs font-semibold">Signatories Only</SelectItem>
+                <SelectItem value="all" className="text-xs font-semibold">All Contacts</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ) : null}
 
       {actionType === 'UPDATE_LEAD_SCORE' ? (
         <div className="space-y-6">

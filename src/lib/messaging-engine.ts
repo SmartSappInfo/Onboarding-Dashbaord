@@ -810,11 +810,14 @@ export async function sendRawMessage(input: {
     body: string,
     subject?: string,
     senderProfileId?: string,
-    variables?: Record<string, any>,
+    variables?: Record<string, unknown>,
     workspaceIds?: string[],
-    messageType?: 'transactional' | 'marketing'
+    messageType?: 'transactional' | 'marketing',
+    entityId?: string,
+    entityType?: string,
+    isAutomation?: boolean
 }) {
-    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing' } = input;
+    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing', entityId, entityType, isAutomation = false } = input;
 
     try {
         let senderProfileSnap;
@@ -868,6 +871,8 @@ export async function sendRawMessage(input: {
             }
         }
 
+        // Dispatch Delivery
+        let providerId = null;
         if (channel === 'sms') {
             await sendSms({ recipient, message: resolvedBody, sender: sender.identifier });
         } else if (channel === 'push') {
@@ -875,7 +880,7 @@ export async function sendRawMessage(input: {
         } else if (channel === 'in_app') {
             await adminDb.collection('in_app_notifications').add({
                 userId: recipient,
-                organizationId: variables.organizationId || 'default',
+                organizationId: (variables.organizationId as string) || 'default',
                 workspaceId: workspaceIds[0],
                 title: resolvedSubject,
                 body: resolvedBody,
@@ -887,7 +892,50 @@ export async function sendRawMessage(input: {
             await sendEmail({ from: `${sender.name} <${sender.identifier}>`, to: recipient, subject: resolvedSubject, html: resolvedBody });
         }
 
-        return { success: true };
+        // Save dispatch to message_logs
+        const logData = {
+            title: `Direct ${channel.toUpperCase()}: ${resolvedSubject || 'Alert'}`,
+            templateId: 'raw-direct-dispatch',
+            templateName: 'Direct Raw Message',
+            senderProfileId: senderProfileSnap.id,
+            senderName: sender.name || 'System',
+            channel,
+            recipient,
+            subject: resolvedSubject || null,
+            body: resolvedBody,
+            status: 'sent',
+            sentAt: new Date().toISOString(),
+            variables: JSON.parse(JSON.stringify(variables)),
+            workspaceIds,
+            workspaceId: workspaceIds[0] || 'onboarding',
+            entityId: entityId || null,
+            entityType: entityType || null,
+            providerId: null,
+            providerStatus: 'delivered',
+            hasAttachments: false,
+            attachmentCount: 0
+        };
+        const logRef = await adminDb.collection('message_logs').add(logData);
+
+        // Trigger activity timeline event (with isAutomation: true to prevent loop)
+        const { logActivity } = await import('./activity-logger');
+        await logActivity({
+            entityId: entityId || null,
+            entityType: (entityType as EntityType) || null, // Firebase expects EntityType | null
+            organizationId: (variables.organizationId as string) || 'default',
+            userId: null,
+            workspaceId: workspaceIds[0] || 'onboarding',
+            type: 'notification_sent',
+            source: 'system',
+            description: `Sent Direct ${channel.toUpperCase()} message to ${recipient}`,
+            metadata: {
+                logId: logRef.id,
+                channel,
+                isAutomation: isAutomation || true
+            }
+        });
+
+        return { success: true, logId: logRef.id };
     } catch (error: any) {
         console.error(">>> [MESSAGING] Raw Dispatch Error:", error.message);
         return { success: false, error: error.message };

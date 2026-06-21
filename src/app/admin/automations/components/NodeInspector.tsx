@@ -144,6 +144,8 @@ import {
 
 const ACTION_TYPES = [
     { value: 'SEND_MESSAGE', label: 'Dispatch Message', icon: MailIconPlaceholder, desc: 'Send an automated Email or SMS.' },
+    { value: 'DIRECT_EMAIL', label: 'Direct Email', icon: MailIconPlaceholder, desc: 'Send an email directly without templates, interpolating variables.' },
+    { value: 'DIRECT_SMS', label: 'Direct SMS', icon: SmartphoneIconPlaceholder, desc: 'Send an SMS directly without templates, interpolating variables.' },
     { value: 'CREATE_TASK', label: 'Initialize Task', icon: ClockIconPlaceholder, desc: 'Add a new task to the CRM.' },
     { value: 'UPDATE_ENTITY', label: 'Update Entity', icon: Building, desc: 'Update pipeline stage, assignee, or status.' },
     { value: 'ASSIGN_ENTITY', label: 'Assign Entity', icon: Building, desc: 'Set the workspace assignee.' },

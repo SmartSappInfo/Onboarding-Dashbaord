@@ -177,3 +177,207 @@ export async function handleSendMessage(
     }
   }
 }
+
+export async function handleDirectMessage(
+  actionType: 'DIRECT_EMAIL' | 'DIRECT_SMS' | string,
+  config: Record<string, unknown>,
+  context: ExecutionContext
+): Promise<void> {
+  const channel = actionType === 'DIRECT_EMAIL' ? 'email' : 'sms';
+  const usePhone = channel === 'sms';
+  const targets = (config.recipientTargets || []) as string[];
+  const roles = (config.recipientRoles || []) as string[];
+
+  const recipients = new Set<string>();
+
+  if (targets.length > 0) {
+    if (context.entityId) {
+      const contact = await resolveContact(context.entityId, context.workspaceId);
+      const entityContacts = contact?.entityContacts || [];
+
+      // 1. Triggering Contact
+      if (targets.includes('triggering')) {
+        const triggerContactVal = usePhone
+          ? (context.payload.phone || context.payload.contactPhone)
+          : (context.payload.email || context.payload.contactEmail);
+        if (triggerContactVal) {
+          recipients.add(String(triggerContactVal));
+        } else {
+          const primary = entityContacts.find(ec => ec.isPrimary);
+          const primaryVal = usePhone ? primary?.phone : primary?.email;
+          if (primaryVal) {
+            recipients.add(primaryVal);
+          } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
+            recipients.add(contact.contacts[0].email);
+          }
+        }
+      }
+
+      // 2. Primary Contact
+      if (targets.includes('primary')) {
+        const primary = entityContacts.find(ec => ec.isPrimary);
+        const primaryVal = usePhone ? primary?.phone : primary?.email;
+        if (primaryVal) {
+          recipients.add(primaryVal);
+        } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
+          recipients.add(contact.contacts[0].email);
+        }
+      }
+
+      // 3. Campus Signatories
+      if (targets.includes('signatories')) {
+        entityContacts.filter(ec => ec.isSignatory).forEach(ec => {
+          const val = usePhone ? ec.phone : ec.email;
+          if (val) recipients.add(val);
+        });
+      }
+
+      // 4. Specific Role(s)
+      if (targets.includes('roles') && roles.length > 0) {
+        entityContacts.filter(ec => 
+          ec.typeLabel && roles.some(r => r.toLowerCase() === ec.typeLabel?.toLowerCase() || r.toLowerCase() === ec.typeKey?.toLowerCase())
+        ).forEach(ec => {
+          const val = usePhone ? ec.phone : ec.email;
+          if (val) recipients.add(val);
+        });
+      }
+
+      // 5. All Contacts
+      if (targets.includes('all')) {
+        entityContacts.forEach(ec => {
+          const val = usePhone ? ec.phone : ec.email;
+          if (val) recipients.add(val);
+        });
+      }
+    }
+
+    // 6. Manual Identity Entry
+    if (targets.includes('fixed') && config.recipient) {
+      recipients.add(String(config.recipient));
+    }
+  }
+
+  const recipientList = Array.from(recipients);
+  if (recipientList.length === 0) {
+    throw new Error(`Direct ${channel.toUpperCase()} action could not resolve any recipients.`);
+  }
+
+  const { sendRawMessage } = await import('../../messaging-engine');
+  const { buildVariableMap } = await import('../../template-resolver');
+  const { renderTemplate } = await import('../../template-utils');
+
+  const senderProfileId = (config.senderProfileId as string) || 'default';
+
+  // Build the variable map for compilation once to avoid repeating queries per-recipient
+  const vars = await buildVariableMap('common', {
+    entityId: context.entityId,
+    workspaceId: context.workspaceId,
+    extraVars: { ...context.payload },
+  });
+
+  // Parallel Execution of dispatches to eliminate waterfalls
+  await Promise.all(
+    recipientList.map(async (recipient) => {
+      try {
+        const rawSubject = channel === 'email' ? String(config.directSubject || 'Notification') : undefined;
+        const rawBody = String(config.directBody || '');
+
+        const resolvedSubject = rawSubject ? renderTemplate(rawSubject, vars) : undefined;
+        const resolvedBodyContent = renderTemplate(rawBody, vars);
+
+        let finalBody = resolvedBodyContent;
+
+        // If brand layout wrapper is enabled, wrap in dynamic HTML layout in memory
+        if (channel === 'email' && config.useBrandLayout !== false) {
+          const primaryColor = String(vars.brand_primary_color || '#3B5FFF');
+          const orgName = String(vars.organization_name || vars.workspace_name || 'SmartSapp');
+          const logoUrl = vars.org_logo_url ? String(vars.org_logo_url) : null;
+          const logoHtml = logoUrl
+            ? `<img src="${logoUrl}" alt="${orgName} Logo" style="max-height: 48px; margin-bottom: 24px; display: block;" />`
+            : `<h2 style="color: ${primaryColor}; margin: 0 0 24px 0; font-family: Figtree, sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">${orgName}</h2>`;
+
+          finalBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${resolvedSubject || 'Notification'}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; padding: 48px 16px;">
+    <tr>
+      <td align="center">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.025);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 40px 20px 40px;">
+              ${logoHtml}
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 0 40px 40px 40px; font-size: 15px; line-height: 1.625; color: #334155; font-family: Figtree, sans-serif;">
+              ${resolvedBodyContent.replace(/\n/g, '<br />')}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 32px 40px; background-color: #F8FAFC; border-top: 1px solid #F1F5F9; font-size: 11px; line-height: 1.5; color: #64748B; font-family: Figtree, sans-serif;">
+              <p style="margin: 0 0 8px 0; font-weight: 600; color: #475569;">${orgName}</p>
+              ${vars.org_address ? `<p style="margin: 0 0 4px 0;">${vars.org_address}</p>` : ''}
+              ${vars.org_phone || vars.org_email ? `<p style="margin: 0 0 16px 0;">${[vars.org_phone, vars.org_email].filter(Boolean).join('  •  ')}</p>` : ''}
+              <p style="margin: 0; color: #94A3B8; font-size: 10px;">${vars.unsubscribe_copy || 'You are receiving this email because you are registered with our services.'}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+          `;
+        }
+
+        const result = await sendRawMessage({
+          channel,
+          recipient,
+          body: finalBody,
+          ...(resolvedSubject && { subject: resolvedSubject }),
+          senderProfileId,
+          variables: { ...context.payload },
+          workspaceIds: [context.workspaceId],
+          messageType: 'transactional',
+          entityId: context.entityId,
+          entityType: context.entityType,
+          isAutomation: true
+        });
+
+        if (!result.success) {
+          console.warn(`>>> [AUTOMATION] Suppressed/Hygiene Blocked recipient ${recipient}: ${result.error}`);
+          const { logAutomationEvent } = await import('../../automation-log');
+          await logAutomationEvent('warn', 'recipient_delivery_failed', {
+            automationId: context.automationId,
+            runId: context.runId,
+            workspaceId: context.workspaceId,
+            entityId: context.entityId,
+            recipient,
+            error: result.error || 'Failed raw send'
+          });
+        }
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error(`>>> [AUTOMATION] Failed direct message dispatch to ${recipient}:`, errorMsg);
+        const { logAutomationEvent } = await import('../../automation-log');
+        await logAutomationEvent('error', 'recipient_dispatch_error', {
+          automationId: context.automationId,
+          runId: context.runId,
+          workspaceId: context.workspaceId,
+          entityId: context.entityId,
+          recipient,
+          error: errorMsg
+        });
+      }
+    })
+  );
+}

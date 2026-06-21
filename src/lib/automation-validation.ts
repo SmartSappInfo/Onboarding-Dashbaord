@@ -106,6 +106,35 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
     }
 
     switch (actionType) {
+      case 'DIRECT_EMAIL': {
+        const recTargets = config.recipientTargets as string[] | undefined;
+        if (!recTargets || recTargets.length === 0) {
+          throw new AutomationValidationError(`Direct Email in "${label}" must select at least one recipient target.`);
+        }
+        if (recTargets.includes('fixed') && !config.recipient) {
+          throw new AutomationValidationError(`Direct Email in "${label}" has "Manual Identity Entry" active but no custom recipient is set.`);
+        }
+        if (!config.directSubject || String(config.directSubject).trim() === '') {
+          throw new AutomationValidationError(`Direct Email in "${label}" must specify a subject line.`);
+        }
+        if (!config.directBody || String(config.directBody).trim() === '') {
+          throw new AutomationValidationError(`Direct Email in "${label}" must specify a message body.`);
+        }
+        break;
+      }
+      case 'DIRECT_SMS': {
+        const recTargets = config.recipientTargets as string[] | undefined;
+        if (!recTargets || recTargets.length === 0) {
+          throw new AutomationValidationError(`Direct SMS in "${label}" must select at least one recipient target.`);
+        }
+        if (recTargets.includes('fixed') && !config.recipient) {
+          throw new AutomationValidationError(`Direct SMS in "${label}" has "Manual Identity Entry" active but no custom recipient is set.`);
+        }
+        if (!config.directBody || String(config.directBody).trim() === '') {
+          throw new AutomationValidationError(`Direct SMS in "${label}" must specify a message body.`);
+        }
+        break;
+      }
       case 'SEND_MESSAGE':
         // Skip template check if recipientTargets is set and doesn't require templates, but keep it for backward compatibility
         const recTargets = config.recipientTargets as string[] | undefined;

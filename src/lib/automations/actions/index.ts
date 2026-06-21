@@ -6,7 +6,7 @@ import {
 } from './deal-automation-actions';
 import { resolveConfigVariables } from '../variables';
 import type { ExecutionContext } from '../execution-types';
-import { handleSendMessage } from './message-actions';
+import { handleSendMessage, handleDirectMessage } from './message-actions';
 import { handleCreateTask, handleUpdateTask } from './task-actions';
 import { handleUpdateEntity, handleAssignEntity, handleAddNote, handleCreateEntity, handleCreateContactForEntity, handleUpdateContact } from './entity-actions';
 import { handleTriggerOutboundWebhook } from './webhook-actions';
@@ -28,6 +28,9 @@ export async function processActionNode(
   switch (actionType) {
     case 'SEND_MESSAGE':
       return await handleSendMessage(resolvedConfig, context);
+    case 'DIRECT_EMAIL':
+    case 'DIRECT_SMS':
+      return await handleDirectMessage(actionType, resolvedConfig, context);
     case 'SEND_NOTIFICATION_EMAIL':
     case 'SEND_NOTIFICATION_SMS':
     case 'SEND_NOTIFICATION_IN_APP':

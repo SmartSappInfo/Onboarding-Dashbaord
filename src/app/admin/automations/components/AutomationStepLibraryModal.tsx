@@ -120,6 +120,15 @@ const LIBRARY_ITEMS = [
     payload: { type: 'actionNode', label: 'Send Email', actionType: 'SEND_MESSAGE', channel: 'email' }
   },
   {
+    id: 'direct_email',
+    title: 'Direct Email',
+    description: 'Send an email message directly without using a predefined template. Supports dynamic workflow variables.',
+    category: 'sending_options',
+    icon: Mail,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Direct Email', actionType: 'DIRECT_EMAIL' }
+  },
+  {
     id: 'send_sms',
     title: 'Send SMS',
     description: 'Deliver a text message notification or alert to the contact mobile device.',
@@ -127,6 +136,15 @@ const LIBRARY_ITEMS = [
     icon: Smartphone,
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Send SMS', actionType: 'SEND_MESSAGE', channel: 'sms' }
+  },
+  {
+    id: 'direct_sms',
+    title: 'Direct SMS',
+    description: 'Deliver an SMS message directly without using a predefined template. Supports dynamic workflow variables.',
+    category: 'sending_options',
+    icon: Smartphone,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Direct SMS', actionType: 'DIRECT_SMS' }
   },
   {
     id: 'send_notification_email',
