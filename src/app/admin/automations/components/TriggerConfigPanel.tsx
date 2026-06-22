@@ -157,6 +157,19 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
     return (allTags || []).map((t) => ({ label: t.name, value: t.id }));
   }, [allTags]);
 
+  const renderValSyntax = (val: unknown) => {
+    if (typeof val === 'string') {
+      return <span className="text-emerald-800 dark:text-emerald-400 font-mono">"{String(val)}"</span>;
+    }
+    if (typeof val === 'number') {
+      return <span className="text-amber-800 dark:text-amber-400 font-mono font-bold">{String(val)}</span>;
+    }
+    if (typeof val === 'boolean') {
+      return <span className="text-purple-800 dark:text-purple-400 font-mono font-bold">{String(val)}</span>;
+    }
+    return <span className="text-zinc-900 dark:text-zinc-300 font-mono break-all">{JSON.stringify(val)}</span>;
+  };
+
   return (
     <div className="w-full pt-1">
       {trigger === 'WEBHOOK_RECEIVED' ? (
@@ -169,10 +182,10 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
               <Badge className="bg-blue-500 text-white border-none text-[8px] h-4">POST</Badge>
             </div>
             <div className="flex gap-2">
-              <div className="flex-1 p-3 rounded-xl bg-slate-950/50 border border-white/5 shadow-inner overflow-hidden">
-                <p className="text-[10px] font-mono text-blue-500 break-all select-all">{webhookUrl}</p>
+              <div className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-inner overflow-hidden">
+                <p className="text-[10px] font-mono text-blue-800 dark:text-blue-300 break-all select-all font-semibold">{webhookUrl}</p>
               </div>
-              <Button size="icon" variant="outline" className="h-10 w-10 shrink-0 rounded-xl bg-card shadow-lg" onClick={copyWebhookUrl} type="button">
+              <Button size="icon" variant="outline" className="h-10 w-10 shrink-0 rounded-xl bg-card shadow-lg active:scale-[0.97]" onClick={copyWebhookUrl} type="button">
                 {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
@@ -181,9 +194,9 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
           <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between">
               <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Webhook Capture</Label>
-              {isListening && (
+              {isListening ? (
                 <span className="text-[9px] font-bold text-blue-500 animate-pulse">Listening...</span>
-              )}
+              ) : null}
             </div>
 
             {!capturedPayload ? (
@@ -211,15 +224,15 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
                   </TabsList>
                   
                   <TabsContent value="body" className="pt-2">
-                    <ScrollArea className="h-40 w-full rounded-xl bg-slate-950/40 p-3 border border-white/5 font-mono text-[9px] text-foreground">
+                    <ScrollArea className="h-40 w-full rounded-xl bg-zinc-100/80 dark:bg-zinc-950 p-3 border border-zinc-200 dark:border-zinc-800/80 font-mono text-[9px]">
                       {Object.keys(capturedPayload.body || {}).length === 0 ? (
                         <span className="text-muted-foreground/50 italic">Empty JSON Body</span>
                       ) : (
                         <div className="space-y-1">
                           {Object.entries(capturedPayload.body || {}).map(([key, val]) => (
-                            <div key={key} className="flex justify-between hover:bg-white/5 px-1 rounded py-0.5">
-                              <span className="text-blue-400 font-semibold">{key}</span>
-                              <span className="text-muted-foreground truncate max-w-[200px]" title={String(val)}>{JSON.stringify(val)}</span>
+                            <div key={key} className="flex justify-between hover:bg-zinc-200/30 dark:hover:bg-white/5 px-2 rounded py-1.5 border-b border-zinc-200/60 dark:border-zinc-900 last:border-b-0">
+                              <span className="text-blue-800 dark:text-blue-300 font-bold shrink-0">{key}</span>
+                              <span className="truncate max-w-[220px]" title={String(val)}>{renderValSyntax(val)}</span>
                             </div>
                           ))}
                         </div>
@@ -228,15 +241,15 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
                   </TabsContent>
 
                   <TabsContent value="headers" className="pt-2">
-                    <ScrollArea className="h-40 w-full rounded-xl bg-slate-950/40 p-3 border border-white/5 font-mono text-[9px] text-foreground">
+                    <ScrollArea className="h-40 w-full rounded-xl bg-zinc-100/80 dark:bg-zinc-950 p-3 border border-zinc-200 dark:border-zinc-800/80 font-mono text-[9px]">
                       {Object.keys(capturedPayload.headers || {}).length === 0 ? (
                         <span className="text-muted-foreground/50 italic">No Headers</span>
                       ) : (
                         <div className="space-y-1">
                           {Object.entries(capturedPayload.headers || {}).map(([key, val]) => (
-                            <div key={key} className="flex justify-between hover:bg-white/5 px-1 rounded py-0.5">
-                              <span className="text-indigo-400 font-semibold">{key}</span>
-                              <span className="text-muted-foreground truncate max-w-[200px]" title={String(val)}>{String(val)}</span>
+                            <div key={key} className="flex justify-between hover:bg-zinc-200/30 dark:hover:bg-white/5 px-2 rounded py-1.5 border-b border-zinc-200/60 dark:border-zinc-900 last:border-b-0">
+                              <span className="text-indigo-800 dark:text-indigo-300 font-bold shrink-0">{key}</span>
+                              <span className="text-zinc-900 dark:text-zinc-300 truncate max-w-[220px]" title={String(val)}>{String(val)}</span>
                             </div>
                           ))}
                         </div>
@@ -245,18 +258,18 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
                   </TabsContent>
 
                   <TabsContent value="files" className="pt-2">
-                    <ScrollArea className="h-40 w-full rounded-xl bg-slate-950/40 p-3 border border-white/5 font-mono text-[9px] text-foreground">
+                    <ScrollArea className="h-40 w-full rounded-xl bg-zinc-100/80 dark:bg-zinc-950 p-3 border border-zinc-200 dark:border-zinc-800/80 font-mono text-[9px]">
                       {!capturedPayload.files || capturedPayload.files.length === 0 ? (
                         <span className="text-muted-foreground/50 italic">No File Data Uploaded</span>
                       ) : (
                         <div className="space-y-2">
                           {capturedPayload.files.map((file: any, index: number) => (
-                            <div key={index} className="p-2 rounded bg-white/5 border border-white/5 space-y-0.5">
-                              <div className="flex justify-between">
-                                <span className="text-emerald-400 font-bold truncate max-w-[180px]">{file.name}</span>
-                                <span className="text-muted-foreground/80 font-semibold">{(file.size / 1024).toFixed(1)} KB</span>
+                            <div key={index} className="p-3 rounded-xl bg-zinc-200/50 dark:bg-white/5 border border-zinc-300/60 dark:border-zinc-800/50 space-y-1">
+                              <div className="flex justify-between items-center">
+                                <span className="text-emerald-800 dark:text-emerald-400 font-black truncate max-w-[220px]">{file.name}</span>
+                                <span className="text-zinc-600 dark:text-zinc-400 text-[9px] font-bold">{(file.size / 1024).toFixed(1)} KB</span>
                               </div>
-                              <div className="text-[8px] text-muted-foreground">Type: {file.type}</div>
+                              <div className="text-[8px] font-mono text-zinc-500 dark:text-zinc-500">Type: {file.type}</div>
                             </div>
                           ))}
                         </div>
@@ -271,7 +284,7 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
               type="button"
               onClick={handleToggleListening}
               className={cn(
-                "w-full h-10 rounded-xl font-bold text-xs transition-all shadow-md gap-2 border",
+                "w-full h-10 rounded-xl font-bold text-xs transition-all shadow-md gap-2 border active:scale-[0.97]",
                 isListening
                   ? "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20"
                   : "bg-blue-500 text-white border-blue-600 hover:bg-blue-600 shadow-blue-500/15"

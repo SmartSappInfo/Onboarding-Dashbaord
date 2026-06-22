@@ -9,7 +9,9 @@ import {
   UserPlus,
   Zap,
   Tag as TagIcon,
-  UserCog
+  UserCog,
+  Trash2,
+  Table
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -17,11 +19,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { createFieldAction } from '@/lib/fields-actions';
+import { createTagAction } from '@/lib/tag-actions';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { MappableInputField } from './MappableInputField';
 import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, SenderProfile } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useCallCampaigns } from '@/lib/call-centre-hooks';
 
@@ -224,13 +230,16 @@ const UpdateEntityConfigPanel = React.memo(function UpdateEntityConfigPanel({
               <div key={key} className="p-4 rounded-2xl border bg-muted/20 flex flex-col gap-3 relative group/field">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-bold text-foreground">{fieldDef.label}</Label>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleRemoveField(key)}
-                    className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline flex items-center gap-1 transition-all"
+                    className="h-8 w-8 rounded-lg hover:bg-rose-500/10 text-rose-500 hover:text-rose-600 transition-all duration-150 ease-out active:scale-90 shrink-0"
+                    title="Remove field mapping"
                   >
-                    Remove
-                  </button>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
                 
                 {fieldDef.type === 'select' ? (
@@ -300,6 +309,16 @@ interface CreateEntityConfigPanelProps {
   automations?: Automation[];
 }
 
+interface CreateEntityConfigPanelProps {
+  config: CreateEntityConfig;
+  updateConfig: (updates: Partial<CreateEntityConfig>) => void;
+  singular: string;
+  appFields: EntityField[];
+  fieldGroups: Record<string, unknown>[];
+  allTags?: Tag[];
+  automations?: Automation[];
+}
+
 const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
   config,
   updateConfig,
@@ -311,6 +330,11 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
 }: CreateEntityConfigPanelProps) {
   const customData = (config.customData || {}) as Record<string, unknown>;
   const selectedType = config.entityType || 'institution';
+  const { activeWorkspace } = useWorkspace() as { activeWorkspace?: Workspace };
+  const { user } = useUser();
+  const { toast } = useToast();
+  const [isCreateFieldOpen, setIsCreateFieldOpen] = React.useState(false);
+  const [isSubmittingField, setIsSubmittingField] = React.useState(false);
 
   const filteredAppFields = React.useMemo(() => {
     if (!fieldGroups || !appFields) return [];
@@ -353,6 +377,76 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
     return filteredAppFields.filter(f => !Object.prototype.hasOwnProperty.call(customData, (f.id || f.name) as string));
   }, [filteredAppFields, customData]);
 
+  const tagOptions = React.useMemo(() => {
+    return (allTags || []).map((t) => ({ label: t.name, value: t.id }));
+  }, [allTags]);
+
+  const handleCreateInlineTag = async (tagName: string) => {
+    if (!tagName.trim() || !user || !activeWorkspace) return;
+    try {
+      const result = await createTagAction({
+        name: tagName.trim(),
+        workspaceId: activeWorkspace.id,
+        organizationId: activeWorkspace.organizationId,
+        category: 'custom',
+        color: '#10B981',
+        userId: user.uid,
+      });
+
+      if (result.success && result.data) {
+        toast({ title: 'Tag created', description: `"${tagName}" is now available.` });
+        const current = config.tagIds || [];
+        updateConfig({ tagIds: [...current, result.data.id] });
+      } else {
+        toast({ variant: 'destructive', title: 'Failed to create tag', description: result.error || 'Could not create tag.' });
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      toast({ variant: 'destructive', title: 'Error', description: errMsg });
+    }
+  };
+
+  const handleCreateField = async (data: { label: string; variableName: string }) => {
+    if (!user || !activeWorkspace) return;
+    
+    // Client-side duplicate check
+    const exists = filteredAppFields.some(f => (f.id || f.name).toLowerCase() === data.variableName.toLowerCase()) ||
+                   NATIVE_ENTITY_FIELDS.some(f => f.name.toLowerCase() === data.variableName.toLowerCase());
+    if (exists) {
+      toast({ variant: 'destructive', title: 'Duplicate Field', description: `A field with variable identity "${data.variableName}" already exists.` });
+      return;
+    }
+
+    setIsSubmittingField(true);
+    try {
+      const res = await createFieldAction({
+        workspaceId: activeWorkspace.id,
+        organizationId: activeWorkspace.organizationId || '',
+        name: data.variableName,
+        label: data.label,
+        variableName: data.variableName,
+        type: 'short_text',
+        section: 'custom',
+        status: 'active',
+        isNative: false,
+        compatibilityScope: ['common']
+      }, user.uid);
+      
+      if (res.success) {
+        toast({ title: 'Field Created', description: `Property "${data.label}" is now available for mapping.` });
+        handleAddCustomField(data.variableName);
+        setIsCreateFieldOpen(false);
+      } else {
+        toast({ variant: 'destructive', title: 'Action Failed', description: res.error });
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      toast({ variant: 'destructive', title: 'Error', description: errMsg });
+    } finally {
+      setIsSubmittingField(false);
+    }
+  };
+
   const handleAddCustomField = (fieldKey: string) => {
     if (!fieldKey || fieldKey === 'none') return;
     const nextCustomData = {
@@ -389,7 +483,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
             value={config.entityType || 'institution'}
             onValueChange={(v) => updateConfig({ entityType: v })}
           >
-            <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold">
+            <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold active:scale-[0.97] transition-transform duration-150 ease-out">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
@@ -439,11 +533,20 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
         <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block mb-2">Custom Fields Mapping</Label>
         
         <div className="space-y-2">
-          <Select value="" onValueChange={handleAddCustomField}>
-            <SelectTrigger className="h-12 rounded-xl bg-card border text-xs font-semibold text-left">
+          <Select value="" onValueChange={(val) => {
+            if (val === 'create_new_field') {
+              setIsCreateFieldOpen(true);
+            } else {
+              handleAddCustomField(val);
+            }
+          }}>
+            <SelectTrigger className="h-12 rounded-xl bg-card border text-xs font-semibold text-left active:scale-[0.97] transition-transform duration-150 ease-out">
               <SelectValue placeholder="+ Map workspace custom field..." />
             </SelectTrigger>
             <SelectContent className="max-h-[300px] rounded-xl border bg-card/95 backdrop-blur-md">
+              <SelectItem value="create_new_field" className="rounded-lg text-xs font-bold text-indigo-600 bg-indigo-50/50 hover:bg-indigo-100 flex items-center gap-2 cursor-pointer font-bold">
+                + Create new custom field...
+              </SelectItem>
               {availableToAdd.length > 0 ? (
                 availableToAdd.map((f) => (
                   <SelectItem key={f.id || f.name} value={f.id || f.name} className="rounded-lg text-xs font-semibold">
@@ -471,13 +574,16 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
                   <div key={key} className="p-4 rounded-2xl border bg-muted/10 flex flex-col gap-3 relative animate-in fade-in slide-in-from-top-1 duration-150">
                     <div className="flex items-center justify-between">
                       <Label className="text-xs font-bold text-foreground">{fieldDef.label || fieldDef.name}</Label>
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleRemoveCustomField(key)}
-                        className="text-[10px] font-bold text-rose-500 hover:text-rose-600 hover:underline flex items-center gap-1 transition-all"
+                        className="h-8 w-8 rounded-lg hover:bg-rose-500/10 text-rose-500 hover:text-rose-600 transition-all duration-150 ease-out active:scale-90 shrink-0"
+                        title="Remove field mapping"
                       >
-                        Remove
-                      </button>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                     <MappableInputField
                       value={String(val ?? '')}
@@ -499,7 +605,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
 
       <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
         <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
-          <Zap className="h-4 w-4 text-violet-500 animate-pulse" /> Subsequent Actions
+          <Zap className="h-4 w-4 text-violet-500 animate-pulse" /> Start Another Automation
         </h4>
 
         <div className="space-y-2">
@@ -518,85 +624,41 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
               }
             }}
           >
-            <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold">
+            <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold active:scale-[0.97] transition-transform duration-150 ease-out">
               <SelectValue placeholder="Select automation to run..." />
             </SelectTrigger>
             <SelectContent className="rounded-xl max-h-[250px] overflow-y-auto">
               <SelectItem value="none" className="rounded-lg text-xs font-semibold text-muted-foreground">
                 None (Do not run subsequent automation)
               </SelectItem>
-              {(automations || [])
-                .filter((a) => a.isActive && !a.isArchived)
-                .map((a) => (
-                  <SelectItem key={a.id} value={a.id} className="rounded-lg text-xs font-semibold">
-                    {a.name}
-                  </SelectItem>
-                ))}
+              {(automations || []).filter((a) => a.isActive && !a.isArchived).map((a) => (
+                <SelectItem key={a.id} value={a.id} className="rounded-lg text-xs font-semibold">
+                  {a.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
           <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assign Workspace Tags</Label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {(config.tagIds || []).map((id: string) => {
-              const tag = (allTags || []).find((t) => t.id === id);
-              return (
-                <Badge
-                  key={id}
-                  variant="secondary"
-                  className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 border-none animate-in fade-in zoom-in-95 duration-150"
-                  style={tag?.color ? { backgroundColor: `${tag.color}15`, color: tag.color } : undefined}
-                >
-                  <span className="text-[10px] font-black tracking-wide">{tag?.name || `Deleted Tag (${id})`}</span>
-                  <button
-                    type="button"
-                    className="h-4 w-4 rounded-md hover:bg-muted-foreground/10 flex items-center justify-center transition-colors"
-                    onClick={() => {
-                      updateConfig({
-                        tagIds: (config.tagIds || []).filter((t: string) => t !== id),
-                      });
-                    }}
-                  >
-                    <XIcon className="h-3 w-3" />
-                  </button>
-                </Badge>
-              );
-            })}
-            {(config.tagIds || []).length === 0 ? (
-              <span className="text-[10px] font-medium text-muted-foreground italic ml-1 block">No tags selected.</span>
-            ) : null}
-          </div>
-
-          <Select
-            value=""
-            onValueChange={(v) => {
-              const current = (config.tagIds || []) as string[];
-              if (!current.includes(v)) {
-                updateConfig({ tagIds: [...current, v] });
-              }
-            }}
-          >
-            <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm text-xs font-semibold text-muted-foreground">
-              <SelectValue placeholder="+ Assign workspace tags..." />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl max-h-[250px] overflow-y-auto">
-              {(allTags || [])
-                .filter((t) => !(config.tagIds || []).includes(t.id))
-                .map((tag) => (
-                  <SelectItem key={tag.id} value={tag.id} className="rounded-lg text-xs font-semibold">
-                    {tag.name}
-                  </SelectItem>
-                ))}
-              {(allTags || []).filter((t) => !(config.tagIds || []).includes(t.id)).length === 0 ? (
-                <SelectItem value="none" disabled className="text-xs">
-                  All tags assigned
-                </SelectItem>
-              ) : null}
-            </SelectContent>
-          </Select>
+          <MultiSelect
+            options={tagOptions}
+            value={config.tagIds || []}
+            onChange={(val) => updateConfig({ tagIds: val })}
+            onCreate={handleCreateInlineTag}
+            placeholder="+ Assign workspace tags..."
+            className="rounded-xl bg-card border shadow-sm text-xs font-semibold active:scale-[0.97] transition-transform duration-150 ease-out"
+          />
         </div>
       </div>
+
+      <CreateFieldDialog
+        open={isCreateFieldOpen}
+        onOpenChange={setIsCreateFieldOpen}
+        onSubmit={handleCreateField}
+        isSubmitting={isSubmittingField}
+      />
     </div>
   );
 });
@@ -1815,3 +1877,77 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
     </div>
   );
 });
+
+interface CreateFieldDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: { label: string; variableName: string }) => void | Promise<void>;
+  isSubmitting: boolean;
+}
+
+function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting }: CreateFieldDialogProps) {
+  const [label, setLabel] = React.useState('');
+  const [variableName, setVariableName] = React.useState('');
+  
+  const handleLabelChange = (val: string) => {
+    setLabel(val);
+    setVariableName(val.toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, ''));
+  };
+
+  React.useEffect(() => {
+    if (!open) {
+      setLabel('');
+      setVariableName('');
+    }
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-[2.5rem] max-w-sm border-none shadow-2xl ring-1 ring-border bg-card">
+        <DialogHeader className="pt-6 px-4">
+          <DialogTitle className="font-black text-2xl tracking-tighter flex items-center gap-3">
+            <div className="p-2 bg-indigo-500/10 rounded-xl">
+              <Table className="h-5 w-5 text-indigo-600" />
+            </div>
+            Studio Property
+          </DialogTitle>
+          <DialogDescription className="text-[11px] font-bold text-muted-foreground/60 leading-relaxed italic">
+            Extend your workspace schema with a new property.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="p-6 space-y-6">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              Display Label
+            </Label>
+            <Input 
+              value={label} 
+              onChange={(e) => handleLabelChange(e.target.value)} 
+              placeholder="e.g. Annual Revenue" 
+              className="h-12 rounded-2xl border-none bg-muted/20 px-5 font-bold shadow-inner"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              Variable Identity (DB Key)
+            </Label>
+            <div className="flex items-center gap-2 bg-muted/20 rounded-2xl px-5 h-12 border border-dashed border-border/60">
+              <code className="text-[11px] font-black text-indigo-600">
+                {variableName || 'waiting_for_label'}
+              </code>
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="p-6 pt-0">
+          <Button 
+            onClick={() => onSubmit({ label, variableName })} 
+            disabled={isSubmitting || !label.trim()} 
+            className="w-full h-14 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.97] transition-all"
+          >
+            {isSubmitting ? 'Committing...' : 'Commit to Schema'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
