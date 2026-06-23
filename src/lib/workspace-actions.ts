@@ -39,6 +39,17 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
             throw new Error("Invalid contactScope. Must be one of: institution, family, person");
         }
 
+        // Validate defaultSmsSenderId if provided
+        if (data.defaultSmsSenderId !== undefined && data.defaultSmsSenderId !== '') {
+            const senderId = data.defaultSmsSenderId.trim();
+            if (senderId.length > 11) {
+                throw new Error("Default SMS Sender ID must be at most 11 characters.");
+            }
+            if (!/^[a-zA-Z0-9]+$/.test(senderId)) {
+                throw new Error("Default SMS Sender ID must contain only alphanumeric characters.");
+            }
+        }
+
         // Set default capabilities if not provided
         const capabilities = data.capabilities || {
             billing: true,

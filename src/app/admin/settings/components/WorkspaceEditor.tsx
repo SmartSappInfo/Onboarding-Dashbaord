@@ -100,6 +100,7 @@ export default function WorkspaceEditor() {
     const [contactScope, setContactScope] = React.useState<'institution' | 'family' | 'person'>('institution');
     const [singularTerm, setSingularTerm] = React.useState('');
     const [pluralTerm, setPluralTerm] = React.useState('');
+    const [defaultSmsSenderId, setDefaultSmsSenderId] = React.useState('');
     const [industry, setIndustry] = React.useState<IndustryVertical>('SaaS');
     const [industryFilter, setIndustryFilter] = React.useState<IndustryVertical | 'all'>('all');
     const [contactPolicySetting, setContactPolicySetting] = React.useState<ContactIdentifierPolicy>('phone_or_email');
@@ -150,6 +151,7 @@ export default function WorkspaceEditor() {
             setContactScope(w.contactScope || 'institution');
             setSingularTerm(w.terminology?.singular || '');
             setPluralTerm(w.terminology?.plural || '');
+            setDefaultSmsSenderId(w.defaultSmsSenderId || '');
             setIndustry(w.industry || 'SaaS');
             setContactPolicySetting(w.contactPolicy || 'phone_or_email');
             setEntityDefaults(w.entityDefaults || {});
@@ -167,6 +169,7 @@ export default function WorkspaceEditor() {
             setContactScope('institution');
             setSingularTerm('');
             setPluralTerm('');
+            setDefaultSmsSenderId('');
             setIndustry('SaaS');
             setContactPolicySetting('phone_or_email');
             setEntityDefaults({});
@@ -237,6 +240,7 @@ export default function WorkspaceEditor() {
                 contactPolicy: contactPolicySetting,
                 entityDefaults: entityDefaults,
                 restrictVisibilityToAssigned: restrictVisibilityToAssigned,
+                defaultSmsSenderId: defaultSmsSenderId.trim() || undefined,
             },
             user.uid
         );
@@ -877,6 +881,42 @@ export default function WorkspaceEditor() {
                                     )}
 
  <Separator className="opacity-50" />
+
+                                    {/* SMS CONFIGURATION */}
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <Phone className="h-4 w-4 text-primary" />
+                                            <h4 className="text-xs font-semibold">SMS Configuration</h4>
+                                            <Badge variant="outline" className="text-[8px] font-semibold uppercase px-1.5 h-4 ml-auto">Messaging</Badge>
+                                        </div>
+
+                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
+                                            Configure the default Sender ID for SMS dispatches sent from this workspace. 
+                                            This ID is restricted by telecommunication regulations to a maximum of 11 alphanumeric characters. 
+                                            If left blank, 'SmartSapp' will be used.
+                                        </p>
+
+                                        <div className="space-y-2 pt-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Default SMS Sender ID</Label>
+                                            <Input 
+                                                value={defaultSmsSenderId} 
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    // Allow alphanumeric characters only, max 11 chars
+                                                    if (val === '' || /^[a-zA-Z0-9]{0,11}$/.test(val)) {
+                                                        setDefaultSmsSenderId(val);
+                                                    }
+                                                }} 
+                                                placeholder="e.g. SmartSapp" 
+                                                className="h-11 rounded-xl bg-background border-none font-bold text-sm px-4" 
+                                            />
+                                            {defaultSmsSenderId.length > 11 && (
+                                                <p className="text-[10px] font-medium text-destructive px-1">Sender ID must be at most 11 characters.</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <Separator className="opacity-50" />
 
                                     {/* CONTACT IDENTIFIER POLICY */}
                                     <div className="space-y-4">

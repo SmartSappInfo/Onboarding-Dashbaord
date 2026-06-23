@@ -461,6 +461,8 @@ export interface Workspace {
   contactPolicy?: ContactIdentifierPolicy;
   /** Workspace-level default values applied across all entity creation flows */
   entityDefaults?: EntityDefaults;
+  /** Default SMS Sender ID configured for the workspace (Max 11 alphanumeric characters) */
+  defaultSmsSenderId?: string;
   /** Custom lead sources created by the user during bulk import or elsewhere */
   customLeadSources?: string[];
   leadScoringSettings?: LeadScoringSettings;
@@ -4318,7 +4320,7 @@ export type CallCampaignStatus = 'draft' | 'scheduled' | 'running' | 'paused' | 
 
 export interface CallOutcomeAutomation {
   type: CallActionType;
-  params: AutomationRuleParams;
+  params: CallActionParams;
 }
 
 export interface CallCampaign {
@@ -4407,6 +4409,7 @@ export type CallActionType =
   | 'SEND_WHATSAPP'
   | 'CREATE_TASK'
   | 'CHANGE_STAGE'
+  | 'ADD_TO_PIPELINE'
   | 'ADD_TAG'
   | 'REMOVE_TAG'
   | 'WEBHOOK'
@@ -4455,6 +4458,7 @@ export interface ScriptNode {
       fieldType?: 'text' | 'number' | 'select' | 'datepicker';
       selectOptions?: string[];
       validationPattern?: string; // Regex
+      allowFreeform?: boolean;
     };
     objectionConfig?: {
       // Legacy flat field kept for backwards compatibility
@@ -4466,47 +4470,13 @@ export interface ScriptNode {
         description: string;     // Agent response / talking-point for this objection
       }>;
     };
-    actionConfig?: {
-      // Messaging (SEND_SMS, SEND_EMAIL, SEND_WHATSAPP)
-      templateId?: string;
-      // Task (CREATE_TASK)
-      taskTitle?: string;
-      taskDescription?: string;
-      taskPriority?: 'low' | 'medium' | 'high';
-      /** 'days' = N days from call date, 'specific' = fixed calendar date */
-      taskDueDateMode?: 'days' | 'specific';
-      taskDueDays?: number;
-      /** HH:mm — used with both modes (default from config, overridable per-call) */
-      taskDueTimeOfDay?: string;
-      /** ISO date string e.g. "2025-12-31" — only used when taskDueDateMode === 'specific' */
-      taskDueSpecificDate?: string;
-      taskAssigneeMode?: 'caller' | 'specific' | 'round_robin';
-      taskAssigneeId?: string;
-      // Pipeline (CHANGE_STAGE)
-      stageId?: string;
-      // Tags (ADD_TAG, REMOVE_TAG)
-      tagId?: string;
-      // Note (LOG_NOTE)
-      noteContent?: string;
-      // Meeting (SCHEDULE_MEETING)
-      meetingTypeId?: string;
-      // Transfer (TRANSFER_CALL)
-      transferTarget?: string;
-      transferMode?: 'phone' | 'agent' | 'campaign';
-      // Webhook (WEBHOOK)
-      webhookUrl?: string;
-      webhookHeaders?: string; // JSON string
-      webhookMethod?: 'POST' | 'GET' | 'PUT';
-      // Update Contact (UPDATE_CONTACT)
-      contactName?: string;
-      contactEmail?: string;
-      contactPhone?: string;
-      // Common
-      triggerDelaySeconds?: number;
-    };
+    /** Per-action configuration when node type is 'action'. @see CallActionParams */
+    actionConfig?: CallActionParams;
     outcomeConfig?: {
       suppressDays?: number;
       followUpCampaignId?: string;
+      /** Post-call automations that run when a call resolves to this outcome. */
+      automations?: CallOutcomeAutomation[];
     };
     endConfig?: {
       wrapUpTemplateId?: string;
@@ -4528,11 +4498,17 @@ export interface BranchingScriptGraph {
   edges: ScriptEdge[];
 }
 
-/** Params shape for campaign post-call automation rules — discriminated by parent rule's `type` */
-export interface AutomationRuleParams {
+/**
+ * Unified, fully-typed parameter bag shared by every call action. Superset across all
+ * CallActionTypes — used by the execution engine, script `actionConfig`, and outcome
+ * automations. Replaces the former per-site `Record<string, any>` shapes.
+ */
+export interface CallActionParams {
+  // Messaging (SEND_SMS / SEND_EMAIL / SEND_WHATSAPP)
   templateId?: string;
-  stageId?: string;
-  tagId?: string;
+  /** Optional inline overrides resolved at send time (fall back to the template). */
+  customBody?: string;
+  customSubject?: string;
   // Task (CREATE_TASK)
   taskTitle?: string;
   taskDescription?: string;
@@ -4540,26 +4516,46 @@ export interface AutomationRuleParams {
   /** 'days' = N days from call date, 'specific' = fixed calendar date */
   taskDueDateMode?: 'days' | 'specific';
   taskDueDays?: number;
-  /** HH:mm — default time for the task, agents may override per-call */
+  /** HH:mm — used with both modes (default from config, overridable per-call) */
   taskDueTimeOfDay?: string;
-  /** ISO date string — only used when taskDueDateMode === 'specific' */
+  /** ISO date string e.g. "2025-12-31" — only used when taskDueDateMode === 'specific' */
   taskDueSpecificDate?: string;
   taskAssigneeMode?: 'caller' | 'specific' | 'round_robin';
   taskAssigneeId?: string;
-  // Webhook
+  // Pipeline / stage (CHANGE_STAGE, ADD_TO_PIPELINE)
+  pipelineId?: string;
+  stageId?: string;
+  // Tags (ADD_TAG / REMOVE_TAG)
+  tagId?: string;
+  // Note (LOG_NOTE)
+  noteContent?: string;
+  // Meeting (SCHEDULE_MEETING)
+  meetingMode?: 'guest_list' | 'create';
+  /** Existing-meeting target for guest_list mode (meetings/{meetingId}/registrants) */
+  meetingId?: string;
+  /** MEETING_TYPES id for create mode */
+  meetingTypeId?: string;
+  // Transfer to another call campaign (ADD_TO_CALL_CAMPAIGN) + legacy TRANSFER_CALL
+  campaignId?: string;
+  contactScope?: 'primary' | 'all';
+  transferTarget?: string;
+  transferMode?: 'phone' | 'agent' | 'campaign';
+  // Webhook (WEBHOOK) — headers stored as a JSON string from the UI
   webhookUrl?: string;
   webhookMethod?: 'POST' | 'GET' | 'PUT';
   webhookHeaders?: string;
-  // Log Note
-  noteContent?: string;
-  // Meeting
-  meetingTypeId?: string;
-  // Transfer
-  transferTarget?: string;
-  transferMode?: 'phone' | 'agent' | 'campaign';
   // Update Contact (UPDATE_CONTACT)
   contactName?: string;
   contactEmail?: string;
   contactPhone?: string;
+  updateMode?: 'update' | 'new';
+  // Common
+  triggerDelaySeconds?: number;
 }
+
+/**
+ * Params shape for campaign post-call automation rules.
+ * @deprecated Alias of {@link CallActionParams} — kept for back-compat with existing imports.
+ */
+export type AutomationRuleParams = CallActionParams;
 

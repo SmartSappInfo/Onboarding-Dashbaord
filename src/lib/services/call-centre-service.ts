@@ -1,13 +1,18 @@
 import { adminDb, FieldValue } from '../firebase-admin';
-import type { 
-  CallScript, 
-  CallCampaign, 
-  CallQueueItem
+import type {
+  CallScript,
+  CallCampaign,
+  CallQueueItem,
+  CallActionType,
+  CallActionParams,
+  EntityContact,
+  Workspace
 } from '../types';
 import { previewCampaignAudience, resolveRecipientContacts } from '../messaging-actions';
 import { updateEntityAction } from '../entity-actions';
 import { applyTagsAction, removeTagsAction } from '../tag-actions';
 import { MEETING_TYPES } from '../types';
+import { parseGraph, getOutcomeAutomations, resolveScriptVariables } from '../call-centre-graph';
 import { createTaskAction } from '../task-server-actions';
 import { sendSms } from '../mnotify-service';
 import { sendEmail } from '../resend-service';
@@ -755,10 +760,10 @@ export class CallCentreService {
           updatedAt: timestamp,
         });
 
-        return { campaignId: data.campaignId, entityId: data.entityId, entityType: data.entityType, entityName: data.entityName, organizationId: data.organizationId, workspaceId: data.workspaceId };
+        return { campaignId: data.campaignId, entityId: data.entityId, entityType: data.entityType, entityName: data.entityName, organizationId: data.organizationId, workspaceId: data.workspaceId, contactId: data.contactId ?? null };
       });
 
-      const { campaignId, entityId, entityType, organizationId, workspaceId } = transactionResult;
+      const { campaignId, entityId, entityType, organizationId, workspaceId, contactId } = transactionResult;
 
       // 1. Log Activity on the Entity Timeline (Standard CRM logging)
       await logActivity({
@@ -789,6 +794,7 @@ export class CallCentreService {
             userId: agentId,
             workspaceId,
             organizationId,
+            contactId,
           });
         });
       } catch {
@@ -800,6 +806,7 @@ export class CallCentreService {
           userId: agentId,
           workspaceId,
           organizationId,
+          contactId,
         })).catch(err => console.error('[CALL_CENTRE_SERVICE] Fallback automations run failed:', err));
       }
 
@@ -914,31 +921,39 @@ export class CallCentreService {
     userId: string;
     workspaceId: string;
     organizationId: string;
+    contactId?: string | null;
   }): Promise<void> {
-    const { campaignId, entityId, outcome, userId, workspaceId, organizationId } = params;
+    const { campaignId, entityId, outcome, userId, workspaceId, organizationId, contactId } = params;
 
     try {
       const campaignSnap = await adminDb.collection('call_campaigns').doc(campaignId).get();
       if (!campaignSnap.exists) return;
 
       const campaign = campaignSnap.data() as CallCampaign;
-      const rules = campaign.automationRules?.[outcome] || [];
 
-      console.log(`>>> [CALL_CENTRE_SERVICE] Running ${rules.length} automations for outcome "${outcome}" on Entity: ${entityId}`);
+      // Source of truth: automations configured on the script's outcome node.
+      // Fall back to the legacy campaign-level automationRules only when the
+      // script defines none (back-compat for pre-existing campaigns; no migration).
+      const graph = parseGraph(campaign.scriptSnapshot);
+      const scriptRules = getOutcomeAutomations(graph, outcome);
+      const rules = scriptRules ?? (campaign.automationRules?.[outcome] ?? []);
+
+      console.log(`>>> [CALL_CENTRE_SERVICE] Running ${rules.length} automations for outcome "${outcome}" on Entity: ${entityId} (source: ${scriptRules ? 'script' : 'legacy'})`);
 
       for (const rule of rules) {
-        const result = await this.executeCallActionEffect(rule.type, rule.params || {}, {
+        const result = await this.executeCallActionEffect(rule.type, rule.params ?? {}, {
           entityId,
           userId,
           workspaceId,
           organizationId,
+          contactId: contactId ?? undefined,
         });
         if (!result.success && !result.unsupported) {
           console.error(`>>> [CALL_CENTRE_SERVICE] Automation rule "${rule.type}" failed:`, result.error);
         }
       }
-    } catch (err: any) {
-      console.error('[CALL_CENTRE_SERVICE] Campaign automations lookup failed:', err.message);
+    } catch (err) {
+      console.error('[CALL_CENTRE_SERVICE] Campaign automations lookup failed:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -949,8 +964,8 @@ export class CallCentreService {
    * handled), so callers can surface friendly status without crashing.
    */
   static async executeCallActionEffect(
-    type: string,
-    params: Record<string, any> = {},
+    type: CallActionType | string,
+    params: CallActionParams = {},
     ctx: { entityId: string; userId: string; workspaceId: string; organizationId: string; contactId?: string }
   ): Promise<{ success: boolean; unsupported?: boolean; error?: string }> {
     const { entityId, userId, workspaceId, organizationId, contactId } = ctx;
@@ -962,9 +977,28 @@ export class CallCentreService {
           if (!params.stageId) return { success: false, error: 'No stage configured.' };
           const stageSnap = await adminDb.collection('onboardingStages').doc(params.stageId).get();
           const currentStageName = stageSnap.exists ? stageSnap.data()?.name || 'Unknown' : 'Unknown';
+          const patch: { stageId: string; currentStageName: string; pipelineId?: string } =
+            { stageId: params.stageId, currentStageName };
+          if (params.pipelineId) patch.pipelineId = params.pipelineId; // cross-pipeline move
           await updateEntityAction(
             entityId,
-            { stageId: params.stageId, currentStageName },
+            patch,
+            systemActor,
+            workspaceId,
+            organizationId
+          );
+          return { success: true };
+        }
+
+        case 'ADD_TO_PIPELINE': {
+          if (!params.pipelineId || !params.stageId) {
+            return { success: false, error: 'Pipeline and stage are required.' };
+          }
+          const stageSnap = await adminDb.collection('onboardingStages').doc(params.stageId).get();
+          const currentStageName = stageSnap.exists ? stageSnap.data()?.name || 'Unknown' : 'Unknown';
+          await updateEntityAction(
+            entityId,
+            { pipelineId: params.pipelineId, stageId: params.stageId, currentStageName },
             systemActor,
             workspaceId,
             organizationId
@@ -1008,16 +1042,61 @@ export class CallCentreService {
           if (!params.templateId) return { success: false, error: 'No template configured.' };
           const templateSnap = await adminDb.collection('message_templates').doc(params.templateId).get();
           if (!templateSnap.exists) return { success: false, error: 'Template not found.' };
-          const body = params.customBody || templateSnap.data()?.body || '';
-          const contactSnap = await adminDb.collection('entities').doc(entityId).get();
-          let phone = '';
-          if (contactSnap.exists) {
-            const contactsList = contactSnap.data()?.entityContacts || [];
-            const primary = contactsList.find((c: any) => c.isPrimary) || contactsList[0];
-            phone = primary?.phone || '';
+          
+          const rawBody = templateSnap.data()?.body || '';
+
+          // Retrieve entity contact details
+          const entitySnap = await adminDb.collection('entities').doc(entityId).get();
+          const entityData = entitySnap.exists ? entitySnap.data() : null;
+          const contactsList = (entityData?.entityContacts ?? []) as EntityContact[];
+          
+          const activeContact = contactId 
+            ? contactsList.find(c => c.id === contactId || c.email === contactId || c.phone === contactId) || contactsList.find(c => c.isPrimary) || contactsList[0]
+            : contactsList.find(c => c.isPrimary) || contactsList[0];
+
+          // Fetch active agent user details
+          let agentName = 'Agent';
+          if (userId) {
+            const userSnap = await adminDb.collection('users').doc(userId).get();
+            if (userSnap.exists) {
+              agentName = userSnap.data()?.displayName || userSnap.data()?.name || 'Agent';
+            }
           }
+
+          // Fetch any active deal linked to this entity
+          let dealData = null;
+          const dealsSnap = await adminDb.collection('deals')
+            .where('entityId', '==', entityId)
+            .where('status', '==', 'open')
+            .limit(1)
+            .get();
+          if (!dealsSnap.empty) {
+            dealData = dealsSnap.docs[0].data();
+          }
+
+          // Compile variables
+          const body = resolveScriptVariables(
+            rawBody,
+            entityData as any,
+            dealData,
+            agentName,
+            activeContact
+          );
+
+          const phone = activeContact?.phone || '';
           if (!phone) return { success: false, error: 'Contact has no phone number.' };
-          await sendSms({ recipient: phone, message: body, sender: 'SMARTSAPP' });
+
+          // Determine Sender ID
+          let senderId = 'SmartSapp';
+          if (workspaceId) {
+            const workspaceSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+            if (workspaceSnap.exists) {
+              const ws = workspaceSnap.data() as Workspace;
+              senderId = ws.defaultSmsSenderId?.trim() || 'SmartSapp';
+            }
+          }
+
+          await sendSms({ recipient: phone, message: body, sender: senderId });
           return { success: true };
         }
 
@@ -1025,15 +1104,57 @@ export class CallCentreService {
           if (!params.templateId) return { success: false, error: 'No template configured.' };
           const templateSnap = await adminDb.collection('message_templates').doc(params.templateId).get();
           if (!templateSnap.exists) return { success: false, error: 'Template not found.' };
-          const subject = params.customSubject || templateSnap.data()?.subject || 'Outreach Follow Up';
-          const html = params.customBody || templateSnap.data()?.body || '';
-          const contactSnap = await adminDb.collection('entities').doc(entityId).get();
-          let email = '';
-          if (contactSnap.exists) {
-            const contactsList = contactSnap.data()?.entityContacts || [];
-            const primary = contactsList.find((c: any) => c.isPrimary) || contactsList[0];
-            email = primary?.email || '';
+          
+          const rawSubject = templateSnap.data()?.subject || 'Outreach Follow Up';
+          const rawBody = templateSnap.data()?.body || '';
+
+          // Retrieve entity contact details
+          const entitySnap = await adminDb.collection('entities').doc(entityId).get();
+          const entityData = entitySnap.exists ? entitySnap.data() : null;
+          const contactsList = (entityData?.entityContacts ?? []) as EntityContact[];
+          
+          const activeContact = contactId 
+            ? contactsList.find(c => c.id === contactId || c.email === contactId || c.phone === contactId) || contactsList.find(c => c.isPrimary) || contactsList[0]
+            : contactsList.find(c => c.isPrimary) || contactsList[0];
+
+          // Fetch active agent user details
+          let agentName = 'Agent';
+          if (userId) {
+            const userSnap = await adminDb.collection('users').doc(userId).get();
+            if (userSnap.exists) {
+              agentName = userSnap.data()?.displayName || userSnap.data()?.name || 'Agent';
+            }
           }
+
+          // Fetch any active deal linked to this entity
+          let dealData = null;
+          const dealsSnap = await adminDb.collection('deals')
+            .where('entityId', '==', entityId)
+            .where('status', '==', 'open')
+            .limit(1)
+            .get();
+          if (!dealsSnap.empty) {
+            dealData = dealsSnap.docs[0].data();
+          }
+
+          // Compile variables for subject and HTML body
+          const subject = resolveScriptVariables(
+            rawSubject,
+            entityData as any,
+            dealData,
+            agentName,
+            activeContact
+          );
+
+          const html = resolveScriptVariables(
+            rawBody,
+            entityData as any,
+            dealData,
+            agentName,
+            activeContact
+          );
+
+          const email = activeContact?.email || '';
           if (!email) return { success: false, error: 'Contact has no email address.' };
           await sendEmail({ to: email, subject, html });
           return { success: true };
@@ -1049,8 +1170,8 @@ export class CallCentreService {
           const contactSnap = await adminDb.collection('entities').doc(entityId).get();
           let phone = '';
           if (contactSnap.exists) {
-            const contactsList = contactSnap.data()?.entityContacts || [];
-            const primary = contactsList.find((c: any) => c.isPrimary) || contactsList[0];
+            const contactsList = (contactSnap.data()?.entityContacts ?? []) as EntityContact[];
+            const primary = contactsList.find(c => c.isPrimary) || contactsList[0];
             phone = primary?.phone || '';
           }
           if (!phone) return { success: false, error: 'Contact has no phone number.' };
@@ -1122,8 +1243,35 @@ export class CallCentreService {
         }
 
         case 'SCHEDULE_MEETING': {
+          // Back-compat: legacy configs set only `meetingTypeId` (create mode). When the
+          // mode is unset, infer it from which target is present; default to guest-list.
+          const meetingMode = params.meetingMode
+            ?? (params.meetingId ? 'guest_list' : params.meetingTypeId ? 'create' : 'guest_list');
+
+          // Guest-list mode: add the called contact to an existing, not-yet-due meeting.
+          if (meetingMode === 'guest_list') {
+            if (!params.meetingId) return { success: false, error: 'No meeting selected.' };
+            const entitySnap = await adminDb.collection('entities').doc(entityId).get();
+            if (!entitySnap.exists) return { success: false, error: 'Entity not found.' };
+            const entityData = entitySnap.data();
+            const contacts = (entityData?.entityContacts ?? []) as EntityContact[];
+            const contact = (contactId ? contacts.find(c => c.id === contactId) : undefined)
+              ?? contacts.find(c => c.isPrimary)
+              ?? contacts[0];
+            await adminDb.collection(`meetings/${params.meetingId}/registrants`).doc(entityId).set({
+              entityId,
+              name: contact?.name ?? entityData?.name ?? '',
+              email: contact?.email ?? '',
+              phone: contact?.phone ?? '',
+              source: 'call_campaign',
+              createdAt: new Date().toISOString(),
+            }, { merge: true });
+            return { success: true };
+          }
+
+          // Create mode: spin up a new meeting from a configured MEETING_TYPES type.
           if (!params.meetingTypeId) return { success: false, error: 'No meeting type configured.' };
-          
+
           const meetingType = MEETING_TYPES.find(t => t.id === params.meetingTypeId);
           if (!meetingType) return { success: false, error: `Invalid meeting type ID "${params.meetingTypeId}".` };
 
@@ -1180,8 +1328,16 @@ export class CallCentreService {
             return { success: false, error: 'A valid HTTP/HTTPS webhook URL is required.' };
           }
           const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          if (params.webhookHeaders && typeof params.webhookHeaders === 'object' && !Array.isArray(params.webhookHeaders)) {
-            for (const [k, v] of Object.entries(params.webhookHeaders)) headers[k] = String(v);
+          // webhookHeaders is a JSON string from the UI — parse + guard (never trust shape).
+          if (typeof params.webhookHeaders === 'string' && params.webhookHeaders.trim()) {
+            try {
+              const parsed: unknown = JSON.parse(params.webhookHeaders);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) headers[k] = String(v);
+              }
+            } catch {
+              /* ignore malformed headers — send defaults */
+            }
           }
           const response = await fetch(params.webhookUrl, {
             method: params.webhookMethod || 'POST',
@@ -1325,8 +1481,8 @@ export class CallCentreService {
    * Thin wrapper over {@link executeCallActionEffect} using the node's actionConfig as params.
    */
   static async executeScriptAction(params: {
-    actionType: string;
-    actionConfig?: Record<string, any>;
+    actionType: CallActionType | string;
+    actionConfig?: CallActionParams;
     entityId: string;
     userId: string;
     workspaceId: string;

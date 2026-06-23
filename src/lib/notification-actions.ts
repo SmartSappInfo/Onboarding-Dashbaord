@@ -109,7 +109,7 @@ export async function sendReceiptAcknowledgementAction(payload: {
         await sendSms({
             recipient: phone,
             message: clientSmsMessage,
-            sender: 'SMARTSAPP'
+            sender: 'SmartSapp'
         });
 
         // 4. Send SmartSapp Team SMS Notification
@@ -120,7 +120,7 @@ export async function sendReceiptAcknowledgementAction(payload: {
         await sendSms({
             recipient: teamRecipients,
             message: teamSmsMessage,
-            sender: 'SMARTSAPP'
+            sender: 'SmartSapp'
         });
 
         // 4. Sync with Pabbly Webhook

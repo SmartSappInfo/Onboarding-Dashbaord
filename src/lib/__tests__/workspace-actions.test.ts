@@ -87,6 +87,52 @@ describe('saveWorkspaceAction', () => {
     expect(result.error).toContain('Invalid contactScope');
   });
 
+  it('should validate defaultSmsSenderId and reject values over 11 characters', async () => {
+    const result = await saveWorkspaceAction(null, {
+      name: 'Test Workspace',
+      organizationId: 'org_1',
+      defaultSmsSenderId: 'TooLongSenderIDName',
+    }, 'user_1');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Default SMS Sender ID must be at most 11 characters');
+  });
+
+  it('should validate defaultSmsSenderId and reject non-alphanumeric values', async () => {
+    const result = await saveWorkspaceAction(null, {
+      name: 'Test Workspace',
+      organizationId: 'org_1',
+      defaultSmsSenderId: 'Sender_Id!',
+    }, 'user_1');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Default SMS Sender ID must contain only alphanumeric characters');
+  });
+
+  it('should accept valid defaultSmsSenderId', async () => {
+    const mockDocRef = {
+      get: vi.fn().mockResolvedValue({ exists: false }),
+      set: vi.fn().mockResolvedValue(undefined),
+    };
+
+    (adminDb.collection as any).mockReturnValue({
+      doc: vi.fn().mockReturnValue(mockDocRef),
+    });
+
+    const result = await saveWorkspaceAction(null, {
+      name: 'Test Workspace',
+      organizationId: 'org_1',
+      defaultSmsSenderId: 'SmartSapp',
+    }, 'user_1');
+
+    expect(result.success).toBe(true);
+    expect(mockDocRef.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultSmsSenderId: 'SmartSapp',
+      })
+    );
+  });
+
   it('should accept custom capabilities when provided', async () => {
     const mockDocRef = {
       get: vi.fn().mockResolvedValue({ exists: false }),

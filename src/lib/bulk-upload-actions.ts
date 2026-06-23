@@ -7,11 +7,12 @@ import { FieldValue } from 'firebase-admin/firestore';
 import type { DuplicateStrategy } from './import-types';
 import { IngestionDeduplicator } from './services/IngestionDeduplicator';
 import { after } from 'next/server';
-import type { EntityContact } from './types';
+import type { EntityContact, Workspace } from './types';
 import { revalidatePath } from 'next/cache';
 import { normalizeContactType, enforceContactConstraints } from './entity-contact-helpers';
 import { resolveFieldStorageBucket } from './field-storage-utils';
 import { cleanBatch, cleanValueByKey, type CleaningStats } from './import-data-cleaner';
+import { UNASSIGNED_ZONE } from './zone-constants';
 import { evaluateFormula } from './formula-parser';
 import { buildTagDocument } from './tag-schemas';
 import { getBaseUrl } from './utils/url-helpers';
@@ -748,7 +749,7 @@ async function processRow(
         country: selectedCountry ? { id: selectedCountry.id, name: selectedCountry.name, code: selectedCountry.code, flag: selectedCountry.flag } : null,
         region: selectedRegion ? { id: selectedRegion.id, name: selectedRegion.name } : null,
         district: selectedDistrict ? { id: selectedDistrict.id, name: selectedDistrict.name } : null,
-        zone: selectedZone ? { id: selectedZone.id, name: selectedZone.name } : null,
+        zone: selectedZone ? { id: selectedZone.id, name: selectedZone.name } : UNASSIGNED_ZONE,
         locationString: String(getValue('locationString') || '')
     };
 
@@ -1006,7 +1007,7 @@ async function processRow(
         locationCountryId: selectedCountry?.id || null,
         locationRegionId: selectedRegion?.id || null,
         locationDistrictId: selectedDistrict?.id || null,
-        zone: selectedZone ? { id: selectedZone.id, name: selectedZone.name } : null,
+        zone: selectedZone ? { id: selectedZone.id, name: selectedZone.name } : UNASSIGNED_ZONE,
         ...(entityDoc.currentNeeds && { currentNeeds: entityDoc.currentNeeds }),
         ...(entityDoc.currentChallenges && { currentChallenges: entityDoc.currentChallenges }),
         ...(entityDoc.interestsText && { interestsText: entityDoc.interestsText }),
@@ -1667,8 +1668,9 @@ function applyCustomExistingData(existingEntity: any, customExistingData: any, c
     }
     if (customExistingData.zone !== undefined) {
         const selectedZone = fuzzyMatch(context.zones, customExistingData.zone);
-        existingEntity.location.zone = selectedZone ? { id: selectedZone.id, name: selectedZone.name } : null;
-        existingEntity.zone = selectedZone ? { id: selectedZone.id, name: selectedZone.name } : null;
+        const resolvedZone = selectedZone ? { id: selectedZone.id, name: selectedZone.name } : UNASSIGNED_ZONE;
+        existingEntity.location.zone = resolvedZone;
+        existingEntity.zone = resolvedZone;
     }
     if (customExistingData.locationString !== undefined) {
         existingEntity.location.locationString = customExistingData.locationString;
@@ -1799,7 +1801,17 @@ async function sendCompletionNotifications(
     try {
       const { sendSms } = await import('./mnotify-service');
       const body = resolve(tmpl?.smsBody || 'Bulk upload "{{filename}}" done. {{successCount}} created, {{failedCount}} failed.');
-      await sendSms({ recipient: userData.phone, message: body, sender: 'SMARTSAPP' });
+      
+      let senderId = 'SmartSapp';
+      if (importLog.workspaceId) {
+        const workspaceSnap = await adminDb.collection('workspaces').doc(importLog.workspaceId).get();
+        if (workspaceSnap.exists) {
+          const ws = workspaceSnap.data() as Workspace;
+          senderId = ws.defaultSmsSenderId?.trim() || 'SmartSapp';
+        }
+      }
+
+      await sendSms({ recipient: userData.phone, message: body, sender: senderId });
     } catch (err: any) {
       console.error('[BULK-NOTIF] SMS failed:', err.message);
     }

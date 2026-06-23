@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import type { Node, Edge } from 'reactflow';
+import type { ScriptNode, ScriptEdge } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { useFirestore } from '@/firebase';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -63,8 +64,8 @@ interface EntityDataInfo {
 }
 
 interface InteractiveScriptViewProps {
-  nodes: Node[];
-  edges: Edge[];
+  nodes: ScriptNode[];
+  edges: ScriptEdge[];
   /**
    * Optional resolver that substitutes live values into `{{VARIABLE}}` tokens
    * (e.g. the current contact + caller during a live call). When omitted, the
@@ -72,14 +73,17 @@ interface InteractiveScriptViewProps {
    */
   resolveText?: (raw: string) => string;
   /** Live-mode handlers — when present, actions/outcomes can be triggered for real. */
-  onTriggerAction?: (node: Node) => Promise<TriggerResult>;
-  onTriggerOutcome?: (node: Node) => Promise<TriggerResult>;
+  onTriggerAction?: (node: ScriptNode) => Promise<TriggerResult>;
+  onTriggerOutcome?: (node: ScriptNode) => Promise<TriggerResult>;
   /** Node ids already triggered this conversation (rendered greyed/disabled). */
   triggeredIds?: Set<string> | string[];
   onEndCall?: () => void;
   currentContact?: { id: string; name?: string; email?: string; phone?: string } | null;
   entityData?: EntityDataInfo | null;
   triggerActionsAutomatically?: boolean;
+  hideSidebars?: boolean;
+  activeNodeId?: string | null;
+  onActiveNodeChange?: (nodeId: string | null) => void;
 }
 
 export function InteractiveScriptView({
@@ -93,10 +97,26 @@ export function InteractiveScriptView({
   currentContact,
   entityData,
   triggerActionsAutomatically = true,
+  hideSidebars = false,
+  activeNodeId: controlledActiveNodeId,
+  onActiveNodeChange,
 }: InteractiveScriptViewProps) {
   const { zoom, zoomIn, zoomOut, reset, canZoomIn, canZoomOut } = useZoom();
   const firestore = useFirestore();
-  const [activeNodeId, setActiveNodeId] = React.useState<string | null>(null);
+  
+  const [uncontrolledActiveNodeId, setUncontrolledActiveNodeId] = React.useState<string | null>(null);
+  
+  const isControlledActiveNode = controlledActiveNodeId !== undefined;
+  const activeNodeId = isControlledActiveNode ? controlledActiveNodeId : uncontrolledActiveNodeId;
+  
+  const setActiveNodeId = React.useCallback((id: string | null) => {
+    if (isControlledActiveNode) {
+      onActiveNodeChange?.(id);
+    } else {
+      setUncontrolledActiveNodeId(id);
+    }
+  }, [isControlledActiveNode, onActiveNodeChange]);
+
   const [rightTab, setRightTab] = React.useState<'objections' | 'actions' | 'outcomes'>('objections');
   const [selectedObjectionId, setSelectedObjectionId] = React.useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = React.useState<string | null>(null);
@@ -129,7 +149,7 @@ export function InteractiveScriptView({
     if (!nodes || nodes.length === 0) return [];
 
     const mainNodes = nodes.filter(n => n.type !== 'objection' && n.type !== 'action' && n.type !== 'outcome');
-    const result: Node[] = [];
+    const result: ScriptNode[] = [];
     const visited = new Set<string>();
 
     const dfs = (nodeId: string) => {
@@ -170,6 +190,14 @@ export function InteractiveScriptView({
     }
   }, [orderedMainNodes, activeNodeId]);
 
+  // Sync selected objection/action reset when activeNodeId changes
+  React.useEffect(() => {
+    setSelectedObjectionId(null);
+    setSelectedActionId(null);
+    setSelectedSubObjectionIndex(null);
+    setEnteredObjectionFromChoice(false);
+  }, [activeNodeId]);
+
   // Derive middle pane content without secondary effects
   const activeNode = React.useMemo(() => {
     return nodes.find(n => n.id === activeNodeId) || null;
@@ -193,26 +221,34 @@ export function InteractiveScriptView({
   }, [middleNode?.id]);
 
   // Initialize/reset local config when middleNode changes
+  const prevMiddleNodeIdRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (middleNode?.type === 'action') {
-      const config = (middleNode.data?.actionConfig as Record<string, string>) || {};
-      const initial: Record<string, string> = { ...config };
-      if (middleNode.data?.actionType === 'UPDATE_CONTACT') {
-        initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
-        initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
-        initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
-        initial.updateMode = initial.updateMode || 'update';
-      } else if (middleNode.data?.actionType === 'CREATE_TASK') {
-        initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
-        initial.taskDescription = initial.taskDescription || '';
-        initial.taskPriority = initial.taskPriority || 'medium';
-      } else if (middleNode.data?.actionType === 'SEND_SMS' || middleNode.data?.actionType === 'SEND_WHATSAPP' || middleNode.data?.actionType === 'SEND_EMAIL') {
-        initial.templateId = initial.templateId || '';
+      const nodeIdChanged = prevMiddleNodeIdRef.current !== middleNode.id;
+      prevMiddleNodeIdRef.current = middleNode.id;
+
+      if (nodeIdChanged) {
+        const actionType = middleNode.data?.actionType || 'SEND_SMS';
+        const config = (middleNode.data?.actionConfig as Record<string, string>) || {};
+        const initial: Record<string, string> = { ...config };
+        if (actionType === 'UPDATE_CONTACT') {
+          initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
+          initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
+          initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
+          initial.updateMode = initial.updateMode || 'update';
+        } else if (actionType === 'CREATE_TASK') {
+          initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
+          initial.taskDescription = initial.taskDescription || '';
+          initial.taskPriority = initial.taskPriority || 'medium';
+        } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
+          initial.templateId = initial.templateId || '';
+        }
+        setLocalActionConfig(initial);
       }
-      setLocalActionConfig(initial);
       setActionStatus(isTriggered(middleNode.id) ? 'success' : 'idle');
       setActionError(null);
     } else {
+      prevMiddleNodeIdRef.current = null;
       setLocalActionConfig({});
     }
   }, [middleNode, currentContact, isTriggered]);
@@ -245,16 +281,20 @@ export function InteractiveScriptView({
     }
   }, [middleNode, localActionConfig?.templateId, firestore]);
 
-  const handleExecuteMiddleAction = async (configOverride?: any) => {
+  const handleExecuteMiddleAction = async (configOverride?: Record<string, unknown>) => {
     if (!middleNode || !onTriggerAction) return;
     setActionStatus('loading');
     setActionError(null);
     try {
+      // Ignore React SyntheticEvent or DOM MouseEvents passed when bound directly to onClick
+      const isEvent = configOverride && typeof configOverride === 'object' && ('nativeEvent' in configOverride || 'target' in configOverride || 'preventDefault' in configOverride);
+      const resolvedConfig = isEvent ? localActionConfig : (configOverride || localActionConfig);
+
       const modifiedNode = {
         ...middleNode,
         data: {
           ...middleNode.data,
-          actionConfig: configOverride || localActionConfig,
+          actionConfig: resolvedConfig,
         }
       };
       const res = await onTriggerAction(modifiedNode);
@@ -273,18 +313,19 @@ export function InteractiveScriptView({
 
   React.useEffect(() => {
     if (triggerActionsAutomatically && middleNode?.type === 'action' && actionStatus === 'idle' && !isTriggered(middleNode.id)) {
+      const actionType = middleNode.data?.actionType || 'SEND_SMS';
       const config = (middleNode.data?.actionConfig as Record<string, string>) || {};
       const initial: Record<string, string> = { ...config };
-      if (middleNode.data?.actionType === 'UPDATE_CONTACT') {
+      if (actionType === 'UPDATE_CONTACT') {
         initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
         initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
         initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
         initial.updateMode = initial.updateMode || 'update';
-      } else if (middleNode.data?.actionType === 'CREATE_TASK') {
+      } else if (actionType === 'CREATE_TASK') {
         initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
         initial.taskDescription = initial.taskDescription || '';
         initial.taskPriority = initial.taskPriority || 'medium';
-      } else if (middleNode.data?.actionType === 'SEND_SMS' || middleNode.data?.actionType === 'SEND_WHATSAPP' || middleNode.data?.actionType === 'SEND_EMAIL') {
+      } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
         initial.templateId = initial.templateId || '';
       }
       handleExecuteMiddleAction(initial);
@@ -299,11 +340,11 @@ export function InteractiveScriptView({
 
   const renderMiddleActionConfig = () => {
     if (!middleNode) return null;
-    const actionType = middleNode.data?.actionType;
+    const actionType = middleNode.data?.actionType || 'SEND_SMS';
 
     if (actionType === 'UPDATE_CONTACT') {
       return (
-        <div className="space-y-4 max-w-md mx-auto bg-card/60 p-6 rounded-2xl border border-border shadow-sm">
+        <div className="space-y-4 w-full bg-card/60 p-4 rounded-xl border border-border shadow-sm">
           <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center mb-2">Update Contact Fields</h4>
           <div className="space-y-3">
             <div className="space-y-1">
@@ -379,7 +420,7 @@ export function InteractiveScriptView({
 
           <Button
             type="button"
-            onClick={handleExecuteMiddleAction}
+            onClick={() => handleExecuteMiddleAction()}
             disabled={actionStatus === 'loading'}
             className="w-full h-10 rounded-xl font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white mt-2 shadow-sm"
           >
@@ -395,7 +436,7 @@ export function InteractiveScriptView({
       const toValue = actionType === 'SEND_EMAIL' ? (currentContact?.email || 'No email configured') : (currentContact?.phone || 'No phone number configured');
 
       return (
-        <div className="space-y-4 max-w-lg mx-auto bg-card/60 p-6 rounded-2xl border border-border shadow-sm">
+        <div className="space-y-4 w-full bg-card/60 p-4 rounded-xl border border-border shadow-sm">
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-[10px] font-bold uppercase text-muted-foreground">Select template</Label>
@@ -405,7 +446,7 @@ export function InteractiveScriptView({
                 channel={channel}
                 value={localActionConfig.templateId ?? ''}
                 onValueChange={(val: string) => setLocalActionConfig(prev => ({ ...prev, templateId: val }))}
-                compact
+                compact={actionType === 'SEND_WHATSAPP'}
               />
             </div>
 
@@ -415,48 +456,36 @@ export function InteractiveScriptView({
                   Loading template preview...
                 </div>
               ) : (
-                <div className="space-y-3 pt-2">
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block text-center">Preview & Adjust Message</span>
-                  
-                  <div className={cn(
-                    "p-4 rounded-xl border flex flex-col gap-2 text-xs",
-                    actionType === 'SEND_WHATSAPP' ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20" :
-                    actionType === 'SEND_SMS' ? "bg-muted/40 border-border" : "bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/20"
-                  )}>
-                    <div className="flex justify-between border-b border-border/40 pb-1.5 text-[10px] text-muted-foreground">
-                      <span><strong>To:</strong> {toValue}</span>
-                      <span className="font-mono text-[8px] uppercase">{label} Preview</span>
-                    </div>
+                actionType === 'SEND_WHATSAPP' && (
+                  <div className="space-y-3 pt-2">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block text-center">Preview & Adjust Message</span>
+                    
+                    <div className="p-4 rounded-xl border flex flex-col gap-2 text-xs bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20">
+                      <div className="flex justify-between border-b border-border/40 pb-1.5 text-[10px] text-muted-foreground">
+                        <span><strong>To:</strong> {toValue}</span>
+                        <span className="font-mono text-[8px] uppercase">{label} Preview</span>
+                      </div>
 
-                    {actionType === 'SEND_EMAIL' && (
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Subject</Label>
-                        <Input
-                          value={localActionConfig.customSubject !== undefined ? localActionConfig.customSubject : (templateDetails?.subject || '')}
-                          onChange={e => setLocalActionConfig(prev => ({ ...prev, customSubject: e.target.value }))}
-                          placeholder="Email subject"
-                          className="h-8 rounded-lg bg-background border-border text-xs"
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Message Body</Label>
+                        <Textarea
+                          value={localActionConfig.customBody !== undefined ? localActionConfig.customBody : (templateDetails?.body || '')}
+                          onChange={e => setLocalActionConfig(prev => ({ ...prev, customBody: e.target.value }))}
+                          placeholder="Write template body"
+                          rows={5}
+                          className="bg-background border-border rounded-lg text-xs p-2 resize-none font-serif leading-relaxed"
                         />
                       </div>
-                    )}
-
-                    <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase text-muted-foreground">Message Body</Label>
-                      <Textarea
-                        value={localActionConfig.customBody !== undefined ? localActionConfig.customBody : (templateDetails?.body || '')}
-                        onChange={e => setLocalActionConfig(prev => ({ ...prev, customBody: e.target.value }))}
-                        placeholder="Write template body"
-                        rows={5}
-                        className="bg-background border-border rounded-lg text-xs p-2 resize-none font-serif leading-relaxed"
-                      />
                     </div>
                   </div>
-                </div>
+                )
               )
             ) : (
-              <div className="text-center py-6 text-xs text-muted-foreground italic border border-dashed border-border rounded-xl">
-                Please select a message template to preview.
-              </div>
+              actionType === 'SEND_WHATSAPP' && (
+                <div className="text-center py-6 text-xs text-muted-foreground italic border border-dashed border-border rounded-xl">
+                  Please select a message template to preview.
+                </div>
+              )
             )}
           </div>
 
@@ -473,7 +502,7 @@ export function InteractiveScriptView({
 
           <Button
             type="button"
-            onClick={handleExecuteMiddleAction}
+            onClick={() => handleExecuteMiddleAction()}
             disabled={actionStatus === 'loading' || !localActionConfig.templateId}
             className={cn(
               "w-full h-10 rounded-xl font-bold uppercase tracking-wider text-white shadow-sm mt-2",
@@ -489,7 +518,7 @@ export function InteractiveScriptView({
 
     if (actionType === 'CREATE_TASK') {
       return (
-        <div className="space-y-4 max-w-md mx-auto bg-card/60 p-6 rounded-2xl border border-border shadow-sm">
+        <div className="space-y-4 w-full bg-card/60 p-4 rounded-xl border border-border shadow-sm">
           <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center mb-2">Create Task</h4>
           <div className="space-y-3">
             <div className="space-y-1">
@@ -548,7 +577,7 @@ export function InteractiveScriptView({
 
           <Button
             type="button"
-            onClick={handleExecuteMiddleAction}
+            onClick={() => handleExecuteMiddleAction()}
             disabled={actionStatus === 'loading' || !localActionConfig.taskTitle}
             className="w-full h-10 rounded-xl font-bold uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white mt-2 shadow-sm"
           >
@@ -559,7 +588,7 @@ export function InteractiveScriptView({
     }
 
     return (
-      <div className="space-y-4 max-w-md mx-auto bg-card/60 p-6 rounded-2xl border border-border shadow-sm text-center">
+      <div className="space-y-4 w-full bg-card/60 p-4 rounded-xl border border-border shadow-sm text-center">
         <p className="text-xs text-muted-foreground italic leading-relaxed">
           Configuration properties: {JSON.stringify(localActionConfig)}
         </p>
@@ -577,7 +606,7 @@ export function InteractiveScriptView({
 
         <Button
           type="button"
-          onClick={handleExecuteMiddleAction}
+          onClick={() => handleExecuteMiddleAction()}
           disabled={actionStatus === 'loading'}
           className="w-full h-10 rounded-xl font-bold uppercase tracking-wider bg-indigo-600 hover:bg-indigo-700 text-white mt-2 shadow-sm"
         >
@@ -588,7 +617,7 @@ export function InteractiveScriptView({
   };
 
   // Gets absolute default placeholder text if none has been configured
-  const getFallbackText = React.useCallback((node: Node) => {
+  const getFallbackText = React.useCallback((node: ScriptNode) => {
     const text = node.data?.text;
     if (text && text.trim()) return text;
 
@@ -604,26 +633,27 @@ export function InteractiveScriptView({
       case 'objection':
         return 'Objection response details here…';
       case 'action': {
-        const meta = getActionMeta(node.data?.actionType || '');
+        const actionType = node.data?.actionType || 'SEND_SMS';
+        const meta = getActionMeta(actionType);
         let details = `Trigger Action: ${meta.label}`;
         const config = node.data?.actionConfig || {};
-        if (node.data?.actionType === 'SEND_SMS' || node.data?.actionType === 'SEND_EMAIL' || node.data?.actionType === 'SEND_WHATSAPP') {
+        if (actionType === 'SEND_SMS' || actionType === 'SEND_EMAIL' || actionType === 'SEND_WHATSAPP') {
           details += ` (Template ID: ${config.templateId || 'Not configured'})`;
-        } else if (node.data?.actionType === 'CREATE_TASK') {
+        } else if (actionType === 'CREATE_TASK') {
           details += ` (Task: "${config.taskTitle || 'Follow up'}" - Priority: ${config.taskPriority || 'medium'})`;
-        } else if (node.data?.actionType === 'CHANGE_STAGE') {
+        } else if (actionType === 'CHANGE_STAGE') {
           details += ` (Stage ID: ${config.stageId || 'Not configured'})`;
-        } else if (node.data?.actionType === 'ADD_TAG' || node.data?.actionType === 'REMOVE_TAG') {
+        } else if (actionType === 'ADD_TAG' || actionType === 'REMOVE_TAG') {
           details += ` (Tag ID: ${config.tagId || 'Not configured'})`;
-        } else if (node.data?.actionType === 'WEBHOOK') {
+        } else if (actionType === 'WEBHOOK') {
           details += ` (${config.webhookMethod || 'POST'} to ${config.webhookUrl || 'No URL'})`;
-        } else if (node.data?.actionType === 'LOG_NOTE') {
+        } else if (actionType === 'LOG_NOTE') {
           details += ` (Note: ${config.noteContent || 'Empty'})`;
-        } else if (node.data?.actionType === 'SCHEDULE_MEETING') {
+        } else if (actionType === 'SCHEDULE_MEETING') {
           details += ` (Meeting Type ID: ${config.meetingTypeId || 'Not configured'})`;
-        } else if (node.data?.actionType === 'TRANSFER_CALL') {
+        } else if (actionType === 'TRANSFER_CALL') {
           details += ` (Transfer to: ${config.transferTarget || 'No target'} via ${config.transferMode || 'phone'})`;
-        } else if (node.data?.actionType === 'UPDATE_CONTACT') {
+        } else if (actionType === 'UPDATE_CONTACT') {
           details += ` (Update: ${config.contactName || '[No Name]'}, ${config.contactEmail || '[No Email]'}, ${config.contactPhone || '[No Phone]'})`;
         }
         if (config.triggerDelaySeconds) {
@@ -646,7 +676,7 @@ export function InteractiveScriptView({
     text?: string;
   }
 
-  const getSubObjections = React.useCallback((node: Node): Array<{ title: string; description: string }> => {
+  const getSubObjections = React.useCallback((node: ScriptNode): Array<{ title: string; description: string }> => {
     const data = node.data as ObjectionData | undefined;
     const objections = data?.objectionConfig?.objections;
     if (Array.isArray(objections) && objections.length > 0) {
@@ -666,7 +696,7 @@ export function InteractiveScriptView({
   }, [middleNode, getSubObjections]);
 
   const middleTitle = React.useMemo(() => {
-    if (selectedObjectionId && middleNode) {
+    if ((selectedObjectionId || middleNode?.type === 'objection') && middleNode) {
       if (selectedSubObjectionIndex !== null) {
         const subObjs = getSubObjections(middleNode);
         const subObj = subObjs[selectedSubObjectionIndex];
@@ -678,16 +708,20 @@ export function InteractiveScriptView({
   }, [selectedObjectionId, selectedSubObjectionIndex, middleNode, getSubObjections]);
 
   const middleText = React.useMemo(() => {
-    if (selectedObjectionId && middleNode) {
+    if ((selectedObjectionId || middleNode?.type === 'objection') && middleNode) {
       if (selectedSubObjectionIndex !== null) {
         const subObjs = getSubObjections(middleNode);
         const subObj = subObjs[selectedSubObjectionIndex];
+        if (subObj?.description) return subObj.description;
+      } else if (subObjections.length <= 1) {
+        const subObjs = getSubObjections(middleNode);
+        const subObj = subObjs[0];
         if (subObj?.description) return subObj.description;
       }
       return middleNode.data?.text || 'Objection response details here…';
     }
     return middleNode ? getFallbackText(middleNode) : '';
-  }, [selectedObjectionId, selectedSubObjectionIndex, middleNode, getFallbackText, getSubObjections]);
+  }, [selectedObjectionId, selectedSubObjectionIndex, middleNode, getFallbackText, getSubObjections, subObjections]);
 
   // Memoized callbacks
   const handleMainNodeClick = React.useCallback((nodeId: string) => {
@@ -763,7 +797,7 @@ export function InteractiveScriptView({
   const allOutcomes = React.useMemo(() => nodes.filter(n => n.type === 'outcome'), [nodes]);
 
   // Body text shown for an action/outcome in its detail view.
-  const bodyOf = React.useCallback((node: Node) => {
+  const bodyOf = React.useCallback((node: ScriptNode) => {
     if (node.type === 'outcome') {
       return node.data?.text || `Mark this call outcome as "${node.data?.outcomeValue || 'Outcome'}".`;
     }
@@ -771,7 +805,7 @@ export function InteractiveScriptView({
   }, [getFallbackText]);
 
   // Execute a trigger for the given node, driving the shared status banner.
-  const runTrigger = React.useCallback(async (node: Node, kind: 'action' | 'outcome') => {
+  const runTrigger = React.useCallback(async (node: ScriptNode, kind: 'action' | 'outcome') => {
     const handler = kind === 'action' ? onTriggerAction : onTriggerOutcome;
     if (!handler) return;
     if (isTriggered(node.id)) { setTriggerStatus('success'); return; }
@@ -792,7 +826,7 @@ export function InteractiveScriptView({
     }
   }, [onTriggerAction, onTriggerOutcome, isTriggered]);
 
-  const openTrigger = React.useCallback((node: Node, kind: 'action' | 'outcome') => {
+  const openTrigger = React.useCallback((node: ScriptNode, kind: 'action' | 'outcome') => {
     setRightTab(kind === 'action' ? 'actions' : 'outcomes');
     setTriggerView({ nodeId: node.id, kind });
     setTriggerStatus(isTriggered(node.id) ? 'success' : 'idle');
@@ -817,7 +851,9 @@ export function InteractiveScriptView({
     });
     if (decision === 'trigger-outcome') {
       openTrigger(target, 'outcome');
-      void runTrigger(target, 'outcome');
+      if (triggerActionsAutomatically) {
+        void runTrigger(target, 'outcome');
+      }
       return;
     }
     if (target.type === 'action') {
@@ -832,7 +868,7 @@ export function InteractiveScriptView({
     } else {
       handleMainNodeClick(targetNodeId);
     }
-  }, [nodes, edges, activeNodeId, onTriggerOutcome, onTriggerAction, openTrigger, runTrigger, handleMainNodeClick]);
+  }, [nodes, edges, activeNodeId, onTriggerOutcome, onTriggerAction, openTrigger, runTrigger, handleMainNodeClick, triggerActionsAutomatically]);
 
   const handleNextStepAfterObjection = React.useCallback(() => {
     if (!middleNode) return;
@@ -1030,7 +1066,7 @@ export function InteractiveScriptView({
       const triggered = isTriggered(open.id);
       return (
         <div className="flex-grow flex flex-col h-full overflow-hidden">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border shrink-0 select-none">
+          <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
             <button
               type="button"
               onClick={() => { setTriggerView(null); setTriggerStatus('idle'); setTriggerError(null); }}
@@ -1090,14 +1126,16 @@ export function InteractiveScriptView({
 
     return (
       <div className="flex-grow flex flex-col h-full overflow-hidden">
-        <span className="text-[9px] font-bold text-muted-foreground uppercase pb-2 mb-2 border-b border-border shrink-0 select-none">
-          {kind === 'action' ? 'Available Actions' : 'Call Outcomes'}
-        </span>
+        <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
+          <span className="text-[9px] font-bold text-muted-foreground uppercase">
+            {kind === 'action' ? 'Available Actions' : 'Call Outcomes'}
+          </span>
+        </div>
         <div className="flex-grow overflow-y-auto space-y-1.5 scrollbar-thin select-none">
           {list.length > 0 ? (
             list.map((node) => {
               const triggered = isTriggered(node.id);
-              const meta = kind === 'action' ? getActionMeta(node.data?.actionType || '') : null;
+              const meta = kind === 'action' ? getActionMeta(node.data?.actionType || 'SEND_SMS') : null;
               const Icon = meta ? meta.icon : CheckCircle2;
               const iconColor = meta ? meta.colorClass.replace('bg-', 'text-') : 'text-purple-500';
               return (
@@ -1153,6 +1191,322 @@ export function InteractiveScriptView({
     }
   };
 
+  const middlePanel = (
+    <div className={cn("h-full flex flex-col overflow-hidden", hideSidebars ? "" : "border border-border bg-card rounded-2xl shadow-sm")}>
+      {middleNode ? (
+        <>
+          <div className="p-4 bg-muted/20 border-b border-border flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              {pathHistory.length > 0 && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+                  onClick={handleGoBack}
+                  aria-label="Go back to previous step"
+                  title="Go back to previous step"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              <span className="text-xs font-black uppercase tracking-widest text-primary">
+                {middleTitle}
+              </span>
+              <Badge className="capitalize text-[8px] border-none font-bold bg-muted text-muted-foreground">
+                {middleNode.type || 'objection'}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-1">
+              {/* Zoom controls for the dialogue text */}
+              <div className="flex items-center gap-0.5 rounded-lg border border-border bg-background/60 px-0.5">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground rounded-md disabled:opacity-40"
+                  onClick={zoomOut}
+                  disabled={!canZoomOut}
+                  aria-label="Zoom out"
+                  title="Zoom out"
+                >
+                  <ZoomOut className="h-3.5 w-3.5" />
+                </Button>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="min-w-[34px] text-[9px] font-bold tabular-nums text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Reset zoom"
+                  title="Reset zoom"
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground rounded-md disabled:opacity-40"
+                  onClick={zoomIn}
+                  disabled={!canZoomIn}
+                  aria-label="Zoom in"
+                  title="Zoom in"
+                >
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground rounded-md"
+                  onClick={reset}
+                  aria-label="Reset zoom to 100%"
+                  title="Reset zoom to 100%"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                </Button>
+              </div>
+              {(selectedObjectionId || (middleNode?.type === 'objection' && selectedSubObjectionIndex !== null)) && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground rounded-lg"
+                  onClick={() => {
+                    if (selectedObjectionId) {
+                      setSelectedObjectionId(null);
+                    }
+                    setSelectedSubObjectionIndex(null);
+                  }}
+                  aria-label="Close objection response"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              {selectedActionId && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground rounded-lg"
+                  onClick={() => {
+                    setSelectedActionId(null);
+                  }}
+                  aria-label="Close action detail"
+                  title="Close action detail"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-grow flex flex-col min-h-0">
+            {/* Scrollable Dialogue Viewport */}
+            <div ref={scrollContainerRef} className="flex-grow overflow-y-auto p-7 min-h-0 pr-2 space-y-4 scrollbar-thin select-text">
+              {middleNode.type === 'objection' && (enteredObjectionFromChoice || selectedObjectionId === null) && selectedSubObjectionIndex === null && subObjections.length > 1 ? (
+                /* Show list of sub-objections first in the readable area */
+                <div className="space-y-3">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                    Select which objection fits:
+                  </span>
+                  <div className="grid gap-2 max-w-xl">
+                    {subObjections.map((sub, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedSubObjectionIndex(idx)}
+                        className="w-full text-left p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-muted/50 transition-all flex flex-col gap-1 shadow-sm"
+                      >
+                        <span className="text-sm font-black text-foreground">{sub.title || 'Objection Option'}</span>
+                        {sub.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {sub.description.replace(/<[^>]+>/g, '')}
+                          </p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                middleNode.type === 'start' ? (
+                  <div className="flex flex-col items-center justify-center py-12 space-y-6 text-center max-w-md mx-auto select-none">
+                    <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-sm animate-pulse">
+                      <Phone className="h-9 w-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-black text-foreground uppercase tracking-wider">Ready to Initiate Call</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">Press the button below or trigger shortcut (Enter / Tab / Number 1) to start timing and begin the outreach flow.</p>
+                    </div>
+                    <Button
+                      onClick={activeHandlers[0]}
+                      className="h-12 px-10 rounded-xl font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-600 text-white shadow-md flex items-center gap-2 transition-all"
+                    >
+                      <Phone className="h-4 w-4" /> Start Call
+                    </Button>
+                  </div>
+                ) : middleNode.type === 'end' ? (
+                  <div className="flex flex-col items-center justify-center py-12 space-y-6 text-center max-w-md mx-auto select-none">
+                    <div className="w-20 h-20 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shadow-sm">
+                      <PhoneOff className="h-9 w-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-black text-foreground uppercase tracking-wider">Outbound Call Ended</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">Press the button below or trigger shortcut (Enter / Tab / Number 1) to end this call, log details, and proceed.</p>
+                    </div>
+                    <Button
+                      onClick={activeHandlers[0]}
+                      className="h-12 px-10 rounded-xl font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-md flex items-center gap-2 transition-all"
+                    >
+                      <PhoneOff className="h-4 w-4" /> End Call
+                    </Button>
+                  </div>
+                ) : middleNode.type === 'action' ? (
+                  <div className="flex flex-col space-y-6 select-text max-w-xl mx-auto py-4 text-center">
+                    {/* Name of action and body text nicely centered at the top */}
+                    <div className="space-y-3">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-500 text-xs font-bold uppercase tracking-wider">
+                        {React.createElement(getActionMeta(middleNode.data?.actionType || 'SEND_SMS').icon, { className: "h-3.5 w-3.5" })}
+                        <span>{getActionMeta(middleNode.data?.actionType || 'SEND_SMS').label}</span>
+                      </div>
+                      <h3 className="text-lg font-black text-foreground uppercase tracking-wide">
+                        {middleNode.data?.label || 'Action Step'}
+                      </h3>
+                      {middleNode.data?.text && (
+                        <div className="max-w-md mx-auto text-[24px] text-muted-foreground leading-relaxed italic">
+                          <ScriptBodyDisplay
+                            text={middleNode.data.text}
+                            resolveText={resolveText}
+                            highlightVariables={!resolveText}
+                            zoom={zoom}
+                            className="text-[24px] text-muted-foreground font-serif"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {(selectedObjectionId || middleNode.type === 'objection') && (selectedSubObjectionIndex !== null || subObjections.length <= 1) && (
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-orange-500 block">
+                        ➔ Viewing Objection Response
+                      </span>
+                    )}
+                    
+                    <ScriptBodyDisplay
+                      text={middleText}
+                      resolveText={resolveText}
+                      highlightVariables={!resolveText}
+                      zoom={zoom}
+                      className="text-[24px] leading-relaxed text-foreground font-serif select-text"
+                      emptyFallback={
+                        <span className="italic text-muted-foreground font-serif text-[24px]">No body content text.</span>
+                      }
+                    />
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Fixed Footer (Buttons) */}
+            <div className="p-7 pt-4 border-t border-border mt-auto shrink-0 select-none bg-card flex items-center justify-between gap-4">
+              {/* Left side: Back button */}
+              <div className="min-w-[100px]">
+                {pathHistory.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={handleGoBack}
+                    className="h-10 px-6 rounded-xl text-xs font-bold uppercase tracking-wider border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-sm flex items-center gap-1.5"
+                  >
+                    <ChevronLeft className="h-4 w-4" /> Back
+                  </Button>
+                )}
+              </div>
+
+              {/* Right side: Next Step / Option Buttons */}
+              <div className="flex items-center gap-2 justify-end ml-auto flex-wrap max-w-[75%]">
+                {/* 1. If viewing an objection (either sidebar or choice), show 'Continue to Next Step' */}
+                {(selectedObjectionId || middleNode.type === 'objection') && (selectedSubObjectionIndex !== null || subObjections.length <= 1) && (
+                  <Button
+                    onClick={handleNextStepAfterObjection}
+                    className="h-10 px-8 min-w-[150px] rounded-xl font-bold uppercase tracking-wider bg-orange-500 hover:bg-orange-600 text-white shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    Continue to Next Step <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+
+                {/* 2. Choice branches (if active node is question and NOT viewing objection) */}
+                {!selectedObjectionId && middleNode.type === 'question' && (
+                  <div className="flex flex-wrap gap-2 justify-end items-center">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Choose Response Branch:</span>
+                    {((middleNode.data.options as string[]) || ['Yes', 'No']).map((opt, idx) => {
+                      const matchingEdge = edges.find(e => e.source === middleNode.id && e.sourceHandle === `option-${idx}`);
+                      const targetExists = matchingEdge && nodes.some(n => n.id === matchingEdge.target);
+                      return (
+                        <Button
+                          key={idx}
+                          onClick={() => matchingEdge && advanceTo(matchingEdge.target)}
+                          disabled={!targetExists}
+                          className="h-10 px-8 min-w-[120px] rounded-xl text-xs font-bold uppercase tracking-wider border-amber-500 bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+                        >
+                          {opt}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 3. Continue button for normal blocks (if NOT question and NOT viewing objection and nextMainEdge exists) */}
+                {!selectedObjectionId && middleNode.type !== 'question' && middleNode.type !== 'objection' && middleNode.type !== 'start' && middleNode.type !== 'end' && middleNode.type !== 'action' && nextMainEdge && (
+                  <Button
+                    onClick={() => advanceTo(nextMainEdge.target)}
+                    className="h-10 px-8 min-w-[150px] rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    Continue Flow <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+
+                {/* 3b. Continue button for action blocks (if NOT question, NOT objection, is action, and nextEdgeFromAction exists, and has been successfully executed) */}
+                {!selectedObjectionId && middleNode.type === 'action' && nextEdgeFromAction && (isTriggered(middleNode.id) || actionStatus === 'success') && (
+                  <Button
+                    onClick={() => advanceTo(nextEdgeFromAction.target)}
+                    className="h-10 px-8 min-w-[150px] rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    Continue Flow <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+
+                {/* 4. Action edges (if active node is not question, not viewing objection) */}
+                {!selectedObjectionId && middleNode.type !== 'objection' && actionEdges.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-end items-center border-t border-border/40 pt-2 w-full">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Available Actions:</span>
+                    {actionEdges.map((edge) => {
+                      const actionNode = nodes.find(n => n.id === edge.target);
+                      if (!actionNode) return null;
+                      return (
+                        <Button
+                          key={actionNode.id}
+                          variant="secondary"
+                          disabled={isTriggered(actionNode.id)}
+                          onClick={() => advanceTo(actionNode.id)}
+                          className="h-10 px-8 min-w-[120px] rounded-xl text-[10px] font-bold uppercase tracking-wider gap-1 border-indigo-500/20 bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 disabled:opacity-50 shadow-sm"
+                        >
+                          {isTriggered(actionNode.id) ? '✓ Triggered: ' : '➔ Trigger Action: '}{actionNode.data.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex-grow flex items-center justify-center p-6 text-center text-xs text-muted-foreground italic">
+          Select a block from the left panel to begin.
+        </div>
+      )}
+    </div>
+  );
+
+  if (hideSidebars) {
+    return middlePanel;
+  }
+
   return (
     <div className="grid grid-cols-12 gap-4 h-[680px] overflow-hidden text-foreground">
       {/* 1. Left Panel: Main Block Outlines */}
@@ -1185,315 +1539,9 @@ export function InteractiveScriptView({
       </div>
 
       {/* 2. Middle Panel: Dialogue Script Content Sheet */}
-      <div className="col-span-6 h-full flex flex-col border border-border bg-card rounded-2xl overflow-hidden shadow-sm">
-        {middleNode ? (
-          <>
-            <div className="p-4 bg-muted/20 border-b border-border flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                {pathHistory.length > 0 && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
-                    onClick={handleGoBack}
-                    aria-label="Go back to previous step"
-                    title="Go back to previous step"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                )}
-                <span className="text-xs font-black uppercase tracking-widest text-primary">
-                  {middleTitle}
-                </span>
-                <Badge className="capitalize text-[8px] border-none font-bold bg-muted text-muted-foreground">
-                  {middleNode.type || 'objection'}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-1">
-                {/* Zoom controls for the dialogue text */}
-                <div className="flex items-center gap-0.5 rounded-lg border border-border bg-background/60 px-0.5">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 text-muted-foreground rounded-md disabled:opacity-40"
-                    onClick={zoomOut}
-                    disabled={!canZoomOut}
-                    aria-label="Zoom out"
-                    title="Zoom out"
-                  >
-                    <ZoomOut className="h-3.5 w-3.5" />
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={reset}
-                    className="min-w-[34px] text-[9px] font-bold tabular-nums text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Reset zoom"
-                    title="Reset zoom"
-                  >
-                    {Math.round(zoom * 100)}%
-                  </button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 text-muted-foreground rounded-md disabled:opacity-40"
-                    onClick={zoomIn}
-                    disabled={!canZoomIn}
-                    aria-label="Zoom in"
-                    title="Zoom in"
-                  >
-                    <ZoomIn className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 text-muted-foreground rounded-md"
-                    onClick={reset}
-                    aria-label="Reset zoom to 100%"
-                    title="Reset zoom to 100%"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                  </Button>
-                </div>
-                {selectedObjectionId && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 text-muted-foreground rounded-lg"
-                    onClick={() => {
-                      setSelectedObjectionId(null);
-                      setSelectedSubObjectionIndex(null);
-                    }}
-                    aria-label="Close objection response"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                {selectedActionId && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 text-muted-foreground rounded-lg"
-                    onClick={() => {
-                      setSelectedActionId(null);
-                    }}
-                    aria-label="Close action detail"
-                    title="Close action detail"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <div className="flex-grow flex flex-col min-h-0">
-              {/* Scrollable Dialogue Viewport */}
-              <div ref={scrollContainerRef} className="flex-grow overflow-y-auto p-7 min-h-0 pr-2 space-y-4 scrollbar-thin select-text">
-                {middleNode.type === 'objection' && enteredObjectionFromChoice && selectedSubObjectionIndex === null && subObjections.length > 1 ? (
-                  /* Show list of sub-objections first in the readable area */
-                  <div className="space-y-3">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
-                      Select which objection fits:
-                    </span>
-                    <div className="grid gap-2 max-w-xl">
-                      {subObjections.map((sub, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setSelectedSubObjectionIndex(idx)}
-                          className="w-full text-left p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-muted/50 transition-all flex flex-col gap-1 shadow-sm"
-                        >
-                          <span className="text-sm font-black text-foreground">{sub.title || 'Objection Option'}</span>
-                          {sub.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {sub.description.replace(/<[^>]+>/g, '')}
-                            </p>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  middleNode.type === 'start' ? (
-                    <div className="flex flex-col items-center justify-center py-12 space-y-6 text-center max-w-md mx-auto select-none">
-                      <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-sm animate-pulse">
-                        <Phone className="h-9 w-9" />
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-black text-foreground uppercase tracking-wider">Ready to Initiate Call</h3>
-                        <p className="text-xs text-muted-foreground leading-relaxed">Press the button below or trigger shortcut (Enter / Tab / Number 1) to start timing and begin the outreach flow.</p>
-                      </div>
-                      <Button
-                        onClick={activeHandlers[0]}
-                        className="h-12 px-10 rounded-xl font-bold uppercase tracking-wider bg-emerald-500 hover:bg-emerald-600 text-white shadow-md flex items-center gap-2 transition-all"
-                      >
-                        <Phone className="h-4 w-4" /> Start Call
-                      </Button>
-                    </div>
-                  ) : middleNode.type === 'end' ? (
-                    <div className="flex flex-col items-center justify-center py-12 space-y-6 text-center max-w-md mx-auto select-none">
-                      <div className="w-20 h-20 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shadow-sm">
-                        <PhoneOff className="h-9 w-9" />
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-black text-foreground uppercase tracking-wider">Outbound Call Ended</h3>
-                        <p className="text-xs text-muted-foreground leading-relaxed">Press the button below or trigger shortcut (Enter / Tab / Number 1) to end this call, log details, and proceed.</p>
-                      </div>
-                      <Button
-                        onClick={activeHandlers[0]}
-                        className="h-12 px-10 rounded-xl font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-md flex items-center gap-2 transition-all"
-                      >
-                        <PhoneOff className="h-4 w-4" /> End Call
-                      </Button>
-                    </div>
-                  ) : middleNode.type === 'action' ? (
-                    <div className="flex flex-col space-y-6 select-text max-w-xl mx-auto py-4 text-center">
-                      {/* Name of action and body text nicely centered at the top */}
-                      <div className="space-y-3">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-500 text-xs font-bold uppercase tracking-wider">
-                          {React.createElement(getActionMeta(middleNode.data?.actionType).icon, { className: "h-3.5 w-3.5" })}
-                          <span>{getActionMeta(middleNode.data?.actionType).label}</span>
-                        </div>
-                        <h3 className="text-lg font-black text-foreground uppercase tracking-wide">
-                          {middleNode.data?.label || 'Action Step'}
-                        </h3>
-                        {middleNode.data?.text && (
-                          <div className="max-w-md mx-auto text-[24px] text-muted-foreground leading-relaxed italic">
-                            <ScriptBodyDisplay
-                              text={middleNode.data.text}
-                              resolveText={resolveText}
-                              highlightVariables={!resolveText}
-                              zoom={zoom}
-                              className="text-[24px] text-muted-foreground font-serif"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {(selectedObjectionId || middleNode.type === 'objection') && (selectedSubObjectionIndex !== null || subObjections.length <= 1) && (
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-orange-500 block">
-                          ➔ Viewing Objection Response
-                        </span>
-                      )}
-                      
-                      <ScriptBodyDisplay
-                        text={middleText}
-                        resolveText={resolveText}
-                        highlightVariables={!resolveText}
-                        zoom={zoom}
-                        className="text-[24px] leading-relaxed text-foreground font-serif select-text"
-                        emptyFallback={
-                          <span className="italic text-muted-foreground font-serif text-[24px]">No body content text.</span>
-                        }
-                      />
-                    </div>
-                  )
-                )}
-              </div>
-
-              {/* Fixed Footer (Buttons) */}
-              <div className="p-7 pt-4 border-t border-border mt-auto shrink-0 select-none bg-card flex items-center justify-between gap-4">
-                {/* Left side: Back button */}
-                <div className="min-w-[100px]">
-                  {pathHistory.length > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={handleGoBack}
-                      className="h-10 px-6 rounded-xl text-xs font-bold uppercase tracking-wider border-border hover:bg-muted text-muted-foreground hover:text-foreground shadow-sm flex items-center gap-1.5"
-                    >
-                      <ChevronLeft className="h-4 w-4" /> Back
-                    </Button>
-                  )}
-                </div>
-
-                {/* Right side: Next Step / Option Buttons */}
-                <div className="flex items-center gap-2 justify-end ml-auto flex-wrap max-w-[75%]">
-                  {/* 1. If viewing an objection (either sidebar or choice), show 'Continue to Next Step' */}
-                  {(selectedObjectionId || middleNode.type === 'objection') && (selectedSubObjectionIndex !== null || subObjections.length <= 1) && (
-                    <Button
-                      onClick={handleNextStepAfterObjection}
-                      className="h-10 px-8 min-w-[150px] rounded-xl font-bold uppercase tracking-wider bg-orange-500 hover:bg-orange-600 text-white shadow-sm flex items-center justify-center gap-1.5"
-                    >
-                      Continue to Next Step <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-
-                  {/* 2. Choice branches (if active node is question and NOT viewing objection) */}
-                  {!selectedObjectionId && middleNode.type === 'question' && (
-                    <div className="flex flex-wrap gap-2 justify-end items-center">
-                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Choose Response Branch:</span>
-                      {((middleNode.data.options as string[]) || ['Yes', 'No']).map((opt, idx) => {
-                        const matchingEdge = edges.find(e => e.source === middleNode.id && e.sourceHandle === `option-${idx}`);
-                        const targetExists = matchingEdge && nodes.some(n => n.id === matchingEdge.target);
-                        return (
-                          <Button
-                            key={idx}
-                            onClick={() => matchingEdge && advanceTo(matchingEdge.target)}
-                            disabled={!targetExists}
-                            className="h-10 px-8 min-w-[120px] rounded-xl text-xs font-bold uppercase tracking-wider border-amber-500 bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
-                          >
-                            {opt}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* 3. Continue button for normal blocks (if NOT question and NOT viewing objection and nextMainEdge exists) */}
-                  {!selectedObjectionId && middleNode.type !== 'question' && middleNode.type !== 'objection' && middleNode.type !== 'start' && middleNode.type !== 'end' && middleNode.type !== 'action' && nextMainEdge && (
-                    <Button
-                      onClick={() => advanceTo(nextMainEdge.target)}
-                      className="h-10 px-8 min-w-[150px] rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5"
-                    >
-                      Continue Flow <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-
-                  {/* 3b. Continue button for action blocks (if NOT question, NOT objection, is action, and nextEdgeFromAction exists) */}
-                  {!selectedObjectionId && middleNode.type === 'action' && nextEdgeFromAction && (
-                    <Button
-                      onClick={() => advanceTo(nextEdgeFromAction.target)}
-                      className="h-10 px-8 min-w-[150px] rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm flex items-center justify-center gap-1.5"
-                    >
-                      Continue Flow <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-
-                  {/* 4. Action edges (if active node is not question, not viewing objection) */}
-                  {!selectedObjectionId && middleNode.type !== 'objection' && actionEdges.length > 0 && (
-                    <div className="flex flex-wrap gap-2 justify-end items-center border-t border-border/40 pt-2 w-full">
-                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Available Actions:</span>
-                      {actionEdges.map((edge) => {
-                        const actionNode = nodes.find(n => n.id === edge.target);
-                        if (!actionNode) return null;
-                        return (
-                          <Button
-                            key={actionNode.id}
-                            variant="secondary"
-                            disabled={isTriggered(actionNode.id)}
-                            onClick={() => advanceTo(actionNode.id)}
-                            className="h-10 px-8 min-w-[120px] rounded-xl text-[10px] font-bold uppercase tracking-wider gap-1 border-indigo-500/20 bg-indigo-500/10 text-indigo-600 hover:bg-indigo-500/20 disabled:opacity-50 shadow-sm"
-                          >
-                            {isTriggered(actionNode.id) ? '✓ Triggered: ' : '➔ Trigger Action: '}{actionNode.data.label}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-grow flex items-center justify-center p-6 text-center text-xs text-muted-foreground italic">
-            Select a block from the left panel to begin.
-          </div>
-        )}
+      <div className="col-span-6 h-full flex flex-col">
+        {middlePanel}
       </div>
-
-      {/* 3. Right Panel: Tabbed Objections & Actions Workspace */}
       <div className="col-span-3 h-full flex flex-col border border-border bg-card/30 rounded-2xl overflow-hidden shadow-sm">
         <Tabs value={rightTab} onValueChange={(val: string) => setRightTab(val as 'objections' | 'actions' | 'outcomes')} className="h-full flex flex-col m-0 p-0">
           <TabsList className="bg-muted/40 border-b border-border h-11 p-0.5 rounded-none gap-1 shrink-0">
@@ -1519,7 +1567,7 @@ export function InteractiveScriptView({
 
           {/* Objections Tab Content */}
           <TabsContent value="objections" className="flex-grow overflow-hidden flex flex-col m-0 p-3 outline-none">
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-border shrink-0 select-none">
+            <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
               <span className="text-[9px] font-bold text-muted-foreground uppercase">
                 {filterRelatedObjections ? 'Related Objections' : 'All Objections'}
               </span>
@@ -1578,7 +1626,7 @@ export function InteractiveScriptView({
           <TabsContent value="actions" className="flex-grow overflow-hidden flex flex-col m-0 p-3 outline-none">
             {middleNode?.type === 'action' ? (
               <div className="flex-grow flex flex-col h-full overflow-hidden">
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-border shrink-0 select-none">
+                <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
                   <button
                     type="button"
                     onClick={() => { setSelectedActionId(null); }}

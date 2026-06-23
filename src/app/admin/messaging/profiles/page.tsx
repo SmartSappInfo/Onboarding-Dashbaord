@@ -333,7 +333,7 @@ export default function SenderProfilesPage() {
                                         <Input 
                                             value={identifier} 
                                             onChange={e => setIdentifier(e.target.value)} 
-                                            placeholder={channel === 'sms' ? 'SMARTSAPP' : 'onboarding@enroll.smartsapp.com'} 
+                                            placeholder={channel === 'sms' ? 'SmartSapp' : 'onboarding@enroll.smartsapp.com'} 
  className="h-12 rounded-xl bg-card border-none shadow-inner font-mono font-bold"
                                         />
                                     </div>
