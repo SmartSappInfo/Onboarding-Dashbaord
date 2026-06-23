@@ -1566,7 +1566,7 @@ export function InteractiveScriptView({
           </TabsList>
 
           {/* Objections Tab Content */}
-          <TabsContent value="objections" className="flex-grow overflow-hidden flex flex-col m-0 p-3 outline-none">
+          <TabsContent value="objections" className="flex-grow overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden flex-col m-0 p-3 outline-none">
             <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
               <span className="text-[9px] font-bold text-muted-foreground uppercase">
                 {filterRelatedObjections ? 'Related Objections' : 'All Objections'}
@@ -1623,7 +1623,7 @@ export function InteractiveScriptView({
           </TabsContent>
 
           {/* Actions Tab Content */}
-          <TabsContent value="actions" className="flex-grow overflow-hidden flex flex-col m-0 p-3 outline-none">
+          <TabsContent value="actions" className="flex-grow overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden flex-col m-0 p-3 outline-none">
             {middleNode?.type === 'action' ? (
               <div className="flex-grow flex flex-col h-full overflow-hidden">
                 <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
@@ -1648,7 +1648,7 @@ export function InteractiveScriptView({
           </TabsContent>
 
           {/* Outcomes Tab Content */}
-          <TabsContent value="outcomes" className="flex-grow overflow-hidden flex flex-col m-0 p-3 outline-none">
+          <TabsContent value="outcomes" className="flex-grow overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden flex-col m-0 p-3 outline-none">
             {renderTriggerTab('outcome')}
           </TabsContent>
         </Tabs>
