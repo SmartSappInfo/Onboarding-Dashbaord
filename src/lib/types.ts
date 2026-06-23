@@ -4518,8 +4518,9 @@ export interface CallActionParams {
   taskDueDays?: number;
   /** HH:mm — used with both modes (default from config, overridable per-call) */
   taskDueTimeOfDay?: string;
-  /** ISO date string e.g. "2025-12-31" — only used when taskDueDateMode === 'specific' */
+  /** ISO date string e.g. \"2025-12-31\" — only used when taskDueDateMode === 'specific' */
   taskDueSpecificDate?: string;
+  taskDueDate?: string;
   taskAssigneeMode?: 'caller' | 'specific' | 'round_robin';
   taskAssigneeId?: string;
   // Pipeline / stage (CHANGE_STAGE, ADD_TO_PIPELINE)

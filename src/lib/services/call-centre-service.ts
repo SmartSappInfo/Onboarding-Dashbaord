@@ -1024,14 +1024,14 @@ export class CallCentreService {
             organizationId,
             workspaceId,
             title: params.taskTitle,
-            description: 'Call campaign automation generated follow-up task.',
+            description: params.taskDescription || '',
             priority: params.taskPriority || 'medium',
             status: 'todo',
             category: 'call_follow_up' as any,
             assignedTo: userId,
             entityId,
             entityType: 'person' as any,
-            dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // + 2 days default
+            dueDate: params.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // + 2 days default
             reminders: [],
             reminderSent: false,
           }, systemActor);

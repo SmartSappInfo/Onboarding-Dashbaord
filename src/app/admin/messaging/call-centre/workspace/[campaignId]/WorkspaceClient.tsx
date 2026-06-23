@@ -14,7 +14,8 @@ import {
   skipQueueItemAction,
   deferQueueItemAction,
   scheduleCallbackAction,
-  executeScriptActionAction
+  executeScriptActionAction,
+  updateCallCampaignAction
 } from '@/lib/call-centre-actions';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/activity-logger';
@@ -23,6 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
 import type { ScriptNode, Entity, EntityContact } from '@/lib/types';
@@ -31,6 +34,7 @@ import {
   parseGraph,
   getNextNodeChoices,
   resolveScriptVariables,
+  extractOutcomesFromGraph,
   ScriptVariableEntity,
 } from '@/lib/call-centre-graph';
 import { ScriptBodyDisplay } from '../../scripts/components/ScriptBodyDisplay';
@@ -193,21 +197,41 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   }, [firestore, queueItems]);
 
   const campaign = React.useMemo(() => campaigns.find(c => c.id === campaignId), [campaigns, campaignId]);
-  const triggerActionsAutomatically = campaign?.triggerActionsAutomatically ?? true;
+  
+  // Add a local override state for auto triggering so the toggle is instant
+  const [localAutoTrigger, setLocalAutoTrigger] = React.useState<boolean | null>(null);
 
-  const hasCallbackOutcome = React.useMemo(() => {
-    return campaign?.outcomes?.some(out => {
-      const lower = out.toLowerCase();
-      return lower.includes('callback') || lower.includes('call back');
-    }) || false;
-  }, [campaign?.outcomes]);
+  // Derive triggerActionsAutomatically from local state (if set) or fallback to campaign property
+  const triggerActionsAutomatically = localAutoTrigger !== null 
+    ? localAutoTrigger 
+    : (campaign?.triggerActionsAutomatically ?? false);
 
-  const hasDeferOutcome = React.useMemo(() => {
-    return campaign?.outcomes?.some(out => {
-      const lower = out.toLowerCase();
-      return lower.includes('defer');
-    }) || false;
-  }, [campaign?.outcomes]);
+  const handleToggleAutoTrigger = React.useCallback(async (checked: boolean) => {
+    setLocalAutoTrigger(checked);
+    try {
+      const res = await updateCallCampaignAction(
+        campaignId,
+        { triggerActionsAutomatically: checked, workspaceId: activeWorkspaceId },
+        user?.uid || ''
+      );
+      if (!res.success) {
+        toast({
+          variant: 'destructive',
+          title: 'Failed to update auto-trigger setting',
+          description: res.error,
+        });
+        // revert local change if database update fails
+        setLocalAutoTrigger(prev => prev === checked ? !checked : prev);
+      }
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Error updating setting',
+        description: err instanceof Error ? err.message : 'An error occurred.',
+      });
+      setLocalAutoTrigger(prev => prev === checked ? !checked : prev);
+    }
+  }, [campaignId, activeWorkspaceId, user?.uid, toast]);
 
   useSetBreadcrumb(campaign?.name ? `${campaign.name} Workspace` : 'Workspace');
 
@@ -483,6 +507,26 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   // The interactive reference works for any script: branching graphs use their real
   // nodes; plain-text scripts use the linear fallback graph from parseGraph.
   const hasScriptNodes = scriptGraph.nodes.length > 0;
+
+  // Outcome buttons come from the script's outcome nodes; fall back to the campaign's
+  // stored outcomes for legacy / plain-text scripts (no migration needed).
+  const outcomeOptions = React.useMemo(() => {
+    const scriptOutcomes = extractOutcomesFromGraph(scriptGraph);
+    return scriptOutcomes.length > 0 ? scriptOutcomes : (campaign?.outcomes ?? []);
+  }, [scriptGraph, campaign?.outcomes]);
+
+  const hasCallbackOutcome = React.useMemo(
+    () => outcomeOptions.some(out => {
+      const lower = out.toLowerCase();
+      return lower.includes('callback') || lower.includes('call back');
+    }),
+    [outcomeOptions]
+  );
+
+  const hasDeferOutcome = React.useMemo(
+    () => outcomeOptions.some(out => out.toLowerCase().includes('defer')),
+    [outcomeOptions]
+  );
 
   // Active node state for branching scripts
   const [currentNodeId, setCurrentNodeId] = React.useState<string | null>(null);
@@ -894,14 +938,14 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   // ─── Interactive-view trigger handlers (passed down to InteractiveScriptView) ──
   // Execute a single action node's side effect, guarding against double-firing.
-  const handleTriggerAction = React.useCallback(async (node: any): Promise<{ ok: boolean; error?: string }> => {
+  const handleTriggerAction = React.useCallback(async (node: ScriptNode): Promise<{ ok: boolean; error?: string }> => {
     if (!node || !currentItem?.entityId) return { ok: false, error: 'No active contact.' };
     if (triggeredNodeIds.has(node.id)) return { ok: true };
 
     const result = await executeScriptActionAction(
       {
-        actionType: node.data?.actionType,
-        actionConfig: node.data?.actionConfig,
+        actionType: node.data?.actionType || 'SEND_SMS',
+        actionConfig: JSON.parse(JSON.stringify(node.data?.actionConfig || {})),
         entityId: currentItem.entityId,
         workspaceId: activeWorkspaceId,
         organizationId: currentItem.organizationId || activeOrganizationId,
@@ -921,7 +965,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   // Trigger an outcome node — reuses the outcome submit path (completes the call + campaign automations).
   // Plain function (not memoized) so it always closes over the latest handleOutcomeSubmit/notes/seconds.
-  const handleTriggerOutcome = async (node: any): Promise<{ ok: boolean; error?: string }> => {
+  const handleTriggerOutcome = async (node: ScriptNode): Promise<{ ok: boolean; error?: string }> => {
     if (!node) return { ok: false, error: 'No outcome.' };
     if (triggeredNodeIds.has(node.id)) return { ok: true };
     setTriggeredNodeIds(prev => new Set(prev).add(node.id));
@@ -958,18 +1002,20 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   React.useEffect(() => {
     if (triggerActionsAutomatically) return;
     if (currentNode?.type === 'action') {
+      const actionType = currentNode.data?.actionType || 'SEND_SMS';
       const config = (currentNode.data?.actionConfig as Record<string, string>) || {};
       const initial: Record<string, string> = { ...config };
-      if (currentNode.data?.actionType === 'UPDATE_CONTACT') {
+      if (actionType === 'UPDATE_CONTACT') {
         initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
         initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
         initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
         initial.updateMode = initial.updateMode || 'update';
-      } else if (currentNode.data?.actionType === 'CREATE_TASK') {
+      } else if (actionType === 'CREATE_TASK') {
         initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
         initial.taskDescription = initial.taskDescription || '';
         initial.taskPriority = initial.taskPriority || 'medium';
-      } else if (currentNode.data?.actionType === 'SEND_SMS' || currentNode.data?.actionType === 'SEND_WHATSAPP' || currentNode.data?.actionType === 'SEND_EMAIL') {
+        initial.taskDueDate = initial.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
         initial.templateId = initial.templateId || '';
       }
       setLocalActionConfig(initial);
@@ -1025,8 +1071,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
     let isMounted = true;
     const runAction = async () => {
+      const actionType = currentNode.data?.actionType || 'SEND_SMS';
       const ac = currentNode.data.actionConfig;
-      if (currentNode.data.actionType === 'WEBHOOK' && ac?.webhookUrl) {
+      if (actionType === 'WEBHOOK' && ac?.webhookUrl) {
         if (isMounted) {
           setActionStatus('loading');
           setActionError(null);
@@ -1083,14 +1130,15 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
               description: errMsg
             });
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : 'Webhook error';
           if (!isMounted) return;
           setActionStatus('error');
-          setActionError(err.message);
+          setActionError(errMsg);
           toast({
             variant: 'destructive',
             title: 'Webhook Error',
-            description: err.message
+            description: errMsg
           });
         }
       } else {
@@ -1101,16 +1149,17 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         try {
           const config = ac || {};
           const initial: Record<string, unknown> = { ...config } as Record<string, unknown>;
-          if (currentNode.data?.actionType === 'UPDATE_CONTACT') {
+          if (actionType === 'UPDATE_CONTACT') {
             initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
             initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
             initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
             initial.updateMode = initial.updateMode || 'update';
-          } else if (currentNode.data?.actionType === 'CREATE_TASK') {
+          } else if (actionType === 'CREATE_TASK') {
             initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
             initial.taskDescription = initial.taskDescription || '';
             initial.taskPriority = initial.taskPriority || 'medium';
-          } else if (currentNode.data?.actionType === 'SEND_SMS' || currentNode.data?.actionType === 'SEND_WHATSAPP' || currentNode.data?.actionType === 'SEND_EMAIL') {
+            initial.taskDueDate = initial.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+          } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
             initial.templateId = initial.templateId || '';
           }
           const nodeWithResolvedConfig = {
@@ -1136,10 +1185,11 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             setActionStatus('error');
             setActionError(res.error || 'Execution failed.');
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : 'Execution failed.';
           if (!isMounted) return;
           setActionStatus('error');
-          setActionError(err.message);
+          setActionError(errMsg);
         }
       }
     };
@@ -1153,7 +1203,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   const renderGuidedActionConfig = () => {
     if (!currentNode) return null;
-    const actionType = currentNode.data?.actionType;
+    const actionType = currentNode.data?.actionType || 'SEND_SMS';
 
     if (actionType === 'UPDATE_CONTACT') {
       return (
@@ -1364,6 +1414,15 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                 placeholder="Describe task details..."
                 rows={3}
                 className="bg-background border-border rounded-xl text-xs p-2 resize-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Due Date & Time</Label>
+              <DateTimePicker
+                value={localActionConfig.taskDueDate ? new Date(localActionConfig.taskDueDate) : undefined}
+                onChange={date => setLocalActionConfig(prev => ({ ...prev, taskDueDate: date ? date.toISOString() : '' }))}
+                className="h-9 rounded-xl bg-background border-border text-xs justify-start px-3"
               />
             </div>
 
@@ -2135,17 +2194,30 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             <>
               {/* Call Script Reading panel */}
               <div className="flex-grow bg-card border border-border rounded-2xl p-6 shadow-sm relative flex flex-col min-h-0 overflow-hidden">
-                <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
-                  <FileText className="h-3.5 w-3.5" />
-                  <span>Interactive Script View</span>
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-3.5">
+                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Interactive Script View</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 border-l border-border pl-3.5 select-none">
+                    <Label htmlFor="auto-trigger-toggle" className="text-[9px] font-bold uppercase text-muted-foreground tracking-wider cursor-pointer">
+                      Auto-Trigger
+                    </Label>
+                    <Switch
+                      id="auto-trigger-toggle"
+                      checked={triggerActionsAutomatically}
+                      onCheckedChange={handleToggleAutoTrigger}
+                      className="scale-75 origin-right"
+                    />
+                  </div>
                 </div>
 
                 {liveScriptView === 'interactive' && hasScriptNodes && !showGuardrailWarning ? (
                   // Read-only interactive reference with live contact + caller values substituted
                   <div className="flex-grow min-h-0 overflow-auto pt-4">
                     <InteractiveScriptView
-                      nodes={scriptGraph.nodes as any}
-                      edges={scriptGraph.edges as any}
+                      nodes={scriptGraph.nodes}
+                      edges={scriptGraph.edges}
                       resolveText={resolveLiveText}
                       onTriggerAction={handleTriggerAction}
                       onTriggerOutcome={handleTriggerOutcome}
@@ -2281,7 +2353,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                         {actionStatus === 'error' && <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />}
                                       </div>
                                       <p className="text-xs text-foreground">
-                                        This step triggers the automation action: <span className="font-extrabold">{currentNode.data.actionType?.replace('_', ' ')}</span>.
+                                        This step triggers the automation action: <span className="font-extrabold">{(currentNode.data.actionType || 'SEND_SMS').replace('_', ' ')}</span>.
                                       </p>
                                       {actionError && (
                                         <p className="text-[11px] text-rose-600 font-mono border-t border-rose-500/10 pt-2 mt-2">
@@ -2480,20 +2552,22 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                 Continue to Next Step <ArrowRight className="h-3.5 w-3.5" />
                               </Button>
                             ) : currentNode?.type !== 'objection' && currentNode?.type !== 'start' && currentNode?.type !== 'end' && choices.length > 0 ? (
-                              <div className="flex flex-wrap gap-2 justify-end items-center">
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Choose Customer's Response:</span>
-                                {choices.map((choice) => (
-                                  <Button
-                                    key={choice.edgeId}
-                                    type="button"
-                                    disabled={currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked}
-                                    onClick={() => handleChoiceClick(choice.targetNode.id)}
-                                    className="h-10 px-8 min-w-[120px] rounded-xl border border-border bg-card text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black shadow-sm"
-                                  >
-                                    {choice.edgeLabel}
-                                  </Button>
-                                ))}
-                              </div>
+                              (currentNode?.type !== 'action' || triggeredNodeIds.has(currentNode.id) || actionStatus === 'success') ? (
+                                <div className="flex flex-wrap gap-2 justify-end items-center">
+                                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Choose Customer's Response:</span>
+                                  {choices.map((choice) => (
+                                    <Button
+                                      key={choice.edgeId}
+                                      type="button"
+                                      disabled={currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked}
+                                      onClick={() => handleChoiceClick(choice.targetNode.id)}
+                                      className="h-10 px-8 min-w-[120px] rounded-xl border border-border bg-card text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black shadow-sm"
+                                    >
+                                      {choice.edgeLabel}
+                                    </Button>
+                                  ))}
+                                </div>
+                              ) : null
                             ) : (
                               currentNode?.type !== 'outcome' && currentNode?.type !== 'objection' && currentNode?.type !== 'start' && currentNode?.type !== 'end' && (
                                 <div className="text-xs text-muted-foreground italic">
@@ -2580,7 +2654,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
               <div className="w-6 border-t border-border my-1" />
 
               {/* Compact Outcome Buttons */}
-              {currentItem && campaign?.outcomes?.map(out => (
+              {currentItem && outcomeOptions.map(out => (
                 <button
                   key={out}
                   type="button"
@@ -2705,7 +2779,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
                     {/* Outcome Buttons */}
                     <div className="grid grid-cols-2 gap-2 pt-1">
-                      {campaign?.outcomes?.map(out => (
+                      {outcomeOptions.map(out => (
                         <Button
                           key={out}
                           onClick={() => handleOutcomeSubmit(out)}

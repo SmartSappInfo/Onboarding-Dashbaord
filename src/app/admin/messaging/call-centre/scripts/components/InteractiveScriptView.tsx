@@ -6,6 +6,7 @@ import type { ScriptNode, ScriptEdge } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { useFirestore } from '@/firebase';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -240,6 +241,7 @@ export function InteractiveScriptView({
           initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
           initial.taskDescription = initial.taskDescription || '';
           initial.taskPriority = initial.taskPriority || 'medium';
+          initial.taskDueDate = initial.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
         } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
           initial.templateId = initial.templateId || '';
         }
@@ -325,6 +327,7 @@ export function InteractiveScriptView({
         initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
         initial.taskDescription = initial.taskDescription || '';
         initial.taskPriority = initial.taskPriority || 'medium';
+        initial.taskDueDate = initial.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
       } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
         initial.templateId = initial.templateId || '';
       }
@@ -539,6 +542,15 @@ export function InteractiveScriptView({
                 placeholder="Describe task details..."
                 rows={3}
                 className="bg-background border-border rounded-xl text-xs p-2 resize-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Due Date & Time</Label>
+              <DateTimePicker
+                value={localActionConfig.taskDueDate ? new Date(localActionConfig.taskDueDate) : undefined}
+                onChange={date => setLocalActionConfig(prev => ({ ...prev, taskDueDate: date ? date.toISOString() : '' }))}
+                className="h-9 rounded-xl bg-background border-border text-xs justify-start px-3"
               />
             </div>
 
