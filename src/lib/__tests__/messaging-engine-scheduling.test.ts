@@ -17,7 +17,8 @@ vi.mock('../firebase-admin', () => {
                 id,
                 data: () => ({
                   channel: 'email',
-                  scope: 'global',
+                  scope: 'organization',
+                  organizationId: 'org-x',
                   category: 'general',
                   name: 'Test Template',
                   body: 'Hello {{name}}',
@@ -28,26 +29,35 @@ vi.mock('../firebase-admin', () => {
             })
           };
         }
+        // Org-scoped sender resolution: profiles are looked up by id, and the org
+        // doc carries the default sender pointer per channel.
         if (name === 'sender_profiles') {
           return {
-            where: () => ({
-              where: () => ({
-                where: () => ({
-                  limit: () => ({
-                    get: async () => ({
-                      empty: false,
-                      docs: [{
-                        id: 'default-profile',
-                        data: () => ({
-                          name: 'SmartSapp',
-                          channel: 'email',
-                          identifier: 'no-reply@smartsapp.com',
-                          isDefault: true,
-                          isActive: true
-                        })
-                      }]
-                    })
-                  })
+            doc: (id: string) => ({
+              get: async () => ({
+                exists: true,
+                id,
+                data: () => ({
+                  organizationId: 'org-x',
+                  name: 'SmartSapp',
+                  channel: 'email',
+                  identifier: 'no-reply@smartsapp.com',
+                  isDefault: true,
+                  isActive: true
+                })
+              })
+            })
+          };
+        }
+        if (name === 'organizations') {
+          return {
+            doc: (id: string) => ({
+              get: async () => ({
+                exists: true,
+                id,
+                data: () => ({
+                  name: 'Org X',
+                  defaultSenderProfileIds: { email: 'default-profile' },
                 })
               })
             })
