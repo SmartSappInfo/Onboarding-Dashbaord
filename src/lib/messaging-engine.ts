@@ -18,6 +18,8 @@ import { getContactVariables, getRecipientContactVariables } from './entity-cont
 import { getBaseUrl, getRequestBaseUrl, cleanPersonalizedMeetingUrl } from './utils/url-helpers';
 import { CHANNEL_REGISTRY } from './messaging/channel-registry';
 import { resolveOrgId, resolveSenderProfileId, toSenderProfile } from './messaging/sender-repository';
+import { notifyMessagingFailure } from './messaging/messaging-failure-notice';
+import { resolveOrgProviderKeys } from './messaging/org-provider-keys';
 
 interface SendMessageInput {
   templateId: string;
@@ -151,7 +153,14 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         });
 
         if (resolution.outcome !== 'resolved' || !resolution.senderProfileId) {
-            // Phase 3 wires notifyMessagingFailure here; for now return a precise error.
+            await notifyMessagingFailure({
+                orgId,
+                channel: template.channel,
+                templateId: template.id,
+                recipient,
+                outcome: resolution.outcome,
+                workspaceId: baseWorkspaceId,
+            });
             const reason = resolution.outcome === 'cross_org_explicit'
                 ? `the selected sender belongs to a different organization`
                 : `no ${template.channel.toUpperCase()} sender is configured for this organization`;
@@ -714,28 +723,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         return { success: true, logId: scheduledRef.id };
     }
 
-    // 8. Gateway Delivery & Custom Key Resolution
-    let mnotifyKey: string | undefined = undefined;
-    let resendKey: string | undefined = undefined;
-    let resendDomain: string | undefined = undefined;
-
-    if (finalOrgId) {
-        try {
-            const orgSnap = await adminDb.collection('organizations').doc(finalOrgId).get();
-            if (orgSnap.exists) {
-                const orgData = orgSnap.data();
-                if (orgData?.smsKeyMode === 'custom' && orgData?.mnotifyApiKey) {
-                    mnotifyKey = orgData.mnotifyApiKey as string;
-                }
-                if (orgData?.emailKeyMode === 'custom' && orgData?.resendApiKey) {
-                    resendKey = orgData.resendApiKey as string;
-                    resendDomain = orgData.resendDomain as string;
-                }
-            }
-        } catch (e) {
-            console.error('[MESSAGING_ENGINE] Failed to fetch organization custom keys:', e);
-        }
-    }
+    // 8. Gateway Delivery & Custom Key Resolution (org-scoped, shared helper)
+    const { mnotifyKey, resendKey, resendDomain } = await resolveOrgProviderKeys(finalOrgId);
 
     let providerId = null;
     let providerStatus = null;
@@ -929,6 +918,14 @@ export async function sendRawMessage(input: {
             });
 
             if (resolution.outcome !== 'resolved' || !resolution.senderProfileId) {
+                await notifyMessagingFailure({
+                    orgId: finalOrgId,
+                    channel,
+                    templateId: 'raw-direct-dispatch',
+                    recipient,
+                    outcome: resolution.outcome,
+                    workspaceId: baseWorkspaceId,
+                });
                 const reason = resolution.outcome === 'cross_org_explicit'
                     ? 'the selected sender belongs to a different organization'
                     : `no ${channel.toUpperCase()} sender is configured for this organization`;
@@ -975,28 +972,8 @@ export async function sendRawMessage(input: {
             }
         }
 
-        // Resolve Custom Credentials for Raw Send (finalOrgId resolved above).
-        let mnotifyKey: string | undefined = undefined;
-        let resendKey: string | undefined = undefined;
-        let resendDomain: string | undefined = undefined;
-
-        if (finalOrgId) {
-            try {
-                const orgSnap = await adminDb.collection('organizations').doc(finalOrgId).get();
-                if (orgSnap.exists) {
-                    const orgData = orgSnap.data();
-                    if (orgData?.smsKeyMode === 'custom' && orgData?.mnotifyApiKey) {
-                        mnotifyKey = orgData.mnotifyApiKey as string;
-                    }
-                    if (orgData?.emailKeyMode === 'custom' && orgData?.resendApiKey) {
-                        resendKey = orgData.resendApiKey as string;
-                        resendDomain = orgData.resendDomain as string;
-                    }
-                }
-            } catch (e) {
-                console.error('[MESSAGING_ENGINE] Failed to fetch organization custom keys for raw message:', e);
-            }
-        }
+        // Resolve Custom Credentials for Raw Send (finalOrgId resolved above; org-scoped helper).
+        const { mnotifyKey, resendKey, resendDomain } = await resolveOrgProviderKeys(finalOrgId);
 
         // Dispatch Delivery
         let providerId = null;

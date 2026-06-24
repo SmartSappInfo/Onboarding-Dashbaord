@@ -8,6 +8,8 @@ import { getBaseUrl } from './utils/url-helpers';
 import { sendBatchEmails } from './resend-service';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
 import { resolveOrgBrandingVars } from './messaging-branding';
+import { resolveOrgProviderKeys } from './messaging/org-provider-keys';
+import { notifyMessagingFailure } from './messaging/messaging-failure-notice';
 import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageStyle, MessageCampaign } from './types';
 
 const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
@@ -148,10 +150,25 @@ export async function processBulkJobChunk(jobId: string) {
         }
     }
 
-    // Resolve org branding variables once per chunk (not per recipient)
-    const orgId = template.organizationId || '';
+    // Resolve org (job is authoritative, template is fallback) + org-scoped provider keys.
+    const orgId = job.organizationId || template.organizationId || '';
+    const providerKeys = await resolveOrgProviderKeys(orgId);
+
+    // Tenant guard: never send using a sender owned by a different organization.
+    if (sender?.organizationId && orgId && sender.organizationId !== orgId) {
+        await notifyMessagingFailure({
+            orgId, channel: job.channel, templateId: job.templateId,
+            recipient: 'bulk-job', outcome: 'cross_org_explicit', workspaceId: job.workspaceId,
+        });
+        const failBatch = adminDb.batch();
+        tasksSnap.docs.forEach((d) => failBatch.update(d.ref, { status: 'failed', error: 'Sender belongs to a different organization' }));
+        await failBatch.commit();
+        await jobRef.update({ status: 'failed', failed: FieldValue.increment(tasksSnap.size) });
+        return { status: 'failed', progress: Math.round((job.processed / job.totalRecipients) * 100) };
+    }
+
     const orgBrandingVars = await resolveOrgBrandingVars(orgId);
-    
+
     let styleWrapper = '';
     if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {
         const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
@@ -269,7 +286,7 @@ export async function processBulkJobChunk(jobId: string) {
         }
 
         try {
-            const result = await sendBatchEmails(batchPayload);
+            const result = await sendBatchEmails(batchPayload, providerKeys.resendKey, providerKeys.resendDomain);
             if (result.data) {
                 for (let i = 0; i < result.data.length; i++) {
                     const res = result.data[i];
@@ -317,6 +334,7 @@ export async function processBulkJobChunk(jobId: string) {
             const result = await sendMessage({
                 templateId: job.templateId,
                 senderProfileId: job.senderProfileId,
+                organizationId: orgId,
                 recipient: task.recipient,
                 variables: task.variables,
                 trackLinks: job.trackLinks,
@@ -482,8 +500,23 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
     }
   }
 
-  // Org branding (resolved once per chunk, not per recipient)
-  const orgId = template.organizationId || '';
+  // Resolve org (job is authoritative, template is fallback) + org-scoped provider keys.
+  const orgId = job.organizationId || template.organizationId || '';
+  const providerKeys = await resolveOrgProviderKeys(orgId);
+
+  // Tenant guard: never send using a sender owned by a different organization.
+  if (sender?.organizationId && orgId && sender.organizationId !== orgId) {
+    await notifyMessagingFailure({
+      orgId, channel: job.channel, templateId: job.templateId,
+      recipient: 'bulk-job', outcome: 'cross_org_explicit', workspaceId: job.workspaceId,
+    });
+    const failBatch = adminDb.batch();
+    tasksSnap.docs.forEach((d) => failBatch.update(d.ref, { status: 'failed', error: 'Sender belongs to a different organization' }));
+    await failBatch.commit();
+    await jobRef.update({ status: 'failed', failed: FieldValue.increment(tasksSnap.size) });
+    return;
+  }
+
   const orgBrandingVars = await resolveOrgBrandingVars(orgId);
 
   let styleWrapper = '';
@@ -607,7 +640,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
     // Send batch — use Resend { data, error } pattern with robust request try/catch
     if (batchPayload.length > 0) {
       try {
-        const result = await sendBatchEmails(batchPayload);
+        const result = await sendBatchEmails(batchPayload, providerKeys.resendKey, providerKeys.resendDomain);
         if (result.data) {
           for (let i = 0; i < result.data.length; i++) {
             const res = result.data[i];
@@ -667,6 +700,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
       const result = await sendMessage({
         templateId: job.templateId,
         senderProfileId: job.senderProfileId,
+        organizationId: orgId,
         recipient: task.recipient,
         variables: task.variables,
         trackLinks: job.trackLinks,
