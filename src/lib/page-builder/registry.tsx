@@ -58,9 +58,17 @@ export type AnyBlockDefinition = BlockDefinition<Record<string, unknown>>;
 
 export const blockRegistry: Partial<Record<PageBlockType, AnyBlockDefinition>> = {};
 
-/** Register (or replace) a block definition. Call from `./blocks/*`. */
-export function registerBlock(def: AnyBlockDefinition): void {
-  blockRegistry[def.type] = def;
+/**
+ * Register (or replace) a block definition. Call from `./blocks/*`.
+ *
+ * Generic so each block passes its own precisely-typed `BlockDefinition<TProps>`
+ * (keeping block bodies fully typed). The single type-erasure cast lives here —
+ * never `any`, and never leaked to callers.
+ */
+export function registerBlock<TProps extends Record<string, unknown>>(
+  def: BlockDefinition<TProps>,
+): void {
+  blockRegistry[def.type] = def as unknown as AnyBlockDefinition;
 }
 
 /** Look up a block definition by type, or `undefined` if unregistered. */
