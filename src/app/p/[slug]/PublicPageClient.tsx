@@ -27,6 +27,17 @@ import { sendReceiptAcknowledgementAction } from '@/lib/notification-actions';
 import Link from 'next/link';
 import VideoEmbed from '@/components/video-embed';
 import Image from 'next/image';
+import { VERSIONS_COLLECTION } from '@/lib/page-builder/constants';
+import { sanitizeHtml, sanitizeCss } from '@/lib/page-builder/sanitize';
+
+// Static class strings so Tailwind's JIT compiler keeps them (dynamic
+// `grid-cols-${n}` strings get purged from the production bundle).
+const STATS_GRID_COLS: Record<number, string> = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-2',
+    3: 'grid-cols-3',
+    4: 'grid-cols-2 md:grid-cols-4',
+};
 
 
 
@@ -280,9 +291,10 @@ export default function PublicPageClient({
                     const pageData = { id: snap.docs[0].id, ...snap.docs[0].data() } as CampaignPage;
                     setPage(pageData);
                     
-                    // Fetch published version
+                    // Fetch published version from the top-level collection the
+                    // builder actually writes to (see VERSIONS_COLLECTION).
                     if (pageData.publishedVersionId) {
-                        const vRef = doc(db, 'campaign_pages', pageData.id, 'versions', pageData.publishedVersionId);
+                        const vRef = doc(db, VERSIONS_COLLECTION, pageData.publishedVersionId);
                         const vSnap = await getDoc(vRef);
                         if (vSnap.exists()) {
                             setVersion({ id: vSnap.id, ...vSnap.data() } as CampaignPageVersion);
@@ -611,7 +623,7 @@ export default function PublicPageClient({
                                                     )}
 
                                                     {block.type === 'stats' && block.props.items?.length > 0 && (
-                                                        <div className={cn("grid gap-6 text-center", block.props.items.length <= 3 ? `grid-cols-${block.props.items.length}` : "grid-cols-2 md:grid-cols-4")}>
+                                                        <div className={cn("grid gap-6 text-center", STATS_GRID_COLS[block.props.items.length] ?? "grid-cols-2 md:grid-cols-4")}>
                                                             {block.props.items.map((item: any) => (
                                                                 <div key={item.id} className="p-6 bg-slate-50/50 dark:bg-zinc-900/30 rounded-2xl border border-border/20 dark:border-zinc-800/50">
                                                                     <p className="text-3xl font-black text-primary tracking-tight">{item.value}</p>
@@ -621,10 +633,10 @@ export default function PublicPageClient({
                                                         </div>
                                                     )}
 
-                                                    {block.type === 'html' && block.props.html && (
+                                                    {block.type === 'html' && page.settings.customScriptsAllowed && block.props.html && (
                                                         <>
-                                                            {block.props.css && <style dangerouslySetInnerHTML={{ __html: block.props.css }} />}
-                                                            <div dangerouslySetInnerHTML={{ __html: block.props.html }} />
+                                                            {block.props.css && <style dangerouslySetInnerHTML={{ __html: sanitizeCss(String(block.props.css)) }} />}
+                                                            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(String(block.props.html)) }} />
                                                         </>
                                                     )}
                                                 </div>

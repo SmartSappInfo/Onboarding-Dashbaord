@@ -16,7 +16,8 @@ import {
   executeOutcomeAutomationsAction
 } from '@/lib/call-centre-actions';
 import { isJsonGraph, parseGraph, validateScriptGraph, extractPreviewText, resolveScriptVariables } from '@/lib/call-centre-graph';
-import { cloneSingleNode, cloneSubtree } from '@/lib/call-centre-cloning';
+import { cloneSingleNode, cloneSubtree, getDescendantNodeIds } from '@/lib/call-centre-cloning';
+import { pushHistoryState, type HistoryState } from '@/lib/call-centre-history';
 import { getActionMeta } from '@/lib/call-action-types';
 import { useToast } from '@/hooks/use-toast';
 import { PageContainer } from '@/components/ui/page-container';
@@ -57,7 +58,9 @@ import {
   Zap,
   Layers,
   Trash2,
-  Copy
+  Copy,
+  Undo2,
+  Redo2
 } from 'lucide-react';
 import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import type { SearchedEntity } from '@/hooks/use-entity-search';
@@ -188,6 +191,142 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
   const [isCloneDialogOpen, setIsCloneDialogOpen] = React.useState(false);
   const [nodeToClone, setNodeToClone] = React.useState<Node | null>(null);
 
+  // Legacy fallback text state
+  const [legacyText, setLegacyText] = React.useState('');
+  
+  // Ref to track if DB loading/seeding is complete to enable autosaving changes
+  const hasLoadedRef = React.useRef(false);
+
+  // History Manager States and Refs
+  const historyRef = React.useRef<HistoryState[]>([]);
+  const pointerRef = React.useRef<number>(-1);
+  const isUndoingRedoingRef = React.useRef<boolean>(false);
+  const isTabSwitchingRef = React.useRef<boolean>(false);
+  const debounceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const [historyPointer, setHistoryPointer] = React.useState(-1);
+  const [isHistoryInitialized, setIsHistoryInitialized] = React.useState(false);
+
+  // Derived selectors for Undo/Redo button states
+  const canUndo = historyPointer > 0;
+  const canRedo = historyPointer < historyRef.current.length - 1;
+
+  // Step Deletion Choice States
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [nodeToDelete, setNodeToDelete] = React.useState<Node | null>(null);
+
+  const pushHistory = React.useCallback((state: HistoryState, immediate = false) => {
+    if (isUndoingRedoingRef.current || isTabSwitchingRef.current) return;
+
+    const executePush = () => {
+      const { history, pointer } = pushHistoryState(
+        historyRef.current,
+        pointerRef.current,
+        state
+      );
+      historyRef.current = history;
+      pointerRef.current = pointer;
+      setHistoryPointer(pointer);
+    };
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
+    if (immediate) {
+      executePush();
+    } else {
+      debounceTimerRef.current = setTimeout(() => {
+        executePush();
+      }, 500);
+    }
+  }, []);
+
+  const handleUndo = React.useCallback(() => {
+    if (pointerRef.current > 0) {
+      isUndoingRedoingRef.current = true;
+      pointerRef.current -= 1;
+      
+      const previousState = historyRef.current[pointerRef.current];
+      if (previousState) {
+        React.startTransition(() => {
+          setNodes(previousState.nodes);
+          setEdges(previousState.edges);
+          setLegacyText(previousState.legacyText);
+          setHistoryPointer(pointerRef.current);
+        });
+      }
+      
+      toast({ title: 'Undo', description: 'Reverted last change.', duration: 1500 });
+    }
+  }, [setNodes, setEdges, setLegacyText, toast]);
+
+  const handleRedo = React.useCallback(() => {
+    if (pointerRef.current < historyRef.current.length - 1) {
+      isUndoingRedoingRef.current = true;
+      pointerRef.current += 1;
+      
+      const nextState = historyRef.current[pointerRef.current];
+      if (nextState) {
+        React.startTransition(() => {
+          setNodes(nextState.nodes);
+          setEdges(nextState.edges);
+          setLegacyText(nextState.legacyText);
+          setHistoryPointer(pointerRef.current);
+        });
+      }
+      
+      toast({ title: 'Redo', description: 'Applied next change.', duration: 1500 });
+    }
+  }, [setNodes, setEdges, setLegacyText, toast]);
+
+  // Initialize history stack with current loaded state once DB load completes
+  React.useEffect(() => {
+    if (!hasLoadedRef.current || isHistoryInitialized) return;
+    
+    const initialState: HistoryState = { nodes, edges, legacyText };
+    historyRef.current = [JSON.parse(JSON.stringify(initialState))];
+    pointerRef.current = 0;
+    setHistoryPointer(0);
+    setIsHistoryInitialized(true);
+  }, [nodes, edges, legacyText, isHistoryInitialized]);
+
+  // Push user-driven graph changes to the history stack
+  React.useEffect(() => {
+    if (!isHistoryInitialized) return;
+    
+    if (isUndoingRedoingRef.current) {
+      isUndoingRedoingRef.current = false;
+      return;
+    }
+    
+    pushHistory({ nodes, edges, legacyText }, false);
+  }, [nodes, edges, legacyText, isHistoryInitialized, pushHistory]);
+
+  // Bind global keyboard listeners for Cmd+Z / Cmd+Y
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMeta = e.metaKey || e.ctrlKey;
+      if (isMeta && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+      } else if (isMeta && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleUndo, handleRedo]);
+
   // Guard: prevent the start node from being removed by any change event (e.g. keyboard delete)
   const onNodesChange = React.useCallback<typeof _onNodesChange>(async (changes: NodeChange[]) => {
     const removeChanges = changes.filter(c => c.type === 'remove');
@@ -201,35 +340,40 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
       const nodeIds = removeChanges.map(c => c.id);
       const targetNodes = (nodes as ScriptNode[]).filter(n => nodeIds.includes(n.id) && n.type !== 'start');
       if (targetNodes.length > 0) {
-        const label = targetNodes.map(n => n.data?.label || 'Untitled Step').join(', ');
-        const ok = await confirm({
-          title: targetNodes.length === 1 ? 'Delete Step' : 'Delete Steps',
-          description: `Are you sure you want to delete the step(s): "${label}"? This action cannot be undone.`,
-          confirmText: 'Delete',
-          cancelText: 'Cancel',
-          variant: 'destructive',
-        });
-        if (!ok) return;
+        if (targetNodes.length === 1) {
+          setNodeToDelete(targetNodes[0]);
+          setIsDeleteDialogOpen(true);
+        } else {
+          const label = targetNodes.map(n => n.data?.label || 'Untitled Step').join(', ');
+          const ok = await confirm({
+            title: 'Delete Steps',
+            description: `Are you sure you want to delete the step(s): "${label}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            cancelText: 'Cancel',
+            variant: 'destructive',
+          });
+          if (!ok) return;
 
-        setNodes(nds => nds.filter(n => !nodeIds.includes(n.id)));
-        setEdges(eds => eds.filter(e => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));
-        if (selectedNodeId && nodeIds.includes(selectedNodeId)) {
-          setSelectedNodeId(null);
+          isUndoingRedoingRef.current = true;
+          const nextNodes = nodes.filter(n => !nodeIds.includes(n.id));
+          const nextEdges = edges.filter(e => !nodeIds.includes(e.source) && !nodeIds.includes(e.target));
+
+          setNodes(nextNodes);
+          setEdges(nextEdges);
+          if (selectedNodeId && nodeIds.includes(selectedNodeId)) {
+            setSelectedNodeId(null);
+          }
+          pushHistory({ nodes: nextNodes, edges: nextEdges, legacyText }, true);
         }
       }
     }
-  }, [_onNodesChange, nodes, selectedNodeId, confirm]);
+  }, [_onNodesChange, nodes, edges, selectedNodeId, confirm, pushHistory, legacyText]);
 
-  // Legacy fallback text state
-  const [legacyText, setLegacyText] = React.useState('');
   const legacyEditorRef = React.useRef<LegacyScriptEditorHandle>(null);
   // Node dialogue body editor ref (for the visual flow node inspector)
   const nodeEditorRef = React.useRef<LegacyScriptEditorHandle>(null);
   // Canvas Ref to retrieve bottom-center viewport coordinate for dropping new steps
   const canvasRef = React.useRef<VisualScriptCanvasHandle>(null);
-  
-  // Ref to track if DB loading/seeding is complete to enable autosaving changes
-  const hasLoadedRef = React.useRef(false);
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [simulationActive, setSimulationActive] = React.useState(false);
@@ -738,19 +882,45 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
       toast({ variant: 'destructive', title: 'Cannot delete Start node', description: 'The Start trigger is required and cannot be removed.' });
       return;
     }
-    const label = target?.data?.label || 'Untitled Step';
-    const ok = await confirm({
-      title: 'Delete Step',
-      description: `Are you sure you want to delete the step "${label}"? This action cannot be undone.`,
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
-      variant: 'destructive',
-    });
-    if (!ok) return;
+    if (target) {
+      setNodeToDelete(target);
+      setIsDeleteDialogOpen(true);
+    }
+  };
 
-    setNodes(nds => nds.filter(n => n.id !== selectedNodeId));
-    setEdges(eds => eds.filter(e => e.source !== selectedNodeId && e.target !== selectedNodeId));
-    setSelectedNodeId(null);
+  const handleConfirmDelete = (deleteSubtree: boolean) => {
+    if (!nodeToDelete) return;
+
+    isUndoingRedoingRef.current = true;
+    let nextNodes = nodes;
+    let nextEdges = edges;
+
+    const descendants = getDescendantNodeIds(nodeToDelete.id, edges);
+    const targetIds = [nodeToDelete.id, ...Array.from(descendants)];
+
+    if (deleteSubtree) {
+      nextNodes = nodes.filter(n => !targetIds.includes(n.id));
+      nextEdges = edges.filter(e => !targetIds.includes(e.source) && !targetIds.includes(e.target));
+    } else {
+      nextNodes = nodes.filter(n => n.id !== nodeToDelete.id);
+      nextEdges = edges.filter(e => e.source !== nodeToDelete.id && e.target !== nodeToDelete.id);
+    }
+
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+    if (selectedNodeId && (deleteSubtree ? targetIds.includes(selectedNodeId) : selectedNodeId === nodeToDelete.id)) {
+      setSelectedNodeId(null);
+    }
+
+    pushHistory({ nodes: nextNodes, edges: nextEdges, legacyText }, true);
+
+    toast({
+      title: deleteSubtree ? 'Subtree Deleted' : 'Step Deleted',
+      description: `Successfully removed step "${nodeToDelete.data.label}".`
+    });
+
+    setIsDeleteDialogOpen(false);
+    setNodeToDelete(null);
   };
 
   const handleCloneStep = React.useCallback((cloneSubtreeOption: boolean) => {
@@ -760,12 +930,15 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
       ? cloneSubtree(nodes, edges, nodeToClone.id, 300)
       : cloneSingleNode(nodes, edges, nodeToClone.id, NODE_APPROX_H, VERTICAL_GAP);
 
-    if (result.newId || result.newRootId) {
+    const targetId = cloneSubtreeOption ? result.newRootId : result.newId;
+    if (targetId) {
+      isUndoingRedoingRef.current = true;
       setNodes(result.nodes);
       setEdges(result.edges);
-      setSelectedNodeId(cloneSubtreeOption ? result.newRootId : result.newId);
+      setSelectedNodeId(targetId);
       
-      const targetId = cloneSubtreeOption ? result.newRootId : result.newId;
+      pushHistory({ nodes: result.nodes, edges: result.edges, legacyText }, true);
+
       setTimeout(() => {
         canvasRef.current?.focusNode(targetId);
       }, 100);
@@ -778,7 +951,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
 
     setIsCloneDialogOpen(false);
     setNodeToClone(null);
-  }, [nodeToClone, nodes, edges, setNodes, setEdges, toast]);
+  }, [nodeToClone, nodes, edges, setNodes, setEdges, toast, pushHistory, legacyText]);
 
   // Delete an edge by ID (called from the custom edge ✕ button or Delete key)
   const handleEdgeDelete = React.useCallback((edgeId: string) => {
@@ -1677,6 +1850,8 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
         defaultValue="flow"
         value={editorTab}
         onValueChange={(v: string) => {
+          isTabSwitchingRef.current = true;
+          
           if (v !== 'list') {
             setIsListViewPreviewMode(false);
           }
@@ -1696,6 +1871,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                 title: 'Script Parsing Error',
                 description: `Invalid raw script syntax. Please resolve errors before switching: ${errMsg}`
               });
+              isTabSwitchingRef.current = false;
               return; // Block the tab switch
             }
           }
@@ -1706,6 +1882,10 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
             setLegacyText(plainText);
           }
           setEditorTab(v as 'flow' | 'list' | 'interactive' | 'text');
+          
+          setTimeout(() => {
+            isTabSwitchingRef.current = false;
+          }, 50);
         }}
         className="w-full space-y-8 p-8"
       >
@@ -1870,6 +2050,55 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
 
             <TooltipProvider delayDuration={200}>
               <div className="flex items-center gap-2">
+                {/* Undo / Redo Buttons */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      onClick={handleUndo}
+                      disabled={!canUndo}
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 rounded-xl border-border bg-muted hover:bg-accent text-muted-foreground active:scale-[0.97] transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[200px] p-3 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Undo2 className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Undo</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground leading-normal">
+                      Revert the last modification to the script graph (Cmd+Z).
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      onClick={handleRedo}
+                      disabled={!canRedo}
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 rounded-xl border-border bg-muted hover:bg-accent text-muted-foreground active:scale-[0.97] transition-all duration-150 disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      <Redo2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[200px] p-3 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Redo2 className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Redo</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground leading-normal">
+                      Re-apply the previously undone modification (Cmd+Y).
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+
                 {/* AI Generator assistant */}
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -3290,6 +3519,54 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                 className="text-[10px] uppercase font-bold tracking-wider h-9 rounded-xl flex-grow"
               >
                 Clone Step &amp; Subtree
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {isDeleteDialogOpen && nodeToDelete && (
+        <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+            setIsDeleteDialogOpen(false);
+            setNodeToDelete(null);
+          }
+        }}>
+          <DialogContent className="max-w-md p-6 bg-card border border-border shadow-2xl rounded-2xl">
+            <DialogHeader className="space-y-1.5">
+              <DialogTitle className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                <Trash2 className="h-4 w-4 text-rose-500" />
+                Delete Step
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-normal">
+                How would you like to delete the step <strong>"{nodeToDelete.data.label}"</strong>? Choose whether to delete only this step or to recursively delete this step and all its downstream branches.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  setNodeToDelete(null);
+                }}
+                className="text-[10px] uppercase font-bold tracking-wider border-border h-9 rounded-xl flex-grow sm:flex-grow-0"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleConfirmDelete(false)}
+                className="text-[10px] uppercase font-bold tracking-wider border-rose-500/20 text-rose-400 hover:bg-rose-500/5 h-9 rounded-xl flex-grow"
+              >
+                Delete Step Only
+              </Button>
+              <Button
+                onClick={() => handleConfirmDelete(true)}
+                variant="destructive"
+                className="text-[10px] uppercase font-bold tracking-wider h-9 rounded-xl flex-grow"
+              >
+                Delete Step &amp; Subtree
               </Button>
             </DialogFooter>
           </DialogContent>

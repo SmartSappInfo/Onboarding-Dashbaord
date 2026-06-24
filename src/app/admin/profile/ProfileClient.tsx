@@ -18,11 +18,14 @@ import { Loader2, User as UserIcon, Camera, Settings2, Bell } from 'lucide-react
 import { Switch } from '@/components/ui/switch';
 import type { UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().optional(),
   photoURL: z.string().url().optional().or(z.literal('')),
+  defaultWorkspaceId: z.string().optional(),
   notificationPreferences: z.object({
     email: z.boolean().default(true),
     sms: z.boolean().default(true),
@@ -41,6 +44,7 @@ export default function ProfileClient() {
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isLoadingProfile, setIsLoadingProfile] = React.useState(true);
+  const { accessibleWorkspaces } = useWorkspace();
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
@@ -48,6 +52,7 @@ export default function ProfileClient() {
       name: '', 
       phone: '', 
       photoURL: '',
+      defaultWorkspaceId: '',
       notificationPreferences: {
         email: true,
         sms: true,
@@ -67,6 +72,7 @@ export default function ProfileClient() {
             name: data.name || user.displayName || '',
             phone: data.phone || '',
             photoURL: user.photoURL || data.photoURL || '',
+            defaultWorkspaceId: data.defaultWorkspaceId || '',
             notificationPreferences: data.notificationPreferences || {
               email: true,
               sms: true,
@@ -124,6 +130,7 @@ export default function ProfileClient() {
         name: data.name,
         phone: data.phone,
         photoURL: data.photoURL,
+        defaultWorkspaceId: data.defaultWorkspaceId || '',
         notificationPreferences: data.notificationPreferences,
       });
 
@@ -242,6 +249,34 @@ export default function ProfileClient() {
                         <FormMessage />
                         </FormItem>
                     )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="defaultWorkspaceId"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1">
+                          <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Default/Primary Workspace</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl>
+                              <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-left">
+                                <SelectValue placeholder="Select primary workspace" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-xl border border-border shadow-xl">
+                              {accessibleWorkspaces.map((ws) => (
+                                <SelectItem key={ws.id} value={ws.id} className="rounded-lg text-xs font-semibold">
+                                  {ws.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className="text-[10px] font-bold tracking-tighter opacity-60">
+                            This workspace will load by default when you log in or refresh your screen.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
                     
                     {/* Notification Preferences */}

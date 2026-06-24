@@ -6,6 +6,7 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebas
 import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, TemplateStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from '../../../messaging/templates/components/template-gallery';
+import { isWhatsAppDisplay } from '../../../messaging/templates/lib/unified-template';
 import { TemplateWorkshop } from '../../../messaging/templates/components/template-workshop';
 import { TemplatePreviewModal } from '../../../messaging/templates/components/template-preview-modal';
 import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
@@ -347,7 +348,7 @@ export default function TemplatesClient() {
                             onEdit={handleEdit}
                             onClone={() => {}}
                             onDelete={setTemplateToDelete as any}
-                            onPreview={setPreviewTemplate}
+                            onPreview={(t) => { if (!isWhatsAppDisplay(t)) setPreviewTemplate(t); }}
                             onUpdateStatus={handleUpdateStatus}
                         />
                             </div>

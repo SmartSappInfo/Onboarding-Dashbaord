@@ -2,20 +2,32 @@
 
 import * as React from 'react';
 import type { MessageTemplate, TemplateStatus, TemplateTarget, MessageStyle } from '@/lib/types';
+import type { WhatsAppTemplateStatus } from '@/lib/whatsapp/whatsapp-types';
 import { plainTextToHtml, renderBlocksToHtml } from '@/lib/messaging-utils';
-import { 
-    Search, 
-    FileType, 
-    Smartphone, 
-    Mail, 
-    Eye, 
-    Pencil, 
-    CopyPlus, 
-    Trash2, 
+import {
+    isWhatsAppDisplay,
+    type GalleryTemplate,
+    type WhatsAppDisplayTemplate,
+} from '../lib/unified-template';
+import {
+    Search,
+    FileType,
+    Smartphone,
+    Mail,
+    Eye,
+    Pencil,
+    CopyPlus,
+    Trash2,
     Zap,
     Share2,
     LayoutGrid,
-    List
+    List,
+    MessageCircle,
+    Send,
+    Plus,
+    CheckCircle2,
+    Clock,
+    XCircle
 } from 'lucide-react';
 import { Card, CardTitle, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +38,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SmartSappIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Channel visual identity — single edit point to add a future channel.
+type KnownChannel = 'email' | 'sms' | 'whatsapp';
+interface ChannelMeta { Icon: React.ElementType; chip: string; iconWrap: string; label: string; group: string; }
+const CHANNEL_META: Record<KnownChannel, ChannelMeta> = {
+    email: { Icon: Mail, chip: 'bg-blue-500/5 text-blue-500 border-blue-200', iconWrap: 'bg-blue-500/10 text-blue-500 border-blue-100', label: 'Email', group: 'Email Templates' },
+    sms: { Icon: Smartphone, chip: 'bg-orange-500/5 text-orange-500 border-orange-200', iconWrap: 'bg-orange-500/10 text-orange-500 border-orange-100', label: 'SMS', group: 'SMS Templates' },
+    whatsapp: { Icon: MessageCircle, chip: 'bg-emerald-500/5 text-emerald-600 border-emerald-200', iconWrap: 'bg-emerald-500/10 text-emerald-600 border-emerald-100', label: 'WhatsApp', group: 'WhatsApp Templates' },
+};
+function channelMeta(channel: string): ChannelMeta {
+    return CHANNEL_META[channel as KnownChannel] ?? CHANNEL_META.email;
+}
+
+// WhatsApp (Meta) approval status badges — mirrors the former panel.
+const WA_STATUS_META: Record<WhatsAppTemplateStatus, { label: string; cls: string; Icon: React.ElementType }> = {
+    APPROVED: { label: 'Approved', cls: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', Icon: CheckCircle2 },
+    PENDING: { label: 'Pending', cls: 'bg-amber-500/10 text-amber-600 border-amber-500/20', Icon: Clock },
+    REJECTED: { label: 'Rejected', cls: 'bg-red-500/10 text-red-600 border-red-500/20', Icon: XCircle },
+    PAUSED: { label: 'Paused', cls: 'bg-muted text-muted-foreground border-border', Icon: Clock },
+    DISABLED: { label: 'Disabled', cls: 'bg-muted text-muted-foreground border-border', Icon: XCircle },
+};
 
 interface TemplateCardProps {
     template: MessageTemplate;
@@ -128,9 +161,15 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
         <Card className={cn("group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]", cloningId === template.id ? "opacity-50 scale-[0.98] grayscale" : "")}>
             <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-background group-hover:bg-background transition-colors duration-500">
                 <div className="flex items-center gap-1.5">
-                    <div className={cn("p-1.5 rounded-lg border", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>
-                        {template.channel === 'sms' ? <Smartphone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
-                    </div>
+                    {(() => {
+                        const meta = channelMeta(template.channel);
+                        const Icon = meta.Icon;
+                        return (
+                            <div className={cn("p-1.5 rounded-lg border", meta.iconWrap)}>
+                                <Icon className="h-3 w-3" />
+                            </div>
+                        );
+                    })()}
                     <span className="text-[8px] font-semibold text-muted-foreground opacity-60">{template.channel} Template</span>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
@@ -267,13 +306,16 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete
             {/* Badges / Metadata info */}
             <div className="flex flex-wrap items-center gap-2 shrink-0">
                 {/* Channel */}
-                <Badge variant="outline" className={cn(
-                    "rounded-full px-2 py-0.5 text-[8px] font-bold gap-1",
-                    template.channel === 'sms' ? "bg-orange-500/5 text-orange-500 border-orange-200" : "bg-blue-500/5 text-blue-500 border-blue-200"
-                )}>
-                    {template.channel === 'sms' ? <Smartphone className="h-2.5 w-2.5" /> : <Mail className="h-2.5 w-2.5" />}
-                    <span className="capitalize">{template.channel}</span>
-                </Badge>
+                {(() => {
+                    const meta = channelMeta(template.channel);
+                    const Icon = meta.Icon;
+                    return (
+                        <Badge variant="outline" className={cn("rounded-full px-2 py-0.5 text-[8px] font-bold gap-1", meta.chip)}>
+                            <Icon className="h-2.5 w-2.5" />
+                            <span className="capitalize">{template.channel}</span>
+                        </Badge>
+                    );
+                })()}
 
                 {/* Category */}
                 <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[8px] font-bold bg-muted/10 capitalize">
@@ -333,16 +375,145 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete
     );
 }
 
+interface WhatsAppCardProps {
+    template: WhatsAppDisplayTemplate;
+    onPreview: () => void;
+    onSendTest: () => void;
+    onAdopt: () => void;
+}
+
+/** Read-only WhatsApp card (Meta templates are immutable) with channel-specific actions. */
+function WhatsAppTemplateCard({ template, onPreview, onSendTest, onAdopt }: WhatsAppCardProps) {
+    const status = WA_STATUS_META[template.waStatus];
+    const StatusIcon = status.Icon;
+    const isApproved = template.waStatus === 'APPROVED';
+    return (
+        <Card className="group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]">
+            <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-background">
+                <div className="flex items-center gap-1.5">
+                    <div className="p-1.5 rounded-lg border bg-emerald-500/10 text-emerald-600 border-emerald-100">
+                        <MessageCircle className="h-3 w-3" />
+                    </div>
+                    <span className="text-[8px] font-semibold text-muted-foreground opacity-60">WhatsApp Template</span>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-all" onClick={onPreview} title="Preview">
+                    <Eye className="h-4 w-4" />
+                </Button>
+            </div>
+
+            <div className="flex-1 overflow-hidden relative bg-card flex flex-col items-center justify-center p-1.5">
+                <div className="w-full h-full bg-card rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-emerald-100 dark:border-emerald-900/40 shadow-inner">
+                    <div className="absolute -right-4 -top-4 opacity-5 rotate-12 text-emerald-600"><MessageCircle size={120} /></div>
+                    <div className="p-4 bg-emerald-500/5 border border-emerald-200/60 dark:border-emerald-900/40 rounded-2xl rounded-tl-sm shadow-xl">
+                        <p className="text-[9px] font-bold text-slate-900 dark:text-slate-100 leading-relaxed line-clamp-[8] whitespace-pre-wrap">{template.body}</p>
+                    </div>
+                    <div className="flex items-center justify-between opacity-30 border-t border-emerald-200/60 dark:border-emerald-900/40 pt-3">
+                        <span className="text-[7px] font-semibold text-slate-900 dark:text-slate-100 uppercase">{template.language} · {template.waCategory} · {template.paramCount} param(s)</span>
+                    </div>
+                </div>
+            </div>
+
+            <CardHeader className="p-5 shrink-0 bg-background border-t">
+                <div className="min-w-0 space-y-1.5">
+                    <CardTitle className="text-sm font-semibold truncate text-foreground leading-tight tracking-tight">{template.name}</CardTitle>
+                    {template.waStatus === 'REJECTED' && template.rejectedReason ? (
+                        <p className="text-[8px] font-semibold text-red-600 line-clamp-1">Reason: {template.rejectedReason}</p>
+                    ) : null}
+                    <div className="flex items-center gap-1 flex-wrap">
+                        <Badge variant="outline" className={cn("rounded-full h-5 px-2 text-[8px] font-bold gap-1", status.cls)}>
+                            <StatusIcon className="h-2.5 w-2.5" /> {status.label}
+                        </Badge>
+                        {isApproved && template.hasRuntimeNeeds ? (
+                            <Badge variant="outline" className="rounded-full h-5 px-2 text-[8px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
+                                Test-send only
+                            </Badge>
+                        ) : null}
+                    </div>
+                    {isApproved ? (
+                        <div className="flex items-center gap-1 pt-0.5 flex-wrap">
+                            {!template.hasRuntimeNeeds ? (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={onAdopt}
+                                    disabled={template.isAdopted}
+                                    className="rounded-lg font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/5 h-7 text-[10px] disabled:opacity-60"
+                                >
+                                    {template.isAdopted ? <><CheckCircle2 className="h-3 w-3 mr-1" /> Enabled</> : <><Plus className="h-3 w-3 mr-1" /> Enable for campaigns</>}
+                                </Button>
+                            ) : null}
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={onSendTest}
+                                className="rounded-lg font-bold text-muted-foreground hover:text-foreground hover:bg-muted/40 h-7 text-[10px]"
+                            >
+                                <Send className="h-3 w-3 mr-1" /> Send test
+                            </Button>
+                        </div>
+                    ) : null}
+                </div>
+            </CardHeader>
+        </Card>
+    );
+}
+
+/** Read-only WhatsApp list row. */
+function WhatsAppTemplateRow({ template, onPreview, onSendTest, onAdopt }: WhatsAppCardProps) {
+    const status = WA_STATUS_META[template.waStatus];
+    const StatusIcon = status.Icon;
+    const isApproved = template.waStatus === 'APPROVED';
+    return (
+        <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl bg-card hover:bg-muted/10 hover:shadow-md transition-all duration-300 gap-4 border-border/50">
+            <div className="flex-1 min-w-0 space-y-1">
+                <span className="font-semibold text-sm text-foreground truncate">{template.name}</span>
+                <div className="text-xs text-muted-foreground truncate opacity-80 max-w-xl">
+                    <span className="italic">Body: &ldquo;{template.body}&rdquo;</span>
+                </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[8px] font-bold gap-1 bg-emerald-500/5 text-emerald-600 border-emerald-200">
+                    <MessageCircle className="h-2.5 w-2.5" /> <span>WhatsApp</span>
+                </Badge>
+                <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[8px] font-bold bg-muted/10 uppercase">{template.waCategory}</Badge>
+                <Badge variant="outline" className={cn("rounded-full px-2 py-0.5 text-[8px] font-bold gap-1", status.cls)}>
+                    <StatusIcon className="h-2.5 w-2.5" /> {status.label}
+                </Badge>
+                {isApproved && template.hasRuntimeNeeds ? (
+                    <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[8px] font-bold bg-amber-500/10 text-amber-600 border-amber-500/20">Test-send only</Badge>
+                ) : null}
+            </div>
+            <div className="flex items-center justify-end gap-1.5 shrink-0 border-t pt-3 md:border-none md:pt-0">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" onClick={onPreview} title="Preview">
+                    <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                </Button>
+                {isApproved && !template.hasRuntimeNeeds ? (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted disabled:opacity-60" onClick={onAdopt} disabled={template.isAdopted} title={template.isAdopted ? 'Enabled for campaigns' : 'Enable for campaigns'}>
+                        {template.isAdopted ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Plus className="h-4 w-4 text-emerald-600" />}
+                    </Button>
+                ) : null}
+                {isApproved ? (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" onClick={onSendTest} title="Send test">
+                        <Send className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </Button>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
 interface TemplateGalleryProps {
-    templates: MessageTemplate[];
+    templates: GalleryTemplate[];
     styles?: MessageStyle[];
     isLoading: boolean;
     cloningId: string | null;
     onEdit: (tmpl: MessageTemplate) => void;
     onClone: (tmpl: MessageTemplate) => void;
     onDelete: (tmpl: MessageTemplate) => void;
-    onPreview: (tmpl: MessageTemplate) => void;
+    onPreview: (tmpl: GalleryTemplate) => void;
     onUpdateStatus: (tmpl: MessageTemplate, status: TemplateStatus) => void;
+    onWhatsAppSendTest?: (tmpl: WhatsAppDisplayTemplate) => void;
+    onWhatsAppAdopt?: (tmpl: WhatsAppDisplayTemplate) => void;
 }
 
 export function TemplateGallery({
@@ -354,7 +525,9 @@ export function TemplateGallery({
     onClone,
     onDelete,
     onPreview,
-    onUpdateStatus
+    onUpdateStatus,
+    onWhatsAppSendTest,
+    onWhatsAppAdopt
 }: TemplateGalleryProps) {
     // 1. Initial State Definition with Requested Default Configurations
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -416,27 +589,28 @@ export function TemplateGallery({
     }, [viewMode]);
 
     const filteredTemplates = React.useMemo(() => {
-        return templates.filter(t => 
+        const term = searchTerm.toLowerCase();
+        return templates.filter(t =>
             (channelFilter === 'all' || t.channel === channelFilter) &&
             (categoryFilter === 'all' || t.category === categoryFilter) &&
             (statusFilter === 'all' || t.status === statusFilter) &&
             (targetFilter === 'all' || t.target === targetFilter) &&
-            (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
+            ((t.name || '').toLowerCase().includes(term) || (t.body || '').toLowerCase().includes(term))
         );
     }, [templates, searchTerm, channelFilter, categoryFilter, statusFilter, targetFilter]);
 
     const groupedTemplates = React.useMemo(() => {
         if (groupBy === 'none') return { 'All Templates': filteredTemplates };
-        
+
         return filteredTemplates.reduce((acc, template) => {
-            const key = groupBy === 'channel' 
-                ? (template.channel === 'email' ? 'Email Templates' : 'SMS Templates')
+            const key = groupBy === 'channel'
+                ? channelMeta(template.channel).group
                 : (template.category ? (template.category.charAt(0).toUpperCase() + template.category.slice(1).replace('_', ' ') + ' Templates') : 'General Templates');
-            
+
             if (!acc[key]) acc[key] = [];
             acc[key].push(template);
             return acc;
-        }, {} as Record<string, MessageTemplate[]>);
+        }, {} as Record<string, GalleryTemplate[]>);
     }, [filteredTemplates, groupBy]);
 
     return (
@@ -460,6 +634,7 @@ export function TemplateGallery({
                             <SelectItem value="all">All Channels</SelectItem>
                             <SelectItem value="email">Email</SelectItem>
                             <SelectItem value="sms">SMS</SelectItem>
+                            <SelectItem value="whatsapp">WhatsApp</SelectItem>
                         </SelectContent>
                     </Select>
                     <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -564,32 +739,52 @@ export function TemplateGallery({
                             {viewMode === 'grid' ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                     {groupItems.map(template => (
-                                        <TemplateCard 
-                                            key={template.id} 
-                                            template={template} 
-                                            styles={styles}
-                                            cloningId={cloningId}
-                                            onPreview={() => onPreview(template)}
-                                            onEdit={() => onEdit(template)}
-                                            onClone={() => onClone(template)}
-                                            onDelete={() => onDelete(template)}
-                                            onUpdateStatus={(status) => onUpdateStatus(template, status)}
-                                        />
+                                        isWhatsAppDisplay(template) ? (
+                                            <WhatsAppTemplateCard
+                                                key={template.id}
+                                                template={template}
+                                                onPreview={() => onPreview(template)}
+                                                onSendTest={() => onWhatsAppSendTest?.(template)}
+                                                onAdopt={() => onWhatsAppAdopt?.(template)}
+                                            />
+                                        ) : (
+                                            <TemplateCard
+                                                key={template.id}
+                                                template={template}
+                                                styles={styles}
+                                                cloningId={cloningId}
+                                                onPreview={() => onPreview(template)}
+                                                onEdit={() => onEdit(template)}
+                                                onClone={() => onClone(template)}
+                                                onDelete={() => onDelete(template)}
+                                                onUpdateStatus={(status) => onUpdateStatus(template, status)}
+                                            />
+                                        )
                                     ))}
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-3">
                                     {groupItems.map(template => (
-                                        <TemplateRow 
-                                            key={template.id} 
-                                            template={template} 
-                                            cloningId={cloningId}
-                                            onPreview={() => onPreview(template)}
-                                            onEdit={() => onEdit(template)}
-                                            onClone={() => onClone(template)}
-                                            onDelete={() => onDelete(template)}
-                                            onUpdateStatus={(status) => onUpdateStatus(template, status)}
-                                        />
+                                        isWhatsAppDisplay(template) ? (
+                                            <WhatsAppTemplateRow
+                                                key={template.id}
+                                                template={template}
+                                                onPreview={() => onPreview(template)}
+                                                onSendTest={() => onWhatsAppSendTest?.(template)}
+                                                onAdopt={() => onWhatsAppAdopt?.(template)}
+                                            />
+                                        ) : (
+                                            <TemplateRow
+                                                key={template.id}
+                                                template={template}
+                                                cloningId={cloningId}
+                                                onPreview={() => onPreview(template)}
+                                                onEdit={() => onEdit(template)}
+                                                onClone={() => onClone(template)}
+                                                onDelete={() => onDelete(template)}
+                                                onUpdateStatus={(status) => onUpdateStatus(template, status)}
+                                            />
+                                        )
                                     ))}
                                 </div>
                             )}

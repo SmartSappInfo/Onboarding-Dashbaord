@@ -9,9 +9,10 @@ import {
     ArrowLeft, 
     Info, 
     MoreHorizontal, 
-    Phone, 
+    Phone,
     Video,
-    Sparkles
+    Sparkles,
+    MessageCircle
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,8 @@ import { cn } from '@/lib/utils';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { parseMarkdownLinksToHtml } from '@/lib/utils/markdown-link-parser';
 import type { MessageTemplate, MessageStyle } from '@/lib/types';
+import type { WhatsAppDisplayTemplate } from '../lib/unified-template';
+import { renderPreview } from './whatsapp/shared';
 
 // Premium high-fidelity mock variables for rendering exact state without unresolved curly braces
 const MOCK_VARIABLES: Record<string, string> = {
@@ -401,6 +404,60 @@ export function TemplatePreviewModal({
                         </div>
                     )}
 
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+interface WhatsAppPreviewModalProps {
+    template: WhatsAppDisplayTemplate | null;
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+/**
+ * Read-only WhatsApp preview — Meta templates are immutable, so there is no Edit
+ * action. Renders the body in a WhatsApp chat bubble with sample params resolved.
+ */
+export function WhatsAppPreviewModal({ template, isOpen, onClose }: WhatsAppPreviewModalProps) {
+    const exampleParams = template?.raw.exampleParams ?? [];
+    const previewBody = template ? renderPreview(template.body, exampleParams) : '';
+
+    if (!template) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+            <DialogContent className="max-w-md w-[92vw] rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl bg-background">
+                <DialogTitle className="sr-only">Previewing {template.name} (WhatsApp)</DialogTitle>
+                <DialogDescription className="sr-only">Read-only WhatsApp template preview.</DialogDescription>
+
+                <div className="h-16 shrink-0 border-b border-border/60 px-6 flex items-center justify-between bg-card/40 backdrop-blur-md">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl border font-semibold bg-emerald-500/10 text-emerald-600 border-emerald-200/50 dark:border-emerald-950">
+                            <MessageCircle className="h-4 w-4" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-foreground tracking-tight line-clamp-1">{template.name}</h3>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                {template.language} · {template.waCategory} · WhatsApp Preview
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-xl border hover:bg-muted transition-all duration-300 text-muted-foreground hover:text-foreground"
+                        onClick={onClose}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+
+                <div className="bg-[#e5ddd5] dark:bg-zinc-900 p-6 min-h-[280px] flex items-start justify-center">
+                    <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white dark:bg-emerald-950/40 ring-1 ring-black/5 shadow p-3 text-sm">
+                        <p className="whitespace-pre-wrap text-slate-900 dark:text-slate-100">{previewBody}</p>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>

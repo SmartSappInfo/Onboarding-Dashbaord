@@ -32,8 +32,12 @@ export interface BlockRenderContext {
   onPropChange?: (patch: Record<string, unknown>) => void;
   /** Fires a page trigger — present only in `view` mode. */
   fireTrigger?: (event: string, blockId?: string) => void;
-  /** Renders nested children for layout blocks (`allowsChildren`). */
-  renderChildren?: (slot?: string) => ReactNode;
+  /** Identity of the host page, required by embed blocks (form submission). */
+  page?: { id: string; organizationId: string; workspaceId: string };
+  /** Whether custom-code (`html`) blocks may render — gated by page settings. */
+  allowScripts?: boolean;
+  /** Rendered nested children, one node per child block (layout blocks). */
+  renderChildren?: () => ReactNode[];
 }
 
 export interface BlockDefinition<TProps extends Record<string, unknown>> {

@@ -4,6 +4,8 @@ import PublicPageClient from './PublicPageClient';
 import { adminDb } from '@/lib/firebase-admin';
 import { getOrgBranding } from '@/lib/org-branding';
 import { resolveSeoMetadata, normalizeParentImages } from '@/lib/seo';
+import { VERSIONS_COLLECTION } from '@/lib/page-builder/constants';
+import type { CampaignPageVersion } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -25,12 +27,12 @@ const getPageBySlug = cache(async function getPageBySlug(slug: string) {
     }
 });
 
-async function getPageVersion(pageId: string, versionId: string) {
+async function getPageVersion(versionId: string): Promise<CampaignPageVersion | null> {
     try {
-        const snap = await adminDb.collection('campaign_pages').doc(pageId)
-            .collection('campaign_page_versions').doc(versionId).get();
-        if (snap.exists) {
-            return { id: snap.id, ...snap.data() } as any;
+        const snap = await adminDb.collection(VERSIONS_COLLECTION).doc(versionId).get();
+        const data = snap.data();
+        if (snap.exists && data) {
+            return { ...(data as Omit<CampaignPageVersion, 'id'>), id: snap.id };
         }
         return null;
     } catch {
@@ -80,10 +82,11 @@ export default async function PublicPageRoute({ params }: { params: Promise<{ sl
     let orgBranding = null;
 
     if (page) {
-        orgBranding = await getOrgBranding(page.organizationId);
-        if (page.publishedVersionId) {
-            version = await getPageVersion(page.id, page.publishedVersionId);
-        }
+        // Parallelize independent reads (vercel-react-best-practices: async-parallel).
+        [orgBranding, version] = await Promise.all([
+            getOrgBranding(page.organizationId),
+            page.publishedVersionId ? getPageVersion(page.publishedVersionId) : Promise.resolve(null),
+        ]);
     }
 
     return (

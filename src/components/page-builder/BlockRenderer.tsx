@@ -35,6 +35,8 @@ export const BlockRenderer = React.memo(function BlockRenderer({ block, ctx }: B
   const props = parsed.success ? parsed.data : def.defaults;
 
   // Layout blocks render their nested children through the same renderer.
+  // `renderChildren` returns one node per child so layout blocks can place each
+  // into its own cell (e.g. columns).
   const renderCtx: BlockRenderContext = def.allowsChildren
     ? {
         ...ctx,

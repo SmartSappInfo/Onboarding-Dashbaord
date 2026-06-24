@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, AppField } from '@/lib/types';
+import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, AppField, TemplateStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
@@ -32,7 +32,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Trash2, Plus, Sparkles, Wand2, X, Zap } from 'lucide-react';
+import { Loader2, Trash2, Plus, Sparkles, Wand2, X, Zap, ChevronDown, RefreshCw, Mail, Smartphone, MessageCircle } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
@@ -45,14 +51,37 @@ import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cac
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import { createLearningSignalAction, finalizeLearningSignalAction } from '@/lib/learning-loop-actions';
 import { AiAssistantModalHeader } from '@/components/ai/AiAssistantModalHeader';
+import { WhatsAppPreviewModal } from './components/template-preview-modal';
+import { useWhatsAppTemplates } from './hooks/use-whatsapp-templates';
+import {
+    mapWhatsAppToGallery,
+    partitionAdopted,
+    mergeGalleryTemplates,
+    isWhatsAppDisplay,
+    toWhatsAppTemplateName,
+    type GalleryTemplate,
+    type WhatsAppDisplayTemplate,
+} from './lib/unified-template';
+import type { TemplateDraft } from './components/whatsapp/shared';
+import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
 import dynamic from 'next/dynamic';
 
-// Heavy, WhatsApp-only management UI — lazy-loaded so it stays out of the main
-// templates bundle (vercel:bundle-dynamic-imports).
-const WhatsAppTemplatePanel = dynamic(
-  () => import('./components/WhatsAppTemplatePanel'),
-  { ssr: false },
-);
+// WhatsApp authoring dialogs — lazy + conditional: only loaded when opened, so the
+// Meta builder stays out of the main templates bundle (vercel:bundle-conditional).
+const WhatsAppCreateDialog = dynamic(() => import('./components/whatsapp/WhatsAppCreateDialog'), { ssr: false });
+const WhatsAppSendTestDialog = dynamic(() => import('./components/whatsapp/WhatsAppSendTestDialog'), { ssr: false });
+const WhatsAppAdoptDialog = dynamic(() => import('./components/whatsapp/WhatsAppAdoptDialog'), { ssr: false });
+
+/** Channel chosen from the "New Template" menu (drives the workshop seed). */
+type NewTemplateChannel = 'email' | 'sms';
+/** Which WhatsApp dialog (if any) is currently open. */
+type ActiveWhatsAppDialog =
+    | { kind: 'create'; draft?: TemplateDraft }
+    | { kind: 'sendTest'; template: WhatsAppTemplate }
+    | { kind: 'adopt'; template: WhatsAppTemplate }
+    | null;
+/** AI channel selector value. */
+type AiChannel = 'email' | 'sms' | 'whatsapp';
 
 /**
  * @fileOverview Messaging Templates Management Page.
@@ -77,10 +106,16 @@ export default function MessageTemplatesPage() {
     // Global Navigation State
     const [isAdding, setIsAdding] = React.useState(false);
     const [editingTemplate, setEditingTemplate] = React.useState<MessageTemplate | null>(null);
+    const [newTemplateContext, setNewTemplateContext] = React.useState<{ channel: NewTemplateChannel } | undefined>(undefined);
     const [cloningId, setCloningId] = React.useState<string | null>(null);
     const [templateToDelete, setTemplateToDelete] = React.useState<MessageTemplate | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
-    const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
+    const [previewTemplate, setPreviewTemplate] = React.useState<GalleryTemplate | null>(null);
+
+    // WhatsApp (Meta-mirror) templates + dialog orchestration.
+    const whatsapp = useWhatsAppTemplates(activeOrganizationId);
+    const [activeWaDialog, setActiveWaDialog] = React.useState<ActiveWhatsAppDialog>(null);
+    const [aiChannel, setAiChannel] = React.useState<AiChannel>('email');
 
     // Data Subscriptions - GLOBAL + WORKSPACE
     const workspaceTemplatesQuery = useMemoFirebase(() => {
@@ -157,6 +192,15 @@ export default function MessageTemplatesPage() {
 
         return [...workspaceTemplatesList, ...filteredGlobal];
     }, [allTemplates, activeWorkspaceId]);
+
+    // Merge Firestore (email/SMS + orphan WhatsApp) with Meta-mirror WhatsApp
+    // templates into one gallery list. Adopted WhatsApp docs are hidden in favor
+    // of their canonical Meta card, but their names mark cards as "Enabled".
+    const galleryTemplates = React.useMemo<GalleryTemplate[]>(() => {
+        const { adoptedNames, visible } = partitionAdopted(templates);
+        const whatsappDisplays = whatsapp.templates.map((t) => mapWhatsAppToGallery(t, adoptedNames));
+        return mergeGalleryTemplates(visible, whatsappDisplays);
+    }, [templates, whatsapp.templates]);
 
     const varsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -340,6 +384,14 @@ export default function MessageTemplatesPage() {
     const handleCancel = () => {
         setIsAdding(false);
         setEditingTemplate(null);
+        setNewTemplateContext(undefined);
+    };
+
+    /** Open the manual workshop seeded for a specific channel. */
+    const openWorkshop = (channel: NewTemplateChannel) => {
+        setEditingTemplate(null);
+        setNewTemplateContext({ channel });
+        setIsAdding(true);
     };
 
     const handleAiArchitect = async () => {
@@ -347,17 +399,17 @@ export default function MessageTemplatesPage() {
         setIsAiProcessing(true);
         try {
             const availableKeys = (variables || []).map(v => v.key);
-            
+
             const result = await generateEmailTemplate({
                 prompt: aiPrompt,
-                channel: 'email',
+                channel: aiChannel,
                 availableVariables: availableKeys,
                 organizationId: activeOrganizationId,
                 provider: liveProvider,
                 modelId: liveModelId,
             });
 
-            // ULL Signal Registration
+            // ULL Signal Registration (all channels)
             const signalResult = await createLearningSignalAction({
                 prompt: aiPrompt,
                 initialState: result,
@@ -373,29 +425,52 @@ export default function MessageTemplatesPage() {
                 setCurrentSignalId(signalResult.id);
             }
 
-            const draftTemplate: any = {
+            setIsAiModalOpen(false);
+            setAiPrompt('');
+
+            if (aiChannel === 'whatsapp') {
+                // WhatsApp can't be created instantly — pre-fill the Meta builder so the
+                // user reviews and submits for approval (honors Meta's approval flow).
+                const draft: TemplateDraft = {
+                    name: toWhatsAppTemplateName(result.name) || undefined,
+                    category: result.whatsappCategory ?? 'UTILITY',
+                    bodyText: result.body,
+                    bodyExamples: result.bodyParams ?? [],
+                    footerText: result.footer,
+                    headerText: result.header,
+                };
+                setActiveWaDialog({ kind: 'create', draft });
+                toast({ title: 'Draft ready', description: 'Review and submit to Meta for approval.' });
+                return;
+            }
+
+            const draftTemplate: MessageTemplate = {
+                id: '',
                 name: result.name,
                 subject: result.subject || '',
                 body: result.body,
                 blocks: result.blocks || [],
-                channel: 'email',
+                channel: aiChannel,
                 category: 'general',
                 target: 'external_client',
-                contentMode: 'rich_builder',
+                contentMode: aiChannel === 'sms' ? 'plain_text' : 'rich_builder',
                 status: 'active',
                 scope: 'organization',
                 workspaceIds: [activeWorkspaceId],
                 templateType: `ai_draft_${Date.now()}`,
-                recipientType: 'participant',
+                variableContext: 'common',
+                declaredVariables: [],
+                version: 1,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
             };
 
             setEditingTemplate(draftTemplate);
+            setNewTemplateContext(undefined);
             setIsAdding(true);
-            setIsAiModalOpen(false);
-            setAiPrompt('');
             toast({ title: 'Template Draft Created', description: result.explanation });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Generation Failed', description: e.message });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Generation Failed', description: e instanceof Error ? e.message : 'Unknown error' });
         } finally {
             setIsAiProcessing(false);
         }
@@ -501,7 +576,7 @@ export default function MessageTemplatesPage() {
         }
     };
 
-    const handleUpdateStatus = async (tmpl: MessageTemplate, status: any) => {
+    const handleUpdateStatus = async (tmpl: MessageTemplate, status: TemplateStatus) => {
         if (!firestore) return;
         try {
             await updateDoc(doc(firestore, 'message_templates', tmpl.id), {
@@ -509,18 +584,22 @@ export default function MessageTemplatesPage() {
                 updatedAt: new Date().toISOString()
             });
             toast({ title: 'Template Status Updated', description: `Set to ${status}` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e instanceof Error ? e.message : 'Unknown error' });
         }
     };
+
+    const handleWaSendTest = (t: WhatsAppDisplayTemplate) => setActiveWaDialog({ kind: 'sendTest', template: t.raw });
+    const handleWaAdopt = (t: WhatsAppDisplayTemplate) => setActiveWaDialog({ kind: 'adopt', template: t.raw });
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <AnimatePresence mode="wait">
                 {isAdding ? (
-                    <TemplateWorkshop 
+                    <TemplateWorkshop
                         key="workshop"
                         initialTemplate={editingTemplate}
+                        initialContext={newTemplateContext}
                         variables={variables || []}
                         styles={styles || []}
                         meetings={meetings || []}
@@ -542,35 +621,67 @@ export default function MessageTemplatesPage() {
                                     <p className="text-muted-foreground text-sm max-w-lg">Manage your organization's messaging blueprints. These templates are automatically synced across all platform modules.</p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <RainbowButton 
-                                        onClick={() => setIsAiModalOpen(true)} 
+                                    {activeOrganizationId ? (
+                                        <Button
+                                            onClick={whatsapp.sync}
+                                            disabled={whatsapp.isSyncing}
+                                            variant="outline"
+                                            className="rounded-xl font-bold h-11 px-5 gap-2"
+                                            title="Pull the latest WhatsApp template statuses from Meta"
+                                        >
+                                            <RefreshCw className={`h-4 w-4 ${whatsapp.isSyncing ? 'animate-spin' : ''}`} /> Sync from Meta
+                                        </Button>
+                                    ) : null}
+                                    <RainbowButton
+                                        onClick={() => setIsAiModalOpen(true)}
                                     >
                                         <Sparkles className="h-4 w-4" /> AI Template Generator
                                     </RainbowButton>
-                                    <Button 
-                                        onClick={() => { setEditingTemplate(null); setIsAdding(true); }} 
-                                        className="rounded-xl font-bold h-11 px-6 shadow-lg gap-2"
-                                    >
-                                        <Plus className="h-5 w-5" /> Manual Create
-                                    </Button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button className="rounded-xl font-bold h-11 px-6 shadow-lg gap-2">
+                                                <Plus className="h-5 w-5" /> New Template <ChevronDown className="h-4 w-4 opacity-80" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="rounded-xl w-48">
+                                            <DropdownMenuItem onClick={() => openWorkshop('sms')} className="font-semibold gap-2 cursor-pointer">
+                                                <Smartphone className="h-4 w-4 text-orange-500" /> SMS Template
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => openWorkshop('email')} className="font-semibold gap-2 cursor-pointer">
+                                                <Mail className="h-4 w-4 text-blue-500" /> Email Template
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={() => setActiveWaDialog({ kind: 'create' })}
+                                                disabled={!activeOrganizationId}
+                                                className="font-semibold gap-2 cursor-pointer"
+                                            >
+                                                <MessageCircle className="h-4 w-4 text-emerald-600" /> WhatsApp Template
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
                             </div>
 
-                            <TemplateGallery 
-                                templates={templates || []}
+                            {whatsapp.error && activeOrganizationId ? (
+                                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                                    <MessageCircle className="h-4 w-4 shrink-0" />
+                                    WhatsApp templates couldn’t be loaded: {whatsapp.error}
+                                </div>
+                            ) : null}
+
+                            <TemplateGallery
+                                templates={galleryTemplates}
                                 styles={styles || []}
-                                isLoading={isLoadingTemplates}
+                                isLoading={isLoadingTemplates || whatsapp.isLoading}
                                 cloningId={cloningId}
                                 onEdit={handleEdit}
                                 onClone={handleClone}
                                 onDelete={setTemplateToDelete}
                                 onPreview={setPreviewTemplate}
                                 onUpdateStatus={handleUpdateStatus}
+                                onWhatsAppSendTest={handleWaSendTest}
+                                onWhatsAppAdopt={handleWaAdopt}
                             />
-
-                            {activeOrganizationId && (
-                                <WhatsAppTemplatePanel organizationId={activeOrganizationId} />
-                            )}
                             </div>
                         </PageContainer>
                     </div>
@@ -586,15 +697,41 @@ export default function MessageTemplatesPage() {
                     />
                     <div className="space-y-6 mt-4">
                         <div className="space-y-2">
+                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Channel</Label>
+                            <div className="flex gap-2">
+                                {([
+                                    ['email', 'Email', Mail],
+                                    ['sms', 'SMS', Smartphone],
+                                    ['whatsapp', 'WhatsApp', MessageCircle],
+                                ] as const).map(([val, label, Icon]) => (
+                                    <Button
+                                        key={val}
+                                        type="button"
+                                        variant={aiChannel === val ? 'default' : 'outline'}
+                                        onClick={() => setAiChannel(val)}
+                                        disabled={val === 'whatsapp' && !activeOrganizationId}
+                                        className="rounded-xl font-bold gap-2 h-10"
+                                    >
+                                        <Icon className="h-4 w-4" /> {label}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="space-y-2">
                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Describe Your Message</Label>
-                            <Textarea 
-                                value={aiPrompt} 
-                                onChange={e => setAiPrompt(e.target.value)} 
+                            <Textarea
+                                value={aiPrompt}
+                                onChange={e => setAiPrompt(e.target.value)}
                                 placeholder="e.g. Create a formal email inviting parents to a meeting. Mention that we'll discuss the new security module."
  className="min-h-[180px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 leading-relaxed text-lg"
                                 autoFocus
                             />
                         </div>
+                        {aiChannel === 'whatsapp' ? (
+                            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                                WhatsApp templates need Meta approval. The AI drafts the body and sample values, then opens the builder so you can review and submit for approval.
+                            </div>
+                        ) : null}
  <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4">
  <Zap className="h-6 w-6 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
  <div className="space-y-1">
@@ -641,13 +778,58 @@ export default function MessageTemplatesPage() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <TemplatePreviewModal 
-                template={previewTemplate}
-                isOpen={!!previewTemplate}
+            <TemplatePreviewModal
+                template={previewTemplate && !isWhatsAppDisplay(previewTemplate) ? previewTemplate : null}
+                isOpen={!!previewTemplate && !isWhatsAppDisplay(previewTemplate)}
                 onClose={() => setPreviewTemplate(null)}
                 onEdit={handleEdit}
                 styles={styles || []}
             />
+
+            <WhatsAppPreviewModal
+                template={previewTemplate && isWhatsAppDisplay(previewTemplate) ? previewTemplate : null}
+                isOpen={!!previewTemplate && isWhatsAppDisplay(previewTemplate)}
+                onClose={() => setPreviewTemplate(null)}
+            />
+
+            {activeWaDialog?.kind === 'create' && activeOrganizationId ? (
+                <WhatsAppCreateDialog
+                    organizationId={activeOrganizationId}
+                    initialDraft={activeWaDialog.draft}
+                    onClose={() => setActiveWaDialog(null)}
+                    onCreated={() => {
+                        setActiveWaDialog(null);
+                        whatsapp.refetch();
+                        toast({ title: 'Submitted to Meta', description: 'Template sent for approval. It can send once APPROVED.' });
+                    }}
+                />
+            ) : null}
+
+            {activeWaDialog?.kind === 'sendTest' && activeOrganizationId ? (
+                <WhatsAppSendTestDialog
+                    template={activeWaDialog.template}
+                    organizationId={activeOrganizationId}
+                    onClose={() => setActiveWaDialog(null)}
+                    onSent={(wamid) => {
+                        setActiveWaDialog(null);
+                        toast({ title: 'Test sent', description: wamid ? `Message queued (${wamid}).` : 'Message queued.' });
+                    }}
+                />
+            ) : null}
+
+            {activeWaDialog?.kind === 'adopt' && activeOrganizationId ? (
+                <WhatsAppAdoptDialog
+                    template={activeWaDialog.template}
+                    organizationId={activeOrganizationId}
+                    onClose={() => setActiveWaDialog(null)}
+                    onAdopted={() => {
+                        setActiveWaDialog(null);
+                        invalidateAllTemplatesCache();
+                        whatsapp.refetch();
+                        toast({ title: 'Enabled', description: 'Template is now selectable on the WhatsApp channel.' });
+                    }}
+                />
+            ) : null}
         </div>
     );
 }

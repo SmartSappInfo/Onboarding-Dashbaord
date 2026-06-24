@@ -51,7 +51,7 @@ export function cloneSingleNode(
   targetNodeId: string,
   nodeHeights: Record<string, number>,
   verticalGap: number
-): { nodes: Node[]; edges: Edge[]; newId: string } {
+): { nodes: Node[]; edges: Edge[]; newId?: string; newRootId?: string } {
   const targetNode = nodes.find(n => n.id === targetNodeId);
   if (!targetNode) {
     return { nodes, edges, newId: '' };
@@ -145,7 +145,7 @@ export function cloneSingleNode(
   }
 
   // De-select all other nodes
-  const finalNodes = updatedNodes.map(n => ({ ...n, selected: false }));
+  const finalNodes: Node[] = updatedNodes.map(n => ({ ...n, selected: false }));
   finalNodes.push(newNode);
 
   return {
@@ -165,7 +165,7 @@ export function cloneSubtree(
   edges: Edge[],
   targetNodeId: string,
   horizontalShift: number
-): { nodes: Node[]; edges: Edge[]; newRootId: string } {
+): { nodes: Node[]; edges: Edge[]; newId?: string; newRootId?: string } {
   const targetNode = nodes.find(n => n.id === targetNodeId);
   if (!targetNode) {
     return { nodes, edges, newRootId: '' };
@@ -233,7 +233,7 @@ export function cloneSubtree(
   });
 
   // De-select old nodes
-  const updatedNodes = nodes.map(n => ({ ...n, selected: false }));
+  const updatedNodes: Node[] = nodes.map(n => ({ ...n, selected: false }));
 
   return {
     nodes: [...updatedNodes, ...newNodesList],

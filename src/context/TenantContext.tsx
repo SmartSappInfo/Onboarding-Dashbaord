@@ -145,14 +145,19 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         setActiveOrganizationIdState(initialOrgId || '');
 
         // Resolve Active Workspace
-        const storedWs = localStorage.getItem('activeWorkspaceId');
         const urlTrack = searchParams.get('track') || null;
+        const storedWs = localStorage.getItem('activeWorkspaceId');
+        
+        const currentOrg = organizations?.find(o => o.id === initialOrgId);
+        const orgDefaultWsId = currentOrg?.defaultWorkspaceId;
         
         let initialWsId = '';
-        // Prioritize the URL track param if present to allow link sharing,
-        // otherwise fall back to the previously open workspace from localStorage or user profile.
         if (urlTrack) {
             initialWsId = urlTrack;
+        } else if (profile.defaultWorkspaceId) {
+            initialWsId = profile.defaultWorkspaceId;
+        } else if (orgDefaultWsId) {
+            initialWsId = orgDefaultWsId;
         } else if (storedWs) {
             initialWsId = storedWs;
         } else if (profile.lastActiveWorkspaceId) {
@@ -201,17 +206,32 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--org-secondary', secondary);
   }, [activeOrganization?.brandPrimaryColor, activeOrganization?.brandSecondaryColor]);
 
+  // Auto-resolve organization based on active workspace (essential for cross-org workspace switching)
+  React.useEffect(() => {
+    if (!orgWorkspaces || !activeWorkspaceId) return;
+    const ws = orgWorkspaces.find(w => w.id === activeWorkspaceId);
+    if (ws && ws.organizationId && ws.organizationId !== activeOrganizationId) {
+      setActiveOrganizationIdState(ws.organizationId);
+      localStorage.setItem('activeOrganizationId', ws.organizationId);
+    }
+  }, [orgWorkspaces, activeWorkspaceId, activeOrganizationId]);
+
   // 6. Final Workspace Correction & URL Sync
   React.useEffect(() => {
     // Only perform fallback/correction once workspaces have finished loading.
     // This prevents aggressive resetting to the default workspace during partial cache hits.
-    if (isInitialized && !isWorkspacesLoading && accessibleWorkspaces.length > 0) {
+    if (isInitialized && !isWorkspacesLoading && orgWorkspaces && orgWorkspaces.length > 0 && accessibleWorkspaces.length > 0) {
+        const isMatchingOrg = orgWorkspaces.every(w => w.organizationId === activeOrganizationId);
+        if (!isMatchingOrg) return; // Wait for query to reload matching org workspaces
+
         let currentId = activeWorkspaceId;
         
         // 6.1. If we don't have a valid ID selected in state, pick an accessible one
         if (!activeWorkspaceId || !accessibleWorkspaces.find(w => w.id === activeWorkspaceId)) {
-            // Check if organization has a default workspace and user has access to it
-            if (activeOrganization?.defaultWorkspaceId && accessibleWorkspaces.find(w => w.id === activeOrganization.defaultWorkspaceId)) {
+            // Fallback: personal default -> organization default -> first accessible
+            if (profile?.defaultWorkspaceId && accessibleWorkspaces.find(w => w.id === profile.defaultWorkspaceId)) {
+                currentId = profile.defaultWorkspaceId;
+            } else if (activeOrganization?.defaultWorkspaceId && accessibleWorkspaces.find(w => w.id === activeOrganization.defaultWorkspaceId)) {
                 currentId = activeOrganization.defaultWorkspaceId;
             } else {
                 currentId = accessibleWorkspaces[0].id;
@@ -231,7 +251,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             }
         }
     }
-  }, [isInitialized, accessibleWorkspaces, activeWorkspaceId, pathname, searchParams, router, activeOrganization]);
+  }, [isInitialized, isWorkspacesLoading, orgWorkspaces, accessibleWorkspaces, activeWorkspaceId, pathname, searchParams, router, activeOrganization, profile, activeOrganizationId]);
 
   // Handlers
   const setActiveOrganization = React.useCallback((orgId: string) => {
