@@ -9,7 +9,7 @@
  * Concrete block definitions are registered in `./blocks/*` (Phase 2+).
  */
 import type { ReactElement, ReactNode, ComponentType } from 'react';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 import type {
   BuilderResources,
   PageBlock,
@@ -43,7 +43,12 @@ export interface BlockDefinition<TProps extends Record<string, unknown>> {
   icon: ComponentType<{ className?: string }>;
   fields: ReadonlyArray<BlockField>;
   defaults: TProps;
-  schema: ZodType<TProps>;
+  /**
+   * Validates stored props → `TProps`. Input is `unknown` because props are
+   * parsed from arbitrary persisted data, and because zod `.default()` makes a
+   * field's input optional (so the schema's input type is never exactly TProps).
+   */
+  schema: ZodType<TProps, ZodTypeDef, unknown>;
   /** Layout blocks that accept nested blocks (columns/container/grid). */
   allowsChildren?: boolean;
   render: (props: TProps, block: PageBlock, ctx: BlockRenderContext) => ReactElement;
