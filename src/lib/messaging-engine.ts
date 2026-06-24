@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting, EntityType } from './types';
+import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting, EntityType, DefaultSenderProfileIds } from './types';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
 import { resolveOrgBrandingVars } from './messaging-branding';
 import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
@@ -17,10 +17,17 @@ import { getRecipientContact } from './migration-status-utils';
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
 import { getBaseUrl, getRequestBaseUrl, cleanPersonalizedMeetingUrl } from './utils/url-helpers';
 import { CHANNEL_REGISTRY } from './messaging/channel-registry';
+import { resolveOrgId, resolveSenderProfileId, toSenderProfile } from './messaging/sender-repository';
 
 interface SendMessageInput {
   templateId: string;
   senderProfileId: string;
+  /**
+   * Tenant the message is sent on behalf of. When omitted it is derived from
+   * the template, then the workspace. Sender resolution is scoped strictly to
+   * this org — there is no cross-tenant fallback.
+   */
+  organizationId?: string;
   recipient: string;
   variables: Record<string, any>;
   attachments?: EmailAttachment[];
@@ -86,47 +93,76 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (!templateSnap.exists) throw new Error(`Template not found: ${templateId}`);
     const template = { id: templateSnap.id, ...templateSnap.data() } as MessageTemplate;
 
-    // 2. Resolve Sender Profile
+    // 2. Resolve Organization (org-first; no cross-tenant fallback).
+    // The org is resolved BEFORE the sender so the sender query can be scoped to it.
+    const baseWorkspaceId = workspaceId || template.workspaceIds?.[0];
+    let orgId = resolveOrgId(
+        input.organizationId,
+        template.organizationId,
+        typeof variables.organizationId === 'string' ? variables.organizationId : undefined,
+    );
+    if (!orgId && baseWorkspaceId) {
+        const wsSnap = await adminDb.collection('workspaces').doc(baseWorkspaceId).get();
+        if (wsSnap.exists) orgId = (wsSnap.data()?.organizationId as string) || null;
+    }
+    if (!orgId) {
+        return { success: false, error: 'Cannot send: no organization context could be resolved for this message.' };
+    }
+
+    // Template ownership: an org-scoped template may only be sent for its own org.
+    if (template.scope === 'organization' && template.organizationId && template.organizationId !== orgId) {
+        return { success: false, error: `Cannot send: template ${template.id} belongs to a different organization.` };
+    }
+
+    // 3. Resolve Sender Profile, scoped strictly to the org.
     let sender: SenderProfile;
-    if (template.channel === 'whatsapp') {
-        // WhatsApp's sender is the organization's WABA (resolved from the
-        // encrypted connection inside sendWhatsApp), not a SenderProfile.
-        // Synthesize a minimal sender so the engine flow + logging work without
-        // requiring a redundant whatsapp profile.
+    if (template.channel === 'whatsapp' || template.channel === 'in_app' || template.channel === 'push') {
+        // These channels do not send from a `sender_profiles` row:
+        //  - whatsapp uses the org's WABA (resolved inside sendWhatsApp)
+        //  - in_app / push are platform-delivered
+        // Synthesize a minimal org-owned sender so the flow + logging work.
+        const synthName = template.channel === 'whatsapp' ? 'WhatsApp'
+            : template.channel === 'push' ? 'Push Notification' : 'In-App Notification';
         sender = {
-            id: 'whatsapp', organizationId: '', name: 'WhatsApp', identifier: 'whatsapp', channel: 'whatsapp',
+            id: template.channel, organizationId: orgId, name: synthName, identifier: template.channel,
+            // in_app/push are not SenderProfile channels; the cast keeps the honest
+            // runtime channel while satisfying the SenderProfile shape.
+            channel: template.channel as unknown as SenderProfile['channel'],
             isDefault: true, isActive: true, workspaceIds: [],
             createdAt: '', updatedAt: '',
         } as SenderProfile;
     } else {
-        let senderProfileSnap;
-        if (senderProfileId && senderProfileId !== 'default' && senderProfileId !== 'none') {
-            senderProfileSnap = await adminDb.collection('sender_profiles').doc(senderProfileId).get();
+        // email / sms → must resolve an org-owned sender via explicit → workspace → org-default.
+        const [orgSnap, wsDefaultSnap] = await Promise.all([
+            adminDb.collection('organizations').doc(orgId).get(),
+            baseWorkspaceId ? adminDb.collection('workspaces').doc(baseWorkspaceId).get() : Promise.resolve(null),
+        ]);
+        const orgDefaults = orgSnap.data()?.defaultSenderProfileIds as DefaultSenderProfileIds | undefined;
+        const wsDefaults = (wsDefaultSnap && wsDefaultSnap.exists)
+            ? wsDefaultSnap.data()?.defaultSenderProfileIds as DefaultSenderProfileIds | undefined
+            : undefined;
+
+        const resolution = await resolveSenderProfileId({
+            orgId,
+            channel: template.channel, // narrowed to 'email' | 'sms'
+            explicitId: senderProfileId,
+            workspaceDefaultId: wsDefaults?.[template.channel] ?? null,
+            orgDefaultId: orgDefaults?.[template.channel] ?? null,
+        });
+
+        if (resolution.outcome !== 'resolved' || !resolution.senderProfileId) {
+            // Phase 3 wires notifyMessagingFailure here; for now return a precise error.
+            const reason = resolution.outcome === 'cross_org_explicit'
+                ? `the selected sender belongs to a different organization`
+                : `no ${template.channel.toUpperCase()} sender is configured for this organization`;
+            return { success: false, error: `Cannot send ${template.channel}: ${reason}. Configure a default sender for this organization.` };
         }
 
-        if (!senderProfileSnap || !senderProfileSnap.exists) {
-            const defaultSnap = await adminDb.collection('sender_profiles')
-                .where('channel', '==', template.channel)
-                .where('isDefault', '==', true)
-                .where('isActive', '==', true)
-                .limit(1)
-                .get();
-
-            if (defaultSnap.empty) {
-                const anyActiveSnap = await adminDb.collection('sender_profiles')
-                    .where('channel', '==', template.channel)
-                    .where('isActive', '==', true)
-                    .limit(1)
-                    .get();
-
-                if (anyActiveSnap.empty) throw new Error(`No active sender profile found for ${template.channel}`);
-                senderProfileSnap = anyActiveSnap.docs[0];
-            } else {
-                senderProfileSnap = defaultSnap.docs[0];
-            }
+        const senderSnap = await adminDb.collection('sender_profiles').doc(resolution.senderProfileId).get();
+        if (!senderSnap.exists || !senderSnap.data()) {
+            return { success: false, error: 'Cannot send: the resolved sender profile no longer exists.' };
         }
-
-        sender = { id: senderProfileSnap.id, ...senderProfileSnap.data() } as SenderProfile;
+        sender = toSenderProfile(senderSnap.id, senderSnap.data()!);
     }
 
     // 3. Resolve Operational Workspace context (Requirement 11)
@@ -437,7 +473,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     }
 
     // Inject Workspace Name & Organization Branding Variables concurrently
-    let finalOrgId = template.organizationId || variables.organizationId || '';
+    // Authoritative tenant resolved in step 2 above (never empty here).
+    let finalOrgId = orgId;
     try {
         const wsPromise = resolvedWorkspaceId ? adminDb.collection('workspaces').doc(resolvedWorkspaceId).get() : Promise.resolve(null);
         const wsSnap = await wsPromise;
@@ -747,7 +784,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         // send time, enforces approved-template / session rules, and returns the
         // Meta message id for status reconciliation.
         const { sendWhatsApp } = await import('./whatsapp/whatsapp-send');
-        const waOrgId = template.organizationId || finalOrgId || variables.organizationId || 'default';
+        const waOrgId = orgId;
         const waResult = await sendWhatsApp({
             organizationId: waOrgId,
             recipient,
@@ -835,6 +872,7 @@ export async function sendRawMessage(input: {
     body: string,
     subject?: string,
     senderProfileId?: string,
+    organizationId?: string,
     variables?: Record<string, unknown>,
     workspaceIds?: string[],
     messageType?: 'transactional' | 'marketing',
@@ -845,24 +883,65 @@ export async function sendRawMessage(input: {
     const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing', entityId, entityType, isAutomation = false } = input;
 
     try {
-        let senderProfileSnap;
-        if (senderProfileId && senderProfileId !== 'default') {
-            senderProfileSnap = await adminDb.collection('sender_profiles').doc(senderProfileId).get();
+        // Resolve the tenant FIRST (no cross-tenant fallback), then the sender.
+        const baseWorkspaceId = workspaceIds?.[0];
+        let finalOrgId = resolveOrgId(
+            input.organizationId,
+            typeof variables.organizationId === 'string' ? variables.organizationId : undefined,
+            undefined,
+        );
+        if (!finalOrgId && baseWorkspaceId) {
+            const wsSnap = await adminDb.collection('workspaces').doc(baseWorkspaceId).get();
+            if (wsSnap.exists) finalOrgId = (wsSnap.data()?.organizationId as string) || null;
+        }
+        if (!finalOrgId) {
+            return { success: false, error: 'Cannot send: no organization context could be resolved for this message.' };
         }
 
-        if (!senderProfileSnap || !senderProfileSnap.exists) {
-            const defaultSnap = await adminDb.collection('sender_profiles')
-                .where('channel', '==', channel)
-                .where('isDefault', '==', true)
-                .where('isActive', '==', true)
-                .limit(1)
-                .get();
-            
-            if (defaultSnap.empty) throw new Error(`No active sender profile found for ${channel}`);
-            senderProfileSnap = defaultSnap.docs[0];
+        let sender: SenderProfile;
+        if (channel === 'in_app' || channel === 'push') {
+            // Platform-delivered channels do not use a sender_profiles row.
+            const synthName = channel === 'push' ? 'Push Notification' : 'In-App Notification';
+            sender = {
+                id: channel, organizationId: finalOrgId, name: synthName, identifier: channel,
+                // in_app/push are not SenderProfile channels; cast preserves the honest channel.
+                channel: channel as unknown as SenderProfile['channel'],
+                isDefault: true, isActive: true, workspaceIds: [],
+                createdAt: '', updatedAt: '',
+            } as SenderProfile;
+        } else {
+            // email / sms → resolve an org-owned sender via explicit → workspace → org-default.
+            const [orgSnap, wsDefaultSnap] = await Promise.all([
+                adminDb.collection('organizations').doc(finalOrgId).get(),
+                baseWorkspaceId ? adminDb.collection('workspaces').doc(baseWorkspaceId).get() : Promise.resolve(null),
+            ]);
+            const orgDefaults = orgSnap.data()?.defaultSenderProfileIds as DefaultSenderProfileIds | undefined;
+            const wsDefaults = (wsDefaultSnap && wsDefaultSnap.exists)
+                ? wsDefaultSnap.data()?.defaultSenderProfileIds as DefaultSenderProfileIds | undefined
+                : undefined;
+
+            const resolution = await resolveSenderProfileId({
+                orgId: finalOrgId,
+                channel,
+                explicitId: senderProfileId,
+                workspaceDefaultId: wsDefaults?.[channel] ?? null,
+                orgDefaultId: orgDefaults?.[channel] ?? null,
+            });
+
+            if (resolution.outcome !== 'resolved' || !resolution.senderProfileId) {
+                const reason = resolution.outcome === 'cross_org_explicit'
+                    ? 'the selected sender belongs to a different organization'
+                    : `no ${channel.toUpperCase()} sender is configured for this organization`;
+                return { success: false, error: `Cannot send ${channel}: ${reason}. Configure a default sender for this organization.` };
+            }
+
+            const senderSnap = await adminDb.collection('sender_profiles').doc(resolution.senderProfileId).get();
+            if (!senderSnap.exists || !senderSnap.data()) {
+                return { success: false, error: 'Cannot send: the resolved sender profile no longer exists.' };
+            }
+            sender = toSenderProfile(senderSnap.id, senderSnap.data()!);
         }
 
-        const sender = senderProfileSnap.data() as SenderProfile;
         const resolvedBody = resolveVariables(body, variables);
         const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Institutional Alert — SmartSapp';
 
@@ -896,19 +975,7 @@ export async function sendRawMessage(input: {
             }
         }
 
-        // Resolve Custom Credentials for Raw Send
-        let finalOrgId = (variables.organizationId as string) || '';
-        if (!finalOrgId && workspaceIds?.[0]) {
-            try {
-                const wsSnap = await adminDb.collection('workspaces').doc(workspaceIds[0]).get();
-                if (wsSnap.exists) {
-                    finalOrgId = wsSnap.data()?.organizationId || '';
-                }
-            } catch (e) {
-                console.error('[MESSAGING_ENGINE] Failed to resolve workspace organization for raw message:', e);
-            }
-        }
-
+        // Resolve Custom Credentials for Raw Send (finalOrgId resolved above).
         let mnotifyKey: string | undefined = undefined;
         let resendKey: string | undefined = undefined;
         let resendDomain: string | undefined = undefined;
@@ -964,7 +1031,7 @@ export async function sendRawMessage(input: {
             title: `Direct ${channel.toUpperCase()}: ${resolvedSubject || 'Alert'}`,
             templateId: 'raw-direct-dispatch',
             templateName: 'Direct Raw Message',
-            senderProfileId: senderProfileSnap.id,
+            senderProfileId: sender.id,
             senderName: sender.name || 'System',
             channel,
             recipient,
