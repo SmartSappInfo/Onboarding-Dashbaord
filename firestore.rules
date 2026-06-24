@@ -413,9 +413,24 @@ service cloud.firestore {
     }
 
     match /sender_profiles/{pId} {
-      // Allow read for all authorized users - workspace filtering happens in queries
+      // Read stays open to authorized users; org/workspace filtering happens in queries.
       allow read: if isAuthorized();
-      allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
+
+      // A profile may only be created for the writer's OWN organization, and only
+      // in a workspace they can access. organizationId is the tenant owner.
+      allow create: if isAuthorized() && hasPermission('studios_edit')
+                    && isOrgMatch(request.resource.data.organizationId)
+                    && canAccessWorkspace(request.resource.data.workspaceIds);
+
+      // Updates stay within the same org; organizationId is immutable so a profile
+      // can never be re-homed into another tenant.
+      allow update: if isAuthorized() && hasPermission('studios_edit')
+                    && isOrgMatch(resource.data.organizationId)
+                    && request.resource.data.organizationId == resource.data.organizationId
+                    && canAccessWorkspace(request.resource.data.workspaceIds);
+
+      allow delete: if isAuthorized() && hasPermission('studios_edit')
+                    && isOrgMatch(resource.data.organizationId);
     }
 
     match /message_styles/{sId} {
