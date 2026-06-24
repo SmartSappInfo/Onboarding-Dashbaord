@@ -122,18 +122,18 @@ export default function MessageLogsPage() {
 
             if (selectedLog.channel === 'sms') {
                 const result = await fetchSmsStatusAction(selectedLog.providerId);
-                if (result.success) {
+                if (result.success && result.data) {
                     providerStatus = String(result.data.status);
                     isDelivered = providerStatus === '0' || providerStatus.toLowerCase().includes('delivered');
                     isSent = true;
-                } else throw new Error(result.error);
+                } else throw new Error(result.error || 'Failed to fetch SMS status');
             } else {
                 const result = await fetchEmailStatusAction(selectedLog.providerId);
-                if (result.success) {
+                if (result.success && result.data) {
                     providerStatus = result.data.last_event || 'sent';
                     isDelivered = providerStatus === 'delivered';
                     isSent = providerStatus !== 'scheduled';
-                } else throw new Error(result.error);
+                } else throw new Error(result.error || 'Failed to fetch email status');
             }
 
             const updates: any = {

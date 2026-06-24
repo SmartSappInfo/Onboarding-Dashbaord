@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import {
     Pencil, Plus, X, Mail, ShieldCheck,
     Globe, Search, RefreshCw, AlertCircle, ChevronRight, ChevronDown, Check,
-    Smartphone, MessageSquare, CopyPlus, Eye,
+    Smartphone, CopyPlus, Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID } from '@/lib/types';
 import type { TemplateCategory, RecipientType, MessageChannel, MessageTemplate } from '@/lib/types';
 import { fetchTemplatesCached, getTemplatesCachedSync } from './template-cache-manager';
+import { channelMeta } from '@/app/admin/messaging/templates/lib/channel-meta';
 import { useTenant } from '@/context/TenantContext';
 import { cn } from '@/lib/utils';
 import { plainTextToHtml, renderBlocksToHtml } from '@/lib/messaging-utils';
@@ -647,9 +648,13 @@ export function MessagingTemplateSelector({
         setCreatorOpen(false);
     }, [fetchTemplates, onValueChange, onSelect]);
 
-    const channelIcon = channel === 'email'
-        ? <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
-        : <MessageSquare className="h-3.5 w-3.5 text-primary shrink-0" />;
+    // Channel identity from the shared map (email/sms/whatsapp) — single source.
+    const meta = channelMeta(channel);
+    const ChannelGlyph = meta.Icon;
+    const channelIcon = <ChannelGlyph className="h-3.5 w-3.5 text-primary shrink-0" />;
+    // WhatsApp templates must be authored via the Meta builder on the templates
+    // page — the generic inline creator can't produce a Meta-approved template.
+    const allowInlineCreate = channel !== 'whatsapp';
 
     const baseTemplates = React.useMemo(() => {
         return templates.filter(t => {
@@ -752,7 +757,7 @@ export function MessagingTemplateSelector({
                     className="flex flex-col items-center justify-center py-8 px-6 rounded-2xl border-2 border-dashed border-border/60 bg-card/40 text-center cursor-pointer transition-all duration-300 hover:border-primary/40 hover:bg-primary/5 group"
                 >
                     <div className="h-12 w-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                        {channel === 'email' ? <Mail className="h-5 w-5 text-primary" /> : <MessageSquare className="h-5 w-5 text-primary" />}
+                        <ChannelGlyph className="h-5 w-5 text-primary" />
                     </div>
                     <h4 className="text-sm font-bold text-foreground">No template selected</h4>
                     <p className="text-[10px] text-muted-foreground leading-normal max-w-[240px] mt-1.5 mb-5">
@@ -844,11 +849,11 @@ export function MessagingTemplateSelector({
                     )}>
                         <div className="flex items-center gap-2.5">
                             <div className="h-7 w-7 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
-                                {channel === 'email' ? <Mail className="h-4 w-4 text-primary" /> : <Smartphone className="h-4 w-4 text-primary" />}
+                                <ChannelGlyph className="h-4 w-4 text-primary" />
                             </div>
                             <div>
                                 <DialogTitle className="text-base font-bold text-foreground tracking-tight">
-                                    Select {channel === 'email' ? 'Email' : 'SMS'} Template
+                                    Select {meta.label} Template
                                 </DialogTitle>
                                 <DialogDescription className="sr-only">
                                     Browse and select a template for your message.
@@ -994,13 +999,19 @@ export function MessagingTemplateSelector({
                                 <span className="ml-2 text-primary/50">· Previewing: <span className="font-semibold">{previewedTemplate.name}</span></span>
                             )}
                         </span>
-                        <Button
-                            type="button"
-                            onClick={handleCreateNewClick}
-                            className="rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 gap-1.5 px-5"
-                        >
-                            <Plus className="h-3.5 w-3.5" /> Create Custom Template
-                        </Button>
+                        {allowInlineCreate ? (
+                            <Button
+                                type="button"
+                                onClick={handleCreateNewClick}
+                                className="rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 gap-1.5 px-5"
+                            >
+                                <Plus className="h-3.5 w-3.5" /> Create Custom Template
+                            </Button>
+                        ) : (
+                            <span className="text-[10px] text-muted-foreground/70 font-medium max-w-[220px] text-right">
+                                Create WhatsApp templates from the Templates page (Meta approval required).
+                            </span>
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
@@ -1046,7 +1057,7 @@ export function MessagingTemplateSelector({
             </Dialog>
 
             {/* ── Creator / editor sheet ── */}
-            {creatorOpen && (
+            {creatorOpen && allowInlineCreate && (
                 <TemplateWorkshopSheet
                     open={creatorOpen}
                     onOpenChange={setCreatorOpen}

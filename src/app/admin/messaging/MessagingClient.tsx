@@ -32,6 +32,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTerminology } from '@/hooks/use-terminology';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { fetchSmsBalanceAction, fetchSmsReportsAction } from '@/lib/mnotify-actions';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -44,6 +45,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import type { MessageLog } from '@/lib/types';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import type { SmsReportItem } from '@/lib/mnotify-service';
 
 const chartConfig = {
   sent: {
@@ -53,10 +55,11 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function MessagingClient() {
+    const { activeOrganizationId } = useWorkspace();
     const firestore = useFirestore();
     const [balance, setBalance] = React.useState<number | null>(null);
     const [isLoadingBalance, setIsLoadingBalance] = React.useState(false);
-    const [reportData, setReportData] = React.useState<any[]>([]);
+    const [reportData, setReportData] = React.useState<SmsReportItem[]>([]);
     const [isLoadingReport, setIsLoadingReport] = React.useState(false);
     const { singular } = useTerminology();
 
@@ -80,23 +83,23 @@ export default function MessagingClient() {
 
     const loadBalance = React.useCallback(async () => {
         setIsLoadingBalance(true);
-        const result = await fetchSmsBalanceAction();
+        const result = await fetchSmsBalanceAction(activeOrganizationId);
         if (result.success) {
             setBalance(result.balance ?? 0);
         }
         setIsLoadingBalance(false);
-    }, []);
+    }, [activeOrganizationId]);
 
     const loadReports = React.useCallback(async () => {
         setIsLoadingReport(true);
         const to = format(new Date(), 'yyyy-MM-dd');
         const from = format(subDays(new Date(), 30), 'yyyy-MM-dd');
-        const result = await fetchSmsReportsAction(from, to);
+        const result = await fetchSmsReportsAction(from, to, activeOrganizationId);
         if (result.success && result.report) {
             setReportData(result.report.slice(0, 7).reverse());
         }
         setIsLoadingReport(false);
-    }, []);
+    }, [activeOrganizationId]);
 
     React.useEffect(() => {
         loadBalance();

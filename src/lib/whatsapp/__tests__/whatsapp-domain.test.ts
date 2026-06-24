@@ -9,6 +9,10 @@ import {
   normalizeMetaTemplate,
   validateCreateTemplateInput,
   buildCreateTemplatePayload,
+  buildAdoptedWhatsAppMessageTemplate,
+  adoptedTemplateDocId,
+  shouldAutoEnableWhatsApp,
+  stripComponentExamples,
   validateApprovedSend,
   validateHeaderMedia,
   getTemplateRuntimeNeeds,
@@ -18,6 +22,7 @@ import {
   type MetaTemplateRaw,
   type CreateTemplateInput,
 } from '../whatsapp-domain';
+import type { WhatsAppTemplate } from '../whatsapp-types';
 
 /**
  * Phase 2 — pure template parsing/normalization. WhatsApp templates use
@@ -114,6 +119,124 @@ describe('normalizeMetaTemplate', () => {
     );
     expect(t.status).toBe('REJECTED');
     expect(t.rejectedReason).toBe('INVALID_FORMAT');
+  });
+
+  it('strips Meta example fields so the stored doc has no nested arrays (Firestore-safe)', () => {
+    const t = normalizeMetaTemplate(
+      'org_1',
+      {
+        ...raw,
+        components: [
+          { type: 'BODY', text: 'Hi {{1}}', example: { body_text: [['John']] } },
+          { type: 'BUTTONS', buttons: [{ type: 'URL', text: 'Go', url: 'https://x/{{1}}', example: ['https://x/1'] }] },
+        ],
+      },
+      'NOW',
+    );
+    const body = (t.components as Array<Record<string, unknown>>).find((c) => c.type === 'BODY')!;
+    const buttonsComp = (t.components as Array<Record<string, unknown>>).find((c) => c.type === 'BUTTONS')!;
+    expect('example' in body).toBe(false);
+    expect(body.text).toBe('Hi {{1}}'); // content preserved
+    expect('example' in (buttonsComp.buttons as Array<Record<string, unknown>>)[0]).toBe(false);
+    // No value anywhere in components is an array-of-arrays.
+    const hasNestedArray = JSON.stringify(t.components).includes('[[');
+    expect(hasNestedArray).toBe(false);
+  });
+});
+
+describe('buildAdoptedWhatsAppMessageTemplate', () => {
+  const wa: WhatsAppTemplate = {
+    id: 'org1_order_update_en_US',
+    organizationId: 'org1',
+    metaTemplateId: 'meta_1',
+    name: 'order_update',
+    language: 'en_US',
+    category: 'UTILITY',
+    status: 'APPROVED',
+    components: [{ type: 'BODY', text: 'Hi {{1}}, order {{2}}' }],
+    paramCount: 2,
+    syncedAt: 'NOW',
+  };
+
+  it('builds a sendable whatsapp message_templates doc with a deterministic id', () => {
+    const t = buildAdoptedWhatsAppMessageTemplate(wa, { paramMap: ['firstName', 'orderId'], createdBy: 'u1', now: 'T' });
+    expect(t.id).toBe('wa_org1_order_update_en_US');
+    expect(t.id).toBe(adoptedTemplateDocId(wa.id));
+    expect(t.channel).toBe('whatsapp');
+    expect(t.contentMode).toBe('template');
+    expect(t.whatsappTemplateName).toBe('order_update');
+    expect(t.whatsappLanguage).toBe('en_US');
+    expect(t.whatsappParamMap).toEqual(['firstName', 'orderId']);
+    expect(t.declaredVariables).toEqual(['firstName', 'orderId']);
+    expect(t.body).toBe('Hi {{1}}, order {{2}}');
+    expect(t.status).toBe('active');
+    expect(t.createdBy).toBe('u1');
+  });
+
+  it('prefers explicit opts, then stored classification, then defaults', () => {
+    const stored = buildAdoptedWhatsAppMessageTemplate(
+      { ...wa, appCategory: 'reminders', templateType: 'due_soon' },
+      { paramMap: [] },
+    );
+    expect(stored.category).toBe('reminders');
+    expect(stored.templateType).toBe('due_soon');
+
+    const overridden = buildAdoptedWhatsAppMessageTemplate(
+      { ...wa, appCategory: 'reminders', templateType: 'due_soon' },
+      { paramMap: [], appCategory: 'campaigns', templateType: 'promo' },
+    );
+    expect(overridden.category).toBe('campaigns');
+    expect(overridden.templateType).toBe('promo');
+
+    const fallback = buildAdoptedWhatsAppMessageTemplate(wa, { paramMap: [] });
+    expect(fallback.category).toBe('general');
+    expect(fallback.templateType).toBe('whatsapp');
+  });
+});
+
+describe('shouldAutoEnableWhatsApp', () => {
+  const base: WhatsAppTemplate = {
+    id: 'org1_t_en', organizationId: 'org1', metaTemplateId: 'm', name: 't', language: 'en',
+    category: 'UTILITY', status: 'APPROVED', components: [{ type: 'BODY', text: 'Hi {{1}}' }],
+    paramCount: 1, syncedAt: 'NOW',
+  };
+
+  it('enables an approved zero-param template', () => {
+    expect(shouldAutoEnableWhatsApp({ ...base, paramCount: 0, components: [{ type: 'BODY', text: 'Hi' }] })).toBe(true);
+  });
+
+  it('enables an approved parametrized template only when a complete map exists', () => {
+    expect(shouldAutoEnableWhatsApp(base)).toBe(false); // no map
+    expect(shouldAutoEnableWhatsApp({ ...base, paramMap: ['firstName'] })).toBe(true);
+    expect(shouldAutoEnableWhatsApp({ ...base, paramMap: [] })).toBe(false); // wrong length
+  });
+
+  it('never enables non-approved or media/dynamic templates', () => {
+    expect(shouldAutoEnableWhatsApp({ ...base, status: 'PENDING', paramMap: ['x'] })).toBe(false);
+    expect(shouldAutoEnableWhatsApp({
+      ...base, paramCount: 0,
+      components: [{ type: 'HEADER', format: 'IMAGE' }, { type: 'BODY', text: 'hi' }],
+    })).toBe(false);
+  });
+});
+
+describe('stripComponentExamples', () => {
+  it('removes example keys from components and buttons, leaving everything else intact', () => {
+    const out = stripComponentExamples([
+      { type: 'HEADER', format: 'IMAGE', example: { header_handle: ['h'] } },
+      { type: 'BODY', text: 'Hi {{1}}', example: { body_text: [['Ama']] } },
+      { type: 'BUTTONS', buttons: [{ type: 'URL', text: 'Go', url: 'u', example: ['u1'] }] },
+    ]);
+    expect(out).toEqual([
+      { type: 'HEADER', format: 'IMAGE' },
+      { type: 'BODY', text: 'Hi {{1}}' },
+      { type: 'BUTTONS', buttons: [{ type: 'URL', text: 'Go', url: 'u' }] },
+    ]);
+  });
+
+  it('returns [] for undefined and tolerates non-object entries', () => {
+    expect(stripComponentExamples(undefined)).toEqual([]);
+    expect(stripComponentExamples(['x', null])).toEqual(['x', null]);
   });
 });
 

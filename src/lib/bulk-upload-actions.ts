@@ -1784,15 +1784,46 @@ async function sendCompletionNotifications(
     });
   }
 
+  let mnotifyKey: string | undefined = undefined;
+  let resendKey: string | undefined = undefined;
+  let resendDomain: string | undefined = undefined;
+  let senderId = 'SmartSapp';
+
+  if (importLog.workspaceId) {
+    try {
+      const workspaceSnap = await adminDb.collection('workspaces').doc(importLog.workspaceId).get();
+      if (workspaceSnap.exists) {
+        const ws = workspaceSnap.data() as Workspace;
+        senderId = ws.defaultSmsSenderId?.trim() || 'SmartSapp';
+        const orgId = ws.organizationId;
+        if (orgId) {
+          const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+          if (orgSnap.exists) {
+            const org = orgSnap.data();
+            if (org?.smsKeyMode === 'custom' && org?.mnotifyApiKey) {
+              mnotifyKey = org.mnotifyApiKey as string;
+            }
+            if (org?.emailKeyMode === 'custom' && org?.resendApiKey) {
+              resendKey = org.resendApiKey as string;
+              resendDomain = org.resendDomain as string;
+            }
+          }
+        }
+      }
+    } catch (wsErr) {
+      console.error('[BULK-NOTIF] Workspace/Org resolve failed:', (wsErr as Error).message);
+    }
+  }
+
   // 2. Email
   if (notifConfig.sendEmailNotification && userData.email) {
     try {
       const { sendEmail } = await import('./resend-service');
       const subject = resolve(tmpl?.subject || 'Bulk Upload Complete: {{filename}}');
       const html = resolve(tmpl?.emailHtml || `<p>Your bulk upload of <b>{{filename}}</b> has finished. {{successCount}} records created.</p>`);
-      await sendEmail({ to: userData.email, subject, html });
-    } catch (err: any) {
-      console.error('[BULK-NOTIF] Email failed:', err.message);
+      await sendEmail({ to: userData.email, subject, html, apiKey: resendKey, domain: resendDomain });
+    } catch (err: unknown) {
+      console.error('[BULK-NOTIF] Email failed:', (err as Error).message);
     }
   }
 
@@ -1801,19 +1832,9 @@ async function sendCompletionNotifications(
     try {
       const { sendSms } = await import('./mnotify-service');
       const body = resolve(tmpl?.smsBody || 'Bulk upload "{{filename}}" done. {{successCount}} created, {{failedCount}} failed.');
-      
-      let senderId = 'SmartSapp';
-      if (importLog.workspaceId) {
-        const workspaceSnap = await adminDb.collection('workspaces').doc(importLog.workspaceId).get();
-        if (workspaceSnap.exists) {
-          const ws = workspaceSnap.data() as Workspace;
-          senderId = ws.defaultSmsSenderId?.trim() || 'SmartSapp';
-        }
-      }
-
-      await sendSms({ recipient: userData.phone, message: body, sender: senderId });
-    } catch (err: any) {
-      console.error('[BULK-NOTIF] SMS failed:', err.message);
+      await sendSms({ recipient: userData.phone, message: body, sender: senderId, apiKey: mnotifyKey });
+    } catch (err: unknown) {
+      console.error('[BULK-NOTIF] SMS failed:', (err as Error).message);
     }
   }
 }

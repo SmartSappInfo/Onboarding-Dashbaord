@@ -59,6 +59,14 @@ export default function PipelineClient() {
   [firestore, activeWorkspaceId]);
   const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
 
+  const activePipelines = React.useMemo(() => {
+    return pipelines?.filter(p => !p.isArchived) || [];
+  }, [pipelines]);
+
+  const archivedPipelines = React.useMemo(() => {
+    return pipelines?.filter(p => p.isArchived) || [];
+  }, [pipelines]);
+
   const zonesQuery = useMemoFirebase(() => 
     firestore && activeOrganizationId ? query(collection(firestore, 'zones'), where('organizationId', '==', activeOrganizationId), orderBy('name', 'asc')) : null, 
   [firestore, activeOrganizationId]);
@@ -137,14 +145,20 @@ export default function PipelineClient() {
             return;
         }
 
-        // 3. Fallback to default or first available
-        const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0];
-        setCurrentPipelineId(defaultPipeline.id);
-        if (defaultPipeline.columnWidth) setColumnWidth(defaultPipeline.columnWidth);
+        // 3. Fallback to default or first available active pipeline
+        if (activePipelines.length > 0) {
+            const defaultPipeline = activePipelines.find(p => p.isDefault) || activePipelines[0];
+            setCurrentPipelineId(defaultPipeline.id);
+            if (defaultPipeline.columnWidth) setColumnWidth(defaultPipeline.columnWidth);
+        } else {
+            const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0];
+            setCurrentPipelineId(defaultPipeline.id);
+            if (defaultPipeline.columnWidth) setColumnWidth(defaultPipeline.columnWidth);
+        }
     } else if (!isLoadingPipelines) {
         setCurrentPipelineId(null);
     }
-  }, [pipelines, currentPipelineId, isLoadingPipelines, columnWidth]);
+  }, [pipelines, activePipelines, currentPipelineId, isLoadingPipelines, columnWidth]);
 
   const handleAddPipeline = async () => {
     if (!user || !activeWorkspaceId) return;
@@ -187,7 +201,7 @@ export default function PipelineClient() {
                                 <SelectValue placeholder={isLoadingPipelines ? "Loading..." : "Pipeline Registry"} />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-none shadow-2xl p-2 min-w-[240px]">
-                                {pipelines?.map(p => (
+                                {activePipelines.map(p => (
                                     <SelectItem key={p.id} value={p.id} className="rounded-lg pl-8 pr-2.5 py-2 my-0.5">
                                         <div className="flex items-center justify-between gap-4 w-full pr-2">
                                             <span className="font-semibold text-[10px] tracking-tight">{p.name}</span>
@@ -195,6 +209,19 @@ export default function PipelineClient() {
                                         </div>
                                     </SelectItem>
                                 ))}
+                                {archivedPipelines.length > 0 && (
+                                    <>
+                                        <div className="h-px bg-border my-2 mx-1" />
+                                        <div className="px-8 py-1.5 text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Archived Pipelines</div>
+                                        {archivedPipelines.map(p => (
+                                            <SelectItem key={p.id} value={p.id} className="rounded-lg pl-8 pr-2.5 py-2 my-0.5 opacity-60 hover:opacity-100">
+                                                <div className="flex items-center justify-between gap-4 w-full pr-2">
+                                                    <span className="font-semibold text-[10px] tracking-tight line-through decoration-muted-foreground/30">{p.name}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </>
+                                )}
                             </SelectContent>
                         </Select>
                         <TooltipProvider>

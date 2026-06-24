@@ -134,6 +134,15 @@ export default function OrganizationManagementDialog({
     const [openaiApiKey, setOpenaiApiKey] = React.useState('');
     const [claudeApiKey, setClaudeApiKey] = React.useState('');
     
+    // SMS and Email Keys
+    const [smsKeyMode, setSmsKeyMode] = React.useState<'platform' | 'custom'>('platform');
+    const [mnotifyApiKey, setMnotifyApiKey] = React.useState('');
+    const [emailKeyMode, setEmailKeyMode] = React.useState<'platform' | 'custom'>('platform');
+    const [resendApiKey, setResendApiKey] = React.useState('');
+    const [resendDomain, setResendDomain] = React.useState('');
+    const [showSmsKeys, setShowSmsKeys] = React.useState(false);
+    const [showEmailKeys, setShowEmailKeys] = React.useState(false);
+    
     // UI State
     const [roles, setRoles] = React.useState<{ id: string; name: string }[]>([]);
     const [defaultRoleId, setDefaultRoleId] = React.useState('');
@@ -305,6 +314,11 @@ export default function OrganizationManagementDialog({
             setOpenRouterApiKey(organization.openRouterApiKey || '');
             setOpenaiApiKey(organization.openaiApiKey || '');
             setClaudeApiKey(organization.claudeApiKey || '');
+            setSmsKeyMode(organization.smsKeyMode || 'platform');
+            setMnotifyApiKey(organization.mnotifyApiKey || '');
+            setEmailKeyMode(organization.emailKeyMode || 'platform');
+            setResendApiKey(organization.resendApiKey || '');
+            setResendDomain(organization.resendDomain || '');
             setDefaultRoleId(organization.defaultRoleId || '');
             setDepartments(organization.departments && organization.departments.length > 0 ? organization.departments : ['General']);
         } else {
@@ -335,6 +349,11 @@ export default function OrganizationManagementDialog({
             setOpenRouterApiKey('');
             setOpenaiApiKey('');
             setClaudeApiKey('');
+            setSmsKeyMode('platform');
+            setMnotifyApiKey('');
+            setEmailKeyMode('platform');
+            setResendApiKey('');
+            setResendDomain('');
         }
     }, [organization, open]);
 
@@ -385,7 +404,12 @@ export default function OrganizationManagementDialog({
                 geminiApiKey: geminiApiKey.trim(),
                 openRouterApiKey: openRouterApiKey.trim(),
                 openaiApiKey: openaiApiKey.trim(),
-                claudeApiKey: claudeApiKey.trim()
+                claudeApiKey: claudeApiKey.trim(),
+                smsKeyMode,
+                mnotifyApiKey: mnotifyApiKey.trim(),
+                emailKeyMode,
+                resendApiKey: resendApiKey.trim(),
+                resendDomain: resendDomain.trim()
             },
             user.uid
         );
@@ -981,6 +1005,113 @@ export default function OrganizationManagementDialog({
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* SMS Integrations */}
+                                        <div className="pt-6 border-t border-border/40 space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-xs font-semibold text-orange-500 uppercase tracking-widest">SMS Gateway (mNotify)</h4>
+                                                {smsKeyMode === 'custom' && (
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => setShowSmsKeys(!showSmsKeys)}
+                                                        className="h-6 text-xs text-muted-foreground hover:text-foreground"
+                                                    >
+                                                        {showSmsKeys ? <EyeOff className="w-3.5 h-3.5 mr-1" /> : <Eye className="w-3.5 h-3.5 mr-1" />}
+                                                        {showSmsKeys ? 'Hide Key' : 'Show Key'}
+                                                    </Button>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                    SMS Key Routing Mode
+                                                </Label>
+                                                <select 
+                                                    value={smsKeyMode}
+                                                    onChange={e => setSmsKeyMode(e.target.value as 'platform' | 'custom')}
+                                                    className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-semibold px-4 text-sm"
+                                                >
+                                                    <option value="platform">System Defaults (Shared Account Billing)</option>
+                                                    <option value="custom">Custom Keys (Deduct from local tenant keys)</option>
+                                                </select>
+                                            </div>
+
+                                            {smsKeyMode === 'custom' && (
+                                                <div className="pt-2 border-t border-border/50">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">mNotify API Key</Label>
+                                                        <Input 
+                                                            value={mnotifyApiKey} 
+                                                            onChange={e => setMnotifyApiKey(e.target.value)} 
+                                                            placeholder="Enter your mNotify API key..." 
+                                                            type={showSmsKeys ? "text" : "password"}
+                                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Email Integrations */}
+                                        <div className="pt-6 border-t border-border/40 space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-xs font-semibold text-blue-500 uppercase tracking-widest">Email Gateway (Resend)</h4>
+                                                {emailKeyMode === 'custom' && (
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => setShowEmailKeys(!showEmailKeys)}
+                                                        className="h-6 text-xs text-muted-foreground hover:text-foreground"
+                                                    >
+                                                        {showEmailKeys ? <EyeOff className="w-3.5 h-3.5 mr-1" /> : <Eye className="w-3.5 h-3.5 mr-1" />}
+                                                        {showEmailKeys ? 'Hide Key' : 'Show Key'}
+                                                    </Button>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                    Email Key Routing Mode
+                                                </Label>
+                                                <select 
+                                                    value={emailKeyMode}
+                                                    onChange={e => setEmailKeyMode(e.target.value as 'platform' | 'custom')}
+                                                    className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-semibold px-4 text-sm"
+                                                >
+                                                    <option value="platform">System Defaults (Shared Account Billing)</option>
+                                                    <option value="custom">Custom Keys (Deduct from local tenant keys)</option>
+                                                </select>
+                                            </div>
+
+                                            {emailKeyMode === 'custom' && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-border/50">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Resend API Key</Label>
+                                                        <Input 
+                                                            value={resendApiKey} 
+                                                            onChange={e => setResendApiKey(e.target.value)} 
+                                                            placeholder="sk_..." 
+                                                            type={showEmailKeys ? "text" : "password"}
+                                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Verified Sending Domain</Label>
+                                                        <Input 
+                                                            value={resendDomain} 
+                                                            onChange={e => setResendDomain(e.target.value)} 
+                                                            placeholder="e.g. mydomain.com" 
+                                                            type="text"
+                                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>

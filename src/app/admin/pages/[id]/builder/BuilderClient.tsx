@@ -31,7 +31,8 @@ import {
 } from 'lucide-react';
 import { saveSectionAction, getSectionTemplatesAction } from '@/lib/section-actions';
 import { cn } from '@/lib/utils';
-import type { CampaignPage, CampaignPageVersion, PageSection } from '@/lib/types';
+import type { CampaignPage, CampaignPageVersion, PageSection, BuilderResources } from '@/lib/types';
+import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import Link from 'next/link';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
 
@@ -39,7 +40,9 @@ import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { useBuilderState, type BuilderTab } from './hooks/useBuilderState';
 import { useBuilderResources } from './hooks/useBuilderResources';
 import BlockPalette from './components/BlockPalette';
-import BlockEditor from './components/BlockEditor';
+import { AutoBlockEditor } from '@/components/page-builder/AutoBlockEditor';
+import { SectionSettings } from '@/components/page-builder/SectionSettings';
+import { useAutosave } from '@/components/page-builder/useAutosave';
 import Canvas from './components/Canvas';
 import SettingsPanel from './components/SettingsPanel';
 import TriggerPanel from './components/TriggerPanel';
@@ -57,6 +60,21 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     // ─── State Management ────────────────────────────────────────────
     const builder = useBuilderState();
     const resources = useBuilderResources();
+
+    // Typed resources + resolved theme for the registry-driven renderer.
+    // Declared before any early return to keep hook order stable.
+    const builderResources = React.useMemo<BuilderResources>(() => ({
+        forms: resources.forms.map((f: { id: string; title?: string; internalName?: string }) => ({
+            id: f.id, title: f.title ?? f.internalName ?? 'Untitled', internalName: f.internalName,
+        })),
+        surveys: resources.surveys.map((s: { id: string; title?: string }) => ({ id: s.id, title: s.title ?? 'Untitled' })),
+        agreements: [],
+    }), [resources.forms, resources.surveys]);
+
+    const editorTheme = React.useMemo(
+        () => resolveTheme({ overrides: builder.page?.settings.themeOverrides }),
+        [builder.page?.settings.themeOverrides],
+    );
 
     const [versions, setVersions] = useState<CampaignPageVersion[]>([]);
     const [leads, setLeads] = useState<any[]>([]);
@@ -109,7 +127,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     }, [firestore, id]);
 
     // ─── Persistence Actions ─────────────────────────────────────────
-    const handleSaveAsDraft = useCallback(async () => {
+    const saveDraft = useCallback(async (opts?: { silent?: boolean }) => {
         if (!firestore || !builder.version) return;
         builder.dispatch({ type: 'SET_SAVING', payload: true });
         try {
@@ -126,13 +144,22 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     updatedAt: new Date().toISOString()
                 });
             }
-            toast({ title: 'Draft Saved', description: 'Your progress has been saved.' });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Save failed', description: err.message });
+            if (!opts?.silent) toast({ title: 'Draft Saved', description: 'Your progress has been saved.' });
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err instanceof Error ? err.message : 'Unknown error' });
         } finally {
             builder.dispatch({ type: 'SET_SAVING', payload: false });
         }
     }, [firestore, builder.version, builder.page, toast, builder.dispatch]);
+
+    const handleSaveAsDraft = useCallback(() => { void saveDraft(); }, [saveDraft]);
+
+    // Debounced autosave: silently persist the draft after edits settle.
+    useAutosave(
+        builder.version?.structureJson,
+        () => { void saveDraft({ silent: true }); },
+        { enabled: builder.canUndo, delay: 1500 },
+    );
 
     const handlePublish = useCallback(async () => {
         if (!firestore || !builder.page || !builder.version || !user) return;
@@ -243,6 +270,10 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     }
 
     const { page, version } = builder;
+
+    const selectedSection = builder.selectedSectionId
+        ? version.structureJson.sections.find(s => s.id === builder.selectedSectionId) ?? null
+        : null;
 
     // ─── Tab Definitions ─────────────────────────────────────────────
     const tabs: { id: BuilderTab; icon: any; label: string }[] = [
@@ -390,13 +421,21 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         )}
 
                         {builder.activeTab === 'edit' && (
-                            <BlockEditor
-                                block={builder.selectedBlockId ? builder.findBlock(builder.selectedBlockId)?.block ?? null : null}
-                                sectionId={builder.selectedBlockId ? builder.findBlock(builder.selectedBlockId)?.section.id ?? null : null}
-                                onUpdateProps={builder.updateBlockProps}
-                                forms={resources.forms}
-                                surveys={resources.surveys}
-                            />
+                            builder.selectedBlockId ? (
+                                <AutoBlockEditor
+                                    block={builder.findBlock(builder.selectedBlockId)?.block ?? null}
+                                    resources={builderResources}
+                                    workspaceId={activeWorkspaceId ?? undefined}
+                                    onUpdateProps={builder.updateBlockProps}
+                                />
+                            ) : selectedSection ? (
+                                <SectionSettings
+                                    section={selectedSection}
+                                    onUpdate={(patch) => builder.updateSectionProps(selectedSection.id, patch)}
+                                />
+                            ) : (
+                                <AutoBlockEditor block={null} resources={builderResources} onUpdateProps={builder.updateBlockProps} />
+                            )
                         )}
 
                         {builder.activeTab === 'triggers' && (
@@ -456,6 +495,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 <Canvas
                     version={version}
                     viewport={builder.viewport}
+                    theme={editorTheme}
+                    resources={builderResources}
                     selectedBlockId={builder.selectedBlockId}
                     onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}
                     onSetTab={(tab) => builder.dispatch({ type: 'SET_TAB', payload: tab as BuilderTab })}
@@ -465,6 +506,11 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onDuplicateBlock={builder.duplicateBlock}
                     onRemoveSection={builder.removeSection}
                     onMoveSection={builder.moveSection}
+                    onEditSection={(id) => {
+                        builder.dispatch({ type: 'SELECT_SECTION', payload: id });
+                        builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
+                        builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
+                    }}
                     onSaveSectionAsTemplate={handleSaveSectionAsTemplate}
                     onReorderSections={builder.reorderSections}
                     onReorderBlocks={builder.reorderBlocks}

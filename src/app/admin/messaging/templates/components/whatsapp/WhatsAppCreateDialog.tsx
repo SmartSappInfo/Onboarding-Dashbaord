@@ -21,6 +21,8 @@ import { createWhatsAppTemplate } from '@/lib/whatsapp-template-actions';
 import { extractParamCount } from '@/lib/whatsapp/whatsapp-domain';
 import type { TemplateButtonInput } from '@/lib/whatsapp/whatsapp-domain';
 import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
+import type { StorableTemplateCategory } from '@/lib/types';
+import { APP_TEMPLATE_CATEGORIES } from '@/lib/types';
 import {
   ButtonsEditor,
   CATEGORIES,
@@ -40,6 +42,8 @@ interface WhatsAppCreateDialogProps {
   onCreated: (t: WhatsAppTemplate) => void;
   /** Optional AI/caller-supplied draft to pre-fill the builder. */
   initialDraft?: TemplateDraft;
+  /** Available variable keys for mapping positional params (datalist hints). */
+  variables?: ReadonlyArray<{ key: string }>;
 }
 
 export default function WhatsAppCreateDialog({
@@ -47,12 +51,17 @@ export default function WhatsAppCreateDialog({
   onClose,
   onCreated,
   initialDraft,
+  variables = [],
 }: WhatsAppCreateDialogProps) {
   const { user } = useUser();
   const { toast } = useToast();
   const [name, setName] = React.useState(initialDraft?.name ?? '');
   const [language, setLanguage] = React.useState('en_US');
   const [category, setCategory] = React.useState<CreateCategory>(initialDraft?.category ?? 'UTILITY');
+  const [appCategory, setAppCategory] = React.useState<StorableTemplateCategory>(initialDraft?.appCategory ?? 'general');
+  const [templateType, setTemplateType] = React.useState(initialDraft?.templateType ?? '');
+  // Positional {{n}} → variable-key mapping, keyed by index (derived list below).
+  const [paramVarsByIndex, setParamVarsByIndex] = React.useState<Record<number, string>>({});
   const [headerMode, setHeaderMode] = React.useState<HeaderMode>(initialDraft?.headerText ? 'text' : 'none');
   const [headerText, setHeaderText] = React.useState(initialDraft?.headerText ?? '');
   const [media, setMedia] = React.useState<UploadedMedia | null>(null);
@@ -87,6 +96,17 @@ export default function WhatsAppCreateDialog({
   const setExample = React.useCallback((i: number, v: string) => {
     setExamplesByIndex((prev) => ({ ...prev, [i]: v }));
   }, []);
+
+  // Variable keys per positional param — derived from paramCount during render.
+  const paramVars = React.useMemo(
+    () => Array.from({ length: paramCount }, (_, i) => paramVarsByIndex[i] ?? ''),
+    [paramCount, paramVarsByIndex],
+  );
+  const setParamVar = React.useCallback((i: number, v: string) => {
+    setParamVarsByIndex((prev) => ({ ...prev, [i]: v.trim().replace(/\s+/g, '_') }));
+  }, []);
+  // A complete map (all params mapped) lets the template auto-enable on approval.
+  const paramMap = paramVars.every((v) => v.trim().length > 0) ? paramVars.map((v) => v.trim()) : undefined;
 
   const nameValid = /^[a-z0-9_]*$/.test(name);
   const headerReady = headerMode !== 'media' || !!media;
@@ -136,6 +156,9 @@ export default function WhatsAppCreateDialog({
         mediaHeader: headerMode === 'media' && media ? { format: media.format, handle: media.handle } : undefined,
         footerText: footerText.trim() || undefined,
         buttons: buttons.length ? buttons : undefined,
+        appCategory,
+        templateType: templateType.trim() || undefined,
+        paramMap,
       });
       if (res.success) onCreated(res.data);
       else toast({ variant: 'destructive', title: 'Create failed', description: res.error });
@@ -191,18 +214,43 @@ export default function WhatsAppCreateDialog({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-[10px] font-semibold text-muted-foreground">Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as CreateCategory)}>
-              <SelectTrigger aria-label="Template category" className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] font-semibold text-muted-foreground">Meta category</Label>
+              <Select value={category} onValueChange={(v) => setCategory(v as CreateCategory)}>
+                <SelectTrigger aria-label="Meta template category" className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-semibold text-muted-foreground">Library category</Label>
+              <Select value={appCategory} onValueChange={(v) => setAppCategory(v as StorableTemplateCategory)}>
+                <SelectTrigger aria-label="Library category" className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium capitalize">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {APP_TEMPLATE_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c} className="capitalize">{c.replace('_', ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="wa-tpl-type" className="text-[10px] font-semibold text-muted-foreground">Type (optional)</Label>
+              <Input
+                id="wa-tpl-type"
+                value={templateType}
+                onChange={(e) => setTemplateType(e.target.value)}
+                placeholder="e.g. status_update"
+                className="h-10 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -280,19 +328,35 @@ export default function WhatsAppCreateDialog({
 
           {paramCount > 0 && (
             <div className="space-y-2 rounded-xl bg-muted/10 p-3">
-              <Label className="text-[10px] font-semibold text-muted-foreground">
-                Sample values (for Meta review)
-              </Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground">
+                  Parameters — sample value &amp; variable
+                </Label>
+                <span className="text-[9px] font-medium text-muted-foreground/70">
+                  Map all to auto-enable for campaigns
+                </span>
+              </div>
+              <datalist id="wa-tpl-varkeys">
+                {variables.map((v) => <option key={v.key} value={v.key} />)}
+              </datalist>
               {examples.map((val, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Label htmlFor={`wa-tpl-ex-${i}`} className="text-[10px] font-mono text-muted-foreground w-10">
+                <div key={i} className="grid grid-cols-[2.5rem_1fr_1fr] items-center gap-2">
+                  <Label htmlFor={`wa-tpl-ex-${i}`} className="text-[10px] font-mono text-muted-foreground">
                     {`{{${i + 1}}}`}
                   </Label>
                   <Input
                     id={`wa-tpl-ex-${i}`}
                     value={val}
                     onChange={(e) => setExample(i, e.target.value)}
-                    placeholder={i === 0 ? 'e.g. John' : 'e.g. #12345'}
+                    placeholder={i === 0 ? 'sample e.g. John' : 'sample e.g. #12345'}
+                    className="h-9 rounded-lg bg-background border-none shadow-inner font-medium px-3"
+                  />
+                  <Input
+                    id={`wa-tpl-var-${i}`}
+                    list="wa-tpl-varkeys"
+                    value={paramVars[i]}
+                    onChange={(e) => setParamVar(i, e.target.value)}
+                    placeholder="variable e.g. firstName"
                     className="h-9 rounded-lg bg-background border-none shadow-inner font-medium px-3"
                   />
                 </div>

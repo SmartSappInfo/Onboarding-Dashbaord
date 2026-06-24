@@ -796,6 +796,7 @@ export default function MessageTemplatesPage() {
                 <WhatsAppCreateDialog
                     organizationId={activeOrganizationId}
                     initialDraft={activeWaDialog.draft}
+                    variables={variables}
                     onClose={() => setActiveWaDialog(null)}
                     onCreated={() => {
                         setActiveWaDialog(null);

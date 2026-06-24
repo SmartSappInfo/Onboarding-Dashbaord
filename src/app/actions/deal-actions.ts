@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Deal, WorkspaceEntity, DealContact, DealFocalContact } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
+import { canUser } from '@/lib/workspace-permissions';
 
 export type AssignmentStrategy = 'direct' | 'round-robin' | 'value-based' | 'unassigned';
 
@@ -464,5 +465,64 @@ export async function removeDealContactAction(
     } catch (e: any) {
         console.error('Failed to remove deal contact:', e);
         return { success: false, error: e.message };
+    }
+}
+
+export async function clearStageDealsAction(
+    stageId: string,
+    workspaceId: string,
+    userId: string
+): Promise<{ success: boolean; error?: string; count?: number }> {
+    try {
+        const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
+        const workspaceSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        if (!workspaceSnap.exists) {
+            return { success: false, error: 'Workspace not found.' };
+        }
+        const organizationId = workspaceSnap.data()?.organizationId || '';
+
+        const stageSnap = await adminDb.collection('onboardingStages').doc(stageId).get();
+        const stageName = stageSnap.exists ? stageSnap.data()?.name : stageId;
+
+        const dealsSnap = await adminDb.collection('deals')
+            .where('stageId', '==', stageId)
+            .where('workspaceId', '==', workspaceId)
+            .get();
+
+        if (dealsSnap.empty) {
+            return { success: true, count: 0 };
+        }
+
+        const docs = dealsSnap.docs;
+        const chunkSize = 400;
+        for (let i = 0; i < docs.length; i += chunkSize) {
+            const chunk = docs.slice(i, i + chunkSize);
+            const batch = adminDb.batch();
+            chunk.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+        }
+
+        await logActivity({
+            organizationId,
+            entityId: null,
+            userId,
+            workspaceId,
+            type: 'deals_cleared',
+            source: 'system',
+            description: `cleared all ${docs.length} deals in stage "${stageName}"`,
+            metadata: { stageId, stageName, count: docs.length }
+        });
+
+        return { success: true, count: docs.length };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Unknown error';
+        console.error('Failed to clear stage deals:', error);
+        return { success: false, error };
     }
 }

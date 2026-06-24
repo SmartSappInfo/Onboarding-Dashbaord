@@ -54,12 +54,17 @@ const ActionNodeConfigPanel = React.memo(function ActionNodeConfigPanel({
     (val: string) => {
       const typedVal = val as CallActionType;
       const newMeta = getActionMeta(typedVal);
+      const prevChannel = actionType ? getActionMeta(actionType).channel : undefined;
+      // Drop the template binding when switching to a different messaging channel
+      // so a stale cross-channel templateId doesn't linger as "Unresolved".
+      const clearTemplate = newMeta.channel !== prevChannel && !!config.templateId;
       onUpdate({
         actionType: typedVal,
         label: `Action: ${newMeta.label}`,
+        ...(clearTemplate ? { actionConfig: { ...config, templateId: undefined } } : {}),
       });
     },
-    [onUpdate]
+    [onUpdate, actionType, config]
   );
 
   return (

@@ -41,6 +41,7 @@ import type {
     Automation,
     BillingProfile
 } from '@/lib/types';
+import { ALL_TEMPLATES } from './page-builder/templates';
 
 const DEFAULT_ORG_ID = 'smartsapp-hq';
 
@@ -863,69 +864,17 @@ export async function seedFormTemplates(firestore: Firestore, workspaceId: strin
     return formsToSeed.length;
 }
 
-export async function seedPageTemplates(firestore: Firestore, workspaceId: string, orgId: string): Promise<number> {
-    const list: Partial<import('@/lib/types').PageTemplate>[] = [
-        {
-            id: 'blank-page',
-            name: 'Blank Page',
-            description: 'Start from scratch with a blank canvas.',
-            goal: 'information',
-            isGlobal: true,
-            structureJson: { sections: [] }
-        },
-        {
-            id: 'lead-capture-premium',
-            name: 'Premium Lead Capture',
-            description: 'A high-converting landing page with a hero, stats, and embedded form.',
-            goal: 'lead_capture',
-            isGlobal: true,
-            structureJson: {
-                sections: [
-                    {
-                        id: 'section-hero',
-                        type: 'section',
-                        props: { padding: 'lg', background: 'default', layout: 'contained' },
-                        blocks: [
-                            {
-                                id: 'hero-block-1',
-                                type: 'hero',
-                                props: {
-                                    title: 'Unlock Your Institutional Potential',
-                                    subtitle: 'Join leading organizations that have transformed their operations with our platform.',
-                                    align: 'center',
-                                    primaryCtaLabel: 'Get Started'
-                                }
-                            },
-                        ]
-                    },
-                    {
-                        id: 'section-split',
-                        type: 'section',
-                        props: { padding: 'md', background: 'muted', layout: 'contained' },
-                        blocks: [
-                            {
-                                id: 'columns-1',
-                                type: 'columns',
-                                props: { variant: '1-1' },
-                                blocks: [
-                                    {
-                                        id: 'text-left',
-                                        type: 'text',
-                                        props: { content: '<h3>Request Priority Access</h3><p>Fill out the form to get immediate access to our deployment team.</p>' }
-                                    },
-                                    {
-                                        id: 'form-embed-1',
-                                        type: 'form',
-                                        props: { formId: `seed_lead_capture_${workspaceId}` } // Binds to the seed form dynamically
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-    ];
+export async function seedPageTemplates(firestore: Firestore, _workspaceId: string, _orgId: string): Promise<number> {
+    const blank: Partial<import('@/lib/types').PageTemplate> = {
+        id: 'blank-page',
+        name: 'Blank Page',
+        description: 'Start from scratch with a blank canvas.',
+        goal: 'information',
+        isGlobal: true,
+        structureJson: { sections: [] },
+    };
+
+    const list: Partial<import('@/lib/types').PageTemplate>[] = [blank, ...ALL_TEMPLATES];
 
     const batch = writeBatch(firestore);
     for (const t of list) {

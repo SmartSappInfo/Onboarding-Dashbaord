@@ -71,7 +71,7 @@ export default function SenderProfilesPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const confirm = useConfirm();
-    const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+    const { activeWorkspaceId, allowedWorkspaces, activeOrganization } = useWorkspace();
     const [isAdding, setIsAdding] = React.useState(false);
     
     // Add Form State
@@ -114,13 +114,44 @@ export default function SenderProfilesPage() {
             if(workspaceIds.length === 0) toast({ variant: 'destructive', title: 'Constraint Alert', description: 'Select at least one workspace.' });
             return;
         }
+
+        const trimmedName = name.trim();
+        const trimmedIdentifier = identifier.trim();
+
+        if (channel === 'sms') {
+            if (trimmedIdentifier.length > 11) {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Invalid Sender ID', 
+                    description: 'SMS Sender ID must be at most 11 characters.' 
+                });
+                return;
+            }
+            if (!/^[a-zA-Z0-9]+$/.test(trimmedIdentifier)) {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Invalid Sender ID', 
+                    description: 'SMS Sender ID must contain only alphanumeric characters (letters and numbers, no spaces).' 
+                });
+                return;
+            }
+        } else if (channel === 'email') {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedIdentifier)) {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Invalid Email Address', 
+                    description: 'Please provide a valid email format (e.g. info@domain.com).' 
+                });
+                return;
+            }
+        }
         
         setIsSubmitting(true);
         try {
             await addDoc(collection(firestore, 'sender_profiles'), {
-                name: name.trim(),
+                name: trimmedName,
                 channel,
-                identifier: identifier.trim(),
+                identifier: trimmedIdentifier,
                 workspaceIds,
                 isDefault: false, // Defaulting to false for safety
                 isActive: true,
@@ -150,12 +181,43 @@ export default function SenderProfilesPage() {
         e.preventDefault();
         if (!firestore || !editingProfile || !editName || !editIdentifier || editWorkspaceIds.length === 0) return;
 
+        const trimmedName = editName.trim();
+        const trimmedIdentifier = editIdentifier.trim();
+
+        if (editingProfile.channel === 'sms') {
+            if (trimmedIdentifier.length > 11) {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Invalid Sender ID', 
+                    description: 'SMS Sender ID must be at most 11 characters.' 
+                });
+                return;
+            }
+            if (!/^[a-zA-Z0-9]+$/.test(trimmedIdentifier)) {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Invalid Sender ID', 
+                    description: 'SMS Sender ID must contain only alphanumeric characters (letters and numbers, no spaces).' 
+                });
+                return;
+            }
+        } else if (editingProfile.channel === 'email') {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedIdentifier)) {
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Invalid Email Address', 
+                    description: 'Please provide a valid email format (e.g. info@domain.com).' 
+                });
+                return;
+            }
+        }
+
         setIsUpdating(true);
         try {
             const docRef = doc(firestore, 'sender_profiles', editingProfile.id);
             await updateDoc(docRef, {
-                name: editName.trim(),
-                identifier: editIdentifier.trim(),
+                name: trimmedName,
+                identifier: trimmedIdentifier,
                 workspaceIds: editWorkspaceIds,
                 updatedAt: new Date().toISOString(),
             });
@@ -199,24 +261,29 @@ export default function SenderProfilesPage() {
         
         try {
             if (profile.channel === 'sms') {
-                const result = await checkSenderIdStatusAction(profile.identifier);
+                const result = await checkSenderIdStatusAction(profile.identifier, activeOrganization?.id);
                 if (result.success) {
                     const normalizedStatus = result.message?.toLowerCase().includes('approved') ? 'approved' : 
                                            result.message?.toLowerCase().includes('pending') ? 'pending' : 
                                            'not_registered';
 
+                    const messageText = result.message ?? null;
                     await updateDoc(doc(firestore, 'sender_profiles', profile.id), {
                         mNotifyStatus: normalizedStatus,
-                        mNotifyMessage: result.message,
+                        mNotifyMessage: messageText,
                         updatedAt: new Date().toISOString()
                     });
-                    toast({ title: 'mNotify Sync Complete', description: result.message });
+                    toast({ title: 'mNotify Sync Complete', description: result.message || `Status: ${normalizedStatus}` });
                 } else throw new Error(result.error);
             } else {
-                const result = await fetchVerifiedDomainsAction();
+                const result = await fetchVerifiedDomainsAction(activeOrganization?.id);
                 if (result.success) {
                     const domainPart = profile.identifier.split('@')[1];
-                    const domainMatch = result.domains.find((d: any) => d.name === domainPart);
+                    interface VerifiedDomain {
+                        name: string;
+                        status: string;
+                    }
+                    const domainMatch = (result.domains as VerifiedDomain[]).find((d: VerifiedDomain) => d.name === domainPart);
                     const status = domainMatch?.status || 'not_registered';
                     await updateDoc(doc(firestore, 'sender_profiles', profile.id), {
                         resendStatus: status,
@@ -225,8 +292,8 @@ export default function SenderProfilesPage() {
                     toast({ title: 'Resend Sync Complete' });
                 } else throw new Error(result.error);
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Sync Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Sync Failed', description: (e as Error).message });
         } finally {
             setSyncingId(null);
         }
@@ -242,13 +309,13 @@ export default function SenderProfilesPage() {
         setIsRegProcessing(true);
         
         try {
-            const result = await registerSenderIdAction(registeringProfile.identifier, regPurpose.trim());
+            const result = await registerSenderIdAction(registeringProfile.identifier, regPurpose.trim(), activeOrganization?.id);
             if (result.success) {
                 toast({ title: 'Registration Submitted' });
                 await handleSyncStatus(registeringProfile);
                 setRegisteringProfile(null);
             } else throw new Error(result.error);
-        } catch (e: any) {
+        } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Registration Failed' });
         } finally {
             setIsRegProcessing(false);
@@ -329,13 +396,23 @@ export default function SenderProfilesPage() {
                                         </Select>
                                     </div>
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">{channel === 'sms' ? 'Sender ID' : 'Email Address'}</Label>
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">{channel === 'sms' ? 'Sender ID' : 'Email Address'}</Label>
                                         <Input 
                                             value={identifier} 
                                             onChange={e => setIdentifier(e.target.value)} 
                                             placeholder={channel === 'sms' ? 'SmartSapp' : 'onboarding@enroll.smartsapp.com'} 
- className="h-12 rounded-xl bg-card border-none shadow-inner font-mono font-bold"
+                                            className="h-12 rounded-xl bg-card border-none shadow-inner font-mono font-bold"
+                                            maxLength={channel === 'sms' ? 11 : undefined}
                                         />
+                                        {channel === 'sms' ? (
+                                            <span className="text-[10px] text-muted-foreground/60 block mt-1 ml-1 font-medium">
+                                                Max 11 alphanumeric characters. No spaces or special characters.
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] text-muted-foreground/60 block mt-1 ml-1 font-medium">
+                                                Must be a valid email format.
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -482,12 +559,29 @@ export default function SenderProfilesPage() {
  <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner" required />
                             </div>
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Workspaces</Label>
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Workspaces</Label>
                                 <MultiSelect options={workspaceOptions} value={editWorkspaceIds} onChange={setEditWorkspaceIds} placeholder="Assign to workspaces…" />
                             </div>
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Sender ID / Email</Label>
- <Input value={editIdentifier} onChange={e => setEditIdentifier(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-mono font-semibold shadow-inner" required />
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                    {editingProfile?.channel === 'sms' ? 'Sender ID' : 'Email Address'}
+                                </Label>
+                                <Input 
+                                    value={editIdentifier} 
+                                    onChange={e => setEditIdentifier(e.target.value)} 
+                                    className="h-12 rounded-xl bg-muted/20 border-none font-mono font-semibold shadow-inner" 
+                                    maxLength={editingProfile?.channel === 'sms' ? 11 : undefined}
+                                    required 
+                                />
+                                {editingProfile?.channel === 'sms' ? (
+                                    <span className="text-[10px] text-muted-foreground/60 block mt-1 ml-1 font-medium">
+                                        Max 11 alphanumeric characters. No spaces or special characters.
+                                    </span>
+                                ) : (
+                                    <span className="text-[10px] text-muted-foreground/60 block mt-1 ml-1 font-medium">
+                                        Must be a valid email format.
+                                    </span>
+                                )}
                             </div>
                         </div>
  <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between">

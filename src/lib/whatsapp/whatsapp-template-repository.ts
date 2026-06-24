@@ -46,6 +46,16 @@ export class WhatsAppTemplateRepository {
     return snap.exists ? (snap.data() as WhatsAppTemplate) : null;
   }
 
+  /** Fetch the merged stored doc by Meta's global template id (or null). */
+  static async getByMetaTemplateId(metaTemplateId: string): Promise<WhatsAppTemplate | null> {
+    const snap = await adminDb
+      .collection(COLLECTION)
+      .where('metaTemplateId', '==', metaTemplateId)
+      .limit(1)
+      .get();
+    return snap.empty ? null : (snap.docs[0].data() as WhatsAppTemplate);
+  }
+
   /**
    * Idempotently patch a template's status/category from a Meta webhook, keyed
    * by the global `metaTemplateId`. No-op (returns false) when the template

@@ -288,8 +288,9 @@ export async function submitCallOutcomeAction(params: {
   agentName: string;
   workspaceId: string;
   userId: string;
+  customAutomations?: CallOutcomeAutomation[];
 }) {
-  const { queueItemId, outcome, notes, duration, agentName, workspaceId, userId } = params;
+  const { queueItemId, outcome, notes, duration, agentName, workspaceId, userId, customAutomations } = params;
   const perm = await verifyPermission(userId, 'edit', workspaceId);
   if (!perm.granted) return { success: false, error: perm.reason };
 
@@ -301,13 +302,15 @@ export async function submitCallOutcomeAction(params: {
       duration,
       agentId: userId,
       agentName,
+      customAutomations,
     });
     revalidatePath('/admin/messaging/call-centre');
     return result;
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Submit failed.' };
   }
 }
+
 
 export async function updateNotesDraftAction(
   queueItemId: string,

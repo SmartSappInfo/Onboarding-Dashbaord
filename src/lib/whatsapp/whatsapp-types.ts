@@ -7,6 +7,7 @@
  */
 
 import type { EncryptedEnvelope } from './crypto-vault';
+import type { TemplateCategory } from '@/lib/types';
 
 export type WhatsAppConnectionStatus = 'connected' | 'pending' | 'error' | 'disconnected';
 export type WhatsAppQualityRating = 'GREEN' | 'YELLOW' | 'RED';
@@ -81,6 +82,16 @@ export interface WhatsAppTemplate {
   exampleParams?: string[];
   rejectedReason?: string;
   syncedAt: string;
+
+  // Cross-channel classification (parity with MessageTemplate), captured at
+  // in-app create time so the template groups/filters like email/SMS and can be
+  // auto-enabled for campaigns. Absent on Meta-Manager-synced templates.
+  /** App-level category (general/campaigns/reminders/…) — NOT the Meta category. */
+  appCategory?: TemplateCategory;
+  /** Sub-type label, e.g. 'status_update'. */
+  templateType?: string;
+  /** Positional {{1}}..{{n}} → variable-key mapping for runtime resolution. */
+  paramMap?: string[];
 }
 
 /** 24h customer-service window state, keyed by `${orgId}_${e164}`. */

@@ -43,7 +43,7 @@ export default function PipelineSettingsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const confirm = useConfirm();
-    const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+    const { activeWorkspaceId, allowedWorkspaces, activeOrganizationId } = useWorkspace();
     
     const [selectedId, setSelectedId] = React.useState<string | null>(null);
     const [isCreating, setIsAdding] = React.useState(false);
@@ -69,14 +69,43 @@ export default function PipelineSettingsClient() {
     [firestore, activeWorkspaceId]);
     const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
 
-    const rolesQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'roles'), orderBy('name', 'asc')) : null, 
-    [firestore]);
-    const { data: roles } = useCollection<Role>(rolesQuery);
-
     const selectedPipeline = React.useMemo(() => 
         pipelines?.find(p => p.id === selectedId),
     [pipelines, selectedId]);
+
+    const rolesQuery = useMemoFirebase(() => 
+        firestore && activeOrganizationId ? query(
+            collection(firestore, 'roles'), 
+            where('organizationId', '==', activeOrganizationId),
+            orderBy('name', 'asc')
+        ) : null, 
+    [firestore, activeOrganizationId]);
+    const { data: rawRoles } = useCollection<Role>(rolesQuery);
+
+    const roles = React.useMemo(() => {
+        if (!rawRoles) return [];
+        
+        // Gather all role IDs assigned to users in the current workspace
+        const activeWorkspaceUserRoleIds = new Set<string>();
+        if (workspaceUsers) {
+            workspaceUsers.forEach(u => {
+                const wsRoles = u.workspaceRoles?.[activeWorkspaceId];
+                if (Array.isArray(wsRoles)) {
+                    wsRoles.forEach(rId => activeWorkspaceUserRoleIds.add(rId));
+                }
+                if (!wsRoles && Array.isArray(u.roles)) {
+                    u.roles.forEach(rId => activeWorkspaceUserRoleIds.add(rId));
+                }
+            });
+        }
+
+        // Filter roles: relevant to the current workspace, OR already assigned to the pipeline
+        return rawRoles.filter(role => 
+            activeWorkspaceUserRoleIds.has(role.id) ||
+            (role.workspaceIds && role.workspaceIds.includes(activeWorkspaceId)) ||
+            (selectedPipeline?.accessRoles && selectedPipeline.accessRoles.includes(role.id))
+        );
+    }, [rawRoles, activeWorkspaceId, workspaceUsers, selectedPipeline?.accessRoles]);
 
     React.useEffect(() => {
         if (selectedPipeline) {

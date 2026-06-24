@@ -28,7 +28,7 @@ import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { Switch } from '@/components/ui/switch';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
-import type { ScriptNode, Entity, EntityContact, UserProfile } from '@/lib/types';
+import type { ScriptNode, Entity, EntityContact, UserProfile, CallOutcomeAutomation } from '@/lib/types';
 import {
   isJsonGraph,
   parseGraph,
@@ -888,7 +888,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleOutcomeSubmit = async (outcome: string) => {
+  const handleOutcomeSubmit = async (outcome: string, customAutomations?: CallOutcomeAutomation[]) => {
     if (!currentItem || !activeWorkspaceId || !user) return;
 
     // Intercept callback outcomes to trigger the date picker instead of raw completion
@@ -917,6 +917,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         agentName: user.displayName || 'Agent',
         workspaceId: activeWorkspaceId,
         userId: user.uid,
+        customAutomations,
       });
 
       if (result.success) {
@@ -943,8 +944,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         toast({ variant: 'destructive', title: 'Submit Failed', description: result.error });
         setIsTimerActive(true); // resume timer on error
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: err instanceof Error ? err.message : 'An error occurred.' });
       setIsTimerActive(true);
     } finally {
       setIsSaving(false);
@@ -985,7 +986,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     if (!node) return { ok: false, error: 'No outcome.' };
     if (triggeredNodeIds.has(node.id)) return { ok: true };
     setTriggeredNodeIds(prev => new Set(prev).add(node.id));
-    await handleOutcomeSubmit(node.data?.outcomeValue || 'Interested');
+    const customAutomations = node.data?.outcomeConfig?.automations;
+    await handleOutcomeSubmit(node.data?.outcomeValue || 'Interested', customAutomations);
     return { ok: true };
   };
 

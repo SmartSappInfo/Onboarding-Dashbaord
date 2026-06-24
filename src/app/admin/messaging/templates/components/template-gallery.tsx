@@ -9,11 +9,10 @@ import {
     type GalleryTemplate,
     type WhatsAppDisplayTemplate,
 } from '../lib/unified-template';
+import { channelMeta } from '../lib/channel-meta';
 import {
     Search,
     FileType,
-    Smartphone,
-    Mail,
     Eye,
     Pencil,
     CopyPlus,
@@ -38,18 +37,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SmartSappIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-// Channel visual identity — single edit point to add a future channel.
-type KnownChannel = 'email' | 'sms' | 'whatsapp';
-interface ChannelMeta { Icon: React.ElementType; chip: string; iconWrap: string; label: string; group: string; }
-const CHANNEL_META: Record<KnownChannel, ChannelMeta> = {
-    email: { Icon: Mail, chip: 'bg-blue-500/5 text-blue-500 border-blue-200', iconWrap: 'bg-blue-500/10 text-blue-500 border-blue-100', label: 'Email', group: 'Email Templates' },
-    sms: { Icon: Smartphone, chip: 'bg-orange-500/5 text-orange-500 border-orange-200', iconWrap: 'bg-orange-500/10 text-orange-500 border-orange-100', label: 'SMS', group: 'SMS Templates' },
-    whatsapp: { Icon: MessageCircle, chip: 'bg-emerald-500/5 text-emerald-600 border-emerald-200', iconWrap: 'bg-emerald-500/10 text-emerald-600 border-emerald-100', label: 'WhatsApp', group: 'WhatsApp Templates' },
-};
-function channelMeta(channel: string): ChannelMeta {
-    return CHANNEL_META[channel as KnownChannel] ?? CHANNEL_META.email;
-}
 
 // WhatsApp (Meta) approval status badges — mirrors the former panel.
 const WA_STATUS_META: Record<WhatsAppTemplateStatus, { label: string; cls: string; Icon: React.ElementType }> = {

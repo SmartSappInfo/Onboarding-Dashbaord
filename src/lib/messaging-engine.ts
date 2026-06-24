@@ -94,7 +94,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         // Synthesize a minimal sender so the engine flow + logging work without
         // requiring a redundant whatsapp profile.
         sender = {
-            id: 'whatsapp', name: 'WhatsApp', identifier: 'whatsapp', channel: 'whatsapp',
+            id: 'whatsapp', organizationId: '', name: 'WhatsApp', identifier: 'whatsapp', channel: 'whatsapp',
             isDefault: true, isActive: true, workspaceIds: [],
             createdAt: '', updatedAt: '',
         } as SenderProfile;
@@ -677,7 +677,29 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         return { success: true, logId: scheduledRef.id };
     }
 
-    // 8. Gateway Delivery
+    // 8. Gateway Delivery & Custom Key Resolution
+    let mnotifyKey: string | undefined = undefined;
+    let resendKey: string | undefined = undefined;
+    let resendDomain: string | undefined = undefined;
+
+    if (finalOrgId) {
+        try {
+            const orgSnap = await adminDb.collection('organizations').doc(finalOrgId).get();
+            if (orgSnap.exists) {
+                const orgData = orgSnap.data();
+                if (orgData?.smsKeyMode === 'custom' && orgData?.mnotifyApiKey) {
+                    mnotifyKey = orgData.mnotifyApiKey as string;
+                }
+                if (orgData?.emailKeyMode === 'custom' && orgData?.resendApiKey) {
+                    resendKey = orgData.resendApiKey as string;
+                    resendDomain = orgData.resendDomain as string;
+                }
+            }
+        } catch (e) {
+            console.error('[MESSAGING_ENGINE] Failed to fetch organization custom keys:', e);
+        }
+    }
+
     let providerId = null;
     let providerStatus = null;
 
@@ -687,7 +709,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 recipient,
                 message: resolvedBody,
                 sender: sender.identifier,
-                scheduleDate: scheduledAt ? new Date(scheduledAt) : undefined
+                scheduleDate: scheduledAt ? new Date(scheduledAt) : undefined,
+                apiKey: mnotifyKey
             });
             providerId = providerResponse?.summary?._id;
             providerStatus = providerResponse?.status;
@@ -736,13 +759,15 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerStatus = waResult.status;
     } else {
         const providerResponse = await sendEmail({
-            from: `${sender.name} <${sender.identifier}>`, 
+            from: sender.name && sender.identifier ? `${sender.name} <${sender.identifier}>` : undefined, 
             to: recipient,
             subject: resolvedSubject || 'SmartSapp Notification',
             html: resolvedBody,
             attachments: attachments,
             scheduledAt: scheduledAt,
-            tags: tags
+            tags: tags,
+            apiKey: resendKey,
+            domain: resendDomain
         });
         providerId = providerResponse?.id;
     }
@@ -767,7 +792,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       entityId: resolvedEntityId || null, // New unified entity reference
       ...(resolvedEntityType ? { entityType: resolvedEntityType as EntityType } : {}),
       providerId: providerId || null,
-      providerStatus: providerStatus || null,
+      providerStatus: providerStatus !== null && providerStatus !== undefined ? String(providerStatus) : null,
       hasAttachments: !!(attachments && attachments.length > 0),
       attachmentCount: attachments?.length || 0,
       ...(campaignId ? { campaignId } : {}),
@@ -871,16 +896,51 @@ export async function sendRawMessage(input: {
             }
         }
 
+        // Resolve Custom Credentials for Raw Send
+        let finalOrgId = (variables.organizationId as string) || '';
+        if (!finalOrgId && workspaceIds?.[0]) {
+            try {
+                const wsSnap = await adminDb.collection('workspaces').doc(workspaceIds[0]).get();
+                if (wsSnap.exists) {
+                    finalOrgId = wsSnap.data()?.organizationId || '';
+                }
+            } catch (e) {
+                console.error('[MESSAGING_ENGINE] Failed to resolve workspace organization for raw message:', e);
+            }
+        }
+
+        let mnotifyKey: string | undefined = undefined;
+        let resendKey: string | undefined = undefined;
+        let resendDomain: string | undefined = undefined;
+
+        if (finalOrgId) {
+            try {
+                const orgSnap = await adminDb.collection('organizations').doc(finalOrgId).get();
+                if (orgSnap.exists) {
+                    const orgData = orgSnap.data();
+                    if (orgData?.smsKeyMode === 'custom' && orgData?.mnotifyApiKey) {
+                        mnotifyKey = orgData.mnotifyApiKey as string;
+                    }
+                    if (orgData?.emailKeyMode === 'custom' && orgData?.resendApiKey) {
+                        resendKey = orgData.resendApiKey as string;
+                        resendDomain = orgData.resendDomain as string;
+                    }
+                }
+            } catch (e) {
+                console.error('[MESSAGING_ENGINE] Failed to fetch organization custom keys for raw message:', e);
+            }
+        }
+
         // Dispatch Delivery
         let providerId = null;
         if (channel === 'sms') {
-            await sendSms({ recipient, message: resolvedBody, sender: sender.identifier });
+            await sendSms({ recipient, message: resolvedBody, sender: sender.identifier, apiKey: mnotifyKey });
         } else if (channel === 'push') {
             await sendPushNotification([recipient], resolvedSubject, resolvedBody);
         } else if (channel === 'in_app') {
             await adminDb.collection('in_app_notifications').add({
                 userId: recipient,
-                organizationId: (variables.organizationId as string) || 'default',
+                organizationId: finalOrgId || 'default',
                 workspaceId: workspaceIds[0],
                 title: resolvedSubject,
                 body: resolvedBody,
@@ -889,7 +949,14 @@ export async function sendRawMessage(input: {
                 createdAt: new Date().toISOString()
             });
         } else {
-            await sendEmail({ from: `${sender.name} <${sender.identifier}>`, to: recipient, subject: resolvedSubject, html: resolvedBody });
+            await sendEmail({ 
+                from: `${sender.name} <${sender.identifier}>`, 
+                to: recipient, 
+                subject: resolvedSubject, 
+                html: resolvedBody,
+                apiKey: resendKey,
+                domain: resendDomain
+            });
         }
 
         // Save dispatch to message_logs

@@ -60,7 +60,7 @@ export function createSection(template?: { structure: PageSection }): PageSectio
   return {
     id: genId('sec'),
     type: 'section',
-    props: { background: 'default' },
+    props: {},
     blocks: [],
   };
 }
@@ -134,9 +134,7 @@ export function insertBlock(
   if (structure.sections.length === 0) {
     return {
       ...structure,
-      sections: [
-        { id: genId('sec'), type: 'section', props: { background: 'default' }, blocks: [block] },
-      ],
+      sections: [{ id: genId('sec'), type: 'section', props: {}, blocks: [block] }],
     };
   }
   const targetIdx = sectionIndex ?? 0;

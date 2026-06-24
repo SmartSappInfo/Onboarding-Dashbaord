@@ -6,7 +6,8 @@ import type {
   CallActionType,
   CallActionParams,
   EntityContact,
-  Workspace
+  Workspace,
+  CallOutcomeAutomation
 } from '../types';
 import { previewCampaignAudience, resolveRecipientContacts } from '../messaging-actions';
 import { updateEntityAction } from '../entity-actions';
@@ -732,8 +733,9 @@ export class CallCentreService {
     duration: number; // in seconds
     agentId: string;
     agentName: string;
+    customAutomations?: CallOutcomeAutomation[];
   }): Promise<{ success: boolean; error?: string }> {
-    const { queueItemId, outcome, notes, duration, agentId, agentName } = params;
+    const { queueItemId, outcome, notes, duration, agentId, agentName, customAutomations } = params;
     const timestamp = new Date().toISOString();
 
     try {
@@ -795,6 +797,7 @@ export class CallCentreService {
             workspaceId,
             organizationId,
             contactId,
+            customAutomations,
           });
         });
       } catch {
@@ -807,6 +810,7 @@ export class CallCentreService {
           workspaceId,
           organizationId,
           contactId,
+          customAutomations,
         })).catch(err => console.error('[CALL_CENTRE_SERVICE] Fallback automations run failed:', err));
       }
 
@@ -814,9 +818,9 @@ export class CallCentreService {
       await this.recalculateCampaignProgress(campaignId);
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[CALL_CENTRE_SERVICE] Submit outcome failed:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Submit failed.' };
     }
   }
 
@@ -922,8 +926,9 @@ export class CallCentreService {
     workspaceId: string;
     organizationId: string;
     contactId?: string | null;
+    customAutomations?: CallOutcomeAutomation[];
   }): Promise<void> {
-    const { campaignId, entityId, outcome, userId, workspaceId, organizationId, contactId } = params;
+    const { campaignId, entityId, outcome, userId, workspaceId, organizationId, contactId, customAutomations } = params;
 
     try {
       const campaignSnap = await adminDb.collection('call_campaigns').doc(campaignId).get();
@@ -931,12 +936,13 @@ export class CallCentreService {
 
       const campaign = campaignSnap.data() as CallCampaign;
 
-      // Source of truth: automations configured on the script's outcome node.
+      // Source of truth: custom/adjusted automations passed from the client, 
+      // or automations configured on the script's outcome node.
       // Fall back to the legacy campaign-level automationRules only when the
       // script defines none (back-compat for pre-existing campaigns; no migration).
       const graph = parseGraph(campaign.scriptSnapshot);
       const scriptRules = getOutcomeAutomations(graph, outcome);
-      const rules = scriptRules ?? (campaign.automationRules?.[outcome] ?? []);
+      const rules = customAutomations ?? scriptRules ?? (campaign.automationRules?.[outcome] ?? []);
 
       console.log(`>>> [CALL_CENTRE_SERVICE] Running ${rules.length} automations for outcome "${outcome}" on Entity: ${entityId} (source: ${scriptRules ? 'script' : 'legacy'})`);
 
@@ -1086,17 +1092,29 @@ export class CallCentreService {
           const phone = activeContact?.phone || '';
           if (!phone) return { success: false, error: 'Contact has no phone number.' };
 
-          // Determine Sender ID
+          // Determine Sender ID and custom credentials
           let senderId = 'SmartSapp';
+          let mnotifyKey: string | undefined = undefined;
+
           if (workspaceId) {
             const workspaceSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
             if (workspaceSnap.exists) {
               const ws = workspaceSnap.data() as Workspace;
               senderId = ws.defaultSmsSenderId?.trim() || 'SmartSapp';
+              const orgId = ws.organizationId;
+              if (orgId) {
+                const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+                if (orgSnap.exists) {
+                  const org = orgSnap.data();
+                  if (org?.smsKeyMode === 'custom' && org?.mnotifyApiKey) {
+                    mnotifyKey = org.mnotifyApiKey as string;
+                  }
+                }
+              }
             }
           }
 
-          await sendSms({ recipient: phone, message: body, sender: senderId });
+          await sendSms({ recipient: phone, message: body, sender: senderId, apiKey: mnotifyKey });
           return { success: true };
         }
 
@@ -1140,7 +1158,7 @@ export class CallCentreService {
           // Compile variables for subject and HTML body
           const subject = resolveScriptVariables(
             rawSubject,
-            entityData as any,
+            entityData as Record<string, unknown>,
             dealData,
             agentName,
             activeContact
@@ -1148,7 +1166,7 @@ export class CallCentreService {
 
           const html = resolveScriptVariables(
             rawBody,
-            entityData as any,
+            entityData as Record<string, unknown>,
             dealData,
             agentName,
             activeContact
@@ -1156,7 +1174,29 @@ export class CallCentreService {
 
           const email = activeContact?.email || '';
           if (!email) return { success: false, error: 'Contact has no email address.' };
-          await sendEmail({ to: email, subject, html });
+
+          // Fetch email credentials
+          let resendKey: string | undefined = undefined;
+          let resendDomain: string | undefined = undefined;
+          if (workspaceId) {
+            const workspaceSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+            if (workspaceSnap.exists) {
+              const ws = workspaceSnap.data() as Workspace;
+              const orgId = ws.organizationId;
+              if (orgId) {
+                const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+                if (orgSnap.exists) {
+                  const org = orgSnap.data();
+                  if (org?.emailKeyMode === 'custom' && org?.resendApiKey) {
+                    resendKey = org.resendApiKey as string;
+                    resendDomain = org.resendDomain as string;
+                  }
+                }
+              }
+            }
+          }
+
+          await sendEmail({ to: email, subject, html, apiKey: resendKey, domain: resendDomain });
           return { success: true };
         }
 

@@ -27,39 +27,35 @@ import {
     FolderHeart,
     PlusSquare,
     Copy,
-    Zap,
-    Type,
-    MousePointer2,
-    ClipboardList,
-    FileCheck,
-    HelpCircle,
-    ImageIcon,
-    Film,
-    Quote,
-    BarChart3,
-    ArrowRight,
+    SlidersHorizontal,
 } from 'lucide-react';
-import type { PageSection, PageBlock, CampaignPageVersion } from '@/lib/types';
+import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources } from '@/lib/types';
+import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
+import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import '@/lib/page-builder/blocks'; // register all blocks
 
 interface CanvasProps {
     version: CampaignPageVersion;
     viewport: 'desktop' | 'mobile';
+    theme: ResolvedTheme;
+    resources: BuilderResources;
     selectedBlockId: string | null;
     onSelectBlock: (id: string | null) => void;
     onSetTab: (tab: string) => void;
-    onUpdateBlockProps: (blockId: string, props: Record<string, any>) => void;
+    onUpdateBlockProps: (blockId: string, props: Record<string, unknown>) => void;
     onRemoveBlock: (blockId: string) => void;
     onMoveBlock: (blockId: string, direction: 'up' | 'down') => void;
     onDuplicateBlock: (blockId: string) => void;
     onRemoveSection: (sectionId: string) => void;
     onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
+    onEditSection: (sectionId: string) => void;
     onSaveSectionAsTemplate: (section: PageSection) => void;
     onReorderSections: (from: number, to: number) => void;
     onReorderBlocks: (sectionId: string, from: number, to: number) => void;
 }
 
 // ─── Sortable Section Wrapper ────────────────────────────────────────────
-function SortableSection({ section, idx, total, children, onRemove, onMove, onSave }: {
+function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit }: {
     section: PageSection;
     idx: number;
     total: number;
@@ -67,6 +63,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
     onRemove: () => void;
     onMove: (dir: 'up' | 'down') => void;
     onSave: () => void;
+    onEdit: () => void;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
 
@@ -100,7 +97,16 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                 <Button
                     variant="secondary" size="icon"
                     className="h-7 w-7 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
+                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                    title="Section settings"
+                >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                    variant="secondary" size="icon"
+                    className="h-7 w-7 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
                     onClick={(e) => { e.stopPropagation(); onSave(); }}
+                    title="Save section as template"
                 >
                     <FolderHeart className="w-3.5 h-3.5" />
                 </Button>
@@ -183,206 +189,12 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
     );
 }
 
-// ─── Block Preview Renderer ──────────────────────────────────────────────
-function BlockPreview({ block, onUpdateProps }: { block: PageBlock; onUpdateProps: (id: string, props: Record<string, any>) => void }) {
-    switch (block.type) {
-        case 'hero':
-            return (
-                <div className="text-center space-y-4 py-8">
-                    <input
-                        className="w-full text-4xl font-bold tracking-tight text-slate-900 text-center bg-transparent border-none outline-none focus:ring-0 placeholder:opacity-30"
-                        value={block.props.title || ''}
-                        onChange={(e) => onUpdateProps(block.id, { title: e.target.value })}
-                        placeholder="Hero Title"
-                    />
-                    <textarea
-                        className="w-full text-lg text-slate-500 text-center bg-transparent border-none outline-none focus:ring-0 resize-none placeholder:opacity-30 px-4"
-                        value={block.props.subtitle || ''}
-                        onChange={(e) => {
-                            onUpdateProps(block.id, { subtitle: e.target.value });
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
-                        }}
-                        placeholder="Hero subtitle text"
-                        rows={2}
-                    />
-                </div>
-            );
-
-        case 'text':
-            return (
-                <div className="prose prose-slate max-w-none">
-                    {block.props.content ? (
-                        <div dangerouslySetInnerHTML={{ __html: block.props.content }} className="text-sm text-slate-600 p-2" />
-                    ) : (
-                        <p className="text-sm text-slate-300 italic p-2">Click to edit rich text content...</p>
-                    )}
-                </div>
-            );
-
-        case 'image':
-            return block.props.src ? (
-                <div className="rounded-xl overflow-hidden bg-slate-50 border border-slate-100">
-                    <img src={block.props.src} alt={block.props.alt || ''} className="w-full h-auto max-h-[300px] object-cover" />
-                    {block.props.caption && <p className="text-xs text-slate-500 text-center py-2 italic">{block.props.caption}</p>}
-                </div>
-            ) : (
-                <div className="h-40 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2">
-                    <ImageIcon className="w-8 h-8 text-slate-300" />
-                    <span className="text-xs text-slate-400 font-medium">Add an image URL in the editor</span>
-                </div>
-            );
-
-        case 'video':
-            return block.props.url ? (
-                <div className="rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
-                    <Film className="w-12 h-12 text-white/30" />
-                    <span className="absolute text-xs text-white/50 mt-16 font-medium">Video embed: {block.props.url}</span>
-                </div>
-            ) : (
-                <div className="h-40 bg-slate-900 rounded-xl flex flex-col items-center justify-center gap-2">
-                    <Film className="w-8 h-8 text-slate-600" />
-                    <span className="text-xs text-slate-500 font-medium">Add a video URL</span>
-                </div>
-            );
-
-        case 'cta':
-            return (
-                <div className="flex justify-center py-4">
-                    <Button
-                        variant={block.props.variant === 'secondary' ? 'outline' : 'default'}
-                        className={cn(
-                            "h-12 px-8 rounded-xl font-bold gap-2",
-                            block.props.variant === 'glass' && "bg-white/20 backdrop-blur-md border border-white/30 text-slate-900",
-                            block.props.variant === 'glow' && "shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-                        )}
-                    >
-                        {block.props.label || 'Button Label'}
-                        <ArrowRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            );
-
-        case 'spacer':
-            return (
-                <div className="flex items-center justify-center group/spacer" style={{ height: block.props.height || 48 }}>
-                    <div className="border-t-2 border-dashed border-slate-200 w-full relative">
-                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] text-slate-400 bg-white px-2 font-bold opacity-0 group-hover/spacer:opacity-100 transition-opacity">
-                            {block.props.height || 48}px
-                        </span>
-                    </div>
-                </div>
-            );
-
-        case 'divider':
-            return (
-                <div className="py-4">
-                    <hr className={cn(
-                        "border-t-2",
-                        block.props.style === 'dashed' && "border-dashed",
-                        block.props.style === 'dotted' && "border-dotted",
-                        block.props.style === 'gradient' && "border-none h-0.5 bg-gradient-to-r from-transparent via-slate-300 to-transparent"
-                    )} style={block.props.style !== 'gradient' ? { borderColor: block.props.color || '#e2e8f0' } : undefined} />
-                </div>
-            );
-
-        case 'form':
-            return (
-                <div className="max-w-md mx-auto space-y-4 p-10 bg-white rounded-3xl border border-slate-100 shadow-sm text-center">
-                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <ClipboardList className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <h3 className="text-lg font-bold">Embedded Form</h3>
-                    {block.props.formId ? (
-                        <p className="text-xs text-slate-500">Linked: <span className="font-bold text-slate-900">{block.props.formId}</span></p>
-                    ) : (
-                        <p className="text-xs text-amber-500 font-medium italic">No form selected</p>
-                    )}
-                </div>
-            );
-
-        case 'faq':
-            return (
-                <div className="space-y-2 max-w-2xl mx-auto">
-                    <h3 className="text-lg font-bold text-slate-800 mb-3"><HelpCircle className="inline w-5 h-5 mr-2 text-emerald-500" />FAQ</h3>
-                    {(block.props.items || []).length > 0 ? (
-                        block.props.items.map((item: any) => (
-                            <div key={item.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <p className="font-bold text-sm text-slate-800">{item.question}</p>
-                                <p className="text-xs text-slate-500 mt-1">{item.answer}</p>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-xs text-slate-400 italic text-center py-4">No FAQ items</p>
-                    )}
-                </div>
-            );
-
-        case 'testimonial':
-            return (
-                <div className="max-w-md mx-auto p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center space-y-3">
-                    <Quote className="w-8 h-8 text-emerald-400/30 mx-auto" />
-                    <p className="text-sm italic text-slate-600">{block.props.quote || 'Add a testimonial quote...'}</p>
-                    <div>
-                        <p className="text-sm font-bold text-slate-800">{block.props.author || 'Author Name'}</p>
-                        <p className="text-[10px] text-slate-500">{block.props.role || 'Role / Company'}</p>
-                    </div>
-                </div>
-            );
-
-        case 'stats':
-            return (
-                <div className="grid grid-cols-3 gap-4 text-center">
-                    {(block.props.items || []).length > 0 ? (
-                        block.props.items.map((item: any) => (
-                            <div key={item.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                <p className="text-2xl font-black text-emerald-600">{item.value}</p>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">{item.label}</p>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="col-span-3 text-center py-4">
-                            <BarChart3 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                            <p className="text-xs text-slate-400 italic">Add stat items in the editor</p>
-                        </div>
-                    )}
-                </div>
-            );
-
-        case 'html':
-            return (
-                <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700 text-slate-400 font-mono text-[9px] overflow-hidden opacity-80 relative h-[120px]">
-                    <code className="block whitespace-pre text-emerald-400/80">{block.props.html || '<!-- Write your HTML here -->'}</code>
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent pointer-events-none" />
-                    <div className="absolute top-2 right-2 bg-slate-800 text-slate-200 px-2 py-0.5 rounded text-[8px] font-bold">CUSTOM CODE</div>
-                </div>
-            );
-
-        case 'survey':
-        case 'agreement':
-            return (
-                <div className="max-w-md mx-auto space-y-4 p-10 bg-white rounded-3xl border border-slate-100 shadow-sm text-center">
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4", block.type === 'survey' ? "bg-indigo-100" : "bg-emerald-100")}>
-                        {block.type === 'survey' ? <HelpCircle className="h-6 w-6 text-indigo-600" /> : <FileCheck className="h-6 w-6 text-emerald-600" />}
-                    </div>
-                    <h3 className="text-lg font-bold">{block.type === 'survey' ? 'Embedded Survey' : 'Agreement Embed'}</h3>
-                    <p className="text-xs text-slate-500 truncate">{block.props.surveyId || block.props.agreementId || 'None Selected'}</p>
-                </div>
-            );
-
-        default:
-            return (
-                <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                    <p className="text-xs text-slate-400 font-medium">Block: {block.type}</p>
-                </div>
-            );
-    }
-}
-
 // ─── Main Canvas ─────────────────────────────────────────────────────────
 const Canvas = React.memo(function Canvas({
     version,
     viewport,
+    theme,
+    resources,
     selectedBlockId,
     onSelectBlock,
     onSetTab,
@@ -392,6 +204,7 @@ const Canvas = React.memo(function Canvas({
     onDuplicateBlock,
     onRemoveSection,
     onMoveSection,
+    onEditSection,
     onSaveSectionAsTemplate,
     onReorderSections,
     onReorderBlocks,
@@ -400,6 +213,15 @@ const Canvas = React.memo(function Canvas({
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
+
+    // Per-block edit context: inline edits route back to the block's props.
+    const editCtx = (blockId: string): BlockRenderContext => ({
+        mode: 'edit',
+        theme,
+        interpolate: (t) => t,
+        resources,
+        onPropChange: (patch) => onUpdateBlockProps(blockId, patch),
+    });
 
     const handleSectionDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -441,6 +263,7 @@ const Canvas = React.memo(function Canvas({
                                         onRemove={() => onRemoveSection(section.id)}
                                         onMove={(dir) => onMoveSection(section.id, dir)}
                                         onSave={() => onSaveSectionAsTemplate(section)}
+                                        onEdit={() => onEditSection(section.id)}
                                     >
                                         <div className="max-w-4xl mx-auto space-y-4">
                                             {section.blocks.length > 0 ? (
@@ -457,7 +280,7 @@ const Canvas = React.memo(function Canvas({
                                                             onMove={(dir) => onMoveBlock(block.id, dir)}
                                                             onDuplicate={() => onDuplicateBlock(block.id)}
                                                         >
-                                                            <BlockPreview block={block} onUpdateProps={onUpdateBlockProps} />
+                                                            <BlockRenderer block={block} ctx={editCtx(block.id)} />
                                                         </SortableBlock>
                                                     ))}
                                                 </SortableContext>

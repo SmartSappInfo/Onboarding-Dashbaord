@@ -317,6 +317,19 @@ export interface Organization {
   openRouterApiKey?: string;
   openaiApiKey?: string;
   claudeApiKey?: string; // Optional if using OpenRouter directly
+  // SMS Configuration
+  smsKeyMode?: 'platform' | 'custom';
+  mnotifyApiKey?: string;
+  // Email Configuration
+  emailKeyMode?: 'platform' | 'custom';
+  resendApiKey?: string;
+  resendDomain?: string;
+  /**
+   * Organization-level default sender profile id per channel. This is the ONLY
+   * permitted fallback when no explicit or workspace-level sender resolves —
+   * there is no cross-tenant global fallback.
+   */
+  defaultSenderProfileIds?: DefaultSenderProfileIds;
   defaultWorkspaceId?: string;
   defaultRoleId?: string; // Default role for new invites
   /** Optional default industry for new workspaces (Requirement 18) */
@@ -463,6 +476,11 @@ export interface Workspace {
   entityDefaults?: EntityDefaults;
   /** Default SMS Sender ID configured for the workspace (Max 11 alphanumeric characters) */
   defaultSmsSenderId?: string;
+  /**
+   * Workspace-level default sender profile id per channel. Overrides the org
+   * default; resolved before falling back to {@link Organization.defaultSenderProfileIds}.
+   */
+  defaultSenderProfileIds?: DefaultSenderProfileIds;
   /** Custom lead sources created by the user during bulk import or elsewhere */
   customLeadSources?: string[];
   leadScoringSettings?: LeadScoringSettings;
@@ -715,6 +733,7 @@ export interface Pipeline {
   accessRoles: string[];
   columnWidth?: number;
   isDefault?: boolean;
+  isArchived?: boolean;
   createdAt: string;
   updatedAt?: string;
   assignmentStrategy?: 'direct' | 'round-robin' | 'value-based' | 'unassigned';
@@ -2393,6 +2412,27 @@ export type TemplateCategory =
   | 'all';
 
 /**
+ * Concrete, storable template categories (excludes the `all` filter sentinel).
+ * Single source of truth for category selectors/schemas across channels.
+ */
+export const APP_TEMPLATE_CATEGORIES = [
+  'general',
+  'surveys',
+  'meetings',
+  'forms',
+  'agreements',
+  'campaigns',
+  'reminders',
+  'tasks',
+  'automations',
+  'qr_codes',
+  'users',
+] as const satisfies readonly Exclude<TemplateCategory, 'all'>[];
+
+/** A concrete, storable template category (the `all` filter sentinel excluded). */
+export type StorableTemplateCategory = (typeof APP_TEMPLATE_CATEGORIES)[number];
+
+/**
  * Template target audience axis.
  * - 'external_client': Messages to entities/contacts (label uses workspace terminology)
  * - 'internal_team': Messages to workspace users, admins, team members
@@ -2901,8 +2941,17 @@ export interface CampaignVariant {
   stats: CampaignStats;
 }
 
+/** Per-channel pointer to the default {@link SenderProfile} id, used at org and workspace level. */
+export type DefaultSenderProfileIds = Partial<Record<'email' | 'sms' | 'whatsapp', string>>;
+
 export interface SenderProfile {
   id: string;
+  /**
+   * Tenant owner. A profile may only be used to send messages for this organization.
+   * Required for all profiles created after the org-isolation migration; legacy
+   * profiles are backfilled from their workspaces' organizationId.
+   */
+  organizationId: string;
   name: string;
   channel: 'email' | 'sms' | 'whatsapp';
   identifier: string; // The from email or Sender ID

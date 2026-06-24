@@ -1,5 +1,3 @@
-'use server';
-
 import fs from 'fs';
 import path from 'path';
 
@@ -10,7 +8,7 @@ import path from 'path';
 
 const BASE_URL = 'https://api.resend.com';
 
-function loadEnvFallback(key: string): string | undefined {
+export function loadEnvFallback(key: string): string | undefined {
   try {
     if (process.env[key]) return process.env[key];
 
@@ -47,11 +45,33 @@ export interface EmailAttachment {
   type?: string; // Mime type
 }
 
+export interface ResendResponse {
+  id?: string;
+  message?: string;
+  data?: unknown;
+  last_event?: string;
+  status?: string | number;
+}
+
+export interface BatchEmailItem {
+  id: string;
+}
+
+export interface BatchEmailsResponse {
+  data?: BatchEmailItem[];
+  error?: string;
+}
+
 /**
  * Core request handler for Resend API using native fetch.
  */
-async function resendRequest(endpoint: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', body?: any) {
-  const apiKey = getApiKey();
+async function resendRequest(
+  endpoint: string, 
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE', 
+  body?: unknown,
+  apiKeyOverride?: string
+): Promise<ResendResponse> {
+  const apiKey = apiKeyOverride || getApiKey();
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
 
   const options: RequestInit = {
@@ -68,11 +88,11 @@ async function resendRequest(endpoint: string, method: 'GET' | 'POST' | 'PATCH' 
 
   const response = await fetch(`${BASE_URL}${endpoint}`, options);
   
-  let data: any = null;
+  let data: ResendResponse = {};
   const contentType = response.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
     try {
-      data = await response.json();
+      data = (await response.json()) as ResendResponse;
     } catch (e) {
       console.warn('[RESEND] Failed to parse JSON response:', (e as Error).message);
     }
@@ -111,8 +131,10 @@ export async function sendEmail(params: {
   attachments?: EmailAttachment[];
   scheduledAt?: string;
   tags?: ResendTag[];
+  apiKey?: string;
+  domain?: string;
 }) {
-  const domain = getDomain();
+  const domain = params.domain || getDomain();
   const payload = {
     from: params.from || `SmartSapp <notifications@${domain}>`,
     to: params.to,
@@ -123,10 +145,11 @@ export async function sendEmail(params: {
     tags: params.tags,
   };
 
-  return resendRequest('/emails', 'POST', payload);
+  return resendRequest('/emails', 'POST', payload, params.apiKey);
 }
 
-export async function sendBatchEmails(emails: { 
+export async function sendBatchEmails(
+  emails: { 
     from?: string; 
     to: string | string[]; 
     subject: string; 
@@ -134,10 +157,13 @@ export async function sendBatchEmails(emails: {
     attachments?: EmailAttachment[];
     scheduledAt?: string;
     tags?: ResendTag[];
-}[]) {
-  const domain = getDomain();
+  }[],
+  apiKey?: string,
+  domain?: string
+): Promise<BatchEmailsResponse> {
+  const defaultDomain = domain || getDomain();
   const payload = emails.map(email => ({
-    from: email.from || `SmartSapp <notifications@${domain}>`,
+    from: email.from || `SmartSapp <notifications@${defaultDomain}>`,
     to: email.to,
     subject: email.subject,
     html: email.html,
@@ -147,45 +173,76 @@ export async function sendBatchEmails(emails: {
   }));
 
   // Chunk payload into groups of 150 (Resend API limit)
-  const results: any[] = [];
-  for (let i = 0; i < payload.length; i += 150) {
-    const chunk = payload.slice(i, i + 150);
-    const result = await resendRequest('/emails/batch', 'POST', chunk);
-    results.push(result);
+  const results: ResendResponse[] = [];
+  try {
+    for (let i = 0; i < payload.length; i += 150) {
+      const chunk = payload.slice(i, i + 150);
+      const result = await resendRequest('/emails/batch', 'POST', chunk, apiKey);
+      results.push(result);
+    }
+  } catch (error: unknown) {
+    return {
+      error: error instanceof Error ? error.message : String(error)
+    };
   }
 
-  return results.length === 1 ? results[0] : results;
+  // Combine results into a single BatchEmailsResponse
+  const combinedData: BatchEmailItem[] = [];
+  
+  for (const res of results) {
+    if (res && res.data && Array.isArray(res.data)) {
+      for (const item of res.data) {
+        if (item && typeof item === 'object' && 'id' in item) {
+          combinedData.push({ id: String(item.id) });
+        }
+      }
+    } else if (res && Array.isArray(res)) {
+      for (const item of res) {
+        if (item && typeof item === 'object' && 'id' in item) {
+          combinedData.push({ id: String(item.id) });
+        }
+      }
+    }
+  }
+
+  return {
+    data: combinedData
+  };
 }
 
 /**
  * Retrieves the status and details of a single email.
  */
-export async function getEmail(id: string) {
-  return resendRequest(`/emails/${id}`, 'GET');
+export async function getEmail(id: string, apiKey?: string) {
+  return resendRequest(`/emails/${id}`, 'GET', undefined, apiKey);
 }
 
 /**
  * Updates a scheduled email.
  */
-export async function updateScheduledEmail(id: string, params: { subject?: string; html?: string; scheduledAt?: string }) {
+export async function updateScheduledEmail(
+  id: string, 
+  params: { subject?: string; html?: string; scheduledAt?: string },
+  apiKey?: string
+) {
   const payload = {
     subject: params.subject,
     html: params.html,
     scheduled_at: params.scheduledAt,
   };
-  return resendRequest(`/emails/${id}`, 'PATCH', payload);
+  return resendRequest(`/emails/${id}`, 'PATCH', payload, apiKey);
 }
 
 /**
  * Cancels a scheduled email dispatch.
  */
-export async function cancelEmail(id: string) {
-  return resendRequest(`/emails/${id}/cancel`, 'POST');
+export async function cancelEmail(id: string, apiKey?: string) {
+  return resendRequest(`/emails/${id}/cancel`, 'POST', undefined, apiKey);
 }
 
 /**
  * Lists verified domains to ensure from addresses are valid.
  */
-export async function getVerifiedDomains() {
-  return resendRequest('/domains', 'GET');
+export async function getVerifiedDomains(apiKey?: string) {
+  return resendRequest('/domains', 'GET', undefined, apiKey);
 }

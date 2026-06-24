@@ -2,7 +2,9 @@
 
 import * as React from 'react';
 import type { Node, Edge } from 'reactflow';
-import type { ScriptNode, ScriptEdge, UserProfile } from '@/lib/types';
+import { MEETING_TYPES, type ScriptNode, type ScriptEdge, type UserProfile, type CallOutcomeAutomation } from '@/lib/types';
+import { type ActionConfigDataSources } from './ActionConfigFields';
+import { OutcomeAutomationsEditor } from './OutcomeAutomationsEditor';
 import dynamic from 'next/dynamic';
 import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
@@ -123,6 +125,69 @@ export function InteractiveScriptView({
     if (!users || !activeWorkspaceId) return [];
     return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
   }, [users, activeWorkspaceId]);
+
+  const tagsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'tags'),
+      where('workspaceId', '==', activeWorkspaceId)
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: tagsData } = useCollection<{ id: string; name: string }>(tagsQuery);
+
+  const stagesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'onboardingStages'),
+      orderBy('order', 'asc')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: stagesData } = useCollection<{ id: string; name: string; pipelineId?: string }>(stagesQuery);
+
+  const pipelinesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'pipelines'),
+      where('workspaceIds', 'array-contains', activeWorkspaceId),
+      orderBy('createdAt', 'desc')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: pipelinesData } = useCollection<{ id: string; name: string }>(pipelinesQuery);
+
+  const meetingsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'meetings'),
+      where('workspaceIds', 'array-contains', activeWorkspaceId)
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: meetingsData } = useCollection<{ id: string; title?: string; meetingTime?: string; publishStatus?: string }>(meetingsQuery);
+
+  const activeMeetings = React.useMemo(() => {
+    const now = Date.now();
+    return (meetingsData ?? [])
+      .filter(m => m.publishStatus !== 'archived' && (!m.meetingTime || new Date(m.meetingTime).getTime() >= now))
+      .map(m => ({ id: m.id, title: m.title || 'Untitled meeting' }));
+  }, [meetingsData]);
+
+  const callCampaignsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'call_campaigns'),
+      where('workspaceId', '==', activeWorkspaceId)
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: callCampaignsData } = useCollection<{ id: string; name: string }>(callCampaignsQuery);
+
+  const actionData = React.useMemo<ActionConfigDataSources>(() => ({
+    tags: tagsData ?? [],
+    stages: stagesData ?? [],
+    pipelines: pipelinesData ?? [],
+    meetings: MEETING_TYPES.map(t => ({ id: t.id, title: t.name })),
+    activeMeetings: activeMeetings ?? [],
+    callCampaigns: callCampaignsData ?? [],
+    workspaceUsers: workspaceUsers ?? [],
+  }), [tagsData, stagesData, pipelinesData, activeMeetings, callCampaignsData, workspaceUsers]);
   
   const [uncontrolledActiveNodeId, setUncontrolledActiveNodeId] = React.useState<string | null>(null);
   
@@ -140,6 +205,7 @@ export function InteractiveScriptView({
   const [rightTab, setRightTab] = React.useState<'objections' | 'actions' | 'outcomes'>('objections');
   const [selectedObjectionId, setSelectedObjectionId] = React.useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = React.useState<string | null>(null);
+  const [selectedOutcomeId, setSelectedOutcomeId] = React.useState<string | null>(null);
   const [selectedSubObjectionIndex, setSelectedSubObjectionIndex] = React.useState<number | null>(null);
   const [filterRelatedObjections, setFilterRelatedObjections] = React.useState(true);
   const [pathHistory, setPathHistory] = React.useState<string[]>([]);
@@ -148,13 +214,13 @@ export function InteractiveScriptView({
 
   // Dynamic Action Middle Panel States
   const [localActionConfig, setLocalActionConfig] = React.useState<Record<string, string>>({});
+  const [localOutcomeAutomations, setLocalOutcomeAutomations] = React.useState<CallOutcomeAutomation[]>([]);
   const [actionStatus, setActionStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [templateDetails, setTemplateDetails] = React.useState<{ subject?: string; body?: string } | null>(null);
   const [loadingTemplate, setLoadingTemplate] = React.useState(false);
 
   // Trigger panel state (shared by the Actions & Outcomes tabs and auto-traversal).
-  const [triggerView, setTriggerView] = React.useState<{ nodeId: string; kind: 'action' | 'outcome' } | null>(null);
   const [triggerStatus, setTriggerStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [triggerError, setTriggerError] = React.useState<string | null>(null);
 
@@ -214,6 +280,7 @@ export function InteractiveScriptView({
   React.useEffect(() => {
     setSelectedObjectionId(null);
     setSelectedActionId(null);
+    setSelectedOutcomeId(null);
     setSelectedSubObjectionIndex(null);
     setEnteredObjectionFromChoice(false);
   }, [activeNodeId]);
@@ -230,13 +297,18 @@ export function InteractiveScriptView({
     if (selectedActionId) {
       return nodes.find(n => n.id === selectedActionId) || null;
     }
+    if (selectedOutcomeId) {
+      return nodes.find(n => n.id === selectedOutcomeId) || null;
+    }
     return activeNode;
-  }, [nodes, selectedObjectionId, selectedActionId, activeNode]);
+  }, [nodes, selectedObjectionId, selectedActionId, selectedOutcomeId, activeNode]);
 
-  // Auto-switch right tab when action is selected
+  // Auto-switch right tab when action/outcome is selected
   React.useEffect(() => {
     if (middleNode?.type === 'action') {
       setRightTab('actions');
+    } else if (middleNode?.type === 'outcome') {
+      setRightTab('outcomes');
     }
   }, [middleNode?.id]);
 
@@ -266,14 +338,27 @@ export function InteractiveScriptView({
           initial.templateId = initial.templateId || '';
         }
         setLocalActionConfig(initial);
+        setLocalOutcomeAutomations([]);
       }
       setActionStatus(isTriggered(middleNode.id) ? 'success' : 'idle');
       setActionError(null);
+    } else if (middleNode?.type === 'outcome') {
+      const nodeIdChanged = prevMiddleNodeIdRef.current !== middleNode.id;
+      prevMiddleNodeIdRef.current = middleNode.id;
+
+      if (nodeIdChanged) {
+        const automations = (middleNode.data?.outcomeConfig?.automations as CallOutcomeAutomation[]) || [];
+        setLocalOutcomeAutomations(JSON.parse(JSON.stringify(automations)));
+        setLocalActionConfig({});
+      }
+      setTriggerStatus(isTriggered(middleNode.id) ? 'success' : 'idle');
+      setTriggerError(null);
     } else {
       prevMiddleNodeIdRef.current = null;
       setLocalActionConfig({});
+      setLocalOutcomeAutomations([]);
     }
-  }, [middleNode, currentContact, isTriggered]);
+  }, [middleNode, currentContact, isTriggered, currentUser?.uid]);
 
   // Fetch message template details from firestore client-side
   React.useEffect(() => {
@@ -711,6 +796,61 @@ export function InteractiveScriptView({
     );
   };
 
+  const renderMiddleOutcomeConfig = () => {
+    if (!middleNode || middleNode.type !== 'outcome') return null;
+    const triggered = isTriggered(middleNode.id);
+
+    return (
+      <div className="space-y-4 w-full">
+        {/* Trigger/Confirmation Section */}
+        <div className="bg-card/60 p-4 rounded-xl border border-border shadow-sm space-y-3">
+          <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center mb-1">Confirm Outcome</h4>
+          
+          {/* Trigger status banner */}
+          {triggerStatus === 'loading' ? (
+            <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] font-bold text-primary shrink-0">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Confirming Outcome…
+            </div>
+          ) : triggerStatus === 'success' ? (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[10px] font-bold text-emerald-600 shrink-0">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Outcome triggered successfully.
+            </div>
+          ) : triggerStatus === 'error' ? (
+            <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-[10px] font-bold text-rose-600 shrink-0">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{triggerError || 'Trigger failed.'}</span>
+            </div>
+          ) : null}
+
+          {triggered ? (
+            <div className="text-center text-[10px] font-bold text-emerald-500 uppercase tracking-wider py-2">✓ Outcome Confirmed</div>
+          ) : onTriggerOutcome ? (
+            <Button
+              onClick={() => runTrigger(middleNode, 'outcome')}
+              disabled={triggerStatus === 'loading'}
+              className="w-full h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider gap-1.5 bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {triggerStatus === 'loading' ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+              Confirm Outcome
+            </Button>
+          ) : (
+            <div className="text-center text-[9px] text-muted-foreground italic py-2">
+              Preview only — triggering is available during a live call.
+            </div>
+          )}
+        </div>
+
+        {/* Automations Editor Section */}
+        <div className="bg-card/60 p-4 rounded-xl border border-border shadow-sm">
+          <OutcomeAutomationsEditor
+            automations={localOutcomeAutomations}
+            onChange={setLocalOutcomeAutomations}
+            data={actionData}
+          />
+        </div>
+      </div>
+    );
+  };
+
   // Gets absolute default placeholder text if none has been configured
   const getFallbackText = React.useCallback((node: ScriptNode) => {
     const text = node.data?.text;
@@ -727,6 +867,8 @@ export function InteractiveScriptView({
         return 'Script body text.';
       case 'objection':
         return 'Objection response details here…';
+      case 'outcome':
+        return node.data?.text || `Mark this call outcome as "${node.data?.outcomeValue || 'Outcome'}".`;
       case 'action': {
         const actionType = node.data?.actionType || 'SEND_SMS';
         const meta = getActionMeta(actionType);
@@ -799,6 +941,9 @@ export function InteractiveScriptView({
       }
       return middleNode.data?.label || 'Objection';
     }
+    if (middleNode?.type === 'outcome') {
+      return middleNode.data?.label || 'Call Outcome';
+    }
     return middleNode?.data?.label || 'Script Body';
   }, [selectedObjectionId, selectedSubObjectionIndex, middleNode, getSubObjections]);
 
@@ -823,6 +968,7 @@ export function InteractiveScriptView({
     setActiveNodeId(nodeId);
     setSelectedObjectionId(null);
     setSelectedActionId(null);
+    setSelectedOutcomeId(null);
     setSelectedSubObjectionIndex(null);
     setEnteredObjectionFromChoice(false);
   }, []);
@@ -837,6 +983,7 @@ export function InteractiveScriptView({
     setSelectedObjectionId(objectionId);
     setSelectedSubObjectionIndex(subIndex);
     setSelectedActionId(null);
+    setSelectedOutcomeId(null);
     setEnteredObjectionFromChoice(false);
   }, [activeNodeId]);
 
@@ -850,6 +997,7 @@ export function InteractiveScriptView({
     }
     setSelectedObjectionId(null);
     setSelectedActionId(null);
+    setSelectedOutcomeId(null);
     setSelectedSubObjectionIndex(null);
     setEnteredObjectionFromChoice(false);
   }, [pathHistory]);
@@ -907,7 +1055,25 @@ export function InteractiveScriptView({
     setTriggerStatus('loading');
     setTriggerError(null);
     try {
-      const res = await handler(node);
+      const resolvedNode = kind === 'action'
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              actionConfig: localActionConfig,
+            }
+          }
+        : {
+            ...node,
+            data: {
+              ...node.data,
+              outcomeConfig: {
+                ...node.data?.outcomeConfig,
+                automations: localOutcomeAutomations,
+              }
+            }
+          };
+      const res = await handler(resolvedNode);
       if (res.ok) {
         setTriggerStatus('success');
       } else {
@@ -919,11 +1085,21 @@ export function InteractiveScriptView({
       setTriggerStatus('error');
       setTriggerError(message);
     }
-  }, [onTriggerAction, onTriggerOutcome, isTriggered]);
+  }, [onTriggerAction, onTriggerOutcome, isTriggered, localActionConfig, localOutcomeAutomations]);
 
   const openTrigger = React.useCallback((node: ScriptNode, kind: 'action' | 'outcome') => {
-    setRightTab(kind === 'action' ? 'actions' : 'outcomes');
-    setTriggerView({ nodeId: node.id, kind });
+    if (kind === 'action') {
+      setSelectedActionId(node.id);
+      setSelectedOutcomeId(null);
+      setRightTab('actions');
+    } else {
+      setSelectedOutcomeId(node.id);
+      setSelectedActionId(null);
+      setRightTab('outcomes');
+    }
+    setSelectedObjectionId(null);
+    setSelectedSubObjectionIndex(null);
+    setEnteredObjectionFromChoice(false);
     setTriggerStatus(isTriggered(node.id) ? 'success' : 'idle');
     setTriggerError(null);
   }, [isTriggered]);
@@ -1150,7 +1326,7 @@ export function InteractiveScriptView({
   const renderTriggerTab = (kind: 'action' | 'outcome') => {
     const list = kind === 'action' ? allActions : allOutcomes;
     const handler = kind === 'action' ? onTriggerAction : onTriggerOutcome;
-    const open = triggerView?.kind === kind ? list.find(n => n.id === triggerView.nodeId) || null : null;
+    const open = list.find(item => item.id === (kind === 'action' ? selectedActionId : selectedOutcomeId)) || null;
     const accentText = kind === 'action' ? 'text-indigo-500' : 'text-purple-500';
     const accentBox = kind === 'action'
       ? 'bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10'
@@ -1164,13 +1340,21 @@ export function InteractiveScriptView({
           <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
             <button
               type="button"
-              onClick={() => { setTriggerView(null); setTriggerStatus('idle'); setTriggerError(null); }}
+              onClick={() => {
+                if (kind === 'action') {
+                  setSelectedActionId(null);
+                } else {
+                  setSelectedOutcomeId(null);
+                }
+                setTriggerStatus('idle');
+                setTriggerError(null);
+              }}
               className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-3 w-3" /> Back
             </button>
             <span className={cn('text-[9px] font-bold uppercase truncate max-w-[150px]', accentText)}>
-              {open.data.label || (kind === 'action' ? 'Action' : open.data.outcomeValue || 'Outcome')}
+              {open.data?.label || (kind === 'action' ? 'Action' : open.data?.outcomeValue || 'Outcome')}
             </span>
           </div>
 
@@ -1240,12 +1424,20 @@ export function InteractiveScriptView({
                   onClick={() => {
                     if (kind === 'action') {
                       setSelectedActionId(node.id);
+                      setSelectedOutcomeId(null);
                       setSelectedObjectionId(null);
                       setSelectedSubObjectionIndex(null);
                       setEnteredObjectionFromChoice(false);
                       setRightTab('actions');
                     } else {
-                      openTrigger(node, kind);
+                      setSelectedOutcomeId(node.id);
+                      setSelectedActionId(null);
+                      setSelectedObjectionId(null);
+                      setSelectedSubObjectionIndex(null);
+                      setEnteredObjectionFromChoice(false);
+                      setRightTab('outcomes');
+                      setTriggerStatus(isTriggered(node.id) ? 'success' : 'idle');
+                      setTriggerError(null);
                     }
                   }}
                   className={cn(
@@ -1387,6 +1579,20 @@ export function InteractiveScriptView({
                   <X className="h-3.5 w-3.5" />
                 </Button>
               )}
+              {selectedOutcomeId && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground rounded-lg"
+                  onClick={() => {
+                    setSelectedOutcomeId(null);
+                  }}
+                  aria-label="Close outcome detail"
+                  title="Close outcome detail"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -1465,6 +1671,29 @@ export function InteractiveScriptView({
                         <div className="max-w-md mx-auto text-[24px] text-muted-foreground leading-relaxed italic">
                           <ScriptBodyDisplay
                             text={middleNode.data.text}
+                            resolveText={resolveText}
+                            highlightVariables={!resolveText}
+                            zoom={zoom}
+                            className="text-[24px] text-muted-foreground font-serif"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : middleNode.type === 'outcome' ? (
+                  <div className="flex flex-col space-y-6 select-text max-w-xl mx-auto py-4 text-center">
+                    <div className="space-y-3">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 text-purple-500 text-xs font-bold uppercase tracking-wider">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-purple-500" />
+                        <span>Outcome: {middleNode.data?.outcomeValue || 'Outcome'}</span>
+                      </div>
+                      <h3 className="text-lg font-black text-foreground uppercase tracking-wide">
+                        {middleNode.data?.label || 'Outcome Step'}
+                      </h3>
+                      {middleText && (
+                        <div className="max-w-md mx-auto text-[24px] text-muted-foreground leading-relaxed italic">
+                          <ScriptBodyDisplay
+                            text={middleText}
                             resolveText={resolveText}
                             highlightVariables={!resolveText}
                             zoom={zoom}
@@ -1744,7 +1973,27 @@ export function InteractiveScriptView({
 
           {/* Outcomes Tab Content */}
           <TabsContent value="outcomes" className="flex-grow overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden flex-col m-0 p-3 outline-none">
-            {renderTriggerTab('outcome')}
+            {middleNode?.type === 'outcome' ? (
+              <div className="flex-grow flex flex-col h-full overflow-hidden">
+                <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedOutcomeId(null); }}
+                    className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                  >
+                    <ArrowLeft className="h-3 w-3" /> Back
+                  </button>
+                  <span className="text-[9px] font-bold uppercase truncate max-w-[150px] text-purple-500">
+                    {middleNode.data.outcomeValue || 'Outcome'}
+                  </span>
+                </div>
+                <div className="flex-grow overflow-y-auto pr-1 scrollbar-thin">
+                  {renderMiddleOutcomeConfig()}
+                </div>
+              </div>
+            ) : (
+              renderTriggerTab('outcome')
+            )}
           </TabsContent>
         </Tabs>
       </div>

@@ -161,7 +161,7 @@ export async function syncAllLogStatuses() {
       try {
         if (log.channel === 'sms') {
           const res = await fetchSmsStatusAction(log.providerId);
-          if (res.success) {
+          if (res.success && res.data) {
             providerStatus = String(res.data.status);
             // mNotify '0' means successfully delivered to handset
             isDelivered = providerStatus === '0' || providerStatus.toLowerCase().includes('delivered');
@@ -169,7 +169,7 @@ export async function syncAllLogStatuses() {
           }
         } else {
           const res = await fetchEmailStatusAction(log.providerId);
-          if (res.success) {
+          if (res.success && res.data) {
             providerStatus = res.data.last_event || 'sent';
             isDelivered = providerStatus === 'delivered';
             isSentByProvider = providerStatus !== 'scheduled';

@@ -8,27 +8,28 @@
  */
 
 import * as z from 'zod';
-import { adminDb } from './firebase-admin';
 import { requireOrgAdmin } from './auth/require-org-admin';
 import { WhatsAppCredentialRepository } from './whatsapp/whatsapp-credential-repository';
 import { WhatsAppTemplateRepository } from './whatsapp/whatsapp-template-repository';
 import { MetaCloudApiClient } from './whatsapp/meta-cloud-client';
 import {
-  getBodyText,
   normalizeMetaTemplate,
   validateParamMap,
   validateCreateTemplateInput,
   buildCreateTemplatePayload,
   buildWhatsAppTemplateId,
   deriveParamCount,
+  stripComponentExamples,
   validateApprovedSend,
   getTemplateRuntimeNeeds,
   hasRuntimeNeeds,
+  buildAdoptedWhatsAppMessageTemplate,
   MAX_TEMPLATE_BUTTONS,
 } from './whatsapp/whatsapp-domain';
 import { buildTemplatePayload, normalizeWaPhone } from './whatsapp/whatsapp-send';
+import { writeSendableWhatsAppDoc, autoEnableApprovedWhatsAppTemplate } from './whatsapp/whatsapp-enable';
 import type { WhatsAppTemplate, WhatsAppTemplateStatus, WhatsAppTemplateCategory } from './whatsapp/whatsapp-types';
-import type { MessageTemplate } from './types';
+import { APP_TEMPLATE_CATEGORIES } from './types';
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -48,8 +49,15 @@ export async function syncWhatsAppTemplates(
 
     const raw = await new MetaCloudApiClient(creds).listMessageTemplates();
     const syncedAt = new Date().toISOString();
-    const templates = raw.map((t) => normalizeMetaTemplate(organizationId, t, syncedAt));
-    const count = await WhatsAppTemplateRepository.upsertMany(templates);
+    const normalized = raw.map((t) => normalizeMetaTemplate(organizationId, t, syncedAt));
+    const count = await WhatsAppTemplateRepository.upsertMany(normalized);
+
+    // Re-read the merged docs: `upsertMany` merges, so in-app classification +
+    // param maps (which Meta's payload doesn't return) are preserved on the
+    // stored docs. Auto-enable approved+eligible templates off those.
+    const templates = await WhatsAppTemplateRepository.list(organizationId);
+    await Promise.allSettled(templates.map((t) => autoEnableApprovedWhatsAppTemplate(t)));
+
     return { success: true, data: { count, templates } };
   } catch (e) {
     return fail(e);
@@ -178,6 +186,12 @@ const CreateSchema = z.object({
     .optional(),
   footerText: z.string().trim().max(60).optional(),
   buttons: z.array(ButtonSchema).max(MAX_TEMPLATE_BUTTONS).optional(),
+  // Cross-channel classification (parity with email/SMS) — drives grouping and
+  // auto-enable. All optional so older callers keep working.
+  appCategory: z.enum(APP_TEMPLATE_CATEGORIES).optional(),
+  templateType: z.string().trim().max(80).optional(),
+  /** {{1}}..{{n}} → variable-key mapping; when present, length must match params. */
+  paramMap: z.array(z.string().trim()).optional(),
 });
 
 /**
@@ -201,6 +215,12 @@ export async function createWhatsAppTemplate(
     if (!check.valid) return { success: false, error: check.error ?? 'Invalid template.' };
 
     const metaPayload = buildCreateTemplatePayload({ ...input, category });
+
+    // If a variable map is supplied it must cover every positional parameter.
+    const paramCount = deriveParamCount(metaPayload.components);
+    if (input.paramMap && input.paramMap.length > 0 && input.paramMap.length !== paramCount) {
+      return { success: false, error: `Expected ${paramCount} variable mapping(s), got ${input.paramMap.length}.` };
+    }
     const res = await new MetaCloudApiClient(creds).createMessageTemplate(metaPayload);
 
     // Mirror locally as PENDING so the panel shows it without a manual sync.
@@ -213,9 +233,14 @@ export async function createWhatsAppTemplate(
       language: input.language,
       category,
       status: 'PENDING',
-      components: metaPayload.components,
-      paramCount: deriveParamCount(metaPayload.components),
+      // Strip Meta `example` fields (nested arrays) before persisting — Firestore
+      // rejects arrays nested in arrays. Examples were already sent to Meta above.
+      components: stripComponentExamples(metaPayload.components),
+      paramCount,
       ...(input.bodyExample.length ? { exampleParams: input.bodyExample } : {}),
+      ...(input.appCategory ? { appCategory: input.appCategory } : {}),
+      ...(input.templateType ? { templateType: input.templateType } : {}),
+      ...(input.paramMap && input.paramMap.length ? { paramMap: input.paramMap } : {}),
       syncedAt: now,
     };
     await WhatsAppTemplateRepository.upsertMany([template]);
@@ -263,32 +288,9 @@ export async function adoptWhatsAppTemplate(
     const check = validateParamMap(paramMap, wa.paramCount);
     if (!check.valid) return { success: false, error: check.error ?? 'Invalid parameter mapping.' };
 
-    const now = new Date().toISOString();
-    const ref = adminDb.collection('message_templates').doc();
-    const template: MessageTemplate = {
-      id: ref.id,
-      scope: 'organization',
-      organizationId,
-      category: 'general',
-      channel: 'whatsapp',
-      target: 'external_client',
-      name: name || wa.name,
-      contentMode: 'template',
-      body: getBodyText(wa.components),
-      templateType: 'whatsapp',
-      variableContext: 'common',
-      declaredVariables: paramMap,
-      status: 'active',
-      version: 1,
-      whatsappTemplateName: wa.name,
-      whatsappLanguage: wa.language,
-      whatsappParamMap: paramMap,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: uid,
-    };
-    await ref.set(template);
-    return { success: true, data: { id: ref.id } };
+    const template = buildAdoptedWhatsAppMessageTemplate(wa, { paramMap, name, createdBy: uid });
+    await writeSendableWhatsAppDoc(template);
+    return { success: true, data: { id: template.id } };
   } catch (e) {
     return fail(e);
   }

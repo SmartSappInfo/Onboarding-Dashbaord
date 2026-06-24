@@ -9,6 +9,7 @@ import type {
   WhatsAppTemplateStatus,
   WhatsAppTemplateCategory,
 } from './whatsapp-types';
+import type { MessageTemplate, TemplateCategory } from '@/lib/types';
 
 /** Raw template as returned by `GET /{wabaId}/message_templates`. */
 export interface MetaTemplateRaw {
@@ -376,13 +377,109 @@ function coerceCategory(c: string): WhatsAppTemplateCategory {
   return KNOWN_CATEGORIES.includes(up) ? up : 'UTILITY';
 }
 
+/** Deterministic `message_templates` doc id for an adopted/auto-enabled WhatsApp template. */
+export function adoptedTemplateDocId(whatsAppTemplateId: string): string {
+  return `wa_${whatsAppTemplateId}`;
+}
+
+export interface BuildAdoptedTemplateOptions {
+  /** Positional {{1}}..{{n}} → variable-key mapping. */
+  paramMap: string[];
+  /** Override display name; defaults to the WhatsApp template name. */
+  name?: string;
+  appCategory?: TemplateCategory;
+  templateType?: string;
+  createdBy?: string;
+  /** Injectable timestamp for deterministic tests. */
+  now?: string;
+}
+
+/**
+ * Build the selectable `message_templates` doc (channel: 'whatsapp') for an
+ * approved WhatsApp template. Pure — no I/O. Used by BOTH manual adopt and
+ * auto-enable so the two paths converge on one shape + one deterministic id.
+ * Classification falls back to the WhatsApp template's stored values, then to
+ * the cross-channel defaults (general / 'whatsapp').
+ */
+export function buildAdoptedWhatsAppMessageTemplate(
+  wa: WhatsAppTemplate,
+  opts: BuildAdoptedTemplateOptions,
+): MessageTemplate {
+  const now = opts.now ?? new Date().toISOString();
+  return {
+    id: adoptedTemplateDocId(wa.id),
+    scope: 'organization',
+    organizationId: wa.organizationId,
+    category: opts.appCategory ?? wa.appCategory ?? 'general',
+    channel: 'whatsapp',
+    target: 'external_client',
+    name: opts.name || wa.name,
+    contentMode: 'template',
+    body: getBodyText(wa.components),
+    templateType: opts.templateType ?? wa.templateType ?? 'whatsapp',
+    variableContext: 'common',
+    declaredVariables: opts.paramMap,
+    status: 'active',
+    version: 1,
+    whatsappTemplateName: wa.name,
+    whatsappLanguage: wa.language,
+    whatsappParamMap: opts.paramMap,
+    createdAt: now,
+    updatedAt: now,
+    ...(opts.createdBy ? { createdBy: opts.createdBy } : {}),
+  };
+}
+
+/**
+ * Whether an APPROVED template can be auto-enabled (a sendable doc created with
+ * no human step). True only when it's approved, has no per-send runtime needs
+ * (media/dynamic-URL buttons), and either has zero params or a complete variable
+ * map. Parametrized templates without a stored map (e.g. Meta-Manager-authored)
+ * return false and fall back to manual Enable. Pure.
+ */
+export function shouldAutoEnableWhatsApp(wa: WhatsAppTemplate): boolean {
+  if (wa.status !== 'APPROVED') return false;
+  if (hasRuntimeNeeds(getTemplateRuntimeNeeds(wa.components))) return false;
+  if (wa.paramCount > 0 && !(wa.paramMap && wa.paramMap.length === wa.paramCount)) return false;
+  return true;
+}
+
+function omitExample(obj: Record<string, unknown>): Record<string, unknown> {
+  const copy = { ...obj };
+  delete copy.example;
+  return copy;
+}
+
+/**
+ * Strip Meta `example` fields from components before persisting to Firestore.
+ * Meta's BODY example is a nested array (`example.body_text: [[...]]`), and
+ * Firestore forbids arrays nested directly inside arrays ("Property array
+ * contains an invalid nested entity"). Examples are only needed in the outbound
+ * create payload — never read back from stored components (rendering reads
+ * `text`/`format`/`buttons`; sample values live on `WhatsAppTemplate.exampleParams`).
+ * Pure.
+ */
+export function stripComponentExamples(components: unknown[] | undefined): unknown[] {
+  if (!Array.isArray(components)) return [];
+  return components.map((c) => {
+    if (!c || typeof c !== 'object') return c;
+    const comp = omitExample(c as Record<string, unknown>);
+    if (Array.isArray(comp.buttons)) {
+      comp.buttons = comp.buttons.map((b) =>
+        b && typeof b === 'object' ? omitExample(b as Record<string, unknown>) : b,
+      );
+    }
+    return comp;
+  });
+}
+
 /** Convert a raw Meta template into our stored shape (id + paramCount derived). */
 export function normalizeMetaTemplate(
   organizationId: string,
   raw: MetaTemplateRaw,
   syncedAt: string,
 ): WhatsAppTemplate {
-  const components = raw.components ?? [];
+  const components = stripComponentExamples(raw.components ?? []);
   return {
     id: buildWhatsAppTemplateId(organizationId, raw.name, raw.language),
     organizationId,

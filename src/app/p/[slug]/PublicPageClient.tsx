@@ -31,10 +31,13 @@ import { VERSIONS_COLLECTION } from '@/lib/page-builder/constants';
 import { sanitizeHtml, sanitizeCss } from '@/lib/page-builder/sanitize';
 import { PageRenderer } from '@/components/page-builder/PageRenderer';
 import { resolveTheme } from '@/lib/page-builder/resolve-theme';
+import { migrateLegacyStructure } from '@/lib/page-builder/migrate';
+import { parseStructure } from '@/lib/page-builder/schema';
 
-// Phase 4 flag: render published pages through the generic registry-driven
-// `PageRenderer`. Defaults off until the legacy migration lands (Phase 6).
-const USE_PAGE_BUILDER_V2 = process.env.NEXT_PUBLIC_PAGE_BUILDER_V2 === 'true';
+// Render published pages through the generic registry-driven `PageRenderer`.
+// Defaults ON now that the legacy migration has landed; set the env var to
+// 'false' to fall back to the legacy body for a fast rollback.
+const USE_PAGE_BUILDER_V2 = process.env.NEXT_PUBLIC_PAGE_BUILDER_V2 !== 'false';
 
 // Static class strings so Tailwind's JIT compiler keeps them (dynamic
 // `grid-cols-${n}` strings get purged from the production bundle).
@@ -444,10 +447,18 @@ export default function PublicPageClient({
                     <div className="container max-w-4xl mx-auto px-6 pt-32 pb-24 font-body">
                         <PageRenderer
                             page={page}
-                            version={version}
+                            version={{ ...version, structureJson: migrateLegacyStructure(parseStructure(version.structureJson)) }}
                             theme={resolvedTheme}
                             interpolate={interpolate}
-                            fireTrigger={(event, blockId) => fireTrigger(event as PageTrigger['event'], blockId)}
+                            fireTrigger={(event, blockId) => {
+                                // Legacy shim: the static payment page's receipt CTA opens a
+                                // bespoke modal hosted here rather than a generic action.
+                                if (event === 'block_click' && blockId === 'cta-1') {
+                                    setModalState({ type: 'receipt_request' });
+                                    return;
+                                }
+                                fireTrigger(event as PageTrigger['event'], blockId);
+                            }}
                         />
                     </div>
                 ) : (

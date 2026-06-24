@@ -83,14 +83,11 @@ export async function setPipelineAsDefaultAction(pipelineId: string, workspaceId
     }
 }
 
-/**
- * Purges a pipeline blueprint.
- */
-export async function deletePipelineAction(id: string, userId: string) {
+export async function deletePipelineAction(id: string, userId: string): Promise<{ success: boolean; error?: string }> {
     try {
         const docSnap = await adminDb.collection('pipelines').doc(id).get();
         if (!docSnap.exists) throw new Error("Pipeline not found.");
-        const workspaceId = docSnap.data()?.workspaceId;
+        const workspaceId = docSnap.data()?.workspaceIds?.[0] || docSnap.data()?.workspaceId || 'onboarding';
 
         // 0. Permission Check
         const permission = await canUser(userId, 'operations', 'pipeline', 'delete', workspaceId);
@@ -98,11 +95,73 @@ export async function deletePipelineAction(id: string, userId: string) {
             return { success: false, error: permission.reason };
         }
 
-        await adminDb.collection('pipelines').doc(id).delete();
+        // Check for active leads (open deals) in this pipeline
+        const activeDealsSnap = await adminDb.collection('deals')
+            .where('pipelineId', '==', id)
+            .where('status', '==', 'open')
+            .limit(1)
+            .get();
+
+        if (!activeDealsSnap.empty) {
+            return { success: false, error: 'Cannot delete pipeline with active leads.' };
+        }
+
+        // Fetch all stages and deals (closed) to delete
+        const [stagesSnap, closedDealsSnap] = await Promise.all([
+            adminDb.collection('onboardingStages').where('pipelineId', '==', id).get(),
+            adminDb.collection('deals').where('pipelineId', '==', id).get()
+        ]);
+
+        const refsToDelete = [
+            adminDb.collection('pipelines').doc(id),
+            ...stagesSnap.docs.map(doc => doc.ref),
+            ...closedDealsSnap.docs.map(doc => doc.ref)
+        ];
+
+        // Batch delete in chunks of 400
+        const chunkSize = 400;
+        for (let i = 0; i < refsToDelete.length; i += chunkSize) {
+            const chunk = refsToDelete.slice(i, i + chunkSize);
+            const batch = adminDb.batch();
+            chunk.forEach(ref => {
+                batch.delete(ref);
+            });
+            await batch.commit();
+        }
+
         revalidatePath('/admin/pipeline');
         return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Unknown error';
+        return { success: false, error };
+    }
+}
+
+/**
+ * Archives or restores a pipeline blueprint.
+ */
+export async function archivePipelineAction(id: string, isArchived: boolean, userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        const docSnap = await adminDb.collection('pipelines').doc(id).get();
+        if (!docSnap.exists) throw new Error("Pipeline not found.");
+        const workspaceId = docSnap.data()?.workspaceIds?.[0] || docSnap.data()?.workspaceId || 'onboarding';
+
+        // 0. Permission Check (Archive maps to edit permission)
+        const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
+        await adminDb.collection('pipelines').doc(id).update({
+            isArchived,
+            updatedAt: new Date().toISOString()
+        });
+        
+        revalidatePath('/admin/pipeline');
+        return { success: true };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Unknown error';
+        return { success: false, error };
     }
 }
 

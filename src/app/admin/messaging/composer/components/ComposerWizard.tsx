@@ -293,8 +293,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
     // ── Effects ────────────────────────────────────────────────────────────────
     React.useEffect(() => {
-        fetchSmsBalanceAction().then(r => { if (r.success) setSmsBalance(r.balance ?? 0); });
-    }, []);
+        fetchSmsBalanceAction(activeOrganizationId).then(r => { if (r.success) setSmsBalance(r.balance ?? 0); });
+    }, [activeOrganizationId]);
 
     React.useEffect(() => {
         if (!searchParams) return;

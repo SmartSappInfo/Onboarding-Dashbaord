@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Trash2 } from 'lucide-react';
 import { isLikelyHttpUrl, MAX_TEMPLATE_BUTTONS } from '@/lib/whatsapp/whatsapp-domain';
 import type { TemplateButtonInput, MediaHeaderFormat } from '@/lib/whatsapp/whatsapp-domain';
+import type { StorableTemplateCategory } from '@/lib/types';
 
 export type HeaderMode = 'none' | 'text' | 'media';
 export type UploadedMedia = { format: MediaHeaderFormat; handle: string; fileName: string };
@@ -36,6 +37,10 @@ export interface TemplateDraft {
   bodyExamples?: string[];
   headerText?: string;
   footerText?: string;
+  /** App-level library category (general/campaigns/…) — classification. */
+  appCategory?: StorableTemplateCategory;
+  /** Sub-type label (e.g. status_update). */
+  templateType?: string;
 }
 
 /**

@@ -159,7 +159,7 @@ export async function deleteWorkspaceAction(id: string, userId: string) {
         // Audit associated data
         const entitiesCount = (await db.collection('workspace_entities').where('workspaceId', '==', id).limit(1).get()).size;
         const tasksCount = (await db.collection('tasks').where('workspaceId', '==', id).limit(1).get()).size;
-        const pipelinesCount = (await db.collection('pipelines').where('workspaceId', '==', id).limit(1).get()).size;
+        const pipelinesCount = (await db.collection('pipelines').where('workspaceIds', 'array-contains', id).limit(1).get()).size;
         const activitiesCount = (await db.collection('activities').where('workspaceId', '==', id).limit(1).get()).size;
 
         const associations = [];

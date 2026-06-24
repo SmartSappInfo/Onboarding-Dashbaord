@@ -525,7 +525,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     if (!firestore || !activeWorkspaceId) return null;
     return query(
       collection(firestore, 'onboardingStages'),
-      where('workspaceId', '==', activeWorkspaceId)
+      orderBy('order', 'asc')
     );
   }, [firestore, activeWorkspaceId]);
   const { data: stagesData } = useCollection<{ id: string; name: string; pipelineId?: string }>(stagesQuery);
@@ -534,7 +534,8 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     if (!firestore || !activeWorkspaceId) return null;
     return query(
       collection(firestore, 'pipelines'),
-      where('workspaceId', '==', activeWorkspaceId)
+      where('workspaceIds', 'array-contains', activeWorkspaceId),
+      orderBy('createdAt', 'desc')
     );
   }, [firestore, activeWorkspaceId]);
   const { data: pipelinesData } = useCollection<{ id: string; name: string }>(pipelinesQuery);

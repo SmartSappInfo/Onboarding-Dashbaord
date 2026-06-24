@@ -6,12 +6,18 @@ import { CSS } from '@dnd-kit/utilities';
 
 import type { Deal, OnboardingStage } from '@/lib/types';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { GripVertical, ShieldCheck as ShieldIcon, Plus } from 'lucide-react';
+import { GripVertical, ShieldCheck as ShieldIcon, Plus, MoreVertical, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, toTitleCase } from '@/lib/utils';
 import DealCard from './DealCard';
 import CreateDealModal from '../../entities/components/CreateDealModal';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { useUser } from '@/firebase';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { useToast } from '@/hooks/use-toast';
+import { clearStageDealsAction } from '@/app/actions/deal-actions';
 
 interface StageColumnProps {
     stage: OnboardingStage;
@@ -27,6 +33,46 @@ interface StageColumnProps {
  */
 export default function StageColumn({ stage, deals, isOverlay, customWidth = 320, tasksByDealId }: StageColumnProps) {
     const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
+    const [isClearing, setIsClearing] = React.useState(false);
+    const confirm = useConfirm();
+    const { user } = useUser();
+    const { activeWorkspaceId } = useWorkspace();
+    const { toast } = useToast();
+
+    const handleClearStage = async () => {
+        if (!user || !activeWorkspaceId) return;
+
+        const approved1 = await confirm({
+            title: 'Clear Stage Deals?',
+            description: `Are you sure you want to clear all deals in the stage "${stage.name}"?`,
+            confirmText: 'Clear Deals',
+            variant: 'destructive'
+        });
+        if (!approved1) return;
+
+        const approved2 = await confirm({
+            title: 'Warning: Irreversible Action',
+            description: `This will permanently delete all ${deals.length} deals in "${stage.name}". There is no way to undo this. Do you want to proceed?`,
+            confirmText: 'Yes, permanently delete',
+            variant: 'destructive'
+        });
+        if (!approved2) return;
+
+        setIsClearing(true);
+        try {
+            const res = await clearStageDealsAction(stage.id, activeWorkspaceId, user.uid);
+            if (res.success) {
+                toast({ title: 'Stage Cleared', description: `Successfully cleared ${res.count ?? 0} deals.` });
+            } else {
+                throw new Error(res.error || 'Failed to clear stage deals.');
+            }
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Clear Stage Failed', description: error });
+        } finally {
+            setIsClearing(false);
+        }
+    };
     const {
         attributes,
         listeners,
@@ -84,16 +130,40 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                     </div>
                     
                     {/* Color-Coded Count Badge - High contrast metrics */}
-                    <Badge 
-                        variant="outline" 
-                        className="rounded-full h-6 px-3 font-semibold tabular-nums border-none transition-colors shadow-inner shrink-0 ml-2"
-                        style={{ 
-                            backgroundColor: `${stageColor}15`, 
-                            color: stageColor
-                        }}
-                    >
-                        {deals.length}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <Badge 
+                            variant="outline" 
+                            className="rounded-full h-6 px-3 font-semibold tabular-nums border-none transition-colors shadow-inner"
+                            style={{ 
+                                backgroundColor: `${stageColor}15`, 
+                                color: stageColor
+                            }}
+                        >
+                            {deals.length}
+                        </Badge>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 rounded-lg text-muted-foreground/50 hover:text-primary hover:bg-primary/5 transition-all shrink-0"
+                                >
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl border-none shadow-2xl p-1.5 min-w-[140px]">
+                                <DropdownMenuItem
+                                    onClick={handleClearStage}
+                                    disabled={deals.length === 0 || isClearing}
+                                    className="text-destructive focus:text-destructive focus:bg-destructive/5 rounded-lg py-2 cursor-pointer font-semibold text-xs flex items-center gap-2"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Clear Stage
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </CardHeader>
                 
                 <div 

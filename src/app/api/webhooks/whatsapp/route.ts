@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { decrypt } from '@/lib/whatsapp/crypto-vault';
 import { WhatsAppCredentialRepository } from '@/lib/whatsapp/whatsapp-credential-repository';
 import { WhatsAppTemplateRepository } from '@/lib/whatsapp/whatsapp-template-repository';
+import { autoEnableApprovedWhatsAppTemplate } from '@/lib/whatsapp/whatsapp-enable';
 import {
   verifySignature,
   parseWebhookEvents,
@@ -121,6 +122,17 @@ async function processTemplateStatusEvents(events: TemplateStatusEvent[]) {
       rejectedReason: ev.rejectedReason,
       category: ev.category,
     });
+
+    // On approval, auto-enable the template for campaigns (best-effort — never
+    // let this break webhook handling/idempotency).
+    if (ev.status === 'APPROVED') {
+      try {
+        const wa = await WhatsAppTemplateRepository.getByMetaTemplateId(ev.metaTemplateId);
+        if (wa) await autoEnableApprovedWhatsAppTemplate(wa);
+      } catch (err) {
+        console.error('[whatsapp-webhook] auto-enable failed:', err);
+      }
+    }
   }
 }
 
