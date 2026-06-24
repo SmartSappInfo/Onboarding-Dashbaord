@@ -82,9 +82,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const { data: allOrgs, isLoading: isAllOrgsLoading } = useCollection<Organization>(orgsQuery);
 
   const orgDocRef = useMemoFirebase(() => {
-    if (!firestore || !user || isProfileLoading || isSuperAdmin || !profile?.organizationId) return null;
-    return doc(firestore, 'organizations', profile.organizationId);
-  }, [firestore, user, isProfileLoading, isSuperAdmin, profile?.organizationId]);
+    // Prefer the profile's org; fall back to the resolved active org so the org
+    // document (brand colors, switcher) still loads for users whose profile has
+    // no organizationId but whose org was recovered from their workspace.
+    const orgId = profile?.organizationId || activeOrganizationId;
+    if (!firestore || !user || isProfileLoading || isSuperAdmin || !orgId) return null;
+    return doc(firestore, 'organizations', orgId);
+  }, [firestore, user, isProfileLoading, isSuperAdmin, profile?.organizationId, activeOrganizationId]);
   const { data: singleOrg, isLoading: isSingleOrgLoading } = useDoc<Organization>(orgDocRef);
 
   const organizations = React.useMemo(() => {
@@ -116,6 +120,26 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     );
   }, [firestore, activeOrganizationId, user, profile, isSuperAdmin]);
   const { data: orgWorkspaces, isLoading: isWorkspacesLoading } = useCollection<Workspace>(workspacesQuery);
+
+  // 3b. Deadlock breaker: when an active workspace is known but the organization
+  // hasn't resolved (e.g. the user's profile has no organizationId, so the
+  // org-filtered workspaces query above returns nothing), fetch the workspace doc
+  // directly by id to recover its organizationId. Without this the org can never
+  // resolve for such users — the org-filtered query needs the org that it would
+  // itself provide. Only runs while the org is unresolved, so it adds no steady
+  // -state reads.
+  const orphanWorkspaceRef = useMemoFirebase(() =>
+    firestore && activeWorkspaceId && !activeOrganizationId
+      ? doc(firestore, 'workspaces', activeWorkspaceId)
+      : null,
+  [firestore, activeWorkspaceId, activeOrganizationId]);
+  const { data: orphanWorkspace } = useDoc<Workspace>(orphanWorkspaceRef);
+
+  React.useEffect(() => {
+    if (activeOrganizationId || !orphanWorkspace?.organizationId) return;
+    setActiveOrganizationIdState(orphanWorkspace.organizationId);
+    localStorage.setItem('activeOrganizationId', orphanWorkspace.organizationId);
+  }, [activeOrganizationId, orphanWorkspace]);
 
   // 4. Initial Context Synchronization
   React.useEffect(() => {

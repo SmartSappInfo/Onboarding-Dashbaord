@@ -29,6 +29,12 @@ import VideoEmbed from '@/components/video-embed';
 import Image from 'next/image';
 import { VERSIONS_COLLECTION } from '@/lib/page-builder/constants';
 import { sanitizeHtml, sanitizeCss } from '@/lib/page-builder/sanitize';
+import { PageRenderer } from '@/components/page-builder/PageRenderer';
+import { resolveTheme } from '@/lib/page-builder/resolve-theme';
+
+// Phase 4 flag: render published pages through the generic registry-driven
+// `PageRenderer`. Defaults off until the legacy migration lands (Phase 6).
+const USE_PAGE_BUILDER_V2 = process.env.NEXT_PUBLIC_PAGE_BUILDER_V2 === 'true';
 
 // Static class strings so Tailwind's JIT compiler keeps them (dynamic
 // `grid-cols-${n}` strings get purged from the production bundle).
@@ -355,6 +361,17 @@ export default function PublicPageClient({
     const secondaryColor = orgBranding?.brandSecondaryColor || '#8b5cf6';
     const brandFont = orgBranding?.brandFontFamily || 'Inter';
 
+    const resolvedTheme = resolveTheme({
+        overrides: page.settings.themeOverrides,
+        branding: orgBranding
+            ? {
+                  brandPrimaryColor: orgBranding.brandPrimaryColor,
+                  brandSecondaryColor: orgBranding.brandSecondaryColor,
+                  brandFontFamily: orgBranding.brandFontFamily,
+              }
+            : null,
+    });
+
     const themeStyles = `
         :root {
             --primary: ${primaryColor};
@@ -420,24 +437,21 @@ export default function PublicPageClient({
                 </header>
             )}
 
-            {!page?.seo?.noIndex ? (
-                <>
-                    {/* Metadata handled by Next.js or hoisted by React if in body */}
-                    <div className="hidden">
-                        <title>{interpolate(page?.seo?.title || '')}</title>
-                        <meta name="description" content={interpolate(page?.seo?.description || '')} />
-                        <meta name="robots" content="noindex, nofollow" />
-                    </div>
-                </>
-            ) : (
-                <>
-                    <title>No Index | SmartSapp</title>
-                    <meta name="robots" content="noindex, nofollow" />
-                </>
-            )}
-
+            {/* SEO/social metadata is handled server-side in generateMetadata. */}
 
             <main className="flex-1 w-full relative">
+                {USE_PAGE_BUILDER_V2 ? (
+                    <div className="container max-w-4xl mx-auto px-6 pt-32 pb-24 font-body">
+                        <PageRenderer
+                            page={page}
+                            version={version}
+                            theme={resolvedTheme}
+                            interpolate={interpolate}
+                            fireTrigger={(event, blockId) => fireTrigger(event as PageTrigger['event'], blockId)}
+                        />
+                    </div>
+                ) : (
+                <>
                 {/* Hero Section (Always Outside Card) */}
                 <div className="container max-w-4xl mx-auto px-6 pt-32 mb-12 text-center space-y-3 font-body">
                     {version.structureJson.sections?.find(s => s.id === 'hero-section')?.blocks.map((block, bIdx) => (
@@ -648,6 +662,8 @@ export default function PublicPageClient({
                         </CardContent>
                     </Card>
                 </div>
+                </>
+                )}
             </main>
 
             {/* ─── Global Modal Container (Trigger Engine) ─── */}
