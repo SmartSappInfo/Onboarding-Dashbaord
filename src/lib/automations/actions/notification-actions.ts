@@ -129,7 +129,10 @@ export async function handleSendNotification(
     for (const email of uniqueEmails) {
       await sendMessage({
         templateId,
-        senderProfileId: 'system-alerts',
+        // 'default' resolves to this org's default sender; a cross-org named
+        // profile would be rejected by the org-scoped resolver.
+        senderProfileId: 'default',
+        organizationId: orgId,
         recipient: email,
         variables: { ...context.payload, subject: resolvedSubject, body: resolvedBody },
         entityId: context.entityId,
@@ -142,7 +145,8 @@ export async function handleSendNotification(
     for (const phone of uniquePhones) {
       await sendMessage({
         templateId,
-        senderProfileId: 'system-alerts',
+        senderProfileId: 'default',
+        organizationId: orgId,
         recipient: phone,
         variables: { ...context.payload, body: resolvedBody },
         entityId: context.entityId,

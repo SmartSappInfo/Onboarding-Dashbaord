@@ -2,9 +2,10 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, writeBatch, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { SenderProfile } from '@/lib/types';
+import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import type { Organization, SenderProfile } from '@/lib/types';
+import { setDefaultSenderProfileAction } from '@/app/actions/set-default-sender-action';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -72,7 +73,18 @@ export default function SenderProfilesPage() {
     const { toast } = useToast();
     const confirm = useConfirm();
     const { activeWorkspaceId, allowedWorkspaces, activeOrganization } = useWorkspace();
+    const { user } = useUser();
     const [isAdding, setIsAdding] = React.useState(false);
+    const [settingDefaultId, setSettingDefaultId] = React.useState<string | null>(null);
+
+    // The org's default sender pointers per channel (the only fallback the engine
+    // consults). Derived during render — never synced via effect.
+    const orgDocRef = useMemoFirebase(
+        () => (firestore && activeOrganization?.id ? doc(firestore, 'organizations', activeOrganization.id) : null),
+        [firestore, activeOrganization?.id],
+    );
+    const { data: orgDoc } = useDoc<Organization>(orgDocRef);
+    const orgDefaults = orgDoc?.defaultSenderProfileIds ?? {};
     
     // Add Form State
     const [name, setName] = React.useState('');

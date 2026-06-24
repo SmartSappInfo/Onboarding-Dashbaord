@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { BellDot, MailOpen, AlertCircle, Info, Calendar, FileText, Settings, X, Check } from 'lucide-react';
+import { BellDot, MailOpen, AlertCircle, Info, Calendar, FileText, Settings, X, Check, MessageSquareWarning } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -58,6 +58,7 @@ export default function NotificationCenter() {
             case 'reminders': return <Calendar className="h-4 w-4 text-blue-500" />;
             case 'automations': return <Settings className="h-4 w-4 text-purple-500" />;
             case 'forms': return <FileText className="h-4 w-4 text-orange-500" />;
+            case 'messaging': return <MessageSquareWarning className="h-4 w-4 text-red-500" />;
             case 'general':
             default: return <Info className="h-4 w-4 text-primary" />;
         }

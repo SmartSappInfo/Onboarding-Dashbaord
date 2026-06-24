@@ -124,6 +124,7 @@ export class ScheduledMessageRepository {
     const result = await sendMessage({
       templateId: msg.templateId,
       senderProfileId: msg.senderProfileId || 'default',
+      organizationId: msg.organizationId,
       recipient: msg.recipientContact,
       variables: msg.variables || {},
       entityId: msg.recipientEntityId || null,

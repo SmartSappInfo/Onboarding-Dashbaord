@@ -532,6 +532,7 @@ export async function processFormSubmissionAction(input: {
           await sendMessage({
             templateId: respondentAlerts.emailTemplateId,
             senderProfileId: 'default',
+            organizationId: form.organizationId,
             recipient: respondentEmail,
             variables: automationVars,
             entityId: resolvedEntityId || undefined,
@@ -543,6 +544,7 @@ export async function processFormSubmissionAction(input: {
           await sendMessage({
             templateId: respondentAlerts.smsTemplateId,
             senderProfileId: 'default',
+            organizationId: form.organizationId,
             recipient: respondentPhone,
             variables: automationVars,
             entityId: resolvedEntityId || undefined,
@@ -554,6 +556,7 @@ export async function processFormSubmissionAction(input: {
           await sendMessage({
             templateId: respondentAlerts.whatsappTemplateId,
             senderProfileId: 'default',
+            organizationId: form.organizationId,
             recipient: respondentPhone,
             variables: automationVars,
             entityId: resolvedEntityId || undefined,

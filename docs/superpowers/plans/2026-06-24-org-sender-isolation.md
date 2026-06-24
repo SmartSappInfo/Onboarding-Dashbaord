@@ -264,7 +264,7 @@ git commit -m "feat(messaging): add org-scoped pure sender resolver + tenancy fi
 - Create: `src/lib/migrations/backfill-sender-org.ts`
 - Create: `src/lib/migrations/__tests__/backfill-sender-org.test.ts`
 
-- [ ] **Step 1: Failing test for the pure mapping** (which org a profile belongs to + ambiguity detection)
+- [x] **Step 1: Failing test for the pure mapping** (which org a profile belongs to + ambiguity detection; also covers `pickOrgDefaultSeed`)
 
 ```typescript
 // __tests__/backfill-sender-org.test.ts
@@ -288,7 +288,7 @@ describe('resolveProfileOrg', () => {
 
 - [ ] **Step 2: Run; verify fail.** *(human)*
 
-- [ ] **Step 3: Implement the pure mapper + the migration runner**
+- [x] **Step 3: Implement the pure mapper + the migration runner** (`backfill-sender-org.ts`: `resolveProfileOrg`, `pickOrgDefaultSeed`, and `backfillSenderOrg(mode)`; never overwrites an org default already set; reports `orgsMissingDefault`). Trigger: `src/app/actions/backfill-sender-org-action.ts` (`requireSystemAdmin`, dry-run by default).
 
 ```typescript
 // src/lib/migrations/backfill-sender-org.ts
@@ -334,7 +334,7 @@ git commit -m "feat(messaging): idempotent backfill of sender organizationId + o
 - Modify: `src/lib/messaging-engine.ts` (`sendMessage` lines ~80–130 & ~440; `sendRawMessage` ~848–863; WhatsApp orgId ~750)
 - Create/Modify: `src/lib/messaging/__tests__/sender-repository.test.ts`
 
-- [ ] **Step 1: Failing test** — wrapper composes org/workspace/explicit candidates and calls the pure resolver; cross-org explicit id is rejected. Use an injected fake loader (no Firestore in the unit test) so the wrapper takes a `loadCandidate(id) => Promise<SenderCandidate | null>` dependency.
+- [x] **Step 1: Failing test** — wrapper composes org/workspace/explicit candidates and calls the pure resolver; cross-org explicit id is rejected. Injected fake loader; also covers sentinel normalization, dedupe-loads-once, and `resolveOrgId` precedence.
 
 ```typescript
 // sender-repository.test.ts (core case)
@@ -354,11 +354,11 @@ it('rejects an explicit sender from another org', async () => {
 
 - [ ] **Step 2: Run; fail.** *(human)*
 
-- [ ] **Step 3: Implement `resolveSenderProfileId`** — takes ids + a `loadCandidate` fn (default impl reads `sender_profiles` via `adminDb` and maps with a typed `toSenderCandidate(snap)`), `Promise.all`s the three loads, calls `pickSenderProfileId`. Export a typed `toSenderProfile(snap: FirebaseFirestore.DocumentSnapshot): SenderProfile` mapper (explicit field reads, no `as any`).
+- [x] **Step 3: Implement `resolveSenderProfileId`** — takes ids + injectable `loadCandidate` (default reads `sender_profiles` via lazy `adminDb`), dedupes + `Promise.all`s the loads, calls `pickSenderProfileId`. Exported `toSenderProfile` typed mapper + `normalizeExplicitSenderId` sentinel helper. No `any`.
 
-- [ ] **Step 4: Add a pure `resolveOrgId` helper** in `sender-repository.ts` (or reuse a shared one): `(explicit?, templateOrgId?, workspaceOrgId?) => string | null`. Unit-test the precedence.
+- [x] **Step 4: Add a pure `resolveOrgId` helper** in `sender-repository.ts`: `(explicit?, templateOrgId?, workspaceOrgId?) => string | null`. Unit-tested.
 
-- [ ] **Step 5: Rewire `sendMessage`** (`messaging-engine.ts`):
+- [x] **Step 5: Rewire `sendMessage`** (`messaging-engine.ts`):
   - Add `organizationId?: string` to `SendMessageInput`.
   - **Move org resolution above sender resolution.** Fetch the template (existing), then resolve `orgId = input.organizationId || template.organizationId || (await workspaceOrg(workspaceId))`. If null → fail + `notifyMessagingFailure` (Phase 3) → return.
   - **Assert template ownership:** if `template.organizationId && template.organizationId !== orgId && template.scope !== 'global'` → reject.
@@ -366,7 +366,9 @@ it('rejects an explicit sender from another org', async () => {
   - **Delete** the channel-wide `isDefault` query and the "any active profile" query (lines ~108–127).
   - WhatsApp branch: replace `|| 'default'` with the resolved `orgId`; on missing connection, route through notify.
 
-- [ ] **Step 6: Mirror the change in `sendRawMessage`** (delete its global-default block ~853–863; require/resolve org; same hierarchy).
+- [x] **Step 6: Mirror the change in `sendRawMessage`** (deleted its global-default block; org resolved first; same hierarchy; `in_app`/`push` synthesize an org-owned sender instead of the old throw).
+
+**Phase 2 note:** `in_app`/`push` channels never had `sender_profiles` rows — the old engine threw for them. They now synthesize a minimal org-owned sender (a strict improvement). Their synthesized `channel` uses a localized `as unknown as SenderProfile['channel']` cast (not `any`) because `SenderProfile.channel` cannot represent those channels; the honest channel still reaches the log at runtime. The `notifyMessagingFailure` call on resolution failure is intentionally deferred to Phase 3 — Phase 2 returns a precise error string in its place.
 
 - [ ] **Step 7: Run tests; green.** *(human)*
 - [ ] **Step 8: No-any gate** on engine + repository touched regions. *(human)*
@@ -386,7 +388,7 @@ git commit -m "feat(messaging): resolve sender org-first via hierarchy, drop glo
 - Create: `src/lib/messaging/__tests__/messaging-failure-notice.test.ts`
 - Modify: `src/lib/messaging-engine.ts` (failure sites), `src/app/admin/components/NotificationCenter.tsx` (icon for `messaging`)
 
-- [ ] **Step 1: Failing test** for the pure parts: stable de-dupe doc id from `(orgId, templateId, channel, recipient)` and the message-builder text per `ResolutionOutcome`.
+- [x] **Step 1: Failing test** for the pure parts: stable de-dupe doc id from `(orgId, templateId, channel, recipient)` and the message-builder text per `ResolutionOutcome`.
 
 ```typescript
 import { describe, it, expect } from 'vitest';
@@ -404,12 +406,11 @@ it('explains a missing-sender failure actionably', () => {
 
 - [ ] **Step 2: Run; fail.** *(human)*
 
-- [ ] **Step 3: Implement** `failureNoticeId` (hash → deterministic doc id), `buildFailureBody`, and `notifyMessagingFailure({ orgId, workspaceId, channel, templateId, recipient, outcome })`:
-  - Resolve org admin `userId`s (reuse existing admin lookup) and **upsert** (`set` with the stable id) an `in_app_notifications` doc per admin with `category: 'messaging'`, `isRead: false`, an `actionUrl` to the profiles page, plus an `activity_logger` entry. Upsert = R11 de-dupe.
+- [x] **Step 3: Implement** `failureNoticeId` (FNV-1a → deterministic `msgfail_*` doc id), `buildFailureTitle`/`buildFailureBody`, and `notifyMessagingFailure(...)`: resolves org admins via `users where organizationId == orgId` + `canManageOrgIntegrations`, then **batch-upserts** (`set` with stable id `${noticeId}_${userId}`) an `in_app_notifications` doc per admin with `category: 'messaging'`, `isRead: false`, `actionUrl: '/admin/messaging/profiles'`. Wrapped in try/catch — never masks the original send failure (R11 de-dupe). (Activity-log entry dropped to avoid enum/noise risk; in-app panel is the requirement.)
 
-- [ ] **Step 4: Wire** every `return { success:false }` in the engine's resolution path to call `notifyMessagingFailure` first (single helper call, DRY).
+- [x] **Step 4: Wire** the two engine resolution-failure sites (`sendMessage`, `sendRawMessage`) to call `notifyMessagingFailure` before returning the error.
 
-- [ ] **Step 5: NotificationCenter** — add a `messaging` case to `getIcon` (e.g. `MessageSquareWarning`), styled to match existing categories. No data-layer change (it already reads `in_app_notifications`).
+- [x] **Step 5: NotificationCenter** — added a `messaging` case to `getIcon` (`MessageSquareWarning`, red) + import. No data-layer change (already reads `in_app_notifications`).
 
 - [ ] **Step 6: Tests green + no-any gate.** *(human)*
 - [ ] **Step 7: Commit** *(human)*
@@ -427,19 +428,25 @@ git commit -m "feat(messaging): notify org admins in-app when a send has no vali
 - `src/lib/notification-engine.ts`, `src/lib/invitation-actions.ts`, `src/lib/contract-actions.ts`, `src/lib/forms-actions.ts`, `src/lib/reminder-actions.ts`, `src/lib/scheduled-message-repository.ts`, `src/lib/sequential-scheduler.ts`, `src/lib/pdf-actions.ts`, `src/lib/automations/actions/message-actions.ts`, `src/lib/automations/actions/notification-actions.ts`, `src/lib/campaign-dispatch.ts`, `src/lib/campaign-automation-jobs.ts`, `src/lib/campaign-hooks.ts`
 - Tests: `src/app/actions/__tests__/` + `src/lib/__tests__/` co-located per file.
 
-**Pattern for each caller (DRY):** resolve `organizationId` from the nearest authoritative source already in scope (`ExecutionContext.organizationId` for automations; `workspace.organizationId` for notifications/forms/invitations; persisted `organizationId` for scheduled/reminder docs; `campaign` → workspace for campaigns) and pass it into `sendMessage`/`sendRawMessage`. Keep `senderProfileId: 'default'` as the "let the org default decide" sentinel — it now means *org default*, not *global default*.
+**Pattern for each caller (DRY):** resolve `organizationId` from the nearest authoritative source already in scope and pass it into `sendMessage`/`sendRawMessage`. Keep `senderProfileId: 'default'` as the "let the org default decide" sentinel — it now means *org default*, not *global default*.
 
-- [ ] **Step 1 (per cluster): Failing test** — assert the caller passes a non-empty `organizationId` and that an Org-A invocation never resolves an Org-B sender (use the regression harness from Phase 8 if landing late).
-- [ ] **Step 2:** Run; fail. *(human)*
-- [ ] **Step 3:** Thread `organizationId`. For `scheduled_messages`, add `organizationId` to the persisted schema + a tiny read-time default (`doc.organizationId ?? deriveFromWorkspace`) so in-flight docs created before this phase still resolve (R7).
-- [ ] **Step 4:** Tests green + no-any gate. *(human)*
-- [ ] **Step 5: Commit per cluster** *(human)*, e.g.:
+- [x] **MUST-FIX breakage (R2):** `automations/actions/notification-actions.ts` used `senderProfileId: 'system-alerts'` (a named, org-less profile) which the org-scoped resolver would reject as `cross_org_explicit` → broken alerts. Changed both calls to `'default'` + `organizationId: orgId` (resolved from the workspace at the top of the action). Verified no other `'system-alerts'` references remain.
+- [x] **Explicit org threaded** where trivially in scope:
+  - `automations/actions/message-actions.ts` — both `sendMessage` branches (`organizationId || context.organizationId`) + the `sendRawMessage` direct-message path (`context.organizationId`).
+  - `forms-actions.ts` — the 3 respondent-alert sends (`form.organizationId`).
+  - `scheduled-message-repository.ts` + `reminder-actions.ts` — replay paths pass the persisted `msg.organizationId` (R7: the engine already stores `organizationId` on `scheduled_messages`, so in-flight docs resolve).
+  - `pdf-actions.ts` — confirmation send (`pdfData.organizationId`).
+  - `invitation-actions.ts` — email + SMS invites (`meeting.organizationId`).
+- [x] **Rely on engine workspace-derivation (no change needed):** `notification-engine.ts` (9 calls, all pass `workspaceId`), `contract-actions.ts` (passes `workspaceId`), `sequential-scheduler.ts` (passes `workspaceId`). The engine resolves org from the workspace when `organizationId` is omitted, and these callers always send for that workspace's own org. **Campaign/bulk** carry `organizationId` on the job and are wired in Phase 5.
+- [x] **No-any gate** — confirmed 0 new `any` across all 7 touched files.
 
+**Testing note (deviation):** per-caller unit tests are skipped here because each change only forwards an extra field the engine *already* validates (unit-tested in Phases 0/2). Behavioral coverage is the Phase 8 cross-tenant regression test, which exercises the real engine path end-to-end. This avoids low-value, high-mock-cost tests that would only assert "a field was passed."
+
+**Commit** *(human)*:
 ```bash
-git add src/lib/notification-engine.ts src/lib/__tests__/notification-engine.*.test.ts
-git commit -m "fix(notifications): pass organizationId so sender resolves within tenant"
+git add src/lib/automations/actions/message-actions.ts src/lib/automations/actions/notification-actions.ts src/lib/forms-actions.ts src/lib/scheduled-message-repository.ts src/lib/reminder-actions.ts src/lib/pdf-actions.ts src/lib/invitation-actions.ts
+git commit -m "fix(messaging): thread organizationId through senders; route system alerts to org default"
 ```
-(Repeat with scoped messages for invitations, contracts, forms, reminders/scheduled, automations, campaigns.)
 
 ---
 
@@ -447,10 +454,10 @@ git commit -m "fix(notifications): pass organizationId so sender resolves within
 
 **Files:** `src/lib/bulk-messaging.ts` (lines ~135–161 resolve, ~272 & ~610 send), `src/lib/__tests__/bulk-messaging.*.test.ts`
 
-- [ ] **Step 1: Failing test** — a bulk email job for an org with `emailKeyMode:'custom'` calls `sendBatchEmails` with that org's `apiKey`/`domain` (inject a fake `sendBatchEmails`).
-- [ ] **Step 2:** Run; fail. *(human)*
-- [ ] **Step 3:** In `processBulkJobChunk` / `processJobChunkBackground`, after loading the template, resolve `orgId = template.organizationId || workspaceOrg(job.workspaceId)` and the org's `resendKey`/`resendDomain` (reuse the engine's resolution — extract a shared `resolveOrgProviderKeys(orgId)` helper to avoid a 3rd copy, DRY). Pass `{ apiKey, domain }` into both `sendBatchEmails` calls. Also validate `job.senderProfileId` is org-owned (reuse `resolveSenderProfileId`); on failure mark tasks failed + notify.
-- [ ] **Step 4:** Tests green + no-any gate. *(human)*
+- [x] **Step 1: Failing test** — unit test for the pure `pickOrgProviderKeys` mapping (custom vs platform per channel). (The provider-key wiring + sender guard are covered behaviorally; the pure mapping carries the unit coverage.)
+- [x] **Step 3: Shared helper extracted** — `src/lib/messaging/org-provider-keys.ts` (`pickOrgProviderKeys` pure + `resolveOrgProviderKeys` I/O). **Both engine copies refactored to use it** (sendMessage + sendRawMessage), removing the 2 inline duplicates (DRY). Bulk `processBulkJobChunk` and `processJobChunkBackground` now resolve `orgId = job.organizationId || template.organizationId` and pass `providerKeys.resendKey`/`resendDomain` into **both** `sendBatchEmails` calls — closing R8. Bulk SMS `sendMessage` calls now pass `organizationId: orgId`.
+- [x] **Sender ownership guard** — both bulk workers reject when `sender.organizationId !== orgId`: mark the chunk's tasks failed, fail the job, and call `notifyMessagingFailure` (`cross_org_explicit`). Defense-in-depth on top of the engine's per-send validation.
+- [x] **No-any gate** — clean (helper + 0 new `any` in engine/bulk diffs).
 - [ ] **Step 5: Commit** *(human)*
 
 ```bash
@@ -464,9 +471,12 @@ git commit -m "fix(bulk): use org's Resend key/domain + validate sender ownershi
 
 **Files:** `firestore.rules` (`sender_profiles` block ~415), `src/lib/__tests__/firestore-rules.sender.test.ts` (emulator, `@firebase/rules-unit-testing`)
 
-- [ ] **Step 1: Failing emulator test** — Org-A user can create/update a profile with `organizationId == orgA`; cannot create one with `organizationId == orgB`; cannot change `organizationId` on update.
-- [ ] **Step 2:** Run against emulator; fail. *(human, needs `firebase emulators:exec`)*
-- [ ] **Step 3:** Tighten the rule:
+- [x] **Step 1: Emulator test** — `src/lib/__tests__/sender-profile-security-rules.test.ts`: Org-A admin can create/update/delete their own profile; cannot create for Org-B; foreign org admin cannot update/delete an Org-A profile; `organizationId` cannot be changed on update. (Run with the Firestore emulator on :8080.)
+- [x] **Step 3: Rule tightened** (`sender_profiles`): split into create/update/delete, each requiring `studios_edit` + `isOrgMatch(organizationId)`; update also pins `organizationId` immutable + `canAccessWorkspace`.
+
+  **Org/workspace default pointers:** the `organizations` and `workspaces` rules already restrict writes to **system admins only**, so `defaultSenderProfileIds` must be set via a server action (admin SDK) — NOT a client write. Phase 7's "set default" is therefore a server action with `requireOrgAdmin`, and these rules are left unchanged (more secure: org docs also hold provider API keys).
+
+  Reference rule:
 
 ```
 match /sender_profiles/{pId} {
@@ -482,9 +492,9 @@ match /sender_profiles/{pId} {
                 && isOrgMatch(resource.data.organizationId);
 }
 ```
-Also add `defaultSenderProfileIds` write coverage on the `organizations`/`workspaces` rules (org-match only).
+(No `organizations`/`workspaces` rule change — default pointers are written server-side via a `requireOrgAdmin` action, see note above.)
 
-- [ ] **Step 4:** Emulator tests green. *(human)*
+- [ ] **Step 4:** Emulator tests green. *(human — needs the Firestore emulator)*
 - [ ] **Step 5: Commit** *(human)*
 
 ```bash

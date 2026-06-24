@@ -126,6 +126,7 @@ export async function processMeetingInvitations(): Promise<{ sent: number; skipp
             promises.push(sendMessage({
               templateId: stage.emailTemplateId!,
               senderProfileId: 'default',
+              organizationId: meeting.organizationId,
               recipient: regData.email!,
               variables: { _meetingId: meetingId },
               workspaceId: regData.workspaceIds?.[0],
@@ -137,6 +138,7 @@ export async function processMeetingInvitations(): Promise<{ sent: number; skipp
             promises.push(sendMessage({
               templateId: stage.smsTemplateId!,
               senderProfileId: 'default',
+              organizationId: meeting.organizationId,
               recipient: regData.phone!,
               variables: { _meetingId: meetingId },
               workspaceId: regData.workspaceIds?.[0],

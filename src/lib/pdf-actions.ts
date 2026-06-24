@@ -365,6 +365,7 @@ export async function finalizeAgreementAction(
                 await sendMessage({
                     templateId: pdfData.confirmationTemplateId,
                     senderProfileId: pdfData.confirmationSenderProfileId || 'default',
+                    organizationId: pdfData.organizationId,
                     recipient: String(recipient),
                     variables: { 
                         ...formData, 

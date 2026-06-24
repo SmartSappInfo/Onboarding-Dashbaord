@@ -158,6 +158,7 @@ export async function handleSendMessage(
       await sendMessage({
         templateId: (config.templateId as string) || 'automation-generated',
         senderProfileId: (config.senderProfileId as string) || 'default',
+        organizationId: organizationId || context.organizationId,
         recipient: recipient,
         variables: sendMessageVars,
         entityId: context.entityId,
@@ -169,6 +170,7 @@ export async function handleSendMessage(
       await sendMessage({
         templateId: config.templateId as string,
         senderProfileId: (config.senderProfileId as string) || 'default',
+        organizationId: context.organizationId,
         recipient: recipient,
         variables: sendMessageVars,
         entityId: context.entityId,
@@ -345,6 +347,7 @@ export async function handleDirectMessage(
           body: finalBody,
           ...(resolvedSubject && { subject: resolvedSubject }),
           senderProfileId,
+          organizationId: context.organizationId,
           variables: { ...context.payload },
           workspaceIds: [context.workspaceId],
           messageType: 'transactional',
