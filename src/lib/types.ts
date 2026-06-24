@@ -791,6 +791,7 @@ export interface UserProfile {
   // Workspace and Organization Sticky Persistence
   lastActiveWorkspaceId?: string;
   lastActiveOrganizationId?: string;
+  defaultWorkspaceId?: string;
   
   // Notification Preferences
   notificationPreferences?: NotificationPreferences;
@@ -3286,6 +3287,40 @@ export interface CampaignPageTheme {
     buttonStyle: 'flat' | 'glow' | 'glass';
   };
   isSystem?: boolean;
+}
+
+/**
+ * A fully-resolved theme — the merged result of a selected `CampaignPageTheme`,
+ * per-page overrides, org branding, and built-in defaults. The page renderer
+ * consumes this (never a raw theme) and emits it as CSS variables.
+ */
+export interface ResolvedTheme {
+  colors: {
+    primary: string;
+    secondary: string;
+    background: string;
+    text: string;
+    accent: string;
+  };
+  typography: {
+    headingFont: string;
+    bodyFont: string;
+    baseSize: string;
+  };
+  ui: {
+    borderRadius: string;
+    buttonStyle: 'flat' | 'glow' | 'glass';
+  };
+}
+
+/**
+ * Read-only resources a block may reference while rendering (e.g. an embed
+ * picking a form). Passed into the block render context.
+ */
+export interface BuilderResources {
+  forms: ReadonlyArray<{ id: string; title: string; internalName?: string }>;
+  surveys: ReadonlyArray<{ id: string; title: string }>;
+  agreements: ReadonlyArray<{ id: string; title: string }>;
 }
 
 

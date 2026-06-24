@@ -1,16 +1,16 @@
 'use client';
 
 import { useReducer, useCallback, useEffect } from 'react';
-import type { 
-    CampaignPage, 
-    CampaignPageVersion, 
-    CampaignPageStructure, 
-    PageSection, 
-    PageBlock, 
+import type {
+    CampaignPage,
+    CampaignPageVersion,
+    CampaignPageStructure,
+    PageSection,
     PageBlockType,
     PageTrigger,
     PageTriggerAction
 } from '@/lib/types';
+import * as tree from '@/lib/page-builder/tree-operations';
 
 // ─── History Stack for Undo/Redo ─────────────────────────────────────────
 const MAX_HISTORY = 50;
@@ -211,213 +211,67 @@ export function useBuilderState() {
         dispatch({ type: 'UPDATE_STRUCTURE', payload: updater(current) });
     }, [state.version]);
 
-    // ─── Section Operations ──────────────────────────────────────────
+    // ─── Section Operations (delegate to pure tree-operations) ───────
     const addSection = useCallback((template?: { structure: PageSection }) => {
-        updateStructure(s => {
-            const newSection: PageSection = template ? {
-                ...template.structure,
-                id: `sec_${Date.now()}`
-            } : {
-                id: `sec_${Date.now()}`,
-                type: 'section',
-                props: { background: 'default' },
-                blocks: []
-            };
-            return { ...s, sections: [...s.sections, newSection] };
-        });
+        updateStructure(s => tree.addSection(s, template));
     }, [updateStructure]);
 
     const removeSection = useCallback((sectionId: string) => {
-        updateStructure(s => ({
-            ...s,
-            sections: s.sections.filter(sec => sec.id !== sectionId)
-        }));
+        updateStructure(s => tree.removeSection(s, sectionId));
     }, [updateStructure]);
 
     const moveSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
-        updateStructure(s => {
-            const sections = [...s.sections];
-            const index = sections.findIndex(sec => sec.id === sectionId);
-            if (index === -1) return s;
-            if (direction === 'up' && index === 0) return s;
-            if (direction === 'down' && index === sections.length - 1) return s;
-            const newIndex = direction === 'up' ? index - 1 : index + 1;
-            [sections[index], sections[newIndex]] = [sections[newIndex], sections[index]];
-            return { ...s, sections };
-        });
+        updateStructure(s => tree.moveSection(s, sectionId, direction));
     }, [updateStructure]);
 
-    const updateSectionProps = useCallback((sectionId: string, newProps: Record<string, any>) => {
-        updateStructure(s => ({
-            ...s,
-            sections: s.sections.map(sec =>
-                sec.id === sectionId ? { ...sec, props: { ...sec.props, ...newProps } } : sec
-            )
-        }));
+    const updateSectionProps = useCallback((sectionId: string, newProps: Record<string, unknown>) => {
+        updateStructure(s => tree.updateSectionProps(s, sectionId, newProps));
     }, [updateStructure]);
 
     const reorderSections = useCallback((fromIndex: number, toIndex: number) => {
-        updateStructure(s => {
-            const sections = [...s.sections];
-            const [moved] = sections.splice(fromIndex, 1);
-            sections.splice(toIndex, 0, moved);
-            return { ...s, sections };
-        });
+        updateStructure(s => tree.reorderSections(s, fromIndex, toIndex));
     }, [updateStructure]);
 
-    // ─── Block Operations ────────────────────────────────────────────
+    // ─── Block Operations (delegate to pure tree-operations) ─────────
     const addBlock = useCallback((type: PageBlockType, sectionIndex?: number) => {
-        const defaultProps: Record<string, Record<string, any>> = {
-            hero: { title: 'New Hero', subtitle: 'Describe your campaign here.' },
-            text: { content: '<p>Start writing your content here...</p>' },
-            cta: { label: 'Click Here', url: '', variant: 'primary' },
-            image: { src: '', alt: '', caption: '' },
-            video: { url: '', provider: 'youtube' },
-            spacer: { height: 48 },
-            divider: { style: 'solid', color: '#e2e8f0' },
-            faq: { items: [] },
-            testimonial: { author: '', role: '', quote: '', avatarUrl: '' },
-            stats: { items: [] },
-            logo_grid: { logos: [] },
-        };
-
-        const newBlock: PageBlock = {
-            id: `${type}_${Date.now()}`,
-            type,
-            props: defaultProps[type] || {}
-        };
-
-        updateStructure(s => {
-            const sections = [...s.sections];
-            if (sections.length === 0) {
-                sections.push({
-                    id: `sec_${Date.now()}`,
-                    type: 'section',
-                    props: { background: 'default' },
-                    blocks: [newBlock]
-                });
-            } else {
-                const targetIdx = sectionIndex ?? 0;
-                const idx = Math.min(targetIdx, sections.length - 1);
-                sections[idx] = {
-                    ...sections[idx],
-                    blocks: [...sections[idx].blocks, newBlock]
-                };
-            }
-            return { ...s, sections };
-        });
-
-        dispatch({ type: 'SELECT_BLOCK', payload: newBlock.id });
+        const block = tree.createBlock(type);
+        updateStructure(s => tree.insertBlock(s, block, sectionIndex));
+        dispatch({ type: 'SELECT_BLOCK', payload: block.id });
         dispatch({ type: 'SET_TAB', payload: 'edit' });
     }, [updateStructure]);
 
     const removeBlock = useCallback((blockId: string) => {
-        updateStructure(s => ({
-            ...s,
-            sections: s.sections.map(sec => ({
-                ...sec,
-                blocks: sec.blocks.filter(b => b.id !== blockId)
-            }))
-        }));
+        updateStructure(s => tree.removeBlock(s, blockId));
         if (state.selectedBlockId === blockId) {
             dispatch({ type: 'SELECT_BLOCK', payload: null });
         }
     }, [updateStructure, state.selectedBlockId]);
 
-    const updateBlockProps = useCallback((blockId: string, newProps: Record<string, any>) => {
-        updateStructure(s => ({
-            ...s,
-            sections: s.sections.map(sec => ({
-                ...sec,
-                blocks: sec.blocks.map(b =>
-                    b.id === blockId ? { ...b, props: { ...b.props, ...newProps } } : b
-                )
-            }))
-        }));
+    const updateBlockProps = useCallback((blockId: string, newProps: Record<string, unknown>) => {
+        updateStructure(s => tree.updateBlockProps(s, blockId, newProps));
     }, [updateStructure]);
 
     const moveBlock = useCallback((blockId: string, direction: 'up' | 'down') => {
-        updateStructure(s => ({
-            ...s,
-            sections: s.sections.map(sec => {
-                const blocks = [...sec.blocks];
-                const index = blocks.findIndex(b => b.id === blockId);
-                if (index === -1) return sec;
-                if (direction === 'up' && index === 0) return sec;
-                if (direction === 'down' && index === blocks.length - 1) return sec;
-                const newIndex = direction === 'up' ? index - 1 : index + 1;
-                [blocks[index], blocks[newIndex]] = [blocks[newIndex], blocks[index]];
-                return { ...sec, blocks };
-            })
-        }));
+        updateStructure(s => tree.moveBlock(s, blockId, direction));
     }, [updateStructure]);
 
     const reorderBlocks = useCallback((sectionId: string, fromIndex: number, toIndex: number) => {
-        updateStructure(s => ({
-            ...s,
-            sections: s.sections.map(sec => {
-                if (sec.id !== sectionId) return sec;
-                const blocks = [...sec.blocks];
-                const [moved] = blocks.splice(fromIndex, 1);
-                blocks.splice(toIndex, 0, moved);
-                return { ...sec, blocks };
-            })
-        }));
+        updateStructure(s => tree.reorderBlocks(s, sectionId, fromIndex, toIndex));
     }, [updateStructure]);
 
     const moveBlockToSection = useCallback((blockId: string, fromSectionId: string, toSectionId: string, toIndex: number) => {
-        updateStructure(s => {
-            let movedBlock: PageBlock | null = null;
-            const sections = s.sections.map(sec => {
-                if (sec.id === fromSectionId) {
-                    const block = sec.blocks.find(b => b.id === blockId);
-                    if (block) movedBlock = block;
-                    return { ...sec, blocks: sec.blocks.filter(b => b.id !== blockId) };
-                }
-                return sec;
-            });
-            if (!movedBlock) return s;
-            return {
-                ...s,
-                sections: sections.map(sec => {
-                    if (sec.id === toSectionId) {
-                        const blocks = [...sec.blocks];
-                        blocks.splice(toIndex, 0, movedBlock!);
-                        return { ...sec, blocks };
-                    }
-                    return sec;
-                })
-            };
-        });
+        updateStructure(s => tree.moveBlockToSection(s, blockId, fromSectionId, toSectionId, toIndex));
     }, [updateStructure]);
 
     // ─── Block Finder ────────────────────────────────────────────────
     const findBlock = useCallback((blockId: string) => {
         if (!state.version) return null;
-        for (const section of state.version.structureJson.sections) {
-            const block = section.blocks.find(b => b.id === blockId);
-            if (block) return { block, section };
-        }
-        return null;
+        return tree.findBlock(state.version.structureJson, blockId);
     }, [state.version]);
 
     // ─── Block Duplication ───────────────────────────────────────────
     const duplicateBlock = useCallback((blockId: string) => {
-        updateStructure(s => ({
-            ...s,
-            sections: s.sections.map(sec => {
-                const idx = sec.blocks.findIndex(b => b.id === blockId);
-                if (idx === -1) return sec;
-                const original = sec.blocks[idx];
-                const clone: PageBlock = {
-                    ...JSON.parse(JSON.stringify(original)),
-                    id: `${original.type}_${Date.now()}`
-                };
-                const blocks = [...sec.blocks];
-                blocks.splice(idx + 1, 0, clone);
-                return { ...sec, blocks };
-            })
-        }));
+        updateStructure(s => tree.duplicateBlock(s, blockId));
     }, [updateStructure]);
 
     // ─── Trigger Operations ──────────────────────────────────────────
