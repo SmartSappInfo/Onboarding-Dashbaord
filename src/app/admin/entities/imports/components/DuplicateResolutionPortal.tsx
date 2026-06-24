@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -163,7 +164,7 @@ const extractIncomingFields = (payload: any, mapping: Record<string, string>, de
         contactRole: get('contact_0_role') || payload.Role || payload.role || defaultValues['contact_0_role'] || '',
         locationRegion: get('locationRegion') || payload.Region || payload.region || defaultValues['locationRegion'] || '',
         locationDistrict: get('locationDistrict') || payload.District || payload.district || defaultValues['locationDistrict'] || '',
-        zone: get('zone') || payload.Zone || payload.zone || defaultValues['zone'] || '',
+        zone: get('zone') || payload.Zone || payload.zone || defaultValues['zone'] || UNASSIGNED_ZONE.name,
         locationString: get('locationString') || payload.Address || payload.address || payload['Address Detail'] || defaultValues['locationString'] || '',
         assignedTo: resolvedAssigned || '',
         package: get('package') || get('subscriptionPackageName') || payload.Package || payload.package || defaultValues['package'] || defaultValues['subscriptionPackageName'] || '',
@@ -1033,7 +1034,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                                  return (typeof source.location?.country === 'object' ? source.location?.country?.name : source.location?.country) || '';
                                              }
                                              if (variableName === 'zone') {
-                                                 return (typeof source.location?.zone === 'object' ? source.location?.zone?.name : source.location?.zone) || (typeof source.zone === 'object' ? source.zone?.name : source.zone) || '';
+                                                 return (typeof source.location?.zone === 'object' ? source.location?.zone?.name : source.location?.zone) || (typeof source.zone === 'object' ? source.zone?.name : source.zone) || UNASSIGNED_ZONE.name;
                                              }
                                              if (variableName === 'locationString') {
                                                  return source.location?.locationString || source.locationString || '';

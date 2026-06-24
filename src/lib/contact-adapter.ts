@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { School, Entity, WorkspaceEntity, EntityType, ResolvedContact, EntityContact } from './types';
 import { resolveEntityContacts } from './entity-contact-helpers';
+import { zoneDisplayName, type ZoneRef } from './zone-constants';
 
 // Re-export ResolvedContact for test compatibility
 export type { ResolvedContact } from './types';
@@ -151,7 +152,9 @@ async function resolveFromEntity(
       initials: entity.initials,
       referee: entity.referee,
       locationString: entity.location?.locationString || (entity as any).locationString,
-      zoneName: entity.location?.zone?.name || (entity as any).zone?.name,
+      // zoneDisplayName returns '' for the "Unassigned" sentinel so {{zone_name}}
+      // never renders the word "Unassigned" in outbound messages.
+      zoneName: zoneDisplayName(entity.location?.zone ?? (entity as { zone?: ZoneRef }).zone),
 
       schoolData: virtualSchoolData || legacySchoolData,
       industryData: entity.industryData,

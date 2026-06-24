@@ -2,10 +2,12 @@
 
 import { CallCentreService } from './services/call-centre-service';
 import { canUser } from './workspace-permissions';
-import type { CallScript, CallCampaign } from './types';
+import type { CallScript, CallCampaign, CallOutcomeAutomation } from './types';
 import { revalidatePath } from 'next/cache';
 import { generateCallScript, refineCallScript } from './campaign-ai';
 import { parseScriptExport, CFLOW_VERSION } from './call-script-portability';
+import { isJsonGraph, parseGraph, sanitizeImportedAutomations } from './call-centre-graph';
+import type { CallActionParams } from './types';
 
 // Helper to check permissions
 async function verifyPermission(userId: string, action: 'view' | 'create' | 'edit' | 'delete', workspaceId: string) {
@@ -95,11 +97,16 @@ export async function importCallScriptAction(
 
   try {
     const { name, description, content, variables } = parsed.script;
+    // Security: imported scripts come from other orgs — strip org-scoped ids and
+    // webhook URLs from outcome automations so they can't leak data / SSRF here.
+    const safeContent = isJsonGraph(content)
+      ? JSON.stringify(sanitizeImportedAutomations(parseGraph(content)))
+      : content;
     const data: Omit<CallScript, 'id' | 'createdAt' | 'updatedAt'> = {
       organizationId: ctx.organizationId,
       workspaceId: ctx.workspaceId,
       name,
-      content,
+      content: safeContent,
       variables,
       createdBy: userId,
       source: 'imported',
@@ -127,7 +134,7 @@ export async function importCallScriptAction(
 export async function executeScriptActionAction(
   params: {
     actionType: string;
-    actionConfig?: Record<string, any>;
+    actionConfig?: CallActionParams;
     entityId: string;
     workspaceId: string;
     organizationId: string;
@@ -144,8 +151,8 @@ export async function executeScriptActionAction(
       return { success: false, error: result.error, unsupported: result.unsupported };
     }
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Action execution failed.' };
   }
 }
 
@@ -478,5 +485,60 @@ export async function endCallCampaignAction(campaignId: string, workspaceId: str
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
+  }
+}
+
+export interface ExecuteOutcomeAutomationsResult {
+  type: string;
+  success: boolean;
+  error?: string;
+}
+
+export async function executeOutcomeAutomationsAction(
+  params: {
+    automations: CallOutcomeAutomation[];
+    entityId: string;
+    workspaceId: string;
+    organizationId: string;
+    contactId?: string;
+  },
+  userId: string
+): Promise<{ success: boolean; results?: ExecuteOutcomeAutomationsResult[]; error?: string }> {
+  const perm = await verifyPermission(userId, 'edit', params.workspaceId);
+  if (!perm.granted) return { success: false, error: perm.reason };
+
+  try {
+    const promises = params.automations.map(async (auto) => {
+      try {
+        const result = await CallCentreService.executeScriptAction({
+          actionType: auto.type,
+          actionConfig: auto.params,
+          entityId: params.entityId,
+          userId,
+          workspaceId: params.workspaceId,
+          organizationId: params.organizationId,
+          contactId: params.contactId,
+        });
+        return {
+          type: auto.type,
+          success: result.success,
+          error: result.error,
+        };
+      } catch (err: unknown) {
+        return {
+          type: auto.type,
+          success: false,
+          error: err instanceof Error ? err.message : 'Execution failed.',
+        };
+      }
+    });
+
+    const results = await Promise.all(promises);
+    return { success: true, results };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Outcome automations execution failed.',
+    };
   }
 }

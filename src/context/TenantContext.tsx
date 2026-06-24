@@ -42,8 +42,18 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [activeOrganizationId, setActiveOrganizationIdState] = React.useState<string>('');
-  const [activeWorkspaceId, setActiveWorkspaceIdState] = React.useState<string>('');
+  const [activeOrganizationId, setActiveOrganizationIdState] = React.useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('activeOrganizationId') || '';
+    }
+    return '';
+  });
+  const [activeWorkspaceId, setActiveWorkspaceIdState] = React.useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('activeWorkspaceId') || '';
+    }
+    return '';
+  });
   const [isInitialized, setIsInitialized] = React.useState(false);
 
   // 1. Fetch User Profile for Permission and Org resolution

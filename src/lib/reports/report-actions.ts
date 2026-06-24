@@ -13,6 +13,7 @@
 
 import { startOfMonth, endOfMonth, subDays, isWithinInterval, format } from 'date-fns';
 import { getEntityProjections } from '@/lib/dashboard/dashboard-repository';
+import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 
 export interface ReportAggregates {
   /** Onboarding velocity — entity creations bucketed by the last 6 months. */
@@ -42,11 +43,11 @@ export async function getReportAggregates(workspaceId: string): Promise<ReportAg
     }
   }
 
-  // Zone health — group by zone id.
+  // Zone health — group by zone id. Entities without a zone are bucketed under
+  // the "Unassigned" sentinel rather than silently dropped.
   const byZone = new Map<string, { count: number; capacity: number }>();
   for (const p of projections) {
-    const zoneId = p.zone?.id;
-    if (!zoneId) continue;
+    const zoneId = p.zone?.id ?? UNASSIGNED_ZONE.id;
     const cur = byZone.get(zoneId) || { count: 0, capacity: 0 };
     cur.count += 1;
     cur.capacity += p.nominalRoll || 0;

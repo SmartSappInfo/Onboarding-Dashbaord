@@ -1,4 +1,4 @@
-import type { BranchingScriptGraph, ScriptNode, ScriptNodeType, Entity, EntityContact } from './types';
+import type { BranchingScriptGraph, ScriptNode, ScriptNodeType, Entity, EntityContact, CallOutcomeAutomation, CallActionParams } from './types';
 
 // ─── Rich-text (formatted) script body helpers ───────────────────────────────
 // Node `data.text` (and the legacy text-builder string) may contain inline HTML
@@ -304,25 +304,29 @@ export function resolveScriptVariables(
   const primaryContact = entity?.entityContacts?.find(c => c.isPrimary) || entity?.entityContacts?.[0];
   const activeContact = currentContact || primaryContact;
 
+  const primaryEmail = entity?.primaryEmail || entity?.email || primaryContact?.email || '';
+  const primaryPhone = entity?.primaryPhone || entity?.phone || primaryContact?.phone || '';
+
   const variables: Record<string, string> = {
     ENTITY_NAME: entity?.name || 'Contact',
-    ENTITY_EMAIL: entity?.primaryEmail || entity?.email || primaryContact?.email || '',
-    ENTITY_PHONE: entity?.primaryPhone || entity?.phone || primaryContact?.phone || '',
+    ENTITY_EMAIL: primaryEmail,
+    ENTITY_PHONE: primaryPhone,
     ENTITY_TYPE: entity?.entityType || 'prospect',
-    PRIMARY_CONTACT_NAME: primaryContact?.name || '',
-    PRIMARY_CONTACT_PHONE: primaryContact?.phone || '',
-    CURRENT_CONTACT_NAME: activeContact?.name || '',
-    CURRENT_CONTACT_PHONE: activeContact?.phone || '',
-    CURRENT_CONTACT_EMAIL: activeContact?.email || '',
+    PRIMARY_CONTACT_NAME: primaryContact?.name || entity?.name || 'Contact',
+    PRIMARY_CONTACT_PHONE: primaryContact?.phone || primaryPhone,
+    CURRENT_CONTACT_NAME: activeContact?.name || primaryContact?.name || entity?.name || 'Contact',
+    CURRENT_CONTACT_PHONE: activeContact?.phone || primaryContact?.phone || primaryPhone,
+    CURRENT_CONTACT_EMAIL: activeContact?.email || primaryContact?.email || primaryEmail,
     DEAL_NAME: deal?.name || '[No Active Deal]',
     DEAL_VALUE: deal?.value !== undefined ? String(deal.value) : '[No Active Deal Value]',
     DEAL_STAGE: deal?.stageName || '[No Stage]',
     DEAL_STATUS: deal?.status || 'open',
     DEAL_EXPECTED_CLOSE: deal?.expectedCloseDate || '',
-    AGENT_NAME: agentName || 'Caller',
+    AGENT_NAME: agentName || 'Agent',
   };
 
-  return text.replace(/\{\{([A-Za-z0-9_]+)\}\}/g, (match, key) => {
+  return text.replace(/\{\{([A-Za-z0-9_]+)\}\}|\[([A-Za-z0-9_]+)\]/g, (match, a, b) => {
+    const key = a || b;
     const vName = key.toUpperCase();
     
     // 1. Try static variables map first
@@ -468,5 +472,80 @@ export function validateScriptGraph(graph: BranchingScriptGraph): { isValid: boo
   return {
     isValid: warnings.length === 0 || !warnings.some(w => w.includes('must contain') || w.includes('orphaned') || w.includes('exactly one')),
     warnings
+  };
+}
+
+// ─── Outcome automation helpers ───────────────────────────────────────────────
+// Outcomes (and the post-call automations they trigger) live on the script's
+// `outcome` nodes — the campaign derives them from `scriptSnapshot`. These pure
+// helpers are the single source of truth shared by the engine, workspace, wizard
+// and analytics, so every surface reads outcomes the same way.
+
+/** Distinct outcome values declared by `outcome` nodes, in graph order. */
+export function extractOutcomesFromGraph(graph: BranchingScriptGraph): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const node of graph.nodes) {
+    if (node.type !== 'outcome') continue;
+    const value = node.data.outcomeValue?.trim();
+    if (value && !seen.has(value)) {
+      seen.add(value);
+      out.push(value);
+    }
+  }
+  return out;
+}
+
+/**
+ * Automations configured on the first outcome node matching `outcome`.
+ * Returns `null` (not `[]`) when the script defines none, so callers can
+ * distinguish "script says run nothing" from "fall back to legacy campaign rules".
+ */
+export function getOutcomeAutomations(
+  graph: BranchingScriptGraph,
+  outcome: string,
+): CallOutcomeAutomation[] | null {
+  const node = graph.nodes.find(n => n.type === 'outcome' && n.data.outcomeValue === outcome);
+  const list = node?.data.outcomeConfig?.automations;
+  return Array.isArray(list) && list.length > 0 ? list : null;
+}
+
+/** Org-scoped reference keys cleared when importing a `.cflow` from another org. */
+const ORG_SCOPED_PARAM_KEYS: ReadonlyArray<keyof CallActionParams> = [
+  'templateId', 'tagId', 'stageId', 'pipelineId', 'meetingId', 'meetingTypeId',
+  'campaignId', 'taskAssigneeId', 'webhookUrl',
+];
+
+/**
+ * Strip org-scoped ids + webhook URLs from imported outcome automations. Imported
+ * scripts come from other organizations, so their template/tag/stage/campaign ids
+ * and webhook targets are meaningless (and a webhook URL is an SSRF risk) here —
+ * the importer must reconfigure them. Free-text params (notes, task titles) survive.
+ */
+export function sanitizeImportedAutomations(graph: BranchingScriptGraph): BranchingScriptGraph {
+  return {
+    edges: graph.edges,
+    nodes: graph.nodes.map(node => {
+      const automations = node.data.outcomeConfig?.automations;
+      if (node.type !== 'outcome' || !automations) return node;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          outcomeConfig: {
+            ...node.data.outcomeConfig,
+            automations: automations.map(automation => {
+              const params: CallActionParams = { ...automation.params };
+              for (const key of ORG_SCOPED_PARAM_KEYS) {
+                if (params[key] !== undefined) {
+                  (params as Record<string, unknown>)[key] = '';
+                }
+              }
+              return { type: automation.type, params };
+            }),
+          },
+        },
+      };
+    }),
   };
 }

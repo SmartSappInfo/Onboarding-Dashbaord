@@ -3,6 +3,7 @@
 import { collection, query, where, getDocs, orderBy, limit, type Firestore } from 'firebase/firestore';
 import type { School, Meeting, Survey, OnboardingStage, UserProfile, Activity, Zone, MessageLog, Task } from '@/lib/types';
 import { format, isAfter, startOfToday } from 'date-fns';
+import { UNASSIGNED_ZONE, withUnassignedZone } from './zone-constants';
 
 /**
  * Resilient fetcher that returns an empty array if a collection is missing or restricted.
@@ -150,9 +151,10 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
       };
   }).filter((ua: { totalAssigned: number }) => ua.totalAssigned > 0);
   
-  // 6. Regional Distribution
-  const zoneDistribution = zones.map((zone: Zone) => {
-    const entitiesInZone = activeEntities.filter((we: any) => we.zone?.id === zone.id);
+  // 6. Regional Distribution — include the virtual "Unassigned" zone so entities
+  //    without a zone are counted; the >0 filter below hides it when empty.
+  const zoneDistribution = withUnassignedZone(zones).map((zone) => {
+    const entitiesInZone = activeEntities.filter((we: any) => (we.zone?.id ?? UNASSIGNED_ZONE.id) === zone.id);
     const totalCount = entitiesInZone.length;
     const studentCount = entitiesInZone.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
     

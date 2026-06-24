@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { WorkspaceEntity } from '@/lib/types';
+import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -161,7 +162,7 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
                                 <div className="flex flex-col text-left min-w-0 flex-1">
                                     <div className="flex items-center gap-1 min-w-0 text-left">
                                         <MapPin className="h-2.5 w-2.5 text-primary/40 shrink-0 text-left" />
-                                        <span className="text-[9px] font-bold text-foreground/80 truncate leading-none text-left">{toTitleCase(entity.location?.region?.name || entity.zone?.name || 'Global')}</span>
+                                        <span className="text-[9px] font-bold text-foreground/80 truncate leading-none text-left">{toTitleCase(entity.location?.region?.name || entity.zone?.name || UNASSIGNED_ZONE.name)}</span>
                                     </div>
                                     <span className="text-[7px] font-semibold text-muted-foreground tracking-tighter opacity-40 mt-0.5 text-left">Region</span>
                                 </div>

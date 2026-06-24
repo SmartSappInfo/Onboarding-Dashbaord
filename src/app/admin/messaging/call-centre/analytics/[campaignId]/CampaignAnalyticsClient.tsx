@@ -29,6 +29,7 @@ import {
   Play
 } from 'lucide-react';
 import { generateCampaignQueueAction } from '@/lib/call-centre-actions';
+import { parseGraph, getOutcomeAutomations } from '@/lib/call-centre-graph';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { CallCampaign } from '@/lib/types';
@@ -62,6 +63,11 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
   const { queueItems, isLoading: queueItemsLoading } = useCallQueueItems(campaignId);
 
   const campaign = React.useMemo(() => campaigns.find(c => c.id === campaignId), [campaigns, campaignId]);
+  // Parse the campaign's script snapshot once (not per row — js-cache-function-results).
+  const scriptGraph = React.useMemo(
+    () => (campaign ? parseGraph(campaign.scriptSnapshot) : null),
+    [campaign?.scriptSnapshot]
+  );
   useSetBreadcrumb(campaign?.name ? `${campaign.name} Analytics` : 'Campaign Analytics');
 
   const [expandedNotesId, setExpandedNotesId] = React.useState<string | null>(null);
@@ -456,7 +462,10 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                       <div className="space-y-4">
                         {completedCalls.map((item) => {
                           const isExpanded = expandedNotesId === item.id;
-                          const rules = campaign?.automationRules?.[item.outcome || ''] || [];
+                          // Script-owned automations first; fall back to legacy campaign rules.
+                          const rules = (item.outcome && scriptGraph ? getOutcomeAutomations(scriptGraph, item.outcome) : null)
+                            ?? campaign?.automationRules?.[item.outcome || '']
+                            ?? [];
 
                           return (
                             <div 

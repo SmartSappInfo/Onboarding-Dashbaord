@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { 
-  isJsonGraph, 
-  parseGraph, 
-  getNextNodeChoices, 
-  resolveScriptVariables, 
+import {
+  isJsonGraph,
+  parseGraph,
+  getNextNodeChoices,
+  resolveScriptVariables,
   validateScriptGraph,
+  extractOutcomesFromGraph,
+  getOutcomeAutomations,
+  sanitizeImportedAutomations,
   ScriptVariableEntity
 } from '../call-centre-graph';
 import type { BranchingScriptGraph } from '../types';
@@ -310,6 +313,54 @@ describe('Call Centre Visual Script Graph Traversal Engine', () => {
       expect(result.isValid).toBe(false);
       expect(result.warnings.some(w => w.includes('exactly one Start Call node'))).toBe(true);
       expect(result.warnings.some(w => w.includes('exactly one End Call node'))).toBe(true);
+    });
+  });
+
+  describe('Outcome automation helpers', () => {
+    const graph: BranchingScriptGraph = {
+      nodes: [
+        { id: 's', type: 'start', position: { x: 0, y: 0 }, data: { label: 'Start', text: '' } },
+        { id: 'o1', type: 'outcome', position: { x: 0, y: 0 }, data: { label: '', text: '', outcomeValue: 'Interested',
+            outcomeConfig: { automations: [{ type: 'ADD_TAG', params: { tagId: 't1' } }] } } },
+        { id: 'o2', type: 'outcome', position: { x: 0, y: 0 }, data: { label: '', text: '', outcomeValue: 'Interested' } },
+        { id: 'o3', type: 'outcome', position: { x: 0, y: 0 }, data: { label: '', text: '', outcomeValue: 'Not Interested' } },
+      ],
+      edges: [],
+    };
+
+    it('extractOutcomesFromGraph returns distinct outcome values in order', () => {
+      expect(extractOutcomesFromGraph(graph)).toEqual(['Interested', 'Not Interested']);
+    });
+
+    it('extractOutcomesFromGraph returns [] for a graph with no outcome nodes', () => {
+      expect(extractOutcomesFromGraph({ nodes: [graph.nodes[0]], edges: [] })).toEqual([]);
+    });
+
+    it('getOutcomeAutomations returns the matching node automations', () => {
+      expect(getOutcomeAutomations(graph, 'Interested')).toEqual([{ type: 'ADD_TAG', params: { tagId: 't1' } }]);
+    });
+
+    it('getOutcomeAutomations returns null when outcome has no automations (legacy fallback signal)', () => {
+      expect(getOutcomeAutomations(graph, 'Not Interested')).toBeNull();
+      expect(getOutcomeAutomations(graph, 'Unknown')).toBeNull();
+    });
+
+    it('sanitizeImportedAutomations clears org-scoped ids and webhook urls but keeps free text', () => {
+      const dirty: BranchingScriptGraph = { edges: [], nodes: [{ id: 'o', type: 'outcome', position: { x: 0, y: 0 },
+        data: { label: '', text: '', outcomeValue: 'X', outcomeConfig: { automations: [
+          { type: 'SEND_SMS', params: { templateId: 'foreign' } },
+          { type: 'WEBHOOK', params: { webhookUrl: 'http://evil.test', noteContent: 'keep me' } },
+        ] } } }] };
+      const clean = sanitizeImportedAutomations(dirty);
+      const automations = clean.nodes[0].data.outcomeConfig!.automations!;
+      expect(automations[0].params.templateId).toBe('');
+      expect(automations[1].params.webhookUrl).toBe('');
+      expect(automations[1].params.noteContent).toBe('keep me');
+    });
+
+    it('sanitizeImportedAutomations leaves non-outcome nodes untouched', () => {
+      const result = sanitizeImportedAutomations(graph);
+      expect(result.nodes[0]).toBe(graph.nodes[0]); // start node returned by reference
     });
   });
 });

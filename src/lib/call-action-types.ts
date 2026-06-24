@@ -2,7 +2,7 @@
  * Shared action type metadata for call-centre scripts and campaigns.
  * Used by: ScriptBuilderClient, CampaignWizardClient, VisualScriptCanvas, InteractiveScriptView
  */
-import type { CallActionType, MessageChannel } from './types';
+import type { CallActionType, CallActionParams, MessageChannel } from './types';
 import type { LucideIcon } from 'lucide-react';
 import {
   MessageSquare,
@@ -10,6 +10,7 @@ import {
   MessageCircle,
   ClipboardList,
   GitBranch,
+  Workflow,
   Tag,
   Globe,
   StickyNote,
@@ -30,7 +31,7 @@ export interface CallActionMeta {
   /** Badge label for campaign wizard add-action buttons */
   badgeLabel: string;
   /** Factory returning default params when a new rule of this type is created */
-  defaultParams: () => Record<string, string | number>;
+  defaultParams: () => Partial<CallActionParams>;
 }
 
 /**
@@ -76,6 +77,13 @@ export const CALL_ACTION_META = new Map<CallActionType, CallActionMeta>([
     badgeLabel: '+ Stage Change',
     defaultParams: () => ({ stageId: '' }),
   }],
+  ['ADD_TO_PIPELINE', {
+    label: 'Add to Pipeline & Stage',
+    icon: Workflow,
+    colorClass: 'bg-fuchsia-500',
+    badgeLabel: '+ Add to Pipeline',
+    defaultParams: () => ({ pipelineId: '', stageId: '' }),
+  }],
   ['ADD_TAG', {
     label: 'Add Tag',
     icon: Tag,
@@ -109,7 +117,7 @@ export const CALL_ACTION_META = new Map<CallActionType, CallActionMeta>([
     icon: Calendar,
     colorClass: 'bg-cyan-500',
     badgeLabel: '+ Schedule Meeting',
-    defaultParams: () => ({ meetingTypeId: '' }),
+    defaultParams: () => ({ meetingMode: 'guest_list' }),
   }],
   ['TRANSFER_CALL', {
     label: 'Transfer Call',

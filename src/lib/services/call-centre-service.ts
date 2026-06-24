@@ -1028,7 +1028,7 @@ export class CallCentreService {
             priority: params.taskPriority || 'medium',
             status: 'todo',
             category: 'call_follow_up' as any,
-            assignedTo: userId,
+            assignedTo: params.taskAssigneeId ? [params.taskAssigneeId] : (userId ? [userId] : []),
             entityId,
             entityType: 'person' as any,
             dueDate: params.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // + 2 days default

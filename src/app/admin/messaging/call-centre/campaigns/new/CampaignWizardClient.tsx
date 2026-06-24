@@ -26,26 +26,22 @@ import {
   ArrowLeft,
   ArrowRight,
   Play,
-  Trash2,
   ChevronRight,
   RefreshCw,
   Save,
   Edit3,
   Info,
-  Calendar,
-  CalendarDays,
-  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AudienceSelector } from '@/app/admin/messaging/audiences/components/AudienceSelector';
 import { legacyAudienceToFilters } from '@/lib/audience-hooks';
-import type { AudienceFilter, AudienceDefinition, CallOutcomeAutomation, AutomationRuleParams, CallActionType, MessageTemplate } from '@/lib/types';
+import type { AudienceFilter, AudienceDefinition, MessageTemplate } from '@/lib/types';
 import type { ConditionGroup } from '@/lib/automation-condition';
-import { isJsonGraph, parseGraph } from '@/lib/call-centre-graph';
+import { isJsonGraph, parseGraph, extractOutcomesFromGraph, getOutcomeAutomations } from '@/lib/call-centre-graph';
 import { ScriptPlaybookView } from '../../scripts/components/ScriptPlaybookView';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
-import { CALL_ACTION_TYPES, getActionMeta } from '@/lib/call-action-types';
+import { getActionMeta } from '@/lib/call-action-types';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import dynamic from 'next/dynamic';
@@ -94,7 +90,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
 
   // ─── Step States ───────────────────────────────────────────────────────────
   const [step, setStep] = React.useState<number>(() => {
-    if (initialStep && initialStep >= 1 && initialStep <= 6) {
+    if (initialStep && initialStep >= 1 && initialStep <= 4) {
       return initialStep;
     }
     return 1;
@@ -123,19 +119,8 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
   }>>([]);
   const [contactScope, setContactScope] = React.useState<'primary' | 'signatories' | 'all' | (string & {})>('primary');
 
-  // Outcomes
-  const [outcomes, setOutcomes] = React.useState<string[]>([
-    'Interested',
-    'Not Interested',
-    'No Answer',
-    'Call Back Later',
-    'Wrong Number',
-    'Deferred'
-  ]);
-  const [newOutcome, setNewOutcome] = React.useState('');
-
-  // Automations Map (Outcome -> Array of Actions)
-  const [automationRules, setAutomationRules] = React.useState<Record<string, CallOutcomeAutomation[]>>({});
+  // Outcomes + their post-call automations now live on the script's outcome nodes —
+  // the campaign derives them from the selected script (see derivedOutcomes below).
 
   // Loading/Wizard States
   const [isLoading, setIsLoading] = React.useState(false);
@@ -215,24 +200,11 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
           setSelectedContacts(audDef.selectedContacts || []);
           setContactScope(audDef.contactScope || 'primary');
           
-          setOutcomes(campaign.outcomes || []);
           setAllowAddContactsAfterLaunch(campaign.allowAddContactsAfterLaunch ?? false);
           setTriggerActionsAutomatically(campaign.triggerActionsAutomatically ?? true);
           setCampaignProgressCompleted(campaign.progress?.completed || 0);
-          
-          // Normalize loaded automation rules for backward compat
-          const rawRules: Record<string, any[]> = campaign.automationRules ?? {};
-          const normalizedRules: Record<string, CallOutcomeAutomation[]> = {};
-          for (const [outcome, rules] of Object.entries(rawRules)) {
-            normalizedRules[outcome] = (rules || []).map(rule => ({
-              type: (rule.type ?? 'SEND_SMS') as CallActionType,
-              params: {
-                ...getActionMeta((rule.type ?? 'SEND_SMS') as CallActionType).defaultParams(),
-                ...(rule.params ?? {}),
-              } as AutomationRuleParams,
-            }));
-          }
-          setAutomationRules(normalizedRules);
+          // Outcomes + automations are derived from the script (see derivedOutcomes); the
+          // legacy campaign.outcomes / automationRules are no longer edited here.
         }
       } catch (err: any) {
         toast({ variant: 'destructive', title: 'Error', description: err.message });
@@ -249,71 +221,16 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
     return scripts.find(s => s.id === selectedScriptId);
   }, [scripts, selectedScriptId]);
 
-  // ─── Outcomes Handlers ─────────────────────────────────────────────────────
-
-  const handleAddOutcome = () => {
-    if (!newOutcome.trim()) return;
-    if (outcomes.includes(newOutcome.trim())) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Outcome already exists' });
-      return;
-    }
-    setOutcomes([...outcomes, newOutcome.trim()]);
-    setNewOutcome('');
-  };
-
-  const handleRemoveOutcome = (out: string) => {
-    setOutcomes(outcomes.filter(o => o !== out));
-    // Also clear automation rules for this outcome
-    const newRules = { ...automationRules };
-    delete newRules[out];
-    setAutomationRules(newRules);
-  };
-
-  // ─── Automations Handlers ──────────────────────────────────────────────────
-
-  const handleAddAutomationRule = (outcome: string, type: CallActionType) => {
-    const existing = automationRules[outcome] || [];
-    const meta = getActionMeta(type);
-    const newRule: CallOutcomeAutomation = {
-      type,
-      params: meta.defaultParams() as AutomationRuleParams
-    };
-    setAutomationRules({
-      ...automationRules,
-      [outcome]: [...existing, newRule]
-    });
-  };
-
-  const handleRemoveAutomationRule = (outcome: string, index: number) => {
-    const existing = automationRules[outcome] || [];
-    const updated = [...existing];
-    updated.splice(index, 1);
-    setAutomationRules({
-      ...automationRules,
-      [outcome]: updated
-    });
-  };
-
-  const handleUpdateRuleParam = <K extends keyof AutomationRuleParams>(
-    outcome: string,
-    index: number,
-    key: K,
-    value: AutomationRuleParams[K]
-  ) => {
-    const existing = automationRules[outcome] || [];
-    const updated = [...existing];
-    updated[index] = {
-      ...updated[index],
-      params: {
-        ...updated[index].params,
-        [key]: value
-      }
-    };
-    setAutomationRules({
-      ...automationRules,
-      [outcome]: updated
-    });
-  };
+  // Outcomes + their automations are owned by the script's outcome nodes. Parse the
+  // selected script once and derive the outcome list from it (single source of truth).
+  const scriptGraph = React.useMemo(
+    () => parseGraph(selectedScript?.content),
+    [selectedScript?.content]
+  );
+  const derivedOutcomes = React.useMemo(
+    () => extractOutcomesFromGraph(scriptGraph),
+    [scriptGraph]
+  );
 
   // ─── Launch & Draft Persistence Handlers ────────────────────────────────────
 
@@ -343,8 +260,8 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
             scriptId: selectedScriptId,
             scriptSnapshot: selectedScript?.content || '',
             audienceDefinition,
-            outcomes,
-            automationRules,
+            outcomes: derivedOutcomes,
+            automationRules: {},
             allowAddContactsAfterLaunch,
             triggerActionsAutomatically,
             workspaceId: activeWorkspaceId,
@@ -363,8 +280,8 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
             scriptId: selectedScriptId,
             scriptSnapshot: selectedScript?.content || '',
             audienceDefinition,
-            outcomes,
-            automationRules,
+            outcomes: derivedOutcomes,
+            automationRules: {},
             allowAddContactsAfterLaunch,
             triggerActionsAutomatically,
             status: 'draft',
@@ -463,7 +380,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
               {campaignId ? 'Resume Campaign Setup' : 'Start Call Campaign'}
             </h1>
             <p className="text-xs text-muted-foreground">
-              Define details, scripts, contact audiences, outcomes, and background automations
+              Define details, the script playbook, and the contact audience. Outcomes and their automations come from the script.
             </p>
           </div>
         </div>
@@ -474,8 +391,6 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
             'Campaign Info',
             'Select Script',
             'Select Audience',
-            'Configure Outcomes',
-            'Outcome Automations',
             'Review & Start'
           ].map((sName, idx) => (
             <React.Fragment key={sName}>
@@ -692,505 +607,8 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
             </CardContent>
           )}
 
-          {/* STEP 4: Configure Outcomes */}
+          {/* STEP 4: Review & Launch */}
           {step === 4 && (
-            <CardContent className="p-8 space-y-6">
-              <div className="space-y-1">
-                <h2 className="text-base font-bold text-foreground">Predefined Call Outcomes</h2>
-                <p className="text-xs text-muted-foreground">Selectable outcomes available to callers for queue resolution</p>
-              </div>
-
-              <div className="space-y-6 max-w-xl">
-                {/* Outcomes list */}
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Campaign Outcomes List</Label>
-                  <div className="space-y-2 border border-border/50 rounded-2xl p-4 bg-muted/20 max-h-[300px] overflow-y-auto">
-                    {outcomes.map(out => (
-                      <div key={out} className="flex items-center justify-between p-3 bg-background border border-border/50 rounded-xl shadow-sm">
-                        <span className="text-xs font-bold text-foreground">{out}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveOutcome(out)}
-                          className="h-8 w-8 text-muted-foreground hover:text-rose-500 rounded-lg"
-                          aria-label={`Remove outcome ${out}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Add Outcome form */}
-                <div className="flex gap-2">
-                  <Input
-                    value={newOutcome}
-                    onChange={(e) => setNewOutcome(e.target.value)}
-                    placeholder="Add custom outcome, e.g. Left Voicemail"
-                    className="h-11 rounded-xl"
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleAddOutcome}
-                    className="h-11 rounded-xl font-bold text-xs shrink-0"
-                  >
-                    Add
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          )}
-
-          {/* STEP 5: Configure Automations */}
-          {step === 5 && (
-            <CardContent className="p-8 space-y-6">
-              <div className="space-y-1">
-                <h2 className="text-base font-bold text-foreground">Post-Call Automations</h2>
-                <p className="text-xs text-muted-foreground">Map system triggers to run immediately when an outcome is logged</p>
-              </div>
-
-              <div className="space-y-8 max-h-[450px] overflow-y-auto pr-2">
-                {outcomes.map(out => {
-                  const rules = automationRules[out] || [];
-                  return (
-                    <div key={out} className="border border-border/50 rounded-2xl p-5 bg-muted/10 space-y-4">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <h3 className="text-xs font-black uppercase text-foreground">Outcome: {out}</h3>
-                        
-                        <div className="flex gap-1.5 flex-wrap">
-                          {CALL_ACTION_TYPES.map(type => {
-                            const meta = getActionMeta(type);
-                            const Icon = meta.icon;
-                            return (
-                              <Badge
-                                key={type}
-                                onClick={() => handleAddAutomationRule(out, type)}
-                                variant="secondary"
-                                className="cursor-pointer hover:bg-secondary/80 font-bold text-[8px] px-2 rounded-md gap-1 flex items-center"
-                              >
-                                <Icon className="h-2.5 w-2.5" />
-                                {meta.badgeLabel}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Configured rules list */}
-                      {rules.length === 0 ? (
-                        <p className="text-xs text-muted-foreground italic pl-1">No automations mapped to this outcome.</p>
-                      ) : (
-                        <div className="space-y-3">
-                          {rules.map((rule, rIdx) => (
-                            <div key={rIdx} className="flex items-center gap-3 p-3 bg-background border border-border/50 rounded-xl shadow-sm">
-                              
-                              <Badge className="font-bold text-[8px] tracking-wider uppercase bg-primary/10 text-primary hover:bg-primary/15 border-primary/20 shrink-0">
-                                {rule.type.replace('_', ' ')}
-                              </Badge>
-
-                              {/* Rule Parameters inputs */}
-                              <div className="flex-grow">
-                                {(rule.type === 'SEND_SMS' || rule.type === 'SEND_EMAIL' || rule.type === 'SEND_WHATSAPP') && (
-                                  <div className="space-y-1">
-                                    {rule.type === 'SEND_WHATSAPP' && (
-                                      <div className="flex items-center gap-1 mb-1">
-                                        <span className="text-[9px] text-muted-foreground font-semibold">WHATSAPP CHANNEL</span>
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Info className="h-3 w-3 text-muted-foreground/50 cursor-help" />
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" className="text-[10px] max-w-[200px]">
-                                              Only approved Meta WhatsApp templates are shown
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      </div>
-                                    )}
-                                    <MessagingTemplateSelector
-                                      category="campaigns"
-                                      recipientType="entity"
-                                      channel={getActionMeta(rule.type).channel!}
-                                      value={rule.params.templateId ?? ''}
-                                      onValueChange={(val) => handleUpdateRuleParam(out, rIdx, 'templateId', val)}
-                                      compact
-                                    />
-                                  </div>
-                                )}
-
-                                {rule.type === 'CREATE_TASK' && (
-                                  <div className="space-y-2">
-                                    {/* Task Title */}
-                                    <Input
-                                      value={rule.params.taskTitle ?? ''}
-                                      onChange={(e) => handleUpdateRuleParam(out, rIdx, 'taskTitle', e.target.value)}
-                                      onKeyDown={(e) => { if (e.key === '/') e.stopPropagation(); }}
-                                      placeholder="Task title e.g. Follow up with {{CONTACT_NAME}}"
-                                      className="h-9 rounded-lg text-xs"
-                                    />
-                                    {/* Task Description */}
-                                    <Textarea
-                                      value={rule.params.taskDescription ?? ''}
-                                      onChange={(e) => handleUpdateRuleParam(out, rIdx, 'taskDescription', e.target.value)}
-                                      onKeyDown={(e) => { if (e.key === '/') e.stopPropagation(); }}
-                                      placeholder={`Agreed action from {{CALL_DATE}}:\n• {{OUTCOME}}`}
-                                      rows={2}
-                                      className="bg-background border border-border/50 rounded-lg text-xs p-2 resize-none"
-                                    />
-                                    <p className="text-[8px] text-muted-foreground/50">
-                                      Use <code className="font-mono bg-muted/40 px-0.5 rounded">{'{{'+'VARIABLE'+'}}'}</code> or <code className="font-mono bg-muted/40 px-0.5 rounded">/field</code> to inject data
-                                    </p>
-                                    {/* Priority */}
-                                    <div className="flex gap-2">
-                                      <Select
-                                        value={rule.params.taskPriority ?? 'medium'}
-                                        onValueChange={(val) => handleUpdateRuleParam(out, rIdx, 'taskPriority', val as any)}
-                                      >
-                                        <SelectTrigger className="h-8 flex-1 rounded-lg text-xs">
-                                          <SelectValue placeholder="Priority" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="low">Low</SelectItem>
-                                          <SelectItem value="medium">Medium</SelectItem>
-                                          <SelectItem value="high">High</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    {/* Assign To */}
-                                    <div className="space-y-1">
-                                      <Label className="text-[8px] font-bold text-muted-foreground uppercase">
-                                        Assign To
-                                      </Label>
-                                      <Select
-                                        value={rule.params.taskAssigneeMode ?? 'caller'}
-                                        onValueChange={(val) => {
-                                          const existing = automationRules[out] || [];
-                                          const updated = [...existing];
-                                          updated[rIdx] = {
-                                            ...updated[rIdx],
-                                            params: {
-                                              ...updated[rIdx].params,
-                                              taskAssigneeMode: val as any,
-                                              taskAssigneeId: val === 'specific' ? updated[rIdx].params.taskAssigneeId : undefined
-                                            }
-                                          };
-                                          setAutomationRules({ ...automationRules, [out]: updated });
-                                        }}
-                                      >
-                                        <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="caller">Current Caller (Agent)</SelectItem>
-                                          <SelectItem value="round_robin">Round Robin</SelectItem>
-                                          <SelectItem value="specific">Specific User</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-
-                                    {/* Specific user picker */}
-                                    {rule.params.taskAssigneeMode === 'specific' && (
-                                      <div className="space-y-1">
-                                        <Label className="text-[8px] font-bold text-muted-foreground uppercase">
-                                          Select User
-                                        </Label>
-                                        <Select
-                                          value={rule.params.taskAssigneeId || '__none__'}
-                                          onValueChange={(val) => handleUpdateRuleParam(out, rIdx, 'taskAssigneeId', val === '__none__' ? undefined : val)}
-                                        >
-                                          <SelectTrigger className="h-8 bg-background border border-border rounded-lg text-xs">
-                                            <SelectValue placeholder="Choose a workspace user..." />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {workspaceUsers.length > 0 ? (
-                                              workspaceUsers.map((u) => (
-                                                <SelectItem key={u.id} value={u.id}>
-                                                  <span className="flex flex-col">
-                                                    <span className="font-medium">{u.name || u.email}</span>
-                                                    {u.name && (
-                                                      <span className="text-[9px] text-muted-foreground">{u.email}</span>
-                                                    )}
-                                                  </span>
-                                                </SelectItem>
-                                              ))
-                                            ) : (
-                                              <SelectItem value="__none__" disabled>
-                                                No workspace users found
-                                              </SelectItem>
-                                            )}
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    )}
-
-                                    {/* Due date mode toggle */}
-                                    <div className="flex gap-1.5">
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant={(rule.params.taskDueDateMode ?? 'days') === 'days' ? 'default' : 'outline'}
-                                        className="h-7 text-[9px] flex-1 gap-1"
-                                        onClick={() => handleUpdateRuleParam(out, rIdx, 'taskDueDateMode', 'days')}
-                                      >
-                                        <CalendarDays className="h-3 w-3" />
-                                        Days from call
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant={(rule.params.taskDueDateMode ?? 'days') === 'specific' ? 'default' : 'outline'}
-                                        className="h-7 text-[9px] flex-1 gap-1"
-                                        onClick={() => handleUpdateRuleParam(out, rIdx, 'taskDueDateMode', 'specific')}
-                                      >
-                                        <Calendar className="h-3 w-3" />
-                                        Specific date
-                                      </Button>
-                                    </div>
-                                    {/* Days input */}
-                                    {(rule.params.taskDueDateMode ?? 'days') === 'days' && (
-                                      <div className="flex gap-2 items-center">
-                                        <Label className="text-[9px] text-muted-foreground shrink-0 uppercase font-semibold">Days after call:</Label>
-                                        <Input
-                                          type="number"
-                                          min={0}
-                                          value={rule.params.taskDueDays ?? 1}
-                                          onChange={(e) => handleUpdateRuleParam(out, rIdx, 'taskDueDays', Number(e.target.value) || 1)}
-                                          onKeyDown={(e) => { if (e.key === '/') e.stopPropagation(); }}
-                                          className="h-8 w-20 rounded-lg text-xs"
-                                        />
-                                      </div>
-                                    )}
-                                    {/* Specific date input */}
-                                    {rule.params.taskDueDateMode === 'specific' && (
-                                      <Input
-                                        type="date"
-                                        value={rule.params.taskDueSpecificDate ?? ''}
-                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'taskDueSpecificDate', e.target.value)}
-                                        className="h-8 rounded-lg text-xs"
-                                      />
-                                    )}
-                                    {/* Time of day */}
-                                    <div className="flex gap-2 items-center">
-                                      <Clock className="h-3 w-3 text-muted-foreground/60 shrink-0" />
-                                      <Input
-                                        type="time"
-                                        value={rule.params.taskDueTimeOfDay ?? '15:00'}
-                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'taskDueTimeOfDay', e.target.value)}
-                                        className="h-8 flex-1 rounded-lg text-xs"
-                                      />
-                                      <span className="text-[8px] text-muted-foreground/50 shrink-0">Agents may update</span>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {rule.type === 'CHANGE_STAGE' && (
-                                  <Select
-                                    value={rule.params.stageId && rule.params.stageId.length > 0 ? rule.params.stageId : '__none__'}
-                                    onValueChange={(val) => handleUpdateRuleParam(out, rIdx, 'stageId', val === '__none__' ? undefined : val)}
-                                  >
-                                    <SelectTrigger className="h-9 rounded-lg text-xs">
-                                      <SelectValue placeholder="Select pipeline stage" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {stages.length > 0 ? (
-                                        stages.map((st) => (
-                                          <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
-                                        ))
-                                      ) : (
-                                        <SelectItem value="__none__" disabled>No stages found</SelectItem>
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                                )}
-
-                                {(rule.type === 'ADD_TAG' || rule.type === 'REMOVE_TAG') && (
-                                  <Select
-                                    value={rule.params.tagId && rule.params.tagId.length > 0 ? rule.params.tagId : '__none__'}
-                                    onValueChange={(val) => handleUpdateRuleParam(out, rIdx, 'tagId', val === '__none__' ? undefined : val)}
-                                  >
-                                    <SelectTrigger className="h-9 rounded-lg text-xs">
-                                      <SelectValue placeholder={rule.type === 'ADD_TAG' ? 'Select tag to add' : 'Select tag to remove'} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {tags.length > 0 ? (
-                                        tags.map((tg) => (
-                                          <SelectItem key={tg.id} value={tg.id}>{tg.name}</SelectItem>
-                                        ))
-                                      ) : (
-                                        <SelectItem value="__none__" disabled>No tags found</SelectItem>
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                                )}
-
-                                {rule.type === 'WEBHOOK' && (
-                                  <div className="space-y-2">
-                                    <div className="flex gap-2">
-                                      <Input
-                                        value={rule.params.webhookUrl ?? ''}
-                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'webhookUrl', e.target.value)}
-                                        placeholder="https://api.thirdparty.com/webhook"
-                                        className="h-9 rounded-lg text-xs flex-grow"
-                                      />
-                                      <Select 
-                                        value={rule.params.webhookMethod ?? 'POST'} 
-                                        onValueChange={(val) => handleUpdateRuleParam(out, rIdx, 'webhookMethod', val as any)}
-                                      >
-                                        <SelectTrigger className="h-9 w-24 rounded-lg text-xs shrink-0">
-                                          <SelectValue placeholder="Method" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="POST">POST</SelectItem>
-                                          <SelectItem value="GET">GET</SelectItem>
-                                          <SelectItem value="PUT">PUT</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <Textarea
-                                      value={rule.params.webhookHeaders ?? ''}
-                                      onChange={(e) => handleUpdateRuleParam(out, rIdx, 'webhookHeaders', e.target.value)}
-                                      placeholder='Custom Headers JSON e.g. { "Authorization": "Bearer key" }'
-                                      rows={1}
-                                      className="bg-background border border-border/50 rounded-lg text-xs p-2 resize-none h-8 min-h-[34px] leading-tight"
-                                    />
-                                  </div>
-                                )}
-
-                                {rule.type === 'LOG_NOTE' && (
-                                  <div className="space-y-1">
-                                    <Textarea
-                                      value={rule.params.noteContent ?? ''}
-                                      onChange={(e) => handleUpdateRuleParam(out, rIdx, 'noteContent', e.target.value)}
-                                      placeholder="Enter note content. Support {{OUTCOME}} or contact/deal variables..."
-                                      rows={2}
-                                      className="bg-background border border-border/50 rounded-lg text-xs p-2 resize-none h-14"
-                                    />
-                                  </div>
-                                )}
-
-                                {rule.type === 'SCHEDULE_MEETING' && (
-                                  <Select
-                                    value={rule.params.meetingTypeId && rule.params.meetingTypeId.length > 0 ? rule.params.meetingTypeId : '__none__'}
-                                    onValueChange={(val) => handleUpdateRuleParam(out, rIdx, 'meetingTypeId', val === '__none__' ? undefined : val)}
-                                  >
-                                    <SelectTrigger className="h-9 rounded-lg text-xs">
-                                      <SelectValue placeholder="Select meeting type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {meetings.length > 0 ? (
-                                        meetings.map((mt) => (
-                                          <SelectItem key={mt.id} value={mt.id}>{mt.title}</SelectItem>
-                                        ))
-                                      ) : (
-                                        <SelectItem value="__none__" disabled>No meeting types found</SelectItem>
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                                )}
-
-                                {rule.type === 'TRANSFER_CALL' && (
-                                  <div className="space-y-2">
-                                    <div className="flex gap-2">
-                                      <Select 
-                                        value={rule.params.transferMode ?? 'phone'} 
-                                        onValueChange={(val) => handleUpdateRuleParam(out, rIdx, 'transferMode', val as any)}
-                                      >
-                                        <SelectTrigger className="h-9 w-40 rounded-lg text-xs shrink-0">
-                                          <SelectValue placeholder="Transfer Mode" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="phone">Direct Phone Number</SelectItem>
-                                          <SelectItem value="agent">To Agent / Extension</SelectItem>
-                                          <SelectItem value="campaign">To Another Campaign</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                      <Input
-                                        value={rule.params.transferTarget ?? ''}
-                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'transferTarget', e.target.value)}
-                                        placeholder={
-                                          rule.params.transferMode === 'phone' 
-                                            ? '+1 (555) 000-0000' 
-                                            : rule.params.transferMode === 'agent'
-                                              ? 'agent_id or ext 200'
-                                              : 'campaign_id_to_transfer'
-                                        }
-                                        className="h-9 rounded-lg text-xs flex-grow"
-                                      />
-                                    </div>
-                                  </div>
-                                )}
-
-                                {rule.type === 'UPDATE_CONTACT' && (
-                                  <div className="space-y-2">
-                                    <div className="space-y-1">
-                                      <Label className="text-[8px] font-bold text-muted-foreground uppercase">
-                                        Contact Name
-                                      </Label>
-                                      <Input
-                                        value={rule.params.contactName ?? ''}
-                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'contactName', e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === '/') e.stopPropagation(); }}
-                                        placeholder="e.g. John Doe or {{CURRENT_CONTACT_NAME}}"
-                                        className="h-8 bg-background border-border rounded-lg text-xs px-2"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-[8px] font-bold text-muted-foreground uppercase">
-                                        Contact Email
-                                      </Label>
-                                      <Input
-                                        value={rule.params.contactEmail ?? ''}
-                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'contactEmail', e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === '/') e.stopPropagation(); }}
-                                        placeholder="e.g. john@example.com"
-                                        className="h-8 bg-background border-border rounded-lg text-xs px-2"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-[8px] font-bold text-muted-foreground uppercase">
-                                        Contact Phone
-                                      </Label>
-                                      <Input
-                                        value={rule.params.contactPhone ?? ''}
-                                        onChange={(e) => handleUpdateRuleParam(out, rIdx, 'contactPhone', e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === '/') e.stopPropagation(); }}
-                                        placeholder="e.g. +1 (555) 000-0000"
-                                        className="h-8 bg-background border-border rounded-lg text-xs px-2"
-                                      />
-                                    </div>
-                                    <p className="text-[8px] text-muted-foreground/50">
-                                      Use <code className="font-mono bg-muted/40 px-0.5 rounded">{'{{'+'VARIABLE'+'}}'}</code> or <code className="font-mono bg-muted/40 px-0.5 rounded">/field</code> to inject data
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveAutomationRule(out, rIdx)}
-                                className="h-8 w-8 text-muted-foreground hover:text-rose-500 rounded-lg shrink-0"
-                                aria-label={`Remove automation rule ${rIdx + 1} for ${out}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          )}
-
-          {/* STEP 6: Review & Launch */}
-          {step === 6 && (
             <CardContent className="p-8 space-y-6">
               <div className="space-y-1">
                 <h2 className="text-base font-bold text-foreground">Campaign Summary Audit</h2>
@@ -1220,26 +638,32 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
 
                 <div className="md:col-span-6 space-y-4">
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Enabled Outcomes</p>
-                    <div className="flex flex-wrap gap-1">
-                      {outcomes.map(o => (
-                        <Badge key={o} variant="outline" className="font-bold text-[9px] rounded bg-muted/30">
-                          {o}
-                        </Badge>
-                      ))}
-                    </div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Outcomes (from script)</p>
+                    {derivedOutcomes.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {derivedOutcomes.map(o => (
+                          <Badge key={o} variant="outline" className="font-bold text-[9px] rounded bg-muted/30">
+                            {o}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/70 italic">
+                        This script defines no outcome nodes. Add outcomes in the script builder.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Post-Call Automation Triggers</p>
                     <div className="space-y-1 text-xs text-muted-foreground">
-                      {Object.keys(automationRules).map(out => {
-                        const rules = automationRules[out] || [];
+                      {derivedOutcomes.map(out => {
+                        const rules = getOutcomeAutomations(scriptGraph, out) ?? [];
                         if (rules.length === 0) return null;
                         return (
-                          <div key={out} className="flex justify-between font-semibold">
+                          <div key={out} className="flex justify-between font-semibold gap-2">
                             <span>Outcome: {out}</span>
-                            <span className="text-primary">
+                            <span className="text-primary text-right">
                               {rules.map(r => getActionMeta(r.type).label).join(', ')}
                             </span>
                           </div>
@@ -1279,14 +703,13 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
                 Save Draft
               </Button>
 
-              {step < 6 ? (
+              {step < 4 ? (
                 <Button
                   type="button"
                   onClick={nextStep}
                   disabled={
                     (step === 1 && !name.trim()) ||
-                    (step === 2 && !selectedScriptId) ||
-                    (step === 4 && outcomes.length === 0)
+                    (step === 2 && !selectedScriptId)
                   }
                   className="rounded-xl font-bold text-xs"
                 >

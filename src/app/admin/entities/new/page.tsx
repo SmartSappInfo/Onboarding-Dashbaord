@@ -60,7 +60,8 @@ import { ManagerSelect } from '../components/ManagerSelect';
 import { PackageSelect } from '../components/PackageSelect';
 import { MediaSelect } from '../components/media-select';
 import { createEntityAction } from '@/lib/entity-actions';
-import { type UserProfile, type SubscriptionPackage } from '@/lib/types';
+import { type UserProfile, type SubscriptionPackage, type Zone, type Module } from '@/lib/types';
+import { UNASSIGNED_ZONE, zoneOrUnassigned } from '@/lib/zone-constants';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -191,13 +192,13 @@ export default function NewEntityPage() {
     if (!firestore || !activeOrganizationId) return null;
     return query(collection(firestore, 'zones'), where('organizationId', '==', activeOrganizationId), orderBy('name', 'asc'));
   }, [firestore, activeOrganizationId]);
-  const { data: zones } = useCollection<any>(zonesQuery);
+  const { data: zones } = useCollection<Zone>(zonesQuery);
 
   const modulesQuery = useMemoFirebase(() => {
     if (!firestore || !activeOrganizationId) return null;
     return query(collection(firestore, 'modules'), where('organizationId', '==', activeOrganizationId), orderBy('order', 'asc'));
   }, [firestore, activeOrganizationId]);
-  const { data: modules } = useCollection<any>(modulesQuery);
+  const { data: modules } = useCollection<Module>(modulesQuery);
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !activeOrganizationId) return null;
@@ -278,6 +279,7 @@ export default function NewEntityPage() {
       slogan: '',
       workspaceIds: [activeWorkspaceId],
       status: 'active',
+      zone: UNASSIGNED_ZONE,
       location: {},
       locationString: '',
       workspaceTags: [],
@@ -419,23 +421,25 @@ export default function NewEntityPage() {
         methods.setValue('entityContacts', mappedContacts, { shouldDirty: true });
       }
 
-      // Fuzzy matching for Geographic Zone
+      // Fuzzy matching for Geographic Zone — fall back to Unassigned on no match.
       if (result.location && result.location.zone && zones) {
         const zoneName = result.location.zone.toLowerCase();
-        const matchedZone = zones.find((z: any) => 
+        const matchedZone = zones.find((z: Zone) =>
           z.name.toLowerCase().includes(zoneName) || zoneName.includes(z.name.toLowerCase())
         );
-        if (matchedZone) {
-          methods.setValue('zone', { id: matchedZone.id, name: matchedZone.name }, { shouldDirty: true });
-        }
+        methods.setValue(
+          'zone',
+          matchedZone ? { id: matchedZone.id, name: matchedZone.name } : UNASSIGNED_ZONE,
+          { shouldDirty: true }
+        );
       }
 
       // Fuzzy matching for Modules (Interests)
       if (result.suggestedModuleNames && Array.isArray(result.suggestedModuleNames) && modules) {
-        const matchedModules: any[] = [];
+        const matchedModules: Array<{ id: string; name: string; abbreviation: string; color: string }> = [];
         result.suggestedModuleNames.forEach((sName: string) => {
           const sNameLower = sName.toLowerCase();
-          const match = modules.find((m: any) => 
+          const match = modules.find((m: Module) =>
             m.name.toLowerCase().includes(sNameLower) || sNameLower.includes(m.name.toLowerCase())
           );
           if (match) {
@@ -500,7 +504,7 @@ export default function NewEntityPage() {
         name: data.name,
         entityContacts: data.entityContacts || [],
         status: data.status,
-        location: { ...data.location, locationString: data.locationString },
+        location: { ...data.location, zone: zoneOrUnassigned(data.zone), locationString: data.locationString },
         workspaceTags: data.workspaceTags || [],
         assignedTo,
         primaryEmail: (data.entityContacts || []).find(c => c.isPrimary)?.email || (data.entityContacts || []).find(c => c.isSignatory)?.email || '',

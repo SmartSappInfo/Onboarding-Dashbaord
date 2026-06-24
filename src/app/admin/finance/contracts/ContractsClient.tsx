@@ -5,6 +5,7 @@ import * as React from 'react';
 import { collection, query, orderBy, doc, getDoc, where, getCountFromServer } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { WorkspaceEntity, Contract, UserProfile } from '@/lib/types';
+import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { 
     FileCheck, 
@@ -433,7 +434,7 @@ export default function AgreementsClient() {
                                                         </div>
  <div className="flex flex-col">
  <span className="font-semibold text-sm tracking-tight text-foreground">{item.displayName}</span>
- <span className="text-[9px] font-bold text-muted-foreground opacity-60 italic">{item.location?.zone?.name || item.zone?.name || 'Unassigned Zone'}</span>
+ <span className="text-[9px] font-bold text-muted-foreground opacity-60 italic">{item.location?.zone?.name || item.zone?.name || UNASSIGNED_ZONE.name}</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>

@@ -24,11 +24,11 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { Switch } from '@/components/ui/switch';
-import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
-import type { ScriptNode, Entity, EntityContact } from '@/lib/types';
+import type { ScriptNode, Entity, EntityContact, UserProfile } from '@/lib/types';
 import {
   isJsonGraph,
   parseGraph,
@@ -154,6 +154,22 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const { user } = useUser();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
   const { toast } = useToast();
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !activeOrganizationId) return null;
+    return query(
+      collection(firestore, 'users'),
+      where('organizationId', '==', activeOrganizationId),
+      where('isAuthorized', '==', true),
+      orderBy('name')
+    );
+  }, [firestore, activeOrganizationId]);
+
+  const { data: users } = useCollection<UserProfile>(usersQuery);
+  const workspaceUsers = React.useMemo(() => {
+    if (!users || !activeWorkspaceId) return [];
+    return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
+  }, [users, activeWorkspaceId]);
 
   const { campaigns } = useCallCampaigns(activeWorkspaceId);
   const { queueItems, isLoading: queueLoading } = useCallQueueItems(campaignId);
@@ -1015,6 +1031,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         initial.taskDescription = initial.taskDescription || '';
         initial.taskPriority = initial.taskPriority || 'medium';
         initial.taskDueDate = initial.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+        initial.taskAssigneeId = initial.taskAssigneeId || (user?.uid || '');
       } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
         initial.templateId = initial.templateId || '';
       }
@@ -1024,7 +1041,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     } else {
       setLocalActionConfig({});
     }
-  }, [currentNode?.id, currentContact, triggeredNodeIds, triggerActionsAutomatically]);
+  }, [currentNode?.id, currentContact, triggeredNodeIds, triggerActionsAutomatically, user?.uid]);
 
   // Fetch message template details from firestore client-side in WorkspaceClient
   React.useEffect(() => {
@@ -1159,6 +1176,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             initial.taskDescription = initial.taskDescription || '';
             initial.taskPriority = initial.taskPriority || 'medium';
             initial.taskDueDate = initial.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+            initial.taskAssigneeId = initial.taskAssigneeId || (user?.uid || '');
           } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
             initial.templateId = initial.templateId || '';
           }
@@ -1335,9 +1353,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                     {actionType === 'SEND_EMAIL' && (
                       <div className="space-y-1">
                         <Label className="text-[9px] font-bold uppercase text-muted-foreground">Subject</Label>
-                        <Input
+                        <SlashInput
                           value={localActionConfig.customSubject !== undefined ? localActionConfig.customSubject : (templateDetails?.subject || '')}
-                          onChange={e => setLocalActionConfig(prev => ({ ...prev, customSubject: e.target.value }))}
+                          onChange={val => setLocalActionConfig(prev => ({ ...prev, customSubject: val }))}
                           placeholder="Email subject"
                           className="h-8 rounded-lg bg-background border-border text-xs"
                         />
@@ -1346,9 +1364,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
                     <div className="space-y-1">
                       <Label className="text-[9px] font-bold uppercase text-muted-foreground">Message Body</Label>
-                      <Textarea
+                      <SlashTextarea
                         value={localActionConfig.customBody !== undefined ? localActionConfig.customBody : (templateDetails?.body || '')}
-                        onChange={e => setLocalActionConfig(prev => ({ ...prev, customBody: e.target.value }))}
+                        onChange={val => setLocalActionConfig(prev => ({ ...prev, customBody: val }))}
                         placeholder="Write template body"
                         rows={5}
                         className="bg-background border-border rounded-lg text-xs p-2 resize-none font-serif leading-relaxed"
@@ -1398,9 +1416,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-[10px] font-bold uppercase text-muted-foreground">Task Title</Label>
-              <Input
+              <SlashInput
                 value={localActionConfig.taskTitle || ''}
-                onChange={e => setLocalActionConfig(prev => ({ ...prev, taskTitle: e.target.value }))}
+                onChange={val => setLocalActionConfig(prev => ({ ...prev, taskTitle: val }))}
                 placeholder="Task title"
                 className="h-9 rounded-xl bg-background border-border text-sm"
               />
@@ -1408,22 +1426,72 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             
             <div className="space-y-1">
               <Label className="text-[10px] font-bold uppercase text-muted-foreground">Task Description</Label>
-              <Textarea
+              <SlashTextarea
                 value={localActionConfig.taskDescription || ''}
-                onChange={e => setLocalActionConfig(prev => ({ ...prev, taskDescription: e.target.value }))}
+                onChange={val => setLocalActionConfig(prev => ({ ...prev, taskDescription: val }))}
                 placeholder="Describe task details..."
                 rows={3}
                 className="bg-background border-border rounded-xl text-xs p-2 resize-none"
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground">Due Date</Label>
+                <Input
+                  type="date"
+                  value={localActionConfig.taskDueDate ? new Date(localActionConfig.taskDueDate).toISOString().split('T')[0] : ''}
+                  onChange={e => {
+                    const dateVal = e.target.value;
+                    if (!dateVal) return;
+                    setLocalActionConfig(prev => {
+                      const currentFull = prev.taskDueDate ? new Date(prev.taskDueDate) : new Date();
+                      const [yr, mo, dy] = dateVal.split('-').map(Number);
+                      currentFull.setFullYear(yr, mo - 1, dy);
+                      return { ...prev, taskDueDate: currentFull.toISOString() };
+                    });
+                  }}
+                  className="h-9 rounded-xl bg-background border-border text-xs px-3"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground">Due Time</Label>
+                <Input
+                  type="time"
+                  value={localActionConfig.taskDueDate ? (() => {
+                    const d = new Date(localActionConfig.taskDueDate);
+                    const pad = (n: number) => n.toString().padStart(2, '0');
+                    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                  })() : '09:00'}
+                  onChange={e => {
+                    const timeVal = e.target.value;
+                    if (!timeVal) return;
+                    setLocalActionConfig(prev => {
+                      const currentFull = prev.taskDueDate ? new Date(prev.taskDueDate) : new Date();
+                      const [hr, min] = timeVal.split(':').map(Number);
+                      currentFull.setHours(hr, min, 0, 0);
+                      return { ...prev, taskDueDate: currentFull.toISOString() };
+                    });
+                  }}
+                  className="h-9 rounded-xl bg-background border-border text-xs px-3"
+                />
+              </div>
+            </div>
+
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Due Date & Time</Label>
-              <DateTimePicker
-                value={localActionConfig.taskDueDate ? new Date(localActionConfig.taskDueDate) : undefined}
-                onChange={date => setLocalActionConfig(prev => ({ ...prev, taskDueDate: date ? date.toISOString() : '' }))}
-                className="h-9 rounded-xl bg-background border-border text-xs justify-start px-3"
-              />
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground">Assignee</Label>
+              <select
+                value={localActionConfig.taskAssigneeId || ''}
+                onChange={e => setLocalActionConfig(prev => ({ ...prev, taskAssigneeId: e.target.value }))}
+                className="w-full h-9 rounded-xl bg-background border border-border text-xs px-3 focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Select Assignee...</option>
+                {workspaceUsers.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.name || 'Unknown User'}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1">
@@ -2710,9 +2778,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   {/* Notes input */}
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Call Notes &amp; Log</Label>
-                    <Textarea
+                    <SlashTextarea
                       value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
+                      onChange={setNotes}
                       placeholder="Document discussion here… Notes auto-save to database in real-time."
                       className="min-h-[160px] bg-background border-border text-foreground rounded-xl resize-none leading-relaxed p-3 focus:border-primary focus:ring-0"
                     />

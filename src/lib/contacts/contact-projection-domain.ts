@@ -17,6 +17,7 @@
 
 import type { WorkspaceEntity, EntityContact } from '@/lib/types';
 import { toSearchKey } from '@/lib/entities/entity-cache-domain';
+import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 
 export type ContactChannel = 'email' | 'sms' | 'call';
 
@@ -52,7 +53,8 @@ export interface ContactDoc {
   /** Workspace-scoped tags, denormalized from the entity (sorted). */
   workspaceTags: string[];
   entityName: string;
-  zoneId: string | null;
+  /** Always set — defaults to the "Unassigned" sentinel id when no zone. */
+  zoneId: string;
   assignedUserId: string | null;
   status: 'active' | 'archived';
   entityType: string;
@@ -156,8 +158,8 @@ export function deriveChannels(email?: string | null, phone?: string | null): Co
   return out;
 }
 
-function zoneIdOf(we: WorkspaceEntity): string | null {
-  return we.zone?.id ?? we.location?.zone?.id ?? null;
+function zoneIdOf(we: WorkspaceEntity): string {
+  return we.zone?.id ?? we.location?.zone?.id ?? UNASSIGNED_ZONE.id;
 }
 
 /**

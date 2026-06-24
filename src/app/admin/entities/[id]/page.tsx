@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
 import { doc, collection, query, where, orderBy, updateDoc, getDoc } from 'firebase/firestore';
 import type { WorkspaceEntity, Entity, Task, Tag, TagAuditLog, OnlinePresence } from '@/lib/types';
+import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { Button } from '@/components/ui/button';
@@ -320,7 +321,7 @@ export default function EntityDetailPage() {
     const hierachyString = locationParts.length > 0 ? locationParts.join(', ') : null;
     const countryFlag = entityData.location?.country?.flag;
     const locationZone = entityData.location?.zone?.name;
-    const displayLocation = hierachyString || locationZone || 'Unassigned';
+    const displayLocation = hierachyString || locationZone || UNASSIGNED_ZONE.name;
 
     const personData = entityData.personData;
     const displayName = entityData.name || weData.displayName;
@@ -339,7 +340,7 @@ export default function EntityDetailPage() {
                             onClick={() => setIsLogoDialogOpen(true)}
                         >
                             {isInstitution && logoUrl ? (
-                                <Image src={logoUrl} alt={displayName} fill className="object-contain p-2" />
+                                <Image src={logoUrl} alt={displayName} fill sizes="(min-width: 768px) 6rem, 5rem" className="object-contain p-2" />
                             ) : (
                                 <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary text-2xl font-semibold">{getInitials(displayName)}</div>
                             )}

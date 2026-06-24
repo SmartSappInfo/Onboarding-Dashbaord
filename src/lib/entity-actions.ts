@@ -21,6 +21,7 @@ import { BulkPhoneVerificationService } from './bulk-phone-verifier';
 import { applyIndustryDataDefaults } from './entity-utils';
 import { toSearchKey } from './entities/entity-cache-domain';
 import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
+import { zoneOrUnassigned } from './zone-constants';
 
 /**
  * Runs background contact verification for a primary contact.
@@ -321,6 +322,13 @@ export async function createEntityAction(
       }
     }
 
+    // Geographic zone: never store null/blank — default to "Unassigned" so the
+    // entity always has a zone for filtering, reporting and messaging.
+    const normalizedLocation = {
+      ...(data.location || {}),
+      zone: zoneOrUnassigned(data.location?.zone),
+    };
+
     // Prepare Base Entity Document
     const entityData: any = {
       id: entityId,
@@ -337,7 +345,7 @@ export async function createEntityAction(
       initials: data.initials || undefined,
       logoUrl: data.logoUrl || undefined,
       referee: data.referee || undefined,
-      location: data.location || undefined,
+      location: normalizedLocation,
       interests: data.interests || (data.modules ? data.modules.map((m: any) => m.id || m.name || m) : []),
 
       createdAt: timestamp,
@@ -428,12 +436,12 @@ export async function createEntityAction(
         entityContacts, // Denormalized for list performance
         interests: data.modules || [],
         // Location fields for filtering and display
-        location: data.location || null,
+        location: normalizedLocation,
         locationString: data.location?.locationString || '',
         locationCountryId: data.location?.country?.id || null,
         locationRegionId: data.location?.region?.id || null,
         locationDistrictId: data.location?.district?.id || null,
-        zone: data.location?.zone || null,
+        zone: normalizedLocation.zone,
         ...(entityData.currentNeeds && { currentNeeds: entityData.currentNeeds }),
         ...(entityData.currentChallenges && { currentChallenges: entityData.currentChallenges }),
         ...(entityData.interestsText && { interestsText: entityData.interestsText }),
@@ -521,7 +529,7 @@ export async function updateEntityAction(
     const entitySnap = await entityRef.get();
     
     let entityType: EntityType = 'institution'; // default
-    let displayName = data.name || '';
+    let displayName = data.name; // Can be undefined
     
     if (entitySnap.exists) {
         entityType = entitySnap.data()?.entityType || 'institution';
@@ -576,10 +584,12 @@ export async function updateEntityAction(
     }
 
     // Prepare Base Entity Update (Identity)
-    const entityUpdate: any = {
-      name: displayName,
+    const entityUpdate: Record<string, unknown> = {
       updatedAt: timestamp,
     };
+    if (displayName !== undefined) {
+      entityUpdate.name = displayName;
+    }
     
     if (entityContacts) {
       entityUpdate.entityContacts = entityContacts;
@@ -592,7 +602,7 @@ export async function updateEntityAction(
     if (data.slogan !== undefined) entityUpdate.slogan = data.slogan;
     if (data.logoUrl !== undefined) entityUpdate.logoUrl = data.logoUrl;
     if (data.referee !== undefined) entityUpdate.referee = data.referee;
-    if (data.location !== undefined) entityUpdate.location = data.location;
+    if (data.location !== undefined) entityUpdate.location = { ...data.location, zone: zoneOrUnassigned(data.location?.zone) };
     if (data.interests !== undefined) entityUpdate.interests = data.interests;
     else if (data.modules !== undefined) entityUpdate.interests = data.modules.map((m: any) => m.id || m.name || m);
     if (data.currentNeeds !== undefined) entityUpdate.currentNeeds = data.currentNeeds;
@@ -617,8 +627,8 @@ export async function updateEntityAction(
       // In a full replacement, we'd overwrite. Here we merge via dot notation if entity Snap doesn't have it?
       // Since it's a new schema, let's just create/merge it.
       if (!entitySnap.data()?.financeData) {
+         if (!financeData.currency) financeData.currency = 'GHS';
          entityUpdate.financeData = financeData;
-         if (!entityUpdate.financeData.currency) entityUpdate.financeData.currency = 'GHS';
       } else {
          for (const key of Object.keys(financeData)) {
             entityUpdate[`financeData.${key}`] = financeData[key];
@@ -721,12 +731,13 @@ export async function updateEntityAction(
         if (data.interestsText !== undefined) weUpdate.interestsText = data.interestsText;
         
         if (data.location !== undefined) {
-          weUpdate.location = data.location || null;
+          const weNormalizedLocation = { ...data.location, zone: zoneOrUnassigned(data.location?.zone) };
+          weUpdate.location = weNormalizedLocation;
           weUpdate.locationString = data.location?.locationString || '';
           weUpdate.locationCountryId = data.location?.country?.id || null;
           weUpdate.locationRegionId = data.location?.region?.id || null;
           weUpdate.locationDistrictId = data.location?.district?.id || null;
-          weUpdate.zone = data.location?.zone || null;
+          weUpdate.zone = weNormalizedLocation.zone;
         }
         
         // Workspace-level fields (only update if matches current workspaceId)

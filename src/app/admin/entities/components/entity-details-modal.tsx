@@ -1,6 +1,7 @@
 'use client';
 
 import type { WorkspaceEntity } from '@/lib/types';
+import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import {
   Sheet,
   SheetContent,
@@ -162,7 +163,7 @@ export default function EntityDetailsModal({ entity, open, onOpenChange, onNavig
                             </a>
  ) : <p className="text-base text-foreground font-bold text-left">N/A</p>}
                         </DetailItem>
-                        <DetailItem icon={Layout} label="Territory" value={entity.zone?.name || 'Global'} />
+                        <DetailItem icon={Layout} label="Geographic Zone" value={entity.location?.zone?.name || entity.zone?.name || UNASSIGNED_ZONE.name} />
                         <DetailItem icon={PenSquare} label="Provisioned Interests">
  <div className="flex flex-wrap gap-2 pt-1">
                                 {entity.interests && entity.interests.length > 0 ? (

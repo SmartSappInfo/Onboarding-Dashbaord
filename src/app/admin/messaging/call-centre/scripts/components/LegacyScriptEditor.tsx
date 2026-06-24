@@ -527,11 +527,18 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
           if (sel && sel.rangeCount > 0) {
             const rect = sel.getRangeAt(0).getBoundingClientRect();
             const eRect = editorRef.current?.getBoundingClientRect();
-            if (eRect) {
-              setMenuPos({
-                top: rect.bottom - eRect.top + 6,
-                left: Math.min(Math.max(0, rect.left - eRect.left), eRect.width - 256),
-              });
+            if (eRect && editorRef.current) {
+              if (rect.top === 0 && rect.left === 0) {
+                setMenuPos({
+                  top: editorRef.current.offsetHeight + editorRef.current.offsetTop + 6,
+                  left: editorRef.current.offsetLeft,
+                });
+              } else {
+                setMenuPos({
+                  top: rect.bottom - eRect.top + 6,
+                  left: Math.min(Math.max(0, rect.left - eRect.left), eRect.width - 256),
+                });
+              }
             }
           }
           setShowMenu(true);

@@ -224,7 +224,11 @@ async function provisionOrganizationDefaults(organizationId: string, userId: str
     const timestamp = new Date().toISOString();
     const batch = adminDb.batch();
 
-    // 1. Hardcoded Zones
+    // 1. Hardcoded Zones.
+    //    Note: "Unassigned" is a VIRTUAL sentinel zone (UNASSIGNED_ZONE), not a
+    //    Firestore doc — the zones collection is shared across orgs by a fixed
+    //    doc id would collide. Display surfaces inject the sentinel via
+    //    withUnassignedZone(); entities store the constant {id,name} directly.
     const defaultZones = ['Zone 1', 'Zone 2', 'Zone 3'];
     for (const zoneName of defaultZones) {
         const ref = adminDb.collection('zones').doc();

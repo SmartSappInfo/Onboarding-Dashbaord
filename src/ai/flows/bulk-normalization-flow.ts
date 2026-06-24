@@ -5,6 +5,7 @@
 
 import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
+import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 
 const NormalizationContextSchema = z.object({
   zones: z.array(z.object({ id: z.string(), name: z.string() })),
@@ -38,7 +39,7 @@ const BulkNormalizationOutputSchema = z.object({
     slogan: z.string().optional(),
     location: z.string().optional(),
     nominalRoll: z.number().optional(),
-    zoneId: z.string().nullable().describe('The resolved ID of the geographic zone.'),
+    zoneId: z.string().default(UNASSIGNED_ZONE.id).describe('The resolved ID of the geographic zone. Use "sys-unassigned" if no zone matches confidently — never null.'),
     assignedToId: z.string().nullable().describe('The resolved ID of the authorized team member.'),
     subscriptionPackageId: z.string().nullable().describe('The resolved ID of the pricing tier.'),
     subscriptionRate: z.number().optional().describe('The effective rate.'),
@@ -64,7 +65,7 @@ const normalizationPrompt = ai.definePrompt({
   prompt: `You are an expert Institutional Data Architect. Normalize the provided raw row into a SmartSapp School record.
 
 ### FUZZY MATCHING RULES:
-1. **Zone**: Match the raw location/zone string to the best fitting Zone from the context.
+1. **Zone**: Match the raw location/zone string to the best fitting Zone from the context. If no zone matches confidently, set zoneId to "sys-unassigned" — never null or empty.
 2. **Account Manager**: Match "assignedTo" name to our User list.
 3. **Package**: Match "package" string to our Subscription Packages.
 4. **Financials**: Extract arrears, credits, and custom rates. Normalize currency to 3-letter codes (GHS, USD).

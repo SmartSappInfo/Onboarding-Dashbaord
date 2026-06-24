@@ -178,7 +178,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
         user?.uid || ''
       );
       if (result.success) {
-        toast({ title: 'Script Imported', description: `"${parsed.script.name}" was recreated in this workspace.` });
+        toast({ title: 'Script Imported', description: `"${parsed.script.name}" was recreated in this workspace. Post-call automations were cleared — reconfigure templates, tags, stages and webhooks for this workspace.` });
       } else {
         toast({ variant: 'destructive', title: 'Import Failed', description: result.error });
       }

@@ -160,6 +160,14 @@ describe('flattenEntityContacts', () => {
     });
   });
 
+  it('defaults zoneId to the Unassigned sentinel when the entity has no zone', () => {
+    const docs = flattenEntityContacts(
+      we({ entityContacts: [contact()] }), // no zone / no location.zone
+    );
+    expect(docs).toHaveLength(1);
+    expect(docs[0].zoneId).toBe('sys-unassigned');
+  });
+
   it('drops contacts with no reachable channel', () => {
     const docs = flattenEntityContacts(
       we({ entityContacts: [contact({ id: 'c2', email: undefined, phone: undefined })] }),

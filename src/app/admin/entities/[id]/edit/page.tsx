@@ -39,6 +39,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { updateEntityAction } from '@/lib/entity-actions';
+import { UNASSIGNED_ZONE, zoneOrUnassigned } from '@/lib/zone-constants';
 import { useTerminology } from '@/hooks/use-terminology';
 import EntityNotesTab from '../../components/EntityNotesTab';
 import { TagSelector } from '@/components/tags/TagSelector';
@@ -208,6 +209,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
     defaultValues: {
       name: '', initials: '', slogan: '', status: 'active',
       capacity: 0, entityContacts: [], modules: [],
+      zone: UNASSIGNED_ZONE,
       assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
       subscriptionPackageId: 'none',
@@ -234,7 +236,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
         status: (weData.status as any) || 'active',
         logoUrl: entityData.logoUrl || '',
         heroImageUrl: (entityData as any).heroImageUrl || '',
-        zone: entityData.location?.zone || undefined,
+        zone: zoneOrUnassigned(entityData.location?.zone),
         locationString: entityData.location?.locationString || '',
         capacity: industryData.capacity ?? 0,
         entityContacts: (entityData.entityContacts && entityData.entityContacts.length > 0)
@@ -327,7 +329,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
         interestsText: data.interests || '',
         customData: data.customData || {},
         location: {
-            zone: data.zone,
+            zone: zoneOrUnassigned(data.zone),
             locationString: data.locationString,
             ...(locationValue.country ? { country: locationValue.country } : {}),
             ...(locationValue.region ? { region: locationValue.region } : {}),

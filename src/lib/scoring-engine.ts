@@ -1,5 +1,4 @@
-import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc, arrayUnion, orderBy, limit } from 'firebase/firestore';
-import { firestore as db } from '@/firebase/config';
+import { adminDb, FieldValue } from './firebase-admin';
 import { triggerAutomationProtocols } from './automation-processor';
 import { buildAutomationPayload } from './automation-payload';
 import type { HealthScore, Entity } from './types';
@@ -9,10 +8,10 @@ import { createMinimalIndustryData } from './industry-defaults';
  * Helper to update entity healthScoreIds reference array.
  */
 async function associateHealthScoreWithEntity(entityId: string, healthScoreId: string): Promise<void> {
-  const entityRef = doc(db, 'entities', entityId);
-  const entitySnap = await getDoc(entityRef);
+  const entityRef = adminDb.collection('entities').doc(entityId);
+  const entitySnap = await entityRef.get();
 
-  if (!entitySnap.exists()) {
+  if (!entitySnap.exists) {
     return;
   }
 
@@ -21,10 +20,10 @@ async function associateHealthScoreWithEntity(entityId: string, healthScoreId: s
 
   const updatedIndustryData = {
     ...industryData,
-    healthScoreIds: arrayUnion(healthScoreId),
+    healthScoreIds: FieldValue.arrayUnion(healthScoreId),
   };
 
-  await updateDoc(entityRef, {
+  await entityRef.update({
     industryData: updatedIndustryData,
     updatedAt: new Date().toISOString(),
   });
@@ -41,13 +40,11 @@ export async function recalculateEntityScore(
 ): Promise<HealthScore | null> {
   try {
     // 1. Fetch recent product usage
-    const usageRef = collection(db, 'productUsage');
-    const usageQuery = query(
-      usageRef,
-      where('entityId', '==', entityId),
-      where('workspaceId', '==', workspaceId)
-    );
-    const usageSnap = await getDocs(usageQuery);
+    const usageSnap = await adminDb
+      .collection('productUsage')
+      .where('entityId', '==', entityId)
+      .where('workspaceId', '==', workspaceId)
+      .get();
     let totalUsageFreq = 0;
     usageSnap.forEach((doc) => {
       const data = doc.data();
@@ -58,13 +55,11 @@ export async function recalculateEntityScore(
     const usageScore = Math.min(100, Math.max(0, totalUsageFreq * 5));
 
     // 2. Fetch support tickets status
-    const ticketsRef = collection(db, 'supportTickets');
-    const ticketsQuery = query(
-      ticketsRef,
-      where('entityId', '==', entityId),
-      where('workspaceId', '==', workspaceId)
-    );
-    const ticketsSnap = await getDocs(ticketsQuery);
+    const ticketsSnap = await adminDb
+      .collection('supportTickets')
+      .where('entityId', '==', entityId)
+      .where('workspaceId', '==', workspaceId)
+      .get();
     let openCount = 0;
     ticketsSnap.forEach((doc) => {
       const data = doc.data();
@@ -77,13 +72,11 @@ export async function recalculateEntityScore(
     const supportScore = Math.max(0, 100 - openCount * 25);
 
     // 3. Fetch activity log metrics (engagement)
-    const activitiesRef = collection(db, 'activities');
-    const activitiesQuery = query(
-      activitiesRef,
-      where('entityId', '==', entityId),
-      where('workspaceId', '==', workspaceId)
-    );
-    const activitiesSnap = await getDocs(activitiesQuery);
+    const activitiesSnap = await adminDb
+      .collection('activities')
+      .where('entityId', '==', entityId)
+      .where('workspaceId', '==', workspaceId)
+      .get();
     const activityCount = activitiesSnap.size;
 
     // engagementScore calculation: 10 points per logged activity (max 100)
@@ -101,14 +94,12 @@ export async function recalculateEntityScore(
     }
 
     // 5. Fetch latest health score directly from Firestore
-    const healthScoresRef = collection(db, 'healthScores');
-    const latestQuery = query(
-      healthScoresRef,
-      where('entityId', '==', entityId),
-      orderBy('calculatedAt', 'desc'),
-      limit(1)
-    );
-    const latestSnap = await getDocs(latestQuery);
+    const healthScoresRef = adminDb.collection('healthScores');
+    const latestSnap = await healthScoresRef
+      .where('entityId', '==', entityId)
+      .orderBy('calculatedAt', 'desc')
+      .limit(1)
+      .get();
     let oldScore: number | null = null;
     if (!latestSnap.empty) {
       oldScore = latestSnap.docs[0].data().overallScore;
@@ -130,7 +121,7 @@ export async function recalculateEntityScore(
         createdAt: now,
       };
 
-      const docRef = await addDoc(healthScoresRef, healthScoreData);
+      const docRef = await healthScoresRef.add(healthScoreData);
       await associateHealthScoreWithEntity(entityId, docRef.id);
 
       const newHealthScore: HealthScore = {

@@ -3,6 +3,7 @@ import { cache } from 'react';
 import type { Workspace, DashboardLayout, OnboardingStage, Entity, WorkspaceEntity, Meeting, Survey, Task, Activity, MessageLog, Zone, UserProfile, Pipeline } from './types';
 import { startOfToday, format, isAfter } from 'date-fns';
 import { countActiveEntities, getEntityProjections, sumActiveCapacity } from './dashboard/dashboard-repository';
+import { UNASSIGNED_ZONE, withUnassignedZone } from './zone-constants';
 
 /**
  * Shared fetcher for the active workspace.
@@ -229,8 +230,10 @@ export const getZoneDistribution = async (workspaceId: string) => {
     const zones = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Zone));
     const entities = await getEntityProjections(workspaceId);
     
-    return zones.map((zone: Zone) => {
-        const entitiesInZone = entities.filter((we: any) => we.zone?.id === zone.id);
+    // Include the virtual "Unassigned" zone so entities without a zone are
+    // counted; the >0 filter below hides it when empty.
+    return withUnassignedZone(zones).map((zone) => {
+        const entitiesInZone = entities.filter((we: any) => (we.zone?.id ?? UNASSIGNED_ZONE.id) === zone.id);
         const totalCount = entitiesInZone.length;
         const capacity = entitiesInZone.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
 
@@ -239,7 +242,7 @@ export const getZoneDistribution = async (workspaceId: string) => {
           schoolCount: totalCount,
           capacity,
         };
-    }).filter((zd: any) => zd.schoolCount > 0);
+    }).filter((zd) => zd.schoolCount > 0);
 };
 
 /**

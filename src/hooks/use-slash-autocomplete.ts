@@ -22,7 +22,7 @@ export function useSlashAutocomplete({
   const [autocompleteCoords, setAutocompleteCoords] = React.useState({ top: 0, left: 0 });
 
   // Get caret coordinates relative to parent container
-  const getCaretCoordinates = React.useCallback((element: HTMLTextAreaElement, position: number) => {
+  const getCaretCoordinates = React.useCallback((element: HTMLTextAreaElement | HTMLInputElement, position: number) => {
     const div = document.createElement('div');
     const style = window.getComputedStyle(element);
     
@@ -60,7 +60,7 @@ export function useSlashAutocomplete({
       const parentRect = parent.getBoundingClientRect();
       
       return {
-        top: spanRect.top - parentRect.top + parent.scrollTop - element.scrollTop + 18, // 18px line-height offset, correcting for textarea scroll
+        top: spanRect.top - parentRect.top + parent.scrollTop - element.scrollTop + 18, // 18px line-height offset, correcting for scroll
         left: spanRect.left - parentRect.left + parent.scrollLeft - element.scrollLeft,
       };
     } finally {
@@ -68,9 +68,14 @@ export function useSlashAutocomplete({
     }
   }, []);
 
-  const checkTrigger = React.useCallback((element: HTMLTextAreaElement) => {
+  const checkTrigger = React.useCallback((element: HTMLTextAreaElement | HTMLInputElement) => {
     const text = element.value;
     const selectionEnd = element.selectionEnd;
+    
+    if (selectionEnd === null) {
+      setShowAutocomplete(false);
+      return;
+    }
     
     const lastSlashIdx = text.lastIndexOf('/', selectionEnd - 1);
     if (lastSlashIdx === -1) {
@@ -106,9 +111,11 @@ export function useSlashAutocomplete({
     );
   }, [variables, autocompleteQuery]);
 
-  const selectAndInsert = React.useCallback((varName: string, element: HTMLTextAreaElement) => {
+  const selectAndInsert = React.useCallback((varName: string, element: HTMLTextAreaElement | HTMLInputElement) => {
     const text = element.value;
     const selectionEnd = element.selectionEnd;
+    if (selectionEnd === null) return;
+    
     const lastSlashIdx = text.lastIndexOf('/', selectionEnd - 1);
     
     const before = text.substring(0, lastSlashIdx);
@@ -127,7 +134,7 @@ export function useSlashAutocomplete({
   }, [onChange]);
 
   // General keyboard listener for intercepting inputs when autocomplete is active
-  const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     if (!showAutocomplete || filteredVars.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -148,11 +155,11 @@ export function useSlashAutocomplete({
     }
   }, [showAutocomplete, filteredVars, autocompleteIndex, selectAndInsert]);
 
-  const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     checkTrigger(e.target);
   }, [checkTrigger]);
 
-  const handleSelectChange = React.useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+  const handleSelectChange = React.useCallback((e: React.SyntheticEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     checkTrigger(e.currentTarget);
   }, [checkTrigger]);
 

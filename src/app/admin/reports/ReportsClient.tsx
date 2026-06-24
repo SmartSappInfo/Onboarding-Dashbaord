@@ -57,6 +57,7 @@ import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { withUnassignedZone } from '@/lib/zone-constants';
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -111,10 +112,12 @@ export default function ReportsClient() {
     const velocityData = aggregates?.velocity ?? [];
 
     // 2. Zone Health Breakdown — join server-side counts with zone names.
+    //    Include the virtual "Unassigned" zone so entities without a zone are
+    //    surfaced rather than hidden.
     const zoneHealth = React.useMemo(() => {
         if (!zones || !aggregates) return [];
         const byZone = new Map(aggregates.zoneHealth.map(h => [h.zoneId, h]));
-        return zones.map(zone => {
+        return withUnassignedZone(zones).map(zone => {
             const h = byZone.get(zone.id);
             return {
                 name: zone.name,

@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate against file.size FIRST — never buffer an oversized file.
+    // NOTE: file.type is client-supplied and could be spoofed; we don't sniff
+    // magic bytes — Meta validates the actual content on use and rejects a lie.
     const check = validateHeaderMedia(file.type, file.size);
     if (!check.valid || !check.format) {
       return Response.json({ success: false, error: check.error }, { status: 400 });
