@@ -104,7 +104,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // 1. Fetch Template
     const templateSnap = await adminDb.collection('message_templates').doc(templateId).get();
     if (!templateSnap.exists) throw new Error(`Template not found: ${templateId}`);
-    const template = { id: templateSnap.id, ...templateSnap.data() } as MessageTemplate;
+    let template = { id: templateSnap.id, ...templateSnap.data() } as MessageTemplate;
 
     // 2. Resolve Organization (org-first; no cross-tenant fallback).
     // The org is resolved BEFORE the sender so the sender query can be scoped to it.
@@ -561,6 +561,25 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
+    // 7a. Page Link Pre-pass — resolves {{page_link:slug}} tokens BEFORE resolveVariables()
+    //     Must run first because the colon in the token is not handled by the generic {{}} replacer.
+    //     The canonical URL is resolved from campaign_pages (or falls back to baseUrl+slug).
+    //     Entity identity is NOT baked here — the /api/l/{id} redirect appends ?ref= for email.
+    {
+        const { extractPageLinkSlugs, resolvePageLinkTokens, buildPageLinkMap } = await import('./page-link-resolver');
+        const bodyToScan = input.body ?? template.body ?? '';
+        const slugs = extractPageLinkSlugs(bodyToScan);
+        if (slugs.length > 0) {
+            const pageLinks = await buildPageLinkMap(slugs, adminDb);
+            if (input.body !== undefined) {
+                (input as { body: string }).body = resolvePageLinkTokens(input.body, pageLinks);
+            }
+            if (template.body) {
+                template = { ...template, body: resolvePageLinkTokens(template.body, pageLinks) };
+            }
+        }
+    }
+
     // 7. Render Content (contentMode-aware routing)
     // - 'rich_builder': Render blocks array into HTML with optional style wrapper
     // - 'plain_text' / 'html_code': Resolve variables in body, apply style wrapper if present
@@ -795,6 +814,22 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerId = waResult.metaMessageId;
         providerStatus = waResult.status;
     } else {
+        let headers: Record<string, string> | undefined = undefined;
+        if (template.channel === 'email') {
+            const { generateUnsubscribeToken } = await import('./services/unsubscribe-service');
+            const { getRequestBaseUrl } = await import('./utils/url-helpers');
+            const baseUrl = await getRequestBaseUrl();
+            const cleanEmail = recipient.toLowerCase().trim();
+            const token = generateUnsubscribeToken(cleanEmail);
+            const oneClickUrl = `${baseUrl}/api/messaging/unsubscribe/one-click?recipient=${encodeURIComponent(cleanEmail)}&token=${token}&ws=${resolvedWorkspaceId || 'global'}`;
+            const preferenceUrl = finalVariables.unsubscribe_link;
+
+            headers = {
+                'List-Unsubscribe': `<${oneClickUrl}>, <${preferenceUrl}>`,
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            };
+        }
+
         const providerResponse = await sendEmail({
             from: sender.name && sender.identifier ? `${sender.name} <${sender.identifier}>` : undefined, 
             to: recipient,
@@ -804,7 +839,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             scheduledAt: scheduledAt,
             tags: tags,
             apiKey: resendKey,
-            domain: resendDomain
+            domain: resendDomain,
+            headers
         });
         providerId = providerResponse?.id;
     }
@@ -1036,13 +1072,30 @@ export async function sendRawMessage(input: {
                 createdAt: new Date().toISOString()
             });
         } else {
+            let headers: Record<string, string> | undefined = undefined;
+            if (channel === 'email') {
+                const { generateUnsubscribeToken, generateSecureUnsubscribeLink } = await import('./services/unsubscribe-service');
+                const { getRequestBaseUrl } = await import('./utils/url-helpers');
+                const baseUrl = await getRequestBaseUrl();
+                const cleanEmail = recipient.toLowerCase().trim();
+                const token = generateUnsubscribeToken(cleanEmail);
+                const preferenceUrl = await generateSecureUnsubscribeLink(recipient, entityId || null, workspaceIds[0] || null);
+                const oneClickUrl = `${baseUrl}/api/messaging/unsubscribe/one-click?recipient=${encodeURIComponent(cleanEmail)}&token=${token}&ws=${workspaceIds[0] || 'global'}`;
+
+                headers = {
+                    'List-Unsubscribe': `<${oneClickUrl}>, <${preferenceUrl}>`,
+                    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+                };
+            }
+
             await sendEmail({ 
                 from: `${sender.name} <${sender.identifier}>`, 
                 to: recipient, 
                 subject: resolvedSubject, 
                 html: resolvedBody,
                 apiKey: resendKey,
-                domain: resendDomain
+                domain: resendDomain,
+                headers
             });
         }
 

@@ -139,7 +139,7 @@ export async function processBulkJobChunk(jobId: string) {
         adminDb.collection('sender_profiles').doc(job.senderProfileId).get(),
     ]);
 
-    const template = templateSnap.data() as MessageTemplate;
+    let template = templateSnap.data() as MessageTemplate;
     const sender = senderSnap.data() as SenderProfile;
 
     let campaign: MessageCampaign | null = null;
@@ -177,13 +177,34 @@ export async function processBulkJobChunk(jobId: string) {
         }
     }
 
+    // Phase 3: Page Link Pre-pass — resolve {{page_link:slug}} tokens in the template body.
+    // Runs once per job (template is shared across all recipients).
+    // Entity identity is NOT added here; the /api/l/{id} redirect appends ?ref= per-recipient.
+    {
+        const { extractPageLinkSlugs, resolvePageLinkTokens, buildPageLinkMap } = await import('./page-link-resolver');
+        const bodyToScan = template.body || '';
+        const slugs = extractPageLinkSlugs(bodyToScan);
+        if (slugs.length > 0) {
+            const pageLinks = await buildPageLinkMap(slugs, adminDb);
+            template = { ...template, body: resolvePageLinkTokens(bodyToScan, pageLinks) };
+        }
+    }
+
     let successIncrement = 0;
     let failedIncrement = 0;
 
     if (job.channel === 'email') {
         const { isSuppressed } = await import('./suppression-service');
         
-        const batchPayload = [];
+        const batchPayload: Array<{
+            from: string;
+            to: string;
+            subject: string;
+            html: string;
+            entityId?: string;
+            taskDocRef: FirebaseFirestore.DocumentReference;
+            tags: { name: string; value: string }[];
+        }> = [];
         for (const taskDoc of tasksSnap.docs) {
             const task = taskDoc.data() as MessageTask;
             
@@ -253,17 +274,14 @@ export async function processBulkJobChunk(jobId: string) {
                 }
             }
 
-            // Phase 7: Branded Link Tracking
-            if (job.trackLinks) {
-                // This is a placeholder for async transformation in the loop below
-                // We'll transform the body for each task individually to get per-recipient tracking
-            }
+            // Phase 7: Branded Link Tracking placeholder (applied in batch below)
 
             batchPayload.push({
                 from: sender.identifier,
                 to: task.recipient,
                 subject: subject,
                 html: html,
+                entityId: task.entityId,
                 taskDocRef: taskDoc.ref,
                 tags: [
                     { name: 'jobId', value: jobId },
@@ -272,17 +290,20 @@ export async function processBulkJobChunk(jobId: string) {
             });
         }
 
-        // Phase 7: Apply real-time link tracking transformation
+        // Phase 7: Apply link tracking transformation in parallel (one tracked link per unique URL)
         if (job.trackLinks) {
             const { transformBodyWithTracking } = await import('./link-tracking');
-            for (const payload of batchPayload) {
-                payload.html = await transformBodyWithTracking({
-                    body: payload.html,
-                    campaignId: job.campaignId || 'manual',
-                    jobId: jobId,
-                    taskId: payload.taskDocRef.id
-                });
-            }
+            await Promise.all(
+                batchPayload.map(async (payload) => {
+                    payload.html = await transformBodyWithTracking({
+                        body: payload.html,
+                        campaignId: job.campaignId || 'manual',
+                        jobId: jobId,
+                        taskId: payload.taskDocRef.id,
+                        entityId: payload.entityId,
+                    });
+                })
+            );
         }
 
         try {

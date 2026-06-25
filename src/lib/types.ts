@@ -2286,7 +2286,14 @@ export interface AutomationAction {
    * the message body. Kept for backward compatibility with existing Firestore documents.
    */
   notificationBody?: string;
-
+  resendConfig?: {
+    enabled: boolean;
+    maxResends: number; // validated 1-5
+    resendTitles: string[]; // One per resend variant
+    resendPreviewTexts: string[]; // One per resend variant
+    resendDelayHours: number; // >= 1
+    triggerCondition: 'no_open' | 'no_click';
+  };
 }
 
 export interface CampaignSession {
@@ -3404,6 +3411,10 @@ export interface CampaignPage {
     clicks: number;
   };
   publishedVersionId?: string | null;
+  /** 'custom_coded' = hand-built Next.js page; 'page_builder' = built via the page builder UI */
+  pageType?: 'custom_coded' | 'page_builder';
+  /** When true, page events are tracked in custom_page_analytics */
+  trackingEnabled?: boolean;
 
   createdBy: string;
   createdAt: string;
@@ -4773,3 +4784,104 @@ export interface CallActionParams {
  */
 export type AutomationRuleParams = CallActionParams;
 
+// ─────────────────────────────────────────────────
+// Page Link Tracking & Analytics (Phase 1)
+// ─────────────────────────────────────────────────
+
+/**
+ * Named event types fired on tracked landing pages.
+ */
+export type PageEventType =
+  | 'page_view'
+  | 'video_start'
+  | 'video_complete'
+  | 'video_replay'
+  | 'cta_click';
+
+/**
+ * Source channel that brought the visitor to the page.
+ * 'email'    — arrived via a tracked email link (/api/l/{id})
+ * 'sms'      — arrived via a personalised SMS URL (Phase 8)
+ * 'whatsapp' — arrived via a personalised WhatsApp URL (Phase 8)
+ * 'qr'       — arrived via a QR code redirect (/q/{shortPath})
+ * 'direct'   — organic / unknown source
+ */
+export type PageEventChannel = 'email' | 'sms' | 'whatsapp' | 'qr' | 'direct';
+
+/**
+ * A single tracked event on a landing page.
+ * Stored in custom_page_analytics/{slug}/events/{autoId}.
+ */
+export interface CustomPageEvent {
+  id?: string;
+  type: PageEventType;
+  /** Entity ID from ?ref= query param — undefined for anonymous visitors. */
+  entityId?: string;
+  /** Browser-local session ID (localStorage). Used for uniqueViews deduplication. */
+  sessionId: string;
+  channel: PageEventChannel;
+  timestamp: string;
+}
+
+/**
+ * Aggregate stats stored on the root custom_page_analytics/{slug} document.
+ * All fields are incremented atomically with FieldValue.increment.
+ */
+export interface CustomPageStats {
+  views: number;
+  uniqueViews: number;
+  videoStarts: number;
+  videoCompletions: number;
+  videoReplays: number;
+  ctaClicks: number;
+}
+
+/**
+ * Root document for a tracked landing page.
+ * Stored in custom_page_analytics/{slug}.
+ */
+export interface CustomPageAnalyticsDoc {
+  slug: string;
+  /** Links to campaign_pages/{pageId} when the page is registered in the page builder registry. */
+  pageId?: string;
+  stats: CustomPageStats;
+  updatedAt: string;
+}
+
+/**
+ * A CustomPageEvent enriched with entity display name for the admin UI.
+ */
+export interface CustomPageEventWithEntity extends CustomPageEvent {
+  entityDisplayName?: string;
+}
+
+/**
+ * Typed tracked link record stored in Firestore tracked_links/{id}.
+ * Replaces the local interface in link-tracking.ts to centralise types.
+ */
+export interface TrackedLink {
+  id: string;
+  originalUrl: string;
+  campaignId: string;
+  jobId: string;
+  taskId: string;
+  /** Entity ID attached at link-creation time so the redirect can forward identity. */
+  entityId?: string;
+  clickCount: number;
+  createdAt: string;
+}
+
+/**
+ * Return type of getLinkData() — fast read path in the redirect route.
+ * Decoupled from the write path so the 302 is never blocked by analytics.
+ */
+export interface TrackedLinkClickResult {
+  originalUrl: string;
+  entityId?: string;
+}
+
+/**
+ * Map of page slug → canonical URL, used by the page link pre-pass resolver.
+ * Populated server-side before resolveVariables() is called.
+ */
+export type PageLinkMap = Map<string, string>;

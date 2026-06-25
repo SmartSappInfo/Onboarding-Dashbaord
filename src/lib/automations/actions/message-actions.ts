@@ -312,6 +312,11 @@ export async function handleDirectMessage(
         const resolvedSubject = rawSubject ? renderTemplate(rawSubject, vars) : undefined;
         const resolvedBodyContent = renderTemplate(rawBody, vars);
 
+        const { generateSecureUnsubscribeLink } = await import('../../services/unsubscribe-service');
+        const recipientUnsubLink = channel === 'email'
+          ? await generateSecureUnsubscribeLink(recipient, context.entityId || null, context.workspaceId || null)
+          : '';
+
         let finalBody = resolvedBodyContent;
 
         // If brand layout wrapper is enabled, wrap in dynamic HTML layout in memory
@@ -322,6 +327,8 @@ export async function handleDirectMessage(
           const logoHtml = logoUrl
             ? `<img src="${logoUrl}" alt="${orgName} Logo" style="max-height: 48px; margin-bottom: 24px; display: block;" />`
             : `<h2 style="color: ${primaryColor}; margin: 0 0 24px 0; font-family: Figtree, sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">${orgName}</h2>`;
+
+          const processedBodyContent = resolvedBodyContent.replace(/\{\{unsubscribe_link\}\}/g, recipientUnsubLink);
 
           finalBody = `
 <!DOCTYPE html>
@@ -345,7 +352,7 @@ export async function handleDirectMessage(
           <!-- Content -->
           <tr>
             <td style="padding: 0 40px 40px 40px; font-size: 15px; line-height: 1.625; color: #334155; font-family: Figtree, sans-serif;">
-              ${resolvedBodyContent.replace(/\n/g, '<br />')}
+              ${processedBodyContent.replace(/\n/g, '<br />')}
             </td>
           </tr>
           <!-- Footer -->
@@ -354,7 +361,8 @@ export async function handleDirectMessage(
               <p style="margin: 0 0 8px 0; font-weight: 600; color: #475569;">${orgName}</p>
               ${vars.org_address ? `<p style="margin: 0 0 4px 0;">${vars.org_address}</p>` : ''}
               ${vars.org_phone || vars.org_email ? `<p style="margin: 0 0 16px 0;">${[vars.org_phone, vars.org_email].filter(Boolean).join('  •  ')}</p>` : ''}
-              <p style="margin: 0; color: #94A3B8; font-size: 10px;">${vars.unsubscribe_copy || 'You are receiving this email because you are registered with our services.'}</p>
+              <p style="margin: 0 0 8px 0; color: #94A3B8; font-size: 10px;">${vars.unsubscribe_copy || 'You are receiving this email because you are registered with our services.'}</p>
+              <p style="margin: 0; color: #94A3B8; font-size: 10px;">If you wish to manage your preferences or opt-out, you can <a href="${recipientUnsubLink}" style="color: ${primaryColor}; text-decoration: underline;">unsubscribe here</a>.</p>
             </td>
           </tr>
         </table>
@@ -364,6 +372,8 @@ export async function handleDirectMessage(
 </body>
 </html>
           `;
+        } else if (channel === 'email') {
+          finalBody = resolvedBodyContent.replace(/\{\{unsubscribe_link\}\}/g, recipientUnsubLink);
         }
 
         const result = await sendRawMessage({
@@ -373,7 +383,10 @@ export async function handleDirectMessage(
           ...(resolvedSubject && { subject: resolvedSubject }),
           senderProfileId,
           organizationId: context.organizationId,
-          variables: { ...context.payload },
+          variables: { 
+            ...context.payload, 
+            unsubscribe_link: recipientUnsubLink 
+          },
           workspaceIds: [context.workspaceId],
           messageType: 'transactional',
           entityId: context.entityId,

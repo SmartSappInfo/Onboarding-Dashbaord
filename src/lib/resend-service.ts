@@ -133,9 +133,10 @@ export async function sendEmail(params: {
   tags?: ResendTag[];
   apiKey?: string;
   domain?: string;
+  headers?: Record<string, string>;
 }) {
   const domain = params.domain || getDomain();
-  const payload = {
+  const payload: Record<string, unknown> = {
     from: params.from || `SmartSapp <notifications@${domain}>`,
     to: params.to,
     subject: params.subject,
@@ -144,6 +145,10 @@ export async function sendEmail(params: {
     scheduled_at: params.scheduledAt,
     tags: params.tags,
   };
+
+  if (params.headers) {
+    payload.headers = params.headers;
+  }
 
   return resendRequest('/emails', 'POST', payload, params.apiKey);
 }
@@ -157,6 +162,7 @@ export async function sendBatchEmails(
     attachments?: EmailAttachment[];
     scheduledAt?: string;
     tags?: ResendTag[];
+    headers?: Record<string, string>;
   }[],
   apiKey?: string,
   domain?: string
@@ -170,6 +176,7 @@ export async function sendBatchEmails(
     attachments: email.attachments,
     scheduled_at: email.scheduledAt,
     tags: email.tags,
+    headers: email.headers,
   }));
 
   // Chunk payload into groups of 150 (Resend API limit)
