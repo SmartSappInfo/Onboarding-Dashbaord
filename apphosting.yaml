@@ -26,3 +26,5 @@ env:
     secret: cron-secret
   - variable: WHATSAPP_ENCRYPTION_KEY
     secret: whatsapp-encryption-key
+  - variable: RESEND_WEBHOOK_SECRET
+    secret: resend-webhook-secret
