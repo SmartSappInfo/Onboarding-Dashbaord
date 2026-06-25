@@ -45,6 +45,16 @@ interface SendMessageInput {
   campaignId?: string;
   campaignVariantId?: 'A' | 'B';
   messageType?: 'transactional' | 'marketing';
+  // Automation correlation — enables per-node delivery stats and resend.
+  automationId?: string;
+  runId?: string;
+  nodeId?: string;
+  /** True when this send is a resend of an earlier message at the same node. */
+  isResend?: boolean;
+  /** The id of the original MessageLog this is a resend of. */
+  resendOfLogId?: string;
+  /** 1-based attempt number for resends. */
+  resendNumber?: number;
 }
 
 /**
@@ -823,6 +833,12 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       attachmentCount: attachments?.length || 0,
       ...(campaignId ? { campaignId } : {}),
       ...(campaignVariantId ? { campaignVariantId } : {}),
+      ...(input.automationId ? { automationId: input.automationId } : {}),
+      ...(input.runId ? { runId: input.runId } : {}),
+      ...(input.nodeId ? { nodeId: input.nodeId } : {}),
+      ...(input.isResend ? { isResend: true } : {}),
+      ...(input.resendOfLogId ? { resendOfLogId: input.resendOfLogId } : {}),
+      ...(typeof input.resendNumber === 'number' ? { resendNumber: input.resendNumber } : {}),
       ...(template.channel === 'whatsapp' ? {
         direction: 'outbound' as const,
         ...(providerId ? { metaMessageId: providerId } : {}),
@@ -831,6 +847,27 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     };
 
     const logRef = await adminDb.collection('message_logs').add(logData);
+
+    // Per-node delivery stats (automation messaging) — best-effort, never blocks the send.
+    const statAutomationId = input.automationId;
+    const statNodeId = input.nodeId;
+    if (statAutomationId && statNodeId && !scheduledAt) {
+      const statChannel = sender.channel;
+      const statOrgId = sender.organizationId;
+      const statWorkspaceId = resolvedWorkspaceId || workspaceIds?.[0] || '';
+      const statCounter = input.isResend ? 'resent' as const : 'sent' as const;
+      import('./messaging/message-node-stats')
+        .then(({ incrementMessageNodeStat }) => incrementMessageNodeStat({
+          automationId: statAutomationId,
+          nodeId: statNodeId,
+          workspaceId: statWorkspaceId,
+          organizationId: statOrgId,
+          channel: statChannel,
+          counter: statCounter,
+          touchLastMessageAt: true,
+        }))
+        .catch((err) => console.warn('[MSG-ENGINE] node stat increment failed (non-fatal):', err?.message));
+    }
 
     await logActivity({
         entityId: resolvedEntityId || null,
@@ -867,9 +904,14 @@ export async function sendRawMessage(input: {
     messageType?: 'transactional' | 'marketing',
     entityId?: string,
     entityType?: string,
-    isAutomation?: boolean
+    isAutomation?: boolean,
+    // Automation correlation — enables per-node delivery stats.
+    automationId?: string,
+    runId?: string,
+    nodeId?: string,
+    isResend?: boolean
 }) {
-    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing', entityId, entityType, isAutomation = false } = input;
+    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing', entityId, entityType, isAutomation = false, automationId, runId, nodeId, isResend = false } = input;
 
     try {
         // Resolve the tenant FIRST (no cross-tenant fallback), then the sender.
@@ -1024,9 +1066,30 @@ export async function sendRawMessage(input: {
             providerId: null,
             providerStatus: 'delivered',
             hasAttachments: false,
-            attachmentCount: 0
+            attachmentCount: 0,
+            ...(automationId ? { automationId } : {}),
+            ...(runId ? { runId } : {}),
+            ...(nodeId ? { nodeId } : {}),
+            ...(isResend ? { isResend: true } : {}),
         };
         const logRef = await adminDb.collection('message_logs').add(logData);
+
+        // Per-node delivery stats (automation messaging) — best-effort, never blocks the send.
+        // Only email/sms/whatsapp carry provider delivery semantics; in_app/push are excluded.
+        if (automationId && nodeId && (channel === 'email' || channel === 'sms')) {
+          const directStatChannel = channel;
+          import('./messaging/message-node-stats')
+            .then(({ incrementMessageNodeStat }) => incrementMessageNodeStat({
+              automationId,
+              nodeId,
+              workspaceId: workspaceIds[0] || '',
+              organizationId: finalOrgId || undefined,
+              channel: directStatChannel,
+              counter: isResend ? 'resent' : 'sent',
+              touchLastMessageAt: true,
+            }))
+            .catch((err) => console.warn('[MSG-ENGINE] node stat increment failed (non-fatal):', err?.message));
+        }
 
         // Trigger activity timeline event (with isAutomation: true to prevent loop)
         const { logActivity } = await import('./activity-logger');

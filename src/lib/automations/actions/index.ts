@@ -16,7 +16,7 @@ import { logAutomationEvent } from '../../automation-log';
 import { handleUpdateLeadScore } from './score-automation-actions';
 
 export async function processActionNode(
-  node: { data?: { actionType?: string; config?: Record<string, unknown> } },
+  node: { id?: string; data?: { actionType?: string; config?: Record<string, unknown> } },
   context: ExecutionContext
 ): Promise<any> {
   const actionType = node.data?.actionType;
@@ -27,10 +27,10 @@ export async function processActionNode(
 
   switch (actionType) {
     case 'SEND_MESSAGE':
-      return await handleSendMessage(resolvedConfig, context);
+      return await handleSendMessage(resolvedConfig, context, node.id);
     case 'DIRECT_EMAIL':
     case 'DIRECT_SMS':
-      return await handleDirectMessage(actionType, resolvedConfig, context);
+      return await handleDirectMessage(actionType, resolvedConfig, context, node.id);
     case 'SEND_NOTIFICATION_EMAIL':
     case 'SEND_NOTIFICATION_SMS':
     case 'SEND_NOTIFICATION_IN_APP':

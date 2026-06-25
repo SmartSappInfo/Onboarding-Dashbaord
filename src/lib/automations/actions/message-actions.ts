@@ -5,7 +5,8 @@ import type { ExecutionContext } from '../execution-types';
 
 export async function handleSendMessage(
   config: Record<string, unknown>,
-  context: ExecutionContext
+  context: ExecutionContext,
+  nodeId?: string
 ): Promise<void> {
   if (!config.templateId && (!config.templateCategory || !config.templateType)) {
     throw new Error(
@@ -165,6 +166,9 @@ export async function handleSendMessage(
         workspaceId: context.workspaceId,
         ...(rendered.subject && { subject: rendered.subject }),
         body: rendered.body,
+        automationId: context.automationId,
+        runId: context.runId,
+        ...(nodeId ? { nodeId } : {}),
       });
     } else {
       await sendMessage({
@@ -175,6 +179,9 @@ export async function handleSendMessage(
         variables: sendMessageVars,
         entityId: context.entityId,
         workspaceId: context.workspaceId,
+        automationId: context.automationId,
+        runId: context.runId,
+        ...(nodeId ? { nodeId } : {}),
       });
     }
   }
@@ -183,7 +190,8 @@ export async function handleSendMessage(
 export async function handleDirectMessage(
   actionType: 'DIRECT_EMAIL' | 'DIRECT_SMS' | string,
   config: Record<string, unknown>,
-  context: ExecutionContext
+  context: ExecutionContext,
+  nodeId?: string
 ): Promise<void> {
   const channel = actionType === 'DIRECT_EMAIL' ? 'email' : 'sms';
   const usePhone = channel === 'sms';
@@ -353,7 +361,10 @@ export async function handleDirectMessage(
           messageType: 'transactional',
           entityId: context.entityId,
           entityType: context.entityType,
-          isAutomation: true
+          isAutomation: true,
+          automationId: context.automationId,
+          runId: context.runId,
+          ...(nodeId ? { nodeId } : {}),
         });
 
         if (!result.success) {
