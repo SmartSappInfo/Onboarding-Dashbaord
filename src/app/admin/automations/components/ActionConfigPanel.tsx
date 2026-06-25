@@ -25,7 +25,8 @@ import { createFieldAction } from '@/lib/fields-actions';
 import { createTagAction } from '@/lib/tag-actions';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { MappableInputField } from './MappableInputField';
-import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, SenderProfile } from '@/lib/types';
+import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, SenderProfile, MessageResendConfig } from '@/lib/types';
+import { ResendConfigSection } from './ResendConfigSection';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -692,6 +693,7 @@ interface AutomationConfig {
   contactEmailOrId?: string;
   recipientRoles?: string[];
   recipientTargets?: string[];
+  resendConfig?: MessageResendConfig;
   notificationTargets?: string[];
   notificationUserIds?: string[];
   tagIds?: string[];
@@ -892,9 +894,15 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               })}
             </div>
           </div>
+
+          <ResendConfigSection
+            value={config.resendConfig}
+            channel={config.channel}
+            onChange={(next) => updateConfig({ resendConfig: next })}
+          />
         </div>
       ) : null}
-      
+
       {actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS' ? (
         <div className="space-y-6 text-left">
           {/* Sender Profile Selector */}

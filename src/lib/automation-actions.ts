@@ -117,3 +117,15 @@ export async function resumeRunAction(runId: string, userId: string) {
   const { resumePausedRun } = await import('./automations/run-management');
   return resumePausedRun(runId, userId);
 }
+
+// ── Message-step delivery stats ───────────────────────────────────────────────
+
+/**
+ * Returns the denormalized per-node delivery counters for a message step, or
+ * `null` when the node has not sent anything yet. Drives the stats section under
+ * the message step and the inspector statistics tab.
+ */
+export async function getMessageNodeStatsAction(automationId: string, nodeId: string) {
+  const { readMessageNodeStats } = await import('./messaging/message-node-stats');
+  return readMessageNodeStats(automationId, nodeId);
+}

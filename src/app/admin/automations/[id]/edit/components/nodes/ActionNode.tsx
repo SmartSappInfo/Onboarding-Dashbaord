@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
 import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
+import { useAutomationMeta } from '../../../../components/AutomationMetaContext';
+import { MessageNodeStatsStrip } from '../../../../components/message-stats/MessageNodeStatsStrip';
 
 /**
  * @fileOverview Refined Action Node for Automation Canvas.
@@ -40,6 +42,7 @@ export function ActionNode({ id, data, selected }: any) {
     const config = data.config || {};
 
     const { users, stages, pipelines } = useWorkspaceScopedQueries();
+    const { automationId } = useAutomationMeta();
 
     const getIcon = () => {
         switch(actionType) {
@@ -224,8 +227,11 @@ export function ActionNode({ id, data, selected }: any) {
                     </div>
                 </div>
             </Card>
-            <Handle 
-                type="source" 
+            {actionType === 'SEND_MESSAGE' && (
+                <MessageNodeStatsStrip automationId={automationId} nodeId={id} channel={config.channel} />
+            )}
+            <Handle
+                type="source"
                 position={Position.Bottom} 
                 className={cn(
                     "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",

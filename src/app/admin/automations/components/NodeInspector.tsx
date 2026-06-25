@@ -31,6 +31,7 @@ import { useWorkspaceScopedQueries } from '../hooks/useWorkspaceScopedQueries';
 import { TriggerConfigPanel } from './TriggerConfigPanel';
 import { ActionConfigPanel } from './ActionConfigPanel';
 import { SearchInput } from './SearchInput';
+import { MessageNodeStatsPanel } from './message-stats/MessageNodeStatsPanel';
 
 interface NodeInspectorProps {
     node: any;
@@ -464,6 +465,7 @@ export function NodeInspector({
     const { singular } = useTerminology();
     const params = useParams();
     const automationId = params.id as string;
+    const [messageInspectorTab, setMessageInspectorTab] = React.useState<'config' | 'stats'>('config');
 
     const localizedActionTypes = React.useMemo(() => {
         return ACTION_TYPES.map((a) => {
@@ -868,21 +870,59 @@ export function NodeInspector({
 
                                     <Separator className="opacity-40" />
 
-                                    {/* The actual config form — NO list, just properties */}
-                                    <ActionConfigPanel
-                                        actionType={data.actionType}
-                                        config={config}
-                                        onUpdateConfig={updateConfig}
-                                        users={users}
-                                        stages={stages}
-                                        pipelines={pipelines}
-                                        variables={variables}
-                                        singular={singular}
-                                        automations={automations}
-                                        appFields={appFields}
-                                        fieldGroups={fieldGroups}
-                                        allTags={allTags}
-                                    />
+                                    {/* Message steps expose a Statistics tab alongside their config */}
+                                    {data.actionType === 'SEND_MESSAGE' && (
+                                        <div className="inline-flex rounded-lg border border-border/60 bg-muted/30 p-0.5 text-[10px] font-semibold">
+                                            <button
+                                                type="button"
+                                                onClick={() => setMessageInspectorTab('config')}
+                                                className={cn(
+                                                    'px-3 py-1 rounded-md transition-colors',
+                                                    messageInspectorTab === 'config'
+                                                        ? 'bg-background text-foreground shadow-sm'
+                                                        : 'text-muted-foreground hover:text-foreground'
+                                                )}
+                                            >
+                                                Configuration
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMessageInspectorTab('stats')}
+                                                className={cn(
+                                                    'px-3 py-1 rounded-md transition-colors',
+                                                    messageInspectorTab === 'stats'
+                                                        ? 'bg-background text-foreground shadow-sm'
+                                                        : 'text-muted-foreground hover:text-foreground'
+                                                )}
+                                            >
+                                                Statistics
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {data.actionType === 'SEND_MESSAGE' && messageInspectorTab === 'stats' ? (
+                                        <MessageNodeStatsPanel
+                                            automationId={automationId}
+                                            nodeId={node.id}
+                                            channel={config?.channel}
+                                        />
+                                    ) : (
+                                        /* The actual config form — NO list, just properties */
+                                        <ActionConfigPanel
+                                            actionType={data.actionType}
+                                            config={config}
+                                            onUpdateConfig={updateConfig}
+                                            users={users}
+                                            stages={stages}
+                                            pipelines={pipelines}
+                                            variables={variables}
+                                            singular={singular}
+                                            automations={automations}
+                                            appFields={appFields}
+                                            fieldGroups={fieldGroups}
+                                            allTags={allTags}
+                                        />
+                                    )}
                                 </div>
                             )}
                         </div>
