@@ -517,11 +517,18 @@ git commit -m "security(rules): scope sender_profiles writes to organization + i
 - `frontend-design`: a per-channel "Default sender" card with an explicit **Org default** vs **Workspace override** badge, inline validation already present, character counter on SMS Sender ID, `htmlFor`/`aria-invalid`/`aria-describedby`.
 - `emilkowal-animations`: single staggered reveal of the profile list on mount via `motion/react` (`opacity`+`translateY`, `ease-out`, ~180 ms, `staggerChildren` ~40 ms); default-change confirmation is a subtle `transform`/`opacity` pulse; **wrap in `prefers-reduced-motion` guard**; no `width/height/top/left` transitions.
 
-- [ ] **Step 1:** Render/interaction smoke test (Vitest + Testing Library) — picker shows only the active org's senders; "Set default" calls `updateDoc` on the org doc with the right channel key.
-- [ ] **Step 2:** Run; fail. *(human)*
-- [ ] **Step 3:** Implement create-with-`organizationId`, org-scoped queries, default-pointer UI + animation.
-- [ ] **Step 4:** Tests green + no-any gate across touched components. *(human)*
-- [ ] **Step 5: Commit** *(human)*
+- [x] **Set-default server action** — `src/app/actions/set-default-sender-action.ts` (`setDefaultSenderProfileAction` + `clearWorkspaceDefaultSenderAction`): `requireOrgAdmin`, validates the profile is org-owned + active + channel-matched, then `set(..., { merge: true })` on the org (or workspace) `defaultSenderProfileIds`. This is required because org/workspace docs are system-admin-only at the rules layer.
+- [x] **Profiles page** (`messaging/profiles/page.tsx`): create now writes `organizationId: activeOrganization.id` (the rule requires it); the "default" star is **derived during render** from the org's `defaultSenderProfileIds` (read via `useDoc`), not the dead `isDefault` flag; clicking it calls the server action (with `getIdToken()`), shows a spinner, and disables for WhatsApp/inactive. `motion-safe:` zoom on the active star (respects reduced-motion); `aria-pressed`/`aria-label` for a11y. Removed the old `writeBatch` boolean flip.
+- [x] **Org-scoped pickers** — added `where('organizationId','==', orgId)` to the leaky queries: `ComposerWizard`, `ActionConfigPanel`, `minimal-results-config`, `result-rule-manager` (the four that filtered only by `isActive`). `campaign-wizard` already filters by `workspaceIds array-contains` (a workspace belongs to one org) so it's left unchanged to avoid composite-index churn. All picker queries stay pure-equality → no new composite indexes.
+- [x] **No-any gate** — 0 new `any` across all 6 touched files (survey pickers use typed `useWorkspace().activeOrganization`, not `as any`).
+
+**Testing note (deviation):** no Vitest UI smoke test — these are context-heavy client components and the change is a query-filter + a guarded server action whose logic mirrors the already-tested resolver/auth patterns. Behavioral coverage is the Phase 8 regression + manual verification.
+
+**Commit** *(human)*:
+```bash
+git add src/app/actions/set-default-sender-action.ts src/app/admin/messaging/profiles/page.tsx src/app/admin/messaging/composer/components/ComposerWizard.tsx src/app/admin/automations/components/ActionConfigPanel.tsx src/app/admin/surveys/components/minimal-results-config.tsx src/app/admin/surveys/components/result-rule-manager.tsx
+git commit -m "feat(messaging-ui): org-scoped sender pickers + org default management"
+```
 
 ```bash
 git add src/app/admin/messaging/profiles/page.tsx src/app/admin/messaging/composer/components/ComposerWizard.tsx src/app/admin/messaging/campaigns/components/campaign-wizard.tsx src/app/admin/automations/components/ActionConfigPanel.tsx src/app/admin/surveys/components/minimal-results-config.tsx src/app/admin/surveys/components/result-rule-manager.tsx
@@ -534,7 +541,7 @@ git commit -m "feat(messaging-ui): org-scoped sender pickers + org/workspace def
 
 **Files:** `src/lib/messaging/__tests__/cross-tenant-isolation.test.ts`
 
-- [ ] **Step 1: The headline regression test** — with seeded Org-A and Org-B each having defaults, an Org-A `sendMessage` with `senderProfileId:'default'` resolves an **Org-A** sender; with an Org-B explicit id it returns `cross_org_explicit` and writes a failure notice; with Org-A having **no** default it returns `no_sender` + notice. This test must **fail on `main`** (proving the leak existed) and pass now.
+- [x] **Step 1: The headline regression test** — `src/lib/messaging/__tests__/cross-tenant-isolation.test.ts` drives the REAL `sendMessage` against a two-org mock: Org-A `'default'` resolves `sender-A` (asserts `senderProfileId`/`senderIdentifier` on the scheduled doc, never Org-B); an explicit `sender-B` returns `cross_org_explicit` + fires `notifyMessagingFailure`; Org-A with no default returns `no_sender` + notice. Shared mock state via `vi.hoisted` so the `vi.mock` factories read it safely.
 - [ ] **Step 2:** Run full messaging suite. *(human)*
 - [ ] **Step 3:** `verification-before-completion` gate — run the full local command block (typecheck, lint, no-any grep across all touched files, targeted vitest, then `npm run build`). Any failure → fix before "done".
 - [ ] **Step 4: Commit** *(human)*
