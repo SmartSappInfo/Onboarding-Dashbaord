@@ -3,10 +3,20 @@ import { sendMessage } from '../../messaging-engine';
 import { resolveContact } from '../../contact-adapter';
 import type { ExecutionContext } from '../execution-types';
 
+export interface ResendSendOverride {
+  /** Subject (email) / leading line (SMS) override for this resend attempt. */
+  subject?: string;
+  /** Preview text override for this resend attempt. */
+  previewText?: string;
+  isResend: boolean;
+  resendNumber: number;
+}
+
 export async function handleSendMessage(
   config: Record<string, unknown>,
   context: ExecutionContext,
-  nodeId?: string
+  nodeId?: string,
+  resendOverride?: ResendSendOverride
 ): Promise<void> {
   if (!config.templateId && (!config.templateCategory || !config.templateType)) {
     throw new Error(
@@ -164,11 +174,15 @@ export async function handleSendMessage(
         variables: sendMessageVars,
         entityId: context.entityId,
         workspaceId: context.workspaceId,
-        ...(rendered.subject && { subject: rendered.subject }),
+        ...(resendOverride?.subject
+          ? { subject: resendOverride.subject }
+          : (rendered.subject ? { subject: rendered.subject } : {})),
         body: rendered.body,
         automationId: context.automationId,
         runId: context.runId,
         ...(nodeId ? { nodeId } : {}),
+        ...(resendOverride?.previewText ? { previewText: resendOverride.previewText } : {}),
+        ...(resendOverride ? { isResend: resendOverride.isResend, resendNumber: resendOverride.resendNumber } : {}),
       });
     } else {
       await sendMessage({
@@ -182,6 +196,9 @@ export async function handleSendMessage(
         automationId: context.automationId,
         runId: context.runId,
         ...(nodeId ? { nodeId } : {}),
+        ...(resendOverride?.subject ? { subject: resendOverride.subject } : {}),
+        ...(resendOverride?.previewText ? { previewText: resendOverride.previewText } : {}),
+        ...(resendOverride ? { isResend: resendOverride.isResend, resendNumber: resendOverride.resendNumber } : {}),
       });
     }
   }

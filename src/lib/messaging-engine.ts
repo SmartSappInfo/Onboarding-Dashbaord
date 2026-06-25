@@ -40,6 +40,7 @@ interface SendMessageInput {
   // Task 15.1: Allow overriding template content
   body?: string; // Override template body
   subject?: string; // Override template subject
+  previewText?: string; // Override template preview text (e.g. per-resend framing)
   tags?: { name: string; value: string }[]; // Optional provider-specific tags (Requirement 7)
   trackLinks?: boolean; // Phase 7: Whether to track URLs in the body
   campaignId?: string;
@@ -818,7 +819,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       channel: sender.channel,
       recipient,
       subject: resolvedSubject || null,
-      previewText: resolvedPreviewText || null,
+      previewText: input.previewText || resolvedPreviewText || null,
       body: resolvedBody,
       status: scheduledAt ? 'scheduled' : 'sent',
       sentAt: scheduledAt || new Date().toISOString(),

@@ -117,8 +117,20 @@ async function handleAutomationMessageEvent(
     );
   }
 
-  // TODO(Phase 4): on email.opened / email.clicked, cancel pending resend jobs for
-  // (log.runId, log.nodeId) so an engaged contact stops receiving resends and advances.
+  // Real-time resend release: an engaged contact advances immediately rather than
+  // waiting for the next scheduled engagement check.
+  if ((type === 'email.opened' || type === 'email.clicked') && log.runId && log.nodeId) {
+    try {
+      const { handleEngagementForNode } = await import('@/lib/automations/resend-jobs');
+      await handleEngagementForNode(
+        log.runId,
+        log.nodeId,
+        type === 'email.clicked' ? 'clicked' : 'opened'
+      );
+    } catch (e: unknown) {
+      console.warn('>>> [WEBHOOK] resend engagement hook failed (non-fatal):', e);
+    }
+  }
 }
 
 export async function POST(req: NextRequest) {

@@ -149,6 +149,17 @@ export async function processScheduledJobsAction(): Promise<{
             error: e,
           });
         }
+      } else if (claimed.targetNodeId === '__resend_check__') {
+        try {
+          const { processResendCheck } = await import('./resend-jobs');
+          success = await processResendCheck(claimed);
+        } catch (e) {
+          logAutomationEvent('error', 'resend_check_failed', {
+            jobId: claimed.id,
+            runId: claimed.runId,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
       } else {
         success = await resumeAutomationRun(claimed);
       }

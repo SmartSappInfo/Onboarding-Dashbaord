@@ -1,4 +1,4 @@
-import type { Automation } from '../../types';
+import type { Automation, MessageResendConfig } from '../../types';
 import { evaluateConditionNode } from '../../automation-condition';
 import { processActionNode } from '../actions';
 import type { ExecutionContext } from '../execution-types';
@@ -269,6 +269,35 @@ export async function traverseNodes(
             context.payload[`${stepNum}.${key}`] = val;
             context.payload[`${nextNode.id}.${key}`] = val;
           }
+        }
+
+        // Resend "waiting card": when a message step has resend enabled, hold the
+        // contact here instead of advancing. An engagement check is scheduled; the
+        // contact moves on once they engage or all resends are exhausted.
+        const resendConfig = (nextNode.data?.config as { resendConfig?: MessageResendConfig } | undefined)?.resendConfig;
+        const isResendMessage =
+          nextNode.data?.actionType === 'SEND_MESSAGE' &&
+          !!resendConfig?.enabled &&
+          (resendConfig?.maxResends ?? 0) > 0;
+
+        if (isResendMessage && resendConfig) {
+          const { scheduleResendCheck } = await import('../resend-jobs');
+          const nextCheckAt = await scheduleResendCheck({
+            context,
+            nodeId: nextNode.id,
+            config: resendConfig,
+            attempt: 1,
+          });
+          logStepExecution(context.runId, {
+            nodeId: nextNode.id,
+            nodeType: 'actionNode',
+            nodeLabel: nextNode.data?.label || 'Action',
+            status: 'waiting',
+            executedAt: new Date().toISOString(),
+            durationMs: Date.now() - stepStart,
+            metadata: { actionType: nextNode.data?.actionType, delayUntil: nextCheckAt },
+          });
+          return; // Hold the contact at this message node until engaged or exhausted.
         }
 
         logStepExecution(context.runId, {
