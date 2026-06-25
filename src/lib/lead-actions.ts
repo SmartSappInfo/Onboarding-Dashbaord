@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { withEntitySearchFields } from './entities/entity-cache-domain';
 import { revalidatePath } from 'next/cache';
 import type { FormSubmission, WorkspaceEntity, Entity, CampaignPage, SurveyResponse, EntityContact } from './types';
 import crypto from 'crypto';
@@ -218,7 +219,7 @@ export async function processLeadCaptureAction(params: {
             await adminDb.collection('entities').doc(entityId).set(entity);
 
             const weId = `we_${crypto.randomUUID()}`;
-            const workspaceEntity: WorkspaceEntity = {
+            const workspaceEntity: WorkspaceEntity = withEntitySearchFields({
                 id: weId,
                 organizationId,
                 workspaceId,
@@ -233,7 +234,7 @@ export async function processLeadCaptureAction(params: {
                 entityContacts, // Denormalized (FER-01)
                 addedAt: timestamp,
                 updatedAt: timestamp
-            };
+            });
 
             await adminDb.collection('workspace_entities').doc(weId).set(workspaceEntity);
         }

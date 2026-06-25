@@ -12,6 +12,7 @@
  */
 
 import { adminDb } from './firebase-admin';
+import { withEntitySearchFields } from './entities/entity-cache-domain';
 import { logActivity } from './activity-logger';
 import { validateScopeMatch } from './scope-guard';
 import { parseCSV, inferEntityType } from './csv-parser';
@@ -433,7 +434,7 @@ async function linkEntityToWorkspace(
   stageId: string,
   timestamp: string
 ): Promise<void> {
-  const workspaceEntityData = {
+  const workspaceEntityData = withEntitySearchFields({
     organizationId,
     workspaceId,
     entityId,
@@ -446,7 +447,7 @@ async function linkEntityToWorkspace(
     updatedAt: timestamp,
     displayName,
     entityContacts: [],
-  };
+  });
 
   await adminDb.collection('workspace_entities').add(workspaceEntityData);
 }

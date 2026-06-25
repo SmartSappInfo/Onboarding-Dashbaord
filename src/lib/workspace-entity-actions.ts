@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { withEntitySearchFields } from './entities/entity-cache-domain';
 import { deleteContactProjectionForEntity } from './contacts/contact-projection-writer';
 import { logActivity } from './activity-logger';
 import { validateScopeMatch } from './scope-guard';
@@ -173,7 +174,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
     }
 
     // 8. Create workspace_entities document
-    const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = {
+    const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = withEntitySearchFields({
       organizationId: entity.organizationId,
       workspaceId: input.workspaceId,
       entityId: input.entityId,
@@ -183,12 +184,12 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       workspaceTags: [],
       addedAt: timestamp,
       updatedAt: timestamp,
-      // Denormalized read-model fields
+      // Denormalized read-model fields (displayNameLower stamped by helper)
       displayName: entity.name,
       primaryEmail,
       primaryPhone,
       entityContacts: entity.entityContacts || [],
-    };
+    });
 
     const workspaceEntityRef = await adminDb.collection('workspace_entities').add(workspaceEntityData);
 

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { dedupeIds, chunkIds, buildEntityMaps, toSearchKey } from '../entity-cache-domain';
+import {
+  dedupeIds,
+  chunkIds,
+  buildEntityMaps,
+  toSearchKey,
+  withEntitySearchFields,
+} from '../entity-cache-domain';
 
 describe('toSearchKey', () => {
   it('trims, lowercases, and collapses whitespace', () => {
@@ -10,6 +16,27 @@ describe('toSearchKey', () => {
     expect(toSearchKey(null)).toBe('');
     expect(toSearchKey(undefined)).toBe('');
     expect(toSearchKey('   ')).toBe('');
+  });
+});
+
+describe('withEntitySearchFields', () => {
+  it('derives displayNameLower from displayName', () => {
+    const out = withEntitySearchFields({ displayName: '  Green Valley  School ', status: 'active' });
+    expect(out.displayNameLower).toBe('green valley school');
+    expect(out.status).toBe('active'); // preserves the rest of the doc
+  });
+  it('matches the key the search query uses (round-trip)', () => {
+    const name = 'ACME Inc.';
+    expect(withEntitySearchFields({ displayName: name }).displayNameLower).toBe(toSearchKey(name));
+  });
+  it('falls back to empty string for missing displayName', () => {
+    expect(withEntitySearchFields({}).displayNameLower).toBe('');
+    expect(withEntitySearchFields({ displayName: null }).displayNameLower).toBe('');
+  });
+  it('does not mutate the input', () => {
+    const input = { displayName: 'A' };
+    withEntitySearchFields(input);
+    expect(input).not.toHaveProperty('displayNameLower');
   });
 });
 

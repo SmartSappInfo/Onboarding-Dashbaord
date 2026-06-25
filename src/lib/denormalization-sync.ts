@@ -56,6 +56,10 @@ export async function syncDenormalizedFieldsToWorkspaceEntities(
 
     if (updates.displayName !== undefined) {
       denormalizedUpdates.displayName = updates.displayName;
+      // Keep the search key in lockstep with displayName — never let it drift
+      // (the bug that left legacy rows unsearchable). Derive from the new name
+      // rather than trusting updates.displayNameLower so they can't disagree.
+      denormalizedUpdates.displayNameLower = toSearchKey(updates.displayName);
     }
 
     if (updates.primaryEmail !== undefined) {

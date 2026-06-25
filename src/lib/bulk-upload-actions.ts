@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { withEntitySearchFields } from './entities/entity-cache-domain';
 import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { logActivity } from './activity-logger';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -982,7 +983,7 @@ async function processRow(
 
     const primaryContact = entityContacts.find(c => c.isPrimary);
     const workspaceEntityId = `${workspaceId}_${entityId}`;
-    const workspaceEntityDoc = {
+    const workspaceEntityDoc = withEntitySearchFields({
         id: workspaceEntityId,
         organizationId,
         workspaceId,
@@ -1011,7 +1012,7 @@ async function processRow(
         ...(entityDoc.currentNeeds && { currentNeeds: entityDoc.currentNeeds }),
         ...(entityDoc.currentChallenges && { currentChallenges: entityDoc.currentChallenges }),
         ...(entityDoc.interestsText && { interestsText: entityDoc.interestsText }),
-    };
+    });
 
     const automationPayload = {
         entityId,

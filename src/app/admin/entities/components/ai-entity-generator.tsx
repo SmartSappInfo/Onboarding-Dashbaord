@@ -30,6 +30,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
 import { logActivity } from '@/lib/activity-logger';
+import { withEntitySearchFields } from '@/lib/entities/entity-cache-domain';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import type { Module, Zone } from '@/lib/types';
 import { 
@@ -198,21 +199,21 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
         // 4. Construct Workspace Operational Payload
         const workspaceId = activeWorkspaceId;
         const workspaceEntityId = `${workspaceId}_${entityId}`;
-        const workspaceEntityData = {
+        const workspaceEntityData = withEntitySearchFields({
             id: workspaceEntityId,
             entityId: entityId,
             workspaceId: workspaceId,
             displayName: result.name,
             status: 'active' as const,
-            assignedTo: { 
-                userId: user.uid, 
-                name: user.displayName || 'Architect', 
-                email: user.email || '' 
+            assignedTo: {
+                userId: user.uid,
+                name: user.displayName || 'Architect',
+                email: user.email || ''
             },
             addedAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             workspaceTags: []
-        };
+        });
 
         // 5. Execute Atomic Persistence
         const batch = writeBatch(firestore);

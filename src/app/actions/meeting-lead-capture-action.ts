@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
+import { withEntitySearchFields } from '@/lib/entities/entity-cache-domain';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendFacilitatorNewRegistrationAlert } from '@/lib/reminder-actions';
 import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
@@ -188,7 +189,7 @@ export async function createEntityFromRegistration(
       registrationData
     );
 
-    const newEntity: Record<string, any> = {
+    const newEntity: Record<string, any> = withEntitySearchFields({
       displayName: entityName,
       slug,
       entityType: 'person',
@@ -204,7 +205,7 @@ export async function createEntityFromRegistration(
       createdAt: now,
       updatedAt: now,
       ...additionalData,
-    };
+    });
 
     const entityDoc = await entitiesRef.add(newEntity);
     const newEntityId = entityDoc.id;

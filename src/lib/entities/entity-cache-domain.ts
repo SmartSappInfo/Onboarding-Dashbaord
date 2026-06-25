@@ -18,6 +18,23 @@ export function toSearchKey(name: string | null | undefined): string {
   return (name ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+/**
+ * Stamps the denormalized search field(s) onto a `workspace_entities` write
+ * payload, derived from its `displayName`. Every path that writes a WE doc's
+ * `displayName` MUST funnel through this so `displayNameLower` can never drift
+ * out of sync again — that drift left ~5% of entities invisible to the
+ * paginated entity search (see backfill-display-name-lower).
+ *
+ * Pure + isomorphic (no I/O), so it's safe in both client and Admin SDK write
+ * paths, and in direct `.set`/`.add` as well as batched writes. Returns a new
+ * object; never mutates the input.
+ */
+export function withEntitySearchFields<T extends { displayName?: string | null }>(
+  doc: T,
+): T & { displayNameLower: string } {
+  return { ...doc, displayNameLower: toSearchKey(doc.displayName) };
+}
+
 /** Dedupe then split into chunks (default 30 — Firestore `in` limit). */
 export function chunkIds(ids: Array<string | null | undefined>, size = 30): string[][] {
   const unique = dedupeIds(ids);

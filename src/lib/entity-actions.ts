@@ -19,7 +19,7 @@ import { after } from 'next/server';
 import { BulkVerificationService } from './bulk-verifier';
 import { BulkPhoneVerificationService } from './bulk-phone-verifier';
 import { applyIndustryDataDefaults } from './entity-utils';
-import { toSearchKey } from './entities/entity-cache-domain';
+import { withEntitySearchFields } from './entities/entity-cache-domain';
 import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { zoneOrUnassigned } from './zone-constants';
 
@@ -416,7 +416,7 @@ export async function createEntityAction(
 
     // Prepare Workspace Entity Document
     const workspaceEntityId = `${workspaceId}_${entityId}`;
-    const workspaceEntityData = {
+    const workspaceEntityData = withEntitySearchFields({
         id: workspaceEntityId,
         organizationId,
         workspaceId,
@@ -428,7 +428,7 @@ export async function createEntityAction(
         addedAt: timestamp,
         updatedAt: timestamp,
         displayName: displayName,
-        displayNameLower: toSearchKey(displayName), // searchable (Phase 5.2)
+        // displayNameLower stamped by withEntitySearchFields (Phase 5.2)
         // Denormalized contact fields from entityContacts (FER-01)
         primaryContactName,
         primaryEmail,
@@ -445,7 +445,7 @@ export async function createEntityAction(
         ...(entityData.currentNeeds && { currentNeeds: entityData.currentNeeds }),
         ...(entityData.currentChallenges && { currentChallenges: entityData.currentChallenges }),
         ...(entityData.interestsText && { interestsText: entityData.interestsText }),
-    };
+    });
 
     cleanUndefined(workspaceEntityData);
 
@@ -697,11 +697,11 @@ export async function updateEntityAction(
         const weData = doc.data();
         const isCurrentWorkspace = weData.workspaceId === workspaceId;
         
-        const weUpdate: any = {
+        const weUpdate: any = withEntitySearchFields({
           displayName: displayName,
-          displayNameLower: toSearchKey(displayName), // searchable (Phase 5.2)
+          // displayNameLower stamped by withEntitySearchFields (Phase 5.2)
           updatedAt: timestamp,
-        };
+        });
         
         // Entity-level fields (always sync to all workspaces)
         if (entityContacts) {
