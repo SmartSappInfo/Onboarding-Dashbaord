@@ -735,14 +735,16 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
 
   const firestore = useFirestore();
   const profilesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    const orgId = activeWorkspace?.organizationId;
+    if (!firestore || !orgId) return null;
     const targetChannel = actionType === 'DIRECT_EMAIL' ? 'email' : 'sms';
     return query(
       collection(firestore, 'sender_profiles'),
+      where('organizationId', '==', orgId),
       where('isActive', '==', true),
       where('channel', '==', targetChannel)
     );
-  }, [firestore, actionType]);
+  }, [firestore, activeWorkspace?.organizationId, actionType]);
 
   const { data: senderProfiles } = useCollection<SenderProfile>(profilesQuery);
 

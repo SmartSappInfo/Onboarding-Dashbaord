@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Organization, SenderProfile } from '@/lib/types';
 import { setDefaultSenderProfileAction } from '@/app/actions/set-default-sender-action';
@@ -126,6 +126,10 @@ export default function SenderProfilesPage() {
             if(workspaceIds.length === 0) toast({ variant: 'destructive', title: 'Constraint Alert', description: 'Select at least one workspace.' });
             return;
         }
+        if (!activeOrganization?.id) {
+            toast({ variant: 'destructive', title: 'No organization', description: 'Select an organization before creating a sender.' });
+            return;
+        }
 
         const trimmedName = name.trim();
         const trimmedIdentifier = identifier.trim();
@@ -161,6 +165,7 @@ export default function SenderProfilesPage() {
         setIsSubmitting(true);
         try {
             await addDoc(collection(firestore, 'sender_profiles'), {
+                organizationId: activeOrganization.id, // tenant owner (required by rules)
                 name: trimmedName,
                 channel,
                 identifier: trimmedIdentifier,
@@ -242,28 +247,38 @@ export default function SenderProfilesPage() {
         }
     };
 
+    // Pins the org-level default sender for this channel. This is the only
+    // fallback the messaging engine consults — written server-side (org docs are
+    // system-admin-only at the rules layer) after an org-admin check.
     const handleSetDefault = async (profile: SenderProfile) => {
-        if (!firestore || !profiles) return;
-        
-        const batch = writeBatch(firestore);
-        const channelProfiles = profiles.filter(p => p.channel === profile.channel);
-        
-        channelProfiles.forEach(p => {
-            const ref = doc(firestore, 'sender_profiles', p.id);
-            batch.update(ref, { 
-                isDefault: p.id === profile.id,
-                updatedAt: new Date().toISOString()
-            });
-        });
+        if (!user || !activeOrganization?.id) return;
+        if (profile.channel === 'whatsapp') return; // WhatsApp uses the org WABA, not a profile.
+        if (!profile.isActive) {
+            toast({ variant: 'destructive', title: 'Inactive sender', description: 'Activate this sender before making it the default.' });
+            return;
+        }
 
+        setSettingDefaultId(profile.id);
         try {
-            await batch.commit();
-            toast({ 
-                title: 'Channel Default Updated', 
-                description: `"${profile.name}" is now the default for ${profile.channel.toUpperCase()}.` 
+            const idToken = await user.getIdToken();
+            const result = await setDefaultSenderProfileAction(idToken, {
+                organizationId: activeOrganization.id,
+                channel: profile.channel,
+                senderProfileId: profile.id,
+                scope: 'organization',
             });
+            if (result.success) {
+                toast({
+                    title: 'Default sender updated',
+                    description: `"${profile.name}" is now the ${profile.channel.toUpperCase()} default for this organization.`,
+                });
+            } else {
+                toast({ variant: 'destructive', title: 'Could not set default', description: result.error });
+            }
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Error' });
+            toast({ variant: 'destructive', title: 'Error', description: e instanceof Error ? e.message : undefined });
+        } finally {
+            setSettingDefaultId(null);
         }
     };
 
@@ -494,8 +509,20 @@ export default function SenderProfilesPage() {
                                             </div>
                                         </TableCell>
  <TableCell className="text-center">
-                                            <button onClick={() => handleSetDefault(profile)}>
- {profile.isDefault ? <Star className="h-4 w-4 text-amber-500 fill-amber-500 mx-auto" /> : <Star className="h-4 w-4 text-muted-foreground/20 mx-auto hover:text-amber-500 transition-colors" />}
+                                            <button
+                                                onClick={() => handleSetDefault(profile)}
+                                                disabled={settingDefaultId === profile.id || profile.channel === 'whatsapp'}
+                                                aria-label={orgDefaults[profile.channel] === profile.id
+                                                    ? `${profile.name} is the organization default for ${profile.channel}`
+                                                    : `Set ${profile.name} as the organization default for ${profile.channel}`}
+                                                aria-pressed={orgDefaults[profile.channel] === profile.id}
+                                                className="disabled:opacity-40 disabled:cursor-not-allowed"
+                                            >
+                                                {settingDefaultId === profile.id
+                                                    ? <Loader2 className="h-4 w-4 animate-spin text-amber-500 mx-auto" />
+                                                    : orgDefaults[profile.channel] === profile.id
+                                                        ? <Star className="h-4 w-4 text-amber-500 fill-amber-500 mx-auto motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-200" />
+                                                        : <Star className="h-4 w-4 text-muted-foreground/20 mx-auto hover:text-amber-500 transition-colors" />}
                                             </button>
                                         </TableCell>
  <TableCell className="text-center">

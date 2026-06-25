@@ -14,6 +14,7 @@ import { collection, query, where } from 'firebase/firestore';
 import type { SenderProfile } from '@/lib/types';
 import { useParams } from 'next/navigation';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 export function MinimalRespondentMessage() {
     const { control, watch, setValue } = useFormContext();
@@ -38,10 +39,16 @@ export function MinimalRespondentMessage() {
         }
     }, [rules.length, setValue]);
 
+    const { activeOrganization } = useWorkspace();
     const profilesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true));
-    }, [firestore]);
+        const orgId = activeOrganization?.id;
+        if (!firestore || !orgId) return null;
+        return query(
+            collection(firestore, 'sender_profiles'),
+            where('organizationId', '==', orgId),
+            where('isActive', '==', true),
+        );
+    }, [firestore, activeOrganization?.id]);
 
     const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
 

@@ -246,8 +246,15 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     // ── Firestore queries ──────────────────────────────────────────────────────
 
     const profilesQuery = useMemoFirebase(() =>
-        firestore ? query(collection(firestore, 'sender_profiles'), where('isActive', '==', true), where('channel', '==', watchedChannel)) : null,
-    [firestore, watchedChannel]);
+        (firestore && activeOrganizationId)
+            ? query(
+                collection(firestore, 'sender_profiles'),
+                where('organizationId', '==', activeOrganizationId),
+                where('isActive', '==', true),
+                where('channel', '==', watchedChannel),
+              )
+            : null,
+    [firestore, activeOrganizationId, watchedChannel]);
 
     const stylesQuery = useMemoFirebase(() =>
         (firestore && activeWorkspaceId)

@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useParams } from 'next/navigation';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id: string, index: number, pages: SurveyResultPage[], remove: (i: number) => void, profiles?: SenderProfile[], surveyId?: string }) {
     const { register, watch, setValue, control } = useFormContext();
@@ -261,11 +262,17 @@ export default function ResultRuleManager() {
     const surveyId = params?.id as string;
     const resultPages = watch('resultPages') || [];
     const sensors = useSensors(useSensor(PointerSensor));
+    const { activeOrganization } = useWorkspace();
 
     const profilesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true));
-    }, [firestore]);
+        const orgId = activeOrganization?.id;
+        if (!firestore || !orgId) return null;
+        return query(
+            collection(firestore, 'sender_profiles'),
+            where('organizationId', '==', orgId),
+            where('isActive', '==', true),
+        );
+    }, [firestore, activeOrganization?.id]);
 
     const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
 
