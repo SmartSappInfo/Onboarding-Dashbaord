@@ -4,6 +4,10 @@ import { logAutomationEvent } from '../automation-log';
 import type { ExecutionContext } from './execution-types';
 import { traverseNodes } from './nodes/traverse';
 import { runAutomationById } from './run-by-id';
+import {
+  notifyAutomationCompleted,
+  flushAutomationNotificationBuffers,
+} from './automation-lifecycle-notify';
 
 const HEARTBEAT_BATCH_SIZE = 20;
 
@@ -18,13 +22,19 @@ export async function resumeAutomationRun(job: AutomationJob): Promise<boolean> 
       throw new Error('Blueprint or Run trace missing during resumption.');
     }
 
+    // Safety net: skip execution if the run has been paused by an admin
+    const runData = runSnap.data();
+    if (runData?.status === 'paused') {
+      return false;
+    }
+
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
     const context: ExecutionContext = {
-      entityId: job.payload.entityId,
-      entityType: job.payload.entityType,
-      workspaceId: job.payload.workspaceId,
-      organizationId: job.payload.organizationId,
+      entityId: job.payload.entityId as string | undefined,
+      entityType: job.payload.entityType as ExecutionContext['entityType'],
+      workspaceId: job.payload.workspaceId as string,
+      organizationId: job.payload.organizationId as string | undefined,
       payload: job.payload,
       automationId: job.automationId,
       runId: job.runId,
@@ -43,6 +53,13 @@ export async function resumeAutomationRun(job: AutomationJob): Promise<boolean> 
         status: 'completed',
         finishedAt: new Date().toISOString(),
       });
+      // Fire aggregated completed notification (fire-and-forget)
+      const autoData = autoSnap.data();
+      notifyAutomationCompleted({
+        automationId: job.automationId,
+        automationName: autoData?.name ?? job.automationId,
+        workspaceId: (job.payload.workspaceId as string | undefined) ?? '',
+      }).catch(() => { /* non-fatal */ });
     }
 
     return true;
@@ -75,6 +92,13 @@ export async function processScheduledJobsAction(): Promise<{
       console.error('Failed to evaluate heartbeat automation triggers:', triggerErr);
     }
 
+    // Flush any pending aggregated automation notifications
+    try {
+      await flushAutomationNotificationBuffers();
+    } catch (flushErr) {
+      console.error('Failed to flush automation notification buffers:', flushErr);
+    }
+
     const { findDuePendingJobs, claimAutomationJob, finalizeAutomationJob } = await import(
       './repository'
     );
@@ -92,14 +116,15 @@ export async function processScheduledJobsAction(): Promise<{
       if (claimed.targetNodeId === '__campaign_ab_evaluate__') {
         try {
           const { evaluateCampaignABTest } = await import('../campaign-automation-jobs');
-          await evaluateCampaignABTest(claimed.payload.campaignId);
+          await evaluateCampaignABTest(claimed.payload.campaignId as string);
           success = true;
-        } catch (e: any) {
-          console.error(`Evaluation failed: ${e.message}`);
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          console.error(`Evaluation failed: ${message}`);
           logAutomationEvent('error', 'heartbeat_ab_evaluate_failed', {
             jobId: claimed.id,
-            campaignId: claimed.payload?.campaignId,
-            error: e.message || String(e),
+            campaignId: claimed.payload?.campaignId as string | undefined,
+            error: message,
           });
         }
       } else if (claimed.targetNodeId === '__campaign_trigger__' || !claimed.runId) {
@@ -110,7 +135,7 @@ export async function processScheduledJobsAction(): Promise<{
           );
           if (claimed.payload?.event) {
             await dispatchCampaignBlueprintTriggers({
-              hookEvent: claimed.payload.event,
+              hookEvent: claimed.payload.event as string,
               payload: claimed.payload,
               excludeAutomationIds: [claimed.automationId],
             });
@@ -120,7 +145,7 @@ export async function processScheduledJobsAction(): Promise<{
           logAutomationEvent('error', 'heartbeat_campaign_job_failed', {
             jobId: claimed.id,
             automationId: claimed.automationId,
-            workspaceId: claimed.payload?.workspaceId,
+            workspaceId: claimed.payload?.workspaceId as string | undefined,
             error: e,
           });
         }

@@ -2325,15 +2325,23 @@ export interface AutomationRun {
   id: string;
   automationId: string;
   automationName: string;
-  status: 'running' | 'completed' | 'failed';
+  status: 'running' | 'completed' | 'failed' | 'paused';
   startedAt: string;
   finishedAt?: string;
-  triggerData: Record<string, any>;
+  triggerData: Record<string, unknown>;
   error?: string;
   entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity
   workspaceId?: string;
   steps?: Record<string, StepExecution>;
+  /** Tracks the node the contact is currently at (set by step-logger) */
+  currentNodeId?: string;
+  currentNodeLabel?: string;
+  /** Pause/resume management */
+  pausedAt?: string;
+  pausedBy?: string;
+  /** True when run was force-ended by an admin */
+  terminatedManually?: boolean;
 }
 
 export interface AutomationJob {
@@ -2341,9 +2349,9 @@ export interface AutomationJob {
   automationId: string;
   runId: string;
   targetNodeId: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   executeAt: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'paused';
 }
 
 export type WebhookType = 'inbound' | 'outbound';
@@ -3010,6 +3018,31 @@ export interface MessageLog {
   whatsappTemplateName?: string;
   /** WhatsApp-only: Meta conversation id, for conversation-based pricing/analytics. */
   whatsappConversationId?: string;
+
+  // ── Automation correlation (enables per-node stats + resend) ──────────────
+  /** Automation that produced this message, when sent from an automation step. */
+  automationId?: string;
+  /** Automation run (per-contact execution) that produced this message. */
+  runId?: string;
+  /** Message-step node that produced this message. Used to aggregate node stats. */
+  nodeId?: string;
+
+  // ── Resend linkage ────────────────────────────────────────────────────────
+  /** True when this log is a resend of an earlier message (not a first send). */
+  isResend?: boolean;
+  /** The id of the original MessageLog this is a resend of. */
+  resendOfLogId?: string;
+  /** 1-based attempt number for resends (1 = first resend, 2 = second, ...). */
+  resendNumber?: number;
+
+  // ── Structured delivery timestamps (complement providerStatus/counts) ─────
+  deliveredAt?: string;
+  openedAt?: string;
+  clickedAt?: string;
+  bouncedAt?: string;
+  complainedAt?: string;
+  unsubscribedAt?: string;
+  repliedAt?: string;
 }
 
 export interface MessageJob {
@@ -3057,6 +3090,102 @@ export interface MessageTask {
   /** Entity ID for post-send tagging */
   entityId?: string;
   campaignVariantId?: 'A' | 'B';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Message-step delivery tracking & resend (automation messaging)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Channels for which per-node delivery statistics are tracked.
+ * `in_app`/`push` are platform-delivered and have no provider delivery webhooks.
+ */
+export type TrackedMessageChannel = 'email' | 'sms' | 'whatsapp';
+
+/**
+ * Denormalized per-node counters for a message step, incremented by provider
+ * webhooks (Resend / mNotify SMS / WhatsApp). One document per automation node.
+ *
+ * Stored in the `message_node_stats` collection, keyed by `${automationId}__${nodeId}`.
+ *
+ * Read-time aggregation over `message_logs` is avoided in favour of these
+ * counters so the message-step panel and inspector tab stay O(1) to load.
+ */
+export interface MessageNodeStats {
+  /** Composite id: `${automationId}__${nodeId}`. */
+  id: string;
+  automationId: string;
+  nodeId: string;
+  workspaceId: string;
+  organizationId?: string;
+  channel: TrackedMessageChannel;
+
+  /** First sends only (resends are counted in `resent`). */
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  complained: number;
+  /** Hard failures / undelivered (SMS `undelivered`, email send errors). */
+  failed: number;
+  unsubscribed: number;
+  replied: number;
+  /** Total resend messages dispatched across all contacts at this node. */
+  resent: number;
+
+  /** ISO timestamp of the most recent send at this node. */
+  lastMessageAt?: string;
+  updatedAt: string;
+}
+
+/** Counter fields on {@link MessageNodeStats} that webhook events increment. */
+export type MessageNodeStatCounter =
+  | 'sent'
+  | 'delivered'
+  | 'opened'
+  | 'clicked'
+  | 'bounced'
+  | 'complained'
+  | 'failed'
+  | 'unsubscribed'
+  | 'replied'
+  | 'resent';
+
+/** Condition that keeps a contact waiting at a message node until satisfied. */
+export type ResendTriggerCondition = 'no_open' | 'no_click';
+
+/**
+ * Per-resend subject/preview override. The message *body* is always identical
+ * to the original send; only the framing (subject / preview / SMS first line)
+ * changes per attempt.
+ */
+export interface MessageResendVariant {
+  /** Email subject, or SMS leading line, for this resend attempt. */
+  title: string;
+  /** Optional email preview text for this resend attempt. */
+  previewText?: string;
+}
+
+/**
+ * Resend-on-no-engagement configuration, stored on a message-step node's config
+ * (`node.data.config.resendConfig`). When enabled the message step behaves as a
+ * waiting card: the contact is held at the node until they engage (open/click)
+ * or the resend attempts are exhausted, after which they advance.
+ */
+export interface MessageResendConfig {
+  enabled: boolean;
+  /** Number of resend attempts after the initial send (1–5). */
+  maxResends: number;
+  /** Hours to wait between attempts before checking the trigger condition. */
+  resendDelayHours: number;
+  /** What counts as "engaged" — stops further resends and advances the contact. */
+  triggerCondition: ResendTriggerCondition;
+  /**
+   * Subject/preview overrides per attempt. `variants[0]` is the first resend.
+   * If fewer variants than `maxResends` are provided, the last variant is reused.
+   */
+  variants: MessageResendVariant[];
 }
 
 

@@ -11,7 +11,11 @@ import {
   Info,
   Calendar,
   AlertCircle,
-  Database
+  Database,
+  Table2,
+  Braces,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,7 +29,7 @@ import type { AutomationRun } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { manuallyReleaseWaitJobAction, manuallyEndAutomationRunAction } from '@/lib/automation-actions';
+import { manuallyReleaseWaitJobAction, manuallyEndAutomationRunAction, retryFailedStepAction } from '@/lib/automation-actions';
 
 interface DiagnosticsPanelProps {
   automationId: string;
@@ -55,6 +59,8 @@ export function DiagnosticsPanel({
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('ALL');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [jsonExpanded, setJsonExpanded] = React.useState(false);
+  const [triggerDataView, setTriggerDataView] = React.useState<'table' | 'json'>('table');
+  const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
   const [isProcessingAction, setIsProcessingAction] = React.useState<string | null>(null);
 
   // Memoized query to fetch automation runs in real-time
@@ -117,7 +123,7 @@ export function DiagnosticsPanel({
     return runs.filter(run => {
       const matchesStatus = statusFilter === 'ALL' || run.status === statusFilter;
       
-      const displayName = (
+      const displayName = String(
         run.triggerData?.displayName ||
         run.triggerData?.entityName ||
         run.triggerData?.email ||
@@ -325,12 +331,13 @@ export function DiagnosticsPanel({
                 </div>
               ) : (
                 filteredRuns.map(run => {
-                  const entityName = 
+                  const entityName = String(
                     run.triggerData?.displayName ||
                     run.triggerData?.entityName ||
                     run.triggerData?.email ||
                     run.entityId ||
-                    `Run #${run.id.slice(0, 6)}`;
+                    `Run #${run.id.slice(0, 6)}`
+                  );
                   
                   return (
                     <div
@@ -410,10 +417,10 @@ export function DiagnosticsPanel({
               <div className="space-y-1 bg-muted/30 p-3 rounded-xl border border-border/40">
                 <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Contact Context</span>
                 <h4 className="text-xs font-bold text-foreground truncate">
-                  {selectedRun.triggerData?.displayName || selectedRun.triggerData?.entityName || 'Unassigned'}
+                  {String(selectedRun.triggerData?.displayName || selectedRun.triggerData?.entityName || 'Unassigned')}
                 </h4>
                 <div className="flex flex-wrap gap-x-2 gap-y-1 text-[9px] text-muted-foreground">
-                  {selectedRun.triggerData?.email && <span>{selectedRun.triggerData.email}</span>}
+                  {selectedRun.triggerData?.email ? <span>{String(selectedRun.triggerData.email)}</span> : null}
                   {selectedRun.entityId && (
                     <>
                       <span className="opacity-40">|</span>
@@ -459,10 +466,22 @@ export function DiagnosticsPanel({
                 <h5 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">
                   Execution Step Timeline
                 </h5>
-                <StepTimeline steps={selectedRun.steps} nodes={nodes} />
+                <StepTimeline
+                  steps={selectedRun.steps}
+                  nodes={nodes}
+                  onRetryStep={async (nodeId: string) => {
+                    if (!user?.uid || !selectedRun) return;
+                    const result = await retryFailedStepAction(selectedRun.id, nodeId, user.uid);
+                    if (result.success) {
+                      toast({ title: 'Step retry initiated', description: 'The failed step is being re-executed.' });
+                    } else {
+                      toast({ variant: 'destructive', title: 'Retry failed', description: result.error });
+                    }
+                  }}
+                />
               </div>
 
-              {/* Collapsible Trigger Payload JSON */}
+              {/* Collapsible Trigger Payload — Table / JSON toggle */}
               <div className="border border-border/50 rounded-xl overflow-hidden bg-background">
                 <button
                   type="button"
@@ -475,10 +494,106 @@ export function DiagnosticsPanel({
                   <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", jsonExpanded && "rotate-90")} />
                 </button>
                 {jsonExpanded && (
-                  <div className="border-t border-border/40 p-3 bg-muted/5 font-mono text-[9px] text-foreground/80 overflow-x-auto leading-relaxed select-all">
-                    <pre className="m-0">
-                      {JSON.stringify(selectedRun.triggerData, null, 2)}
-                    </pre>
+                  <div className="border-t border-border/40">
+                    {/* View toggle */}
+                    <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
+                      <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">
+                        {Object.keys(selectedRun.triggerData || {}).length} fields
+                      </span>
+                      <div className="flex items-center gap-0.5 bg-muted/40 rounded-lg p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setTriggerDataView('table')}
+                          className={cn(
+                            'flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold transition-all',
+                            triggerDataView === 'table'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          <Table2 size={10} /> Table
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTriggerDataView('json')}
+                          className={cn(
+                            'flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold transition-all',
+                            triggerDataView === 'json'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          <Braces size={10} /> JSON
+                        </button>
+                      </div>
+                    </div>
+
+                    {triggerDataView === 'table' ? (
+                      <div className="px-3 pb-3 pt-1">
+                        <div className="rounded-lg border border-border/40 overflow-hidden">
+                          <table className="w-full text-left">
+                            <thead>
+                              <tr className="bg-muted/30 border-b border-border/40">
+                                <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-1.5 w-[35%]">Key</th>
+                                <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-1.5">Value</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {Object.entries(selectedRun.triggerData || {}).map(([key, value], idx) => {
+                                const isComplex = typeof value === 'object' && value !== null;
+                                const displayValue = isComplex ? JSON.stringify(value) : String(value ?? '—');
+                                const isCopied = copiedKey === key;
+                                return (
+                                  <tr
+                                    key={key}
+                                    className={cn(
+                                      'border-b border-border/20 last:border-b-0 group/row cursor-pointer hover:bg-primary/5 transition-colors',
+                                      idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'
+                                    )}
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(displayValue);
+                                      setCopiedKey(key);
+                                      setTimeout(() => setCopiedKey(null), 1500);
+                                    }}
+                                    title="Click to copy value"
+                                  >
+                                    <td className="px-3 py-1.5 align-top">
+                                      <code className="text-[9px] font-bold text-primary/80 break-all">{key}</code>
+                                    </td>
+                                    <td className="px-3 py-1.5 align-top">
+                                      <div className="flex items-start gap-1.5">
+                                        {isComplex ? (
+                                          <code className="text-[9px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-md break-all leading-relaxed">{displayValue}</code>
+                                        ) : (
+                                          <span className="text-[9px] font-medium text-foreground/80 break-all leading-relaxed">{displayValue}</span>
+                                        )}
+                                        <span className={cn(
+                                          'shrink-0 mt-0.5 transition-all',
+                                          isCopied ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-40'
+                                        )}>
+                                          {isCopied ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} className="text-muted-foreground" />}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                              {(!selectedRun.triggerData || Object.keys(selectedRun.triggerData).length === 0) && (
+                                <tr>
+                                  <td colSpan={2} className="px-3 py-4 text-center text-[9px] text-muted-foreground font-medium">No trigger data captured</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-muted/5 font-mono text-[9px] text-foreground/80 overflow-x-auto leading-relaxed select-all">
+                        <pre className="m-0">
+                          {JSON.stringify(selectedRun.triggerData, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -13,6 +13,7 @@ import ReactFlow, {
     Connection, 
     Edge,
     Node,
+    NodeChange,
     ConnectionLineType
 } from 'reactflow';
 import { DeletableEdge } from '../[id]/edit/components/edges/DeletableEdge';
@@ -62,6 +63,12 @@ import {
     Search,
     LayoutGrid,
     LayoutList,
+    Copy,
+    Trash2,
+    ArrowUp,
+    ArrowDown,
+    Plus,
+    StickyNote,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -133,6 +140,18 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
     const [isLibraryOpen, setIsLibraryOpen] = React.useState(false);
     const [librarySourceHandle, setLibrarySourceHandle] = React.useState<string | undefined>(undefined);
 
+    // Context menu state (right-click on node)
+    const [contextMenu, setContextMenu] = React.useState<{ x: number; y: number; nodeId: string } | null>(null);
+
+    // Insert-above mode: when set, the next library step gets inserted above this node
+    const insertAboveRef = React.useRef<string | null>(null);
+
+    // Step action confirmation dialog (clone / delete)
+    const [stepActionDialog, setStepActionDialog] = React.useState<{
+        action: 'clone' | 'delete';
+        nodeId: string;
+    } | null>(null);
+
     // Diagnostics panel states
     const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false);
     const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
@@ -159,6 +178,13 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         nodeId: string;
         nodeData: any;
         nextTriggers?: AutomationTriggerDef[];
+    } | null>(null);
+
+    // Group drag: snapshot of downstream node positions when drag starts
+    const dragStartRef = React.useRef<{
+        draggedNodeId: string;
+        startPos: { x: number; y: number };
+        downstreamPositions: Map<string, { x: number; y: number }>;
     } | null>(null);
 
     // Test step dialog state
@@ -552,9 +578,21 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                     deleteEdge(selectedEdgeId);
                 } else if (selectedNodeId) {
                     e.preventDefault();
-                    setEdges(eds => eds.filter(edge => edge.source !== selectedNodeId && edge.target !== selectedNodeId));
-                    setNodes(nds => nds.filter(n => n.id !== selectedNodeId));
-                    setSelectedNodeId(null);
+                    const node = nodes.find(n => n.id === selectedNodeId);
+                    if (node && node.type !== 'triggerNode') {
+                        setStepActionDialog({ action: 'delete', nodeId: selectedNodeId });
+                    }
+                }
+            }
+
+            // Cmd/Ctrl + D to duplicate selected node
+            if (mod && e.key === 'd') {
+                e.preventDefault();
+                if (selectedNodeId) {
+                    const node = nodes.find(n => n.id === selectedNodeId);
+                    if (node && node.type !== 'triggerNode') {
+                        setStepActionDialog({ action: 'clone', nodeId: selectedNodeId });
+                    }
                 }
             }
         };
@@ -577,12 +615,41 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
     const lastEmittedRef = React.useRef<string>('');
     const historyTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
+    // Strip ReactFlow internal + runtime-injected properties before emitting
+    // so the parent's dirty-check compares clean, persistable data.
+    const RUNTIME_DATA_KEYS = new Set([
+        'isDefaultConnected', 'isTrueConnected', 'isFalseConnected',
+        'executionStatus', 'executionError', 'executionMeta',
+        'canMoveUp', 'canMoveDown', 'hasNote',
+        'onAddStep', 'onFilterDiagnostics', 'onAddAbove',
+        'onMoveUp', 'onMoveDown', 'onDuplicate', 'onDelete', 'onToggleNote',
+    ]);
+
+    const stripForPersistence = React.useCallback((rawNodes: Node[], rawEdges: Edge[]) => {
+        const cleanNodes = rawNodes.map(({ id, type, position, data }) => {
+            const cleanData: Record<string, unknown> = {};
+            if (data) {
+                for (const [k, v] of Object.entries(data)) {
+                    if (!RUNTIME_DATA_KEYS.has(k) && typeof v !== 'function') {
+                        cleanData[k] = v;
+                    }
+                }
+            }
+            return { id, type, position, data: cleanData };
+        });
+        const cleanEdges = rawEdges.map(({ id, source, target, sourceHandle, targetHandle, type: edgeType }) => ({
+            id, source, target, sourceHandle, targetHandle, type: edgeType,
+        }));
+        return { cleanNodes, cleanEdges };
+    }, []);
+
     React.useEffect(() => {
         const stateString = JSON.stringify({ nodes, edges });
         if (stateString === lastEmittedRef.current) return;
 
         const timeout = setTimeout(() => {
-            onStateChange(nodes, edges);
+            const { cleanNodes, cleanEdges } = stripForPersistence(nodes, edges);
+            onStateChange(cleanNodes, cleanEdges);
             lastEmittedRef.current = stateString;
         }, 150);
 
@@ -596,7 +663,260 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             clearTimeout(timeout);
             if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
         };
-    }, [nodes, edges, onStateChange, pushHistory]);
+    }, [nodes, edges, onStateChange, pushHistory, stripForPersistence]);
+
+    // --- Downstream helpers ---
+    const getDownstreamNodeIds = React.useCallback((startNodeId: string): string[] => {
+        const visited = new Set<string>();
+        const queue = [startNodeId];
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            if (visited.has(current)) continue;
+            visited.add(current);
+            edges.forEach(e => {
+                if (e.source === current && !visited.has(e.target)) {
+                    queue.push(e.target);
+                }
+            });
+        }
+        visited.delete(startNodeId); // Don't include the start node itself
+        return Array.from(visited);
+    }, [edges]);
+
+    // --- Delete functions ---
+    const deleteNodeById = React.useCallback((nodeId: string) => {
+        setEdges(eds => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
+        setNodes(nds => nds.filter(n => n.id !== nodeId));
+        if (selectedNodeId === nodeId) setSelectedNodeId(null);
+    }, [selectedNodeId, setEdges, setNodes]);
+
+    const deleteNodeWithDownstream = React.useCallback((nodeId: string) => {
+        const downstreamIds = getDownstreamNodeIds(nodeId);
+        const allIds = new Set([nodeId, ...downstreamIds]);
+        setEdges(eds => eds.filter(edge => !allIds.has(edge.source) && !allIds.has(edge.target)));
+        setNodes(nds => nds.filter(n => !allIds.has(n.id)));
+        if (allIds.has(selectedNodeId || '')) setSelectedNodeId(null);
+    }, [selectedNodeId, setEdges, setNodes, getDownstreamNodeIds]);
+
+    // --- Clone helpers ---
+    const makeClonedNode = React.useCallback((sourceNode: Node, offsetX = 30, offsetY = 140): Node => {
+        return {
+            id: `${sourceNode.type}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            type: sourceNode.type!,
+            position: {
+                x: sourceNode.position.x + offsetX,
+                y: sourceNode.position.y + offsetY,
+            },
+            data: {
+                ...JSON.parse(JSON.stringify(sourceNode.data)),
+                label: `${sourceNode.data.label || 'Step'} (copy)`,
+                onAddStep: undefined,
+                onFilterDiagnostics: undefined,
+                executionStatus: undefined,
+                executionError: undefined,
+                executionMeta: undefined,
+                isDefaultConnected: undefined,
+                isTrueConnected: undefined,
+                isFalseConnected: undefined,
+            },
+        };
+    }, []);
+
+    const cloneNode = React.useCallback((nodeId: string) => {
+        const sourceNode = nodes.find(n => n.id === nodeId);
+        if (!sourceNode || sourceNode.type === 'triggerNode') return;
+
+        const clonedNode = makeClonedNode(sourceNode);
+        setNodes(nds => [...nds, clonedNode]);
+
+        const outgoingEdges = edges.filter(e => e.source === nodeId);
+        if (outgoingEdges.length === 1 && !outgoingEdges[0].sourceHandle) {
+            const downstream = outgoingEdges[0];
+            setEdges(eds => [
+                ...eds.filter(e => e.id !== downstream.id),
+                {
+                    id: `edge_${nodeId}_to_${clonedNode.id}_${Date.now()}`,
+                    source: nodeId,
+                    target: clonedNode.id,
+                    type: 'deletable',
+                    animated: false,
+                    data: { onDelete: deleteEdge },
+                },
+                {
+                    id: `edge_${clonedNode.id}_to_${downstream.target}_${Date.now()}`,
+                    source: clonedNode.id,
+                    target: downstream.target,
+                    type: 'deletable',
+                    animated: false,
+                    data: { onDelete: deleteEdge },
+                },
+            ]);
+            setNodes(nds => nds.map(n => {
+                if (n.id !== nodeId && n.id !== clonedNode.id && n.position.y >= sourceNode.position.y + 100) {
+                    return { ...n, position: { ...n.position, y: n.position.y + 140 } };
+                }
+                return n;
+            }));
+        } else if (outgoingEdges.length === 0) {
+            setEdges(eds => [
+                ...eds,
+                {
+                    id: `edge_${nodeId}_to_${clonedNode.id}_${Date.now()}`,
+                    source: nodeId,
+                    target: clonedNode.id,
+                    type: 'deletable',
+                    animated: false,
+                    data: { onDelete: deleteEdge },
+                },
+            ]);
+        }
+        setSelectedNodeId(clonedNode.id);
+    }, [nodes, edges, setNodes, setEdges, deleteEdge, makeClonedNode]);
+
+    // --- Move Up / Down ---
+    const moveNodeUp = React.useCallback((nodeId: string) => {
+        // Find the incoming edge to this node
+        const incomingEdge = edges.find(e => e.target === nodeId && !e.sourceHandle);
+        if (!incomingEdge) return; // Already at top or branched
+
+        const parentId = incomingEdge.source;
+        const parentNode = nodes.find(n => n.id === parentId);
+        const currentNode = nodes.find(n => n.id === nodeId);
+        if (!parentNode || !currentNode) return;
+        // Don't swap with trigger nodes
+        if (parentNode.type === 'triggerNode') return;
+
+        // Find grandparent edge (incoming to parent)
+        const grandparentEdge = edges.find(e => e.target === parentId);
+        // Find child edge (outgoing from current node, non-branched)
+        const childEdge = edges.find(e => e.source === nodeId && !e.sourceHandle);
+
+        // Swap positions
+        setNodes(nds => nds.map(n => {
+            if (n.id === nodeId) return { ...n, position: { ...parentNode.position } };
+            if (n.id === parentId) return { ...n, position: { ...currentNode.position } };
+            return n;
+        }));
+
+        // Re-wire edges
+        setEdges(eds => {
+            let updated = eds.filter(e => e.id !== incomingEdge.id); // remove old parent→node
+
+            // grandparent → node (was grandparent → parent)
+            if (grandparentEdge) {
+                updated = updated.map(e =>
+                    e.id === grandparentEdge.id ? { ...e, target: nodeId } : e
+                );
+            }
+
+            // node → parent (new edge)
+            updated.push({
+                id: `edge_${nodeId}_to_${parentId}_${Date.now()}`,
+                source: nodeId,
+                target: parentId,
+                type: 'deletable',
+                animated: false,
+                data: { onDelete: deleteEdge },
+            });
+
+            // parent → child (was node → child)
+            if (childEdge) {
+                updated = updated.map(e =>
+                    e.id === childEdge.id ? { ...e, source: parentId } : e
+                );
+            }
+
+            return updated;
+        });
+    }, [nodes, edges, setNodes, setEdges, deleteEdge]);
+
+    const moveNodeDown = React.useCallback((nodeId: string) => {
+        // Find the outgoing edge from this node (non-branched)
+        const outgoingEdge = edges.find(e => e.source === nodeId && !e.sourceHandle);
+        if (!outgoingEdge) return; // Already at bottom or branched
+
+        const childId = outgoingEdge.target;
+        const childNode = nodes.find(n => n.id === childId);
+        const currentNode = nodes.find(n => n.id === nodeId);
+        if (!childNode || !currentNode) return;
+
+        // Find incoming edge to current (parent edge)
+        const parentEdge = edges.find(e => e.target === nodeId);
+        // Find grandchild edge (outgoing from child)
+        const grandchildEdge = edges.find(e => e.source === childId && !e.sourceHandle);
+
+        // Swap positions
+        setNodes(nds => nds.map(n => {
+            if (n.id === nodeId) return { ...n, position: { ...childNode.position } };
+            if (n.id === childId) return { ...n, position: { ...currentNode.position } };
+            return n;
+        }));
+
+        // Re-wire edges
+        setEdges(eds => {
+            let updated = eds.filter(e => e.id !== outgoingEdge.id); // remove old node→child
+
+            // parent → child (was parent → node)
+            if (parentEdge) {
+                updated = updated.map(e =>
+                    e.id === parentEdge.id ? { ...e, target: childId } : e
+                );
+            }
+
+            // child → node (new edge)
+            updated.push({
+                id: `edge_${childId}_to_${nodeId}_${Date.now()}`,
+                source: childId,
+                target: nodeId,
+                type: 'deletable',
+                animated: false,
+                data: { onDelete: deleteEdge },
+            });
+
+            // node → grandchild (was child → grandchild)
+            if (grandchildEdge) {
+                updated = updated.map(e =>
+                    e.id === grandchildEdge.id ? { ...e, source: nodeId } : e
+                );
+            }
+
+            return updated;
+        });
+    }, [nodes, edges, setNodes, setEdges, deleteEdge]);
+
+    const cloneNodeWithDownstream = React.useCallback((nodeId: string) => {
+        const sourceNode = nodes.find(n => n.id === nodeId);
+        if (!sourceNode || sourceNode.type === 'triggerNode') return;
+
+        // Gather all downstream nodes
+        const downstreamIds = getDownstreamNodeIds(nodeId);
+        const allSourceIds = [nodeId, ...downstreamIds];
+        const sourceNodes = allSourceIds.map(id => nodes.find(n => n.id === id)).filter(Boolean) as Node[];
+
+        // Create clones with an ID mapping (old -> new)
+        const idMap = new Map<string, string>();
+        const clonedNodes: Node[] = sourceNodes.map((sn, idx) => {
+            const clone = makeClonedNode(sn, 250, idx * 10);
+            idMap.set(sn.id, clone.id);
+            return clone;
+        });
+
+        // Clone internal edges (edges between the source nodes)
+        const internalEdges = edges.filter(e => allSourceIds.includes(e.source) && allSourceIds.includes(e.target));
+        const clonedEdges: Edge[] = internalEdges.map(e => ({
+            id: `edge_${idMap.get(e.source)}_to_${idMap.get(e.target)}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+            source: idMap.get(e.source)!,
+            sourceHandle: e.sourceHandle,
+            target: idMap.get(e.target)!,
+            type: 'deletable',
+            animated: false,
+            data: { onDelete: deleteEdge },
+        }));
+
+        setNodes(nds => [...nds, ...clonedNodes]);
+        setEdges(eds => [...eds, ...clonedEdges]);
+        setSelectedNodeId(idMap.get(nodeId) || null);
+    }, [nodes, edges, setNodes, setEdges, deleteEdge, getDownstreamNodeIds, makeClonedNode]);
 
     const addNode = (type: keyof typeof nodeTypes) => {
         const id = `${type}_${Date.now()}`;
@@ -629,6 +949,10 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         const nodeType = item.nodeType || item.type;
         const id = `${nodeType}_${Date.now()}`;
         const label = item.label || 'New Step';
+
+        // Check if we're in "insert above" mode
+        const insertAboveId = insertAboveRef.current;
+        insertAboveRef.current = null; // clear immediately
 
         let x = 400 + Math.random() * 50;
         let y = 300 + Math.random() * 50;
@@ -675,6 +999,21 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             y = targetY;
         }
 
+        // If inserting above a specific node, position above it and push it down
+        if (insertAboveId) {
+            const belowNode = nodes.find(n => n.id === insertAboveId);
+            if (belowNode) {
+                x = belowNode.position.x;
+                y = belowNode.position.y;
+                // Push the target node and its downstream nodes down
+                const downstreamIds = getDownstreamNodeIds(insertAboveId);
+                const pushIds = new Set([insertAboveId, ...downstreamIds]);
+                setNodes(nds => nds.map(n =>
+                    pushIds.has(n.id) ? { ...n, position: { ...n.position, y: n.position.y + 140 } } : n
+                ));
+            }
+        }
+
         const data: any = {
             label,
             config: {}
@@ -706,7 +1045,29 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
 
         setNodes(nds => [...nds, newNode]);
 
-        if (parentNode && nodeType !== 'triggerNode') {
+        // Handle insert-above wiring: parent→NEW→target (was parent→target)
+        if (insertAboveId && nodeType !== 'triggerNode') {
+            const incomingEdge = edges.find(e => e.target === insertAboveId);
+            setEdges(eds => {
+                let updated = [...eds];
+                // Re-wire incoming edge to point to new node
+                if (incomingEdge) {
+                    updated = updated.map(e =>
+                        e.id === incomingEdge.id ? { ...e, target: id } : e
+                    );
+                }
+                // Add new edge from new node → target
+                updated.push({
+                    id: `edge_${id}_to_${insertAboveId}_${Date.now()}`,
+                    source: id,
+                    target: insertAboveId,
+                    type: 'deletable',
+                    animated: false,
+                    data: { onDelete: deleteEdge },
+                });
+                return updated;
+            });
+        } else if (parentNode && nodeType !== 'triggerNode') {
             const isSourceConnected = edges.some(
                 (edge) =>
                     edge.source === parentNode.id &&
@@ -766,6 +1127,16 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         });
     }, [edges, deleteEdge, selectedRun]);
 
+    // --- Note editing state ---
+    const [noteDialogNodeId, setNoteDialogNodeId] = React.useState<string | null>(null);
+    const [noteDialogValue, setNoteDialogValue] = React.useState('');
+
+    const handleUpdateNote = React.useCallback((nodeId: string, noteText: string) => {
+        setNodes(nds => nds.map(n =>
+            n.id === nodeId ? { ...n, data: { ...n.data, note: noteText } } : n
+        ));
+    }, [setNodes]);
+
     const nodesWithCallbacks = React.useMemo(() => {
         const stepMap = selectedRun?.steps || {};
         return nodes.map(node => {
@@ -775,6 +1146,16 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             const hasBConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'b');
             const hasDefaultConnection = edges.some(e => e.source === node.id && (!e.sourceHandle || e.sourceHandle === 'default' || e.sourceHandle === ''));
             const stepData = stepMap[node.id];
+
+            // Toolbar state
+            const isTrigger = node.type === 'triggerNode';
+            const canMoveUp = !isTrigger && edges.some(e =>
+                e.target === node.id && !e.sourceHandle &&
+                nodes.find(n => n.id === e.source)?.type !== 'triggerNode'
+            );
+            const canMoveDown = !isTrigger && edges.some(e =>
+                e.source === node.id && !e.sourceHandle
+            );
 
             return {
                 ...node,
@@ -799,13 +1180,92 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                         setSelectedNodeId(null);
                         setSelectedEdgeId(null);
                         setDiagnosticsOpen(true);
-                    }
+                    },
+                    // Toolbar action callbacks
+                    canMoveUp,
+                    canMoveDown,
+                    hasNote: !!node.data?.note,
+                    onAddAbove: () => {
+                        insertAboveRef.current = node.id;
+                        setSelectedNodeId(node.id);
+                        setIsLibraryOpen(true);
+                    },
+                    onMoveUp: () => moveNodeUp(node.id),
+                    onMoveDown: () => moveNodeDown(node.id),
+                    onDuplicate: () => setStepActionDialog({ action: 'clone', nodeId: node.id }),
+                    onDelete: () => setStepActionDialog({ action: 'delete', nodeId: node.id }),
+                    onToggleNote: () => {
+                        setNoteDialogNodeId(node.id);
+                        setNoteDialogValue(node.data?.note || '');
+                    },
                 }
             };
         });
-    }, [nodes, edges, selectedRun]);
+    }, [nodes, edges, selectedRun, moveNodeUp, moveNodeDown]);
 
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
+
+    // --- Group drag handlers ---
+    const onNodeDragStart = React.useCallback((_event: React.MouseEvent, node: Node) => {
+        const downstreamIds = getDownstreamNodeIds(node.id);
+        if (downstreamIds.length === 0) {
+            dragStartRef.current = null;
+            return;
+        }
+        const downstreamPositions = new Map<string, { x: number; y: number }>();
+        nodes.forEach(n => {
+            if (downstreamIds.includes(n.id)) {
+                downstreamPositions.set(n.id, { x: n.position.x, y: n.position.y });
+            }
+        });
+        dragStartRef.current = {
+            draggedNodeId: node.id,
+            startPos: { x: node.position.x, y: node.position.y },
+            downstreamPositions,
+        };
+    }, [nodes, getDownstreamNodeIds]);
+
+    const onNodeDragStop = React.useCallback(() => {
+        dragStartRef.current = null;
+    }, []);
+
+    // Wrap onNodesChange so downstream nodes move in the exact same batch
+    const handleNodesChange = React.useCallback((changes: NodeChange[]) => {
+        if (!dragStartRef.current) {
+            onNodesChange(changes);
+            return;
+        }
+
+        const { draggedNodeId, startPos, downstreamPositions } = dragStartRef.current;
+
+        // Find the position change for the dragged node
+        const dragChange = changes.find(
+            (c): c is NodeChange & { type: 'position'; id: string; position?: { x: number; y: number }; dragging?: boolean } =>
+                c.type === 'position' && 'id' in c && (c as any).id === draggedNodeId && !!(c as any).position
+        );
+
+        if (!dragChange || !dragChange.position) {
+            onNodesChange(changes);
+            return;
+        }
+
+        // Calculate delta from drag start
+        const dx = dragChange.position.x - startPos.x;
+        const dy = dragChange.position.y - startPos.y;
+
+        // Build position changes for all downstream nodes
+        const downstreamChanges: NodeChange[] = [];
+        downstreamPositions.forEach((origPos, nodeId) => {
+            downstreamChanges.push({
+                type: 'position',
+                id: nodeId,
+                position: { x: origPos.x + dx, y: origPos.y + dy },
+            } as NodeChange);
+        });
+
+        // Apply all changes in one batch: original changes + downstream
+        onNodesChange([...changes, ...downstreamChanges]);
+    }, [onNodesChange]);
 
     return (
         <div className={cn(
@@ -815,13 +1275,21 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             <ReactFlow
                 nodes={nodesWithCallbacks}
                 edges={edgesWithCallbacks}
-                onNodesChange={onNodesChange}
+                onNodesChange={handleNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onEdgeUpdate={onEdgeUpdate}
-                onNodeClick={onNodeClick}
-                onEdgeClick={onEdgeClick}
-                onPaneClick={onPaneClick}
+                onNodeDragStart={onNodeDragStart}
+                onNodeDragStop={onNodeDragStop}
+                onNodeClick={(e, node) => { setContextMenu(null); onNodeClick(e, node); }}
+                onEdgeClick={(e, edge) => { setContextMenu(null); onEdgeClick(e, edge); }}
+                onPaneClick={() => { setContextMenu(null); onPaneClick(); }}
+                onNodeContextMenu={(e, node) => {
+                    e.preventDefault();
+                    if (node.type === 'triggerNode') return;
+                    setContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id });
+                    setSelectedNodeId(node.id);
+                }}
                 edgeTypes={edgeTypes}
                 nodeTypes={nodeTypes}
                 isValidConnection={isValidConnection}
@@ -926,6 +1394,122 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
  <Controls className="!bg-card !border-none !shadow-2xl !rounded-xl overflow-hidden" showInteractive={false} />
             </ReactFlow>
 
+            {/* Right-click context menu (ActiveCampaign style) */}
+            {contextMenu && (() => {
+                const cmNodeId = contextMenu.nodeId;
+                const canMoveUp = !!edges.find(e => e.target === cmNodeId && !e.sourceHandle && nodes.find(n => n.id === e.source)?.type !== 'triggerNode');
+                const canMoveDown = !!edges.find(e => e.source === cmNodeId && !e.sourceHandle);
+                return (
+                    <div
+                        className="fixed z-[200] animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: contextMenu.y, left: contextMenu.x }}
+                    >
+                        <div className="bg-card/98 backdrop-blur-xl border border-border/80 rounded-xl shadow-2xl py-1.5 min-w-[200px] ring-1 ring-black/5">
+                            {/* Add step section */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    insertAboveRef.current = cmNodeId;
+                                    setSelectedNodeId(cmNodeId);
+                                    setIsLibraryOpen(true);
+                                    setContextMenu(null);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-colors text-left"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                                Add Step Above
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    insertAboveRef.current = null;
+                                    setSelectedNodeId(cmNodeId);
+                                    setLibrarySourceHandle(undefined);
+                                    setIsLibraryOpen(true);
+                                    setContextMenu(null);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-colors text-left"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                                Add Step Below
+                            </button>
+
+                            <div className="h-px bg-border/50 mx-2 my-1" />
+
+                            {/* Move section */}
+                            <button
+                                type="button"
+                                disabled={!canMoveUp}
+                                onClick={() => {
+                                    moveNodeUp(cmNodeId);
+                                    setContextMenu(null);
+                                }}
+                                className={cn(
+                                    "w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-left transition-colors",
+                                    canMoveUp ? "text-foreground hover:bg-muted/60" : "text-muted-foreground/40 cursor-not-allowed"
+                                )}
+                            >
+                                <ArrowUp className="h-3.5 w-3.5" />
+                                Move Step Up
+                            </button>
+                            <button
+                                type="button"
+                                disabled={!canMoveDown}
+                                onClick={() => {
+                                    moveNodeDown(cmNodeId);
+                                    setContextMenu(null);
+                                }}
+                                className={cn(
+                                    "w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-left transition-colors",
+                                    canMoveDown ? "text-foreground hover:bg-muted/60" : "text-muted-foreground/40 cursor-not-allowed"
+                                )}
+                            >
+                                <ArrowDown className="h-3.5 w-3.5" />
+                                Move Step Down
+                            </button>
+
+                            <div className="h-px bg-border/50 mx-2 my-1" />
+
+                            {/* Duplicate / Delete section */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setStepActionDialog({ action: 'clone', nodeId: cmNodeId });
+                                    setContextMenu(null);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-colors text-left"
+                            >
+                                <Copy className="h-3.5 w-3.5" />
+                                Duplicate Step
+                                <span className="ml-auto text-[9px] text-muted-foreground font-mono">{navigator?.platform?.includes('Mac') ? '⌘' : 'Ctrl'}+D</span>
+                            </button>
+                            <div className="h-px bg-border/50 mx-2 my-1" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setStepActionDialog({ action: 'delete', nodeId: cmNodeId });
+                                    setContextMenu(null);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors text-left"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete Step
+                                <span className="ml-auto text-[9px] text-muted-foreground font-mono">⌫</span>
+                            </button>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* Click-away listener for context menu */}
+            {contextMenu && (
+                <div
+                    className="fixed inset-0 z-[199]"
+                    onClick={() => setContextMenu(null)}
+                    onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+                />
+            )}
+
             {/* Sidebar Inspector Context */}
             <div className="absolute top-6 right-6 bottom-6 z-20 w-[456px] pointer-events-none flex flex-col">
                 {diagnosticsOpen ? (
@@ -953,21 +1537,63 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                                 <div className="p-2 bg-primary/10 rounded-xl text-primary shadow-sm"><Settings2 className="h-4 w-4" /></div>
                                 <h4 className="text-[10px] font-semibold ">Logic Inspector</h4>
                             </div>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => {
-                                    if (isInspectorDirty && !skipConfirm) {
-                                        nextActionRef.current = { type: 'close' };
-                                        setConfirmModalOpen(true);
-                                    } else {
-                                        setSelectedNodeId(null);
-                                    }
-                                }} 
-                                className="h-8 w-8 rounded-lg hover:bg-muted"
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                                {/* Duplicate button (ActiveCampaign style) */}
+                                {selectedNode && selectedNode.type !== 'triggerNode' && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    onClick={() => setStepActionDialog({ action: 'clone', nodeId: selectedNode.id })}
+                                                    className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
+                                                >
+                                                    <Copy className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="bottom" className="text-[10px]">
+                                                Duplicate Step ({navigator?.platform?.includes('Mac') ? '⌘' : 'Ctrl'}+D)
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )}
+                                {/* Delete button */}
+                                {selectedNode && selectedNode.type !== 'triggerNode' && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    onClick={() => setStepActionDialog({ action: 'delete', nodeId: selectedNode.id })}
+                                                    className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="bottom" className="text-[10px]">
+                                                Delete Step
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )}
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => {
+                                        if (isInspectorDirty && !skipConfirm) {
+                                            nextActionRef.current = { type: 'close' };
+                                            setConfirmModalOpen(true);
+                                        } else {
+                                            setSelectedNodeId(null);
+                                        }
+                                    }} 
+                                    className="h-8 w-8 rounded-lg hover:bg-muted"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                         
                         <div className="flex-1 overflow-hidden min-h-0">
@@ -1018,6 +1644,191 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                 onSelect={addLibraryNode} 
                 hasParentSelected={!!selectedNodeId} 
             />
+
+            {/* Note Editing Dialog */}
+            <Dialog open={!!noteDialogNodeId} onOpenChange={(open) => { if (!open) setNoteDialogNodeId(null); }}>
+                <DialogContent className="rounded-3xl max-w-sm border border-border/20 shadow-2xl p-0 bg-background/95 backdrop-blur-md overflow-hidden">
+                    <div className="h-1.5 w-full bg-gradient-to-r from-amber-400/80 via-amber-500 to-amber-400/80" />
+                    <div className="px-6 pt-4 pb-2">
+                        <DialogHeader className="text-left space-y-2">
+                            <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-amber-500/10">
+                                    <StickyNote className="h-3.5 w-3.5 text-amber-500" />
+                                </div>
+                                Step Note
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                                Add a note or comment to this step for your team.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    <div className="px-6 pb-5 space-y-3">
+                        <textarea
+                            value={noteDialogValue}
+                            onChange={(e) => setNoteDialogValue(e.target.value)}
+                            placeholder="e.g. This step sends the welcome email after 24h..."
+                            className="w-full min-h-[100px] rounded-xl border-2 border-border/40 bg-muted/30 px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 focus:outline-none resize-none transition-all"
+                            autoFocus
+                        />
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={() => {
+                                    if (noteDialogNodeId) {
+                                        handleUpdateNote(noteDialogNodeId, noteDialogValue.trim());
+                                    }
+                                    setNoteDialogNodeId(null);
+                                }}
+                                className="flex-1 h-9 rounded-xl text-xs bg-amber-500 hover:bg-amber-600 text-white"
+                            >
+                                Save Note
+                            </Button>
+                            {noteDialogValue && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => {
+                                        if (noteDialogNodeId) {
+                                            handleUpdateNote(noteDialogNodeId, '');
+                                        }
+                                        setNoteDialogNodeId(null);
+                                    }}
+                                    className="h-9 rounded-xl text-xs text-destructive hover:text-destructive"
+                                >
+                                    Clear
+                                </Button>
+                            )}
+                            <Button
+                                variant="ghost"
+                                onClick={() => setNoteDialogNodeId(null)}
+                                className="h-9 rounded-xl text-xs text-muted-foreground"
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Step Action Confirmation Dialog (Clone / Delete) */}
+            {(() => {
+                const actionNode = stepActionDialog ? nodes.find(n => n.id === stepActionDialog.nodeId) : null;
+                const downstreamCount = stepActionDialog ? getDownstreamNodeIds(stepActionDialog.nodeId).length : 0;
+                const isClone = stepActionDialog?.action === 'clone';
+                const actionLabel = isClone ? 'Duplicate' : 'Delete';
+                const actionNodeLabel = actionNode?.data?.label || actionNode?.data?.actionType?.replace(/_/g, ' ') || 'Step';
+
+                return (
+                    <Dialog open={!!stepActionDialog} onOpenChange={(open) => { if (!open) setStepActionDialog(null); }}>
+                        <DialogContent className="rounded-3xl max-w-sm border border-border/20 shadow-2xl p-0 bg-background/95 backdrop-blur-md overflow-hidden">
+                            {/* Header accent */}
+                            <div className={cn(
+                                "h-1.5 w-full",
+                                isClone ? "bg-gradient-to-r from-primary/80 via-primary to-primary/80" : "bg-gradient-to-r from-destructive/80 via-destructive to-destructive/80"
+                            )} />
+
+                            <div className="px-6 pt-4 pb-2">
+                                <DialogHeader className="text-left space-y-2">
+                                    <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                                        {isClone ? (
+                                            <div className="p-1.5 rounded-lg bg-primary/10"><Copy className="h-3.5 w-3.5 text-primary" /></div>
+                                        ) : (
+                                            <div className="p-1.5 rounded-lg bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /></div>
+                                        )}
+                                        {actionLabel} Step
+                                    </DialogTitle>
+                                    <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                                        How would you like to {isClone ? 'duplicate' : 'delete'} <span className="font-semibold text-foreground">&ldquo;{actionNodeLabel}&rdquo;</span>?
+                                        {downstreamCount > 0 && (
+                                            <span className="block mt-1.5 text-[10px] text-muted-foreground/80">
+                                                This step has <span className="font-bold text-foreground">{downstreamCount}</span> downstream {downstreamCount === 1 ? 'step' : 'steps'} connected below it.
+                                            </span>
+                                        )}
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </div>
+
+                            <div className="px-6 pb-5 space-y-2">
+                                {/* Option 1: This step only */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!stepActionDialog) return;
+                                        if (isClone) cloneNode(stepActionDialog.nodeId);
+                                        else deleteNodeById(stepActionDialog.nodeId);
+                                        setStepActionDialog(null);
+                                    }}
+                                    className={cn(
+                                        "w-full flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition-all group/opt",
+                                        isClone
+                                            ? "border-primary/20 hover:border-primary/50 hover:bg-primary/5"
+                                            : "border-destructive/20 hover:border-destructive/50 hover:bg-destructive/5"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "p-2 rounded-lg shrink-0 transition-colors",
+                                        isClone ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
+                                    )}>
+                                        {isClone ? <Copy className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-foreground">{actionLabel} this step only</p>
+                                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                                            {isClone ? 'Creates a copy of only this step' : 'Removes only this step, keeps downstream steps'}
+                                        </p>
+                                    </div>
+                                </button>
+
+                                {/* Option 2: This step + downstream (only show when downstream exists) */}
+                                {downstreamCount > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (!stepActionDialog) return;
+                                            if (isClone) cloneNodeWithDownstream(stepActionDialog.nodeId);
+                                            else deleteNodeWithDownstream(stepActionDialog.nodeId);
+                                            setStepActionDialog(null);
+                                        }}
+                                        className={cn(
+                                            "w-full flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition-all group/opt",
+                                            isClone
+                                                ? "border-primary/20 hover:border-primary/50 hover:bg-primary/5"
+                                                : "border-destructive/20 hover:border-destructive/50 hover:bg-destructive/5"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "p-2 rounded-lg shrink-0 transition-colors",
+                                            isClone ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
+                                        )}>
+                                            <Layers className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-foreground">
+                                                {actionLabel} this step + {downstreamCount} downstream {downstreamCount === 1 ? 'step' : 'steps'}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                {isClone
+                                                    ? 'Duplicates this step and all steps connected below it'
+                                                    : 'Removes this step and everything connected below it'
+                                                }
+                                            </p>
+                                        </div>
+                                    </button>
+                                )}
+
+                                {/* Cancel */}
+                                <DialogFooter className="pt-2">
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full h-9 rounded-xl text-xs text-muted-foreground"
+                                        onClick={() => setStepActionDialog(null)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </DialogFooter>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                );
+            })()}
 
             {/* Exit Confirmation Dialog */}
             {(() => {

@@ -3,6 +3,10 @@ import type { Automation } from '../types';
 import { logAutomationEvent } from '../automation-log';
 import type { ExecutionContext } from './execution-types';
 import { traverseNodes } from './nodes/traverse';
+import {
+  notifyAutomationStarted,
+  notifyAutomationCompleted,
+} from './automation-lifecycle-notify';
 
 export async function executeAutomation(
   automation: Automation,
@@ -22,8 +26,16 @@ export async function executeAutomation(
     status: 'running',
     startedAt: timestamp,
     entityId: triggerPayload.entityId as string | undefined,
+    entityType: triggerPayload.entityType as string | undefined,
     workspaceId: triggerPayload.workspaceId as string | undefined,
   });
+
+  // Fire aggregated started notification (fire-and-forget)
+  notifyAutomationStarted({
+    automationId: automation.id,
+    automationName: automation.name ?? automation.id,
+    workspaceId: triggerPayload.workspaceId as string ?? '',
+  }).catch(() => { /* non-fatal */ });
 
   const context: ExecutionContext = {
     entityId: triggerPayload.entityId as string | undefined,
@@ -68,6 +80,12 @@ export async function executeAutomation(
         status: 'completed',
         finishedAt: new Date().toISOString(),
       });
+      // Fire aggregated completed notification (fire-and-forget)
+      notifyAutomationCompleted({
+        automationId: automation.id,
+        automationName: automation.name ?? automation.id,
+        workspaceId: triggerPayload.workspaceId as string ?? '',
+      }).catch(() => { /* non-fatal */ });
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

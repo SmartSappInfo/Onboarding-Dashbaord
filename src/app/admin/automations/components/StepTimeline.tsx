@@ -13,15 +13,19 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StepExecution } from '@/lib/types';
 
 interface StepTimelineProps {
   steps: Record<string, StepExecution> | undefined;
-  nodes?: any[];
+  nodes?: Array<{ id: string; type?: string; data?: Record<string, unknown> }>;
   className?: string;
+  /** Optional callback to retry a specific failed step. When provided, a retry button appears on failed steps. */
+  onRetryStep?: (nodeId: string) => Promise<void>;
 }
 
 const getNodeIcon = (nodeType: string) => {
@@ -81,8 +85,9 @@ const getStatusStyles = (status: StepExecution['status']) => {
   }
 };
 
-export function StepTimeline({ steps, nodes = [], className }: StepTimelineProps) {
+export function StepTimeline({ steps, nodes = [], className, onRetryStep }: StepTimelineProps) {
   const [expandedErrorNodeId, setExpandedErrorNodeId] = React.useState<string | null>(null);
+  const [retryingNodeId, setRetryingNodeId] = React.useState<string | null>(null);
 
   if (!steps || Object.keys(steps).length === 0) {
     return (
@@ -144,7 +149,7 @@ export function StepTimeline({ steps, nodes = [], className }: StepTimelineProps
 
           // Attempt to find node in automation blueprint to resolve updated label
           const blueprintNode = nodes.find(n => n.id === step.nodeId);
-          const displayName = blueprintNode?.data?.label || step.nodeLabel || 'Step';
+          const displayName = String(blueprintNode?.data?.label || step.nodeLabel || 'Step');
 
           return (
             <div key={step.nodeId || idx} className="relative group">
@@ -221,13 +226,41 @@ export function StepTimeline({ steps, nodes = [], className }: StepTimelineProps
                 {/* Error Accordion */}
                 {step.error && (
                   <div className="mt-1 border-t border-rose-200/40 dark:border-rose-800/40 pt-1.5">
-                    <button
-                      onClick={() => setExpandedErrorNodeId(isErrorExpanded ? null : step.nodeId)}
-                      className="flex items-center gap-1 text-[10px] font-semibold text-rose-700 dark:text-rose-400 hover:opacity-85 transition-opacity"
-                    >
-                      {isErrorExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                      View Failure Details
-                    </button>
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => setExpandedErrorNodeId(isErrorExpanded ? null : step.nodeId)}
+                        className="flex items-center gap-1 text-[10px] font-semibold text-rose-700 dark:text-rose-400 hover:opacity-85 transition-opacity"
+                      >
+                        {isErrorExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        View Failure Details
+                      </button>
+                      {onRetryStep && step.status === 'failed' && (
+                        <button
+                          type="button"
+                          disabled={retryingNodeId === step.nodeId}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setRetryingNodeId(step.nodeId);
+                            try {
+                              await onRetryStep(step.nodeId);
+                            } finally {
+                              setRetryingNodeId(null);
+                            }
+                          }}
+                          className={cn(
+                            'flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold transition-all',
+                            'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20',
+                            'hover:bg-amber-500/20 active:scale-95',
+                            'disabled:opacity-50 disabled:cursor-not-allowed'
+                          )}
+                        >
+                          {retryingNodeId === step.nodeId
+                            ? <><Loader2 className="h-2.5 w-2.5 animate-spin" /> Retrying…</>
+                            : <><RefreshCw className="h-2.5 w-2.5" /> Retry Step</>
+                          }
+                        </button>
+                      )}
+                    </div>
                     {isErrorExpanded && (
                       <div className="mt-1.5 p-2 rounded-lg bg-rose-100/50 dark:bg-rose-950/30 border border-rose-200/50 dark:border-rose-900/30 font-mono text-[9px] text-rose-800 dark:text-rose-300 break-all whitespace-pre-wrap">
                         {step.error}

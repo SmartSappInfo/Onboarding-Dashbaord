@@ -47,3 +47,14 @@ Code Review Before Implementations
 - review all imports and ensure they are well implemented
 
 Follow Next.js docs for Data Fetching, Rendering, and Routing.
+
+Important:
+1. conform to next-best-practices, vercel-react-best-practices, emilkowal-animations and frontend-design skills, ensure all functionalities are maintained and improved. the skills in the .agents folder. if you need any other skill, use the find-skills/skills/skill.md to find and install it for your perusal. make this implementation plan professional and industry standard. essentially code review the implementation plan
+
+2. what could go wrong in this implementation and how can it be resolved? how can the code be clean, testable, refactored and scalable without losing functionality. use your findings to update the  phase by phase implementation plan, with git commit when completed. do not run build or typescript, or lint or git commit. let me know so i run it locally to save ai credit.
+
+3. what other features will be broken or affected an how can we include them in the phase by phase implementation plan?
+
+4. While coding, avoid the user of any() or any[]
+
+Use all 4 important rules in all operations.

@@ -54,14 +54,25 @@ export async function logStepExecution(
       ...(entry.metadata || {}),
     };
 
-    // Dot-notation update to perform atomic merge on steps map
-    await docRef.update({
+    // Build the update payload — always persist the step itself
+    const updatePayload: Record<string, unknown> = {
       [`steps.${entry.nodeId}`]: {
         ...entry,
         metadata: mergedMetadata,
         executedAt: entry.executedAt || new Date().toISOString(),
       },
-    });
+    };
+
+    // Track the contact's current position for the Activity Log.
+    // Write on success (completed step) and waiting (delay node) so the
+    // log always reflects the last meaningful node the contact reached.
+    if (entry.status === 'success' || entry.status === 'waiting') {
+      updatePayload['currentNodeId'] = entry.nodeId;
+      updatePayload['currentNodeLabel'] = entry.nodeLabel;
+    }
+
+    // Dot-notation update to perform atomic merge on steps map
+    await docRef.update(updatePayload);
   } catch (err) {
     // Swallow error so execution is not interrupted by logging failures
     console.error(`[step-logger] Failed to log step ${entry.nodeId} for run ${runId}:`, err);

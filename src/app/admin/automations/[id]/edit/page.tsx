@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, orderBy, query, where } from 'firebase/firestore';
 import type { Automation, AutomationTriggerDef } from '@/lib/types';
-import { ArrowLeft, CheckCircle2, Loader2, Pencil, Play, Save, AlertCircle, Search, X, Zap } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Pencil, Play, Save, AlertCircle, Search, X, Zap, Users, PenTool } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,18 @@ const AutomationBuilder = dynamic(() => import('../../components/AutomationBuild
   ),
 });
 
+const AutomationActivityLog = dynamic(
+  () => import('../../components/AutomationActivityLog').then((m) => ({ default: m.AutomationActivityLog })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
+      </div>
+    ),
+  }
+);
+
 /**
  * @fileOverview High-fidelity Automation Blueprint Editor.
  */
@@ -64,6 +76,7 @@ export default function EditAutomationPage() {
   // Pencil editor state
   const [isEditingMeta, setIsEditingMeta] = React.useState(false);
   const [editDraft, setEditDraft] = React.useState({ name: '', description: '' });
+  const [activeTab, setActiveTab] = React.useState<'designer' | 'activity'>('designer');
 
   const isNew = automationId === 'new';
 
@@ -115,15 +128,34 @@ export default function EditAutomationPage() {
     }
   }, [automation, isNew]);
 
+  // Snapshot of the last-saved state — used for accurate isDirty comparison.
+  // Updated after every successful save so isDirty resets to false.
+  const [savedSnapshot, setSavedSnapshot] = React.useState<string | null>(null);
+
+  // Set initial snapshot when automation loads from Firestore
+  React.useEffect(() => {
+    if (automation && !savedSnapshot) {
+      setSavedSnapshot(JSON.stringify({
+        name: automation.name,
+        description: automation.description || '',
+        nodes: automation.nodes,
+        edges: automation.edges,
+        triggers: automation.triggers ?? [],
+      }));
+    }
+  }, [automation, savedSnapshot]);
+
   const isDirty = React.useMemo(() => {
-    if (!automation) return false;
-    const nameChanged = currentData.name !== undefined && currentData.name !== automation.name;
-    const descChanged = currentData.description !== undefined && currentData.description !== (automation.description || '');
-    const nodesChanged = currentData.nodes !== undefined && JSON.stringify(currentData.nodes) !== JSON.stringify(automation.nodes);
-    const edgesChanged = currentData.edges !== undefined && JSON.stringify(currentData.edges) !== JSON.stringify(automation.edges);
-    const triggersChanged = currentData.triggers !== undefined && JSON.stringify(currentData.triggers) !== JSON.stringify(automation.triggers ?? []);
-    return nameChanged || descChanged || nodesChanged || edgesChanged || triggersChanged;
-  }, [automation, currentData]);
+    if (!savedSnapshot) return false;
+    const currentStr = JSON.stringify({
+      name: currentData.name,
+      description: currentData.description,
+      nodes: currentData.nodes,
+      edges: currentData.edges,
+      triggers: currentData.triggers,
+    });
+    return currentStr !== savedSnapshot;
+  }, [savedSnapshot, currentData]);
 
   const {
     showRestoreDialog,
@@ -212,6 +244,14 @@ export default function EditAutomationPage() {
         description: isNew ? 'Blueprint created successfully.' : 'Blueprint updated successfully.' 
       });
       clearAutomationBackup(automationId);
+      // Update saved snapshot so isDirty resets to false
+      setSavedSnapshot(JSON.stringify({
+        name: currentData.name,
+        description: currentData.description,
+        nodes: currentData.nodes,
+        edges: currentData.edges,
+        triggers: currentData.triggers,
+      }));
       if (isNew && res.id) {
         unregisterUnsavedChanges('automation-builder');
         router.push(`/admin/automations/${res.id}/edit`);
@@ -415,6 +455,35 @@ export default function EditAutomationPage() {
           </div>
 
           {!isNew && !automation.isArchived ? (
+            <div className="flex items-center gap-0.5 bg-muted/40 rounded-xl p-0.5 mr-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab('designer')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all',
+                  activeTab === 'designer'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <PenTool size={12} /> Designer
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('activity')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all',
+                  activeTab === 'activity'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Users size={12} /> Activity
+              </button>
+            </div>
+          ) : null}
+
+          {!isNew && !automation.isArchived ? (
             <Button
               variant="outline"
               className="rounded-xl font-bold h-10 gap-2 border-primary/20 text-primary"
@@ -472,15 +541,22 @@ export default function EditAutomationPage() {
       ) : null}
 
       <div className="flex-1 relative overflow-hidden">
-        <AutomationBuilder
-          key={builderKey}
-          initialNodes={currentData.nodes ?? automation.nodes}
-          initialEdges={currentData.edges ?? automation.edges}
-          triggers={activeTriggers}
-          onStateChange={handleStateChange}
-          onTriggersChange={handleTriggersChange}
-          automationId={automationId}
-        />
+        {activeTab === 'designer' ? (
+          <AutomationBuilder
+            key={builderKey}
+            initialNodes={currentData.nodes ?? automation.nodes}
+            initialEdges={currentData.edges ?? automation.edges}
+            triggers={activeTriggers}
+            onStateChange={handleStateChange}
+            onTriggersChange={handleTriggersChange}
+            automationId={automationId}
+          />
+        ) : (
+          <AutomationActivityLog
+            automationId={automationId}
+            nodes={currentData.nodes ?? automation.nodes ?? []}
+          />
+        )}
       </div>
 
       <Dialog

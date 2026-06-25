@@ -795,6 +795,12 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               placeholder="Choose blueprint..."
               compact
             />
+            {!config.templateId && (
+              <p className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 ml-1 flex items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+                A messaging template is required for this step to execute.
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -1174,6 +1180,12 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               placeholder="Choose blueprint..."
               compact
             />
+            {!config.templateId && (
+              <p className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 ml-1 flex items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+                A messaging template is required for this step to execute.
+              </p>
+            )}
           </div>
         </div>
       ) : null}

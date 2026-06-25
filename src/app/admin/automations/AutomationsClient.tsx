@@ -40,7 +40,11 @@ import {
     Globe,
     Target,
     Archive,
-    ArchiveRestore
+    ArchiveRestore,
+    Table2,
+    Braces,
+    Copy,
+    Check
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -224,6 +228,8 @@ export default function AutomationsClient() {
     const { singular, plural } = useTerminology();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
+    const [triggerDataDialogView, setTriggerDataDialogView] = React.useState<'table' | 'json'>('table');
+    const [copiedDialogKey, setCopiedDialogKey] = React.useState<string | null>(null);
     const [isPulsing, setIsPulsing] = React.useState(false);
     
     // View mode and filtering state (Phase 1)
@@ -1333,8 +1339,105 @@ export default function AutomationsClient() {
  <Database size={14} className="text-primary" />
  <h4 className="text-[10px] font-semibold text-primary">Contextual Payload</h4>
                                     </div>
-                                    <Badge variant="outline" className="h-5 text-[8px] font-bold border-primary/20 text-primary">JSON Snapshot</Badge>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-0.5 bg-muted/40 rounded-lg p-0.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => setTriggerDataDialogView('table')}
+                                          className={cn(
+                                            'flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold transition-all',
+                                            triggerDataDialogView === 'table'
+                                              ? 'bg-background text-foreground shadow-sm'
+                                              : 'text-muted-foreground hover:text-foreground'
+                                          )}
+                                        >
+                                          <Table2 size={10} /> Table
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setTriggerDataDialogView('json')}
+                                          className={cn(
+                                            'flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-bold transition-all',
+                                            triggerDataDialogView === 'json'
+                                              ? 'bg-background text-foreground shadow-sm'
+                                              : 'text-muted-foreground hover:text-foreground'
+                                          )}
+                                        >
+                                          <Braces size={10} /> JSON
+                                        </button>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 rounded-lg"
+                                        onClick={() => {
+                                          if (selectedRun) navigator.clipboard.writeText(JSON.stringify(selectedRun.triggerData, null, 2));
+                                          toast({ title: 'Payload Copied' });
+                                        }}
+                                      >
+                                        <Copy size={12} />
+                                      </Button>
+                                    </div>
                                 </div>
+
+                                {triggerDataDialogView === 'table' ? (
+                                  <div className="rounded-xl border border-border/40 overflow-hidden">
+                                    <table className="w-full text-left">
+                                      <thead>
+                                        <tr className="bg-muted/30 border-b border-border/40">
+                                          <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-1.5 w-[35%]">Key</th>
+                                          <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-1.5">Value</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(selectedRun?.triggerData || {}).map(([key, value], idx) => {
+                                          const isComplex = typeof value === 'object' && value !== null;
+                                          const displayValue = isComplex ? JSON.stringify(value) : String(value ?? '—');
+                                          const isCopied = copiedDialogKey === key;
+                                          return (
+                                            <tr
+                                              key={key}
+                                              className={cn(
+                                                'border-b border-border/20 last:border-b-0 group/row cursor-pointer hover:bg-primary/5 transition-colors',
+                                                idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'
+                                              )}
+                                              onClick={() => {
+                                                navigator.clipboard.writeText(displayValue);
+                                                setCopiedDialogKey(key);
+                                                setTimeout(() => setCopiedDialogKey(null), 1500);
+                                              }}
+                                              title="Click to copy value"
+                                            >
+                                              <td className="px-3 py-1.5 align-top">
+                                                <code className="text-[9px] font-bold text-primary/80 break-all">{key}</code>
+                                              </td>
+                                              <td className="px-3 py-1.5 align-top">
+                                                <div className="flex items-start gap-1.5">
+                                                  {isComplex ? (
+                                                    <code className="text-[9px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-md break-all leading-relaxed">{displayValue}</code>
+                                                  ) : (
+                                                    <span className="text-[9px] font-medium text-foreground/80 break-all leading-relaxed">{displayValue}</span>
+                                                  )}
+                                                  <span className={cn(
+                                                    'shrink-0 mt-0.5 transition-all',
+                                                    isCopied ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-40'
+                                                  )}>
+                                                    {isCopied ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} className="text-muted-foreground" />}
+                                                  </span>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                        {(!selectedRun?.triggerData || Object.keys(selectedRun.triggerData).length === 0) && (
+                                          <tr>
+                                            <td colSpan={2} className="px-3 py-4 text-center text-[9px] text-muted-foreground font-medium">No trigger data captured</td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
  <div className="relative group">
  <div className="absolute top-4 right-4 z-10">
                                         <Button 
@@ -1355,6 +1458,7 @@ export default function AutomationsClient() {
                                         </pre>
                                     </div>
                                 </div>
+                                )}
                             </div>
 
  <div className="p-6 rounded-[2rem] bg-blue-500/10 border border-blue-500/20 flex items-start gap-4">

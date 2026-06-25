@@ -7,6 +7,7 @@ import { evaluateTagConditionNode, processTagActionNode } from './tag-nodes';
 import { adminDb } from '../../firebase-admin';
 import { logStepExecution } from '../step-logger';
 import { fetchLiveEntityTags, nodeChecksTags } from '../tag-enrichment';
+import { notifyAutomationFailed } from '../automation-lifecycle-notify';
 import crypto from 'crypto';
 
 export function getSplitAssignment(entityId: string, automationId: string, nodeId: string, splitRatio: number, payload: any): 'a' | 'b' {
@@ -315,7 +316,7 @@ export async function traverseNodes(
       await traverseNodes(nextNode.id, automation, context);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      const label = nextNode.data?.label || nextNode.id;
+      const label = nextNode.data?.label as string | undefined ?? nextNode.id;
       logStepExecution(context.runId, {
         nodeId: nextNode.id,
         nodeType: nextNode.type || 'unknown',
@@ -325,6 +326,52 @@ export async function traverseNodes(
         durationMs: Date.now() - stepStart,
         error: message,
       });
+
+      // Mark run as failed and pause all pending jobs so the contact is held.
+      // Guard against redundant writes when a parent recursive call also catches.
+      if (context.runId) {
+        try {
+          const runRef = adminDb.collection('automation_runs').doc(context.runId);
+          const runSnap = await runRef.get();
+          if (runSnap.data()?.status !== 'failed') {
+            await runRef.update({
+              status: 'failed',
+              finishedAt: new Date().toISOString(),
+              error: `Node [${label}] failed: ${message}`,
+              currentNodeId: nextNode.id,
+              currentNodeLabel: label,
+            });
+
+            // Pause pending jobs so the contact doesn't silently advance
+            const pendingJobsSnap = await adminDb
+              .collection('automation_jobs')
+              .where('runId', '==', context.runId)
+              .where('status', '==', 'pending')
+              .get();
+
+            if (!pendingJobsSnap.empty) {
+              const batch = adminDb.batch();
+              pendingJobsSnap.docs.forEach((jobDoc) =>
+                batch.update(jobDoc.ref, { status: 'paused' })
+              );
+              await batch.commit();
+            }
+
+            // Notify workspace admins immediately (fire-and-forget)
+            notifyAutomationFailed({
+              automationId: context.automationId,
+              automationName: automation.name ?? context.automationId,
+              workspaceId: context.workspaceId ?? '',
+              stepLabel: label,
+              error: message,
+            }).catch(() => { /* non-fatal */ });
+          }
+        } catch (updateErr: unknown) {
+          const updateMsg = updateErr instanceof Error ? updateErr.message : String(updateErr);
+          console.error('[TRAVERSE] Failed to mark run as failed (non-fatal):', updateMsg);
+        }
+      }
+
       throw new Error(`Node [${label}] failed: ${message}`);
     }
   }

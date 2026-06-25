@@ -12,7 +12,9 @@ import {
     ChevronLeft,
     Trash2,
     Search,
-    SplitSquareVertical
+    SplitSquareVertical,
+    CalendarDays,
+    StickyNote,
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -940,6 +942,8 @@ export function NodeInspector({
                                         if (v === 'specific_date') defaultLabel = 'Wait Until Specific Date';
                                         if (v === 'date_field') defaultLabel = 'Wait Until Date Field';
                                         if (v === 'conditions_met') defaultLabel = 'Wait Until Conditions';
+                                        if (v === 'scheduled_day') defaultLabel = 'Wait for Scheduled Day & Time';
+                                        if (v === 'scheduled_month') defaultLabel = 'Wait for Month/Day of Month';
                                         setDraftData((prev: any) => ({
                                             ...prev,
                                             label: defaultLabel,
@@ -955,6 +959,8 @@ export function NodeInspector({
                                         <SelectItem value="specific_date">Until a specific day and/or time</SelectItem>
                                         <SelectItem value="date_field">Until a custom date field matches</SelectItem>
                                         <SelectItem value="conditions_met">Until specific conditions are met</SelectItem>
+                                        <SelectItem value="scheduled_day">On a specific day & time</SelectItem>
+                                        <SelectItem value="scheduled_month">On a specific month/day of month</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1162,6 +1168,183 @@ export function NodeInspector({
                                     ) : null}
                                 </div>
                             ) : null}
+
+                            {/* 5. On a Specific Day & Time (day-of-week based) */}
+                             {config.waitType === 'scheduled_day' ? (
+                                 <div className="space-y-4 pt-2">
+                                     {/* Day of Week Dropdown */}
+                                     <div className="space-y-2">
+                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-1.5">
+                                             <CalendarDays className="h-3 w-3" /> Day of Week
+                                         </Label>
+                                         <Select
+                                             value={config.scheduledDayPreset || 'monday'}
+                                             onValueChange={(v) => updateConfig({ scheduledDayPreset: v })}
+                                         >
+                                             <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                 <SelectValue />
+                                             </SelectTrigger>
+                                             <SelectContent className="rounded-xl">
+                                                 <SelectItem value="monday">Monday</SelectItem>
+                                                 <SelectItem value="tuesday">Tuesday</SelectItem>
+                                                 <SelectItem value="wednesday">Wednesday</SelectItem>
+                                                 <SelectItem value="thursday">Thursday</SelectItem>
+                                                 <SelectItem value="friday">Friday</SelectItem>
+                                                 <SelectItem value="saturday">Saturday</SelectItem>
+                                                 <SelectItem value="sunday">Sunday</SelectItem>
+                                                 <SelectItem value="weekend">Weekend (Sat & Sun)</SelectItem>
+                                                 <SelectItem value="weekday">Not a weekend (Mon–Fri)</SelectItem>
+                                             </SelectContent>
+                                         </Select>
+                                     </div>
+
+                                     {/* Time */}
+                                     <div className="space-y-2">
+                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Time of Day</Label>
+                                         <Input
+                                             type="time"
+                                             value={config.scheduledTime || '09:00'}
+                                             onChange={(e) => updateConfig({ scheduledTime: e.target.value })}
+                                             className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
+                                         />
+                                     </div>
+
+                                     {/* Summary preview */}
+                                     <div className="rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                         <p className="text-[10px] font-bold text-purple-700 dark:text-purple-300 mb-0.5">Schedule Preview</p>
+                                         <p className="text-[10px] text-purple-600 dark:text-purple-400">
+                                             {(() => {
+                                                 const preset = config.scheduledDayPreset || 'monday';
+                                                 const dayMap: Record<string, string> = {
+                                                     monday: 'Every Monday', tuesday: 'Every Tuesday', wednesday: 'Every Wednesday',
+                                                     thursday: 'Every Thursday', friday: 'Every Friday', saturday: 'Every Saturday',
+                                                     sunday: 'Every Sunday', weekend: 'Every Weekend (Sat & Sun)',
+                                                     weekday: 'Every Weekday (Mon–Fri)'
+                                                 };
+                                                 return `${dayMap[preset] || preset} · at ${config.scheduledTime || '09:00'}`;
+                                             })()}
+                                         </p>
+                                     </div>
+                                 </div>
+                             ) : null}
+
+                             {/* 6. On a Specific Month / Day of Month */}
+                             {config.waitType === 'scheduled_month' ? (
+                                 <div className="space-y-4 pt-2">
+                                     <div className="grid grid-cols-2 gap-3">
+                                         <div className="space-y-2">
+                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Month</Label>
+                                             <Select
+                                                 value={config.scheduledMonth || 'any'}
+                                                 onValueChange={(v) => updateConfig({ scheduledMonth: v })}
+                                             >
+                                                 <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                     <SelectValue />
+                                                 </SelectTrigger>
+                                                 <SelectContent className="rounded-xl">
+                                                     <SelectItem value="any">Any month</SelectItem>
+                                                     <SelectItem value="1">January</SelectItem>
+                                                     <SelectItem value="2">February</SelectItem>
+                                                     <SelectItem value="3">March</SelectItem>
+                                                     <SelectItem value="4">April</SelectItem>
+                                                     <SelectItem value="5">May</SelectItem>
+                                                     <SelectItem value="6">June</SelectItem>
+                                                     <SelectItem value="7">July</SelectItem>
+                                                     <SelectItem value="8">August</SelectItem>
+                                                     <SelectItem value="9">September</SelectItem>
+                                                     <SelectItem value="10">October</SelectItem>
+                                                     <SelectItem value="11">November</SelectItem>
+                                                     <SelectItem value="12">December</SelectItem>
+                                                 </SelectContent>
+                                             </Select>
+                                         </div>
+                                         <div className="space-y-2">
+                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Day of Month</Label>
+                                             <Select
+                                                 value={config.scheduledDayOfMonth || 'any'}
+                                                 onValueChange={(v) => updateConfig({ scheduledDayOfMonth: v })}
+                                             >
+                                                 <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                     <SelectValue />
+                                                 </SelectTrigger>
+                                                 <SelectContent className="rounded-xl max-h-60">
+                                                     <SelectItem value="any">Any day</SelectItem>
+                                                     <SelectItem value="1">1st</SelectItem>
+                                                     <SelectItem value="2">2nd</SelectItem>
+                                                     <SelectItem value="3">3rd</SelectItem>
+                                                     <SelectItem value="4">4th</SelectItem>
+                                                     <SelectItem value="5">5th</SelectItem>
+                                                     <SelectItem value="6">6th</SelectItem>
+                                                     <SelectItem value="7">7th</SelectItem>
+                                                     <SelectItem value="8">8th</SelectItem>
+                                                     <SelectItem value="9">9th</SelectItem>
+                                                     <SelectItem value="10">10th</SelectItem>
+                                                     <SelectItem value="11">11th</SelectItem>
+                                                     <SelectItem value="12">12th</SelectItem>
+                                                     <SelectItem value="13">13th</SelectItem>
+                                                     <SelectItem value="14">14th</SelectItem>
+                                                     <SelectItem value="15">15th</SelectItem>
+                                                     <SelectItem value="16">16th</SelectItem>
+                                                     <SelectItem value="17">17th</SelectItem>
+                                                     <SelectItem value="18">18th</SelectItem>
+                                                     <SelectItem value="19">19th</SelectItem>
+                                                     <SelectItem value="20">20th</SelectItem>
+                                                     <SelectItem value="21">21st</SelectItem>
+                                                     <SelectItem value="22">22nd</SelectItem>
+                                                     <SelectItem value="23">23rd</SelectItem>
+                                                     <SelectItem value="24">24th</SelectItem>
+                                                     <SelectItem value="25">25th</SelectItem>
+                                                     <SelectItem value="26">26th</SelectItem>
+                                                     <SelectItem value="27">27th</SelectItem>
+                                                     <SelectItem value="28">28th</SelectItem>
+                                                     <SelectItem value="29">29th</SelectItem>
+                                                     <SelectItem value="30">30th</SelectItem>
+                                                     <SelectItem value="31">31st</SelectItem>
+                                                     <SelectItem value="last">Last day</SelectItem>
+                                                 </SelectContent>
+                                             </Select>
+                                         </div>
+                                     </div>
+
+                                     {/* Time */}
+                                     <div className="space-y-2">
+                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Time of Day</Label>
+                                         <Input
+                                             type="time"
+                                             value={config.scheduledTime || '09:00'}
+                                             onChange={(e) => updateConfig({ scheduledTime: e.target.value })}
+                                             className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
+                                         />
+                                     </div>
+
+                                     {/* Summary preview */}
+                                     {((config.scheduledMonth && config.scheduledMonth !== 'any') || (config.scheduledDayOfMonth && config.scheduledDayOfMonth !== 'any')) ? (
+                                         <div className="rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                             <p className="text-[10px] font-bold text-purple-700 dark:text-purple-300 mb-0.5">Schedule Preview</p>
+                                             <p className="text-[10px] text-purple-600 dark:text-purple-400">
+                                                 {(() => {
+                                                     const parts: string[] = [];
+                                                     const monthNames: Record<string, string> = {
+                                                         '1': 'January', '2': 'February', '3': 'March', '4': 'April', '5': 'May', '6': 'June',
+                                                         '7': 'July', '8': 'August', '9': 'September', '10': 'October', '11': 'November', '12': 'December'
+                                                     };
+                                                     if (config.scheduledMonth && config.scheduledMonth !== 'any') {
+                                                         parts.push(monthNames[config.scheduledMonth] || config.scheduledMonth);
+                                                     } else {
+                                                         parts.push('Every month');
+                                                     }
+                                                     if (config.scheduledDayOfMonth && config.scheduledDayOfMonth !== 'any') {
+                                                         const dom = config.scheduledDayOfMonth === 'last' ? 'last day' : `day ${config.scheduledDayOfMonth}`;
+                                                         parts.push(`on the ${dom}`);
+                                                     }
+                                                     parts.push(`at ${config.scheduledTime || '09:00'}`);
+                                                     return parts.join(' · ');
+                                                 })()}
+                                             </p>
+                                         </div>
+                                     ) : null}
+                                 </div>
+                             ) : null}
                         </div>
                     ) : null}
 
@@ -1315,6 +1498,30 @@ export function NodeInspector({
                     ) : null}
                 </div>
             </div>
+
+            {/* Note Section */}
+            {node.type !== 'triggerNode' && (
+                <div className="mt-4 pt-4 border-t border-border/30">
+                    <div className="flex items-center gap-2 mb-2">
+                        <StickyNote className="h-3.5 w-3.5 text-amber-500" />
+                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Step Note</Label>
+                    </div>
+                    <textarea
+                        value={data.note || ''}
+                        onChange={(e) => setDraftData((prev: Record<string, unknown>) => ({
+                            ...prev,
+                            note: e.target.value,
+                        }))}
+                        placeholder="Add a note for your team..."
+                        className="w-full min-h-[60px] max-h-[120px] rounded-xl border border-border/40 bg-muted/30 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 focus:outline-none resize-none transition-all"
+                    />
+                    {data.note && (
+                        <p className="text-[9px] text-muted-foreground/60 mt-1 ml-1">
+                            {data.note.length} characters
+                        </p>
+                    )}
+                </div>
+            )}
 
             {/* Sticky Action Footer */}
             <div className="pt-4 mt-auto border-t border-border/50 shrink-0 bg-card flex items-center justify-between gap-3">

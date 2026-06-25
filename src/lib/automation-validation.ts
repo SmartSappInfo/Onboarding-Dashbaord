@@ -135,15 +135,16 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
         }
         break;
       }
-      case 'SEND_MESSAGE':
-        // Skip template check if recipientTargets is set and doesn't require templates, but keep it for backward compatibility
-        const recTargets = config.recipientTargets as string[] | undefined;
-        if (!config.templateId && (!config.templateCategory || !config.templateType) && (!recTargets || recTargets.length === 0)) {
+      case 'SEND_MESSAGE': {
+        // The execution engine requires templateId or (templateCategory + templateType).
+        // recipientTargets controls WHO receives the message, but a template is always needed.
+        if (!config.templateId && (!config.templateCategory || !config.templateType)) {
           throw new AutomationValidationError(
-            `Send message in "${label}" must specify templateId or templateCategory + templateType.`
+            `Send message in "${label}" must have a messaging template selected (templateId or templateCategory + templateType).`
           );
         }
         break;
+      }
       case 'SEND_NOTIFICATION_EMAIL':
       case 'SEND_NOTIFICATION_SMS':
       case 'SEND_NOTIFICATION_IN_APP':

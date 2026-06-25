@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, DollarSign, ArrowRightLeft, Users, Link2, Settings2, Clock, Activity, ShieldAlert, Plus } from 'lucide-react';
+import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, DollarSign, ArrowRightLeft, Users, Link2, Settings2, Clock, Activity, ShieldAlert, Plus, StickyNote } from 'lucide-react';
+import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -97,6 +98,7 @@ const TRIGGER_NAMES: Record<string, string> = {
  * Reads data.triggers[] (multi-trigger model) with fallback to data.trigger (legacy).
  */
 export function TriggerNode({ id, data, selected }: any) {
+    const [isHovered, setIsHovered] = React.useState(false);
     // Multi-trigger model: data.triggers[] is source of truth
     // Fall back to legacy data.trigger for canvas nodes not yet synced
     const triggers: any[] = data.triggers?.length
@@ -259,7 +261,22 @@ export function TriggerNode({ id, data, selected }: any) {
             "relative transition-all duration-300",
             selected ? "scale-[1.02]" : "scale-100",
             overlay.opacityClass
-        )}>
+        )} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+            <NodeActionToolbar
+                nodeId={id}
+                isVisible={selected || isHovered}
+                isTrigger={true}
+                canMoveUp={data.canMoveUp}
+                canMoveDown={data.canMoveDown}
+                hasNote={data.hasNote}
+                onAddAbove={data.onAddAbove}
+                onAddBelow={() => data.onAddStep(id)}
+                onMoveUp={data.onMoveUp}
+                onMoveDown={data.onMoveDown}
+                onDuplicate={data.onDuplicate}
+                onDelete={data.onDelete}
+                onToggleNote={data.onToggleNote}
+            />
             {overlay.badgeIcon && (
                 <div className="absolute -top-2.5 -right-2.5 z-50">
                     <ExecutionBadge icon={overlay.badgeIcon} status={data.executionStatus} />
@@ -310,6 +327,12 @@ export function TriggerNode({ id, data, selected }: any) {
             >
                 {!data.isDefaultConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
             </Handle>
+            {data.note && (
+                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-md px-1.5 py-0.5 max-w-[200px] cursor-pointer" onClick={() => data.onToggleNote?.()}>
+                    <StickyNote className="h-2.5 w-2.5 text-amber-500 shrink-0" />
+                    <span className="text-[8px] text-amber-700 dark:text-amber-400 truncate font-medium">{data.note}</span>
+                </div>
+            )}
         </div>
     );
 }

@@ -85,3 +85,35 @@ export async function manuallyReleaseWaitJobAction(jobId: string, userId: string
 export async function manuallyEndAutomationRunAction(runId: string, userId: string) {
   return manuallyEndAutomationRun(runId, userId);
 }
+
+// ── Run Management Actions ──────────────────────────────────────────────────────
+
+export async function restartRunAction(runId: string, userId: string) {
+  const { restartAutomationRun } = await import('./automations/run-management');
+  return restartAutomationRun(runId, userId);
+}
+
+export async function retryFailedStepAction(runId: string, nodeId: string, userId: string) {
+  const { retryFailedStep } = await import('./automations/run-management');
+  return retryFailedStep(runId, nodeId, userId);
+}
+
+export async function forceEndRunAction(runId: string, userId: string) {
+  const { forceEndRun } = await import('./automations/run-management');
+  return forceEndRun(runId, userId);
+}
+
+export async function forceAdvanceRunAction(runId: string, userId: string) {
+  const { forceAdvanceRun } = await import('./automations/run-management');
+  return forceAdvanceRun(runId, userId);
+}
+
+export async function pauseRunAction(runId: string, userId: string) {
+  const { pauseRun } = await import('./automations/run-management');
+  return pauseRun(runId, userId);
+}
+
+export async function resumeRunAction(runId: string, userId: string) {
+  const { resumePausedRun } = await import('./automations/run-management');
+  return resumePausedRun(runId, userId);
+}
