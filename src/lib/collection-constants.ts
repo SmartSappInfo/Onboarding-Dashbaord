@@ -22,6 +22,7 @@ export const COLLECTIONS = {
   AUTOMATIONS:      'automations',
   WEBHOOKS:         'webhooks',
   MESSAGE_LOGS:     'message_logs',
+  MESSAGE_NODE_STATS: 'message_node_stats',
 
   // Users & Org
   USERS:            'users',
