@@ -3,8 +3,123 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { adminDb } from '@/lib/firebase-admin';
 import { updateCampaignRealtimeStat } from '@/lib/campaign-analytics';
+import { incrementMessageNodeStat } from '@/lib/messaging/message-node-stats';
+import type { MessageLog, MessageNodeStatCounter, TrackedMessageChannel } from '@/lib/types';
 
 const WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET;
+
+/**
+ * Canonical Resend webhook. Campaign sends (carrying jobId/taskId tags) update
+ * `message_jobs/{jobId}/tasks/{taskId}`. Automation/transactional sends carry no
+ * such tags and are correlated to `message_logs` by providerId instead — see
+ * {@link handleAutomationMessageEvent}. This folds in the previously insecure
+ * `/api/webhooks/resend` route under Svix verification.
+ */
+
+/** Resend event type → the per-node counter it increments (first occurrence only). */
+const NODE_STAT_BY_EVENT: Record<string, MessageNodeStatCounter | undefined> = {
+  'email.delivered': 'delivered',
+  'email.opened': 'opened',
+  'email.clicked': 'clicked',
+  'email.bounced': 'bounced',
+  'email.complained': 'complained',
+};
+
+/**
+ * Updates the `message_logs` record for a non-campaign (automation/transactional)
+ * email and increments the owning node's denormalized stats. Idempotent: each
+ * delivery milestone is applied once (guarded by its structured timestamp), so
+ * Resend retries and repeat opens/clicks never double-count node stats.
+ */
+async function handleAutomationMessageEvent(
+  type: string,
+  emailId: string,
+  createdAt: string | undefined
+): Promise<void> {
+  const logsSnap = await adminDb
+    .collection('message_logs')
+    .where('providerId', '==', emailId)
+    .limit(1)
+    .get();
+
+  if (logsSnap.empty) {
+    console.warn(`>>> [WEBHOOK] No message_log found for email_id ${emailId}. Ignoring.`);
+    return;
+  }
+
+  const logDoc = logsSnap.docs[0];
+  const log = logDoc.data() as MessageLog;
+  const ts = createdAt || new Date().toISOString();
+
+  const updates: Record<string, unknown> = {
+    providerStatus: type.replace('email.', ''),
+    updatedAt: new Date().toISOString(),
+  };
+
+  // `isNewMilestone` gates both the structured timestamp and the node-stat count,
+  // giving per-log idempotency and unique (not total) opened/clicked counts.
+  let isNewMilestone = false;
+  switch (type) {
+    case 'email.delivered':
+      if (!log.deliveredAt) {
+        updates.deliveredAt = ts;
+        updates.status = 'sent';
+        isNewMilestone = true;
+      }
+      break;
+    case 'email.opened':
+      updates.openedCount = (log.openedCount || 0) + 1;
+      if (!log.openedAt) {
+        updates.openedAt = ts;
+        isNewMilestone = true;
+      }
+      break;
+    case 'email.clicked':
+      updates.clickedCount = (log.clickedCount || 0) + 1;
+      if (!log.clickedAt) {
+        updates.clickedAt = ts;
+        isNewMilestone = true;
+      }
+      break;
+    case 'email.bounced':
+      if (!log.bouncedAt) {
+        updates.bouncedAt = ts;
+        updates.status = 'failed';
+        updates.error = 'Bounced by recipient mail server';
+        isNewMilestone = true;
+      }
+      break;
+    case 'email.complained':
+      if (!log.complainedAt) {
+        updates.complainedAt = ts;
+        isNewMilestone = true;
+      }
+      break;
+    default:
+      return; // Unhandled event type — nothing to persist.
+  }
+
+  await logDoc.ref.update(updates);
+
+  const counter = NODE_STAT_BY_EVENT[type];
+  if (isNewMilestone && counter && log.automationId && log.nodeId) {
+    const channel: TrackedMessageChannel =
+      log.channel === 'sms' || log.channel === 'whatsapp' ? log.channel : 'email';
+    await incrementMessageNodeStat({
+      automationId: log.automationId,
+      nodeId: log.nodeId,
+      workspaceId: log.workspaceId || log.workspaceIds?.[0] || '',
+      organizationId: log.organizationId,
+      channel,
+      counter,
+    }).catch((e: unknown) =>
+      console.warn('>>> [WEBHOOK] node stat increment failed (non-fatal):', e)
+    );
+  }
+
+  // TODO(Phase 4): on email.opened / email.clicked, cancel pending resend jobs for
+  // (log.runId, log.nodeId) so an engaged contact stops receiving resends and advances.
+}
 
 export async function POST(req: NextRequest) {
   if (!WEBHOOK_SECRET) {
@@ -51,8 +166,15 @@ export async function POST(req: NextRequest) {
   console.log(`>>> [WEBHOOK] Received ${type} for email ${emailId} (Job: ${jobId}, Task: ${taskId})`);
 
   if (!jobId || !taskId) {
-    console.warn('>>> [WEBHOOK] Missing jobId or taskId in tags. Skipping database updates.');
-    return NextResponse.json({ success: true, message: 'No job context found' });
+    // Not a campaign send — automation/transactional emails carry no job tags.
+    // Correlate to message_logs by providerId and update per-node stats instead.
+    try {
+      await handleAutomationMessageEvent(type, emailId, evt.created_at);
+    } catch (err) {
+      console.error('>>> [WEBHOOK] message_logs path error:', (err as Error).message);
+      // Still ack — webhook retries should not be triggered by our processing errors.
+    }
+    return NextResponse.json({ success: true, message: 'Processed via message_logs path' });
   }
 
   try {
