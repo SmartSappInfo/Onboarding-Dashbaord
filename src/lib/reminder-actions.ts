@@ -2,7 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { resolveAndRender } from './template-resolver';
-import { sendMessage } from './messaging-engine';
+import { sendMessage, sendRawMessage } from './messaging-engine';
 import { computeScheduledAt } from './template-variable-utils';
 import { buildMeetingBaseVariables, buildRegistrantVariables, buildFacilitatorVariables } from './meeting-variable-helpers';
 import type { Meeting, ScheduledMessage, TemplateCategory, MeetingMessagingConfig, MeetingReminderSlot, MeetingInvitationSlot, MeetingRegistrant } from './types';
@@ -538,17 +538,33 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
         }
       }
 
-      const result = await sendMessage({
-        templateId: msg.templateId,
-        senderProfileId: msg.senderProfileId || 'default',
-        organizationId: msg.organizationId,
-        recipient: msg.recipientContact,
-        variables: msg.variables ?? {},
-        entityId: msg.recipientEntityId ?? null,
-        workspaceId: msg.workspaceId,
-        body: msg.customBody || undefined,
-        subject: msg.customSubject || undefined,
-      });
+      let result: { success: boolean; error?: string; logId?: string };
+
+      if (!msg.templateId || msg.templateId === 'raw') {
+        result = await sendRawMessage({
+          channel: msg.channel as 'email' | 'sms' | 'in_app' | 'push',
+          recipient: msg.recipientContact,
+          body: msg.customBody || '',
+          subject: msg.channel === 'email' ? (msg.customSubject || undefined) : undefined,
+          senderProfileId: msg.senderProfileId || 'default',
+          organizationId: msg.organizationId,
+          variables: msg.variables ?? {},
+          workspaceIds: msg.workspaceId ? [msg.workspaceId] : undefined,
+          entityId: msg.recipientEntityId || undefined,
+        });
+      } else {
+        result = await sendMessage({
+          templateId: msg.templateId,
+          senderProfileId: msg.senderProfileId || 'default',
+          organizationId: msg.organizationId,
+          recipient: msg.recipientContact,
+          variables: msg.variables ?? {},
+          entityId: msg.recipientEntityId ?? null,
+          workspaceId: msg.workspaceId,
+          body: msg.customBody || undefined,
+          subject: msg.customSubject || undefined,
+        });
+      }
 
       if (result.success) {
         await doc.ref.update({ status: 'sent', sentAt: new Date().toISOString() });
@@ -556,13 +572,14 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
       } else {
         throw new Error(result.error ?? 'Unknown send error');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
       const retryCount = (msg.retryCount ?? 0) + 1;
       if (retryCount >= MAX_RETRIES) {
         await doc.ref.update({
           status: 'failed',
           retryCount,
-          error: err.message ?? 'Unknown error',
+          error: errMsg,
         });
         failed++;
       } else {
@@ -571,7 +588,7 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
         await doc.ref.update({
           retryCount,
           scheduledAt: retryAt,
-          error: err.message ?? 'Unknown error',
+          error: errMsg,
         });
       }
     }
@@ -1160,8 +1177,8 @@ export async function autoEndCompletedMeetings(): Promise<{ endedCount: number; 
           } else {
             throw new Error(result.error);
           }
-        } catch (err: any) {
-          const errMsg = `Failed to end meeting ${meetingId}: ${err.message}`;
+        } catch (err: unknown) {
+          const errMsg = `Failed to end meeting ${meetingId}: ${err instanceof Error ? err.message : 'Unknown error'}`;
           console.error(`[AUTO-END] ${errMsg}`);
           errors.push(errMsg);
         }
@@ -1169,9 +1186,106 @@ export async function autoEndCompletedMeetings(): Promise<{ endedCount: number; 
     }
 
     return { endedCount, errors };
-  } catch (error: any) {
-    console.error('[AUTO-END] Global error auto-ending meetings:', error);
-    return { endedCount, errors: [error.message || 'Unknown error'] };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[AUTO-END] Global error auto-ending meetings:', msg);
+    return { endedCount, errors: [msg] };
   }
+}
+
+/**
+ * Processes all scheduled campaigns whose scheduledAt <= now.
+ * Uses a Firestore transaction lock (setting status to 'dispatching') to prevent double-processing.
+ */
+export async function processScheduledCampaigns(): Promise<{ processedCount: number; errors: string[] }> {
+  const nowIso = new Date().toISOString();
+  const errors: string[] = [];
+  let processedCount = 0;
+
+  try {
+    const snap = await adminDb
+      .collection('message_campaigns')
+      .where('status', '==', 'scheduled')
+      .where('scheduledAt', '<=', nowIso)
+      .limit(5)
+      .get();
+
+    if (snap.empty) {
+      return { processedCount, errors };
+    }
+
+    const { dispatchCampaign } = await import('./campaign-dispatch');
+
+    for (const doc of snap.docs) {
+      const campaignId = doc.id;
+
+      // 1. Transaction to atomically set status from 'scheduled' to 'dispatching'
+      let locked = false;
+      try {
+        await adminDb.runTransaction(async (transaction) => {
+          const campaignRef = adminDb.collection('message_campaigns').doc(campaignId);
+          const campaignDoc = await transaction.get(campaignRef);
+
+          if (!campaignDoc.exists) {
+            throw new Error('Campaign document not found');
+          }
+
+          const currentStatus = campaignDoc.data()?.status as string;
+          if (currentStatus === 'scheduled') {
+            transaction.update(campaignRef, {
+              status: 'dispatching',
+              updatedAt: new Date().toISOString()
+            });
+            locked = true;
+          }
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Transaction failed';
+        console.error(`[CRON-CAMPAIGN] Lock acquisition failed for ${campaignId}:`, msg);
+        errors.push(`Lock failed for ${campaignId}: ${msg}`);
+        continue;
+      }
+
+      if (!locked) {
+        console.warn(`[CRON-CAMPAIGN] Campaign ${campaignId} was already locked or modified by another worker.`);
+        continue;
+      }
+
+      // 2. Dispatch locked campaign
+      try {
+        console.log(`[CRON-CAMPAIGN] Starting dispatch for campaign ${campaignId}`);
+        const result = await dispatchCampaign(campaignId);
+        
+        if (result.success) {
+          processedCount++;
+          console.log(`[CRON-CAMPAIGN] Successfully dispatched campaign: ${campaignId}`);
+        } else {
+          throw new Error(result.error || 'Unknown dispatch error');
+        }
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : 'Unknown dispatch error';
+        console.error(`[CRON-CAMPAIGN] Dispatch failed for campaign ${campaignId}:`, errMsg);
+        
+        // Revert status to failed so it doesn't get stuck in 'dispatching'
+        try {
+          await adminDb.collection('message_campaigns').doc(campaignId).update({
+            status: 'failed',
+            error: errMsg,
+            updatedAt: new Date().toISOString()
+          });
+        } catch (updateErr: unknown) {
+          console.error(`[CRON-CAMPAIGN] Failed to mark campaign ${campaignId} as failed:`, updateErr);
+        }
+
+        errors.push(`Dispatch failed for ${campaignId}: ${errMsg}`);
+      }
+    }
+  } catch (error: unknown) {
+    const globalMsg = error instanceof Error ? error.message : 'Unknown global error';
+    console.error('[CRON-CAMPAIGN] Global error in processScheduledCampaigns:', globalMsg);
+    errors.push(`Global error: ${globalMsg}`);
+  }
+
+  return { processedCount, errors };
 }
 

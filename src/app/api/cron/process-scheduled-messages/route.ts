@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processScheduledMessages, autoEndCompletedMeetings } from '@/lib/reminder-actions';
+import { processScheduledMessages, autoEndCompletedMeetings, processScheduledCampaigns } from '@/lib/reminder-actions';
 import { processMeetingInvitations } from '@/lib/invitation-actions';
 
 /**
@@ -39,14 +39,16 @@ async function processCronRequest(request: NextRequest) {
       );
     }
 
-    // Process scheduled messages, invitations, and auto-end meetings concurrently
-    const [result, invResult, autoEndResult] = await Promise.all([
+    // Process scheduled messages, campaigns, invitations, and auto-end meetings concurrently
+    const [result, campaignResult, invResult, autoEndResult] = await Promise.all([
       processScheduledMessages(),
+      processScheduledCampaigns(),
       processMeetingInvitations(),
       autoEndCompletedMeetings()
     ]);
 
     console.log(`[CRON] Processed scheduled messages: ${result.sent} sent, ${result.failed} failed`);
+    console.log(`[CRON] Processed scheduled campaigns: ${campaignResult.processedCount} processed, ${campaignResult.errors.length} errors`);
     console.log(`[CRON] Processed invitations: ${invResult.sent} sent, ${invResult.skipped} skipped, ${invResult.failed} failed`);
     console.log(`[CRON] Auto-ended meetings: ${autoEndResult.endedCount} ended, ${autoEndResult.errors.length} errors`);
 
@@ -54,15 +56,18 @@ async function processCronRequest(request: NextRequest) {
       success: true,
       sent: result.sent,
       failed: result.failed,
+      campaignsProcessed: campaignResult.processedCount,
+      campaignErrors: campaignResult.errors.length,
       autoEnded: autoEndResult.endedCount,
       timestamp: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Unknown error';
     console.error('[CRON] Error processing scheduled messages:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Unknown error',
+        error: errMsg,
         timestamp: new Date().toISOString(),
       },
       { status: 500 }

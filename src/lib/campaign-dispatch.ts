@@ -27,7 +27,7 @@ export async function dispatchCampaign(campaignId: string): Promise<{
 
     const campaign = campaignSnap.data() as MessageCampaign;
 
-    if (campaign.status !== 'draft' && campaign.status !== 'scheduled') {
+    if (campaign.status !== 'draft' && campaign.status !== 'scheduled' && campaign.status !== 'dispatching') {
       return { success: false, error: `Cannot dispatch campaign in '${campaign.status}' status` };
     }
 
