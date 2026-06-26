@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, TemplateCategory, VariableContext, MessageChannel } from './types';
+import type { MessageTemplate, TemplateCategory, VariableContext, MessageChannel, OrgBrandingData } from './types';
 import { renderTemplate } from './template-utils';
 import { getBaseUrl } from './utils/url-helpers';
 import { MESSAGING_TRIGGERS } from './messaging-triggers';
@@ -328,7 +328,7 @@ export async function buildVariableMap(
       if (ws.organizationId) {
         const orgSnap = await adminDb.collection('organizations').doc(ws.organizationId).get();
         if (orgSnap.exists) {
-          const orgData = orgSnap.data()!;
+          const orgData = orgSnap.data() as OrgBrandingData;
           vars['organization_name'] = orgData.name ?? '';
           vars['org_name'] = orgData.name ?? '';
           vars['org_logo_url'] = orgData.logoUrl ?? '';
@@ -340,6 +340,9 @@ export async function buildVariableMap(
           vars['brand_primary_color'] = orgData.brandPrimaryColor ?? '#3B5FFF';
           vars['brand_secondary_color'] = orgData.brandSecondaryColor ?? '#8B5CF6';
           vars['brand_font_family'] = orgData.brandFontFamily ?? 'Figtree';
+          // Footer fields — piggybacked at zero extra I/O cost
+          vars['org_footer_html'] = orgData.footerHtml ?? '';
+          vars['org_footer_enabled'] = String(orgData.footerEnabled !== false);
         }
       }
     }

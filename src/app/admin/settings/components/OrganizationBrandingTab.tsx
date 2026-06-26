@@ -20,7 +20,11 @@ import {
     XCircle,
     Info,
     RefreshCw,
+    FileCode,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DEFAULT_ORG_FOOTER_HTML, resolveOrgFooter } from '@/lib/services/org-footer-service';
 
 interface OrganizationBrandingTabProps {
     organization: Organization;
@@ -45,6 +49,11 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
     const [brandFontFamily, setBrandFontFamily] = React.useState(organization.brandFontFamily || 'Figtree');
     const [unsubscribeCopy, setUnsubscribeCopy] = React.useState(organization.unsubscribeCopy || '');
 
+    // Email footer state (strictly typed)
+    const [footerHtml, setFooterHtml] = React.useState<string>(organization.footerHtml ?? DEFAULT_ORG_FOOTER_HTML);
+    const [footerEnabled, setFooterEnabled] = React.useState<boolean>(organization.footerEnabled !== false);
+    const [footerPreviewMode, setFooterPreviewMode] = React.useState<'code' | 'preview'>('preview');
+
     // AI Seeding state
     const [seedUrl, setSeedUrl] = React.useState('');
     const [isScraping, setIsScraping] = React.useState(false);
@@ -62,6 +71,8 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                     brandSecondaryColor: brandSecondaryColor.trim(),
                     brandFontFamily: brandFontFamily.trim(),
                     unsubscribeCopy: unsubscribeCopy.trim(),
+                    footerHtml: footerHtml.trim(),
+                    footerEnabled,
                 },
                 user.uid,
             );
@@ -334,9 +345,9 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                         </div>
                     </div>
 
-                    <div className="space-y-2 pt-4 border-t">
+                    <div className="space-y-2 pt-4 border-t animate-none">
                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
-                            Unsubscribe compliance text (Max 300 characters)
+                            Unsubscribe disclaimer copy (Max 300 characters)
                         </Label>
                         <Textarea
                             value={unsubscribeCopy}
@@ -352,19 +363,164 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                             {unsubscribeCopy.length}/300 characters
                         </div>
                     </div>
-
-                    <div className="flex justify-end pt-4">
-                        <Button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="rounded-xl font-bold h-11 px-8 shadow-lg shadow-primary/10"
-                        >
-                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                            Save Branding
-                        </Button>
-                    </div>
                 </CardContent>
             </Card>
+
+            {/* Email Footer Card */}
+            <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden">
+                <CardHeader className="p-8 border-b flex flex-row items-center justify-between flex-wrap gap-4">
+                    <div className="space-y-1">
+                        <CardTitle className="text-xl font-bold flex items-center gap-2">
+                            <FileCode className="h-5 w-5 text-primary" />
+                            Email Footer
+                        </CardTitle>
+                        <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
+                            Customize the compliance footer appended to outbound email templates
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-muted-foreground">Always Appended</span>
+                        <Switch
+                            checked={footerEnabled}
+                            onCheckedChange={setFooterEnabled}
+                            className="data-[state=checked]:bg-primary transition-all duration-200 ease-out"
+                        />
+                    </div>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6">
+                    <Tabs value={footerPreviewMode} onValueChange={(v) => setFooterPreviewMode(v as 'code' | 'preview')} className="space-y-4">
+                        <div className="flex items-center justify-between border-b pb-2">
+                            <TabsList className="bg-muted/10 border p-0.5 h-9 rounded-xl shadow-sm">
+                                <TabsTrigger value="preview" className="text-[10px] font-bold px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">
+                                    Preview
+                                </TabsTrigger>
+                                <TabsTrigger value="code" className="text-[10px] font-bold px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">
+                                    HTML Source
+                                </TabsTrigger>
+                            </TabsList>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    if (confirm("Reset footer HTML to default? This will overwrite your changes.")) {
+                                        setFooterHtml(DEFAULT_ORG_FOOTER_HTML);
+                                    }
+                                }}
+                                className="h-8 rounded-lg text-[10px] font-bold border-muted/50 hover:bg-muted active:scale-[0.97] transition-all"
+                            >
+                                Reset to Default
+                            </Button>
+                        </div>
+
+                        <TabsContent value="code" className="space-y-4 focus-visible:ring-0 mt-0">
+                            <Textarea
+                                value={footerHtml}
+                                onChange={(e) => setFooterHtml(e.target.value)}
+                                className="min-h-[200px] font-mono text-xs bg-slate-950 text-blue-400 p-4 rounded-2xl border-slate-800 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none"
+                                placeholder="Enter custom footer HTML here..."
+                            />
+                            
+                            {/* Token Reference Chips */}
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">
+                                    Variable Reference Chips (Click to copy placeholder)
+                                </Label>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 animate-in fade-in slide-in-from-bottom-1 duration-150">
+                                    <FooterTokenChip token="unsubscribe_link" description="Recipient unsubscribe link" />
+                                    <FooterTokenChip token="unsubscribe_copy" description="Unsubscribe disclaimer" />
+                                    <FooterTokenChip token="org_name" description="Organization name" />
+                                    <FooterTokenChip token="org_address" description="Physical address" />
+                                    <FooterTokenChip token="org_email" description="Support email address" />
+                                    <FooterTokenChip token="org_phone" description="Contact phone number" />
+                                    <FooterTokenChip token="org_website" description="Website URL" />
+                                    <FooterTokenChip token="current_year" description="Current calendar year" />
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="preview" className="mt-0 focus-visible:ring-0">
+                            <div className="rounded-2xl border bg-slate-50/50 dark:bg-slate-950/20 overflow-hidden shadow-inner h-[220px] transition-all duration-200">
+                                {footerEnabled ? (
+                                    <iframe
+                                        srcDoc={`
+                                            <html>
+                                                <head>
+                                                    <style>
+                                                        body {
+                                                            margin: 0;
+                                                            padding: 0;
+                                                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                                                            background-color: #F8FAFC;
+                                                        }
+                                                    </style>
+                                                </head>
+                                                <body>
+                                                    ${resolveOrgFooter(footerHtml, true, {
+                                                        unsubscribe_copy: unsubscribeCopy || 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.',
+                                                        unsubscribe_link: '#preview',
+                                                        org_name: organization.name || 'Your Organization',
+                                                        org_address: organization.address || '123 Main St, City, Country',
+                                                        org_email: organization.email || 'contact@yourdomain.com',
+                                                        org_phone: organization.phone || '+1 (555) 000-0000',
+                                                        org_website: organization.website || 'https://yourdomain.com',
+                                                        current_year: new Date().getFullYear().toString(),
+                                                        brand_primary_color: brandPrimaryColor,
+                                                    })}
+                                                </body>
+                                            </html>
+                                        `}
+                                        className="w-full h-full border-none"
+                                        title="Footer Preview Frame"
+                                        sandbox="allow-same-origin"
+                                    />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground/60">
+                                        <XCircle className="h-8 w-8 text-muted-foreground/40" />
+                                        <p className="text-xs font-semibold">Footer is currently disabled</p>
+                                        <p className="text-[10px] text-muted-foreground/40">Toggle "Always Appended" to enable and preview</p>
+                                    </div>
+                                )}
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                </CardContent>
+            </Card>
+
+            <div className="flex justify-end pt-4">
+                <Button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="rounded-xl font-bold h-11 px-8 shadow-lg shadow-primary/10"
+                >
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save Branding
+                </Button>
+            </div>
         </div>
+    );
+}
+
+interface FooterTokenChipProps {
+    token: string;
+    description: string;
+}
+
+function FooterTokenChip({ token, description }: FooterTokenChipProps) {
+    const { toast } = useToast();
+    const handleCopy = () => {
+        navigator.clipboard.writeText(`{{${token}}}`);
+        toast({ title: 'Copied to Clipboard', description: `{{${token}}} copied.` });
+    };
+
+    return (
+        <button
+            type="button"
+            onClick={handleCopy}
+            className="flex flex-col items-start p-2.5 rounded-xl border bg-card hover:bg-violet-50/50 hover:border-violet-200/50 dark:hover:bg-violet-950/20 dark:hover:border-violet-800/30 transition-all text-left group active:scale-[0.97] transition-all duration-150"
+        >
+            <span className="text-[10px] font-bold font-mono text-violet-600 dark:text-violet-400 group-hover:text-violet-700">{`{{${token}}}`}</span>
+            <span className="text-[8px] font-semibold text-muted-foreground mt-0.5">{description}</span>
+        </button>
     );
 }

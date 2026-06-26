@@ -24,18 +24,7 @@ export async function saveOrganizationAction(
     userId: string
 ): Promise<{ success: boolean; error?: string; organizationId?: string }> {
     try {
-        // Validate required fields
-        if (!data.name || !data.name.trim()) {
-            return { success: false, error: 'Organization name is required' };
-        }
-
         const timestamp = new Date().toISOString();
-        const baseSlug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-
-        // Ensure departments defaults to ['General'] if not provided or empty
-        const departments = data.departments && data.departments.length > 0 
-            ? data.departments 
-            : ['General'];
 
         if (organizationId) {
             // Assert Edit permissions for this specific tenant (prevent parameter tampering IDOR)
@@ -54,13 +43,24 @@ export async function saveOrganizationAction(
             // Update existing organization
             await adminDb.collection('organizations').doc(organizationId).update({
                 ...flatData,
-                departments,
                 updatedAt: timestamp,
                 updatedBy: userId
             });
 
             return { success: true, organizationId };
         } else {
+            // Validate required fields
+            if (!data.name || !data.name.trim()) {
+                return { success: false, error: 'Organization name is required' };
+            }
+
+            const baseSlug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+            // Ensure departments defaults to ['General'] if not provided or empty
+            const departments = data.departments && data.departments.length > 0 
+                ? data.departments 
+                : ['General'];
+
             // To create an organization, user must have system_admin access
             const userRef = adminDb.collection('users').doc(userId);
             const userSnap = await userRef.get();
@@ -98,22 +98,22 @@ export async function saveOrganizationAction(
 
             return { success: true, organizationId: slug };
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error saving organization:', error);
-        
-        // Provide more specific error messages
-        if (error.code === 'permission-denied') {
+        const err = error as { code?: string; message?: string };
+
+        if (err.code === 'permission-denied') {
             return { success: false, error: 'Permission denied. Please check your Firebase security rules.' };
         }
-        
-        if (error.message?.includes('credentials')) {
-            return { 
-                success: false, 
-                error: 'Firebase Admin credentials not configured. Please set up FIREBASE_SERVICE_ACCOUNT_KEY environment variable.' 
+
+        if (err.message?.includes('credentials')) {
+            return {
+                success: false,
+                error: 'Firebase Admin credentials not configured. Please set up FIREBASE_SERVICE_ACCOUNT_KEY environment variable.',
             };
         }
-        
-        return { success: false, error: error.message || 'Failed to save organization' };
+
+        return { success: false, error: err.message || 'Failed to save organization' };
     }
 }
 

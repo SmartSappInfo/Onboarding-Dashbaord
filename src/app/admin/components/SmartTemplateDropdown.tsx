@@ -86,7 +86,14 @@ export function SmartTemplateDropdown({
                 ? result.filter(t => t.templateType?.startsWith(templateTypePrefix))
                 : result;
             if (recipientType && recipientType !== 'all') {
-                filtered = filtered.filter(t => t.recipientType === recipientType);
+                filtered = filtered.filter(t => {
+                    if (recipientType === 'entity') {
+                        const internalRoles = ['internal_alert', 'assignee', 'team_member', 'admin'];
+                        const isInternal = t.target === 'internal_team' || (t.recipientType && internalRoles.includes(t.recipientType));
+                        return !isInternal;
+                    }
+                    return t.recipientType === recipientType;
+                });
             }
             setTemplates(filtered);
             return filtered;

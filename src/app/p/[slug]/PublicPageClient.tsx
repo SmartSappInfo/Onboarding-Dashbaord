@@ -33,6 +33,7 @@ import { PageRenderer } from '@/components/page-builder/PageRenderer';
 import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import { migrateLegacyStructure } from '@/lib/page-builder/migrate';
 import { parseStructure } from '@/lib/page-builder/schema';
+import { PageTracking } from '@/components/page-builder/PageTracking';
 
 // Render published pages through the generic registry-driven `PageRenderer`.
 // Defaults ON now that the legacy migration has landed; set the env var to
@@ -179,7 +180,29 @@ function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isInModal, 
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 const data = Object.fromEntries(formData.entries());
-                const res = await submitStandaloneFormAction(formId, data, workspaceId, organizationId, { sourcePageId: pageId });
+                
+                // Retrieve stored UTM parameters from sessionStorage
+                const storedUtm = sessionStorage.getItem(`utm_${pageId}`);
+                let utmData = null;
+                if (storedUtm) {
+                    try {
+                        utmData = JSON.parse(storedUtm);
+                    } catch (e) {
+                        console.error('Failed to parse UTM data:', e);
+                    }
+                }
+                
+                // Pass UTM data as metadata
+                const metadata: any = { sourcePageId: pageId };
+                if (utmData) {
+                    metadata.utmSource = utmData.source;
+                    metadata.utmMedium = utmData.medium;
+                    metadata.utmCampaign = utmData.campaign;
+                    metadata.utmTerm = utmData.term;
+                    metadata.utmContent = utmData.content;
+                }
+                
+                const res = await submitStandaloneFormAction(formId, data, workspaceId, organizationId, metadata);
                 if (res.success) {
                     setSubmitted(true);
                     if (!isInModal && form.settings?.redirectUrl) {
@@ -279,6 +302,15 @@ export default function PublicPageClient({
     const [loading, setLoading] = useState(!initialPage);
     const [receiptFormSuccess, setReceiptFormSuccess] = useState(false);
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page, orgBranding);
+
+    // Extract UTM parameters from URL
+    const utmParams = React.useMemo(() => ({
+        source: searchParams?.get('utm_source'),
+        medium: searchParams?.get('utm_medium'),
+        campaign: searchParams?.get('utm_campaign'),
+        term: searchParams?.get('utm_term'),
+        content: searchParams?.get('utm_content'),
+    }), [searchParams]);
 
     useEffect(() => {
         if (page) return; // Skip client-side fetch if resolved server-side
@@ -400,6 +432,9 @@ export default function PublicPageClient({
     return (
         <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#09090b] transition-colors duration-500 relative overflow-x-hidden font-body">
             <style dangerouslySetInnerHTML={{ __html: themeStyles }} />
+            
+            {/* Client-side tracking */}
+            {page && <PageTracking pageId={page.id} utmParams={utmParams} />}
             
             {/* Background Ambient Glow */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">

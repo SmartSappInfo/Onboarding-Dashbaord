@@ -1,32 +1,89 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle2, Play, RotateCcw, Sparkles } from 'lucide-react';
+import { usePageAnalytics } from '@/hooks/use-page-analytics';
+import { PageAnalyticsReader } from '@/components/page-analytics-reader';
+import type { PageEventChannel } from '@/lib/types';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CUSTOM_THUMBNAIL_URL =
   'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1782385064904-Thumbnails.webp?alt=media&token=f40892b1-4b9e-4988-8304-e42fc0711aba';
 const YOUTUBE_VIDEO_ID = '8xhxALYfNDc';
 const CTA_LINK = 'https://smartsapp.com/request-trial';
+const PAGE_SLUG = 'collecting-fees-without-delays-and-parental-confrontations';
 
 type VideoState = 'idle' | 'playing' | 'finished';
 
-// Declare YouTube IFrame API types
+// ─── YouTube IFrame API types (strict — no `any`) ─────────────────────────────
+
+interface YTPlayerEvent {
+  data: number;
+  target: YTPlayer;
+}
+
+interface YTPlayerOptions {
+  videoId: string;
+  playerVars: {
+    autoplay: 0 | 1;
+    rel: 0 | 1;
+    modestbranding: 0 | 1;
+    enablejsapi: 0 | 1;
+  };
+  events: {
+    onStateChange: (event: YTPlayerEvent) => void;
+  };
+}
+
+interface YTPlayer {
+  destroy: () => void;
+}
+
 declare global {
   interface Window {
-    YT: any;
+    YT: {
+      Player: new (elementId: string, options: YTPlayerOptions) => YTPlayer;
+      PlayerState: { ENDED: number };
+    };
     onYouTubeIframeAPIReady: () => void;
   }
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function CollectingFeesClient() {
   const [videoState, setVideoState] = useState<VideoState>('idle');
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
+  // Tracks the active channel so we can tag all events after the first detection
+  const channelRef = useRef<PageEventChannel>('direct');
 
-  // Load YouTube IFrame API and initialise player when video starts
+  const { track, setEntityId, hasFiredVideoStart } = usePageAnalytics(PAGE_SLUG);
+
+  // ── Analytics: fire page_view once on mount (after channel/entity are set) ──
+  // page_view fires in onReady from PageAnalyticsReader to ensure channel is known
+  const handleReady = useCallback(
+    (channel: PageEventChannel) => {
+      channelRef.current = channel;
+      track('page_view', channel);
+    },
+    [track]
+  );
+
+  const handleEntityDetected = useCallback(
+    (entityId: string, channel: PageEventChannel) => {
+      setEntityId(entityId);
+      channelRef.current = channel;
+    },
+    [setEntityId]
+  );
+
+  // ── YouTube IFrame API ────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (videoState !== 'playing') return;
 
@@ -35,21 +92,20 @@ export default function CollectingFeesClient() {
         videoId: YOUTUBE_VIDEO_ID,
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1, enablejsapi: 1 },
         events: {
-          onStateChange: (event: any) => {
+          onStateChange: (event: YTPlayerEvent) => {
             // YT.PlayerState.ENDED === 0
             if (event.data === 0) {
               setVideoState('finished');
+              track('video_complete', channelRef.current);
             }
           },
         },
       });
     };
 
-    if (window.YT && window.YT.Player) {
-      // API already loaded
+    if (window.YT?.Player) {
       initPlayer();
     } else {
-      // Inject the script if not yet present
       if (!document.getElementById('yt-api-script')) {
         const tag = document.createElement('script');
         tag.id = 'yt-api-script';
@@ -60,20 +116,51 @@ export default function CollectingFeesClient() {
     }
 
     return () => {
-      // Cleanup player on unmount / state change
       if (playerRef.current?.destroy) {
         playerRef.current.destroy();
         playerRef.current = null;
       }
     };
-  }, [videoState]);
+  }, [videoState, track]);
 
-  const handleReplay = () => {
+  // ── Interaction handlers ──────────────────────────────────────────────────────
+
+  const handlePlay = useCallback(() => {
     setVideoState('playing');
-  };
+    if (!hasFiredVideoStart.current) {
+      hasFiredVideoStart.current = true;
+      track('video_start', channelRef.current);
+    }
+  }, [track, hasFiredVideoStart]);
+
+  const handleReplay = useCallback(() => {
+    setVideoState('playing');
+    track('video_replay', channelRef.current);
+  }, [track]);
+
+  const handleCtaClick = useCallback(() => {
+    track('cta_click', channelRef.current);
+  }, [track]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="light min-h-screen bg-white font-body selection:bg-primary/10 text-slate-900" style={{ colorScheme: 'light' }}>
+    <div
+      className="light min-h-screen bg-white font-body selection:bg-primary/10 text-slate-900"
+      style={{ colorScheme: 'light' }}
+    >
+      {/*
+        PageAnalyticsReader must be inside <Suspense> because useSearchParams()
+        causes a CSR bailout without it (next-best-practices/suspense-boundaries).
+        fallback={null} → zero visible flash; the reader renders nothing to the DOM.
+      */}
+      <Suspense fallback={null}>
+        <PageAnalyticsReader
+          onEntityDetected={handleEntityDetected}
+          onReady={handleReady}
+        />
+      </Suspense>
+
       {/* Background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
@@ -91,6 +178,7 @@ export default function CollectingFeesClient() {
             <Button
               className="rounded-full bg-[#3B5FFF] text-white font-semibold hover:bg-[#2d4ef0] px-5 h-10 shadow-none transition-all"
               asChild
+              onClick={handleCtaClick}
             >
               <Link href={CTA_LINK}>Book Free Consultation</Link>
             </Button>
@@ -118,7 +206,11 @@ export default function CollectingFeesClient() {
           {videoState === 'idle' && (
             <div
               className="relative aspect-video w-full cursor-pointer group bg-slate-900"
-              onClick={() => setVideoState('playing')}
+              onClick={handlePlay}
+              role="button"
+              tabIndex={0}
+              aria-label="Play video: How we collect fees without delays and parental confrontations"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handlePlay(); }}
             >
               <Image
                 src={CUSTOM_THUMBNAIL_URL}
@@ -149,7 +241,6 @@ export default function CollectingFeesClient() {
           {/* ── PLAYING: YouTube IFrame API player ── */}
           {videoState === 'playing' && (
             <div className="aspect-video w-full bg-black">
-              {/* YouTube API mounts into this div */}
               <div id="yt-player" className="w-full h-full" />
             </div>
           )}
@@ -157,7 +248,6 @@ export default function CollectingFeesClient() {
           {/* ── FINISHED: post-video CTA overlay ── */}
           {videoState === 'finished' && (
             <div className="relative aspect-video w-full bg-gradient-to-br from-[#0f1f6e] via-[#1a2f9e] to-[#3B5FFF] flex flex-col items-center justify-center text-center px-6 gap-6 animate-in fade-in zoom-in-95 duration-700">
-              {/* Decorative blurs */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-0 left-1/4 w-1/2 h-1/2 bg-white/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-0 right-1/4 w-1/3 h-1/3 bg-[#3B5FFF]/40 rounded-full blur-2xl" />
@@ -181,6 +271,7 @@ export default function CollectingFeesClient() {
                   size="lg"
                   className="rounded-2xl bg-white text-[#3B5FFF] font-bold hover:bg-white/90 px-6 h-12 text-base shadow-[0_8px_24px_-4px_rgba(0,0,0,0.3)] transition-all hover:scale-105 group"
                   asChild
+                  onClick={handleCtaClick}
                 >
                   <Link href={CTA_LINK} className="flex items-center gap-2">
                     Request Free Consultation
@@ -217,6 +308,7 @@ export default function CollectingFeesClient() {
               size="lg"
               className="w-full sm:w-auto h-16 px-10 rounded-2xl bg-[#3B5FFF] text-white text-lg font-bold shadow-[0_12px_24px_-8px_rgba(59,95,255,0.4)] hover:shadow-[0_16px_32px_-8px_rgba(59,95,255,0.5)] transition-all duration-300 group"
               asChild
+              onClick={handleCtaClick}
             >
               <Link href={CTA_LINK} className="flex items-center justify-center gap-2">
                 Book Free Consultation Now

@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDoc, doc } from 'firebase/firestore';
 import type { AutomationRun, StepExecution } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -144,6 +144,10 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
   const [triggerDataView, setTriggerDataView] = React.useState<'table' | 'json'>('table');
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
+  const [resolvedContact, setResolvedContact] = React.useState<{
+    email: string;
+    phone: string;
+  } | null>(null);
 
   // Real-time runs query
   const runsQuery = useMemoFirebase(() => {
@@ -167,6 +171,65 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
       }
     }
   }, [runs, selectedRun]);
+
+  // Resolve contact email/phone for the drill-down info cards.
+  // triggerData often lacks these for entity-triggered runs, so we
+  // fall back to a Firestore lookup on the entity document.
+  React.useEffect(() => {
+    if (!selectedRun?.entityId || !selectedRun.workspaceId || !firestore) {
+      setResolvedContact(null);
+      return;
+    }
+
+    // Fast path: triggerData already has both
+    const td = selectedRun.triggerData || {};
+    const tdEmail = (td.email as string) || (td.primaryContactEmail as string) || '';
+    const tdPhone = (td.phone as string) || (td.primaryContactPhone as string) || '';
+    if (tdEmail && tdPhone) {
+      setResolvedContact({ email: tdEmail, phone: tdPhone });
+      return;
+    }
+
+    // Slow path: fetch from Firestore
+    let cancelled = false;
+
+    async function fetchContact() {
+      try {
+        const entityId = selectedRun!.entityId!;
+
+        // Try workspace_entities first
+        let snap = await getDoc(doc(firestore, 'workspace_entities', entityId));
+        if (!snap.exists()) {
+          // Fall back to schools (legacy)
+          snap = await getDoc(doc(firestore, 'schools', entityId));
+        }
+
+        if (cancelled || !snap.exists()) return;
+
+        const data = snap.data() as Record<string, unknown>;
+        const email =
+          tdEmail ||
+          (data.email as string) ||
+          (data.primaryContactEmail as string) ||
+          '';
+        const phone =
+          tdPhone ||
+          (data.phone as string) ||
+          (data.primaryContactPhone as string) ||
+          '';
+
+        setResolvedContact({ email, phone });
+      } catch {
+        // Non-fatal; fall back to triggerData values
+        setResolvedContact({ email: tdEmail, phone: tdPhone });
+      }
+    }
+
+    setResolvedContact(null);
+    fetchContact();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRun?.id, selectedRun?.entityId]);
 
   // Get unique step labels for filter dropdown
   const stepOptions = React.useMemo(() => {
@@ -418,8 +481,8 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: 'Entity', value: isWebhook ? 'Webhook' : getRunDisplayName(selectedRun) },
-                { label: 'Email', value: getRunEmail(selectedRun) || '—' },
-                { label: 'Phone', value: getRunPhone(selectedRun) || '—' },
+                { label: 'Email', value: resolvedContact?.email || getRunEmail(selectedRun) || '—' },
+                { label: 'Phone', value: resolvedContact?.phone || getRunPhone(selectedRun) || '—' },
                 { label: 'Duration', value: getDuration(selectedRun) },
               ].map((item) => (
                 <div key={item.label} className="p-3 rounded-xl bg-muted/20 border border-border/40">

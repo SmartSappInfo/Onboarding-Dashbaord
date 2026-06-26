@@ -83,6 +83,12 @@
       "skillPath": "email-template-generator/SKILL.md",
       "computedHash": "c64203235d47263d0f38248c9130c62312eaf91623aa83f90396206bc76c7962"
     },
+    "emilkowal-animations": {
+      "source": "pproenca/dot-skills",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/emilkowal-animations/SKILL.md",
+      "computedHash": "f9d5fc89ddc9b7b1ce1b323c7152881c3a01d8088ccec5ddfd4c7aebc0c9c936"
+    },
     "eslint-prettier-config": {
       "source": "patricio0312rev/skills",
       "sourceType": "github",

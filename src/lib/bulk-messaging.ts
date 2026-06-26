@@ -358,6 +358,7 @@ export async function processBulkJobChunk(jobId: string) {
                 organizationId: orgId,
                 recipient: task.recipient,
                 variables: task.variables,
+                entityId: task.entityId || task.variables?.entityId || undefined,
                 trackLinks: job.trackLinks,
                 subject: subjectOverride,
                 body: bodyOverride,

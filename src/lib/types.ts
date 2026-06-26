@@ -347,6 +347,10 @@ export interface Organization {
   
   // Custom brand styling fields
   unsubscribeCopy?: string;
+  /** HTML template for the email footer. Supports {{variable}} tokens. Falls back to DEFAULT_ORG_FOOTER_HTML. */
+  footerHtml?: string;
+  /** When false, no footer is appended to outbound emails. Defaults to true. */
+  footerEnabled?: boolean;
   brandPrimaryColor?: string;
   brandSecondaryColor?: string;
   brandFontFamily?: string;
@@ -373,6 +377,34 @@ export interface OrgBranding {
   brandSecondaryColor: string;
   brandFontFamily: string;
   name: string;
+}
+
+/**
+ * Strict type for raw Firestore organization document reads.
+ * Replaces `any` casts in messaging-branding.ts, template-resolver.ts,
+ * and preview utilities. All fields are optional because Firestore documents
+ * may be partially populated.
+ */
+export interface OrgBrandingData {
+  name?: string;
+  logoUrl?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  website?: string;
+  unsubscribeCopy?: string;
+  /** HTML footer template with {{variable}} tokens. */
+  footerHtml?: string;
+  /** When false, no footer is appended to outbound emails. */
+  footerEnabled?: boolean;
+  brandPrimaryColor?: string;
+  brandSecondaryColor?: string;
+  brandFontFamily?: string;
+  settings?: {
+    defaultTimezone?: string;
+    defaultLanguage?: string;
+    defaultCurrency?: string;
+  };
 }
 
 /**
@@ -3678,6 +3710,11 @@ export interface FormSubmission {
   sourcePageId?: string; // Campaign page that embedded this form (indirect tracking)
   ipAddress?: string;
   userAgent?: string;
+  utmSource?: string; // UTM campaign tracking
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
   submittedAt: string;
 }
 
@@ -4867,6 +4904,7 @@ export interface TrackedLink {
   taskId: string;
   /** Entity ID attached at link-creation time so the redirect can forward identity. */
   entityId?: string;
+  channel?: PageEventChannel;
   clickCount: number;
   createdAt: string;
 }
@@ -4878,6 +4916,7 @@ export interface TrackedLink {
 export interface TrackedLinkClickResult {
   originalUrl: string;
   entityId?: string;
+  channel?: PageEventChannel;
 }
 
 /**

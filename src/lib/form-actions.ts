@@ -15,7 +15,16 @@ export async function submitStandaloneFormAction(
     data: Record<string, any>, 
     workspaceId: string, 
     organizationId: string,
-    metadata?: { ipAddress?: string; userAgent?: string; sourcePageId?: string }
+    metadata?: { 
+        ipAddress?: string; 
+        userAgent?: string; 
+        sourcePageId?: string;
+        utmSource?: string;
+        utmMedium?: string;
+        utmCampaign?: string;
+        utmTerm?: string;
+        utmContent?: string;
+    }
 ) {
     try {
         const timestamp = new Date().toISOString();
@@ -36,6 +45,11 @@ export async function submitStandaloneFormAction(
             sourcePageId: metadata?.sourcePageId,
             ipAddress: metadata?.ipAddress,
             userAgent: metadata?.userAgent,
+            utmSource: metadata?.utmSource,
+            utmMedium: metadata?.utmMedium,
+            utmCampaign: metadata?.utmCampaign,
+            utmTerm: metadata?.utmTerm,
+            utmContent: metadata?.utmContent,
             submittedAt: timestamp
         };
 

@@ -47,6 +47,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+import { resolveBrandingPreview as resolveBrandingInHtml } from '@/lib/utils/resolve-branding-preview';
+
 const DEFAULT_HTML = `<html>
   <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">
     <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">
@@ -56,10 +58,7 @@ const DEFAULT_HTML = `<html>
       <div style="padding: 32px;">
         {{content}}
       </div>
-      <div style="padding: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">
-        <p style="margin: 0;">© {{current_year}} {{org_name}}</p>
-        <p style="margin: 4px 0 0;">{{org_address}}</p>
-      </div>
+      {{org_footer}}
     </div>
   </body>
 </html>`;
@@ -362,6 +361,7 @@ export default function BackofficeStyleEditorPage() {
                                     { key: 'brand_secondary_color', desc: 'Secondary accent hex' },
                                     { key: 'brand_font_family', desc: 'Brand typography font' },
                                     { key: 'unsubscribe_copy', desc: 'Unsubscribe disclaimers' },
+                                    { key: 'org_footer', desc: 'Org-configured footer (compliance + unsubscribe link)' },
                                     { key: 'current_year', desc: 'Current calendar year (auto)' },
                                     { key: 'content', desc: 'Body payload injection point' },
                                 ].map(v => (
@@ -388,7 +388,7 @@ export default function BackofficeStyleEditorPage() {
                     </div>
                     <div className="rounded-[1.5rem] overflow-hidden border bg-background shadow-inner h-[680px]">
                         <iframe 
-                            srcDoc={htmlWrapper.replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Content Block</p><p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">This block represents where template body is dynamically injected.</p></div>')}
+                            srcDoc={resolveBrandingInHtml(htmlWrapper).replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Content Block</p><p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">This block represents where template body is dynamically injected.</p></div>')}
                             className="w-full h-full border-none bg-white"
                             title="Blueprint Dynamic Live Preview"
                             sandbox="allow-same-origin"

@@ -330,6 +330,18 @@ export async function handleDirectMessage(
 
           const processedBodyContent = resolvedBodyContent.replace(/\{\{unsubscribe_link\}\}/g, recipientUnsubLink);
 
+          // Resolve the org-configured footer (replaces hardcoded inline footer)
+          const { resolveOrgFooter, buildOrgFooterVars } = await import('../../services/org-footer-service');
+          const footerEnabled = String(vars.org_footer_enabled) !== 'false';
+          const renderedFooter = resolveOrgFooter(
+            vars.org_footer_html ? String(vars.org_footer_html) : undefined,
+            footerEnabled,
+            {
+              ...buildOrgFooterVars(vars as Record<string, string>),
+              unsubscribe_link: recipientUnsubLink,
+            },
+          );
+
           finalBody = `
 <!DOCTYPE html>
 <html>
@@ -355,26 +367,18 @@ export async function handleDirectMessage(
               ${processedBodyContent.replace(/\n/g, '<br />')}
             </td>
           </tr>
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 32px 40px; background-color: #F8FAFC; border-top: 1px solid #F1F5F9; font-size: 11px; line-height: 1.5; color: #64748B; font-family: Figtree, sans-serif;">
-              <p style="margin: 0 0 8px 0; font-weight: 600; color: #475569;">${orgName}</p>
-              ${vars.org_address ? `<p style="margin: 0 0 4px 0;">${vars.org_address}</p>` : ''}
-              ${vars.org_phone || vars.org_email ? `<p style="margin: 0 0 16px 0;">${[vars.org_phone, vars.org_email].filter(Boolean).join('  •  ')}</p>` : ''}
-              <p style="margin: 0 0 8px 0; color: #94A3B8; font-size: 10px;">${vars.unsubscribe_copy || 'You are receiving this email because you are registered with our services.'}</p>
-              <p style="margin: 0; color: #94A3B8; font-size: 10px;">If you wish to manage your preferences or opt-out, you can <a href="${recipientUnsubLink}" style="color: ${primaryColor}; text-decoration: underline;">unsubscribe here</a>.</p>
-            </td>
-          </tr>
         </table>
       </td>
     </tr>
   </table>
+  ${renderedFooter}
 </body>
 </html>
           `;
         } else if (channel === 'email') {
           finalBody = resolvedBodyContent.replace(/\{\{unsubscribe_link\}\}/g, recipientUnsubLink);
         }
+
 
         const result = await sendRawMessage({
           channel,

@@ -2,7 +2,7 @@
 import { adminDb, FieldValue } from './firebase-admin';
 import { nanoid } from 'nanoid';
 import { getBaseUrl } from './utils/url-helpers';
-import type { TrackedLink, TrackedLinkClickResult } from './types';
+import type { TrackedLink, TrackedLinkClickResult, PageEventChannel } from './types';
 
 // ─── Short-ID generator ───────────────────────────────────────────────────────
 // 8 Base62 chars = 218 trillion combinations — more than sufficient.
@@ -23,8 +23,9 @@ export async function createTrackedLink(params: {
   jobId: string;
   taskId: string;
   entityId?: string;
+  channel?: PageEventChannel;
 }): Promise<string> {
-  const { originalUrl, campaignId, jobId, taskId, entityId } = params;
+  const { originalUrl, campaignId, jobId, taskId, entityId, channel } = params;
   const id = generateShortId();
 
   const linkData: TrackedLink = {
@@ -36,12 +37,13 @@ export async function createTrackedLink(params: {
     clickCount: 0,
     createdAt: new Date().toISOString(),
     ...(entityId !== undefined && { entityId }),
+    ...(channel !== undefined && { channel }),
   };
 
   await adminDb.collection('tracked_links').doc(id).set(linkData);
 
   const baseUrl = getBaseUrl();
-  return `${baseUrl}/api/l/${id}`;
+  return `${baseUrl}/go/${id}`;
 }
 
 // ─── Read helpers (fast path — used by redirect route) ────────────────────────
@@ -63,6 +65,7 @@ export async function getLinkData(linkId: string): Promise<TrackedLinkClickResul
   return {
     originalUrl: data.originalUrl,
     ...(data.entityId !== undefined && { entityId: data.entityId }),
+    ...(data.channel !== undefined && { channel: data.channel }),
   };
 }
 
@@ -138,8 +141,9 @@ export async function transformBodyWithTracking(params: {
   jobId: string;
   taskId: string;
   entityId?: string;
+  channel?: PageEventChannel;
 }): Promise<string> {
-  const { body, campaignId, jobId, taskId, entityId } = params;
+  const { body, campaignId, jobId, taskId, entityId, channel } = params;
 
   // URL regex — matches http(s) URLs, stops at whitespace and common HTML terminators
   const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
@@ -153,7 +157,7 @@ export async function transformBodyWithTracking(params: {
   // Create all tracked links in parallel
   const trackedUrls = await Promise.all(
     uniqueUrls.map((url) =>
-      createTrackedLink({ originalUrl: url, campaignId, jobId, taskId, entityId })
+      createTrackedLink({ originalUrl: url, campaignId, jobId, taskId, entityId, channel })
     )
   );
 

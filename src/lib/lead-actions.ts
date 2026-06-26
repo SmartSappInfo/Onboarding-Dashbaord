@@ -46,7 +46,14 @@ export async function getLeadsForPageAction(pageId: string): Promise<{ success: 
                 name: extractIdentity(data.data, 'name'),
                 email: extractIdentity(data.data, 'email'),
                 phone: extractIdentity(data.data, 'phone'),
-                data: data.data,
+                data: {
+                    ...data.data,
+                    utmSource: data.utmSource,
+                    utmMedium: data.utmMedium,
+                    utmCampaign: data.utmCampaign,
+                    utmTerm: data.utmTerm,
+                    utmContent: data.utmContent,
+                },
                 entityId: data.entityId,
                 type: 'form',
                 sourceId: data.formId

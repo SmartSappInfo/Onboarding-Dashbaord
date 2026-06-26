@@ -4,8 +4,7 @@ import { getLinkData, recordLinkClickAsync } from '@/lib/link-tracking';
 import type { PageEventChannel } from '@/lib/types';
 
 /**
- * LEGACY High-performance redirect route for multi-channel tracked links.
- * Preserved for backwards compatibility with previously sent emails.
+ * High-performance redirect route for multi-channel tracked links.
  *
  * Architecture:
  * 1. getLinkData()         — fast Firestore read for originalUrl, entityId, and channel

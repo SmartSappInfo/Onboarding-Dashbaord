@@ -61,6 +61,8 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
+import { resolveBrandingPreview as resolveBrandingInHtml } from '@/lib/utils/resolve-branding-preview';
+
 const DEFAULT_HTML = `<html>
   <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">
     <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">
@@ -70,11 +72,7 @@ const DEFAULT_HTML = `<html>
       <div style="padding: 32px;">
         {{content}}
       </div>
-      <div style="padding: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">
-        <p style="margin: 0;">© {{current_year}} {{org_name}}</p>
-        <p style="margin: 4px 0 0;">{{org_address}}</p>
-        <p style="margin: 12px 0 0; font-size: 10px; color: #a1a1aa;">{{unsubscribe_copy}}</p>
-      </div>
+      {{org_footer}}
     </div>
   </body>
 </html>`;
@@ -114,7 +112,7 @@ export default function MessageStylesPage() {
     // Manual Create Style State
     const [name, setName] = React.useState('');
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>([activeWorkspaceId]);
-    const [htmlWrapper, setHtmlWrapper] = React.useState('<html>\n  <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">\n    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">\n      <div style="padding: 24px; border-bottom: 1px solid #e2e8f0;">\n        <img src="{{org_logo_url}}" alt="{{org_name}}" style="height: 40px; width: auto;" />\n      </div>\n      <div style="padding: 32px;">\n        {{content}}\n      </div>\n      <div style="padding: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">\n        <p style="margin: 0;">© {{current_year}} {{org_name}}</p>\n        <p style="margin: 4px 0 0;">{{org_address}}</p>\n        <p style="margin: 12px 0 0; font-size: 10px; color: #a1a1aa;">{{unsubscribe_copy}}</p>\n      </div>\n    </div>\n  </body>\n</html>');
+    const [htmlWrapper, setHtmlWrapper] = React.useState('<html>\n  <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">\n    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">\n      <div style="padding: 24px; border-bottom: 1px solid #e2e8f0;">\n        <img src="{{org_logo_url}}" alt="{{org_name}}" style="height: 40px; width: auto;" />\n      </div>\n      <div style="padding: 32px;">\n        {{content}}\n      </div>\n      {{org_footer}}\n    </div>\n  </body>\n</html>');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // AI Generation State
@@ -231,67 +229,7 @@ export default function MessageStylesPage() {
 
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
-    // Branding resolution utility for previews
-    const resolveBrandingInHtml = React.useCallback((
-        html: string, 
-        data?: any,
-        customOverrides?: {
-            primaryColor?: string;
-            secondaryColor?: string;
-            fontFamily?: string;
-            backgroundColor?: string;
-            textColor?: string;
-            cardBackgroundColor?: string;
-            borderRadius?: string;
-        }
-    ) => {
-        if (!html) return '';
-        const currentYear = new Date().getFullYear().toString();
-        const orgName = data?.name || 'Your Organization';
-        const logo = data?.logoUrl || '';
-        const emailAddr = data?.email || 'contact@yourdomain.com';
-        const phoneNum = data?.phone || '+1 (555) 000-0000';
-        const addressStr = data?.address || '123 Main St, City, Country';
-        const webUrl = data?.website || 'https://yourdomain.com';
-        const unsubCopy = data?.unsubscribeCopy || 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.';
-        
-        const primaryCol = customOverrides?.primaryColor || data?.brandPrimaryColor || '#3B5FFF';
-        const secondaryCol = customOverrides?.secondaryColor || data?.brandSecondaryColor || '#8B5CF6';
-        const fontFam = customOverrides?.fontFamily || data?.brandFontFamily || 'Figtree';
-        const bgCol = customOverrides?.backgroundColor || '#f8fafc';
-        const textCol = customOverrides?.textColor || '#1e293b';
-        const cardBgCol = customOverrides?.cardBackgroundColor || '#ffffff';
-        const borderRad = customOverrides?.borderRadius || '16px';
-
-        let processed = html
-            .replaceAll('{{org_name}}', orgName)
-            .replaceAll('{{org_logo_url}}', logo)
-            .replaceAll('{{org_email}}', emailAddr)
-            .replaceAll('{{org_phone}}', phoneNum)
-            .replaceAll('{{org_address}}', addressStr)
-            .replaceAll('{{org_website}}', webUrl)
-            .replaceAll('{{unsubscribe_copy}}', unsubCopy)
-            .replaceAll('{{brand_primary_color}}', primaryCol)
-            .replaceAll('{{brand_secondary_color}}', secondaryCol)
-            .replaceAll('{{brand_font_family}}', fontFam)
-            .replaceAll('{{brand_background_color}}', bgCol)
-            .replaceAll('{{brand_text_color}}', textCol)
-            .replaceAll('{{brand_card_background_color}}', cardBgCol)
-            .replaceAll('{{brand_border_radius}}', borderRad)
-            .replaceAll('{{current_year}}', currentYear);
-
-        // Also replace the default hex values and standard defaults in the HTML to show live preview correctly
-        processed = processed
-            .replaceAll('#f8fafc', bgCol)
-            .replaceAll('#ffffff', cardBgCol)
-            .replaceAll('16px', borderRad)
-            .replaceAll('sans-serif', fontFam)
-            .replaceAll('#3B5FFF', primaryCol)
-            .replaceAll('#8B5CF6', secondaryCol)
-            .replaceAll('#1e293b', textCol);
-
-        return processed;
-    }, []);
+    // resolveBrandingInHtml is imported from resolve-branding-preview utility
 
     // Manual Create Style Submit
     const handleAdd = async (e: React.FormEvent) => {

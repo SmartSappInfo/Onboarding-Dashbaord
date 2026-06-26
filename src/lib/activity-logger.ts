@@ -76,13 +76,8 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                     entitySlug = contact.slug || entitySlug;
                     displayName = contact.name || displayName;
                     
-                    if (contact.migrationStatus === 'migrated' || contact.migrationStatus === 'dual-write') {
-                        entityId = contact.entityId;
-                        entityType = contact.entityType || entityType;
-                    } else {
-                        entityId = undefined;
-                        entityType = undefined;
-                    }
+                    entityId = contact.entityId || entityId;
+                    entityType = contact.entityType || entityType;
                 }
             }
         }

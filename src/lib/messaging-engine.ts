@@ -630,9 +630,35 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             body: resolvedBody,
             campaignId: variables.campaignId || 'manual',
             jobId,
-            taskId
+            taskId,
+            entityId: entityId || undefined,
+            channel: (['email', 'sms', 'whatsapp'].includes(template.channel) ? template.channel : 'direct') as 'email' | 'sms' | 'whatsapp' | 'direct'
         });
     }
+
+    // Phase 8: Org Footer Injection (email channel only)
+    // org_footer_html and org_footer_enabled are already in finalVariables from
+    // resolveOrgBrandingVars() — no additional Firestore read needed here.
+    if (template.channel === 'email') {
+        const { resolveOrgFooter, htmlContainsFooter, buildOrgFooterVars } =
+            await import('./services/org-footer-service');
+        const footerEnabled = finalVariables.org_footer_enabled !== 'false';
+        const renderedFooter = resolveOrgFooter(
+            finalVariables.org_footer_html || undefined,
+            footerEnabled,
+            buildOrgFooterVars(finalVariables as Record<string, string>),
+        );
+        if (renderedFooter) {
+            if (styleWrapper.includes('{{org_footer}}')) {
+                // Style wrapper has an explicit footer slot — replace the token
+                resolvedBody = resolvedBody.replace('{{org_footer}}', renderedFooter);
+            } else if (!htmlContainsFooter(resolvedBody)) {
+                // No footer detected — auto-append after body content
+                resolvedBody = resolvedBody + renderedFooter;
+            }
+        }
+    }
+
 
     let resolvedSubject = input.subject !== undefined
         ? resolveVariables(input.subject, finalVariables)
@@ -1018,7 +1044,7 @@ export async function sendRawMessage(input: {
             sender = toSenderProfile(senderSnap.id, senderSnap.data()!);
         }
 
-        const resolvedBody = resolveVariables(body, variables);
+        let resolvedBody = resolveVariables(body, variables);
         const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Institutional Alert — SmartSapp';
 
         // Phase 7: Suppression Check (Unsubscribe compliance)
@@ -1086,6 +1112,25 @@ export async function sendRawMessage(input: {
                     'List-Unsubscribe': `<${oneClickUrl}>, <${preferenceUrl}>`,
                     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
                 };
+
+                // Org Footer Injection for raw/direct emails
+                // Branding vars (including org_footer_html) come from resolveOrgBrandingVars
+                const orgBrandingVars = await import('./messaging-branding').then(m => m.resolveOrgBrandingVars(finalOrgId));
+                const { resolveOrgFooter, htmlContainsFooter, buildOrgFooterVars } =
+                    await import('./services/org-footer-service');
+                const footerVars = {
+                    ...buildOrgFooterVars(orgBrandingVars),
+                    unsubscribe_link: preferenceUrl,
+                };
+                const rawFooterEnabled = orgBrandingVars.org_footer_enabled !== 'false';
+                const renderedFooter = resolveOrgFooter(
+                    orgBrandingVars.org_footer_html || undefined,
+                    rawFooterEnabled,
+                    footerVars,
+                );
+                if (renderedFooter && !htmlContainsFooter(resolvedBody)) {
+                    resolvedBody = resolvedBody + renderedFooter;
+                }
             }
 
             await sendEmail({ 
@@ -1098,6 +1143,7 @@ export async function sendRawMessage(input: {
                 headers
             });
         }
+
 
         // Save dispatch to message_logs
         const logData = {

@@ -658,7 +658,15 @@ export function MessagingTemplateSelector({
 
     const baseTemplates = React.useMemo(() => {
         return templates.filter(t => {
-            const matchesRecipient = recipientType === 'all' || t.recipientType === recipientType;
+            const matchesRecipient = (() => {
+                if (recipientType === 'all') return true;
+                if (recipientType === 'entity') {
+                    const internalRoles = ['internal_alert', 'assignee', 'team_member', 'admin'];
+                    const isInternal = t.target === 'internal_team' || (t.recipientType && internalRoles.includes(t.recipientType));
+                    return !isInternal;
+                }
+                return t.recipientType === recipientType;
+            })();
             const matchesPrefix = !templateTypePrefix || t.templateType?.startsWith(templateTypePrefix);
             return matchesRecipient && matchesPrefix;
         });

@@ -352,6 +352,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                     </div>
 
+                    <Button asChild variant="ghost" className="h-8 font-semibold text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:bg-slate-800">
+                        <Link href={`/admin/pages/${id}/analytics`}>
+                            <TrendingUp className="w-3.5 h-3.5 mr-1.5" /> Analytics
+                        </Link>
+                    </Button>
+
                     {page.status === 'published' && (
                         <Button asChild variant="ghost" className="h-8 font-semibold text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:bg-slate-800">
                             <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer">
