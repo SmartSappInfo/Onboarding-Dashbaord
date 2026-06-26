@@ -2757,7 +2757,7 @@ export interface MessageStyle {
  * Linear progression: draft → scheduled → sending → sent | failed
  * Manual transitions: any → archived
  */
-export type CampaignStatus = 'draft' | 'scheduled' | 'testing' | 'paused' | 'sending' | 'sent' | 'failed' | 'archived';
+export type CampaignStatus = 'draft' | 'scheduled' | 'testing' | 'paused' | 'sending' | 'sent' | 'failed' | 'archived' | 'dispatching';
 
 /**
  * Defines how a campaign's audience is selected.
