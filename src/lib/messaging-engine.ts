@@ -972,9 +972,10 @@ export async function sendRawMessage(input: {
     automationId?: string,
     runId?: string,
     nodeId?: string,
-    isResend?: boolean
+    isResend?: boolean,
+    scheduledAt?: string
 }) {
-    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing', entityId, entityType, isAutomation = false, automationId, runId, nodeId, isResend = false } = input;
+    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing', entityId, entityType, isAutomation = false, automationId, runId, nodeId, isResend = false, scheduledAt } = input;
 
     try {
         // Resolve the tenant FIRST (no cross-tenant fallback), then the sender.
@@ -1046,6 +1047,47 @@ export async function sendRawMessage(input: {
 
         let resolvedBody = resolveVariables(body, variables);
         const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Institutional Alert — SmartSapp';
+
+        // 7.8 Intercept Scheduling if scheduledAt is provided
+        if (scheduledAt) {
+            const scheduledMsgData = {
+                organizationId: finalOrgId || 'default',
+                workspaceId: baseWorkspaceId || 'onboarding',
+                templateId: 'raw',
+                channel,
+                recipientContact: recipient,
+                recipientEntityId: entityId || null,
+                variables: JSON.parse(JSON.stringify(variables)),
+                scheduledAt,
+                status: 'pending' as const,
+                reminderType: (variables._reminderType as string | undefined) || 'composer',
+                sourceEventId: (variables._sourceEventId as string | undefined) || (variables.campaignId as string | undefined) || 'manual',
+                sourceEventType: (variables._sourceEventType as string | undefined) || 'composer',
+                retryCount: 0,
+                createdAt: new Date().toISOString(),
+                customSubject: resolvedSubject,
+                customBody: resolvedBody,
+                senderProfileId: sender.id || null,
+                senderName: sender.name || null,
+                senderIdentifier: sender.identifier || null,
+            };
+
+            const scheduledRef = await adminDb.collection('scheduled_messages').add(scheduledMsgData);
+
+            await logActivity({
+                entityId: entityId || null,
+                entityType: (entityType as EntityType) || null,
+                organizationId: finalOrgId || 'default',
+                userId: null,
+                workspaceId: baseWorkspaceId || 'onboarding',
+                type: 'notification_scheduled',
+                source: 'system',
+                description: `Scheduled ${channel} "${resolvedSubject}" to ${recipient} for ${scheduledAt}`,
+                metadata: { scheduledMessageId: scheduledRef.id, channel }
+            });
+
+            return { success: true, logId: scheduledRef.id };
+        }
 
         // Phase 7: Suppression Check (Unsubscribe compliance)
         const isTx = messageType === 'transactional';
@@ -1192,7 +1234,6 @@ export async function sendRawMessage(input: {
         }
 
         // Trigger activity timeline event (with isAutomation: true to prevent loop)
-        const { logActivity } = await import('./activity-logger');
         await logActivity({
             entityId: entityId || null,
             entityType: (entityType as EntityType) || null, // Firebase expects EntityType | null

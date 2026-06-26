@@ -36,6 +36,7 @@ import {
     X, AlertCircle, Info, CalendarClock, Building, Trophy, TrendingUp, Zap,
     CheckCircle2, Target, Layers, Wand2, ArrowLeft, FileText, ClipboardList,
     Calendar, Database, PlusCircle, FlaskConical, Tag, Send, Settings2,
+    User, Filter, BookmarkCheck,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { SmartSappIcon } from '@/components/icons';
@@ -52,6 +53,8 @@ import { EntitySelector } from './EntitySelector';
 import { VariablePicker } from '@/components/messaging/VariablePicker';
 import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
+import { useAudiences } from '@/lib/audience-hooks';
+import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const formSchema = z.object({
@@ -63,7 +66,7 @@ const formSchema = z.object({
     // Step 3 – Audience
     mode: z.enum(['single', 'bulk']).default('single'),
     selectedEntityIds: z.array(z.string()).default([]),
-    contactScope: z.enum(['primary', 'signatories', 'all']).default('primary'),
+    contactScope: z.enum(['primary', 'signatories', 'roles', 'all']).default('primary'),
     contactTypeFilter: z.array(z.string()).default([]),
     tagSegmentInclude: z.array(z.string()).default([]),
     tagSegmentExclude: z.array(z.string()).default([]),
@@ -204,7 +207,19 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [smsBalance, setSmsBalance] = React.useState<number | null>(null);
     const [sendProgress, setSendProgress] = React.useState({ sent: 0, total: 0, currentEntity: '' });
     const [isSending, setIsSending] = React.useState(false);
-    const [sendSummary, setSendSummary] = React.useState<ScheduleMessageResult | null>(null);
+    const [sendSummary, setSendSummary] = React.useState<{
+        success: boolean;
+        totalSent: number;
+        totalFailed: number;
+        failedEntities: Array<{
+            entityId: string;
+            entityName: string;
+            contactName?: string;
+            contactDetail?: string;
+            error: string;
+        }>;
+        logIds: string[];
+    } | null>(null);
     const [showSummaryDialog, setShowSummaryDialog] = React.useState(false);
     const [sampleVariables, setSampleVariables] = React.useState<Record<string, any>>({});
     const [jobProgress, setJobProgress] = React.useState(0);
@@ -242,6 +257,97 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const watchedSourceSubmissionId = watch('sourceSubmissionId');
     const watchedCustomBody = watch('customBody');
     const watchedMessageSourceType = watch('messageSourceType');
+
+    const [audienceSource, setAudienceSource] = React.useState<'individual' | 'manual' | 'saved'>('individual');
+    const [savedAudienceId, setSavedAudienceId] = React.useState('');
+    const [assigneeFilter, setAssigneeFilter] = React.useState<'all' | 'mine'>('all');
+    const [selectedRoles, setSelectedRoles] = React.useState<string[]>([]);
+    const [availableRoles, setAvailableRoles] = React.useState<{ key: string; label: string }[]>([]);
+    const [filteredRecipients, setFilteredRecipients] = React.useState<any[]>([]);
+    const [isResolvingRecipients, setIsResolvingRecipients] = React.useState(false);
+
+    const { audiences: savedAudiences } = useAudiences(activeWorkspaceId);
+
+    // Fetch contact roles
+    React.useEffect(() => {
+        if (!activeWorkspaceId) return;
+        const scope = (activeWorkspace?.contactScope || 'institution') as any;
+        let cancelled = false;
+        getEffectiveContactTypes(scope, activeOrganizationId, activeWorkspaceId)
+            .then((types) => {
+                if (cancelled) return;
+                setAvailableRoles(types.filter((t) => t.active).map((t) => ({ key: t.key, label: t.label })));
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [activeWorkspace?.contactScope, activeOrganizationId, activeWorkspaceId]);
+
+    const toggleRole = React.useCallback((key: string) => {
+        setSelectedRoles((prev) =>
+            prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key]
+        );
+    }, []);
+
+    const handleSavedAudienceChange = React.useCallback((audienceId: string) => {
+        setSavedAudienceId(audienceId);
+        const aud = savedAudiences.find((a: any) => a.id === audienceId);
+        if (aud && aud.filters) {
+            const includeTagFilter = aud.filters.find((f: any) => f.field === 'tags' && (f.operator === 'any_of' || f.operator === 'all_of'));
+            const excludeTagFilter = aud.filters.find((f: any) => f.field === 'tags' && f.operator === 'is_not');
+            const inc = includeTagFilter?.value || [];
+            const exc = excludeTagFilter?.value || [];
+            const logic = includeTagFilter?.operator === 'all_of' ? 'AND' : 'OR';
+            setTagSegment({
+                includeTagIds: inc,
+                excludeTagIds: exc,
+                includeLogic: logic as any,
+            });
+            setValue('tagSegmentInclude', inc);
+            setValue('tagSegmentExclude', exc);
+            setValue('tagSegmentLogic', logic as any);
+        }
+    }, [savedAudiences, setValue]);
+
+    const recipientFilterKey = JSON.stringify({
+        audienceSource,
+        channels: [watchedChannel],
+        assignee: assigneeFilter === 'mine' ? user?.uid ?? null : null,
+        inc: tagSegment.includeTagIds,
+        exc: tagSegment.excludeTagIds,
+        logic: tagSegment.includeLogic,
+        scope: watchedContactScope,
+        roles: selectedRoles,
+    });
+
+    React.useEffect(() => {
+        if (!activeWorkspaceId || audienceSource === 'individual') {
+            setFilteredRecipients([]);
+            return;
+        }
+        let cancelled = false;
+        setIsResolvingRecipients(true);
+        const t = setTimeout(async () => {
+            try {
+                const f = JSON.parse(recipientFilterKey);
+                const { resolveInvitationRecipients } = await import('@/lib/contacts/contact-repository');
+                const { recipients } = await resolveInvitationRecipients(activeWorkspaceId, {
+                    channels: (f.channels || []).filter((c: string) => c === 'email' || c === 'sms'),
+                    assignedUserId: f.assignee,
+                    includeTagIds: f.inc || [],
+                    excludeTagIds: f.exc || [],
+                    includeLogic: f.logic === 'AND' ? 'AND' : 'OR',
+                    contactScope: f.scope,
+                    roles: f.roles || [],
+                });
+                if (!cancelled) setFilteredRecipients(recipients);
+            } catch {
+                if (!cancelled) setFilteredRecipients([]);
+            } finally {
+                if (!cancelled) setIsResolvingRecipients(false);
+            }
+        }, 300);
+        return () => { cancelled = true; clearTimeout(t); };
+    }, [activeWorkspaceId, recipientFilterKey, audienceSource]);
 
     // ── Firestore queries ──────────────────────────────────────────────────────
 
@@ -517,7 +623,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                 if (data.messageSourceType === 'new' && !data.customBody) return;
                 setStep(3);
             }
-            else if (step === 3 && data.mode === 'single' && data.selectedEntityIds.length === 0 && tagSegment.includeTagIds.length === 0) return; // Wait for selection
+            else if (step === 3 && data.mode === 'single' && (audienceSource === 'individual' ? data.selectedEntityIds.length === 0 : filteredRecipients.length === 0)) return; // Wait for selection
             else if (step === 3) setStep(4);
             else if (step === 4) setStep(5);
             return;
@@ -527,41 +633,132 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         const scheduledAt = data.isScheduled ? data.scheduledAt?.toISOString() : undefined;
         try {
             if (data.mode === 'single') {
-                if (!data.selectedEntityIds.length) throw new Error('Please select at least one recipient.');
+                const totalCount = audienceSource === 'individual' ? data.selectedEntityIds.length : filteredRecipients.length;
+                if (!totalCount) throw new Error('Please select at least one recipient.');
                 setIsSending(true);
-                setSendProgress({ sent: 0, total: data.selectedEntityIds.length, currentEntity: '' });
-                const results: any = { success: true, totalSent: 0, totalFailed: 0, failedEntities: [], logIds: [] };
+                setSendProgress({ sent: 0, total: totalCount, currentEntity: '' });
 
-                for (let i = 0; i < data.selectedEntityIds.length; i++) {
-                    const entityId = data.selectedEntityIds[i];
-                    setSendProgress(p => ({ ...p, currentEntity: entityId }));
-                    try {
-                        // Resolve the display name server-side (no client entity cache).
-                        const contactRes = await resolveContact(entityId, activeWorkspace?.id || 'onboarding');
-                        const entityName = contactRes?.name || 'Unknown Entity';
+                interface FailedEntity {
+                    entityId: string;
+                    entityName: string;
+                    contactName?: string;
+                    contactDetail?: string;
+                    error: string;
+                }
+                interface SendResults {
+                    success: boolean;
+                    totalSent: number;
+                    totalFailed: number;
+                    failedEntities: FailedEntity[];
+                    logIds: string[];
+                }
 
-                        const recipients = await resolveRecipientContacts({
-                            entityId, workspaceId: activeWorkspace?.id,
-                            contactScope: data.contactScope,
-                            contactTypeFilter: data.contactTypeFilter,
-                            channel: contactResolutionChannel(data.channel),
-                        });
-                        if (!recipients.length) { 
-                            results.totalFailed++; 
-                            results.failedEntities.push({ 
-                                entityId, 
-                                entityName,
-                                error: 'No contacts for scope/channel.' 
-                            }); 
-                            continue; 
+                const results: SendResults = { success: true, totalSent: 0, totalFailed: 0, failedEntities: [], logIds: [] };
+
+                if (audienceSource === 'individual') {
+                    for (let i = 0; i < data.selectedEntityIds.length; i++) {
+                        const entityId = data.selectedEntityIds[i];
+                        setSendProgress(p => ({ ...p, currentEntity: entityId }));
+                        try {
+                            // Resolve the display name server-side (no client entity cache).
+                            const contactRes = await resolveContact(entityId, activeWorkspace?.id || 'onboarding');
+                            const entityName = contactRes?.name || 'Unknown Entity';
+
+                            const recipients = await resolveRecipientContacts({
+                                entityId, workspaceId: activeWorkspace?.id,
+                                contactScope: data.contactScope,
+                                contactTypeFilter: data.contactTypeFilter,
+                                channel: contactResolutionChannel(data.channel),
+                            });
+                            if (!recipients.length) { 
+                                results.totalFailed++; 
+                                results.failedEntities.push({ 
+                                    entityId, 
+                                    entityName,
+                                    error: 'No contacts for scope/channel.' 
+                                }); 
+                                continue; 
+                            }
+                            
+                            const { sendRawMessage, sendMessage } = await import('@/lib/messaging-engine');
+
+                            for (const r of recipients) {
+                                let res: { success: boolean; error?: string; logId?: string };
+                                const recipient = r.contact;
+                                if (data.messageSourceType === 'template') {
+                                    res = await sendMessage({
+                                        templateId: data.templateId!, senderProfileId: data.senderProfileId!,
+                                        recipient, variables: { ...data.variables, channel: data.channel },
+                                        workspaceId: activeWorkspace?.id, scheduledAt, entityId,
+                                    });
+                                } else if (data.channel === 'whatsapp') {
+                                    // WhatsApp free-form is only valid inside an open 24h session and has
+                                    // no raw composer path in v1 — require an approved template.
+                                    res = { success: false, error: 'WhatsApp requires selecting an approved template.' };
+                                } else {
+                                    res = await sendRawMessage({
+                                        channel: data.channel, recipient,
+                                        body: data.customBody!,
+                                        subject: data.channel === 'email' ? data.customSubject : undefined,
+                                        senderProfileId: data.senderProfileId,
+                                        variables: { ...data.variables, channel: data.channel },
+                                        workspaceIds: [activeWorkspace?.id].filter(Boolean) as string[],
+                                        scheduledAt,
+                                    });
+                                }
+
+                                if (res.success) {
+                                    results.totalSent++;
+                                    if (res.logId) results.logIds.push(res.logId);
+                                    if (entityId && activeWorkspace?.id) {
+                                        updateEntityLastContactedAt(entityId, activeWorkspace.id).catch(() => {});
+                                    }
+                                }
+                                else { 
+                                    results.totalFailed++; 
+                                    results.failedEntities.push({ 
+                                        entityId, 
+                                        entityName: r.entityName || entityName,
+                                        contactName: r.contactName,
+                                        contactDetail: recipient,
+                                        error: res.error || 'Unknown' 
+                                    }); 
+                                }
+                            }
+                        } catch (e: unknown) {
+                            results.totalFailed++;
+                            results.failedEntities.push({
+                                entityId,
+                                entityName: 'Unknown Entity',
+                                error: e instanceof Error ? e.message : 'Unknown error'
+                            });
                         }
-                        
-                        const { sendRawMessage, sendMessage } = await import('@/lib/messaging-engine');
+                        setSendProgress(p => ({ ...p, sent: i + 1 }));
+                        if (i < data.selectedEntityIds.length - 1) await new Promise(r => setTimeout(r, 500));
+                    }
+                } else {
+                    const { sendRawMessage, sendMessage } = await import('@/lib/messaging-engine');
+                    for (let i = 0; i < filteredRecipients.length; i++) {
+                        const r = filteredRecipients[i];
+                        const entityId = r.entityId || '';
+                        const entityName = r.entityName || 'Unknown Entity';
+                        const recipient = data.channel === 'email' ? r.email : r.phone;
+                        setSendProgress(p => ({ ...p, currentEntity: entityId }));
 
-                        for (const recipientObj of (recipients as any[])) {
-                            const r = recipientObj as ResolvedRecipient;
-                            let res;
-                            const recipient = r.contact;
+                        if (!recipient) {
+                            results.totalFailed++;
+                            results.failedEntities.push({
+                                entityId,
+                                entityName,
+                                contactName: r.name,
+                                error: 'Missing contact detail (email/phone).'
+                            });
+                            setSendProgress(p => ({ ...p, sent: i + 1 }));
+                            continue;
+                        }
+
+                        try {
+                            let res: { success: boolean; error?: string; logId?: string };
                             if (data.messageSourceType === 'template') {
                                 res = await sendMessage({
                                     templateId: data.templateId!, senderProfileId: data.senderProfileId!,
@@ -569,8 +766,6 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     workspaceId: activeWorkspace?.id, scheduledAt, entityId,
                                 });
                             } else if (data.channel === 'whatsapp') {
-                                // WhatsApp free-form is only valid inside an open 24h session and has
-                                // no raw composer path in v1 — require an approved template.
                                 res = { success: false, error: 'WhatsApp requires selecting an approved template.' };
                             } else {
                                 res = await sendRawMessage({
@@ -580,52 +775,52 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     senderProfileId: data.senderProfileId,
                                     variables: { ...data.variables, channel: data.channel },
                                     workspaceIds: [activeWorkspace?.id].filter(Boolean) as string[],
+                                    scheduledAt,
                                 });
                             }
 
                             if (res.success) {
                                 results.totalSent++;
-                                if ((res as any).logId) results.logIds.push((res as any).logId);
+                                if (res.logId) results.logIds.push(res.logId);
                                 if (entityId && activeWorkspace?.id) {
                                     updateEntityLastContactedAt(entityId, activeWorkspace.id).catch(() => {});
                                 }
-                            }
-                            else { 
-                                results.totalFailed++; 
-                                results.failedEntities.push({ 
-                                    entityId, 
-                                    entityName: r.entityName || entityName,
-                                    contactName: r.contactName,
+                            } else {
+                                results.totalFailed++;
+                                results.failedEntities.push({
+                                    entityId,
+                                    entityName,
+                                    contactName: r.name,
                                     contactDetail: recipient,
-                                    error: res.error || 'Unknown' 
-                                }); 
+                                    error: res.error || 'Unknown'
+                                });
                             }
-                        }
-                    } catch (e: any) {
-                        results.totalFailed++;
+                        } catch (e: unknown) {
+                            results.totalFailed++;
                             results.failedEntities.push({
                                 entityId,
-                                entityName: 'Unknown Entity',
-                                error: e.message
+                                entityName: r.name,
+                                error: e instanceof Error ? e.message : 'Unknown error'
                             });
+                        }
+                        setSendProgress(p => ({ ...p, sent: i + 1 }));
+                        if (i < filteredRecipients.length - 1) await new Promise(r => setTimeout(r, 500));
                     }
-                    setSendProgress(p => ({ ...p, sent: i + 1 }));
-                    if (i < data.selectedEntityIds.length - 1) await new Promise(r => setTimeout(r, 500));
                 }
                 setIsSending(false); setSendSummary(results); setShowSummaryDialog(true);
                 if (results.totalSent > 0) { setStep(1); form.reset(); }
             } else {
                 if (!csvData.length) throw new Error('No CSV data found.');
                 const recipients = csvData.map(row => {
-                    const vars: Record<string, any> = { ...data.variables };
+                    const vars: Record<string, unknown> = { ...data.variables };
                     Object.entries(columnMapping).forEach(([tv, cv]) => { vars[tv] = row[cv]; });
                     return { recipient: row.recipient || row.phone || row.email || '', variables: vars };
                 });
                 const { jobId } = await createBulkMessageJob({ templateId: data.templateId!, senderProfileId: data.senderProfileId!, recipients, userId: user.uid });
                 setStep(6); startJobProcessing(jobId);
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Failed', description: e instanceof Error ? e.message : 'Unknown error' });
             setIsSending(false);
         } finally { setIsSubmitting(false); }
     };
@@ -788,82 +983,238 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
                             {watchedMode === 'single' ? (
                                 <div className="space-y-6">
-                                    {/* Entity selector — data is lifted to wizard level so it's always live */}
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Individual Selection</Label>
-                                        <EntitySelector
-                                            channel={contactResolutionChannel(watchedChannel)}
-                                            selectedEntityIds={watchedSelectedEntityIds}
-                                            activeContactTypeFilter={watchedContactTypeFilter || []}
-                                            onContactTypeFilterChange={(keys) => setValue('contactTypeFilter', keys)}
-                                            onSelectionChange={(ids) => {
-                                                setValue('selectedEntityIds', ids, { shouldValidate: true });
-                                                setValue('entityId', ids.length === 1 ? ids[0] : '');
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* Tag-based audience */}
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-                                            <Tag className="h-3 w-3" /> Tag-Based Audience
-                                        </Label>
-                                        <div className="p-4 rounded-xl bg-muted/20 border border-border/50">
-                                            <TagAudienceSelector onChange={(seg) => {
-                                                setTagSegment(seg);
-                                                setValue('tagSegmentInclude', seg.includeTagIds);
-                                                setValue('tagSegmentExclude', seg.excludeTagIds);
-                                                setValue('tagSegmentLogic', seg.includeLogic);
-                                            }} />
+                                    {/* Audience Source Selector */}
+                                    <div className="space-y-3">
+                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Audience Source</Label>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {[
+                                                { value: 'individual' as const, icon: <User className="h-4 w-4" />, label: 'Individual Selection' },
+                                                { value: 'manual' as const, icon: <Filter className="h-4 w-4" />, label: 'Custom Filters' },
+                                                { value: 'saved' as const, icon: <BookmarkCheck className="h-4 w-4" />, label: 'Saved Audience' },
+                                            ].map((m) => (
+                                                <button
+                                                    key={m.value}
+                                                    type="button"
+                                                    onClick={() => setAudienceSource(m.value)}
+                                                    className={cn(
+                                                        'flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all font-semibold text-xs h-11',
+                                                        audienceSource === m.value
+                                                            ? 'border-primary bg-primary/5 text-primary'
+                                                            : 'border-border hover:border-primary/20 text-muted-foreground'
+                                                    )}
+                                                >
+                                                    {m.icon}
+                                                    {m.label}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
 
-                                    {/* Contact scope */}
-                                    {watchedSelectedEntityIds.length > 0 && (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-                                                    <Settings2 className="h-3 w-3" /> Contact Targeting
-                                                </Label>
-                                                <Badge variant="outline" className="text-[8px] font-bold uppercase opacity-50">Server-side resolution</Badge>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                {[
-                                                    { id: 'primary',    label: 'Primary',    desc: 'Main contact for the entity.' },
-                                                    { id: 'signatories',label: 'Signatories', desc: 'Decision makers only.' },
-                                                    { id: 'all',        label: 'Blast All',   desc: 'Every recorded contact.' },
-                                                ].map(s => (
-                                                    <div key={s.id} onClick={() => setValue('contactScope', s.id as any)}
-                                                        className={cn('cursor-pointer border-2 rounded-xl p-3.5 transition-all relative overflow-hidden',
-                                                            watchedContactScope === s.id ? 'border-primary bg-primary/5 shadow-md' : 'border-border hover:border-primary/30'
-                                                        )}>
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <p className="text-xs font-bold">{s.label}</p>
-                                                            {watchedContactScope === s.id && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-                                                        </div>
-                                                        <p className="text-[10px] text-muted-foreground">{s.desc}</p>
-                                                        {watchedContactScope === s.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
-                                                    </div>
-                                                ))}
+                                    {audienceSource === 'individual' ? (
+                                        <div className="space-y-6">
+                                            {/* Entity selector — data is lifted to wizard level so it's always live */}
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Individual Selection</Label>
+                                                <EntitySelector
+                                                    channel={contactResolutionChannel(watchedChannel)}
+                                                    selectedEntityIds={watchedSelectedEntityIds}
+                                                    activeContactTypeFilter={watchedContactTypeFilter || []}
+                                                    onContactTypeFilterChange={(keys) => setValue('contactTypeFilter', keys)}
+                                                    onSelectionChange={(ids) => {
+                                                        setValue('selectedEntityIds', ids, { shouldValidate: true });
+                                                        setValue('entityId', ids.length === 1 ? ids[0] : '');
+                                                    }}
+                                                />
                                             </div>
 
-                                            {/* Active contact-type filter indicator */}
-                                            {watchedContactTypeFilter && watchedContactTypeFilter.length > 0 && (
-                                                <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs font-semibold text-primary">
-                                                    <Tag className="h-3.5 w-3.5 shrink-0" />
-                                                    Filtering to <span className="capitalize font-bold">{watchedContactTypeFilter.join(', ').replace(/_/g, ' ')}</span> contacts only.
-                                                    <button type="button" onClick={() => setValue('contactTypeFilter', [])} className="ml-auto hover:text-destructive">
-                                                        <X className="h-3.5 w-3.5" />
-                                                    </button>
+                                            {/* Contact scope */}
+                                            {watchedSelectedEntityIds.length > 0 && (
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                                                            <Settings2 className="h-3 w-3" /> Contact Targeting
+                                                        </Label>
+                                                        <Badge variant="outline" className="text-[8px] font-bold uppercase opacity-50">Server-side resolution</Badge>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                        {[
+                                                            { id: 'primary',    label: 'Primary',    desc: 'Main contact for the entity.' },
+                                                            { id: 'signatories',label: 'Signatories', desc: 'Decision makers only.' },
+                                                            { id: 'all',        label: 'Blast All',   desc: 'Every recorded contact.' },
+                                                        ].map(s => (
+                                                            <div key={s.id} onClick={() => setValue('contactScope', s.id as any)}
+                                                                className={cn('cursor-pointer border-2 rounded-xl p-3.5 transition-all relative overflow-hidden',
+                                                                    watchedContactScope === s.id ? 'border-primary bg-primary/5 shadow-md' : 'border-border hover:border-primary/30'
+                                                                )}>
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <p className="text-xs font-bold">{s.label}</p>
+                                                                    {watchedContactScope === s.id && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                                                                </div>
+                                                                <p className="text-[10px] text-muted-foreground">{s.desc}</p>
+                                                                {watchedContactScope === s.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Active contact-type filter indicator */}
+                                                    {watchedContactTypeFilter && watchedContactTypeFilter.length > 0 && (
+                                                        <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs font-semibold text-primary">
+                                                            <Tag className="h-3.5 w-3.5 shrink-0" />
+                                                            Filtering to <span className="capitalize font-bold">{watchedContactTypeFilter.join(', ').replace(/_/g, ' ')}</span> contacts only.
+                                                            <button type="button" onClick={() => setValue('contactTypeFilter', [])} className="ml-auto hover:text-destructive">
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {watchedSelectedEntityIds.length === 0 && (
+                                                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                                                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                                                    <p className="text-xs font-semibold text-amber-800">Select at least one entity to continue.</p>
                                                 </div>
                                             )}
                                         </div>
+                                    ) : audienceSource === 'manual' ? (
+                                        <div className="space-y-6">
+                                            {/* Assignee Filter */}
+                                            <div className="space-y-3">
+                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                                                    <User className="h-3.5 w-3.5" /> Filter by Assignee
+                                                </Label>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {[
+                                                        { id: 'all', label: 'All Users' },
+                                                        { id: 'mine', label: `My Assignees` },
+                                                    ].map((opt) => (
+                                                        <button
+                                                            key={opt.id}
+                                                            type="button"
+                                                            onClick={() => setAssigneeFilter(opt.id as 'all' | 'mine')}
+                                                            className={cn(
+                                                                'flex items-center justify-center p-3 rounded-xl border-2 transition-all font-semibold text-xs h-11',
+                                                                assigneeFilter === opt.id
+                                                                    ? 'border-primary bg-primary/5 text-primary'
+                                                                    : 'border-border hover:border-primary/20 text-muted-foreground'
+                                                            )}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Contact Target Scope */}
+                                            <div className="space-y-3">
+                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Contact Target Scope</Label>
+                                                <div className="grid grid-cols-4 gap-2">
+                                                    {[
+                                                        { id: 'primary', label: 'Primary Contact' },
+                                                        { id: 'signatories', label: 'Signatories' },
+                                                        { id: 'roles', label: 'Specific Roles' },
+                                                        { id: 'all', label: 'All Contacts' },
+                                                    ].map((opt) => (
+                                                        <button
+                                                            key={opt.id}
+                                                            type="button"
+                                                            onClick={() => setValue('contactScope', opt.id as any)}
+                                                            className={cn('flex items-center justify-center p-3 rounded-xl border transition-all text-[11px] font-bold h-11',
+                                                                watchedContactScope === opt.id
+                                                                    ? 'bg-primary text-white border-primary shadow-sm'
+                                                                    : 'bg-background hover:bg-muted/30 text-muted-foreground'
+                                                            )}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Roles list */}
+                                            {watchedContactScope === 'roles' && (
+                                                <div className="space-y-2 p-4 rounded-xl bg-muted/20 border border-dashed animate-in fade-in duration-300">
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                                        <Filter className="h-3.5 w-3.5" /> Select Roles
+                                                    </span>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {availableRoles.map((role) => {
+                                                            const isSelected = selectedRoles.includes(role.key);
+                                                            return (
+                                                                <button
+                                                                    key={role.key}
+                                                                    type="button"
+                                                                    onClick={() => toggleRole(role.key)}
+                                                                    className={cn('px-3 py-1 rounded-full text-[10px] font-bold border transition-all capitalize',
+                                                                        isSelected ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted text-muted-foreground'
+                                                                    )}
+                                                                >
+                                                                    {role.label}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                        {availableRoles.length === 0 && (
+                                                            <p className="text-xs text-muted-foreground italic">No contact roles found in workspace.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Tag Filters */}
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                                                    <Tag className="h-3 w-3" /> Tag-Based Audience
+                                                </Label>
+                                                <div className="p-4 rounded-xl bg-muted/20 border border-border/50">
+                                                    <TagAudienceSelector
+                                                        onChange={(seg) => {
+                                                            setTagSegment(seg);
+                                                            setValue('tagSegmentInclude', seg.includeTagIds);
+                                                            setValue('tagSegmentExclude', seg.excludeTagIds);
+                                                            setValue('tagSegmentLogic', seg.includeLogic);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-6">
+                                            {/* Saved Audience Select */}
+                                            <div className="space-y-3 p-4 rounded-xl bg-primary/5 border border-primary/20 animate-in fade-in duration-300">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                                                    <Target className="h-3.5 w-3.5" /> Select Saved Audience
+                                                </span>
+                                                <Select value={savedAudienceId} onValueChange={handleSavedAudienceChange}>
+                                                    <SelectTrigger className="h-11 rounded-xl font-bold text-xs bg-card border-border/50">
+                                                        <SelectValue placeholder="Choose an audience..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        {savedAudiences.map((a: any) => (
+                                                            <SelectItem key={a.id} value={a.id} className="text-xs font-semibold">
+                                                                {a.name} ({a.filters?.length || 0} filters)
+                                                            </SelectItem>
+                                                        ))}
+                                                        {savedAudiences.length === 0 && (
+                                                            <SelectItem value="_none" disabled className="text-xs text-muted-foreground italic">
+                                                                No saved audiences found
+                                                            </SelectItem>
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
                                     )}
 
-                                    {watchedSelectedEntityIds.length === 0 && tagSegment.includeTagIds.length === 0 && (
-                                        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
-                                            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                                            <p className="text-xs font-semibold text-amber-800">Select at least one entity or add a tag filter to continue.</p>
+                                    {/* Live matched recipients count */}
+                                    {audienceSource !== 'individual' && (
+                                        <div className="flex items-center gap-2 p-3.5 rounded-xl bg-muted/20 border border-border/50 text-xs font-semibold text-muted-foreground justify-between">
+                                            <span className="flex items-center gap-1.5">
+                                                <Users className="h-4 w-4 text-primary" /> Matched Recipients (Live):
+                                            </span>
+                                            <Badge variant="secondary" className="font-bold text-xs gap-1.5 h-6">
+                                                {isResolvingRecipients && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                                                {filteredRecipients.length} {filteredRecipients.length === 1 ? 'recipient' : 'recipients'}
+                                            </Badge>
                                         </div>
                                     )}
                                 </div>
@@ -920,7 +1271,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             isSubmitting={isSubmitting}
                             nextLabel="Next: Tags & Actions"
                             nextDisabled={watchedMode === 'single'
-                                ? (watchedSelectedEntityIds.length === 0 && tagSegment.includeTagIds.length === 0)
+                                ? (audienceSource === 'individual' ? watchedSelectedEntityIds.length === 0 : filteredRecipients.length === 0)
                                 : !csvData.length}
                         />
                     </Card>
@@ -1014,7 +1365,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="p-4 rounded-xl bg-muted/20 border border-border/50 space-y-1">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Recipients</p>
-                                            <p className="text-2xl font-bold text-primary tabular-nums">{watchedSelectedEntityIds.length}</p>
+                                            <p className="text-2xl font-bold text-primary tabular-nums">
+                                                {audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length}
+                                            </p>
                                         </div>
                                         <div className="p-4 rounded-xl bg-muted/20 border border-border/50 space-y-1">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Delivery</p>
@@ -1038,11 +1391,11 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     </div>
 
                                     {/* High-volume warning */}
-                                    {watchedSelectedEntityIds.length > 50 && (
+                                    {(audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length) > 50 && (
                                         <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
                                             <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                                             <p className="text-[10px] font-semibold text-amber-800 leading-relaxed">
-                                                High volume: {watchedSelectedEntityIds.length} messages. Estimated time: ~{Math.ceil(watchedSelectedEntityIds.length * 0.5 / 60)} min.
+                                                High volume: {audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length} messages. Estimated time: ~{Math.ceil((audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length) * 0.5 / 60)} min.
                                             </p>
                                         </div>
                                     )}
@@ -1082,8 +1435,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                         <NavFooter 
                             onBack={() => setStep(4)} 
                             isSubmitting={isSubmitting}
-                            nextDisabled={!watch('senderProfileId') || (watchedMode === 'single' && watchedSelectedEntityIds.length === 0)}
-                            nextLabel={watchedMode === 'single' ? 'Send Now' : 'Execute Broadcast'} 
+                            nextDisabled={!watch('senderProfileId') || (watchedMode === 'single' && (audienceSource === 'individual' ? watchedSelectedEntityIds.length === 0 : filteredRecipients.length === 0))}
+                            nextLabel={watchedIsScheduled ? (watchedMode === 'single' ? 'Schedule Message' : 'Schedule Broadcast') : (watchedMode === 'single' ? 'Send Now' : 'Execute Broadcast')} 
                         />
                     </Card>
                 )}
