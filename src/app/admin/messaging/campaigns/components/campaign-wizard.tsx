@@ -7,7 +7,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { createCampaign, updateCampaign } from '@/lib/campaign-hooks';
 import { dispatchCampaign } from '@/lib/campaign-dispatch';
 import { useToast } from '@/hooks/use-toast';
-import type { MessageCampaign, MessageChannel, TemplateTarget, ContentMode, AudienceDefinition, SenderProfile, AudienceFilter, PostSendTagRule, MessageTemplate } from '@/lib/types';
+import type { MessageCampaign, MessageChannel, TemplateTarget, ContentMode, AudienceDefinition, SenderProfile, AudienceFilter, PostSendTagRule, MessageTemplate, CampaignStatus } from '@/lib/types';
 import { AudienceSelector } from '@/app/admin/messaging/audiences/components/AudienceSelector';
 import { useAudiences } from '@/lib/audience-hooks';
 import { legacyAudienceToFilters } from '@/lib/audience-hooks';
@@ -613,21 +613,21 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 savedAudienceId: state.savedAudienceId || undefined,
             };
 
-            const data: any = {
+            const data: Omit<MessageCampaign, 'id' | 'stats' | 'createdAt' | 'updatedAt' | 'status'> = {
                 workspaceId: activeWorkspaceId,
                 organizationId: activeOrganizationId || '',
                 internalName: state.internalName.trim(),
                 channel: state.channel,
                 target: state.target,
                 contentMode: state.contentMode,
-                templateId: state.templateId || null,
-                templateName: state.templateName || null,
+                templateId: state.templateId || undefined,
+                templateName: state.templateName || undefined,
                 customBody: state.customBody,
                 customBlocks: state.customBlocks || [],
                 styleId: state.styleId || null,
                 audienceDefinition,
                 senderProfileId: state.senderProfileId,
-                scheduledAt: state.isScheduled && state.scheduledAt ? state.scheduledAt.toISOString() : null,
+                scheduledAt: state.isScheduled && state.scheduledAt ? state.scheduledAt.toISOString() : undefined,
                 createdBy: user.uid,
                 lastCompletedStep: 5,
                 postSendTagRules: state.postSendTagRules,
@@ -638,22 +638,31 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
             };
 
             let id = campaign?.id;
+            const targetStatus: CampaignStatus = state.isScheduled ? 'scheduled' : 'draft';
+
             if (id) {
-                await updateCampaign(firestore, id, data);
+                await updateCampaign(firestore, id, { ...data, status: targetStatus });
             } else {
-                id = await createCampaign(firestore, { ...data, status: 'draft' });
+                id = await createCampaign(firestore, { ...data, status: targetStatus });
             }
 
             if (!id) throw new Error('Failed to save campaign');
+
+            if (state.isScheduled) {
+                toast({ title: 'Campaign Scheduled', description: 'The campaign has been scheduled successfully.' });
+                onClose();
+                return;
+            }
 
             // Now dispatch
             const result = await dispatchCampaign(id);
             if (!result.success) throw new Error(result.error || 'Dispatch failed');
 
-            toast({ title: state.isScheduled ? 'Campaign Scheduled' : 'Campaign Sending', description: `Job ${result.jobId} created.` });
+            toast({ title: 'Campaign Sending', description: `Job ${result.jobId} created.` });
             onClose();
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Dispatch Failed', description: e.message });
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Dispatch Failed', description: errMsg });
         } finally {
             setField('isSending', false);
         }
