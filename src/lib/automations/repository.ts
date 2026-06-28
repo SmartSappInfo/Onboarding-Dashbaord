@@ -16,13 +16,20 @@ export async function getAutomationById(id: string): Promise<Automation | null> 
 export async function findActiveAutomationsByTrigger(
   trigger: AutomationTrigger
 ): Promise<Automation[]> {
+  // NOTE: We intentionally do NOT chain `.where('isActive', '==', true)` here.
+  // Combining `array-contains` with `==` requires a Firestore composite index.
+  // If that index doesn't exist, Firestore throws FAILED_PRECONDITION — and the
+  // orchestrator's catch block swallows the error silently, so no automations
+  // ever fire. Filtering isActive in memory costs nothing for typical workspace
+  // automation volumes (< 100 docs) and avoids the index dependency entirely.
   const snap = await adminDb
     .collection(AUTOMATIONS)
     .where('triggerTypes', 'array-contains', trigger)
-    .where('isActive', '==', true)
     .get();
 
-  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Automation);
+  return snap.docs
+    .filter((doc) => doc.data().isActive === true)
+    .map((doc) => ({ id: doc.id, ...doc.data() }) as Automation);
 }
 
 export async function persistAutomationDocument(

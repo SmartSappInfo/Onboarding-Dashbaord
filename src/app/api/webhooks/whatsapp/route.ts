@@ -212,10 +212,53 @@ async function handleStatus(conn: WhatsAppConnection, ev: StatusEvent) {
 
   if (snap.empty) return;
   const logDoc = snap.docs[0];
-  await logDoc.ref.update({ providerStatus: ev.status, updatedAt: new Date().toISOString() });
+  const log = logDoc.data() as import('@/lib/types').MessageLog;
+
+  const updates: Record<string, unknown> = {
+    providerStatus: ev.status,
+    updatedAt: new Date().toISOString(),
+  };
+
+  let isNewMilestone = false;
+  let counter: import('@/lib/types').MessageNodeStatCounter | null = null;
+
+  if (ev.status === 'delivered') {
+    if (!log.deliveredAt) {
+      updates.deliveredAt = new Date().toISOString();
+      isNewMilestone = true;
+      counter = 'delivered';
+    }
+  } else if (ev.status === 'read') {
+    if (!log.openedAt) {
+      updates.openedAt = new Date().toISOString();
+      isNewMilestone = true;
+      counter = 'opened';
+    }
+  } else if (ev.status === 'failed') {
+    if (log.status !== 'failed') {
+      updates.status = 'failed';
+      isNewMilestone = true;
+      counter = 'failed';
+    }
+  }
+
+  await logDoc.ref.update(updates);
+
+  if (isNewMilestone && counter && log.automationId && log.nodeId) {
+    const { incrementMessageNodeStat } = await import('@/lib/messaging/message-node-stats');
+    await incrementMessageNodeStat({
+      automationId: log.automationId,
+      nodeId: log.nodeId,
+      workspaceId: log.workspaceId || log.workspaceIds?.[0] || '',
+      organizationId: log.organizationId,
+      channel: 'whatsapp',
+      counter,
+    }).catch((e: unknown) =>
+      console.warn('>>> [WA-WEBHOOK] node stat increment failed (non-fatal):', e)
+    );
+  }
 
   // Feed campaign realtime stats, mirroring the Resend webhook.
-  const log = logDoc.data();
   if (log.campaignId) {
     const { updateCampaignRealtimeStat } = await import('@/lib/campaign-analytics');
     if (ev.status === 'read') await updateCampaignRealtimeStat(log.campaignId, 'totalOpened');

@@ -2748,6 +2748,9 @@ export interface MessageStyle {
   textColor?: string;
   cardBackgroundColor?: string;
   borderRadius?: string;
+  logoUrl?: string;
+  footerHtml?: string;
+  footerEnabled?: boolean;
 }
 
 // ─── Campaign Entity & Management (Phase 3) ──────────────────────────────────

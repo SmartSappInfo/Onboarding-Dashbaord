@@ -64,9 +64,14 @@ export function evaluateTriggerConfig(
     if (config.entityType && config.entityType !== payload.entityType) return false;
 
     if (config.appliedBy) {
-      const appliedBy = payload.appliedBy as string | undefined;
+      const appliedBy =
+        (payload.appliedBy as string | undefined) ?? (payload.actorId as string | undefined);
+      // automation-applied tags come in as 'automation:<id>' (from tag-nodes.ts)
+      // system-applied tags come in as 'system' or 'system-<service>'
       const isAutomatic =
-        appliedBy === 'automation' || (appliedBy && appliedBy.startsWith('system'));
+        appliedBy === 'automation' ||
+        (appliedBy && appliedBy.startsWith('automation:')) ||
+        (appliedBy && appliedBy.startsWith('system'));
       if (config.appliedBy === 'manual' && isAutomatic) return false;
       if (config.appliedBy === 'automatic' && !isAutomatic) return false;
     }

@@ -180,21 +180,47 @@ export async function syncAllLogStatuses() {
         const wasScheduled = log.status === 'scheduled' && isSentByProvider;
 
         if (needsUpdate || wasScheduled) {
-          const updates: any = {
+          const updates: Record<string, unknown> = {
             providerStatus,
             updatedAt: new Date().toISOString()
           };
 
+          let isNewMilestone = false;
+          let milestoneCounter: 'delivered' | 'failed' | null = null;
+
           if (isDelivered) {
             updates.status = 'sent';
-          } else if (providerStatus === 'bounced' || providerStatus === 'failed') {
+            if (!log.deliveredAt) {
+              updates.deliveredAt = new Date().toISOString();
+              isNewMilestone = true;
+              milestoneCounter = 'delivered';
+            }
+          } else if (providerStatus === 'bounced' || providerStatus === 'failed' || providerStatus === '2' || providerStatus === '4') {
             updates.status = 'failed';
+            if (log.status !== 'failed') {
+              isNewMilestone = true;
+              milestoneCounter = 'failed';
+            }
           } else if (wasScheduled) {
             updates.status = 'sent'; // Move from scheduled to sent (confirmed dispatch)
           }
 
           await logDoc.ref.update(updates);
           updatedCount++;
+
+          if (isNewMilestone && milestoneCounter && log.automationId && log.nodeId) {
+            const { incrementMessageNodeStat } = await import('./messaging/message-node-stats');
+            await incrementMessageNodeStat({
+              automationId: log.automationId,
+              nodeId: log.nodeId,
+              workspaceId: log.workspaceId || log.workspaceIds?.[0] || '',
+              organizationId: log.organizationId,
+              channel: log.channel,
+              counter: milestoneCounter,
+            }).catch((err) => {
+              console.warn('[MESSAGING:SYNC] failed to increment node stats:', err.message);
+            });
+          }
         }
       } catch (e) {
         console.error(`Status sync failed for log ${log.id}`);

@@ -131,4 +131,67 @@ describe('Direct SMS and Email Automation Actions', () => {
     expect(bodyStr).toContain('Hello John Doe from SmartSapp');
     expect(bodyStr).toContain('Test Unsubscribe');
   });
+
+  it('should fallback to contact properties when entityContacts primary is missing', async () => {
+    const config = {
+      recipientTargets: ['triggering'],
+      directBody: 'Fallback Test',
+      senderProfileId: 'sms-profile-1',
+    };
+
+    const context: ExecutionContext = {
+      automationId: 'auto-1',
+      runId: 'run-1',
+      workspaceId: 'ws-1',
+      entityId: 'ent-1',
+      entityType: 'institution',
+      payload: {}, // No trigger email or phone
+    };
+
+    mockResolveContact.mockResolvedValueOnce({
+      id: 'ent-1',
+      primaryContactPhone: '+233249999999',
+      contacts: [],
+      entityContacts: [], // No primary contact defined
+    });
+
+    await handleDirectMessage('DIRECT_SMS', config, context);
+
+    expect(mockSendRawMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: 'sms',
+        recipient: '+233249999999',
+        body: 'Fallback Test',
+      })
+    );
+  });
+
+  it('should throw an error if sendRawMessage fails', async () => {
+    const config = {
+      recipientTargets: ['fixed'],
+      recipient: 'john@example.com',
+      directSubject: 'Test subject',
+      directBody: 'Body content',
+      senderProfileId: 'profile-1',
+      useBrandLayout: false,
+    };
+
+    const context: ExecutionContext = {
+      automationId: 'auto-1',
+      runId: 'run-1',
+      workspaceId: 'ws-1',
+      entityId: 'ent-1',
+      entityType: 'institution',
+      payload: {},
+    };
+
+    mockSendRawMessage.mockResolvedValueOnce({
+      success: false,
+      error: 'Sender domain unverified',
+    });
+
+    await expect(
+      handleDirectMessage('DIRECT_EMAIL', config, context)
+    ).rejects.toThrow('Sender domain unverified');
+  });
 });

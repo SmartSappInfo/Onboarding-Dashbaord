@@ -558,6 +558,29 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             } else {
                 styleWrapper = activeStyleDoc.htmlWrapperExternal || activeStyleDoc.htmlWrapper || '';
             }
+
+            // Apply style-specific overrides to finalVariables
+            if (activeStyleDoc.primaryColor) {
+                finalVariables.brand_primary_color = activeStyleDoc.primaryColor;
+                finalVariables.org_primary_color = activeStyleDoc.primaryColor;
+            }
+            if (activeStyleDoc.secondaryColor) {
+                finalVariables.brand_secondary_color = activeStyleDoc.secondaryColor;
+                finalVariables.org_secondary_color = activeStyleDoc.secondaryColor;
+            }
+            if (activeStyleDoc.fontFamily) {
+                finalVariables.brand_font_family = activeStyleDoc.fontFamily;
+                finalVariables.org_font_family = activeStyleDoc.fontFamily;
+            }
+            if (activeStyleDoc.logoUrl) {
+                finalVariables.org_logo_url = activeStyleDoc.logoUrl;
+            }
+            if (activeStyleDoc.footerHtml) {
+                finalVariables.org_footer_html = activeStyleDoc.footerHtml;
+            }
+            if (activeStyleDoc.footerEnabled !== undefined) {
+                finalVariables.org_footer_enabled = String(activeStyleDoc.footerEnabled !== false);
+            }
         }
     }
 

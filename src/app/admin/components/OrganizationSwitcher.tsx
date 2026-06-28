@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { useTenant } from '@/context/TenantContext';
 import { 
     Building, 
@@ -26,13 +27,15 @@ import { Badge } from '@/components/ui/badge';
  * Allows switching between Organizations to manage partitioned data.
  */
 export default function OrganizationSwitcher() {
-    const { 
-        activeOrganizationId, 
-        activeOrganization, 
-        setActiveOrganization, 
-        availableOrganizations, 
+    const router = useRouter();
+    const {
+        activeOrganizationId,
+        activeOrganization,
+        switchOrganizationAndWorkspace,
+        setActiveOrganization,
+        availableOrganizations,
         isSuperAdmin,
-        isLoading 
+        isLoading
     } = useTenant();
 
     if (!isSuperAdmin) return null;
@@ -70,9 +73,17 @@ export default function OrganizationSwitcher() {
 
  <div className="max-h-[300px] overflow-y-auto no-scrollbar">
                     {availableOrganizations.map(org => (
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                             key={org.id}
-                            onClick={() => setActiveOrganization(org.id)}
+                            onClick={() => {
+                                if (org.defaultWorkspaceId) {
+                                    switchOrganizationAndWorkspace(org.id, org.defaultWorkspaceId);
+                                    router.push(`/admin?track=${org.defaultWorkspaceId}`);
+                                } else {
+                                    setActiveOrganization(org.id);
+                                    router.push('/admin');
+                                }
+                            }}
  className={cn(
                                 "rounded-xl p-3 gap-4 group transition-all mb-1",
                                 activeOrganizationId === org.id ? "bg-primary text-white shadow-xl shadow-primary/20" : "hover:bg-background0"

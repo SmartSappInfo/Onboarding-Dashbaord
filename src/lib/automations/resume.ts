@@ -30,11 +30,31 @@ export async function resumeAutomationRun(job: AutomationJob): Promise<boolean> 
 
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
+    const workspaceId = job.payload.workspaceId as string | undefined;
+
+    // organizationId lives on the live ExecutionContext but is NOT persisted into
+    // job.payload when a Delay node parks the contact — so on resume it is virtually
+    // always undefined. Re-resolve it from the workspace (mirroring executor.ts) so
+    // resumed message/notification steps run with the SAME org context as an immediate
+    // send. Without this, org-scoped sender + provider-key resolution silently fails
+    // and the message is never delivered.
+    let organizationId = job.payload.organizationId as string | undefined;
+    if (!organizationId && workspaceId) {
+      try {
+        const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        if (wsSnap.exists) {
+          organizationId = (wsSnap.data()?.organizationId as string) || undefined;
+        }
+      } catch (e) {
+        console.warn('[RESUME] Failed to resolve organizationId from workspace:', e);
+      }
+    }
+
     const context: ExecutionContext = {
       entityId: job.payload.entityId as string | undefined,
       entityType: job.payload.entityType as ExecutionContext['entityType'],
-      workspaceId: job.payload.workspaceId as string,
-      organizationId: job.payload.organizationId as string | undefined,
+      workspaceId: workspaceId as string,
+      organizationId,
       payload: job.payload,
       automationId: job.automationId,
       runId: job.runId,
@@ -63,12 +83,16 @@ export async function resumeAutomationRun(job: AutomationJob): Promise<boolean> 
     }
 
     return true;
-  } catch {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     logAutomationEvent('error', 'resume_run_failed', {
       automationId: job.automationId,
       runId: job.runId,
       jobId: job.id,
+      targetNodeId: job.targetNodeId,
+      error: message,
     });
+    console.error(`[RESUME] Failed to resume run ${job.runId} at node ${job.targetNodeId}: ${message}`);
     return false;
   }
 }

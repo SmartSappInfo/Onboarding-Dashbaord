@@ -24,16 +24,29 @@ vi.mock('next/server', () => ({
   after: vi.fn(),
 }));
 
+// Capture how the resumed message step calls the messaging engine.
+const mockSendMessage = vi.fn().mockResolvedValue({ success: true, logId: 'log-1' });
+vi.mock('../messaging-engine', () => ({
+  sendMessage: (...args: unknown[]) => mockSendMessage(...args),
+  sendRawMessage: vi.fn().mockResolvedValue({ success: true, logId: 'log-raw-1' }),
+}));
+
+// resolveContact is hit during recipient resolution + context enrichment; keep it inert.
+vi.mock('../contact-adapter', () => ({
+  resolveContact: vi.fn().mockResolvedValue(null),
+}));
+
 describe('Delay job resume (P5)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSendMessage.mockResolvedValue({ success: true, logId: 'log-1' });
   });
 
-  it('resumes a delayed run and completes when no pending jobs remain', async () => {
+  it('resumes a delayed run and sends the next message with an org resolved from the workspace', async () => {
     const delayNodeId = 'delay-1';
     const automation = {
       id: 'auto-1',
-      name: 'Delayed Note',
+      name: 'Delayed Message',
       trigger: 'ENTITY_CREATED',
       isActive: true,
       workspaceIds: ['ws-1'],
@@ -43,7 +56,15 @@ describe('Delay job resume (P5)', () => {
         {
           id: 'a1',
           type: 'actionNode',
-          data: { actionType: 'ADD_NOTE', config: { content: 'After delay' } },
+          data: {
+            actionType: 'SEND_MESSAGE',
+            config: {
+              channel: 'email',
+              templateId: 'tmpl-1',
+              recipientTargets: ['fixed'],
+              recipient: 'test@example.com',
+            },
+          },
         },
       ],
       edges: [
@@ -52,12 +73,16 @@ describe('Delay job resume (P5)', () => {
       ],
     };
 
+    // Honest payload: organizationId is NOT present — exactly what a real Wait node
+    // persists. The resume path must re-derive the org from the workspace so the
+    // message step can resolve a sender. If org resolution regresses, sendMessage
+    // receives organizationId: undefined and this test fails.
     const job = {
       id: 'job-delay-1',
       automationId: 'auto-1',
       runId: 'run-1',
       targetNodeId: delayNodeId,
-      payload: { workspaceId: 'ws-1', entityId: 'ent-1', organizationId: 'org-1' },
+      payload: { workspaceId: 'ws-1', entityId: 'ent-1' },
       executeAt: new Date().toISOString(),
       status: 'pending',
     };
@@ -87,8 +112,13 @@ describe('Delay job resume (P5)', () => {
           })),
         };
       }
-      if (name === 'notes' || name === 'entity_notes' || name === 'activities') {
-        return { add: vi.fn().mockResolvedValue({ id: 'note-1' }) };
+      if (name === 'workspaces') {
+        // The org is recovered here on resume (it is absent from job.payload).
+        return {
+          doc: vi.fn(() => ({
+            get: vi.fn().mockResolvedValue({ exists: true, data: () => ({ organizationId: 'org-1' }) }),
+          })),
+        };
       }
       if (name === 'automation_jobs') {
         return {
@@ -107,6 +137,18 @@ describe('Delay job resume (P5)', () => {
 
     expect(result.success).toBe(true);
     expect(result.processed).toBe(1);
+
+    // The message step ran and received a concrete org (recovered from the workspace),
+    // not undefined — this is the regression guard for the resumed-context fix.
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    expect(mockSendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateId: 'tmpl-1',
+        recipient: 'test@example.com',
+        organizationId: 'org-1',
+      })
+    );
+
     expect(mockFinalizeJob).toHaveBeenCalledWith('job-delay-1', 'completed');
     expect(runUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'completed' })

@@ -7,11 +7,30 @@ type BlueprintNode = {
   id: string;
   type: string;
   data?: Record<string, unknown>;
+  position?: { x?: number; y?: number };
 };
 
 function nodeLabel(node: BlueprintNode): string {
   const label = node.data?.label;
   return typeof label === 'string' && label ? label : node.id;
+}
+
+function getNodeStepNumber(nodeId: string, nodes: BlueprintNode[]): number | null {
+  const sortedNonTriggerNodes = nodes
+    .filter((n) => n.type !== 'triggerNode')
+    .sort((a, b) => {
+      const ay = typeof (a.position as any)?.y === 'number' ? (a.position as any).y : 0;
+      const by = typeof (b.position as any)?.y === 'number' ? (b.position as any).y : 0;
+      const ax = typeof (a.position as any)?.x === 'number' ? (a.position as any).x : 0;
+      const bx = typeof (b.position as any)?.x === 'number' ? (b.position as any).x : 0;
+      if (Math.abs(ay - by) < 5) {
+        return ax - bx;
+      }
+      return ay - by;
+    });
+
+  const idx = sortedNonTriggerNodes.findIndex((n) => n.id === nodeId);
+  return idx !== -1 ? idx + 1 : null;
 }
 
 /**
@@ -30,19 +49,23 @@ export async function validateAutomationBlueprint(automation: Partial<Automation
   const actionNodes = nodes.filter((n) => n.type === 'actionNode');
 
   validateLogicNodes(nodes);
-  validateActionNodeConfigs(actionNodes);
-  await validateAutomationTemplatesBatch(actionNodes);
-  await validateExternalReferencesBatch(actionNodes);
+  validateActionNodeConfigs(actionNodes, nodes);
+  await validateAutomationTemplatesBatch(actionNodes, nodes);
+  await validateExternalReferencesBatch(actionNodes, nodes);
 }
 
 function validateLogicNodes(nodes: BlueprintNode[]): void {
   for (const node of nodes) {
+    const stepNum = getNodeStepNumber(node.id, nodes);
+    const stepLabel = stepNum ? ` (Step #${stepNum})` : '';
+    const label = `${nodeLabel(node)}${stepLabel}`;
+
     switch (node.type) {
       case 'conditionNode': {
         const config = (node.data?.config || {}) as Record<string, unknown>;
         if (!config.field || !config.operator) {
           throw new AutomationValidationError(
-            `Condition node "${nodeLabel(node)}" requires a payload field and operator.`
+            `Condition node "${label}" requires a payload field and operator.`
           );
         }
         break;
@@ -51,12 +74,12 @@ function validateLogicNodes(nodes: BlueprintNode[]): void {
         const config = (node.data?.config || {}) as { value?: number; unit?: string };
         if (!config.value || config.value < 1) {
           throw new AutomationValidationError(
-            `Delay node "${nodeLabel(node)}" requires a wait amount of at least 1.`
+            `Delay node "${label}" requires a wait amount of at least 1.`
           );
         }
         if (!config.unit) {
           throw new AutomationValidationError(
-            `Delay node "${nodeLabel(node)}" requires a time unit.`
+            `Delay node "${label}" requires a time unit.`
           );
         }
         break;
@@ -64,13 +87,13 @@ function validateLogicNodes(nodes: BlueprintNode[]): void {
       case 'tagConditionNode': {
         if (!node.data?.logic) {
           throw new AutomationValidationError(
-            `Tag condition "${nodeLabel(node)}" requires a logic mode.`
+            `Tag condition "${label}" requires a logic mode.`
           );
         }
         const tagIds = node.data?.tagIds as string[] | undefined;
         if (!tagIds?.length) {
           throw new AutomationValidationError(
-            `Tag condition "${nodeLabel(node)}" requires at least one tag.`
+            `Tag condition "${label}" requires at least one tag.`
           );
         }
         break;
@@ -78,13 +101,13 @@ function validateLogicNodes(nodes: BlueprintNode[]): void {
       case 'tagActionNode': {
         if (!node.data?.action) {
           throw new AutomationValidationError(
-            `Tag action "${nodeLabel(node)}" requires add or remove mode.`
+            `Tag action "${label}" requires add or remove mode.`
           );
         }
         const tagIds = node.data?.tagIds as string[] | undefined;
         if (!tagIds?.length) {
           throw new AutomationValidationError(
-            `Tag action "${nodeLabel(node)}" requires at least one tag.`
+            `Tag action "${label}" requires at least one tag.`
           );
         }
         break;
@@ -95,15 +118,19 @@ function validateLogicNodes(nodes: BlueprintNode[]): void {
   }
 }
 
-function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
+function validateActionNodeConfigs(actionNodes: BlueprintNode[], allNodes: BlueprintNode[]): void {
   for (const node of actionNodes) {
-    const actionType = node.data?.actionType as string | undefined;
+    const rawActionType = node.data?.actionType as string | undefined;
     const config = (node.data?.config || {}) as Record<string, unknown>;
-    const label = nodeLabel(node);
+    const stepNum = getNodeStepNumber(node.id, allNodes);
+    const stepLabel = stepNum ? ` (Step #${stepNum})` : '';
+    const label = `${nodeLabel(node)}${stepLabel}`;
 
-    if (!actionType) {
+    if (!rawActionType) {
       throw new AutomationValidationError(`Action node "${label}" is missing an action type.`);
     }
+
+    const actionType = rawActionType.toUpperCase();
 
     switch (actionType) {
       case 'DIRECT_EMAIL': {
@@ -135,7 +162,10 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
         }
         break;
       }
-      case 'SEND_MESSAGE': {
+      case 'SEND_MESSAGE':
+      case 'SEND_EMAIL':
+      case 'SEND_SMS':
+      case 'SEND_WHATSAPP': {
         // The execution engine requires templateId or (templateCategory + templateType).
         // recipientTargets controls WHO receives the message, but a template is always needed.
         if (!config.templateId && (!config.templateCategory || !config.templateType)) {
@@ -230,14 +260,18 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[]): void {
 }
 
 /** Batch existence checks — avoids N+1 per action node. */
-async function validateExternalReferencesBatch(actionNodes: BlueprintNode[]): Promise<void> {
+async function validateExternalReferencesBatch(actionNodes: BlueprintNode[], allNodes: BlueprintNode[]): Promise<void> {
   const webhookChecks: { id: string; label: string }[] = [];
   const automationChecks: { id: string; label: string }[] = [];
 
   for (const node of actionNodes) {
-    const actionType = node.data?.actionType;
+    const rawActionType = node.data?.actionType as string | undefined;
+    if (!rawActionType) continue;
+    const actionType = rawActionType.toUpperCase();
     const config = (node.data?.config || {}) as Record<string, unknown>;
-    const label = nodeLabel(node);
+    const stepNum = getNodeStepNumber(node.id, allNodes);
+    const stepLabel = stepNum ? ` (Step #${stepNum})` : '';
+    const label = `${nodeLabel(node)}${stepLabel}`;
 
     if (actionType === 'TRIGGER_OUTBOUND_WEBHOOK' && config.webhookId) {
       webhookChecks.push({ id: String(config.webhookId), label });
@@ -272,7 +306,7 @@ async function validateExternalReferencesBatch(actionNodes: BlueprintNode[]): Pr
   }
 }
 
-async function validateAutomationTemplatesBatch(actionNodes: BlueprintNode[]): Promise<void> {
+async function validateAutomationTemplatesBatch(actionNodes: BlueprintNode[], allNodes: BlueprintNode[]): Promise<void> {
   const templateIds: { id: string; label: string }[] = [];
   const categoryPairs: {
     category: string;
@@ -282,6 +316,9 @@ async function validateAutomationTemplatesBatch(actionNodes: BlueprintNode[]): P
 
   const TEMPLATE_DRIVEN_ACTIONS = new Set([
     'SEND_MESSAGE',
+    'SEND_EMAIL',
+    'SEND_SMS',
+    'SEND_WHATSAPP',
     'SEND_NOTIFICATION_EMAIL',
     'SEND_NOTIFICATION_SMS',
     'SEND_NOTIFICATION_IN_APP',
@@ -289,9 +326,14 @@ async function validateAutomationTemplatesBatch(actionNodes: BlueprintNode[]): P
   ]);
 
   for (const node of actionNodes) {
-    if (!TEMPLATE_DRIVEN_ACTIONS.has(node.data?.actionType as string)) continue;
+    const rawActionType = node.data?.actionType as string | undefined;
+    if (!rawActionType) continue;
+    const actionType = rawActionType.toUpperCase();
+    if (!TEMPLATE_DRIVEN_ACTIONS.has(actionType)) continue;
     const config = (node.data?.config || {}) as Record<string, unknown>;
-    const label = nodeLabel(node);
+    const stepNum = getNodeStepNumber(node.id, allNodes);
+    const stepLabel = stepNum ? ` (Step #${stepNum})` : '';
+    const label = `${nodeLabel(node)}${stepLabel}`;
 
     if (config.templateId) {
       templateIds.push({ id: String(config.templateId), label });

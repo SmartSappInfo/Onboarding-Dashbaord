@@ -68,8 +68,8 @@ export function EntitySelector({
   // (authoritative), not from scanning the entity set.
   const [contactTypes, setContactTypes] = React.useState<{ key: string; label: string }[]>([]);
   React.useEffect(() => {
-    const scope = activeWorkspace?.contactScope as EntityType | undefined;
-    if (!scope || !activeWorkspaceId) return;
+    if (!activeWorkspaceId) return;
+    const scope = (activeWorkspace?.contactScope || 'institution') as EntityType;
     let cancelled = false;
     getEffectiveContactTypes(scope, activeOrganizationId, activeWorkspaceId)
       .then((types) => {

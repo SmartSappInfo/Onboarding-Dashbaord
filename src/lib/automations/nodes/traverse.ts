@@ -97,6 +97,30 @@ export async function enrichExecutionContext(context: ExecutionContext): Promise
   }
 }
 
+function getVisualStepNumber(nodeId: string, nodes: any[]): number | null {
+  const sortedNonTriggerNodes = nodes
+    .filter((n) => n.type !== 'triggerNode')
+    .sort((a, b) => {
+      const ay = typeof a.position?.y === 'number' ? a.position.y : 0;
+      const by = typeof b.position?.y === 'number' ? b.position.y : 0;
+      const ax = typeof a.position?.x === 'number' ? a.position.x : 0;
+      const bx = typeof b.position?.x === 'number' ? b.position.x : 0;
+      if (Math.abs(ay - by) < 5) {
+        return ax - bx;
+      }
+      return ay - by;
+    });
+
+  const idx = sortedNonTriggerNodes.findIndex((n) => n.id === nodeId);
+  return idx !== -1 ? idx + 1 : null;
+}
+
+function getNodeLabelWithStep(node: any, nodes: any[], defaultLabel: string): string {
+  const label = node.data?.label || defaultLabel;
+  const stepNum = getVisualStepNumber(node.id, nodes);
+  return stepNum ? `${label} (Step #${stepNum})` : label;
+}
+
 function getStepNumbers(automation: Automation): Record<string, number> {
   const steps: Record<string, number> = {};
   const triggerNode = automation.nodes.find((n) => n.type === 'triggerNode');
@@ -145,7 +169,7 @@ export async function traverseNodes(
     logStepExecution(context.runId, {
       nodeId: currentNode.id,
       nodeType: currentNode.type,
-      nodeLabel: currentNode.data?.label || 'Delay',
+      nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Delay'),
       status: 'success',
       executedAt: new Date().toISOString(),
       metadata: {
@@ -218,7 +242,7 @@ export async function traverseNodes(
     logStepExecution(context.runId, {
       nodeId: currentNode.id,
       nodeType: 'conditionNode',
-      nodeLabel: currentNode.data?.label || 'Condition',
+      nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Condition'),
       status: 'success',
       executedAt: new Date().toISOString(),
       metadata: { evaluation: targetHandle as 'true' | 'false' },
@@ -231,7 +255,7 @@ export async function traverseNodes(
     logStepExecution(context.runId, {
       nodeId: currentNode.id,
       nodeType: 'tagConditionNode',
-      nodeLabel: currentNode.data?.label || 'Tag Condition',
+      nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Tag Condition'),
       status: 'success',
       executedAt: new Date().toISOString(),
       metadata: { evaluation: targetHandle as 'true' | 'false' },
@@ -244,7 +268,7 @@ export async function traverseNodes(
     logStepExecution(context.runId, {
       nodeId: currentNode.id,
       nodeType: 'abSplitNode',
-      nodeLabel: currentNode.data?.label || 'A/B Split',
+      nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'A/B Split'),
       status: 'success',
       executedAt: new Date().toISOString(),
       metadata: { path, splitRatio },
@@ -275,8 +299,12 @@ export async function traverseNodes(
         // contact here instead of advancing. An engagement check is scheduled; the
         // contact moves on once they engage or all resends are exhausted.
         const resendConfig = (nextNode.data?.config as { resendConfig?: MessageResendConfig } | undefined)?.resendConfig;
+        const nextActionType = nextNode.data?.actionType?.toUpperCase();
         const isResendMessage =
-          nextNode.data?.actionType === 'SEND_MESSAGE' &&
+          (nextActionType === 'SEND_MESSAGE' ||
+           nextActionType === 'SEND_EMAIL' ||
+           nextActionType === 'SEND_SMS' ||
+           nextActionType === 'SEND_WHATSAPP') &&
           !!resendConfig?.enabled &&
           (resendConfig?.maxResends ?? 0) > 0;
 
@@ -291,7 +319,7 @@ export async function traverseNodes(
           logStepExecution(context.runId, {
             nodeId: nextNode.id,
             nodeType: 'actionNode',
-            nodeLabel: nextNode.data?.label || 'Action',
+            nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Action'),
             status: 'waiting',
             executedAt: new Date().toISOString(),
             durationMs: Date.now() - stepStart,
@@ -303,7 +331,7 @@ export async function traverseNodes(
         logStepExecution(context.runId, {
           nodeId: nextNode.id,
           nodeType: 'actionNode',
-          nodeLabel: nextNode.data?.label || 'Action',
+          nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Action'),
           status: 'success',
           executedAt: new Date().toISOString(),
           durationMs: Date.now() - stepStart,
@@ -314,7 +342,7 @@ export async function traverseNodes(
         logStepExecution(context.runId, {
           nodeId: nextNode.id,
           nodeType: 'tagActionNode',
-          nodeLabel: nextNode.data?.label || 'Tag Action',
+          nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Tag Action'),
           status: 'success',
           executedAt: new Date().toISOString(),
           durationMs: Date.now() - stepStart,
@@ -332,7 +360,7 @@ export async function traverseNodes(
         logStepExecution(context.runId, {
           nodeId: nextNode.id,
           nodeType: 'delayNode',
-          nodeLabel: nextNode.data?.label || 'Delay',
+          nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Delay'),
           status: 'waiting',
           executedAt: now.toISOString(),
           metadata: { delayUntil: executeAt.toISOString() },
@@ -345,7 +373,7 @@ export async function traverseNodes(
       await traverseNodes(nextNode.id, automation, context);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      const label = nextNode.data?.label as string | undefined ?? nextNode.id;
+      const label = getNodeLabelWithStep(nextNode, automation.nodes, nextNode.id);
       logStepExecution(context.runId, {
         nodeId: nextNode.id,
         nodeType: nextNode.type || 'unknown',

@@ -96,7 +96,7 @@ export function TagActionNode({ id, data, selected }: any) {
         <div className="flex-1 min-w-0 h-full pl-3 pr-4 flex items-center justify-between text-left">
           <div className="flex flex-col justify-center min-w-0 pr-1">
             <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none mb-1 truncate">
-              Tag Action
+              {data.stepNumber ? `Tag Action #${data.stepNumber}` : 'Tag Action'}
             </span>
             <p className="text-xs font-semibold text-foreground leading-tight truncate">
               {getTagActionDescription()}

@@ -56,6 +56,8 @@ describe('Automation Step Logger', () => {
         durationMs: 100,
         metadata: { actionType: 'SEND_MESSAGE' },
       },
+      currentNodeId: 'node-action-1',
+      currentNodeLabel: 'Send email',
     });
   });
 
@@ -95,6 +97,8 @@ describe('Automation Step Logger', () => {
           resumedAt: '2026-06-07T04:00:00.000Z',
         },
       },
+      currentNodeId: 'node-delay-1',
+      currentNodeLabel: 'Wait 15m',
     });
   });
 

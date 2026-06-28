@@ -14,21 +14,71 @@ export async function executeAutomation(
   chainDepth = 0
 ): Promise<void> {
   const timestamp = new Date().toISOString();
+  let organizationId = '';
+  if (triggerPayload.workspaceId) {
+    try {
+      const wsSnap = await adminDb.collection('workspaces').doc(triggerPayload.workspaceId as string).get();
+      if (wsSnap?.exists) {
+        organizationId = (wsSnap.data()?.organizationId as string) || '';
+      }
+    } catch (e) {
+      console.warn('[AUTOMATION] Failed to fetch workspace snap for organizationId:', e);
+    }
+  }
 
-  // Resolve organizationId once here so action steps don't each make a separate Firestore read
-  const wsSnap = await adminDb.collection('workspaces').doc(triggerPayload.workspaceId as string).get();
-  const organizationId: string = (wsSnap.data()?.organizationId as string) || '';
+  let entityName = triggerPayload.entityName as string | undefined || triggerPayload.displayName as string | undefined || triggerPayload.name as string | undefined;
+  if (!entityName && triggerPayload.entityId && triggerPayload.workspaceId) {
+    try {
+      const { resolveContact } = await import('../contact-adapter');
+      const contact = await resolveContact(triggerPayload.entityId as string, triggerPayload.workspaceId as string);
+      if (contact?.name) {
+        entityName = contact.name;
+      }
+    } catch (e) {
+      console.warn('[AUTOMATION] Failed to resolve entity name for trigger payload:', e);
+    }
+  }
 
   const runRef = await adminDb.collection('automation_runs').add({
     automationId: automation.id,
     automationName: automation.name,
-    triggerData: triggerPayload,
+    triggerData: {
+      ...triggerPayload,
+      ...(entityName ? { entityName } : {}),
+    },
     status: 'running',
     startedAt: timestamp,
     entityId: triggerPayload.entityId as string | undefined,
     entityType: triggerPayload.entityType as string | undefined,
     workspaceId: triggerPayload.workspaceId as string | undefined,
   });
+
+  // Log contact enrolled/added to automation
+  if (triggerPayload.entityId) {
+    try {
+      const { logActivity } = await import('../activity-logger');
+      await logActivity({
+        type: 'automation_entered',
+        description: `Added to automation: "${automation.name || automation.id}"`,
+        source: 'system',
+        organizationId,
+        workspaceId: triggerPayload.workspaceId as string,
+        entityId: triggerPayload.entityId as string,
+        entityType: (triggerPayload.entityType as any) || 'contact',
+        userId: (triggerPayload.actorId as string) || 'system',
+        displayName: (triggerPayload.displayName as string) || (triggerPayload.entityName as string) || undefined,
+        metadata: {
+          isAutomation: true, // prevents loop
+          automationId: automation.id,
+          automationName: automation.name,
+          runId: runRef.id,
+          trigger: (triggerPayload._firingTrigger as string) || (triggerPayload.startedBy as string) || 'event',
+        }
+      });
+    } catch (err: any) {
+      console.error(`Failed to log activity for automation run: ${err.message}`);
+    }
+  }
 
   // Fire aggregated started notification (fire-and-forget)
   notifyAutomationStarted({

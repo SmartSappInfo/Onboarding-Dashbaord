@@ -5,7 +5,7 @@ import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus, WorkspaceEntity } from '@/lib/types';
 import { useEntityResolver } from '@/context/EntityCacheContext';
-import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, addMonths, addWeeks, startOfDay, endOfDay } from 'date-fns';
+import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, endOfMonth, addMonths, addWeeks, startOfDay, endOfDay } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { 
@@ -43,6 +43,8 @@ import {
     ArrowUpDown,
     EyeOff,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     Target,
     TrendingUp,
     LayoutList
@@ -184,33 +186,44 @@ export default function TasksClient() {
 
     // Generate Month Options dynamically (12 months in past to 12 months in future)
     const monthOptions = React.useMemo(() => {
-        const options = [];
+        const map = new Map<string, string>();
         const now = new Date();
         for (let i = -12; i <= 12; i++) {
             const d = addMonths(now, i);
-            options.push({
-                value: format(d, 'yyyy-MM'),
-                label: format(d, 'MMMM yyyy'),
-            });
+            map.set(format(d, 'yyyy-MM'), format(d, 'MMMM yyyy'));
         }
-        return options;
-    }, []);
+        // Ensure the currently-selected month is always an available option,
+        // so arrow navigation beyond the default range still renders a label.
+        if (selectedMonth && !map.has(selectedMonth)) {
+            const d = new Date(`${selectedMonth}-01T00:00:00`);
+            map.set(selectedMonth, format(d, 'MMMM yyyy'));
+        }
+        return [...map.entries()]
+            .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+            .map(([value, label]) => ({ value, label }));
+    }, [selectedMonth]);
 
     // Generate Week Options dynamically (8 weeks in past to 24 weeks in future)
     const weekOptions = React.useMemo(() => {
-        const options = [];
+        const map = new Map<string, string>();
         const now = new Date();
         const startOfCurrentWeek = startOfWeek(now, { weekStartsOn: 1 }); // Monday start
         for (let i = -8; i <= 24; i++) {
             const d = addWeeks(startOfCurrentWeek, i);
             const wEnd = endOfWeek(d, { weekStartsOn: 1 });
-            options.push({
-                value: format(d, 'yyyy-MM-dd'),
-                label: `Week of ${format(d, 'MMM d, yyyy')} - ${format(wEnd, 'MMM d, yyyy')}`,
-            });
+            map.set(format(d, 'yyyy-MM-dd'), `Week of ${format(d, 'MMM d, yyyy')} - ${format(wEnd, 'MMM d, yyyy')}`);
         }
-        return options;
-    }, []);
+        // Ensure the currently-selected week is always an available option,
+        // so arrow navigation beyond the default range still renders a label.
+        if (selectedWeek && !map.has(selectedWeek)) {
+            const d = startOfDay(new Date(selectedWeek));
+            const wEnd = endOfWeek(d, { weekStartsOn: 1 });
+            map.set(selectedWeek, `Week of ${format(d, 'MMM d, yyyy')} - ${format(wEnd, 'MMM d, yyyy')}`);
+        }
+        return [...map.entries()]
+            .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+            .map(([value, label]) => ({ value, label }));
+    }, [selectedWeek]);
 
     // Clear and set defaults on filter type change
     React.useEffect(() => {
@@ -247,6 +260,28 @@ export default function TasksClient() {
         }
     }, [dateFilterType]);
 
+    // Period navigation (prev/next arrows beside the date selector)
+    const navigateMonth = (direction: 1 | -1) => {
+        const base = selectedMonth ? new Date(`${selectedMonth}-01T00:00:00`) : new Date();
+        setSelectedMonth(format(addMonths(base, direction), 'yyyy-MM'));
+    };
+
+    const navigateWeek = (direction: 1 | -1) => {
+        const base = selectedWeek
+            ? startOfDay(new Date(selectedWeek))
+            : startOfWeek(new Date(), { weekStartsOn: 1 });
+        setSelectedWeek(format(addWeeks(base, direction), 'yyyy-MM-dd'));
+    };
+
+    const navigateDay = (direction: 1 | -1) => {
+        let base = new Date();
+        if (selectedDayType === 'yesterday') base = addDays(new Date(), -1);
+        else if (selectedDayType === 'tomorrow') base = addDays(new Date(), 1);
+        else if (selectedDayType === 'custom' && selectedCustomDay) base = selectedCustomDay;
+        setSelectedDayType('custom');
+        setSelectedCustomDay(addDays(base, direction));
+    };
+
     // Selection State
     const [isSelectionMode, setIsSelectionMode] = React.useState(false);
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
@@ -265,7 +300,7 @@ export default function TasksClient() {
 
     const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
         overdue: true,
-        today: true,
+        current: true,
         upcoming: true,
         completed: false
     });
@@ -325,28 +360,55 @@ export default function TasksClient() {
 
     const isLoading = isLoadingTasks || isLoadingFilter;
 
+    // Shared matchers reused by the list, the stat cards, and the period grouping
+    // so that scoping logic stays in one place.
+    const matchesAssignee = React.useCallback((task: Task) => {
+        if (!assignedUserId) return true;
+        if (assignedUserId === 'unassigned') {
+            return !task.assignedTo || (Array.isArray(task.assignedTo) && task.assignedTo.length === 0);
+        }
+        if (Array.isArray(task.assignedTo)) return task.assignedTo.includes(assignedUserId);
+        return task.assignedTo === assignedUserId;
+    }, [assignedUserId]);
+
+    const matchesDateFilter = React.useCallback((task: Task) => {
+        if (dateFilterType === 'range') {
+            const taskDate = new Date(task.dueDate);
+            if (dateRange.start && startOfDay(taskDate) < startOfDay(dateRange.start)) return false;
+            if (dateRange.end && endOfDay(taskDate) > endOfDay(dateRange.end)) return false;
+            return true;
+        }
+        if (dateFilterType === 'month' && selectedMonth) {
+            const taskDate = new Date(task.dueDate);
+            const [year, month] = selectedMonth.split('-').map(Number);
+            return taskDate.getFullYear() === year && (taskDate.getMonth() + 1) === month;
+        }
+        if (dateFilterType === 'week' && selectedWeek) {
+            const taskDate = new Date(task.dueDate);
+            const weekStart = startOfDay(new Date(selectedWeek));
+            const weekEnd = endOfDay(addDays(weekStart, 6));
+            return taskDate >= weekStart && taskDate <= weekEnd;
+        }
+        if (dateFilterType === 'day') {
+            const taskDate = new Date(task.dueDate);
+            let targetDate = new Date();
+            if (selectedDayType === 'yesterday') targetDate = addDays(new Date(), -1);
+            else if (selectedDayType === 'tomorrow') targetDate = addDays(new Date(), 1);
+            else if (selectedDayType === 'custom' && selectedCustomDay) targetDate = selectedCustomDay;
+            return differenceInCalendarDays(taskDate, targetDate) === 0;
+        }
+        return true;
+    }, [dateFilterType, dateRange, selectedMonth, selectedWeek, selectedDayType, selectedCustomDay]);
+
     const filteredTasks = React.useMemo(() => {
         if (!allTasks) return [];
         return allTasks.filter(task => {
             const matchesStatus = statusFilter === 'all' ? true : task.status === statusFilter;
             const matchesPriority = priorityFilter === 'all' ? true : task.priority === priorityFilter;
-            
-            let matchesAssigned = true;
-            if (assignedUserId) {
-                if (assignedUserId === 'unassigned') {
-                    matchesAssigned = !task.assignedTo || (Array.isArray(task.assignedTo) && task.assignedTo.length === 0);
-                } else {
-                    if (Array.isArray(task.assignedTo)) {
-                        matchesAssigned = task.assignedTo.includes(assignedUserId);
-                    } else {
-                        matchesAssigned = task.assignedTo === assignedUserId;
-                    }
-                }
-            }
 
-            const matchesSearch = searchTerm ? 
-                task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                task.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) 
+            const matchesSearch = searchTerm ?
+                task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                task.entityName?.toLowerCase().includes(searchTerm.toLowerCase())
                 : true;
 
             let matchesSmart = true;
@@ -357,44 +419,9 @@ export default function TasksClient() {
                 matchesSmart = isPast(date) && !isToday(date) && task.status !== 'done';
             }
 
-            let matchesDate = true;
-            if (dateFilterType === 'range') {
-                const taskDate = new Date(task.dueDate);
-                if (dateRange.start) {
-                    const startVal = startOfDay(dateRange.start);
-                    const taskVal = startOfDay(taskDate);
-                    matchesDate = taskVal >= startVal;
-                }
-                if (matchesDate && dateRange.end) {
-                    const endVal = endOfDay(dateRange.end);
-                    const taskVal = endOfDay(taskDate);
-                    matchesDate = taskVal <= endVal;
-                }
-            } else if (dateFilterType === 'month' && selectedMonth) {
-                const taskDate = new Date(task.dueDate);
-                const [year, month] = selectedMonth.split('-').map(Number);
-                matchesDate = taskDate.getFullYear() === year && (taskDate.getMonth() + 1) === month;
-            } else if (dateFilterType === 'week' && selectedWeek) {
-                const taskDate = new Date(task.dueDate);
-                const weekStart = startOfDay(new Date(selectedWeek));
-                const weekEnd = endOfDay(addDays(weekStart, 6));
-                matchesDate = taskDate >= weekStart && taskDate <= weekEnd;
-            } else if (dateFilterType === 'day') {
-                const taskDate = new Date(task.dueDate);
-                let targetDate = new Date();
-                if (selectedDayType === 'yesterday') {
-                    targetDate = addDays(new Date(), -1);
-                } else if (selectedDayType === 'tomorrow') {
-                    targetDate = addDays(new Date(), 1);
-                } else if (selectedDayType === 'custom' && selectedCustomDay) {
-                    targetDate = selectedCustomDay;
-                }
-                matchesDate = differenceInCalendarDays(taskDate, targetDate) === 0;
-            }
-
-            return matchesStatus && matchesPriority && matchesAssigned && matchesSearch && matchesSmart && matchesDate;
+            return matchesStatus && matchesPriority && matchesAssignee(task) && matchesSearch && matchesSmart && matchesDateFilter(task);
         });
-    }, [allTasks, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter, dateFilterType, dateRange, selectedMonth, selectedWeek, selectedDayType, selectedCustomDay]);
+    }, [allTasks, statusFilter, priorityFilter, searchTerm, smartFilter, matchesAssignee, matchesDateFilter]);
 
     const calendarFilteredTasks = React.useMemo(() => {
         if (!allTasks) return [];
@@ -432,11 +459,53 @@ export default function TasksClient() {
         });
     }, [allTasks, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter]);
 
+    // The first ("current period") accordion adapts to the active date filter.
+    // All Time / Custom Range fall back to a monthly grouping.
+    const periodGrouping = React.useMemo<'day' | 'week' | 'month'>(() => {
+        if (dateFilterType === 'day') return 'day';
+        if (dateFilterType === 'week') return 'week';
+        return 'month';
+    }, [dateFilterType]);
+
+    const currentPeriodLabel = periodGrouping === 'day'
+        ? 'Today'
+        : periodGrouping === 'week'
+            ? 'This Week'
+            : 'This Month';
+
+    // Whether the selected period (after any arrow navigation) is the real-world
+    // current period. When false, the current-period accordion is hidden.
+    const isViewingCurrentPeriod = React.useMemo(() => {
+        if (dateFilterType === 'day') {
+            let target = new Date();
+            if (selectedDayType === 'yesterday') target = addDays(new Date(), -1);
+            else if (selectedDayType === 'tomorrow') target = addDays(new Date(), 1);
+            else if (selectedDayType === 'custom' && selectedCustomDay) target = selectedCustomDay;
+            return isToday(target);
+        }
+        if (dateFilterType === 'week') {
+            if (!selectedWeek) return true;
+            return selectedWeek === format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        }
+        if (dateFilterType === 'month') {
+            if (!selectedMonth) return true;
+            return selectedMonth === format(new Date(), 'yyyy-MM');
+        }
+        return true; // all / range have no period navigation
+    }, [dateFilterType, selectedDayType, selectedCustomDay, selectedWeek, selectedMonth]);
+
     const groupedListTasks = React.useMemo(() => {
         const overdue: Task[] = [];
-        const today: Task[] = [];
+        const current: Task[] = [];
         const upcoming: Task[] = [];
         const completed: Task[] = [];
+
+        const now = new Date();
+        const periodEnd = periodGrouping === 'day'
+            ? endOfDay(now)
+            : periodGrouping === 'week'
+                ? endOfWeek(now, { weekStartsOn: 1 })
+                : endOfMonth(now);
 
         filteredTasks.forEach(task => {
             if (task.status === 'done') {
@@ -445,29 +514,38 @@ export default function TasksClient() {
             }
 
             const dueDateObj = new Date(task.dueDate);
-            if (isToday(dueDateObj)) {
-                today.push(task);
-            } else if (isPast(dueDateObj)) {
+            if (differenceInCalendarDays(dueDateObj, now) < 0) {
+                // Past due (before today) is always Overdue, regardless of period.
                 overdue.push(task);
+            } else if (dueDateObj <= periodEnd) {
+                // Due today through the end of the current period.
+                current.push(task);
             } else {
                 upcoming.push(task);
             }
         });
 
-        return { overdue, today, upcoming, completed };
-    }, [filteredTasks]);
+        return { overdue, current, upcoming, completed };
+    }, [filteredTasks, periodGrouping]);
+
+    // Stat cards reflect the currently-selected date range (and assignee scope),
+    // independent of status/search/smart filters.
+    const statsScopedTasks = React.useMemo(() => {
+        if (!allTasks) return [];
+        return allTasks.filter(task => matchesAssignee(task) && matchesDateFilter(task));
+    }, [allTasks, matchesAssignee, matchesDateFilter]);
 
     const stats = React.useMemo(() => {
-        if (!allTasks) return { active: 0, resolved: 0, overdue: 0, efficiency: 0 };
-        const active = allTasks.filter(t => t.status !== 'done').length;
-        const resolved = allTasks.filter(t => t.status === 'done').length;
-        const overdue = allTasks.filter(t => {
+        const scoped = statsScopedTasks;
+        const active = scoped.filter(t => t.status !== 'done').length;
+        const resolved = scoped.filter(t => t.status === 'done').length;
+        const overdue = scoped.filter(t => {
             const date = new Date(t.dueDate);
             return isPast(date) && !isToday(date) && t.status !== 'done';
         }).length;
-        const efficiency = allTasks.length > 0 ? Math.round((resolved / allTasks.length) * 100) : 100;
+        const efficiency = scoped.length > 0 ? Math.round((resolved / scoped.length) * 100) : 100;
         return { active, resolved, overdue, efficiency };
-    }, [allTasks]);
+    }, [statsScopedTasks]);
 
     const handleUpdateAssignee = async (task: Task, userId: string) => {
         if (!currentUser) return;
@@ -887,39 +965,88 @@ export default function TasksClient() {
 
                         {/* Month Selector */}
                         {mounted && dateFilterType === 'month' && (
-                            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                <SelectTrigger className="h-10 w-[160px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
-                                    <SelectValue placeholder="Select Month" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-border bg-card text-foreground">
-                                    {monthOptions.map((opt) => (
-                                        <SelectItem key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="flex items-center gap-1.5">
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => navigateMonth(-1)}
+                                    aria-label="Previous month"
+                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                    <SelectTrigger className="h-10 w-[160px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                        <SelectValue placeholder="Select Month" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                        {monthOptions.map((opt) => (
+                                            <SelectItem key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => navigateMonth(1)}
+                                    aria-label="Next month"
+                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
                         )}
 
                         {/* Week Selector */}
                         {mounted && dateFilterType === 'week' && (
-                            <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-                                <SelectTrigger className="h-10 w-[240px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
-                                    <SelectValue placeholder="Select Week" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-border bg-card text-foreground">
-                                    {weekOptions.map((opt) => (
-                                        <SelectItem key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="flex items-center gap-1.5">
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => navigateWeek(-1)}
+                                    aria-label="Previous week"
+                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                                    <SelectTrigger className="h-10 w-[240px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
+                                        <SelectValue placeholder="Select Week" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border bg-card text-foreground">
+                                        {weekOptions.map((opt) => (
+                                            <SelectItem key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => navigateWeek(1)}
+                                    aria-label="Next week"
+                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
                         )}
 
                         {/* Day Selector */}
                         {mounted && dateFilterType === 'day' && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => navigateDay(-1)}
+                                    aria-label="Previous day"
+                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
                                 <Select value={selectedDayType} onValueChange={(val: any) => setSelectedDayType(val)}>
                                     <SelectTrigger className="h-10 w-[150px] rounded-xl bg-background border-border text-foreground font-semibold text-xs focus:ring-0 focus:ring-offset-0">
                                         <SelectValue placeholder="Select Day" />
@@ -933,12 +1060,21 @@ export default function TasksClient() {
                                 </Select>
 
                                 {selectedDayType === 'custom' && (
-                                    <DateTimePicker 
-                                        value={selectedCustomDay || undefined} 
-                                        onChange={(d) => setSelectedCustomDay(d || null)} 
+                                    <DateTimePicker
+                                        value={selectedCustomDay || undefined}
+                                        onChange={(d) => setSelectedCustomDay(d || null)}
                                         className="h-10 rounded-xl bg-background border border-border text-foreground font-semibold text-xs w-[180px]"
                                     />
                                 )}
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => navigateDay(1)}
+                                    aria-label="Next day"
+                                    className="h-10 w-10 rounded-xl bg-background border-border text-foreground hover:bg-muted/50 shrink-0"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
                             </div>
                         )}
 
@@ -1129,15 +1265,27 @@ export default function TasksClient() {
                         {/* Grouped Lists by Accordions */}
                         {(() => {
                             const categoriesConfig = [
-                                { id: 'today', label: "Today's Tasks", tasks: groupedListTasks.today, count: groupedListTasks.today.length },
+                                { id: 'current', label: currentPeriodLabel, tasks: groupedListTasks.current, count: groupedListTasks.current.length },
                                 { id: 'overdue', label: 'Overdue Tasks', tasks: groupedListTasks.overdue, count: groupedListTasks.overdue.length },
                                 { id: 'upcoming', label: 'Upcoming Tasks', tasks: groupedListTasks.upcoming, count: groupedListTasks.upcoming.length },
                                 { id: 'completed', label: 'Completed Archive', tasks: groupedListTasks.completed, count: groupedListTasks.completed.length },
                             ];
 
+                            const isPeriodFilter = dateFilterType === 'day' || dateFilterType === 'week' || dateFilterType === 'month';
+
                             return categoriesConfig.map(category => {
                                 const isExpanded = expandedSections[category.id];
-                                if (category.id === 'completed' && category.count === 0) return null;
+                                // The current-period card only makes sense when the selected
+                                // period is the real current day/week/month. Navigating the
+                                // arrows to another period hides it.
+                                if (category.id === 'current' && !isViewingCurrentPeriod) return null;
+                                // Under a narrow period filter, suppress empty Overdue/Upcoming
+                                // cards (they'd always be empty since the filter excludes
+                                // out-of-period tasks) to keep the view clean.
+                                if ((category.id === 'overdue' || category.id === 'upcoming') && category.count === 0 && isPeriodFilter) return null;
+                                // Always surface Completed under a period filter so users can
+                                // review resolved tasks for that period, even at zero.
+                                if (category.id === 'completed' && category.count === 0 && !isPeriodFilter) return null;
 
                                 return (
                                     <div key={category.id} className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">

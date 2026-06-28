@@ -3,7 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { FieldValue } from 'firebase-admin/firestore';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath as nextRevalidatePath } from 'next/cache';
 import type { Tag, TagCategory, TagAuditLog } from './types';
 import { logActivity } from './activity-logger';
 import { userHasTagPermission } from './tag-permissions';
@@ -23,6 +23,19 @@ import {
   TagNotFoundError,
   getUserFriendlyErrorMessage,
 } from './tag-errors';
+
+/**
+ * Safely executes revalidatePath by catching Next.js runtime invariant/missing-store errors.
+ * This ensures that cache revalidation errors (which occur when actions are executed in
+ * background workers, tests, or webhook triggers) do not fail database updates.
+ */
+function safeRevalidatePath(path: string) {
+  try {
+    nextRevalidatePath(path);
+  } catch (err: any) {
+    console.warn(`[CACHE] revalidatePath skipped for path "${path}" (${err.message || err})`);
+  }
+}
 
 /**
  * Helper function to log tag audit trail
@@ -156,7 +169,7 @@ export async function createTagAction(data: {
       userName: data.userName
     });
     
-    revalidatePath('/admin/contacts/tags');
+    safeRevalidatePath('/admin/contacts/tags');
     return { success: true, data: tag };
   } catch (error: any) {
     console.error('Create tag error:', error);
@@ -247,7 +260,7 @@ export async function updateTagAction(
       }
     });
     
-    revalidatePath('/admin/contacts/tags');
+    safeRevalidatePath('/admin/contacts/tags');
     return { success: true };
   } catch (error: any) {
     console.error('Update tag error:', error);
@@ -339,9 +352,9 @@ export async function deleteTagAction(
       metadata: { affectedCount: processedCount }
     });
     
-    revalidatePath('/admin/contacts/tags');
-    revalidatePath('/admin/entities');
-    revalidatePath('/admin/prospects');
+    safeRevalidatePath('/admin/contacts/tags');
+    safeRevalidatePath('/admin/entities');
+    safeRevalidatePath('/admin/prospects');
     return { success: true, affectedCount: processedCount };
   } catch (error: any) {
     console.error('Delete tag error:', error);
@@ -498,9 +511,9 @@ export async function mergeTagsAction(
       }
     });
     
-    revalidatePath('/admin/contacts/tags');
-    revalidatePath('/admin/entities');
-    revalidatePath('/admin/prospects');
+    safeRevalidatePath('/admin/contacts/tags');
+    safeRevalidatePath('/admin/entities');
+    safeRevalidatePath('/admin/prospects');
     return { success: true, affectedCount: contactsToUpdate.size };
   } catch (error: any) {
     console.error('Merge tags error:', error);
@@ -660,14 +673,39 @@ export async function applyTagsAction(
       // lifecycle — causing it to silently never fire.
       const resolvedEntityId =
         contactType === 'workspace_entity' ? (contactData.entityId || contactId) : contactId;
-      const resolvedWorkspaceId =
-        contactType === 'workspace_entity' ? (contactData.workspaceId || tag?.workspaceId) : tag?.workspaceId;
-      const resolvedOrganizationId =
-        contactType === 'workspace_entity' ? (contactData.organizationId || tag?.organizationId) : tag?.organizationId;
+
+      let resolvedWorkspaceId: string | undefined =
+        contactType === 'workspace_entity'
+          ? (contactData.workspaceId || tag?.workspaceId)
+          : tag?.workspaceId;
+
+      let resolvedOrganizationId: string | undefined =
+        contactType === 'workspace_entity'
+          ? (contactData.organizationId || tag?.organizationId)
+          : (contactData.organizationId || tag?.organizationId);
+
+      // For entity contactType (or if workspace_entity is missing its workspaceId),
+      // do a fallback lookup via workspace_entities to find the correct workspace.
+      if (!resolvedWorkspaceId && resolvedEntityId) {
+        try {
+          const weSnap = await adminDb
+            .collection('workspace_entities')
+            .where('entityId', '==', resolvedEntityId)
+            .limit(1)
+            .get();
+          if (!weSnap.empty) {
+            const weData = weSnap.docs[0].data();
+            resolvedWorkspaceId = weData.workspaceId;
+            if (!resolvedOrganizationId) resolvedOrganizationId = weData.organizationId;
+          }
+        } catch (lookupErr) {
+          console.error('[TAG_ADDED] workspace_entity fallback lookup failed:', lookupErr);
+        }
+      }
 
       if (resolvedWorkspaceId) {
         await logActivity({
-          organizationId: resolvedOrganizationId,
+          organizationId: resolvedOrganizationId || 'default',
           workspaceId: resolvedWorkspaceId,
           entityId: resolvedEntityId,
           entityType: contactType === 'workspace_entity' ? (contactData.entityType || 'institution') : contactType as any,
@@ -683,11 +721,13 @@ export async function applyTagsAction(
             appliedBy: userId,
           }
         });
+      } else {
+        console.warn(`[TAG_ADDED] Skipping logActivity for entity "${resolvedEntityId}" — could not resolve workspaceId. Tag: ${tagId}`);
       }
     }
 
-    revalidatePath(`/admin/${collection}`);
-    revalidatePath(`/admin/${collection}/${contactId}`);
+    safeRevalidatePath(`/admin/${collection}`);
+    safeRevalidatePath(`/admin/${collection}/${contactId}`);
     return { success: true };
   } catch (error: any) {
     console.error('Apply tags error:', error);
@@ -788,14 +828,38 @@ export async function removeTagsAction(
       // request lifecycle and the automation never fires.
       const resolvedEntityId =
         contactType === 'workspace_entity' ? (contactData.entityId || contactId) : contactId;
-      const resolvedWorkspaceId =
-        contactType === 'workspace_entity' ? (contactData.workspaceId || tag?.workspaceId) : tag?.workspaceId;
-      const resolvedOrganizationId =
-        contactType === 'workspace_entity' ? (contactData.organizationId || tag?.organizationId) : tag?.organizationId;
+
+      let resolvedWorkspaceId: string | undefined =
+        contactType === 'workspace_entity'
+          ? (contactData.workspaceId || tag?.workspaceId)
+          : tag?.workspaceId;
+
+      let resolvedOrganizationId: string | undefined =
+        contactType === 'workspace_entity'
+          ? (contactData.organizationId || tag?.organizationId)
+          : (contactData.organizationId || tag?.organizationId);
+
+      // For entity contactType (or missing workspaceId), fall back via workspace_entities.
+      if (!resolvedWorkspaceId && resolvedEntityId) {
+        try {
+          const weSnap = await adminDb
+            .collection('workspace_entities')
+            .where('entityId', '==', resolvedEntityId)
+            .limit(1)
+            .get();
+          if (!weSnap.empty) {
+            const weData = weSnap.docs[0].data();
+            resolvedWorkspaceId = weData.workspaceId;
+            if (!resolvedOrganizationId) resolvedOrganizationId = weData.organizationId;
+          }
+        } catch (lookupErr) {
+          console.error('[TAG_REMOVED] workspace_entity fallback lookup failed:', lookupErr);
+        }
+      }
 
       if (resolvedWorkspaceId) {
         await logActivity({
-          organizationId: resolvedOrganizationId,
+          organizationId: resolvedOrganizationId || 'default',
           workspaceId: resolvedWorkspaceId,
           entityId: resolvedEntityId,
           entityType: contactType === 'workspace_entity' ? (contactData.entityType || 'institution') : contactType as any,
@@ -811,11 +875,13 @@ export async function removeTagsAction(
             appliedBy: userId,
           }
         });
+      } else {
+        console.warn(`[TAG_REMOVED] Skipping logActivity for entity "${resolvedEntityId}" — could not resolve workspaceId. Tag: ${tagId}`);
       }
     }
 
-    revalidatePath(`/admin/${collection}`);
-    revalidatePath(`/admin/${collection}/${contactId}`);
+    safeRevalidatePath(`/admin/${collection}`);
+    safeRevalidatePath(`/admin/${collection}/${contactId}`);
     return { success: true };
   } catch (error: any) {
     console.error('Remove tags error:', error);
@@ -960,7 +1026,7 @@ export async function bulkApplyTagsAction(
       });
     }
 
-    revalidatePath(`/admin/${collection}`);
+    safeRevalidatePath(`/admin/${collection}`);
     return { success: true, processedCount, failedCount, errors, partialFailures };
   } catch (error: any) {
     console.error('Bulk apply tags error:', error);
@@ -1083,7 +1149,7 @@ export async function bulkRemoveTagsAction(
       });
     }
 
-    revalidatePath(`/admin/${collection}`);
+    safeRevalidatePath(`/admin/${collection}`);
     return { success: true, processedCount, failedCount, errors, partialFailures };
   } catch (error: any) {
     console.error('Bulk remove tags error:', error);
@@ -1372,7 +1438,7 @@ export async function bulkDeleteUnusedTagsAction(
       metadata: { bulkOperation: true, affectedCount: deletedCount },
     });
 
-    revalidatePath('/admin/contacts/tags');
+    safeRevalidatePath('/admin/contacts/tags');
     return { success: true, deletedCount };
   } catch (error: any) {
     console.error('bulkDeleteUnusedTagsAction error:', error);

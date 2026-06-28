@@ -44,8 +44,8 @@ export default function OrganizationsClient() {
     const router = useRouter();
     const { toast } = useToast();
     const { user } = useUser();
-    const { setActiveOrganization } = useTenant();
-    
+    const { setActiveOrganization, switchOrganizationAndWorkspace } = useTenant();
+
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     const [editingOrganization, setEditingOrganization] = React.useState<Organization | null>(null);
     const [deleteConfirmOrg, setDeleteConfirmOrg] = React.useState<Organization | null>(null);
@@ -55,10 +55,15 @@ export default function OrganizationsClient() {
     [firestore, user]);
     const { data: organizations, isLoading } = useCollection<Organization>(organizationsQuery);
 
-    const handleSelectOrganization = (orgId: string) => {
-        setActiveOrganization(orgId);
+    const handleSelectOrganization = (org: Organization) => {
+        if (org.defaultWorkspaceId) {
+            switchOrganizationAndWorkspace(org.id, org.defaultWorkspaceId);
+            router.push(`/admin?track=${org.defaultWorkspaceId}`);
+        } else {
+            setActiveOrganization(org.id);
+            router.push('/admin');
+        }
         toast({ title: 'Organization Selected' });
-        router.push('/admin');
     };
 
     const handleOpenEdit = (org?: Organization) => {
@@ -279,7 +284,7 @@ export default function OrganizationsClient() {
                                 </div>
                                 <div className="pt-2">
                                     <Button 
-                                        onClick={() => handleSelectOrganization(org.id)}
+                                        onClick={() => handleSelectOrganization(org)}
                                         className="w-full rounded-xl font-semibold transition-all gap-2 border-none text-white hover:brightness-95"
                                         style={{ backgroundColor: primaryColor }}
                                     >

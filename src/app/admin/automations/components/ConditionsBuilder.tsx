@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { MultiSelect } from '@/components/ui/multi-select';
 import type { ConditionGroup, ConditionItem } from '@/lib/automation-condition';
+import type { Pipeline } from '@/lib/types';
 
 // Grouped Condition Fields definition
 const CONDITION_FIELDS = [
@@ -215,7 +216,7 @@ export function ConditionsBuilder({
   accentColor = 'purple',
 }: ConditionsBuilderProps) {
   const firestore = useFirestore();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as { activeWorkspaceId: string; activeOrganizationId: string };
 
   // Real-time Firestore Queries
   const tagsQuery = useMemoFirebase(() => {
@@ -672,11 +673,13 @@ export function ConditionsBuilder({
                                   <SelectValue placeholder="Select pipeline..." />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
-                                  {allPipelines?.map((p: any) => (
-                                    <SelectItem key={p.id} value={p.id} className="text-[10px] font-bold">
-                                      {p.name}
-                                    </SelectItem>
-                                  ))}
+                                  {(allPipelines || [])
+                                    .filter((p: Pipeline) => !activeWorkspaceId || p.workspaceIds?.includes(activeWorkspaceId))
+                                    .map((p: Pipeline) => (
+                                      <SelectItem key={p.id} value={p.id} className="text-[10px] font-bold">
+                                        {p.name}
+                                      </SelectItem>
+                                    ))}
                                   {(!allPipelines || allPipelines.length === 0) && (
                                     <SelectItem value="none" disabled className="text-[10px]">No pipelines found</SelectItem>
                                   )}

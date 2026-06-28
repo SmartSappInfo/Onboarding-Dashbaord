@@ -9,6 +9,7 @@
  */
 
 import type { OrgBrandingData } from '../types';
+import { resolveOrgFooter } from '../services/org-footer-service';
 
 export interface StylePreviewOverrides {
   primaryColor?: string;
@@ -18,6 +19,9 @@ export interface StylePreviewOverrides {
   textColor?: string;
   cardBackgroundColor?: string;
   borderRadius?: string;
+  logoUrl?: string;
+  footerHtml?: string;
+  footerEnabled?: boolean;
 }
 
 /**
@@ -39,7 +43,7 @@ export function resolveBrandingPreview(
   const currentYear = new Date().getFullYear().toString();
 
   const orgName = data?.name ?? 'Your Organization';
-  const logo = data?.logoUrl ?? '';
+  const logo = overrides?.logoUrl ?? data?.logoUrl ?? '';
   const emailAddr = data?.email ?? 'contact@yourdomain.com';
   const phoneNum = data?.phone ?? '+1 (555) 000-0000';
   const addressStr = data?.address ?? '123 Main St, City, Country';
@@ -56,13 +60,25 @@ export function resolveBrandingPreview(
   const cardBgCol = overrides?.cardBackgroundColor ?? '#ffffff';
   const borderRad = overrides?.borderRadius ?? '16px';
 
-  // Footer placeholder — shows where {{org_footer}} will render at send time
-  const orgFooterPlaceholder = `
-<div style="margin: 0; padding: 24px 40px; background: #F8FAFC; border-top: 1px solid #E2E8F0; font-family: ${fontFam}, sans-serif; font-size: 11px; color: #94A3B8; text-align: center;">
-  <div style="display: inline-flex; align-items: center; gap: 6px; background: #EFF6FF; border: 1px dashed #93C5FD; border-radius: 8px; padding: 8px 14px; color: #3B82F6; font-size: 10px; font-weight: 600; letter-spacing: 0.5px;">
-    <span>✦</span> Org Footer — configured in Settings → Branding
-  </div>
-</div>`;
+  // Footer overrides resolution - renders actual style/org footer instead of static placeholder
+  const footerEnabled = overrides?.footerEnabled ?? data?.footerEnabled ?? true;
+  const footerHtmlVal = overrides?.footerHtml ?? data?.footerHtml;
+
+  const orgFooterPlaceholder = resolveOrgFooter(
+    footerHtmlVal,
+    footerEnabled !== false,
+    {
+      unsubscribe_copy: unsubCopy,
+      unsubscribe_link: '#preview',
+      org_name: orgName,
+      org_address: addressStr,
+      org_email: emailAddr,
+      org_phone: phoneNum,
+      org_website: webUrl,
+      current_year: currentYear,
+      brand_primary_color: primaryCol,
+    }
+  );
 
   let processed = html
     .replaceAll('{{org_name}}', orgName)

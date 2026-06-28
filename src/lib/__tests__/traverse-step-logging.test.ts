@@ -82,7 +82,7 @@ describe('Traverse Step Logging', () => {
       expect.objectContaining({
         nodeId: 'a1',
         nodeType: 'actionNode',
-        nodeLabel: 'Send Welcome Email',
+        nodeLabel: 'Send Welcome Email (Step #1)',
         status: 'success',
         metadata: { actionType: 'SEND_MESSAGE' },
       })
@@ -111,7 +111,7 @@ describe('Traverse Step Logging', () => {
 
     await expect(
       traverseNodes('t1', automation, context)
-    ).rejects.toThrow('Node [Send Webhook] failed: Webhook timeout');
+    ).rejects.toThrow('Node [Send Webhook (Step #1)] failed: Webhook timeout');
 
     expect(mockLogStep).toHaveBeenCalledWith(
       'run-1',

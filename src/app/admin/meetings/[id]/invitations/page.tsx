@@ -323,8 +323,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   // not from scanning the entity set.
   const [availableRoles, setAvailableRoles] = React.useState<{ key: string; label: string }[]>([]);
   React.useEffect(() => {
-    const scope = activeWorkspace?.contactScope as any;
-    if (!scope || !activeWorkspaceId) return;
+    if (!activeWorkspaceId) return;
+    const scope = (activeWorkspace?.contactScope || 'institution') as any;
     let cancelled = false;
     getEffectiveContactTypes(scope, activeOrganizationId, activeWorkspaceId)
       .then((types) => {

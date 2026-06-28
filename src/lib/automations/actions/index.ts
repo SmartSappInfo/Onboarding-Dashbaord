@@ -19,18 +19,28 @@ export async function processActionNode(
   node: { id?: string; data?: { actionType?: string; config?: Record<string, unknown> } },
   context: ExecutionContext
 ): Promise<any> {
-  const actionType = node.data?.actionType;
+  const rawActionType = node.data?.actionType;
   const config = node.data?.config || {};
-  if (!actionType) return;
+  if (!rawActionType) return;
 
+  const actionType = rawActionType.toUpperCase();
   const resolvedConfig = resolveConfigVariables(config, context.payload);
 
   switch (actionType) {
     case 'SEND_MESSAGE':
-      return await handleSendMessage(resolvedConfig, context, node.id);
+    case 'SEND_EMAIL':
+    case 'SEND_SMS':
+    case 'SEND_WHATSAPP': {
+      const channel = actionType === 'SEND_EMAIL' ? 'email' 
+        : actionType === 'SEND_SMS' ? 'sms' 
+        : actionType === 'SEND_WHATSAPP' ? 'whatsapp' 
+        : (resolvedConfig.channel || 'email');
+      const enrichedConfig = { ...resolvedConfig, channel };
+      return await handleSendMessage(enrichedConfig, context, node.id);
+    }
     case 'DIRECT_EMAIL':
     case 'DIRECT_SMS':
-      return await handleDirectMessage(actionType, resolvedConfig, context, node.id);
+      return await handleDirectMessage(actionType as 'DIRECT_EMAIL' | 'DIRECT_SMS', resolvedConfig, context, node.id);
     case 'SEND_NOTIFICATION_EMAIL':
     case 'SEND_NOTIFICATION_SMS':
     case 'SEND_NOTIFICATION_IN_APP':
@@ -56,6 +66,8 @@ export async function processActionNode(
       return await handleUpdateDealStage(resolvedConfig, context);
     case 'UPDATE_DEAL_VALUE':
       return await handleUpdateDealValue(resolvedConfig, context);
+    case 'UPDATE_DEAL_STATUS':
+      return await handleUpdateDealStatus(resolvedConfig, context);
     case 'CREATE_ENTITY':
       return await handleCreateEntity(resolvedConfig, context);
     case 'ADD_CONTACT_TO_ENTITY':

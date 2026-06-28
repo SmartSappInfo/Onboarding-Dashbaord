@@ -11,7 +11,8 @@ import {
     collection, 
     query, 
     orderBy,
-    onSnapshot 
+    onSnapshot,
+    deleteField
 } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import type { MessageStyle, MessageTemplate } from '@/lib/types';
@@ -54,6 +55,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { cn } from '@/lib/utils';
+import MediaSelectorTrigger from '@/app/admin/components/MediaSelectorTrigger';
 
 import { resolveBrandingPreview as resolveBrandingInHtml } from '@/lib/utils/resolve-branding-preview';
 
@@ -87,7 +90,7 @@ export default function TenantStyleEditorPage() {
     const [name, setName] = React.useState('');
     const [htmlWrapperInternal, setHtmlWrapperInternal] = React.useState(DEFAULT_HTML);
     const [htmlWrapperExternal, setHtmlWrapperExternal] = React.useState(DEFAULT_HTML);
-    const [activeWrapperTab, setActiveWrapperTab] = React.useState<'internal' | 'external'>('internal');
+    const [activeWrapperTab, setActiveWrapperTab] = React.useState<'internal' | 'external' | 'footer'>('internal');
     
     // Visual Override Fields
     const [primaryColor, setPrimaryColor] = React.useState('#3B5FFF');
@@ -97,6 +100,10 @@ export default function TenantStyleEditorPage() {
     const [textColor, setTextColor] = React.useState('#1e293b');
     const [cardBackgroundColor, setCardBackgroundColor] = React.useState('#ffffff');
     const [borderRadius, setBorderRadius] = React.useState('16px');
+
+    const [logoUrl, setLogoUrl] = React.useState('');
+    const [footerHtml, setFooterHtml] = React.useState<string | undefined>(undefined);
+    const [footerEnabled, setFooterEnabled] = React.useState<'inherit' | 'enabled' | 'disabled'>('inherit');
 
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>([]);
     const [loading, setLoading] = React.useState(!isNew);
@@ -175,6 +182,9 @@ export default function TenantStyleEditorPage() {
             setCardBackgroundColor('#ffffff');
             setBorderRadius('16px');
             setWorkspaceIds([activeWorkspaceId]);
+            setLogoUrl('');
+            setFooterHtml(undefined);
+            setFooterEnabled('inherit');
             setLoading(false);
             return;
         }
@@ -199,6 +209,13 @@ export default function TenantStyleEditorPage() {
                     setCardBackgroundColor(data.cardBackgroundColor ?? '#ffffff');
                     setBorderRadius(data.borderRadius ?? '16px');
                     setWorkspaceIds(data.workspaceIds || []);
+                    setLogoUrl(data.logoUrl ?? '');
+                    setFooterHtml(data.footerHtml ?? undefined);
+                    if (data.footerEnabled === undefined) {
+                        setFooterEnabled('inherit');
+                    } else {
+                        setFooterEnabled(data.footerEnabled ? 'enabled' : 'disabled');
+                    }
                 } else {
                     toast({ variant: 'destructive', title: 'Error', description: 'Style blueprint not found.' });
                     router.push('/admin/messaging/styles');
@@ -247,7 +264,7 @@ export default function TenantStyleEditorPage() {
 
         setSaving(true);
         try {
-            const dataToSave = {
+            const dataToSave: Record<string, unknown> = {
                 name: name.trim(),
                 htmlWrapper: htmlWrapperExternal.trim(), // fallback
                 htmlWrapperInternal: htmlWrapperInternal.trim(),
@@ -264,6 +281,26 @@ export default function TenantStyleEditorPage() {
                 scope: 'organization',
                 updatedAt: new Date().toISOString()
             };
+
+            if (logoUrl.trim()) {
+                dataToSave.logoUrl = logoUrl.trim();
+            } else if (!isNew) {
+                dataToSave.logoUrl = deleteField();
+            }
+
+            if (footerHtml && footerHtml.trim()) {
+                dataToSave.footerHtml = footerHtml.trim();
+            } else if (!isNew) {
+                dataToSave.footerHtml = deleteField();
+            }
+
+            if (footerEnabled === 'enabled') {
+                dataToSave.footerEnabled = true;
+            } else if (footerEnabled === 'disabled') {
+                dataToSave.footerEnabled = false;
+            } else if (!isNew) {
+                dataToSave.footerEnabled = deleteField();
+            }
 
             if (isNew) {
                 await addDoc(collection(firestore, 'message_styles'), {
@@ -325,8 +362,10 @@ export default function TenantStyleEditorPage() {
         const tag = `{{${key}}}`;
         if (activeWrapperTab === 'internal') {
             setHtmlWrapperInternal(prev => prev + tag);
-        } else {
+        } else if (activeWrapperTab === 'external') {
             setHtmlWrapperExternal(prev => prev + tag);
+        } else if (activeWrapperTab === 'footer') {
+            setFooterHtml(prev => (prev ?? '') + tag);
         }
     };
 
@@ -431,6 +470,29 @@ export default function TenantStyleEditorPage() {
                                     </Label>
                                     <MultiSelect options={workspaceOptions} value={workspaceIds} onChange={setWorkspaceIds} className="rounded-xl" />
                                 </div>
+                                <div className="space-y-2 pt-4 border-t">
+                                    <Label className="text-xs font-bold text-muted-foreground ml-1">Style Logo Override</Label>
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex-1">
+                                            <MediaSelectorTrigger 
+                                                value={logoUrl}
+                                                onSelect={setLogoUrl}
+                                                label="Logo Override"
+                                                subLabel={logoUrl ? "Custom logo active for this style wrapper." : "No override. Inheriting default logo."}
+                                                workspaceId={activeWorkspaceId || 'global'}
+                                                previewClassName="h-16 w-16 shadow-md ring-2 ring-background hover:ring-primary/20 transition-all duration-300 rounded-xl"
+                                            />
+                                        </div>
+                                        {!logoUrl && orgData?.logoUrl && (
+                                            <div className="flex flex-col text-left opacity-60 shrink-0">
+                                                <span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Inherited Default</span>
+                                                <div className="h-16 w-16 rounded-xl border bg-muted/20 flex items-center justify-center overflow-hidden">
+                                                    <img src={orgData.logoUrl} alt="Inherited Logo" className="h-full w-full object-contain p-1" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -492,13 +554,16 @@ export default function TenantStyleEditorPage() {
 
                 {/* Right Main Content Area */}
                 <div className="lg:col-span-8 xl:col-span-9 space-y-6">
-                    <Tabs value={activeWrapperTab} onValueChange={(val) => setActiveWrapperTab(val as 'internal' | 'external')} className="space-y-4">
+                    <Tabs value={activeWrapperTab} onValueChange={(val) => setActiveWrapperTab(val as 'internal' | 'external' | 'footer')} className="space-y-4">
                         <TabsList className="bg-background border p-1 h-11 rounded-2xl shadow-sm w-fit">
                             <TabsTrigger value="internal" className="text-xs font-semibold px-6 rounded-xl gap-2">
                                 🏢 Internal Wrapper (Admin Comms)
                             </TabsTrigger>
                             <TabsTrigger value="external" className="text-xs font-semibold px-6 rounded-xl gap-2">
                                 🌍 External Wrapper (Client Comms)
+                            </TabsTrigger>
+                            <TabsTrigger value="footer" className="text-xs font-semibold px-6 rounded-xl gap-2">
+                                ✉️ Style Footer
                             </TabsTrigger>
                         </TabsList>
                         
@@ -528,6 +593,79 @@ export default function TenantStyleEditorPage() {
                                         placeholder="Write external HTML wrapper template here..."
                                         className="min-h-[420px] font-mono text-xs bg-slate-950 text-blue-400 p-6 rounded-[1.5rem] border-slate-800 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none" 
                                     />
+                                </TabsContent>
+                                <TabsContent value="footer" className="mt-0 space-y-6 focus-visible:ring-0 text-left">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground">Footer Display Policy</Label>
+                                            <div className="flex flex-wrap gap-2 bg-muted/30 p-1 rounded-xl w-fit border">
+                                                {[
+                                                    { value: 'inherit', label: 'Inherit Default' },
+                                                    { value: 'enabled', label: 'Always Enabled' },
+                                                    { value: 'disabled', label: 'Always Disabled' }
+                                                ].map((option) => (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        onClick={() => setFooterEnabled(option.value as 'inherit' | 'enabled' | 'disabled')}
+                                                        className={cn(
+                                                            "px-4 py-2 rounded-lg text-xs font-semibold transition-all",
+                                                            footerEnabled === option.value
+                                                                ? "bg-background text-foreground shadow-sm border border-border"
+                                                                : "text-muted-foreground hover:text-foreground"
+                                                        )}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Control whether this specific style wrapper forces a footer, forces no footer, or inherits the default organization settings.
+                                            </p>
+                                        </div>
+
+                                        {footerEnabled !== 'disabled' && (
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center px-1">
+                                                    <Label className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                                                        <Code className="h-3.5 w-3.5 text-primary" /> Custom Footer HTML Override
+                                                    </Label>
+                                                    {footerEnabled === 'inherit' && (
+                                                        <Badge variant="outline" className="text-[8px] font-bold uppercase h-5 px-2 bg-muted/50 border-none text-muted-foreground">
+                                                            Inheriting Default HTML
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <Textarea 
+                                                    value={footerHtml ?? ''} 
+                                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFooterHtml(e.target.value || undefined)} 
+                                                    placeholder={orgData?.footerHtml || "Write custom footer HTML overrides here..."}
+                                                    className="min-h-[200px] font-mono text-xs bg-slate-950 text-blue-400 p-6 rounded-[1.5rem] border-slate-800 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none" 
+                                                />
+                                                <p className="text-[10px] text-muted-foreground leading-normal">
+                                                    Specify custom HTML to override the footer body for templates using this style. Leave empty to use the default organization footer.
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Default reference tip */}
+                                        <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 text-xs space-y-1.5">
+                                            <p className="font-bold text-primary flex items-center gap-1.5">
+                                                <AlertCircle className="h-3.5 w-3.5" /> Organization Default Reference
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                                Status: <span className="font-semibold text-foreground">{orgData?.footerEnabled !== false ? 'Enabled' : 'Disabled'}</span>
+                                            </p>
+                                            {orgData?.footerHtml && (
+                                                <div className="mt-2">
+                                                    <span className="text-[10px] text-muted-foreground font-semibold">Default HTML:</span>
+                                                    <pre className="mt-1 p-2 bg-muted/40 rounded-lg text-[9px] font-mono overflow-x-auto max-h-24 leading-normal">
+                                                        {orgData.footerHtml}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </TabsContent>
                                 
                                 {/* Org Variables Reference Panel */}
@@ -587,7 +725,10 @@ export default function TenantStyleEditorPage() {
                                                 backgroundColor,
                                                 textColor,
                                                 cardBackgroundColor,
-                                                borderRadius
+                                                borderRadius,
+                                                logoUrl,
+                                                footerHtml,
+                                                footerEnabled: footerEnabled === 'inherit' ? undefined : (footerEnabled === 'enabled')
                                             }
                                         ).replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Content Block</p><p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">This block represents where template body is dynamically injected.</p></div>')}
                                         className="w-full h-full border-none bg-white"

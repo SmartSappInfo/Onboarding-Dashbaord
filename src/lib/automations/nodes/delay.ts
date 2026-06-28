@@ -15,11 +15,24 @@ export async function handleDelayNode(
   else if (unit === 'Days') executeAt.setDate(executeAt.getDate() + (value || 1));
   else if (unit === 'Weeks') executeAt.setDate(executeAt.getDate() + (value || 1) * 7);
 
+  // Persist the context-only fields (organizationId, entityType, workspaceId,
+  // entityId) INTO the payload. These live on the ExecutionContext, not in
+  // payload, so without this they are lost when the run is parked here and the
+  // resumed context is degraded — most importantly organizationId, which scopes
+  // sender + provider-key resolution for any downstream message/notification step.
+  const persistedPayload = {
+    ...context.payload,
+    ...(context.workspaceId ? { workspaceId: context.workspaceId } : {}),
+    ...(context.organizationId ? { organizationId: context.organizationId } : {}),
+    ...(context.entityId ? { entityId: context.entityId } : {}),
+    ...(context.entityType ? { entityType: context.entityType } : {}),
+  };
+
   await adminDb.collection('automation_jobs').add({
     automationId: context.automationId,
     runId: context.runId,
     targetNodeId: node.id,
-    payload: context.payload,
+    payload: persistedPayload,
     executeAt: executeAt.toISOString(),
     status: 'pending',
     createdAt: now.toISOString(),

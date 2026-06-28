@@ -68,14 +68,16 @@ interface AutomationActivityLogProps {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
-function getRunDisplayName(run: AutomationRun): string {
+function getRunDisplayName(run: AutomationRun, entityNames?: Record<string, string>): string {
   const td = run.triggerData || {};
-  return (
+  const name =
     (td.entityName as string) ||
     (td.displayName as string) ||
-    (td.name as string) ||
-    (run.entityId ? `Entity ${run.entityId.substring(0, 8)}…` : 'Unknown')
-  );
+    (td.name as string);
+
+  if (name) return name;
+  if (run.entityId && entityNames?.[run.entityId]) return entityNames[run.entityId];
+  return run.entityId ? `Entity ${run.entityId.substring(0, 8)}…` : 'Unknown';
 }
 
 function getRunEmail(run: AutomationRun): string {
@@ -137,6 +139,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   const { toast } = useToast();
   const confirm = useConfirm();
 
+  const [entityNames, setEntityNames] = React.useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('ALL');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [stepFilter, setStepFilter] = React.useState<string>('ALL');
@@ -171,6 +174,56 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
       }
     }
   }, [runs, selectedRun]);
+
+  // Dynamically resolve entity names on the client if they are not in triggerData
+  React.useEffect(() => {
+    if (!runs || !firestore) return;
+
+    const missingIds = Array.from(new Set(
+      runs
+        .filter(run => {
+          if (!run.entityId) return false;
+          if (entityNames[run.entityId]) return false;
+          const td = run.triggerData || {};
+          const hasName = td.entityName || td.displayName || td.name;
+          return !hasName;
+        })
+        .map(run => run.entityId!)
+    ));
+
+    if (missingIds.length === 0) return;
+
+    let cancelled = false;
+
+    async function fetchNames() {
+      const updates: Record<string, string> = {};
+      await Promise.all(
+        missingIds.map(async (id) => {
+          try {
+            let snap = await getDoc(doc(firestore, 'workspace_entities', id));
+            if (!snap.exists()) {
+              snap = await getDoc(doc(firestore, 'schools', id));
+            }
+            if (snap.exists()) {
+              const name = snap.data()?.name as string;
+              if (name) {
+                updates[id] = name;
+              }
+            }
+          } catch (e) {
+            console.error('Failed to fetch entity name for', id, e);
+          }
+        })
+      );
+
+      if (!cancelled && Object.keys(updates).length > 0) {
+        setEntityNames(prev => ({ ...prev, ...updates }));
+      }
+    }
+
+    fetchNames();
+    return () => { cancelled = true; };
+  }, [runs, entityNames, firestore]);
 
   // Resolve contact email/phone for the drill-down info cards.
   // triggerData often lacks these for entity-triggered runs, so we
@@ -258,7 +311,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
       // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const name = getRunDisplayName(run).toLowerCase();
+        const name = getRunDisplayName(run, entityNames).toLowerCase();
         const email = getRunEmail(run).toLowerCase();
         const phone = getRunPhone(run).toLowerCase();
         const entityId = (run.entityId || '').toLowerCase();
@@ -269,7 +322,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
 
       return true;
     });
-  }, [runs, statusFilter, stepFilter, searchQuery]);
+  }, [runs, statusFilter, stepFilter, searchQuery, entityNames]);
 
   // Stats
   const stats = React.useMemo(() => {
@@ -298,7 +351,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         case 'restart': {
           const confirmed = await confirm({
             title: 'Restart automation?',
-            description: `This will create a new run for "${getRunDisplayName(run)}" from the trigger node.`,
+            description: `This will create a new run for "${getRunDisplayName(run, entityNames)}" from the trigger node.`,
             confirmText: 'Restart',
             variant: 'default',
           });
@@ -315,7 +368,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         case 'forceEnd': {
           const confirmed = await confirm({
             title: 'Force end automation?',
-            description: `This will immediately terminate the run for "${getRunDisplayName(run)}" and remove all pending jobs.`,
+            description: `This will immediately terminate the run for "${getRunDisplayName(run, entityNames)}" and remove all pending jobs.`,
             confirmText: 'End Now',
             variant: 'destructive',
           });
@@ -380,7 +433,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold">
-                  {isWebhook ? 'Webhook Request' : getRunDisplayName(selectedRun)}
+                  {isWebhook ? 'Webhook Request' : getRunDisplayName(selectedRun, entityNames)}
                 </h3>
                 <Badge className={cn('h-5 text-[8px] font-bold uppercase text-white', statusCfg.color)}>
                   {statusCfg.label}
@@ -480,7 +533,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
             {/* Entity Info Card */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: 'Entity', value: isWebhook ? 'Webhook' : getRunDisplayName(selectedRun) },
+                { label: 'Entity', value: isWebhook ? 'Webhook' : getRunDisplayName(selectedRun, entityNames) },
                 { label: 'Email', value: resolvedContact?.email || getRunEmail(selectedRun) || '—' },
                 { label: 'Phone', value: resolvedContact?.phone || getRunPhone(selectedRun) || '—' },
                 { label: 'Duration', value: getDuration(selectedRun) },
@@ -719,7 +772,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                       <div className="flex items-center gap-2">
                         {isWebhook && <Globe size={12} className="text-primary shrink-0" />}
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold truncate">{isWebhook ? 'Webhook Request' : getRunDisplayName(run)}</p>
+                          <p className="text-xs font-semibold truncate">{isWebhook ? 'Webhook Request' : getRunDisplayName(run, entityNames)}</p>
                           {!isWebhook && getRunEmail(run) && (
                             <p className="text-[9px] text-muted-foreground truncate">{getRunEmail(run)}</p>
                           )}

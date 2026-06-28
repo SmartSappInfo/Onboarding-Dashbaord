@@ -101,9 +101,30 @@ const UpdateEntityConfigPanel = React.memo(function UpdateEntityConfigPanel({
     { key: 'primaryEmail', label: 'Primary Email', type: 'text' },
     { key: 'primaryPhone', label: 'Primary Phone', type: 'text' },
     { key: 'assignedTo', label: 'Account Manager', type: 'select', options: (users || []).map(u => ({ value: u.id, label: u.name })) },
-    { key: 'pipelineId', label: 'Pipeline', type: 'select', options: (pipelines || []).map(p => ({ value: p.id, label: p.name })) },
-    { key: 'stageId', label: 'Pipeline Stage', type: 'select', options: (stages || []).filter(s => !config.pipelineId || s.pipelineId === config.pipelineId).map(s => ({ value: s.id, label: `${s.name} (${(pipelines || []).find(p => p.id === s.pipelineId)?.name || 'Default'})` })) }
-  ], [users, pipelines, stages, config.pipelineId]);
+    { 
+      key: 'pipelineId', 
+      label: 'Pipeline', 
+      type: 'select', 
+      options: (pipelines || [])
+        .filter(p => !activeWorkspace?.id || p.workspaceIds?.includes(activeWorkspace.id))
+        .map(p => ({ value: p.id, label: p.name })) 
+    },
+    { 
+      key: 'stageId', 
+      label: 'Pipeline Stage', 
+      type: 'select', 
+      options: (stages || [])
+        .filter(s => {
+          const allowedPipelines = (pipelines || []).filter(p => !activeWorkspace?.id || p.workspaceIds?.includes(activeWorkspace.id));
+          const isAllowedPipeline = allowedPipelines.some(p => p.id === s.pipelineId);
+          return isAllowedPipeline && (!config.pipelineId || s.pipelineId === config.pipelineId);
+        })
+        .map(s => ({ 
+          value: s.id, 
+          label: `${s.name} (${(pipelines || []).find(p => p.id === s.pipelineId)?.name || 'Default'})` 
+        })) 
+    }
+  ], [users, pipelines, stages, config.pipelineId, activeWorkspace]);
 
   const filteredAppFields = React.useMemo(() => {
     if (!fieldGroups || !appFields) return [];
@@ -679,6 +700,7 @@ interface AutomationConfig {
   priority?: string;
   dueOffsetDays?: number;
   assignedTo?: string;
+  workspaceId?: string;
   pipelineId?: string;
   stageId?: string;
   value?: string | number;
@@ -731,7 +753,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   allTags = [],
 }: ActionConfigPanelProps) {
   const { toast } = useToast();
-  const { activeWorkspace } = useWorkspace() as { activeWorkspace?: Workspace };
+  const { activeWorkspace, accessibleWorkspaces } = useWorkspace() as { activeWorkspace?: Workspace; accessibleWorkspaces?: Workspace[] };
   const { campaigns = [] } = useCallCampaigns((activeWorkspace as Workspace | undefined)?.id);
   const activeCamps = campaigns.filter((c: { status?: string }) => c.status !== 'archived');
 
@@ -762,6 +784,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   const updateConfig = (updates: Partial<AutomationConfig>) => {
     onUpdateConfig(updates);
   };
+
 
   return (
     <div className="w-full">
@@ -1392,15 +1415,46 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             </div>
           </div>
           <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Workspace</Label>
+            <Select 
+              value={config.workspaceId || activeWorkspace?.id || ''} 
+              onValueChange={(val) => updateConfig({ workspaceId: val, pipelineId: '', stageId: '' })}
+            >
+              <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                <SelectValue placeholder="Select Workspace..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                {(accessibleWorkspaces || [])
+                  .filter(w => {
+                    const currentScope = activeWorkspace?.contactScope || 'person';
+                    const workspaceScope = w.contactScope || 'person';
+                    return workspaceScope === currentScope;
+                  })
+                  .map(w => (
+                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Pipeline</Label>
-            <Select value={config.pipelineId || ''} onValueChange={(val) => updateConfig({ pipelineId: val, stageId: '' })}>
+            <Select 
+              value={config.pipelineId || ''} 
+              onValueChange={(val) => updateConfig({ pipelineId: val, stageId: '' })}
+              disabled={!(config.workspaceId || activeWorkspace?.id)}
+            >
               <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
                 <SelectValue placeholder="Select Pipeline..." />
               </SelectTrigger>
               <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
-                {pipelines?.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
+                {pipelines
+                  ?.filter(p => {
+                    const selWsId = config.workspaceId || activeWorkspace?.id;
+                    return !selWsId || p.workspaceIds?.includes(selWsId);
+                  })
+                  .map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -1423,34 +1477,73 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
       {actionType === 'UPDATE_DEAL_STAGE' ? (
         <div className="space-y-6">
           <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Workspace</Label>
+            <Select 
+              value={config.workspaceId || activeWorkspace?.id || ''} 
+              onValueChange={(val) => updateConfig({ workspaceId: val, pipelineId: '', stageId: '' })}
+            >
+              <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
+                <SelectValue placeholder="Select Workspace..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                {(accessibleWorkspaces || [])
+                  .filter(w => {
+                    const currentScope = activeWorkspace?.contactScope || 'person';
+                    const workspaceScope = w.contactScope || 'person';
+                    return workspaceScope === currentScope;
+                  })
+                  .map(w => (
+                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Filter by Pipeline</Label>
             <Select
               value={config.pipelineId && config.pipelineId.length > 0 ? config.pipelineId : '__all__'}
               onValueChange={(val) => updateConfig({ pipelineId: val === '__all__' ? '' : val, stageId: '' })}
+              disabled={!(config.workspaceId || activeWorkspace?.id)}
             >
               <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
                 <SelectValue placeholder="All Pipelines..." />
               </SelectTrigger>
               <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
                 <SelectItem value="__all__">All Pipelines</SelectItem>
-                {pipelines?.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
+                {pipelines
+                  ?.filter(p => {
+                    const selWsId = config.workspaceId || activeWorkspace?.id;
+                    return !selWsId || p.workspaceIds?.includes(selWsId);
+                  })
+                  .map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Stage</Label>
-            <Select value={config.stageId || ''} onValueChange={(val) => updateConfig({ stageId: val })}>
+            <Select 
+              value={config.stageId || ''} 
+              onValueChange={(val) => updateConfig({ stageId: val })}
+              disabled={!(config.workspaceId || activeWorkspace?.id)}
+            >
               <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
                 <SelectValue placeholder="Select stage to move to..." />
               </SelectTrigger>
               <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
-                {stages?.filter(s => !config.pipelineId || s.pipelineId === config.pipelineId).map(s => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} ({pipelines?.find(p => p.id === s.pipelineId)?.name || 'Default Pipeline'})
-                  </SelectItem>
-                ))}
+                {stages
+                  ?.filter(s => {
+                    const selWsId = config.workspaceId || activeWorkspace?.id;
+                    const allowedPipelines = pipelines?.filter(p => !selWsId || p.workspaceIds?.includes(selWsId)) || [];
+                    const isAllowedPipeline = allowedPipelines.some(p => p.id === s.pipelineId);
+                    return isAllowedPipeline && (!config.pipelineId || s.pipelineId === config.pipelineId);
+                  })
+                  .map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} ({pipelines?.find(p => p.id === s.pipelineId)?.name || 'Default Pipeline'})
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

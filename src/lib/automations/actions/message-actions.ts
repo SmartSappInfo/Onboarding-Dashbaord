@@ -46,11 +46,16 @@ export async function handleSendMessage(
           recipients.add(String(triggerContactVal));
         } else {
           const primary = entityContacts.find(ec => ec.isPrimary);
-          const primaryVal = usePhone ?primary?.phone : primary?.email;
+          const primaryVal = usePhone ? primary?.phone : primary?.email;
           if (primaryVal) {
             recipients.add(primaryVal);
-          } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
-            recipients.add(contact.contacts[0].email);
+          } else {
+            const fallbackVal = usePhone
+              ? (contact?.primaryContactPhone || contact?.contacts?.[0]?.phone)
+              : (contact?.primaryContactEmail || contact?.contacts?.[0]?.email);
+            if (fallbackVal) {
+              recipients.add(String(fallbackVal));
+            }
           }
         }
       }
@@ -58,11 +63,16 @@ export async function handleSendMessage(
       // 2. Primary Contact
       if (targets.includes('primary')) {
         const primary = entityContacts.find(ec => ec.isPrimary);
-        const primaryVal = usePhone ?primary?.phone : primary?.email;
+        const primaryVal = usePhone ? primary?.phone : primary?.email;
         if (primaryVal) {
           recipients.add(primaryVal);
-        } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
-          recipients.add(contact.contacts[0].email);
+        } else {
+          const fallbackVal = usePhone
+            ? (contact?.primaryContactPhone || contact?.contacts?.[0]?.phone)
+            : (contact?.primaryContactEmail || contact?.contacts?.[0]?.email);
+          if (fallbackVal) {
+            recipients.add(String(fallbackVal));
+          }
         }
       }
 
@@ -166,7 +176,7 @@ export async function handleSendMessage(
         resolutionCtx
       );
 
-      await sendMessage({
+      const result = await sendMessage({
         templateId: (config.templateId as string) || 'automation-generated',
         senderProfileId: (config.senderProfileId as string) || 'default',
         organizationId: organizationId || context.organizationId,
@@ -184,8 +194,11 @@ export async function handleSendMessage(
         ...(resendOverride?.previewText ? { previewText: resendOverride.previewText } : {}),
         ...(resendOverride ? { isResend: resendOverride.isResend, resendNumber: resendOverride.resendNumber } : {}),
       });
+      if (!result.success) {
+        throw new Error(result.error || 'Template message sending failed.');
+      }
     } else {
-      await sendMessage({
+      const result = await sendMessage({
         templateId: config.templateId as string,
         senderProfileId: (config.senderProfileId as string) || 'default',
         organizationId: context.organizationId,
@@ -200,6 +213,9 @@ export async function handleSendMessage(
         ...(resendOverride?.previewText ? { previewText: resendOverride.previewText } : {}),
         ...(resendOverride ? { isResend: resendOverride.isResend, resendNumber: resendOverride.resendNumber } : {}),
       });
+      if (!result.success) {
+        throw new Error(result.error || 'Template message sending failed.');
+      }
     }
   }
 }
@@ -234,8 +250,13 @@ export async function handleDirectMessage(
           const primaryVal = usePhone ? primary?.phone : primary?.email;
           if (primaryVal) {
             recipients.add(primaryVal);
-          } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
-            recipients.add(contact.contacts[0].email);
+          } else {
+            const fallbackVal = usePhone
+              ? (contact?.primaryContactPhone || contact?.contacts?.[0]?.phone)
+              : (contact?.primaryContactEmail || contact?.contacts?.[0]?.email);
+            if (fallbackVal) {
+              recipients.add(String(fallbackVal));
+            }
           }
         }
       }
@@ -246,8 +267,13 @@ export async function handleDirectMessage(
         const primaryVal = usePhone ? primary?.phone : primary?.email;
         if (primaryVal) {
           recipients.add(primaryVal);
-        } else if (channel === 'email' && contact?.contacts?.[0]?.email) {
-          recipients.add(contact.contacts[0].email);
+        } else {
+          const fallbackVal = usePhone
+            ? (contact?.primaryContactPhone || contact?.contacts?.[0]?.phone)
+            : (contact?.primaryContactEmail || contact?.contacts?.[0]?.email);
+          if (fallbackVal) {
+            recipients.add(String(fallbackVal));
+          }
         }
       }
 
@@ -412,6 +438,7 @@ export async function handleDirectMessage(
             recipient,
             error: result.error || 'Failed raw send'
           });
+          throw new Error(result.error || 'Direct message sending failed.');
         }
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);
@@ -425,6 +452,7 @@ export async function handleDirectMessage(
           recipient,
           error: errorMsg
         });
+        throw err;
       }
     })
   );

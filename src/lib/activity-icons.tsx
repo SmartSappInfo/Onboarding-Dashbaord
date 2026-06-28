@@ -44,7 +44,8 @@ export const getActivityIcon = (type: Activity['type']): React.ElementType => {
     contact_added: UserCheck,
     contact_updated: UserCog,
     contact_removed: UserMinus,
-    campaign_event: Megaphone
+    campaign_event: Megaphone,
+    automation_entered: Workflow
   };
   return iconMap[type] || Bot;
 };

@@ -41,6 +41,7 @@ export default function ActivitiesClient() {
         { value: 'school_assigned', label: 'Ownership Changes' },
         { value: 'meeting_created', label: 'Meetings Scheduled' },
         { value: 'pipeline_stage_changed', label: 'Workflow Progression' },
+        { value: 'automation_entered', label: 'Automation Enrollments' },
         { value: 'notification_sent', label: 'Messaging Events' },
         { value: 'pdf_form_submitted', label: 'Doc Submissions' },
         { value: 'pdf_status_changed', label: 'Doc Status' },

@@ -86,6 +86,22 @@ describe('validateAutomationBlueprint', () => {
     ).rejects.toThrow(/note content/i);
   });
 
+  it('includes step number reference in validation error message', async () => {
+    await expect(
+      validateAutomationBlueprint({
+        triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+        nodes: [
+          {
+            id: 'a1',
+            type: 'actionNode',
+            position: { x: 100, y: 150 },
+            data: { label: 'My Note Step', actionType: 'ADD_NOTE', config: {} },
+          },
+        ],
+      })
+    ).rejects.toThrow(/Add note in "My Note Step \(Step #1\)" requires note content/i);
+  });
+
   it('rejects condition node without operator', async () => {
     await expect(
       validateAutomationBlueprint({
@@ -232,6 +248,140 @@ describe('validateAutomationBlueprint', () => {
           ],
         })
       ).rejects.toThrow(/not active/i);
+    });
+  });
+
+  describe('DIRECT_EMAIL and DIRECT_SMS validation', () => {
+    it('passes DIRECT_EMAIL with subject, body, and recipientTargets, no templateId', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Direct Email',
+                actionType: 'DIRECT_EMAIL',
+                config: {
+                  recipientTargets: ['triggering'],
+                  directSubject: 'Hello World',
+                  directBody: 'This is a direct message body.',
+                },
+              },
+            },
+          ],
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    it('rejects DIRECT_EMAIL with missing subject', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Direct Email',
+                actionType: 'DIRECT_EMAIL',
+                config: {
+                  recipientTargets: ['triggering'],
+                  directBody: 'This is a direct message body.',
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/must specify a subject line/i);
+    });
+
+    it('rejects DIRECT_EMAIL with missing body', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Direct Email',
+                actionType: 'DIRECT_EMAIL',
+                config: {
+                  recipientTargets: ['triggering'],
+                  directSubject: 'Subject',
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/must specify a message body/i);
+    });
+
+    it('passes DIRECT_SMS with body and recipientTargets, no templateId', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Direct SMS',
+                actionType: 'DIRECT_SMS',
+                config: {
+                  recipientTargets: ['triggering'],
+                  directBody: 'This is a direct SMS text.',
+                },
+              },
+            },
+          ],
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    it('rejects DIRECT_SMS with missing body', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Direct SMS',
+                actionType: 'DIRECT_SMS',
+                config: {
+                  recipientTargets: ['triggering'],
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/must specify a message body/i);
+    });
+
+    it('rejects DIRECT_SMS with missing recipient targets', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Direct SMS',
+                actionType: 'DIRECT_SMS',
+                config: {
+                  directBody: 'Text body',
+                  recipientTargets: [],
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/must select at least one recipient target/i);
     });
   });
 });

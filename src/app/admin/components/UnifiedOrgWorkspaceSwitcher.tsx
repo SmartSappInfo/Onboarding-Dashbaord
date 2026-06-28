@@ -46,11 +46,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { useSidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { ContactScope } from '@/lib/types';
-import { 
-    getPermissionForRoute, 
-    canAccessRoute, 
-    getAccessibleRoutes, 
-    getRouteHref 
+import {
+    getPermissionForRoute,
+    canAccessRoute,
+    getAccessibleRoutes,
+    getRouteHref,
+    getFeatureRootPath,
 } from '@/lib/route-permissions';
 
 interface UnifiedOrgWorkspaceSwitcherProps {
@@ -125,12 +126,18 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
      * in the target workspace. If not, show a permission alert with alternatives.
      */
     const handleWorkspaceSwitch = React.useCallback((targetWorkspaceId: string, targetOrgId?: string) => {
+        // Org change always goes to dashboard; workspace-only change goes to feature list root
+        const destinationOnSuccess = targetOrgId
+            ? `/admin?track=${targetWorkspaceId}`
+            : `${getFeatureRootPath(pathname)}?track=${targetWorkspaceId}`;
+
         const routeCheck = getPermissionForRoute(pathname);
 
-        // If we can't determine required permission, just switch
+        // If we can't determine required permission, just switch and navigate
         if (!routeCheck) {
             if (targetOrgId) setActiveOrganization(targetOrgId);
             setActiveWorkspace(targetWorkspaceId);
+            router.push(destinationOnSuccess);
             return;
         }
 
@@ -141,6 +148,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
         if (hasAccess) {
             if (targetOrgId) setActiveOrganization(targetOrgId);
             setActiveWorkspace(targetWorkspaceId);
+            router.push(destinationOnSuccess);
             return;
         }
 
@@ -158,7 +166,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
             blockedFeatureLabel: routeCheck.label,
             alternatives,
         });
-    }, [pathname, getPermissionsSchemaForWorkspace, isSuperAdmin, setActiveOrganization, setActiveWorkspace]);
+    }, [pathname, router, getPermissionsSchemaForWorkspace, isSuperAdmin, setActiveOrganization, setActiveWorkspace]);
 
     const confirmSwitch = React.useCallback(() => {
         if (!interceptState) return;
@@ -170,18 +178,25 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
 
     const handleOrganizationSwitch = (orgId: string) => {
         if (!isSuperAdmin) return;
-        
+
         const org = availableOrganizations.find(o => o.id === orgId);
         if (!org) return;
 
         const orgWorkspaces = allAccessibleWorkspaces.filter(w => w.organizationId === orgId);
-        
+
         if (orgWorkspaces.length > 0) {
+            // Workspaces already loaded — pick default or first
             const targetWorkspaceId = org.defaultWorkspaceId && orgWorkspaces.find(w => w.id === org.defaultWorkspaceId)
                 ? org.defaultWorkspaceId
                 : orgWorkspaces[0].id;
             handleWorkspaceSwitch(targetWorkspaceId, orgId);
+        } else if (org.defaultWorkspaceId) {
+            // Workspaces not yet loaded but org carries its default — use it directly
+            // so the app never enters a workspaceless state
+            switchOrganizationAndWorkspace(orgId, org.defaultWorkspaceId);
+            router.push(`/admin?track=${org.defaultWorkspaceId}`);
         } else {
+            // No workspace info at all — switch org and send to settings to configure
             setActiveOrganization(orgId);
             router.push('/admin/settings');
         }

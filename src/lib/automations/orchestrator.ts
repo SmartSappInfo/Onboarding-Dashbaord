@@ -63,10 +63,13 @@ export async function triggerAutomationProtocols(
       }
     });
   } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     logAutomationEvent('error', 'trigger_poll_failed', {
       trigger,
       workspaceId: payload.workspaceId as string,
-      error,
+      error: errMsg,
     });
+    // Also log to console so server logs surface the issue clearly
+    console.error(`[AUTOMATION ORCHESTRATOR] trigger_poll_failed: ${trigger} workspace=${payload.workspaceId} — ${errMsg}`);
   }
 }

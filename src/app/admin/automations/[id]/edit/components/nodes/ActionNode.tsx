@@ -18,6 +18,8 @@ import { MessageNodeStatsStrip } from '../../../../components/message-stats/Mess
  */
 const ACTION_NAMES: Record<string, string> = {
     SEND_MESSAGE: 'Send Message',
+    DIRECT_EMAIL: 'Direct Email',
+    DIRECT_SMS: 'Direct SMS',
     CREATE_TASK: 'Create Task',
     UPDATE_ENTITY: 'Update Entity',
     ASSIGN_ENTITY: 'Assign Entity',
@@ -47,6 +49,8 @@ export function ActionNode({ id, data, selected }: any) {
     const getIcon = () => {
         switch(actionType) {
             case 'SEND_MESSAGE': return Mail;
+            case 'DIRECT_EMAIL': return Mail;
+            case 'DIRECT_SMS': return Smartphone;
             case 'CREATE_TASK': return Clock;
             case 'UPDATE_ENTITY': return Building;
             case 'ASSIGN_ENTITY': return Building;
@@ -67,6 +71,12 @@ export function ActionNode({ id, data, selected }: any) {
         if (!actionType) return 'Action';
         if (actionType === 'SEND_MESSAGE' || actionType?.startsWith('SEND_NOTIFICATION_')) {
             return config.templateName || (config.templateId ? 'Active Template' : 'Select Template');
+        }
+        if (actionType === 'DIRECT_EMAIL') {
+            return config.directSubject || 'Direct Email';
+        }
+        if (actionType === 'DIRECT_SMS') {
+            return config.directBody ? (String(config.directBody).substring(0, 20) + (String(config.directBody).length > 20 ? '...' : '')) : 'Direct SMS';
         }
         if (actionType === 'RUN_AUTOMATION') {
             return config.automationName || (config.automationId ? 'Sub-Flow' : 'Select Automation');
@@ -100,6 +110,34 @@ export function ActionNode({ id, data, selected }: any) {
                 }).join(', ');
                 const tName = config.templateName || 'Selected Template';
                 return `Send "${tName}" to ${recipients || 'recipients'}`;
+            }
+            case 'DIRECT_EMAIL': {
+                const recipients = (config.recipientTargets || []).map((r: string) => {
+                    if (r === 'triggering') return 'Triggering Contact';
+                    if (r === 'primary') return 'Primary Contact';
+                    if (r === 'signatories') return 'Signatories';
+                    if (r === 'roles') return `Roles (${config.recipientRoles?.join(', ') || ''})`;
+                    if (r === 'all') return 'All Contacts';
+                    if (r === 'fixed') return 'Manual Entry';
+                    return r;
+                }).join(', ');
+                const subject = config.directSubject || 'Direct Email';
+                return `Email "${subject}" to ${recipients || 'recipients'}`;
+            }
+            case 'DIRECT_SMS': {
+                const recipients = (config.recipientTargets || []).map((r: string) => {
+                    if (r === 'triggering') return 'Triggering Contact';
+                    if (r === 'primary') return 'Primary Contact';
+                    if (r === 'signatories') return 'Signatories';
+                    if (r === 'roles') return `Roles (${config.recipientRoles?.join(', ') || ''})`;
+                    if (r === 'all') return 'All Contacts';
+                    if (r === 'fixed') return 'Manual Entry';
+                    return r;
+                }).join(', ');
+                const snippet = config.directBody 
+                    ? (String(config.directBody).substring(0, 20) + (String(config.directBody).length > 20 ? '...' : '')) 
+                    : 'Direct SMS';
+                return `SMS "${snippet}" to ${recipients || 'recipients'}`;
             }
             case 'SEND_NOTIFICATION_EMAIL':
             case 'SEND_NOTIFICATION_SMS':
@@ -205,31 +243,44 @@ export function ActionNode({ id, data, selected }: any) {
                 style={{ width: '12px', height: '12px', top: '-6px' }}
             />
             <Card className={cn(
-                "w-64 h-14 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-row items-center",
+                "w-64 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-col",
+                actionType === 'SEND_MESSAGE' ? "h-[84px]" : "h-14",
                 selected ? "border-blue-500 shadow-md ring-2 ring-blue-500/20" : "border-blue-200",
                 overlay.borderClass,
                 overlay.glowClass
             )}>
-                {/* Left Colored Accent Block */}
-                <div className="w-12 h-full bg-blue-500 flex items-center justify-center flex-shrink-0 animate-fade-in">
-                    <Icon className="h-4 w-4 text-white" />
-                </div>
-                
-                {/* Right Content Area */}
-                <div className="flex-1 min-w-0 h-full pl-3 pr-2 flex items-center justify-between text-left">
-                    <div className="flex flex-col justify-center min-w-0 pr-1">
-                        <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none mb-1 truncate">
-                            Action Step
-                        </span>
-                        <p className="text-xs font-semibold text-foreground leading-tight truncate">
-                            {getActionDescription()}
-                        </p>
+                {/* Top Section */}
+                <div className="h-14 w-full flex flex-row items-center">
+                    {/* Left Colored Accent Block */}
+                    <div className="w-12 h-full bg-blue-500 flex items-center justify-center flex-shrink-0 animate-fade-in">
+                        <Icon className="h-4 w-4 text-white" />
+                    </div>
+                    
+                    {/* Right Content Area */}
+                    <div className="flex-1 min-w-0 h-full pl-3 pr-2 flex items-center justify-between text-left">
+                        <div className="flex flex-col justify-center min-w-0 pr-1">
+                            <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none mb-1 truncate">
+                                {data.stepNumber ? `Action Step #${data.stepNumber}` : 'Action Step'}
+                            </span>
+                            <p className="text-xs font-semibold text-foreground leading-tight truncate">
+                                {getActionDescription()}
+                            </p>
+                        </div>
                     </div>
                 </div>
+
+                {/* Bottom Stats Section */}
+                {actionType === 'SEND_MESSAGE' && (
+                    <div className="h-7 w-full border-t border-border/40 bg-muted/5 flex items-center justify-between px-3">
+                        <MessageNodeStatsStrip 
+                            automationId={automationId} 
+                            nodeId={id} 
+                            channel={config.channel} 
+                            integrated={true}
+                        />
+                    </div>
+                )}
             </Card>
-            {actionType === 'SEND_MESSAGE' && (
-                <MessageNodeStatsStrip automationId={automationId} nodeId={id} channel={config.channel} />
-            )}
             <Handle
                 type="source"
                 position={Position.Bottom} 

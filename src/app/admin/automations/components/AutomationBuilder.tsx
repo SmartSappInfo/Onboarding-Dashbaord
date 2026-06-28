@@ -1025,8 +1025,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         if (item.trigger) {
             data.trigger = item.trigger;
         }
-        if (item.actionType === 'SEND_MESSAGE') {
-            data.config.channel = item.channel || 'email';
+        if (item.actionType === 'SEND_MESSAGE' || item.actionType === 'DIRECT_EMAIL' || item.actionType === 'DIRECT_SMS') {
+            data.config.channel = item.channel || (item.actionType === 'DIRECT_SMS' ? 'sms' : 'email');
             data.config.recipientTargets = ['triggering'];
         }
         if (item.config) {
@@ -1139,7 +1139,29 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
 
     const nodesWithCallbacks = React.useMemo(() => {
         const stepMap = selectedRun?.steps || {};
+
+        // Sort non-trigger nodes by Y, then X position
+        const sortedNonTriggerNodes = nodes
+            .filter(n => n.type !== 'triggerNode')
+            .sort((a, b) => {
+                const ay = a.position?.y ?? 0;
+                const by = b.position?.y ?? 0;
+                const ax = a.position?.x ?? 0;
+                const bx = b.position?.x ?? 0;
+                if (Math.abs(ay - by) < 5) {
+                    return ax - bx;
+                }
+                return ay - by;
+            });
+
+        // Create a map from nodeId to 1-based index (step number)
+        const stepNumberMap = new Map<string, number>();
+        sortedNonTriggerNodes.forEach((node, index) => {
+            stepNumberMap.set(node.id, index + 1);
+        });
+
         return nodes.map(node => {
+            const stepNumber = stepNumberMap.get(node.id) || null;
             const hasTrueConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'true');
             const hasFalseConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'false');
             const hasAConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'a');
@@ -1161,6 +1183,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                 ...node,
                 data: {
                     ...node.data,
+                    stepNumber,
                     isDefaultConnected: hasDefaultConnection,
                     isTrueConnected: node.type === 'abSplitNode' ? hasAConnection : hasTrueConnection,
                     isFalseConnected: node.type === 'abSplitNode' ? hasBConnection : hasFalseConnection,

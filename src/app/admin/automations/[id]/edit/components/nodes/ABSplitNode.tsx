@@ -83,7 +83,7 @@ export function ABSplitNode({ id, data, selected }: any) {
                 <div className="flex-1 min-w-0 h-full pl-3 pr-2 flex items-center justify-between text-left">
                     <div className="flex flex-col justify-center min-w-0 pr-1">
                         <span className="text-[8px] font-bold text-violet-500 uppercase tracking-wider leading-none mb-1 truncate">
-                            A/B Split
+                            {data.stepNumber ? `A/B Split #${data.stepNumber}` : 'A/B Split'}
                           </span>
                         <p className="text-xs font-semibold text-foreground leading-tight truncate">
                             Variant A: {splitRatio}% / Variant B: {100 - splitRatio}%

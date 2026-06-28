@@ -114,6 +114,27 @@ export function getAccessibleRoutes(
 }
 
 /**
+ * Given a pathname, return the root list-view path for the current feature.
+ * Used when switching workspaces so the app exits detail/edit/preview modes
+ * and lands on the feature's index page.
+ *
+ * Examples:
+ *   /admin/meetings/abc123/edit  → /admin/meetings
+ *   /admin/qr-studio/xyz/detail → /admin/qr-studio
+ *   /admin                      → /admin
+ */
+export function getFeatureRootPath(pathname: string): string {
+    const cleanPath = pathname.split('?')[0];
+
+    for (const entry of ROUTE_PERMISSION_MAP) {
+        if (cleanPath === entry.path || cleanPath.startsWith(entry.path + '/')) {
+            return entry.path;
+        }
+    }
+    return '/admin';
+}
+
+/**
  * Get the href for a route permission check.
  */
 export function getRouteHref(check: RoutePermissionCheck, workspaceId?: string): string {

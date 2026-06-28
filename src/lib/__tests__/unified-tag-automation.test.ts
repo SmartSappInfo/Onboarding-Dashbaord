@@ -54,15 +54,17 @@ vi.mock('../messaging-engine', () => ({
     sendMessage: vi.fn()
 }));
 
-let afterPromise: Promise<any> = Promise.resolve();
+let afterPromises: Promise<any>[] = [];
 vi.mock('next/server', () => ({
     unstable_after: vi.fn((fn) => {
-        afterPromise = fn();
-        return afterPromise;
+        const p = fn();
+        afterPromises.push(p);
+        return p;
     }),
     after: vi.fn((fn) => {
-        afterPromise = fn();
-        return afterPromise;
+        const p = fn();
+        afterPromises.push(p);
+        return p;
     })
 }));
 
@@ -73,6 +75,7 @@ describe('Unified Tag Automation Flow', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        afterPromises = [];
         // Reset the mock batch functions
         mockBatch.update.mockClear();
         mockBatch.commit.mockClear();
@@ -186,7 +189,7 @@ describe('Unified Tag Automation Flow', () => {
         });
 
         // 3. Wait for the background automation process to finish (the unstable_after block)
-        await afterPromise;
+        await Promise.all(afterPromises);
         
         // Add a small delay to ensure all async operations complete
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -280,7 +283,7 @@ describe('Unified Tag Automation Flow', () => {
         });
 
         // Wait for the background process (which should skip execution)
-        await afterPromise;
+        await Promise.all(afterPromises);
 
         // Verify batch operations were NOT called (automation was filtered out)
         expect(mockBatch.update).not.toHaveBeenCalled();

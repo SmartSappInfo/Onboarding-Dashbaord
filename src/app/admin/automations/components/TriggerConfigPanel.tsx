@@ -59,7 +59,7 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
   automations = [],
 }: TriggerConfigPanelProps) {
   const { toast } = useToast();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as { activeWorkspaceId?: string; activeOrganizationId?: string };
   const { user } = useUser();
   const [hasCopied, setHasCopied] = React.useState(false);
 
@@ -404,9 +404,11 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
                   <SelectItem value="all_pipelines" className="rounded-lg p-2 font-semibold">All Pipelines</SelectItem>
-                  {(pipelines || []).map((p: Pipeline) => (
-                    <SelectItem key={p.id} value={p.id} className="rounded-lg p-2 font-semibold">{p.name}</SelectItem>
-                  ))}
+                  {(pipelines || [])
+                    .filter((p: Pipeline) => !activeWorkspaceId || p.workspaceIds?.includes(activeWorkspaceId))
+                    .map((p: Pipeline) => (
+                      <SelectItem key={p.id} value={p.id} className="rounded-lg p-2 font-semibold">{p.name}</SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

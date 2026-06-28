@@ -1,6 +1,8 @@
 import { adminDb } from '../../firebase-admin';
 import { sendMessage } from '../../messaging-engine';
+import { sendPushNotification } from '../../onesignal-service';
 import { resolveContact } from '../../contact-adapter';
+import { logAutomationEvent } from '../../automation-log';
 import type { ExecutionContext } from '../execution-types';
 
 /**
@@ -123,11 +125,25 @@ export async function handleSendNotification(
   const uniqueUserIds   = Array.from(new Set(targetUserIds));
   const now             = new Date().toISOString();
 
+  // Failures here are surfaced to the automation activity log so a misconfigured
+  // sender / missing recipient is visible, but they never throw — an internal
+  // notification hiccup must not halt the entity's journey through the flow.
+  const logNotificationFailure = (detail: Record<string, unknown>) => {
+    logAutomationEvent('error', 'notification_dispatch_failed', {
+      automationId: context.automationId,
+      runId: context.runId,
+      workspaceId: context.workspaceId,
+      entityId: context.entityId,
+      actionType,
+      ...detail,
+    });
+  };
+
   // ── Dispatch per channel ───────────────────────────────────────────────────
 
   if (actionType === 'SEND_NOTIFICATION_EMAIL') {
     for (const email of uniqueEmails) {
-      await sendMessage({
+      const result = await sendMessage({
         templateId,
         // 'default' resolves to this org's default sender; a cross-org named
         // profile would be rejected by the org-scoped resolver.
@@ -138,12 +154,16 @@ export async function handleSendNotification(
         entityId: context.entityId,
         workspaceId: context.workspaceId,
       });
+      if (!result.success) {
+        console.error(`[notification-actions] Email notification to ${email} failed: ${result.error}`);
+        logNotificationFailure({ recipient: email, channel: 'email', error: result.error });
+      }
     }
   }
 
   if (actionType === 'SEND_NOTIFICATION_SMS') {
     for (const phone of uniquePhones) {
-      await sendMessage({
+      const result = await sendMessage({
         templateId,
         senderProfileId: 'default',
         organizationId: orgId,
@@ -152,38 +172,40 @@ export async function handleSendNotification(
         entityId: context.entityId,
         workspaceId: context.workspaceId,
       });
+      if (!result.success) {
+        console.error(`[notification-actions] SMS notification to ${phone} failed: ${result.error}`);
+        logNotificationFailure({ recipient: phone, channel: 'sms', error: result.error });
+      }
     }
   }
 
   if (actionType === 'SEND_NOTIFICATION_IN_APP') {
+    // Canonical in-app shape consumed by NotificationCenter (in_app_notifications
+    // collection, `body`/`isRead`/`category` fields). The previous `notifications`
+    // collection + `message`/`status` fields were never read by the UI.
     for (const uid of uniqueUserIds) {
-      await adminDb.collection('notifications').add({
-        organizationId: orgId,
-        workspaceId:    context.workspaceId,
-        userId:         uid,
-        entityId:       context.entityId || null,
-        title:          resolvedSubject,
-        message:        resolvedBody,
-        templateId,                    // stored for traceability / re-render
-        status:         'unread',
-        createdAt:      now,
-        actionType:     'system_alert',
-      });
-    }
-  }
-
-  if (actionType === 'SEND_NOTIFICATION_PUSH') {
-    for (const uid of uniqueUserIds) {
-      await adminDb.collection('push_queue').add({
+      await adminDb.collection('in_app_notifications').add({
         organizationId: orgId,
         workspaceId:    context.workspaceId,
         userId:         uid,
         title:          resolvedSubject,
         body:           resolvedBody,
-        templateId,                    // stored for traceability
-        status:         'pending',
+        category:       'automations',
+        isRead:         false,
+        templateId,                    // stored for traceability / re-render
+        entityId:       context.entityId || null,
         createdAt:      now,
       });
+    }
+  }
+
+  if (actionType === 'SEND_NOTIFICATION_PUSH' && uniqueUserIds.length > 0) {
+    // OneSignal is keyed by external user id, which matches our userId. The
+    // previous `push_queue` write had no consumer, so pushes never dispatched.
+    const pushResult = await sendPushNotification(uniqueUserIds, resolvedSubject, resolvedBody);
+    if (!pushResult || pushResult.errors) {
+      console.error('[notification-actions] Push notification dispatch failed:', pushResult?.errors);
+      logNotificationFailure({ userIds: uniqueUserIds, channel: 'push', error: pushResult?.errors ? String(pushResult.errors) : 'OneSignal credentials missing or send failed' });
     }
   }
 }

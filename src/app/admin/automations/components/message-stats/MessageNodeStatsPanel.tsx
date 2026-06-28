@@ -16,7 +16,7 @@ interface MessageNodeStatsPanelProps {
 /**
  * Full delivery-statistics view for the inspector's "Statistics" tab. Loads on
  * mount, refreshes on demand, and adapts the metric set to the channel (email
- * shows engagement; SMS shows delivery/failure only).
+ * shows engagement; SMS shows delivery/failure; WhatsApp shows delivery/read/fail).
  */
 export function MessageNodeStatsPanel({
   automationId,
@@ -27,7 +27,6 @@ export function MessageNodeStatsPanel({
 
   const isUnsaved = !automationId || automationId === 'new';
   const resolvedChannel = stats?.channel ?? channel ?? 'email';
-  const isEmail = resolvedChannel === 'email';
   const sent = stats?.sent ?? 0;
   const pct = (n: number) => (sent > 0 ? Math.round((n / sent) * 100) : 0);
 
@@ -41,11 +40,11 @@ export function MessageNodeStatsPanel({
         <Button
           size="sm"
           variant="ghost"
-          className="h-7 gap-1.5 px-2 text-[10px]"
+          className="h-7 gap-1.5 px-2 text-[10px] transition-all duration-150 ease-out active:scale-95"
           onClick={() => void refresh()}
           disabled={isRefreshing || isLoading || isUnsaved}
         >
-          <RefreshCw className={cn('h-3 w-3', isRefreshing && 'animate-spin')} />
+          <RefreshCw className={cn('h-3 w-3', isRefreshing ? 'animate-spin' : '')} />
           Refresh
         </Button>
       </div>
@@ -54,7 +53,7 @@ export function MessageNodeStatsPanel({
         <EmptyState message="Save the automation and let it run to see delivery statistics." />
       ) : isLoading ? (
         <div className="grid grid-cols-2 gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-14 rounded-lg bg-muted/40 animate-pulse" />
           ))}
         </div>
@@ -69,24 +68,44 @@ export function MessageNodeStatsPanel({
         <>
           <div className="grid grid-cols-2 gap-2">
             <StatCard label="Sent" value={sent} />
-            <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" />
-            {isEmail && <StatCard label="Opened" value={stats.opened} sub={`${pct(stats.opened)}%`} tone="success" />}
-            {isEmail && <StatCard label="Clicked" value={stats.clicked} sub={`${pct(stats.clicked)}%`} tone="success" />}
-            {isEmail ? (
-              <StatCard label="Bounced" value={stats.bounced} sub={`${pct(stats.bounced)}%`} tone="danger" />
+
+            {resolvedChannel === 'email' ? (
+              <>
+                <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" />
+                <StatCard label="Opened" value={stats.opened} sub={`${pct(stats.opened)}%`} tone="success" />
+                <StatCard label="Clicked" value={stats.clicked} sub={`${pct(stats.clicked)}%`} tone="success" />
+                <StatCard label="Bounced" value={stats.bounced} sub={`${pct(stats.bounced)}%`} tone="danger" />
+                <StatCard label="Complaints" value={stats.complained} sub={`${pct(stats.complained)}%`} tone="danger" />
+                <StatCard label="Unsubscribed" value={stats.unsubscribed} sub={`${pct(stats.unsubscribed)}%`} tone="danger" />
+              </>
+            ) : resolvedChannel === 'sms' ? (
+              <>
+                <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" />
+                <Stat
+                  label="Not Delivered / Rejected / Submitted"
+                  value={sent - stats.delivered}
+                  sub={`${pct(sent - stats.delivered)}%`}
+                  tone="warning"
+                />
+              </>
             ) : (
-              <StatCard label="Undelivered" value={stats.failed} sub={`${pct(stats.failed)}%`} tone="danger" />
+              <>
+                <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" />
+                <StatCard label="Read" value={stats.opened} sub={`${pct(stats.opened)}%`} tone="success" />
+                <StatCard label="Failed" value={stats.failed} sub={`${pct(stats.failed)}%`} tone="danger" />
+              </>
             )}
-            {isEmail && <StatCard label="Complaints" value={stats.complained} tone="danger" />}
-            {isEmail && <StatCard label="Unsubscribed" value={stats.unsubscribed} tone="danger" />}
-            {stats.resent > 0 && <StatCard label="Resent" value={stats.resent} tone="warning" />}
+
+            {stats.resent > 0 ? (
+              <StatCard label="Resent" value={stats.resent} tone="warning" />
+            ) : null}
           </div>
 
-          {stats.lastMessageAt && (
-            <p className="text-[10px] text-muted-foreground">
+          {stats.lastMessageAt ? (
+            <p className="text-[10px] text-muted-foreground mt-1">
               Last message {new Date(stats.lastMessageAt).toLocaleString()}
             </p>
-          )}
+          ) : null}
         </>
       )}
     </div>
@@ -117,9 +136,36 @@ function StatCard({
   return (
     <div className={cn('rounded-lg border p-2.5', TONE_CLASS[tone])}>
       <p className="text-[10px] text-muted-foreground">{label}</p>
-      <p className="text-base font-semibold leading-tight text-foreground">
+      <p className="text-base font-semibold leading-tight text-foreground mt-0.5">
         {value}
-        {sub && <span className="ml-1 text-[10px] font-normal text-muted-foreground">{sub}</span>}
+        {sub ? (
+          <span className="ml-1 text-[10px] font-normal text-muted-foreground">{sub}</span>
+        ) : null}
+      </p>
+    </div>
+  );
+}
+
+// A full-width variant for the long SMS "Not Delivered / Rejected / Submitted" label
+function Stat({
+  label,
+  value,
+  sub,
+  tone = 'default',
+}: {
+  label: string;
+  value: number;
+  sub?: string;
+  tone?: StatTone;
+}): React.ReactElement {
+  return (
+    <div className={cn('rounded-lg border p-2.5 col-span-2', TONE_CLASS[tone])}>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p className="text-base font-semibold leading-tight text-foreground mt-0.5">
+        {value}
+        {sub ? (
+          <span className="ml-1 text-[10px] font-normal text-muted-foreground">{sub}</span>
+        ) : null}
       </p>
     </div>
   );
