@@ -28,3 +28,18 @@ env:
     secret: whatsapp-encryption-key
   - variable: RESEND_WEBHOOK_SECRET
     secret: resend-webhook-secret
+  - variable: RESEND_API_KEY
+    secret: resend-api-key
+  - variable: MNOTIFY_API_KEY
+    secret: mnotify-api-key
+  - variable: ONESIGNAL_APP_ID
+    secret: onesignal-app-id
+  - variable: ONESIGNAL_REST_API_KEY
+    secret: onesignal-rest-api-key
+  # Resend "from" domain — NOT a secret. Code defaults to "smartsapp.com" if unset.
+  # Uncomment and set this to your VERIFIED Resend sending domain if it differs
+  # (the from-domain must be verified under RESEND_API_KEY or Resend rejects sends).
+  # - variable: RESEND_DOMAIN
+  #   value: go.smartsapp.com
+  #   availability:
+  #     - RUNTIME

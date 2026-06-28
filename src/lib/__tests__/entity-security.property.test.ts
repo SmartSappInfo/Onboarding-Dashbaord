@@ -365,9 +365,9 @@ describe('Property 23: Entity Update Authorization', () => {
         fc.string({ minLength: 1, maxLength: 20 }), // entityId
         fc.record({
           name: fc.string({ minLength: 1, maxLength: 50 }),
-          entityType: 'institution',
-    entityContacts: [],
-    globalTags: fc.array(fc.string({ minLength: 1, maxLength: 20 }), { maxLength: 5 }),
+          entityType: fc.constant('institution'),
+          entityContacts: fc.constant([]),
+          globalTags: fc.array(fc.string({ minLength: 1, maxLength: 20 }), { maxLength: 5 }),
         }), // updates
         async (userId, workspaceId, entityId, updates) => {
           testStorage.reset();
@@ -664,8 +664,8 @@ describe('Property 23: Entity Update Authorization', () => {
         fc.record({
           pipelineId: fc.string({ minLength: 1, maxLength: 20 }),
           stageId: fc.string({ minLength: 1, maxLength: 20 }),
-          entityType: 'institution',
-    workspaceTags: fc.array(fc.string({ minLength: 1, maxLength: 20 }), { maxLength: 5 }),
+          entityType: fc.constant('institution'),
+          workspaceTags: fc.array(fc.string({ minLength: 1, maxLength: 20 }), { maxLength: 5 }),
         }), // updates
         async (userId, workspaceId, entityId, updates) => {
           testStorage.reset();
