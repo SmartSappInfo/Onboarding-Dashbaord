@@ -12,12 +12,13 @@ import { cloneSurvey, deleteSurveyAction, updateSurveyStatusAction } from '@/lib
 import { usePermissions } from '@/hooks/use-permissions';
 import { getAssigneeDetails, sendSurveyLinkToAssignee } from '@/app/actions/survey-assignee-actions';
 import { AssigneeLinksModal } from './components/AssigneeLinksModal';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2, Search, ClipboardList } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2, Search, ClipboardList, Code } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +81,7 @@ export default function SurveysClient() {
   const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
   const [assigneeLinks, setAssigneeLinks] = useState<any[]>([]);
   const [loadingAssignees, setLoadingAssignees] = useState(false);
+  const [shareSurvey, setShareSurvey] = useState<Survey | null>(null);
   
   const { can } = usePermissions();
   const canCreate = can('studios', 'surveys', 'create');
@@ -214,17 +216,8 @@ export default function SurveysClient() {
         setLoadingAssignees(false);
       }
     } else {
-      // Single or no assignee - copy generic link
-      if (typeof window !== 'undefined') {
-        const url = survey.assignedUsers && survey.assignedUsers.length === 1
-          ? `${window.location.origin}/surveys/${survey.slug}?ref=${survey.assignedUsers[0]}`
-          : `${window.location.origin}/surveys/${survey.slug}`;
-        navigator.clipboard.writeText(url);
-        toast({
-          title: 'Link Copied',
-          description: 'Public survey URL copied to clipboard.',
-        });
-      }
+      // Single or no assignee - show share & embed dialog
+      setShareSurvey(survey);
     }
   };
 
@@ -265,15 +258,15 @@ export default function SurveysClient() {
           <Button
             variant="ghost"
             size="icon"
- className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+            className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
             onClick={() => handleCopyLink(survey)}
           >
- <Copy className="h-4 w-4" />
- <span className="sr-only">Copy link</span>
+            <Copy className="h-4 w-4" />
+            <span className="sr-only">Share & embed</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Copy Public Link</p>
+          <p>Share & Embed Survey</p>
         </TooltipContent>
       </Tooltip>
       <Tooltip>
@@ -326,6 +319,10 @@ export default function SurveysClient() {
           <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results`)}>
             <BarChart2 className="mr-2 h-4 w-4" />
             <span>View Results</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleCopyLink(survey)}>
+            <Code className="mr-2 h-4 w-4" />
+            <span>Share & Embed</span>
           </DropdownMenuItem>
           {canCreate && (
             <DropdownMenuItem 
@@ -534,6 +531,25 @@ export default function SurveysClient() {
         onSendMessage={handleSendMessageToAssignee}
         isLoading={loadingAssignees}
       />
+
+      {shareSurvey && (
+        <ShareEmbedDialog
+          isOpen={!!shareSurvey}
+          onOpenChange={(open) => !open && setShareSurvey(null)}
+          title="Share & Embed Survey"
+          resourceName="Survey"
+          publicUrl={
+            shareSurvey.assignedUsers && shareSurvey.assignedUsers.length === 1
+              ? `${window.location.origin}/surveys/${shareSurvey.slug}?ref=${shareSurvey.assignedUsers[0]}`
+              : `${window.location.origin}/surveys/${shareSurvey.slug}`
+          }
+          embedUrl={
+            shareSurvey.assignedUsers && shareSurvey.assignedUsers.length === 1
+              ? `${window.location.origin}/surveys/${shareSurvey.slug}?ref=${shareSurvey.assignedUsers[0]}&embed=true`
+              : `${window.location.origin}/surveys/${shareSurvey.slug}?embed=true`
+          }
+        />
+      )}
             </PageContainer>
     </TooltipProvider>
   );

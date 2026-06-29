@@ -60,6 +60,9 @@ const formSchema = z.object({
   elements: z.array(z.any()).min(1, 'Survey must have at least one element.'),
   thankYouTitle: z.string().optional(),
   thankYouDescription: z.string().optional(),
+  thankYouRedirectEnabled: z.boolean().default(false),
+  thankYouRedirectUrl: z.string().optional(),
+  thankYouConfettiEnabled: z.boolean().default(false),
   logoUrl: z.string().url().optional().or(z.literal('')),
   logoMode: z.enum(['organization', 'custom', 'placeholder']).optional(),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
@@ -115,6 +118,15 @@ const formSchema = z.object({
       questionId: z.string(),
       targetField: z.string()
     })).default([])
+  }).optional(),
+  leadCaptureMode: z.enum(['questions', 'form']).default('questions'),
+  leadCaptureTitle: z.string().optional(),
+  leadCaptureDescription: z.string().optional(),
+  leadCaptureFieldsConfig: z.object({
+    name: z.object({ show: z.boolean(), label: z.string(), required: z.boolean() }),
+    email: z.object({ show: z.boolean(), label: z.string(), required: z.boolean() }),
+    phone: z.object({ show: z.boolean(), label: z.string(), required: z.boolean() }),
+    company: z.object({ show: z.boolean(), label: z.string(), required: z.boolean() })
   }).optional(),
   assignmentEnabled: z.boolean().default(false),
   assignedUsers: z.array(z.string()).default([]),
@@ -401,11 +413,22 @@ export default function EditSurveyPage() {
     };
 
     const handleNext = async () => {
-        let fieldsToValidate: any[] = [];
+        let fieldsToValidate: (keyof FormData)[] = [];
         if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'videoUrl', 'videoCaption', 'logoUrl', 'bannerImageUrl'];
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
-        if (step === 4) fieldsToValidate = ['createEntity', 'entityMapping', 'assignmentEnabled', 'assignedUsers', 'autoTags', 'autoAutomations'];
+        if (step === 4) fieldsToValidate = [
+            'createEntity', 
+            'entityMapping', 
+            'leadCaptureMode', 
+            'leadCaptureTitle', 
+            'leadCaptureDescription', 
+            'leadCaptureFieldsConfig', 
+            'assignmentEnabled', 
+            'assignedUsers', 
+            'autoTags', 
+            'autoAutomations'
+        ];
         
         const isStepValid = await trigger(fieldsToValidate);
         if (!isStepValid) {

@@ -33,7 +33,7 @@ interface PageRendererProps {
   fireTrigger: (event: string, blockId?: string) => void;
 }
 
-const EMPTY_RESOURCES: BuilderResources = { forms: [], surveys: [], agreements: [] };
+const EMPTY_RESOURCES: BuilderResources = { forms: [], surveys: [], agreements: [], meetings: [], qrCodes: [] };
 
 export function PageRenderer({
   page,

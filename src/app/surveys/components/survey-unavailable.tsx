@@ -5,18 +5,20 @@ import { Button } from '@/components/ui/button';
 import { BackgroundPattern } from './survey-background-pattern';
 import { Building2, AlertCircle, Lock, Home, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import type { Survey } from '@/lib/types';
+import type { Survey, OrgBranding } from '@/lib/types';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
+import Footer from '@/components/footer';
 
 interface SurveyUnavailableProps {
     status: 'draft' | 'archived' | 'not_found' | 'closed';
     survey?: Partial<Survey>;
     logoUrl?: string | null;
+    orgBranding?: OrgBranding | null;
 }
 
-export default function SurveyUnavailable({ status, survey, logoUrl }: SurveyUnavailableProps) {
+export default function SurveyUnavailable({ status, survey, logoUrl, orgBranding }: SurveyUnavailableProps) {
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme === 'dark';
     const bgColor = isDark ? '#090d16' : (survey?.backgroundColor || '#F1F5F9');
@@ -103,15 +105,9 @@ export default function SurveyUnavailable({ status, survey, logoUrl }: SurveyUna
                 </motion.div>
             </main>
 
-            <footer className="py-12 text-center relative z-10">
-                <div className="flex flex-col items-center gap-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-slate-500">
-                        Powered by <span className="text-primary/60">SmartSapp</span>
-                    </p>
-                    <div className="h-1 w-12 bg-slate-200 dark:bg-slate-800 rounded-full" />
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">&copy; {new Date().getFullYear()} SmartSapp. All rights reserved.</p>
-                </div>
-            </footer>
+            {orgBranding?.landingPageFooterEnabled !== false && (
+                <Footer orgBranding={orgBranding} className="bg-transparent text-slate-500 pt-8" />
+            )}
         </div>
     );
 }

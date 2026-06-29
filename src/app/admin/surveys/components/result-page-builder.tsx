@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
+import { useFormContext, useFieldArray, useWatch, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import {
     Plus, Trash2, Layout, GripVertical, Heading1, AlignLeft, AlignCenter, AlignRight, 
     Type, Image as ImageIcon, Video, AudioWaveform, Quote, Square, MousePointer2, Eye, Copy, 
     ArrowRight, ArrowUp, ArrowDown, Trophy as TrophyIcon, PlusCircle, Bold, Italic, Underline,
-    List, ListOrdered, AlignJustify
+    List, ListOrdered, AlignJustify, Sparkles
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -475,7 +475,27 @@ export function PageEditor({ pageIndex }: { pageIndex: number }) {
     };
 
     return (
- <div className="space-y-6">
+        <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/20">
+                <div className="space-y-0.5">
+                    <Label className="text-sm font-semibold flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" /> Celebrate Submission
+                    </Label>
+                    <p className="text-xs text-muted-foreground font-medium">Trigger a confetti explosion when the respondent views this page.</p>
+                </div>
+                <Controller
+                    name={`resultPages.${pageIndex}.confettiEnabled`}
+                    control={control}
+                    render={({ field }) => (
+                        <Switch
+                            checked={!!field.value}
+                            onCheckedChange={field.onChange}
+                            className="data-[state=checked]:bg-amber-500"
+                        />
+                    )}
+                />
+            </div>
+
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
  <div className="space-y-6">

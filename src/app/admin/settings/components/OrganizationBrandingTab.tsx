@@ -25,6 +25,15 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DEFAULT_ORG_FOOTER_HTML, resolveOrgFooter } from '@/lib/services/org-footer-service';
+import Footer from '@/components/footer';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Layout } from 'lucide-react';
 
 interface OrganizationBrandingTabProps {
     organization: Organization;
@@ -54,6 +63,16 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
     const [footerEnabled, setFooterEnabled] = React.useState<boolean>(organization.footerEnabled !== false);
     const [footerPreviewMode, setFooterPreviewMode] = React.useState<'code' | 'preview'>('preview');
 
+    // Landing Page Footer states
+    const [landingPageFooterEnabled, setLandingPageFooterEnabled] = React.useState<boolean>(organization.landingPageFooterEnabled !== false);
+    const [landingPageFooterStyle, setLandingPageFooterStyle] = React.useState<'default' | 'minimalist' | 'centered' | 'custom'>(organization.landingPageFooterStyle || 'default');
+    const [landingPageFooterCustomHtml, setLandingPageFooterCustomHtml] = React.useState<string>(organization.landingPageFooterCustomHtml || '');
+    const [facebook, setFacebook] = React.useState<string>(organization.socialLinks?.facebook || '');
+    const [twitter, setTwitter] = React.useState<string>(organization.socialLinks?.twitter || '');
+    const [linkedin, setLinkedin] = React.useState<string>(organization.socialLinks?.linkedin || '');
+    const [instagram, setInstagram] = React.useState<string>(organization.socialLinks?.instagram || '');
+    const [youtube, setYoutube] = React.useState<string>(organization.socialLinks?.youtube || '');
+
     // AI Seeding state
     const [seedUrl, setSeedUrl] = React.useState('');
     const [isScraping, setIsScraping] = React.useState(false);
@@ -73,6 +92,16 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                     unsubscribeCopy: unsubscribeCopy.trim(),
                     footerHtml: footerHtml.trim(),
                     footerEnabled,
+                    landingPageFooterEnabled,
+                    landingPageFooterStyle,
+                    landingPageFooterCustomHtml: landingPageFooterCustomHtml.trim(),
+                    socialLinks: {
+                        facebook: facebook.trim() || undefined,
+                        twitter: twitter.trim() || undefined,
+                        linkedin: linkedin.trim() || undefined,
+                        instagram: instagram.trim() || undefined,
+                        youtube: youtube.trim() || undefined,
+                    },
                 },
                 user.uid,
             );
@@ -82,8 +111,9 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
             }
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message });
+        } catch (error: unknown) {
+            const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred.';
+            toast({ variant: 'destructive', title: 'Error', description: errorMsg });
         } finally {
             setIsSaving(false);
         }
@@ -484,6 +514,189 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                             </div>
                         </TabsContent>
                     </Tabs>
+                </CardContent>
+            </Card>
+
+            {/* Landing Page Footer Card */}
+            <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden mt-6">
+                <CardHeader className="p-8 border-b flex flex-row items-center justify-between flex-wrap gap-4">
+                    <div className="space-y-1">
+                        <CardTitle className="text-xl font-bold flex items-center gap-2">
+                            <Layout className="h-5 w-5 text-primary" />
+                            Landing Page Footer
+                        </CardTitle>
+                        <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
+                            Customize the dynamic footer rendered across forms, meetings, and survey landing pages
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-muted-foreground">Enabled</span>
+                        <Switch
+                            checked={landingPageFooterEnabled}
+                            onCheckedChange={setLandingPageFooterEnabled}
+                            className="data-[state=checked]:bg-primary transition-all duration-200 ease-out"
+                        />
+                    </div>
+                </CardHeader>
+                <CardContent className="p-8 space-y-6 text-left">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Left Column: Settings Form */}
+                        <div className="space-y-5">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-muted-foreground ml-1">Footer Template Style</Label>
+                                <Select value={landingPageFooterStyle} onValueChange={(v) => setLandingPageFooterStyle(v as any)}>
+                                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-semibold text-sm">
+                                        <SelectValue placeholder="Select Style Template" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="default" className="font-semibold text-sm">Default (Multi-column Detailed)</SelectItem>
+                                        <SelectItem value="minimalist" className="font-semibold text-sm">Minimalist (Sleek Row)</SelectItem>
+                                        <SelectItem value="centered" className="font-semibold text-sm">Centered (Creative Layout)</SelectItem>
+                                        <SelectItem value="custom" className="font-semibold text-sm">Custom HTML Layout</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Social Profiles */}
+                            <div className="space-y-4 pt-2">
+                                <Label className="text-xs font-bold text-muted-foreground ml-1">Social Profiles (URLs)</Label>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Facebook</Label>
+                                        <Input
+                                            value={facebook}
+                                            onChange={(e) => setFacebook(e.target.value)}
+                                            placeholder="https://facebook.com/page"
+                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Twitter / X</Label>
+                                        <Input
+                                            value={twitter}
+                                            onChange={(e) => setTwitter(e.target.value)}
+                                            placeholder="https://twitter.com/handle"
+                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-semibold text-muted-foreground ml-1">LinkedIn</Label>
+                                        <Input
+                                            value={linkedin}
+                                            onChange={(e) => setLinkedin(e.target.value)}
+                                            placeholder="https://linkedin.com/company/name"
+                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Instagram</Label>
+                                        <Input
+                                            value={instagram}
+                                            onChange={(e) => setInstagram(e.target.value)}
+                                            placeholder="https://instagram.com/handle"
+                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-semibold text-muted-foreground ml-1">YouTube</Label>
+                                        <Input
+                                            value={youtube}
+                                            onChange={(e) => setYoutube(e.target.value)}
+                                            placeholder="https://youtube.com/c/channel"
+                                            className="h-10 rounded-xl bg-muted/20 border-none text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Column: Custom HTML and Live Preview */}
+                        <div className="space-y-6 flex flex-col">
+                            {landingPageFooterStyle === 'custom' ? (
+                                <div className="space-y-3 flex-1 flex flex-col">
+                                    <Label className="text-xs font-bold text-muted-foreground ml-1">Custom HTML Template</Label>
+                                    <Textarea
+                                        value={landingPageFooterCustomHtml}
+                                        onChange={(e) => setLandingPageFooterCustomHtml(e.target.value)}
+                                        className="flex-1 min-h-[160px] font-mono text-xs bg-slate-950 text-blue-400 p-4 rounded-2xl border-slate-800 shadow-inner focus-visible:ring-primary/20 leading-relaxed resize-none"
+                                        placeholder="Enter custom landing footer HTML here..."
+                                    />
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-bold text-muted-foreground ml-1">Variable Chips (Click to copy)</Label>
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            <FooterTokenChip token="org_name" description="Org name" />
+                                            <FooterTokenChip token="logo_url" description="Logo URL" />
+                                            <FooterTokenChip token="org_address" description="Address" />
+                                            <FooterTokenChip token="org_email" description="Email" />
+                                            <FooterTokenChip token="org_phone" description="Phone" />
+                                            <FooterTokenChip token="org_website" description="Website" />
+                                            <FooterTokenChip token="facebook_link" description="FB URL" />
+                                            <FooterTokenChip token="twitter_link" description="Twitter URL" />
+                                            <FooterTokenChip token="linkedin_link" description="LinkedIn URL" />
+                                            <FooterTokenChip token="instagram_link" description="Instagram URL" />
+                                            <FooterTokenChip token="youtube_link" description="YouTube URL" />
+                                            <FooterTokenChip token="current_year" description="Current year" />
+                                        </div>
+                                    </div>
+                                    <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5">
+                                        <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                                        <p className="text-[9px] font-semibold text-amber-800/80 leading-relaxed">
+                                            Custom HTML will be sanitized. Event handlers (e.g. <code>onclick</code>, <code>onerror</code>) and script elements will be removed automatically to ensure visitor safety.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-6 rounded-2xl bg-muted/5 border border-dashed flex-1 flex flex-col justify-center items-center text-center gap-3">
+                                    <Layout className="h-8 w-8 text-muted-foreground/30" />
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-bold text-muted-foreground">Pre-built Layout Template Active</p>
+                                        <p className="text-[10px] text-muted-foreground/60 max-w-[280px]">
+                                            You are editing the <strong>{landingPageFooterStyle === 'default' ? 'Multi-column Detailed' : landingPageFooterStyle === 'minimalist' ? 'Minimalist Row' : 'Centered Creative'}</strong> footer template. Enter social URLs to populate handles dynamically.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Dynamic live preview */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-muted-foreground ml-1">Live Visual Preview</Label>
+                                <div className="rounded-2xl border bg-slate-50/50 dark:bg-slate-950/20 overflow-hidden shadow-inner p-3 min-h-[140px] flex items-center justify-center">
+                                    {landingPageFooterEnabled ? (
+                                        <div className="w-full pointer-events-none scale-[0.85] origin-center">
+                                            <Footer
+                                                orgBranding={{
+                                                    logoUrl: organization.logoUrl || '',
+                                                    brandPrimaryColor: brandPrimaryColor,
+                                                    brandSecondaryColor: brandSecondaryColor,
+                                                    brandFontFamily: brandFontFamily,
+                                                    name: organization.name || 'Your Organization',
+                                                    address: organization.address || '123 Main Street, Suite 100, City, ST 12345',
+                                                    email: organization.email || 'support@yourdomain.com',
+                                                    phone: organization.phone || '+1 (555) 019-2834',
+                                                    website: organization.website || 'https://yourdomain.com',
+                                                    landingPageFooterEnabled: true,
+                                                    landingPageFooterStyle: landingPageFooterStyle,
+                                                    landingPageFooterCustomHtml: landingPageFooterCustomHtml,
+                                                    socialLinks: {
+                                                        facebook: facebook || undefined,
+                                                        twitter: twitter || undefined,
+                                                        linkedin: linkedin || undefined,
+                                                        instagram: instagram || undefined,
+                                                        youtube: youtube || undefined,
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="text-center space-y-1 text-muted-foreground/50">
+                                            <XCircle className="h-6 w-6 mx-auto text-muted-foreground/30" />
+                                            <p className="text-[10px] font-bold">Footer is currently disabled</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 

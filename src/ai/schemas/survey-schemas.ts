@@ -160,4 +160,6 @@ export const resultRuleSchema = z.object({
   emailSenderProfileId: z.string().optional(),
   smsTemplateId: z.string().optional().describe('Optional: ID of SMS template to send on this outcome'),
   smsSenderProfileId: z.string().optional(),
+  redirectEnabled: z.boolean().optional().describe('Whether redirect is enabled instead of showing pageId'),
+  redirectUrl: z.string().optional().describe('External URL to redirect to'),
 });

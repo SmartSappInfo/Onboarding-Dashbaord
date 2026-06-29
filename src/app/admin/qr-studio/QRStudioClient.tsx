@@ -28,7 +28,9 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Code
 } from 'lucide-react';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -204,6 +206,7 @@ export default function QRStudioClient() {
 
   // Delete confirmation dialog state (archived links only)
   const [deleteTarget, setDeleteTarget] = React.useState<QRCodeType | null>(null);
+  const [shareQR, setShareQR] = React.useState<QRCodeType | null>(null);
 
   // Rename state
   const [renameId, setRenameId] = React.useState<string | null>(null);
@@ -806,6 +809,9 @@ export default function QRStudioClient() {
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(qr); }} className="rounded-lg cursor-pointer">
                               <Copy className="h-4 w-4 mr-2" /> Duplicate
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShareQR(qr); }} className="rounded-lg cursor-pointer">
+                              <Code className="h-4 w-4 mr-2" /> Share & Embed
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {qr.status === 'active' ? (
                               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePause(qr); }} className="rounded-lg cursor-pointer">
@@ -908,6 +914,17 @@ export default function QRStudioClient() {
         onOpenChange={setShowBatchDialog}
         onSuccess={fetchData}
       />
+
+      {shareQR && (
+        <ShareEmbedDialog
+          isOpen={!!shareQR}
+          onOpenChange={(open) => !open && setShareQR(null)}
+          title="Share & Embed QR Code Target"
+          resourceName="QR Code Target"
+          publicUrl={shareQR.mode === 'dynamic' && shareQR.shortPath ? `${window.location.origin}/q/${shareQR.shortPath}` : shareQR.destination.url || ''}
+          embedUrl={shareQR.destination.url ? (shareQR.destination.url.includes('?') ? `${shareQR.destination.url}&embed=true` : `${shareQR.destination.url}?embed=true`) : ''}
+        />
+      )}
     </div>
     </PageContainer>
   );

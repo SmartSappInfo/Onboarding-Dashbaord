@@ -354,6 +354,16 @@ export interface Organization {
   brandPrimaryColor?: string;
   brandSecondaryColor?: string;
   brandFontFamily?: string;
+  landingPageFooterEnabled?: boolean;
+  landingPageFooterStyle?: 'default' | 'minimalist' | 'centered' | 'custom';
+  landingPageFooterCustomHtml?: string;
+  socialLinks?: {
+    facebook?: string;
+    twitter?: string;
+    linkedin?: string;
+    instagram?: string;
+    youtube?: string;
+  };
 
   createdAt: string;
   updatedAt: string;
@@ -377,6 +387,20 @@ export interface OrgBranding {
   brandSecondaryColor: string;
   brandFontFamily: string;
   name: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  landingPageFooterEnabled?: boolean;
+  landingPageFooterStyle?: 'default' | 'minimalist' | 'centered' | 'custom';
+  landingPageFooterCustomHtml?: string;
+  socialLinks?: {
+    facebook?: string;
+    twitter?: string;
+    linkedin?: string;
+    instagram?: string;
+    youtube?: string;
+  };
 }
 
 /**
@@ -1867,6 +1891,26 @@ export interface Survey {
   seoOgImageMode?: 'survey_banner' | 'entity_logo' | 'custom';
   /** @deprecated Use {@link Survey.seo}.useContentFallback. */
   seoUseSurveyFallback?: boolean;
+  leadCaptureMode?: 'questions' | 'form';
+  leadCaptureTitle?: string;
+  leadCaptureDescription?: string;
+  leadCaptureFieldsConfig?: LeadCaptureFieldsConfig;
+  thankYouRedirectEnabled?: boolean;
+  thankYouRedirectUrl?: string;
+  thankYouConfettiEnabled?: boolean;
+}
+
+export interface LeadCaptureFieldSetting {
+  show: boolean;
+  label: string;
+  required: boolean;
+}
+
+export interface LeadCaptureFieldsConfig {
+  name: LeadCaptureFieldSetting;
+  email: LeadCaptureFieldSetting;
+  phone: LeadCaptureFieldSetting;
+  company: LeadCaptureFieldSetting;
 }
 
 export interface SurveyElement {
@@ -1939,6 +1983,8 @@ export interface SurveyResultRule {
   emailSenderProfileId?: string;
   smsTemplateId?: string;
   smsSenderProfileId?: string;
+  redirectEnabled?: boolean;
+  redirectUrl?: string;
 }
 
 export interface SurveyResultPage {
@@ -1946,6 +1992,7 @@ export interface SurveyResultPage {
   name: string;
   isDefault: boolean;
   blocks: SurveyResultBlock[];
+  confettiEnabled?: boolean;
 }
 
 export interface SurveyResultBlock {
@@ -1985,6 +2032,7 @@ export interface SurveyResponse {
   entityType?: EntityType; // Type of entity
   workspaceId?: string | null; // Workspace context at time of submission
   assignedUserId?: string; // User who shared the survey link
+  sourcePageId?: string | null;
 }
 
 export interface SurveySummary {
@@ -3367,7 +3415,7 @@ export interface WidgetDefinition {
 // Campaign Page Builder Types
 // ─────────────────────────────────────────────────
 
-export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list' | 'image' | 'video' | 'spacer' | 'divider' | 'logo_grid';
+export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list' | 'image' | 'video' | 'spacer' | 'divider' | 'logo_grid' | 'meeting' | 'qr';
 
 export interface PageBlock {
   id: string;
@@ -3541,11 +3589,49 @@ export interface ResolvedTheme {
  * Read-only resources a block may reference while rendering (e.g. an embed
  * picking a form). Passed into the block render context.
  */
-export interface BuilderResources {
-  forms: ReadonlyArray<{ id: string; title: string; internalName?: string }>;
-  surveys: ReadonlyArray<{ id: string; title: string }>;
-  agreements: ReadonlyArray<{ id: string; title: string }>;
+export interface FormResource {
+  id: string;
+  title: string;
+  internalName?: string;
 }
+
+export interface SurveyResource {
+  id: string;
+  title: string;
+}
+
+export interface AgreementResource {
+  id: string;
+  title: string;
+}
+
+export interface MeetingResource {
+  id: string;
+  title: string;
+  slug?: string;
+  status?: string;
+  type?: {
+    id: string;
+    slug: string;
+    name: string;
+  };
+}
+
+export interface QRCodeResource {
+  id: string;
+  title: string;
+  slug?: string;
+  redirectUrl?: string;
+}
+
+export interface BuilderResources {
+  forms: ReadonlyArray<FormResource>;
+  surveys: ReadonlyArray<SurveyResource>;
+  agreements: ReadonlyArray<AgreementResource>;
+  meetings?: ReadonlyArray<MeetingResource>;
+  qrCodes?: ReadonlyArray<QRCodeResource>;
+}
+
 
 
 export interface PageSubmission {

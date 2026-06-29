@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Survey, PDFForm, Meeting } from '@/lib/types';
+import type { Survey, PDFForm, Meeting, CampaignPage } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,95 @@ import { useEntityResolver } from '@/context/EntityCacheContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { PortalCard } from './components/PortalCard';
 import { CustomPageSeoDialog } from './components/CustomPageSeoDialog';
+import { CustomPageWorkspaceDialog } from './components/CustomPageWorkspaceDialog';
+
+interface HardcodedPage {
+  slug: string;
+  title: string;
+  path: string;
+  themeColor: string;
+  defaultWorkspaceIds: string[];
+}
+
+const HARDCODED_PAGES: HardcodedPage[] = [
+  {
+    slug: 'homepage',
+    title: 'Public Homepage',
+    path: '/',
+    themeColor: '#3B5FFF',
+    defaultWorkspaceIds: ['onboarding', 'prospect'],
+  },
+  {
+    slug: 'collect-fees-within-four-weeks',
+    title: '/collect-fees-within-four-weeks',
+    path: '/collect-fees-within-four-weeks',
+    themeColor: '#5f30e2',
+    defaultWorkspaceIds: ['onboarding'],
+  },
+  {
+    slug: 'collecting-fees-without-delays-and-parental-confrontations',
+    title: 'How We Collect Fees Without Delays',
+    path: '/collecting-fees-without-delays-and-parental-confrontations',
+    themeColor: '#5f30e2',
+    defaultWorkspaceIds: ['onboarding', 'prospect'],
+  },
+  {
+    slug: 'school-enrollment',
+    title: 'School Enrollment',
+    path: '/school-enrollment',
+    themeColor: '#3B5FFF',
+    defaultWorkspaceIds: ['prospect'],
+  },
+  {
+    slug: 'number-one-choice',
+    title: '/number-one-choice',
+    path: '/number-one-choice',
+    themeColor: '#ec4899',
+    defaultWorkspaceIds: ['onboarding', 'prospect'],
+  },
+  {
+    slug: 'thank-you',
+    title: 'Demo Thank You',
+    path: '/thank-you',
+    themeColor: '#10b981',
+    defaultWorkspaceIds: ['onboarding', 'prospect'],
+  },
+  {
+    slug: 'school-comparison',
+    title: 'Campaign Landing',
+    path: '/campaign/school-comparison',
+    themeColor: '#6366f1',
+    defaultWorkspaceIds: ['onboarding'],
+  },
+  {
+    slug: 'school-comparison-statistics',
+    title: 'Campaign Stats',
+    path: '/campaign/school-comparison/statistics',
+    themeColor: '#10b981',
+    defaultWorkspaceIds: ['onboarding'],
+  },
+  {
+    slug: 'subscription-payment',
+    title: 'Subscription Payment',
+    path: '/p/subscription-payment',
+    themeColor: '#6366f1',
+    defaultWorkspaceIds: ['onboarding'],
+  },
+  {
+    slug: 'register-new-signup',
+    title: 'New School Signup',
+    path: '/register-new-signup',
+    themeColor: '#10b981',
+    defaultWorkspaceIds: ['onboarding'],
+  },
+  {
+    slug: 'forms-results',
+    title: 'Results Directory',
+    path: '/forms/results',
+    themeColor: '#6366f1',
+    defaultWorkspaceIds: ['onboarding'],
+  },
+];
 
 // ─── Skeleton grid — hoisted to module level (rerender-hoist-jsx) ─────────────
 
@@ -110,7 +199,7 @@ function EmptyState({ searchTerm, workspaceId }: { searchTerm: string; workspace
 export default function PortalsClient() {
   const firestore             = useFirestore();
   const { toast }             = useToast();
-  const { activeWorkspaceId } = useTenant();
+  const { activeWorkspaceId, activeOrganizationId } = useTenant();
   // Resolve only the entities referenced by the listed portals (for logos),
   // not the whole workspace (Phase 5).
   const { entitiesById, resolveIds } = useEntityResolver();
@@ -121,9 +210,23 @@ export default function PortalsClient() {
     title: string;
     path: string;
   } | null>(null);
+  const [assigningWorkspacesPage, setAssigningWorkspacesPage] = React.useState<{
+    pageKey: string;
+    title: string;
+    workspaceIds: string[];
+  } | null>(null);
 
   const handleEditSeo = React.useCallback((pageKey: string, title: string, path: string) => {
     setEditingSeoPage({ pageKey, title, path });
+  }, []);
+
+  const handleAssignWorkspaces = React.useCallback((pageKey: string, workspaceIds: string[]) => {
+    const pageObj = HARDCODED_PAGES.find(p => p.path === pageKey);
+    setAssigningWorkspacesPage({
+      pageKey,
+      title: pageObj?.title || pageKey,
+      workspaceIds,
+    });
   }, []);
 
   // ── Queries ───────────────────────────────────────────────────────────────
@@ -149,11 +252,22 @@ export default function PortalsClient() {
     [firestore, activeWorkspaceId],
   );
 
-  const { data: surveys,  isLoading: isLoadingSurveys  } = useCollection<Survey>(surveysQuery);
-  const { data: pdfs,     isLoading: isLoadingPdfs     } = useCollection<PDFForm>(pdfsQuery);
-  const { data: meetings, isLoading: isLoadingMeetings } = useCollection<Meeting>(meetingsQuery);
+  const campaignPagesQuery = useMemoFirebase(
+    () => firestore && activeOrganizationId
+      ? query(
+          collection(firestore, 'campaign_pages'),
+          where('organizationId', '==', activeOrganizationId)
+        )
+      : null,
+    [firestore, activeOrganizationId],
+  );
 
-  const isLoading = isLoadingSurveys || isLoadingPdfs || isLoadingMeetings;
+  const { data: surveys,       isLoading: isLoadingSurveys       } = useCollection<Survey>(surveysQuery);
+  const { data: pdfs,          isLoading: isLoadingPdfs          } = useCollection<PDFForm>(pdfsQuery);
+  const { data: meetings,      isLoading: isLoadingMeetings      } = useCollection<Meeting>(meetingsQuery);
+  const { data: campaignPages, isLoading: isLoadingCampaignPages } = useCollection<CampaignPage>(campaignPagesQuery);
+
+  const isLoading = isLoadingSurveys || isLoadingPdfs || isLoadingMeetings || isLoadingCampaignPages;
 
   // Resolve the entities referenced by the listed portals (deduped + batched).
   React.useEffect(() => {
@@ -259,51 +373,28 @@ export default function PortalsClient() {
               <section>
                 <SectionHeader title="Core Custom Pages" icon={Zap} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  <PortalCard
-                    kind="custom"
-                    title="Public Homepage"
-                    path="/"
-                    pageKey="/"
-                    themeColor="#3B5FFF"
-                    onCopy={handleCopy}
-                    onEditSeo={handleEditSeo}
-                  />
-                  <PortalCard
-                    kind="custom"
-                    title="/collect-fees-within-four-weeks"
-                    path="/collect-fees-within-four-weeks"
-                    pageKey="/collect-fees-within-four-weeks"
-                    themeColor="#5f30e2"
-                    onCopy={handleCopy}
-                    onEditSeo={handleEditSeo}
-                  />
-                  <PortalCard
-                    kind="custom"
-                    title="/number-one-choice"
-                    path="/number-one-choice"
-                    pageKey="/number-one-choice"
-                    themeColor="#ec4899"
-                    onCopy={handleCopy}
-                    onEditSeo={handleEditSeo}
-                  />
-                  <PortalCard
-                    kind="custom"
-                    title="Demo Thank You"
-                    path="/thank-you"
-                    pageKey="/thank-you"
-                    themeColor="#10b981"
-                    onCopy={handleCopy}
-                    onEditSeo={handleEditSeo}
-                  />
-                  {activeWorkspaceId === 'onboarding' && (
-                    <>
-                      <PortalCard kind="custom" title="Campaign Landing"    path="/campaign/school-comparison"            pageKey="/campaign/school-comparison"            themeColor="#6366f1" onCopy={handleCopy} onEditSeo={handleEditSeo} />
-                      <PortalCard kind="custom" title="Campaign Stats"       path="/campaign/school-comparison/statistics" pageKey="/campaign/school-comparison/statistics" themeColor="#10b981" onCopy={handleCopy} onEditSeo={handleEditSeo} />
-                      <PortalCard kind="custom" title="Subscription Payment" path="/p/subscription-payment"               pageKey="/p/subscription-payment"               themeColor="#6366f1" onCopy={handleCopy} onEditSeo={handleEditSeo} />
-                      <PortalCard kind="custom" title="New School Signup"    path="/register-new-signup"                  pageKey="/register-new-signup"                  themeColor="#10b981" onCopy={handleCopy} onEditSeo={handleEditSeo} />
-                      <PortalCard kind="custom" title="Results Directory"    path="/forms/results"                        pageKey="/forms/results"                        themeColor="#6366f1" onCopy={handleCopy} onEditSeo={handleEditSeo} />
-                    </>
-                  )}
+                  {HARDCODED_PAGES.filter(p => {
+                    const dbPage = campaignPages?.find(db => db.slug === p.slug || db.slug === p.path.replace(/^\//, ''));
+                    const workspaceIds = dbPage ? (dbPage.workspaceIds || []) : p.defaultWorkspaceIds;
+                    return workspaceIds.includes(activeWorkspaceId);
+                  }).map(p => {
+                    const dbPage = campaignPages?.find(db => db.slug === p.slug || db.slug === p.path.replace(/^\//, ''));
+                    const workspaceIds = dbPage ? (dbPage.workspaceIds || []) : p.defaultWorkspaceIds;
+                    return (
+                      <PortalCard
+                        key={p.slug}
+                        kind="custom"
+                        title={p.title}
+                        path={p.path}
+                        pageKey={p.path}
+                        themeColor={p.themeColor}
+                        onCopy={handleCopy}
+                        onEditSeo={handleEditSeo}
+                        workspaceIds={workspaceIds}
+                        onAssignWorkspaces={handleAssignWorkspaces}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -394,6 +485,15 @@ export default function PortalsClient() {
           pageKey={editingSeoPage.pageKey}
           currentTitle={editingSeoPage.title}
           currentPath={editingSeoPage.path}
+        />
+      )}
+      {assigningWorkspacesPage && (
+        <CustomPageWorkspaceDialog
+          open={!!assigningWorkspacesPage}
+          onOpenChange={(open) => !open && setAssigningWorkspacesPage(null)}
+          pageKey={assigningWorkspacesPage.pageKey}
+          currentTitle={assigningWorkspacesPage.title}
+          currentWorkspaceIds={assigningWorkspacesPage.workspaceIds}
         />
       )}
     </PageContainerFluid>

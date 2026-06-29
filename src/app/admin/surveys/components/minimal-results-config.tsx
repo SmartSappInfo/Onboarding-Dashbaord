@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Mail, Smartphone, Pencil, PlusCircle, ShieldCheck, HeartHandshake, FileText } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Mail, Smartphone, Pencil, PlusCircle, ShieldCheck, HeartHandshake, FileText, Link2 } from 'lucide-react';
 import { PageEditor } from './result-page-builder';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -237,8 +240,9 @@ export function MinimalRespondentMessage() {
 }
 
 export function MinimalThankYouPage() {
-    const { watch, setValue } = useFormContext();
+    const { watch, setValue, register } = useFormContext();
     const pages = watch('resultPages') || [];
+    const redirectEnabled = watch('thankYouRedirectEnabled');
 
     // Ensure at least one resultPage exists and seed with default content if missing
     React.useEffect(() => {
@@ -271,18 +275,67 @@ export function MinimalThankYouPage() {
     return (
         <Card className="rounded-2xl border border-border bg-card overflow-hidden">
             <CardHeader className="bg-muted/10 border-b py-5 px-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-500/10 rounded-xl shadow-inner">
-                        <FileText className="h-5 w-5 text-emerald-600" />
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-500/10 rounded-xl shadow-inner">
+                            <FileText className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-sm font-semibold tracking-tight">Post-Submission Experience</CardTitle>
+                            <CardDescription className="text-xs">Customize what respondents see or where they go after submitting.</CardDescription>
+                        </div>
                     </div>
-                    <div>
-                        <CardTitle className="text-sm font-semibold tracking-tight">Thank You Page</CardTitle>
-                        <CardDescription className="text-xs">Customize the page respondents see after submitting the survey.</CardDescription>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="confetti-toggle" className="text-xs font-semibold text-slate-500">Confetti</Label>
+                            <Switch 
+                                id="confetti-toggle" 
+                                checked={!!watch('thankYouConfettiEnabled')} 
+                                onCheckedChange={(val) => setValue('thankYouConfettiEnabled', val, { shouldDirty: true })} 
+                                className="scale-90 data-[state=checked]:bg-amber-500"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="redirect-toggle" className="text-xs font-semibold text-slate-500">Redirect URL</Label>
+                            <Switch 
+                                id="redirect-toggle" 
+                                checked={!!redirectEnabled} 
+                                onCheckedChange={(val) => setValue('thankYouRedirectEnabled', val, { shouldDirty: true })} 
+                                className="scale-90 data-[state=checked]:bg-emerald-500"
+                            />
+                        </div>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-6">
-                <PageEditor pageIndex={0} />
+            <CardContent className="p-6 space-y-4">
+                {redirectEnabled ? (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="space-y-2">
+                            <Label htmlFor="redirect-url-input" className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                                <Link2 className="h-3.5 w-3.5 text-primary" /> Redirect Destination URL
+                            </Label>
+                            <Input 
+                                id="redirect-url-input" 
+                                placeholder="https://yourwebsite.com/welcome?submission_id={{submission_id}}" 
+                                {...register('thankYouRedirectUrl')} 
+                                className="bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-emerald-500/30 rounded-xl h-11"
+                            />
+                        </div>
+                        <div className="p-4 rounded-xl border border-dashed border-emerald-200/50 bg-emerald-50/20 text-xs text-emerald-700/80 leading-relaxed space-y-2">
+                            <p className="font-bold text-emerald-800">💡 Personalize the Redirect URL:</p>
+                            <p>You can embed respondent inputs and submission details using placeholders:</p>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                <span className="px-2 py-0.5 bg-emerald-100/50 border border-emerald-200 rounded font-mono text-[10px] text-emerald-800 font-bold select-all cursor-pointer">{"{{submission_id}}"}</span>
+                                <span className="px-2 py-0.5 bg-emerald-100/50 border border-emerald-200 rounded font-mono text-[10px] text-emerald-800 font-bold select-all cursor-pointer">{"{{survey_title}}"}</span>
+                                <span className="px-2 py-0.5 bg-emerald-100/50 border border-emerald-200 rounded font-mono text-[10px] text-emerald-800 font-bold select-all cursor-pointer">{"{{contact_name}}"}</span>
+                                <span className="px-2 py-0.5 bg-emerald-100/50 border border-emerald-200 rounded font-mono text-[10px] text-emerald-800 font-bold select-all cursor-pointer">{"{{contact_email}}"}</span>
+                                <span className="px-2 py-0.5 bg-emerald-100/50 border border-emerald-200 rounded font-mono text-[10px] text-emerald-800 font-bold select-all cursor-pointer">{"{{contact_phone}}"}</span>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <PageEditor pageIndex={0} />
+                )}
             </CardContent>
         </Card>
     );

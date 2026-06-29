@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import dynamic from 'next/dynamic';
 
+import { useSearchParams } from 'next/navigation';
+
 // bundle-dynamic-imports: lazy load wizard + analytics (Vercel best practice)
 const CampaignWizard = dynamic(
     () => import('./components/campaign-wizard').then(m => ({ default: m.CampaignWizard })),
@@ -31,6 +33,7 @@ export default function CampaignsPage() {
     const { user } = useUser();
     const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
     const { toast } = useToast();
+    const searchParams = useSearchParams();
 
     const { campaigns, isLoading } = useCampaigns(activeWorkspaceId);
 
@@ -38,6 +41,15 @@ export default function CampaignsPage() {
     const [editingCampaign, setEditingCampaign] = React.useState<MessageCampaign | null>(null);
     const [deleteTarget, setDeleteTarget] = React.useState<MessageCampaign | null>(null);
     const [analyticsTarget, setAnalyticsTarget] = React.useState<MessageCampaign | null>(null);
+
+    React.useEffect(() => {
+        if (!searchParams) return;
+        const templateId = searchParams.get('templateId');
+        if (templateId) {
+            setWizardOpen(true);
+            setEditingCampaign(null);
+        }
+    }, [searchParams]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
 

@@ -1,0 +1,39 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e5]:
+      - link "Back to homepage" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e7]:
+          - img "SmartSapp Logo" [ref=e9]
+          - generic [ref=e10]: SmartSapp
+      - button "Book Free Consultation" [active] [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - heading "How we collect fees without delays and Parental Confrontations" [level=1] [ref=e14]
+      - paragraph [ref=e15]: Fee collection used to bring stress. SmartSapp changed it. No gate issues. Payments feel smooth.
+    - 'button "Play video: How we collect fees without delays and parental confrontations" [ref=e17] [cursor=pointer]':
+      - img "Video thumbnail — How we collect fees without delays and parental confrontations" [ref=e18]
+      - img [ref=e25]
+      - generic [ref=e27]:
+        - img [ref=e29]
+        - paragraph [ref=e31]: Click to Play Video
+    - generic [ref=e32]:
+      - heading "Want to collect your fees without stress and parental confrontations?" [level=2] [ref=e33]
+      - paragraph [ref=e34]: Book a FREE 30-minutes consultation to see your personalized roadmap to complete the shift.
+      - button "Book Free Consultation Now" [ref=e36] [cursor=pointer]:
+        - generic [ref=e37]:
+          - text: Book Free Consultation Now
+          - img
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - img [ref=e40]
+          - generic [ref=e43]: Personalized Roadmap
+        - generic [ref=e44]:
+          - img [ref=e45]
+          - generic [ref=e48]: Complete the shift
+  - contentinfo [ref=e49]:
+    - paragraph [ref=e50]: © 2026 SmartSapp. All rights reserved.
+```

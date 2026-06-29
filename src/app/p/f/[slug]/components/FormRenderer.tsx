@@ -13,6 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Check, Loader2, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import FormSuccessScreen from './FormSuccessScreen';
+import type { OrgBranding } from '@/lib/types';
+import Footer from '@/components/footer';
 
 interface ResolvedField extends FormFieldInstance {
   fieldDefinition: AppField;
@@ -23,13 +25,15 @@ interface FormRendererProps {
   resolvedFields: ResolvedField[];
   isEmbed?: boolean;
   entityId?: string;
+  orgBranding?: OrgBranding | null;
 }
 
 export default function FormRenderer({ 
   form, 
   resolvedFields, 
   isEmbed, 
-  entityId 
+  entityId,
+  orgBranding
 }: FormRendererProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,7 +109,7 @@ export default function FormRenderer({
   };
 
   if (isSubmitted) {
-    return <FormSuccessScreen form={form} />;
+    return <FormSuccessScreen form={form} orgBranding={orgBranding} />;
   }
 
   // 4. Styles based on Theme
@@ -237,11 +241,8 @@ export default function FormRenderer({
         </form>
 
         {/* Branding */}
-        {!isEmbed && (
-          <div className="mt-12 text-center text-slate-400 text-xs font-medium uppercase tracking-widest flex items-center justify-center gap-2">
-            <span>Powered by</span>
-            <span className="text-slate-600 font-bold">SmartSapp</span>
-          </div>
+        {!isEmbed && orgBranding?.landingPageFooterEnabled !== false && (
+          <Footer orgBranding={orgBranding} className="mt-12 bg-transparent text-slate-500 pt-8" />
         )}
       </div>
     </div>

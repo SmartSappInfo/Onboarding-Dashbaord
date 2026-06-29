@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Globe, AlertCircle, ShieldCheck, Zap, Layout, Link2, Copy, Check, QrCode, Eye, RotateCcw } from 'lucide-react';
+import { Globe, AlertCircle, ShieldCheck, Zap, Layout, Link2, Copy, Check, QrCode, Eye, RotateCcw, Code } from 'lucide-react';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -87,6 +88,7 @@ export default function Step4Publish() {
     const assignedUserIds = watch('assignedUsers') || [];
     const assignmentEnabled = watch('assignmentEnabled');
     const slug = watch('slug');
+    const [isShareOpen, setIsShareOpen] = React.useState(false);
     const surveyTitle = watch('title') || watch('internalName') || 'Survey';
     const organizationId = watch('organizationId') || '';
     const workspaceIds = watch('workspaceIds') || [];
@@ -235,6 +237,16 @@ export default function Step4Publish() {
                                 </div>
                             )}
                         />
+                    </div>
+                    <div className="pt-2">
+                        <Button 
+                            type="button"
+                            variant="outline"
+                            className="w-full h-11 rounded-xl font-bold gap-2 active:scale-95 transition-all"
+                            onClick={() => setIsShareOpen(true)}
+                        >
+                            <Code className="h-4 w-4" /> Share & Embed Survey
+                        </Button>
                     </div>
 
  <div className="h-px bg-border/50" />
@@ -447,6 +459,17 @@ export default function Step4Publish() {
                         name: user?.displayName || '',
                         email: user?.email || '',
                     }}
+                />
+            )}
+
+            {isShareOpen && (
+                <ShareEmbedDialog
+                    isOpen={isShareOpen}
+                    onOpenChange={setIsShareOpen}
+                    title="Share & Embed Survey"
+                    resourceName="Survey"
+                    publicUrl={getFullUrl()}
+                    embedUrl={`${getFullUrl()}?embed=true`}
                 />
             )}
         </div>

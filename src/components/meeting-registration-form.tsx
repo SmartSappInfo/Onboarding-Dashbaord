@@ -66,10 +66,10 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
       else if (field.type === 'multiselect') acc[field.key] = [];
       else acc[field.key] = '';
       return acc;
-    }, {} as Record<string, any>),
+    }, {} as Record<string, unknown>),
   });
 
-  const onSubmit = async (data: Record<string, any>) => {
+  const onSubmit = async (data: Record<string, unknown>) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
@@ -84,7 +84,6 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
 
       if (!res.ok) {
         if (res.status === 409) {
-          // Capacity full
           toast({
             variant: 'destructive',
             title: 'Registration Full',
@@ -98,6 +97,10 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
       const { token, status, personalizedMeetingUrl, alreadyRegistered } = json;
 
       setIsComplete(true);
+
+      if (typeof window !== 'undefined') {
+        window.parent.postMessage({ type: 'meeting_booked', meetingId: meeting.id }, '*');
+      }
 
       if (alreadyRegistered) {
         toast({

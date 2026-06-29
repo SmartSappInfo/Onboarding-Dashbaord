@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useSearchParams } from 'next/navigation';
 import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -98,6 +99,7 @@ interface WizardState {
 
 type WizardAction =
     | { type: 'SET_FIELD'; field: keyof WizardState; value: any }
+    | { type: 'SET_FIELDS'; fields: Partial<WizardState> }
     | { type: 'SET_STEP'; step: number }
     | { type: 'NEXT_STEP' }
     | { type: 'PREV_STEP' }
@@ -107,6 +109,8 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
     switch (action.type) {
         case 'SET_FIELD':
             return { ...state, [action.field]: action.value };
+        case 'SET_FIELDS':
+            return { ...state, ...action.fields };
         case 'SET_STEP':
             return { ...state, step: action.step };
         case 'NEXT_STEP':
@@ -279,6 +283,8 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     const [openRuleTagIdx, setOpenRuleTagIdx] = React.useState<number | null>(null);
     const [ruleTagInputValue, setRuleTagInputValue] = React.useState('');
     const [previewHtml, setPreviewHtml] = React.useState<string | null>(null);
+    const searchParams = useSearchParams();
+    const [mountTemplateLoaded, setMountTemplateLoaded] = React.useState(false);
 
     const [state, dispatch] = React.useReducer(wizardReducer, campaign, createInitialState);
     const activeVariant = state.variants.find(v => v.id === activeVariantTab) || state.variants[0];
@@ -353,6 +359,64 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
         }
         return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
     }, [fetchPreview, state.step]);
+
+    React.useEffect(() => {
+        if (!searchParams || campaign || mountTemplateLoaded || !firestore) return;
+        const templateId = searchParams.get('templateId');
+        if (templateId) {
+            const fetchTemplateOnMount = async () => {
+                try {
+                    const { doc, getDoc } = await import('firebase/firestore');
+                    const tDoc = await getDoc(doc(firestore, 'message_templates', templateId));
+                    if (tDoc.exists()) {
+                        const template = { id: tDoc.id, ...tDoc.data() } as MessageTemplate;
+                        
+                        // Atomically set all field states using SET_FIELDS action
+                        dispatch({
+                            type: 'SET_FIELDS',
+                            fields: {
+                                templateId: template.id,
+                                templateName: template.name || '',
+                                channel: template.channel,
+                                target: template.target || 'external_client',
+                                contentMode: template.contentMode || 'plain_text',
+                                customSubject: template.subject || '',
+                                customBody: template.body || '',
+                                customBlocks: template.blocks || [],
+                                styleId: template.styleId || '',
+                                internalName: `${template.name || 'Template'} Campaign`,
+                            }
+                        });
+
+                        // Fetch updated variants and set them as well
+                        const updatedVariants = state.variants.map(v => {
+                            if (v.id === 'A') {
+                                return {
+                                    ...v,
+                                    templateId: template.id,
+                                    templateName: template.name || '',
+                                    customSubject: template.subject || '',
+                                    customBody: template.body || '',
+                                    customBlocks: template.blocks || [],
+                                    contentMode: template.contentMode || 'plain_text',
+                                    styleId: template.styleId || ''
+                                };
+                            }
+                            return v;
+                        });
+                        dispatch({ type: 'SET_FIELD', field: 'variants', value: updatedVariants });
+
+                        // Advance directly to Step 3
+                        dispatch({ type: 'SET_STEP', step: 3 });
+                        setMountTemplateLoaded(true);
+                    }
+                } catch (err) {
+                    console.error("Failed to load template on mount for campaign:", err);
+                }
+            };
+            fetchTemplateOnMount();
+        }
+    }, [searchParams, campaign, mountTemplateLoaded, firestore, state.variants]);
 
     const setField = <K extends keyof WizardState>(field: K, value: WizardState[K]) => {
         dispatch({ type: 'SET_FIELD', field, value });

@@ -15,6 +15,7 @@ import {
   Archive,
   Trash2,
   Globe,
+  Code,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -42,7 +43,7 @@ export interface PageCardProps {
   onArchive:       (pageId: string) => Promise<void>;
   onDeleteRequest: (page: CampaignPage) => void;
   onSettings:      (page: CampaignPage) => void;
-  onCopyLink:      (e: React.MouseEvent, slug: string) => void;
+  onCopyLink:      (e: React.MouseEvent, page: CampaignPage) => void;
 }
 
 // ─── Status badge config ──────────────────────────────────────────────────────
@@ -210,6 +211,13 @@ export const PageCard = React.memo(function PageCard({
                 <BarChart2 className="h-3.5 w-3.5" />
                 View Analytics
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={e => { e.stopPropagation(); onCopyLink(e, page); }}
+                className="flex items-center gap-2"
+              >
+                <Code className="h-3.5 w-3.5" />
+                Share & Embed
+              </DropdownMenuItem>
 
               {/* Publish — draft or archived */}
               {isDraft || isArchived ? (
@@ -298,8 +306,8 @@ export const PageCard = React.memo(function PageCard({
 
           {/* Copy Link */}
           <OverlayBtn
-            label="Copy Link"
-            onClick={e => { e.stopPropagation(); onCopyLink(e, page.slug); }}
+            label="Share & Embed"
+            onClick={e => { e.stopPropagation(); onCopyLink(e, page); }}
           >
             <Link2 className="h-4 w-4" />
           </OverlayBtn>

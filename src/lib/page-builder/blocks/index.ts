@@ -27,6 +27,8 @@ import './form';
 import './survey';
 import './agreement';
 import './html';
+import './meeting';
+import './qr';
 
 /** No-op marker to make the side-effect import explicit at call sites. */
 export function registerAllBlocks(): void {

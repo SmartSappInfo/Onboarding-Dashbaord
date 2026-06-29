@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { useUser } from '@/firebase';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { PageCard } from './components/PageCard';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 import {
   duplicatePageAction,
   updatePageStatusAction,
@@ -72,6 +73,7 @@ export default function PagesClient() {
   const [searchTerm,   setSearchTerm]   = React.useState('');
   const [duplicatingId, setDuplicatingId] = React.useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<CampaignPage | null>(null);
+  const [sharePage, setSharePage] = React.useState<CampaignPage | null>(null);
 
   // ── Firestore collection query ────────────────────────────────────────────
   const pagesQuery = useMemoFirebase(
@@ -104,13 +106,10 @@ export default function PagesClient() {
   // when PagesClient re-renders due to searchTerm changes.
 
   const handleCopyLink = React.useCallback(
-    (_e: React.MouseEvent, slug: string) => {
-      if (typeof window === 'undefined') return;
-      const url = `${window.location.origin}/p/${slug}`;
-      navigator.clipboard.writeText(url);
-      toast({ title: 'Link Copied', description: 'Page URL copied to clipboard.' });
+    (_e: React.MouseEvent, page: CampaignPage) => {
+      setSharePage(page);
     },
-    [toast],
+    [],
   );
 
   const handleDuplicate = React.useCallback(
@@ -298,6 +297,17 @@ export default function PagesClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {sharePage && (
+        <ShareEmbedDialog
+          isOpen={!!sharePage}
+          onOpenChange={(open) => !open && setSharePage(null)}
+          title="Share & Embed Campaign Page"
+          resourceName="Page"
+          publicUrl={`${window.location.origin}/p/${sharePage.slug}`}
+          embedUrl={`${window.location.origin}/p/${sharePage.slug}?embed=true`}
+        />
+      )}
     </PageContainerFluid>
   );
 }

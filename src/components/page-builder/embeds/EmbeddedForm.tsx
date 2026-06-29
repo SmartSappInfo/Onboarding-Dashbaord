@@ -4,9 +4,6 @@
  * Firestore-backed container for an embedded standalone form. Fetches the form
  * definition, renders it via `FormView`, and submits through the existing
  * `submitStandaloneFormAction` (which also drives downstream automations).
- *
- * NOTE: `PublicPageClient` still has an inline copy of this used by its modal;
- * Phase 4 replaces that with this shared component (then the duplicate is gone).
  */
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
@@ -30,7 +27,7 @@ interface StandaloneForm {
 
 interface EmbeddedFormProps {
   formId: string;
-  pageId: string;
+  pageId?: string;
   organizationId: string;
   workspaceId: string;
   isInModal?: boolean;
@@ -47,7 +44,7 @@ export function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isIn
   useEffect(() => {
     let active = true;
     (async () => {
-      const snap = await getDoc(doc(db, 'standaloneForms', formId));
+      const snap = await getDoc(doc(db, 'forms', formId));
       if (active) {
         if (snap.exists()) setForm(snap.data() as StandaloneForm);
         setLoading(false);
@@ -67,7 +64,7 @@ export function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isIn
         <div className="h-20 w-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
           <CheckCircle2 className="h-10 w-10 text-emerald-600" />
         </div>
-        <h2 className="text-2xl font-bold">{form.settings?.successMessage || 'Thank you!'}</h2>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{form.settings?.successMessage || 'Thank you!'}</h2>
         <p className="text-slate-500 font-medium">Your response has been recorded successfully.</p>
         {isInModal ? <Button onClick={onSuccess} className="rounded-xl font-bold w-full h-12 mt-4">Close Window</Button> : null}
       </div>
@@ -81,7 +78,28 @@ export function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isIn
       fields={form.fields}
       submitLabel={form.settings?.submitButtonLabel || 'Submit'}
       onSubmit={async (data) => {
-        const res = await submitStandaloneFormAction(formId, data, workspaceId, organizationId, { sourcePageId: pageId });
+        // Retrieve stored UTM parameters from sessionStorage
+        const storedUtm = typeof window !== 'undefined' ? sessionStorage.getItem(`utm_${pageId}`) : null;
+        let utmData: Record<string, string> | null = null;
+        if (storedUtm) {
+          try {
+            utmData = JSON.parse(storedUtm);
+          } catch (e) {
+            console.error('Failed to parse UTM data:', e);
+          }
+        }
+        
+        // Pass UTM data as metadata
+        const metadata: Record<string, string> = { sourcePageId: pageId || '' };
+        if (utmData) {
+          metadata.utmSource = utmData.source || '';
+          metadata.utmMedium = utmData.medium || '';
+          metadata.utmCampaign = utmData.campaign || '';
+          metadata.utmTerm = utmData.term || '';
+          metadata.utmContent = utmData.content || '';
+        }
+
+        const res = await submitStandaloneFormAction(formId, data, workspaceId, organizationId, metadata);
         if (res.success) {
           setSubmitted(true);
           if (!isInModal && form.settings?.redirectUrl) {

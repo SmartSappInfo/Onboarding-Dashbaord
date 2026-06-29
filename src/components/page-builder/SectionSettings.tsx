@@ -17,7 +17,7 @@ export const SECTION_FIELDS: ReadonlyArray<BlockField> = [
   { kind: 'color', key: 'background', label: 'Background Color' },
 ];
 
-const NO_RESOURCES: BuilderResources = { forms: [], surveys: [], agreements: [] };
+const NO_RESOURCES: BuilderResources = { forms: [], surveys: [], agreements: [], meetings: [], qrCodes: [] };
 
 interface SectionSettingsProps {
   section: PageSection;

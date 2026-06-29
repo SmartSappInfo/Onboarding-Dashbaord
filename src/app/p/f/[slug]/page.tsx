@@ -83,6 +83,8 @@ export default async function PublicFormPage({
 
   const isEmbed = embed === 'true';
 
+  const org = await getOrgBranding(form.organizationId);
+
   return (
     <div className="min-h-screen">
       <FormRenderer 
@@ -90,6 +92,7 @@ export default async function PublicFormPage({
         resolvedFields={resolvedFields as any}
         isEmbed={isEmbed} 
         entityId={entityId} 
+        orgBranding={org}
       />
     </div>
   );

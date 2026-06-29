@@ -43,8 +43,10 @@ import {
     School,
     Video,
     Globe,
-    X
+    Code,
+    X,
 } from 'lucide-react';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -158,6 +160,7 @@ export default function MeetingsHubClient() {
 
   const { user } = useUser();
   const [isCloningMeetingId, setIsCloningMeetingId] = useState<string | null>(null);
+  const [shareMeeting, setShareMeeting] = useState<Meeting | null>(null);
 
   const handleCloneMeeting = async (meeting: Meeting) => {
     if (!firestore || !user || !activeWorkspaceId) return;
@@ -387,24 +390,17 @@ export default function MeetingsHubClient() {
             <Button
               variant="ghost"
               size="icon"
-  className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+              className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
               onClick={() => {
-                if (typeof window !== 'undefined') {
-                   const url = `${window.location.origin}${publicUrl}`;
-                  navigator.clipboard.writeText(url);
-                  toast({
-                    title: "Link Copied",
-                    description: "Public meeting URL copied to clipboard.",
-                  });
-                }
+                setShareMeeting(meeting);
               }}
             >
-  <Copy className="h-4 w-4" />
-  <span className="sr-only">Copy link</span>
+              <Copy className="h-4 w-4" />
+              <span className="sr-only">Share & embed</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Copy Public Link</p>
+            <p>Share & Embed Meeting</p>
           </TooltipContent>
         </Tooltip>
  
@@ -486,6 +482,10 @@ export default function MeetingsHubClient() {
             <DropdownMenuItem onClick={() => setMeetingForQR(meeting)}>
                 <QrCode className="mr-2 h-4 w-4" />
                 <span>Generate QR Code</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShareMeeting(meeting)}>
+              <Code className="mr-2 h-4 w-4" />
+              <span>Share & Embed</span>
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={() => {
@@ -795,6 +795,17 @@ export default function MeetingsHubClient() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+      {shareMeeting && (
+        <ShareEmbedDialog
+          isOpen={!!shareMeeting}
+          onOpenChange={(open) => !open && setShareMeeting(null)}
+          title="Share & Embed Meeting"
+          resourceName="Meeting"
+          publicUrl={`${window.location.origin}/meetings/${((shareMeeting.type?.slug as string) === 'parent' ? 'parent-engagement' : (shareMeeting.type?.slug || 'session'))}/${shareMeeting.meetingSlug || shareMeeting.entitySlug}`}
+          embedUrl={`${window.location.origin}/meetings/${((shareMeeting.type?.slug as string) === 'parent' ? 'parent-engagement' : (shareMeeting.type?.slug || 'session'))}/${shareMeeting.meetingSlug || shareMeeting.entitySlug}?embed=true`}
+        />
+      )}
 
         </PageContainerFluid>
         </TooltipProvider>

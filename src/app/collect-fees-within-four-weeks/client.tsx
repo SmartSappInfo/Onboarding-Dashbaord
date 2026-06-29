@@ -24,7 +24,7 @@ type AssetKey =
 const ASSETS = assetsJson as Record<AssetKey, string>;
 
 const TRIAL_URL = 'https://smartsapp.com/features/automatic-fee-collection/';
-const OFFER_END = new Date('2025-02-16T00:00:00');
+const OFFER_END = new Date('2026-07-31T00:00:00');
 
 // ─── Video player — poster with play overlay, swaps to native video ──────────
 
@@ -314,71 +314,98 @@ export default function CollectFeesClient() {
           <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight">
             With SmartSapp, <span className="text-[#5f30e2]">You Can:</span>
           </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((f, i) => (
-              <div key={f.title} className={`rounded-2xl bg-white p-6 shadow-sm border border-slate-100 ${i === 6 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
-                <div className="h-9 w-9 rounded-xl bg-[#5f30e2]/10 text-[#5f30e2] flex items-center justify-center font-extrabold mb-3">
-                  {i + 1}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Left Column - Features Cards Grid */}
+            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {FEATURES.map((f, i) => (
+                <div key={f.title} className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100 h-full flex flex-col justify-between">
+                  <div>
+                    <div className="h-8 w-8 rounded-lg bg-[#5f30e2]/10 text-[#5f30e2] flex items-center justify-center font-extrabold mb-3 text-sm">
+                      {i + 1}
+                    </div>
+                    <h3 className="font-bold text-base mb-1.5">{f.title}</h3>
+                    <p className="text-xs text-slate-605 leading-relaxed">{f.desc}</p>
+                  </div>
                 </div>
-                <h3 className="font-bold text-lg mb-1.5">{f.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Right Column - Flow Illustration Image */}
+            <div className="lg:col-span-5 flex justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={ASSETS.billNotify}
+                alt="Bill, notify and collect — SmartSapp fee collection flow"
+                className="w-full max-w-[420px] h-auto object-contain"
+              />
+            </div>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={ASSETS.billNotify}
-            alt="Bill, notify and collect — SmartSapp fee collection flow"
-            className="w-full max-w-3xl mx-auto"
-          />
           <CtaBlock label="Yes, I need a free trial now" />
         </div>
       </section>
 
       {/* ── 6. Offer / pricing (white) ────────────────────────────────────── */}
       <section className="bg-white px-4 sm:px-8 py-14 sm:py-20">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+        <div className="max-w-6xl mx-auto space-y-12">
+          {/* Header */}
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight">
             Collect Your Fees in 4 Weeks or Use SmartSapp for <span className="text-[#5f30e2]">FREE!!!</span>
           </h2>
-          <p className="text-lg sm:text-xl font-bold">School Owners, Accountants, &amp; School Admins</p>
-          <p className="text-slate-600">
-            If I offered you a system that would make it super easy for you to collect your fees:
-          </p>
-          <ul className="max-w-2xl mx-auto space-y-3 text-left">
-            {OFFER_POINTS.map(point => (
-              <li key={point} className="flex items-start gap-3">
-                <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#5f30e2] text-white text-xs font-bold">✓</span>
-                <span className="text-slate-700 font-medium">{point}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="text-lg sm:text-xl font-bold">Would you take me up on that offer?</p>
 
-          <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            <div className="rounded-2xl border-2 border-slate-200 p-8">
-              <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Normal Price</p>
-              <p className="text-4xl font-extrabold my-2 text-slate-400 line-through">GH&cent; 29.97</p>
-              <p className="text-sm text-slate-500">Per Student, Per Term</p>
+          {/* Split Block: Offer details on Left, image on Right */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center max-w-5xl mx-auto">
+            {/* Left Column - Bullet Points */}
+            <div className="lg:col-span-7 space-y-6">
+              <p className="text-xl font-bold text-slate-800 text-left">School Owners, Accountants, &amp; School Admins</p>
+              <p className="text-slate-650 text-left">
+                If I offered you a system that would make it super easy for you to collect your fees:
+              </p>
+              <ul className="space-y-3 text-left">
+                {OFFER_POINTS.map(point => (
+                  <li key={point} className="flex items-start gap-3">
+                    <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#5f30e2] text-white text-xs font-bold">✓</span>
+                    <span className="text-slate-700 font-medium">{point}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="rounded-2xl border-2 border-[#5f30e2] bg-[#5f30e2]/5 p-8 shadow-xl">
-              <p className="text-sm font-bold uppercase tracking-widest text-[#5f30e2]">New Offer</p>
-              <p className="text-4xl font-extrabold my-2 text-[#5f30e2]">GH&cent; 9.97</p>
-              <p className="text-sm text-slate-600">Per Student, Per Term</p>
+
+            {/* Right Column - Payment Image */}
+            <div className="lg:col-span-5 flex justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1781187373618-payment-methods.png?alt=media&token=fbd02a8d-d8cd-4ed7-b4c0-033a8f3bbbaf"
+                alt="Supported Mobile Money and Card Payment options on checkout screen"
+                className="w-full max-w-[460px] h-auto object-contain"
+              />
             </div>
           </div>
 
-          <p className="text-2xl sm:text-3xl font-extrabold text-[#e63946]">Whooping 67% Discount</p>
-          <p className="font-semibold text-slate-700">Offer Ends on 15th February, 2025</p>
-          <Countdown />
-          <CtaBlock label="Yes, I need a free trial now" />
+          {/* Centered Decision CTA & Countdown (One Column) */}
+          <div className="max-w-2xl mx-auto text-center space-y-8 pt-8">
+            <p className="text-xl sm:text-2xl font-bold">Would you take me up on that offer?</p>
 
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={ASSETS.paymentMethods}
-            alt="Supported payment methods — Mastercard, Visa, MTN Mobile Money, Vodafone Cash, AirtelTigo Money, USSD"
-            className="w-full max-w-3xl mx-auto pt-4"
-          />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-stretch">
+              <div className="rounded-2xl border-2 border-slate-200 p-8 flex flex-col justify-center">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Normal Price</p>
+                <p className="text-4xl font-extrabold my-2 text-slate-400 line-through">GH&cent; 29.97</p>
+                <p className="text-xs text-slate-500">Per Student, Per Term</p>
+              </div>
+              <div className="rounded-2xl border-2 border-[#5f30e2] bg-[#5f30e2]/5 p-8 shadow-xl flex flex-col justify-center">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#5f30e2]">New Offer</p>
+                <p className="text-4xl font-extrabold my-2 text-[#5f30e2]">GH&cent; 9.97</p>
+                <p className="text-xs text-slate-600">Per Student, Per Term</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#e63946]">Whooping 67% Discount</p>
+              <p className="font-semibold text-slate-700">Offer Ends on 31st July, 2026</p>
+            </div>
+            
+            <Countdown />
+            <CtaBlock label="Yes, I need a free trial now" />
+          </div>
         </div>
       </section>
 

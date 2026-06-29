@@ -18,6 +18,7 @@ import FieldsSidebar from './components/FieldsSidebar';
 import PropertiesSidebar from './components/PropertiesSidebar';
 import BuilderCanvas from './components/BuilderCanvas';
 import ViewportToggle, { type ViewportSize } from './components/ViewportToggle';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -144,6 +145,7 @@ export default function EditFormPage() {
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedSnapshotRef = React.useRef<string>(''); // JSON snapshot for dirty detection
   const [isPendingSave, startSaveTransition] = React.useTransition();
+  const [isShareOpen, setIsShareOpen] = React.useState(false);
 
   React.useEffect(() => {
     setIsMounted(true);
@@ -848,6 +850,13 @@ export default function EditFormPage() {
                         >
                           <Copy className="h-4 w-4" /> Copy
                         </Button>
+                        <Button
+                          variant="outline"
+                          className="h-11 rounded-xl font-bold gap-2"
+                          onClick={() => setIsShareOpen(true)}
+                        >
+                          <Code className="h-4 w-4" /> Share & Embed
+                        </Button>
                         <Button variant="outline" className="h-11 rounded-xl font-bold gap-2" asChild>
                           <a href={`/p/f/${formData.slug}`} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-4 w-4" /> Preview
@@ -947,6 +956,16 @@ export default function EditFormPage() {
           </div>
         </div>
       </div>
+      {isShareOpen && (
+        <ShareEmbedDialog
+          isOpen={isShareOpen}
+          onOpenChange={setIsShareOpen}
+          title="Share & Embed Form"
+          resourceName="Form"
+          publicUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/f/${formData.slug}` : `/p/f/${formData.slug}`}
+          embedUrl={typeof window !== 'undefined' ? `${window.location.origin}/f/${formId}` : `/f/${formId}`}
+        />
+      )}
     </div>
   );
 }

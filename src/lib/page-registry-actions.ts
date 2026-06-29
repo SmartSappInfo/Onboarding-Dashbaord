@@ -60,6 +60,7 @@ export async function registerCustomCodedPage(
       await existingSnap.docs[0].ref.update({
         name,
         trackingEnabled: true,
+        workspaceIds: [workspaceId],
         updatedAt: new Date().toISOString(),
       });
 
@@ -140,18 +141,30 @@ export async function seedKnownCustomPages(params: {
   organizationId: string;
   workspaceId: string;
 }): Promise<{ results: RegisterCustomPageResult[] }> {
-  const knownPages: Omit<RegisterCustomPageParams, 'organizationId' | 'workspaceId'>[] = [
+  const knownPages: (Omit<RegisterCustomPageParams, 'organizationId' | 'workspaceId'> & { workspaceId?: string })[] = [
     {
       slug: 'collecting-fees-without-delays-and-parental-confrontations',
       name: 'How We Collect Fees Without Delays',
       description: 'Landing page about fee collection with SmartSapp — includes video and CTA.',
+      workspaceId: 'onboarding',
+    },
+    {
+      slug: 'school-enrollment',
+      name: 'School Enrollment — Fill Empty Spots',
+      description: 'Sales Leads landing page for boosting enrollment numbers.',
+      workspaceId: 'prospect',
     },
   ];
 
   const results = await Promise.all(
-    knownPages.map((page) =>
-      registerCustomCodedPage({ ...page, ...params })
-    )
+    knownPages.map((page) => {
+      const targetWorkspaceId = page.workspaceId || params.workspaceId;
+      return registerCustomCodedPage({
+        ...page,
+        organizationId: params.organizationId,
+        workspaceId: targetWorkspaceId,
+      });
+    })
   );
 
   return { results };

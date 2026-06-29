@@ -65,12 +65,14 @@ import {
   FileText,
   BarChart2,
   Archive,
+  Code,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EntityAvatar } from '../components/EntityAvatar';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { PageContainer } from '@/components/ui/page-container';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 
 export default function FormsClient() {
   const firestore = useFirestore();
@@ -84,6 +86,7 @@ export default function FormsClient() {
   const [formToDelete, setFormToDelete] = useState<Form | null>(null);
   const [cloningId, setCloningId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [shareForm, setShareForm] = useState<Form | null>(null);
 
   const { can } = usePermissions();
   const canCreate = can('studios', 'forms', 'create');
@@ -180,11 +183,7 @@ export default function FormsClient() {
   };
 
   const handleCopyLink = (form: Form) => {
-    if (typeof window !== 'undefined') {
-      const url = `${window.location.origin}/p/f/${form.slug}`;
-      navigator.clipboard.writeText(url);
-      toast({ title: 'Link Copied', description: 'Public form URL copied to clipboard.' });
-    }
+    setShareForm(form);
   };
 
   // Filtering
@@ -219,10 +218,10 @@ export default function FormsClient() {
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" onClick={() => handleCopyLink(form)}>
               <Copy className="h-4 w-4" />
-              <span className="sr-only">Copy link</span>
+              <span className="sr-only">Share & embed</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent><p>Copy Public Link</p></TooltipContent>
+          <TooltipContent><p>Share & Embed Form</p></TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -240,7 +239,7 @@ export default function FormsClient() {
             <CreateQRButton
               resourceType="form"
               resourceId={form.id}
-              resourceName={form.internalName || form.title}
+              resourceName={form.title ?? form.internalName ?? 'Untitled Form'}
               destinationUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/f/${form.slug}` : `/p/f/${form.slug}`}
               variant="icon"
             />
@@ -273,6 +272,9 @@ export default function FormsClient() {
               <Edit className="mr-2 h-4 w-4" /> Edit Builder
             </DropdownMenuItem>
           )}
+          <DropdownMenuItem onClick={() => setShareForm(form)}>
+            <Code className="mr-2 h-4 w-4" /> Share & Embed
+          </DropdownMenuItem>
           {canCreate && (
             <DropdownMenuItem onClick={() => handleClone(form)} disabled={cloningId !== null}>
               {cloningId === form.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CopyPlus className="mr-2 h-4 w-4" />}
@@ -495,6 +497,17 @@ export default function FormsClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {shareForm && (
+        <ShareEmbedDialog
+          isOpen={!!shareForm}
+          onOpenChange={(open) => !open && setShareForm(null)}
+          title="Share & Embed Form"
+          resourceName="Form"
+          publicUrl={`${window.location.origin}/p/f/${shareForm.slug}`}
+          embedUrl={`${window.location.origin}/f/${shareForm.id}`}
+        />
+      )}
             </PageContainer>
     </TooltipProvider>
   );

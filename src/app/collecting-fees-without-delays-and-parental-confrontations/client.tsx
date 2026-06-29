@@ -9,6 +9,8 @@ import { ArrowRight, CheckCircle2, Play, RotateCcw, Sparkles } from 'lucide-reac
 import { usePageAnalytics } from '@/hooks/use-page-analytics';
 import { PageAnalyticsReader } from '@/components/page-analytics-reader';
 import type { PageEventChannel } from '@/lib/types';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ResizableIFrame } from '@/components/ui/ResizableIFrame';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -58,6 +60,7 @@ declare global {
 
 export default function CollectingFeesClient() {
   const [videoState, setVideoState] = useState<VideoState>('idle');
+  const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
   const playerRef = useRef<YTPlayer | null>(null);
   // Tracks the active channel so we can tag all events after the first detection
   const channelRef = useRef<PageEventChannel>('direct');
@@ -138,7 +141,12 @@ export default function CollectingFeesClient() {
     track('video_replay', channelRef.current);
   }, [track]);
 
-  const handleCtaClick = useCallback(() => {
+  const handleCtaClick = useCallback((e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setIsSurveyModalOpen(true);
     track('cta_click', channelRef.current);
   }, [track]);
 
@@ -177,10 +185,9 @@ export default function CollectingFeesClient() {
             </Link>
             <Button
               className="rounded-full bg-[#3B5FFF] text-white font-semibold hover:bg-[#2d4ef0] px-5 h-10 shadow-none transition-all"
-              asChild
               onClick={handleCtaClick}
             >
-              <Link href={CTA_LINK}>Book Free Consultation</Link>
+              Book Free Consultation
             </Button>
           </div>
         </div>
@@ -270,13 +277,12 @@ export default function CollectingFeesClient() {
                 <Button
                   size="lg"
                   className="rounded-2xl bg-white text-[#3B5FFF] font-bold hover:bg-white/90 px-6 h-12 text-base shadow-[0_8px_24px_-4px_rgba(0,0,0,0.3)] transition-all hover:scale-105 group"
-                  asChild
                   onClick={handleCtaClick}
                 >
-                  <Link href={CTA_LINK} className="flex items-center gap-2">
+                  <span className="flex items-center gap-2">
                     Request Free Consultation
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Link>
+                  </span>
                 </Button>
                 <Button
                   size="lg"
@@ -307,13 +313,12 @@ export default function CollectingFeesClient() {
             <Button
               size="lg"
               className="w-full sm:w-auto h-16 px-10 rounded-2xl bg-[#3B5FFF] text-white text-lg font-bold shadow-[0_12px_24px_-8px_rgba(59,95,255,0.4)] hover:shadow-[0_16px_32px_-8px_rgba(59,95,255,0.5)] transition-all duration-300 group"
-              asChild
               onClick={handleCtaClick}
             >
-              <Link href={CTA_LINK} className="flex items-center justify-center gap-2">
+              <span className="flex items-center justify-center gap-2">
                 Book Free Consultation Now
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
+              </span>
             </Button>
           </div>
 
@@ -335,6 +340,22 @@ export default function CollectingFeesClient() {
           &copy; {new Date().getFullYear()} SmartSapp. All rights reserved.
         </p>
       </footer>
+
+      <Dialog open={isSurveyModalOpen} onOpenChange={setIsSurveyModalOpen}>
+        <DialogContent className="max-w-4xl md:max-w-5xl w-[95vw] md:w-full p-1 overflow-hidden bg-white border border-slate-200/80 rounded-3xl">
+          <DialogTitle className="sr-only">Book Free Consultation Survey</DialogTitle>
+          <DialogDescription className="sr-only">
+            Please fill out this quick survey to book your free consultation.
+          </DialogDescription>
+          {isSurveyModalOpen && (
+            <ResizableIFrame
+              src="/surveys/collect-your-fees-within-4-weeks-of-reopening?embed=true&theme=light"
+              slug="collect-your-fees-within-4-weeks-of-reopening"
+              fallbackHeight={720}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

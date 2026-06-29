@@ -4,6 +4,7 @@ import * as React from 'react';
 import type { PDFForm, WorkspaceEntity, OrgBranding } from '@/lib/types';
 import PdfFormRenderer from './PdfFormRenderer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import Footer from '@/components/footer';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
@@ -102,10 +103,9 @@ export default function PasswordGatedForm({ pdfForm, entity, orgBranding }: Pass
         </div>
       </div>
       
-      <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground bg-slate-50 border-t relative z-10">
-          <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
-          <p>&copy; {new Date().getFullYear()} SmartSapp</p>
-      </footer>
+      {orgBranding?.landingPageFooterEnabled !== false && (
+        <Footer orgBranding={orgBranding} />
+      )}
     </div>
   );
 }

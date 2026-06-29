@@ -28,7 +28,9 @@ import {
     ArrowRight,
     Undo2,
     Redo2,
+    Code,
 } from 'lucide-react';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { saveSectionAction, getSectionTemplatesAction } from '@/lib/section-actions';
 import { cn } from '@/lib/utils';
 import type { CampaignPage, CampaignPageVersion, PageSection, BuilderResources } from '@/lib/types';
@@ -64,12 +66,26 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     // Typed resources + resolved theme for the registry-driven renderer.
     // Declared before any early return to keep hook order stable.
     const builderResources = React.useMemo<BuilderResources>(() => ({
-        forms: resources.forms.map((f: { id: string; title?: string; internalName?: string }) => ({
+        forms: resources.forms.map((f) => ({
             id: f.id, title: f.title ?? f.internalName ?? 'Untitled', internalName: f.internalName,
         })),
-        surveys: resources.surveys.map((s: { id: string; title?: string }) => ({ id: s.id, title: s.title ?? 'Untitled' })),
+        surveys: resources.surveys.map((s) => ({ id: s.id, title: s.title ?? 'Untitled' })),
         agreements: [],
-    }), [resources.forms, resources.surveys]);
+        meetings: resources.meetings.map((m) => ({
+            id: m.id,
+            title: m.title ?? 'Untitled',
+            slug: m.meetingSlug,
+            status: m.status,
+            type: m.type ? {
+                id: m.type.id,
+                slug: m.type.slug || '',
+                name: m.type.name || '',
+            } : undefined,
+        })),
+        qrCodes: resources.qrCodes.map((q) => ({
+            id: q.id, title: q.name ?? 'Untitled QR', slug: q.shortPath, redirectUrl: q.redirectUrl,
+        })),
+    }), [resources.forms, resources.surveys, resources.meetings, resources.qrCodes]);
 
     const editorTheme = React.useMemo(
         () => resolveTheme({ overrides: builder.page?.settings.themeOverrides }),
@@ -79,6 +95,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [versions, setVersions] = useState<CampaignPageVersion[]>([]);
     const [leads, setLeads] = useState<any[]>([]);
     const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+    const [isShareOpen, setIsShareOpen] = useState(false);
 
     // ─── Data Loading ────────────────────────────────────────────────
     useEffect(() => {
@@ -359,11 +376,20 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     </Button>
 
                     {page.status === 'published' && (
-                        <Button asChild variant="ghost" className="h-8 font-semibold text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:bg-slate-800">
-                            <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer">
-                                <Globe className="w-3.5 h-3.5 mr-1.5" /> View Live
-                            </a>
-                        </Button>
+                        <>
+                            <Button asChild variant="ghost" className="h-8 font-semibold text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:bg-slate-800">
+                                <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer">
+                                    <Globe className="w-3.5 h-3.5 mr-1.5" /> View Live
+                                </a>
+                            </Button>
+                            <Button 
+                                variant="ghost" 
+                                onClick={() => setIsShareOpen(true)}
+                                className="h-8 font-semibold text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:bg-slate-800"
+                            >
+                                <Code className="w-3.5 h-3.5 mr-1.5" /> Share & Embed
+                            </Button>
+                        </>
                     )}
                     <CreateQRButton
                         resourceType="landing_page"
@@ -522,6 +548,16 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onReorderBlocks={builder.reorderBlocks}
                 />
             </div>
+            {isShareOpen && (
+                <ShareEmbedDialog
+                    isOpen={isShareOpen}
+                    onOpenChange={setIsShareOpen}
+                    title="Share & Embed Page"
+                    resourceName="Page"
+                    publicUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/${page.slug}` : `/p/${page.slug}`}
+                    embedUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/${page.slug}?embed=true` : `/p/${page.slug}?embed=true`}
+                />
+            )}
         </div>
     );
 }

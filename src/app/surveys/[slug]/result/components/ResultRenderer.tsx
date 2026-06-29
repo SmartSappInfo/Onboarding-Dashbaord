@@ -178,6 +178,28 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
 }
 
 export default function ResultRenderer({ survey, response, page, logoUrl, allowResubmission }: ResultRendererProps) {
+    React.useEffect(() => {
+        if (page?.confettiEnabled) {
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduceMotion) return;
+
+            const burst = (opts: confetti.Options) =>
+                confetti({
+                    disableForReducedMotion: true,
+                    colors: ['#5f30e2', '#ffc629', '#10b981', '#3B5FFF', '#e63946'],
+                    ...opts,
+                });
+
+            burst({ particleCount: 160, spread: 100, startVelocity: 45, origin: { x: 0.5, y: 0.55 } });
+            const sides = setTimeout(() => {
+                burst({ particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.7 } });
+                burst({ particleCount: 60, angle: 120, spread: 70, origin: { x: 1, y: 0.7 } });
+            }, 350);
+
+            return () => clearTimeout(sides);
+        }
+    }, [page?.id, page?.confettiEnabled]);
+
     const LogoBanner = () => (
         <div className="flex justify-center">
             {logoUrl ? (

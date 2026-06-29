@@ -18,7 +18,9 @@ import {
   Palette,
   Settings,
   ScanLine,
+  Code
 } from 'lucide-react';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +55,7 @@ export default function QRDetailPage() {
   const [qr, setQr] = React.useState<QRCodeType | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [showDownload, setShowDownload] = React.useState(false);
+  const [isShareOpen, setIsShareOpen] = React.useState(false);
 
   // Inline rename state
   const [isRenaming, setIsRenaming] = React.useState(false);
@@ -159,12 +162,7 @@ export default function QRDetailPage() {
   };
 
   const handleCopyLink = () => {
-    if (!qr) return;
-    const link = qr.mode === 'dynamic' && qr.shortPath
-      ? `${window.location.origin}/q/${qr.shortPath}`
-      : qr.destination.url || '';
-    navigator.clipboard.writeText(link);
-    toast({ title: 'Copied!', description: 'Link copied to clipboard.' });
+    setIsShareOpen(true);
   };
 
   if (loading) {
@@ -516,6 +514,17 @@ export default function QRDetailPage() {
           design={qr.design}
           name={qr.name}
           onClose={() => setShowDownload(false)}
+        />
+      )}
+
+      {isShareOpen && qr && (
+        <ShareEmbedDialog
+          isOpen={isShareOpen}
+          onOpenChange={setIsShareOpen}
+          title="Share & Embed QR Code Target"
+          resourceName="QR Code Target"
+          publicUrl={qr.mode === 'dynamic' && qr.shortPath ? `${window.location.origin}/q/${qr.shortPath}` : qr.destination.url || ''}
+          embedUrl={qr.destination.url ? (qr.destination.url.includes('?') ? `${qr.destination.url}&embed=true` : `${qr.destination.url}?embed=true`) : ''}
         />
       )}
     </div>

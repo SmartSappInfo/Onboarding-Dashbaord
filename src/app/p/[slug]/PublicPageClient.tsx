@@ -4,7 +4,7 @@ import * as React from 'react';
 import { use, useEffect, useState, useCallback, useRef } from 'react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { CampaignPage, CampaignPageVersion, PageTrigger, PageTriggerAction } from '@/lib/types';
+import type { CampaignPage, CampaignPageVersion, PageTrigger, PageTriggerAction, OrgBranding } from '@/lib/types';
 import { Loader2, PlusSquare, X, CheckCircle2, ArrowRight, Banknote, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,10 @@ import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import { migrateLegacyStructure } from '@/lib/page-builder/migrate';
 import { parseStructure } from '@/lib/page-builder/schema';
 import { PageTracking } from '@/components/page-builder/PageTracking';
+import { EmbeddedForm } from '@/components/page-builder/embeds/EmbeddedForm';
+import { EmbeddedSurvey } from '@/components/page-builder/embeds/EmbeddedSurvey';
+import { EmbeddedMeeting } from '@/components/page-builder/embeds/EmbeddedMeeting';
+import { EmbeddedQRCode } from '@/components/page-builder/embeds/EmbeddedQRCode';
 
 // Render published pages through the generic registry-driven `PageRenderer`.
 // Defaults ON now that the legacy migration has landed; set the env var to
@@ -52,12 +56,17 @@ const STATS_GRID_COLS: Record<number, string> = {
 
 
 // ─── Trigger Execution Engine ─────────────────────────────────────────────
-function useTriggerEngine(page: CampaignPage | null, orgBranding?: any) {
+function useTriggerEngine(
+    page: CampaignPage | null, 
+    orgBranding?: { 
+        brandFontFamily?: string; 
+        brandPrimaryColor?: string; 
+        brandSecondaryColor?: string 
+    } | null
+) {
     const [modalState, setModalState] = useState<{
-        type: 'survey' | 'form' | 'agreement';
-        targetId: string;
-    } | {
-        type: 'receipt_request';
+        type: 'form' | 'survey' | 'receipt_request' | 'meeting' | 'qr';
+        targetId?: string;
     } | null>(null);
     const firedRef = useRef<Set<string>>(new Set());
 
@@ -66,10 +75,13 @@ function useTriggerEngine(page: CampaignPage | null, orgBranding?: any) {
             switch (action.type) {
                 case 'open_modal':
                     if (action.config.modalType && action.config.targetId) {
-                        setModalState({
-                            type: action.config.modalType,
-                            targetId: action.config.targetId
-                        });
+                        const mType = action.config.modalType;
+                        if (mType === 'form' || mType === 'survey') {
+                            setModalState({
+                                type: mType,
+                                targetId: action.config.targetId
+                            });
+                        }
                     }
                     break;
                 case 'redirect':
@@ -137,144 +149,7 @@ function useTriggerEngine(page: CampaignPage | null, orgBranding?: any) {
 }
 
 
-// ─── Component: EmbeddedForm ──────────────────────────────────────────────
-function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isInModal, onSuccess }: { formId: string, pageId: string, organizationId: string, workspaceId: string, isInModal?: boolean, onSuccess?: () => void }) {
-    const db = useFirestore();
-    const [form, setForm] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [submitted, setSubmitted] = useState(false);
-    const { toast } = useToast();
 
-    useEffect(() => {
-        const fetchForm = async () => {
-            const docRef = doc(db, 'standaloneForms', formId);
-            const snap = await getDoc(docRef);
-            if (snap.exists()) setForm(snap.data());
-            setLoading(false);
-        };
-        fetchForm();
-    }, [db, formId]);
-
-    if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>;
-    if (!form) return <div className="text-center p-12 text-slate-400">Form not found</div>;
-
-    if (submitted) {
-        return (
-            <div className="text-center p-12 space-y-4 animate-in fade-in zoom-in duration-500">
-                <div className="h-20 w-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="h-10 w-10 text-emerald-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{form.settings?.successMessage || 'Thank you!'}</h2>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">Your response has been recorded successfully.</p>
-                {isInModal && (
-                    <Button onClick={onSuccess} className="rounded-xl font-bold w-full h-12 mt-4">Close Window</Button>
-                )}
-            </div>
-        );
-    }
-
-    return (
-        <form 
-            className="space-y-6"
-            onSubmit={async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const data = Object.fromEntries(formData.entries());
-                
-                // Retrieve stored UTM parameters from sessionStorage
-                const storedUtm = sessionStorage.getItem(`utm_${pageId}`);
-                let utmData = null;
-                if (storedUtm) {
-                    try {
-                        utmData = JSON.parse(storedUtm);
-                    } catch (e) {
-                        console.error('Failed to parse UTM data:', e);
-                    }
-                }
-                
-                // Pass UTM data as metadata
-                const metadata: any = { sourcePageId: pageId };
-                if (utmData) {
-                    metadata.utmSource = utmData.source;
-                    metadata.utmMedium = utmData.medium;
-                    metadata.utmCampaign = utmData.campaign;
-                    metadata.utmTerm = utmData.term;
-                    metadata.utmContent = utmData.content;
-                }
-                
-                const res = await submitStandaloneFormAction(formId, data, workspaceId, organizationId, metadata);
-                if (res.success) {
-                    setSubmitted(true);
-                    if (!isInModal && form.settings?.redirectUrl) {
-                        setTimeout(() => window.location.href = form.settings.redirectUrl!, 2000);
-                    }
-                } else {
-                    toast({ title: 'Error', description: res.error, variant: 'destructive' });
-                }
-            }}
-        >
-            <div className="space-y-1 mb-6">
-                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">{form.title}</h2>
-                {form.description && <p className="text-sm text-slate-500 dark:text-slate-400">{form.description}</p>}
-            </div>
-
-            <div className="space-y-4">
-                {form.fields.map((field: any) => (
-                    <div key={field.id} className="space-y-2">
-                        <Label className="text-sm font-semibold text-slate-700 dark:text-slate-350 ml-1">{field.label}{field.required && '*'}</Label>
-                        {field.type === 'textarea' ? (
-                            <textarea 
-                                name={field.id} 
-                                required={field.required}
-                                placeholder={field.placeholder}
-                                className="w-full min-h-[100px] p-4 rounded-2xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary/20 transition-all text-sm outline-none"
-                            />
-                        ) : (
-                            <Input 
-                                name={field.id} 
-                                type={field.type} 
-                                required={field.required}
-                                placeholder={field.placeholder}
-                                className="h-12 rounded-xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-slate-100"
-                            />
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            <Button type="submit" className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20 mt-4 transition-all hover:scale-[1.02] active:scale-95">
-                {form.settings?.submitButtonLabel || 'Submit'}
-            </Button>
-        </form>
-    );
-}
-
-// ─── Component: EmbeddedSurvey ────────────────────────────────────────────
-function EmbeddedSurvey({ surveyId, pageId, onClose, isInModal }: { surveyId: string, pageId: string, onClose?: () => void, isInModal?: boolean }) {
-    // For now, we'll redirect to the standalone survey page or show a placeholder
-    // In a real app, this would be a multi-step form
-    return (
-        <div className="text-center p-12 space-y-6">
-            <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto text-primary">
-                <PlusSquare className="h-8 w-8" />
-            </div>
-            <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Survey Required</h2>
-                <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed">To proceed, please complete our brief onboarding survey. This helps us tailor the experience for your institution.</p>
-            </div>
-            <Button 
-                onClick={() => window.open(`/s/${surveyId}?ref=${pageId}`, '_blank')}
-                className="w-full h-14 rounded-2xl font-bold text-lg shadow-xl shadow-primary/20"
-            >
-                Start Survey
-                <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-            {isInModal && (
-                <button onClick={onClose} className="text-slate-400 dark:text-slate-500 font-bold text-sm hover:text-slate-600 dark:hover:text-slate-350 transition-colors">Maybe Later</button>
-            )}
-        </div>
-    );
-}
 
 
 // ─── Main Client Component ───────────────────────────────────────────────
@@ -287,13 +162,7 @@ export default function PublicPageClient({
     slug: string;
     initialPage?: CampaignPage | null;
     initialVersion?: CampaignPageVersion | null;
-    orgBranding?: {
-        logoUrl: string;
-        brandPrimaryColor: string;
-        brandSecondaryColor: string;
-        brandFontFamily: string;
-        name: string;
-    } | null;
+    orgBranding?: OrgBranding | null;
 }) {
     const db = useFirestore();
     const searchParams = useSearchParams();
@@ -302,6 +171,27 @@ export default function PublicPageClient({
     const [loading, setLoading] = useState(!initialPage);
     const [receiptFormSuccess, setReceiptFormSuccess] = useState(false);
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page, orgBranding);
+
+    // Intercept clicks on links starting with #modal- (e.g. <a href="#modal-survey-123">)
+    useEffect(() => {
+        const handleAnchorClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const anchor = target.closest('a');
+            if (!anchor) return;
+            const href = anchor.getAttribute('href');
+            if (href && href.startsWith('#modal-')) {
+                e.preventDefault();
+                const parts = href.replace('#modal-', '').split('-');
+                const type = parts[0];
+                const targetId = parts.slice(1).join('-');
+                if (type && targetId) {
+                    setModalState({ type: type as 'form' | 'survey' | 'receipt_request' | 'meeting' | 'qr', targetId });
+                }
+            }
+        };
+        document.addEventListener('click', handleAnchorClick);
+        return () => document.removeEventListener('click', handleAnchorClick);
+    }, [setModalState]);
 
     // Extract UTM parameters from URL
     const utmParams = React.useMemo(() => ({
@@ -486,6 +376,15 @@ export default function PublicPageClient({
                             theme={resolvedTheme}
                             interpolate={interpolate}
                             fireTrigger={(event, blockId) => {
+                                if (event === 'open_modal_resource' && blockId) {
+                                    try {
+                                        const { type, targetId } = JSON.parse(blockId);
+                                        setModalState({ type, targetId });
+                                    } catch (err) {
+                                        console.error('Failed to open modal resource', err);
+                                    }
+                                    return;
+                                }
                                 // Legacy shim: the static payment page's receipt CTA opens a
                                 // bespoke modal hosted here rather than a generic action.
                                 if (event === 'block_click' && blockId === 'cta-1') {
@@ -720,7 +619,7 @@ export default function PublicPageClient({
                     </DialogTitle>
                     {modalState?.type === 'form' && page && (
                         <EmbeddedForm
-                            formId={modalState.targetId}
+                            formId={modalState.targetId || ''}
                             pageId={page.id}
                             organizationId={page.organizationId}
                             workspaceId={page.workspaceIds[0]}
@@ -728,10 +627,27 @@ export default function PublicPageClient({
                             onSuccess={() => setModalState(null)}
                         />
                     )}
-                    {modalState?.type === 'survey' && (
+                    {modalState?.type === 'survey' && page && (
                         <EmbeddedSurvey 
-                            surveyId={modalState.targetId} 
+                            surveyId={modalState.targetId || ''} 
                             pageId={page.id}
+                            onClose={() => setModalState(null)} 
+                            isInModal={true} 
+                        />
+                    )}
+                    {modalState?.type === 'meeting' && page && (
+                        <EmbeddedMeeting 
+                            meetingId={modalState.targetId || ''} 
+                            pageId={page.id}
+                            onClose={() => setModalState(null)} 
+                            isInModal={true} 
+                        />
+                    )}
+                    {modalState?.type === 'qr' && page && (
+                        <EmbeddedQRCode 
+                            qrId={modalState.targetId || ''} 
+                            organizationId={page.organizationId}
+                            workspaceId={page.workspaceIds[0]}
                             onClose={() => setModalState(null)} 
                             isInModal={true} 
                         />
@@ -809,7 +725,9 @@ export default function PublicPageClient({
                 </DialogContent>
             </Dialog>
 
-            {page?.settings?.showFooter && <Footer />}
+            {page?.settings?.showFooter && orgBranding?.landingPageFooterEnabled !== false && (
+                <Footer orgBranding={orgBranding} />
+            )}
         </div>
     );
 }

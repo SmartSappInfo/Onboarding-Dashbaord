@@ -7,6 +7,12 @@ const schema = z.object({
   label: z.string().default('Click Here'),
   url: z.string().default(''),
   variant: z.enum(['primary', 'secondary', 'glass', 'glow']).default('primary'),
+  actionType: z.enum(['url', 'form', 'survey', 'meeting', 'qr']).default('url'),
+  formId: z.string().default(''),
+  surveyId: z.string().default(''),
+  meetingId: z.string().default(''),
+  qrId: z.string().default(''),
+  openInModal: z.boolean().default(false),
 });
 type CtaProps = z.infer<typeof schema>;
 
@@ -17,7 +23,24 @@ registerBlock({
   icon: MousePointer2,
   fields: [
     { kind: 'text', key: 'label', label: 'Button Label' },
+    { 
+      kind: 'select', 
+      key: 'actionType', 
+      label: 'Action Click Type', 
+      options: [
+        { value: 'url', label: 'Redirect to URL' },
+        { value: 'form', label: 'Form Action' },
+        { value: 'survey', label: 'Survey Action' },
+        { value: 'meeting', label: 'Meeting Action' },
+        { value: 'qr', label: 'QR Code Action' },
+      ] 
+    },
     { kind: 'url', key: 'url', label: 'Redirect URL' },
+    { kind: 'resource', key: 'formId', label: 'Form Target', resource: 'form' },
+    { kind: 'resource', key: 'surveyId', label: 'Survey Target', resource: 'survey' },
+    { kind: 'resource', key: 'meetingId', label: 'Meeting Target', resource: 'meeting' },
+    { kind: 'resource', key: 'qrId', label: 'QR Code Target', resource: 'qr' },
+    { kind: 'boolean', key: 'openInModal', label: 'Open in Modal Popup' },
     { kind: 'select', key: 'variant', label: 'Button Style', options: [
       { value: 'primary', label: 'Primary (Solid)' },
       { value: 'secondary', label: 'Secondary (Outline)' },
@@ -38,7 +61,7 @@ registerBlock({
         <button
           type="button"
           className={cn(
-            'h-12 px-8 rounded-xl font-bold gap-2 inline-flex items-center transition-all active:scale-95',
+            'h-12 px-8 rounded-xl font-bold gap-2 inline-flex items-center transition-all active:scale-95 duration-150',
             props.variant === 'glass' && 'backdrop-blur-md border border-white/30',
             props.variant === 'glow' && 'shadow-[0_0_20px_rgba(16,185,129,0.3)]',
           )}
@@ -46,7 +69,34 @@ registerBlock({
           onClick={() => {
             if (ctx.mode === 'edit') return;
             ctx.fireTrigger?.('block_click', block.id);
-            if (props.url) window.open(props.url, '_blank', 'noopener,noreferrer');
+            
+            if (props.openInModal) {
+              const targetId = props.actionType === 'form' ? props.formId :
+                               props.actionType === 'survey' ? props.surveyId :
+                               props.actionType === 'meeting' ? props.meetingId :
+                               props.actionType === 'qr' ? props.qrId : '';
+              if (targetId) {
+                ctx.fireTrigger?.('open_modal_resource', JSON.stringify({ type: props.actionType, targetId }));
+              }
+            } else {
+              // Direct navigation / redirection
+              if (props.actionType === 'url') {
+                if (props.url) window.open(props.url, '_blank', 'noopener,noreferrer');
+              } else if (props.actionType === 'form' && props.formId) {
+                window.open(`/f/${props.formId}`, '_blank', 'noopener,noreferrer');
+              } else if (props.actionType === 'survey' && props.surveyId) {
+                window.open(`/s/${props.surveyId}`, '_blank', 'noopener,noreferrer');
+              } else if (props.actionType === 'meeting' && props.meetingId) {
+                const meeting = ctx.resources.meetings?.find((m) => m.id === props.meetingId);
+                const typeSlug = meeting?.type?.id === 'parent' ? 'parent-engagement' : (meeting?.type?.slug || 'parent-engagement');
+                const targetSlug = meeting?.slug || props.meetingId;
+                window.open(`/meetings/${typeSlug}/${targetSlug}`, '_blank', 'noopener,noreferrer');
+              } else if (props.actionType === 'qr' && props.qrId) {
+                const qr = ctx.resources.qrCodes?.find((q) => q.id === props.qrId);
+                const targetUrl = qr?.slug ? `/q/${qr.slug}` : (qr?.redirectUrl || '');
+                if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer');
+              }
+            }
           }}
         >
           {ctx.interpolate(props.label)}

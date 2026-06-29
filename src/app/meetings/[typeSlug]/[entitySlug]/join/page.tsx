@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import JoiningPageClient from '@/components/joining-page-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { SmartSappLogo } from '@/components/icons';
+import { getOrgBranding } from '@/lib/org-branding';
+import Footer from '@/components/footer';
 
 /**
  * Meeting Joining Page (Waiting Room) — Server Component
@@ -31,7 +33,7 @@ export default async function MeetingJoinPage({
   const { typeSlug, entitySlug } = await params;
   const { token } = await searchParams;
 
-  let orgName = 'SmartSapp';
+  let orgBranding = null;
   try {
     const meetingsCol = adminDb.collection('meetings');
     let snap = await meetingsCol
@@ -48,17 +50,12 @@ export default async function MeetingJoinPage({
 
     if (!snap.empty) {
       const meetingData = snap.docs[0].data();
-      if (meetingData.brandingName) {
-        orgName = meetingData.brandingName;
-      } else if (meetingData.entityId) {
-        const entityDoc = await adminDb.collection('entities').doc(meetingData.entityId).get();
-        if (entityDoc.exists) {
-          orgName = entityDoc.data()?.name || orgName;
-        }
+      if (meetingData.organizationId) {
+        orgBranding = await getOrgBranding(meetingData.organizationId);
       }
     }
   } catch (error) {
-    console.error('Error resolving orgName in join/page.tsx:', error);
+    console.error('Error resolving orgBranding in join/page.tsx:', error);
   }
 
   return (
@@ -70,10 +67,9 @@ export default async function MeetingJoinPage({
           token={token || null}
         />
       </main>
-      <footer className="py-8 text-center text-xs text-muted-foreground bg-background border-t border-border/10 font-sans flex flex-col items-center justify-center gap-2">
-        <SmartSappLogo className="h-6" />
-        <p className="mt-1">Powered by {orgName}</p>
-      </footer>
+      {orgBranding?.landingPageFooterEnabled !== false && (
+        <Footer orgBranding={orgBranding} />
+      )}
     </div>
   );
 }

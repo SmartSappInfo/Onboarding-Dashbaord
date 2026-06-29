@@ -1,6 +1,8 @@
 
 'use server';
 
+import { revalidatePath } from 'next/cache';
+
 import { adminDb, FieldValue } from './firebase-admin';
 import type {
   PageEventType,
@@ -202,17 +204,28 @@ export async function getCustomPageAnalytics(slug: string): Promise<CustomPageAn
   return { stats, recentEvents, anonymousCount, totalKnownContacts };
 }
 
-/**
- * Returns a summary list of all tracked pages (for the /admin/analytics/custom-pages list).
- */
 export async function listTrackedPages(): Promise<
-  { slug: string; stats: CustomPageStats; updatedAt: string }[]
+  { slug: string; stats: CustomPageStats; updatedAt: string; pageId?: string | null; workspaceIds?: string[] }[]
 > {
-  const snap = await adminDb
-    .collection(ANALYTICS_COLLECTION)
-    .orderBy('updatedAt', 'desc')
-    .limit(50)
-    .get();
+  const [snap, pagesSnap] = await Promise.all([
+    adminDb
+      .collection(ANALYTICS_COLLECTION)
+      .orderBy('updatedAt', 'desc')
+      .limit(50)
+      .get(),
+    adminDb
+      .collection('campaign_pages')
+      .where('pageType', '==', 'custom_coded')
+      .get(),
+  ]);
+
+  const workspaceMap = new Map<string, string[]>();
+  pagesSnap.docs.forEach((doc) => {
+    const data = doc.data();
+    if (data.slug) {
+      workspaceMap.set(data.slug, data.workspaceIds || []);
+    }
+  });
 
   return snap.docs.map((d) => {
     const data = d.data() as CustomPageAnalyticsDoc;
@@ -220,6 +233,8 @@ export async function listTrackedPages(): Promise<
       slug: data.slug,
       stats: data.stats ?? { ...DEFAULT_STATS },
       updatedAt: data.updatedAt ?? '',
+      pageId: data.pageId ?? null,
+      workspaceIds: workspaceMap.get(data.slug) ?? [],
     };
   });
 }
@@ -288,3 +303,77 @@ async function buildEntityNameMap(entityIds: string[]): Promise<Map<string, stri
 
   return map;
 }
+
+/**
+ * Assigns a custom page to a specific workspace.
+ */
+export async function assignCustomPageWorkspaceAction(
+  slug: string,
+  workspaceId: string,
+  organizationId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const existingSnap = await adminDb
+      .collection('campaign_pages')
+      .where('slug', '==', slug)
+      .where('organizationId', '==', organizationId)
+      .limit(1)
+      .get();
+
+    if (!existingSnap.empty) {
+      await existingSnap.docs[0].ref.update({
+        workspaceIds: [workspaceId],
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      const cleanName = slug
+        .split('-')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      const now = new Date().toISOString();
+      const pageData = {
+        organizationId,
+        workspaceIds: [workspaceId],
+        name: cleanName,
+        slug,
+        status: 'published',
+        pageGoal: 'information',
+        pageType: 'custom_coded',
+        trackingEnabled: true,
+        seo: {
+          title: cleanName,
+          description: '',
+          noIndex: false,
+        },
+        settings: {
+          customScriptsAllowed: false,
+          showHeader: false,
+          showFooter: false,
+        },
+        stats: {
+          views: 0,
+          uniques: 0,
+          conversions: 0,
+          clicks: 0,
+        },
+        publishedVersionId: null,
+        createdBy: 'system',
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const docRef = await adminDb.collection('campaign_pages').add(pageData);
+      await adminDb
+        .collection('custom_page_analytics')
+        .doc(slug)
+        .set({ pageId: docRef.id, slug, updatedAt: now }, { merge: true });
+    }
+
+    revalidatePath('/admin/analytics/custom-pages');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+

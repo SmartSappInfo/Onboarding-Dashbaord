@@ -6,16 +6,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { SmartSappLogo } from '@/components/icons';
 import type { Meeting } from '@/lib/types';
 import { resolveSeoMetadata } from '@/lib/seo';
-
-type Props = {
-  params: Promise<{ typeSlug: string; entitySlug: string }>;
-};
-
-/**
- * Public Meeting Page (Server Component)
- * Dynamic routing handles specific meeting types and their associated entities.
- * Supports both V3 meetingSlug routing and legacy entitySlug routing.
- */
+import { getOrgBranding } from '@/lib/org-branding';
+import Footer from '@/components/footer';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,12 +17,24 @@ export const viewport: Viewport = {
   themeColor: '#0a0a1a',
 };
 
+type PageProps = {
+  params: Promise<{ typeSlug: string; entitySlug: string }>;
+  searchParams: Promise<{ embed?: string }>;
+};
+
 // Single source of truth for resolving a meeting by its public slug. Wrapped in
 // React.cache so generateMetadata and the page body share one Firestore read
 // (previously the same query ran twice per request).
 const getMeetingBySlug = cache(async function getMeetingBySlug(slug: string): Promise<Meeting | null> {
   try {
     const meetingsCol = adminDb.collection('meetings');
+    
+    // Step 0: Try direct document ID lookup
+    const docSnap = await meetingsCol.doc(slug).get();
+    if (docSnap.exists) {
+      return { id: docSnap.id, ...docSnap.data() } as Meeting;
+    }
+
     // Try meetingSlug first (V3), then entitySlug (legacy)
     let snap = await meetingsCol.where('meetingSlug', '==', slug.toLowerCase()).limit(1).get();
     if (snap.empty) {
@@ -43,7 +47,7 @@ const getMeetingBySlug = cache(async function getMeetingBySlug(slug: string): Pr
   }
 });
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ typeSlug: string; entitySlug: string }> }): Promise<Metadata> {
   const { entitySlug } = await params;
   const meeting = await getMeetingBySlug(entitySlug);
 
@@ -70,24 +74,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-export default async function PublicMeetingPage({ params }: Props) {
+export default async function PublicMeetingPage({ params, searchParams }: PageProps) {
   const { typeSlug, entitySlug } = await params;
+  const { embed } = await searchParams;
+  const isEmbedded = embed === 'true';
 
-  let orgName = 'SmartSapp';
+  let orgBranding = null;
   try {
     const meeting = await getMeetingBySlug(entitySlug);
-    if (meeting) {
-      if (meeting.brandingName) {
-        orgName = meeting.brandingName;
-      } else if (meeting.entityId) {
-        const entityDoc = await adminDb.collection('entities').doc(meeting.entityId).get();
-        if (entityDoc.exists) {
-          orgName = entityDoc.data()?.name || orgName;
-        }
-      }
+    if (meeting?.organizationId) {
+      orgBranding = await getOrgBranding(meeting.organizationId);
     }
   } catch (error) {
-    console.error('Error resolving orgName in page.tsx:', error);
+    console.error('Error resolving orgBranding in page.tsx:', error);
   }
 
   return (
@@ -97,10 +96,9 @@ export default async function PublicMeetingPage({ params }: Props) {
           <MeetingLoader slug={entitySlug} typeSlug={typeSlug} />
         </Suspense>
       </main>
-      <footer className="py-8 text-center text-xs text-muted-foreground bg-background border-t border-border/10 font-sans flex flex-col items-center justify-center gap-2">
-        <SmartSappLogo className="h-6" />
-        <p className="mt-1">Powered by {orgName}</p>
-      </footer>
+      {!isEmbedded && orgBranding?.landingPageFooterEnabled !== false && (
+        <Footer orgBranding={orgBranding} />
+      )}
     </div>
   );
 }

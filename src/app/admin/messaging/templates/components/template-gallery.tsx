@@ -26,14 +26,17 @@ import {
     Plus,
     CheckCircle2,
     Clock,
-    XCircle
+    XCircle,
+    Megaphone
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Card, CardTitle, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { SmartSappIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -59,6 +62,7 @@ interface TemplateCardProps {
 }
 
 function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus }: TemplateCardProps) {
+    const router = useRouter();
     const emailSrcDoc = React.useMemo(() => {
         if (template.channel !== 'email') return '';
 
@@ -160,6 +164,21 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
                     <span className="text-[8px] font-semibold text-muted-foreground opacity-60">{template.channel} Template</span>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" title="Use Template">
+                                <Send className="h-4 w-4 text-primary" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl w-44">
+                            <DropdownMenuItem onClick={() => router.push(`/admin/messaging/composer?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
+                                <Send className="h-3.5 w-3.5 text-blue-500" /> Send as Message
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/messaging/campaigns?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
+                                <Megaphone className="h-3.5 w-3.5 text-purple-500" /> Send as Campaign
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onPreview}><Eye className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onEdit}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg", cloningId === template.id ? "animate-spin" : "")} onClick={onClone} disabled={!!cloningId}><CopyPlus className="h-4 w-4" /></Button>
@@ -250,6 +269,7 @@ interface TemplateRowProps {
 }
 
 function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus }: TemplateRowProps) {
+    const router = useRouter();
     const previewTitle = React.useMemo(() => {
         if (template.channel === 'email') {
             return template.subject || template.previewText || 'No Subject';
@@ -345,6 +365,21 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-1.5 shrink-0 border-t pt-3 md:border-none md:pt-0">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" title="Use Template">
+                            <Send className="h-4 w-4 text-primary" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="rounded-xl w-44">
+                        <DropdownMenuItem onClick={() => router.push(`/admin/messaging/composer?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
+                            <Send className="h-3.5 w-3.5 text-blue-500" /> Send as Message
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/admin/messaging/campaigns?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
+                            <Megaphone className="h-3.5 w-3.5 text-purple-500" /> Send as Campaign
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" onClick={onPreview} title="Preview">
                     <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                 </Button>

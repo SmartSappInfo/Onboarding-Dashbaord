@@ -11,6 +11,7 @@ import {
   FileText,
   Calendar,
   Zap,
+  LayoutList,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -42,6 +43,8 @@ export interface PortalCardProps {
   themeColor?: string;
   onCopy: (path: string) => void;
   onEditSeo?: (pageKey: string, currentTitle: string, currentPath: string) => void;
+  workspaceIds?: string[];
+  onAssignWorkspaces?: (pageKey: string, currentWorkspaceIds: string[]) => void;
 }
 
 // ─── Kind display config ──────────────────────────────────────────────────────
@@ -115,6 +118,8 @@ export const PortalCard = React.memo(function PortalCard({
   themeColor: themeColorProp,
   onCopy,
   onEditSeo,
+  workspaceIds = [],
+  onAssignWorkspaces,
 }: PortalCardProps) {
   const cfg        = KIND_CONFIG[kind] ?? KIND_CONFIG.custom;
   const themeColor = themeColorProp ?? THEME_COLOR[kind];
@@ -169,7 +174,7 @@ export const PortalCard = React.memo(function PortalCard({
                 <MoreVertical className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem asChild>
                 <a href={path} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
                   <ExternalLink className="h-3.5 w-3.5" />
@@ -193,6 +198,18 @@ export const PortalCard = React.memo(function PortalCard({
                 >
                   <Globe className="h-3.5 w-3.5" />
                   Configure SEO
+                </DropdownMenuItem>
+              )}
+              {onAssignWorkspaces && pageKey && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAssignWorkspaces(pageKey, workspaceIds);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <LayoutList className="h-3.5 w-3.5" />
+                  Assign Workspaces
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -226,6 +243,19 @@ export const PortalCard = React.memo(function PortalCard({
               }}
             >
               <Globe className="h-4 w-4" />
+            </OverlayBtn>
+          )}
+
+          {/* Assign Workspaces */}
+          {onAssignWorkspaces && pageKey && (
+            <OverlayBtn
+              label="Assign Workspaces"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAssignWorkspaces(pageKey, workspaceIds);
+              }}
+            >
+              <LayoutList className="h-4 w-4" />
             </OverlayBtn>
           )}
 

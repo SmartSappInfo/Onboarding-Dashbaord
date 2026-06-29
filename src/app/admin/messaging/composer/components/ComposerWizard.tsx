@@ -438,6 +438,32 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     }, [searchParams, setValue]);
 
     React.useEffect(() => {
+        if (!searchParams || !firestore) return;
+        const templateId = searchParams.get('templateId');
+        if (templateId) {
+            const fetchTemplateOnMount = async () => {
+                try {
+                    const { doc, getDoc } = await import('firebase/firestore');
+                    const tDoc = await getDoc(doc(firestore, 'message_templates', templateId));
+                    if (tDoc.exists()) {
+                        const template = { id: tDoc.id, ...tDoc.data() } as MessageTemplate;
+                        setValue('templateId', template.id);
+                        setValue('messageSourceType', 'template');
+                        if (template.channel === 'email' || template.channel === 'sms' || template.channel === 'whatsapp') {
+                            setValue('channel', template.channel);
+                        }
+                        setSelectedTemplate(template);
+                        setStep(3); // Go straight to audience definition
+                    }
+                } catch (err) {
+                    console.error("Failed to load template on mount:", err);
+                }
+            };
+            fetchTemplateOnMount();
+        }
+    }, [searchParams, firestore, setValue]);
+
+    React.useEffect(() => {
         if (!watchedSourceMeetingId) return;
         fetchContextualData('Meeting', watchedSourceMeetingId).then(res => {
             if (res.success && res.data) {

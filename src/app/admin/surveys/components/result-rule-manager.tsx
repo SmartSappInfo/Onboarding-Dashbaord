@@ -36,6 +36,7 @@ function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id
 
     const selectedEmailId = watch(`resultRules.${index}.emailTemplateId`);
     const selectedSmsId = watch(`resultRules.${index}.smsTemplateId`);
+    const currentRulePageId = watch(`resultRules.${index}.pageId`);
 
     return (
         <div ref={setNodeRef} style={style} className="flex flex-col gap-4 p-6 border-2 rounded-2xl bg-card group relative hover:border-primary/30 transition-all shadow-sm">
@@ -43,41 +44,77 @@ function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
             
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex-grow grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="space-y-1.5 md:col-span-1">
-                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Logic Label</Label>
-                        <Input placeholder="e.g. Qualified" {...register(`resultRules.${index}.label`)} className="h-10 font-bold bg-muted/30 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+            <div className="flex flex-col gap-4 w-full">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex-grow grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="space-y-1.5 md:col-span-1">
+                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Logic Label</Label>
+                            <Input placeholder="e.g. Qualified" {...register(`resultRules.${index}.label`)} className="h-10 font-bold bg-muted/30 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Range Start</Label>
+                            <Input type="number" {...register(`resultRules.${index}.minScore`, { valueAsNumber: true })} className="h-10 font-bold bg-muted/30 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Range End</Label>
+                            <Input type="number" {...register(`resultRules.${index}.maxScore`, { valueAsNumber: true })} className="h-10 font-bold bg-muted/30 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-semibold text-primary ml-1">Resulting Page</Label>
+                            <Controller
+                                name={`resultRules.${index}.pageId`}
+                                control={control}
+                                render={({ field }) => (
+                                    <Select 
+                                        value={field.value} 
+                                        onValueChange={(val) => {
+                                            field.onChange(val);
+                                            if (val === '__redirect__') {
+                                                setValue(`resultRules.${index}.redirectEnabled`, true, { shouldDirty: true });
+                                            } else {
+                                                setValue(`resultRules.${index}.redirectEnabled`, false, { shouldDirty: true });
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-10 bg-primary/5 border-primary/20 text-primary font-semibold">
+                                            <SelectValue placeholder="Select page..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            {pages.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                            <SelectItem value="__redirect__" className="text-primary font-semibold">🔗 Link to External Page</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                        </div>
                     </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Range Start</Label>
-                        <Input type="number" {...register(`resultRules.${index}.minScore`, { valueAsNumber: true })} className="h-10 font-bold bg-muted/30 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Range End</Label>
-                        <Input type="number" {...register(`resultRules.${index}.maxScore`, { valueAsNumber: true })} className="h-10 font-bold bg-muted/30 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-semibold text-primary ml-1">Resulting Page</Label>
-                        <Controller
-                            name={`resultRules.${index}.pageId`}
-                            control={control}
-                            render={({ field }) => (
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                    <SelectTrigger className="h-10 bg-primary/5 border-primary/20 text-primary font-semibold">
-                                        <SelectValue placeholder="Select page..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                        {pages.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        />
-                    </div>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive mt-5 hover:bg-destructive/10 rounded-xl" onClick={() => remove(index)}>
+                        <Trash2 className="h-5 w-5" />
+                    </Button>
                 </div>
-                <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive mt-5 hover:bg-destructive/10 rounded-xl" onClick={() => remove(index)}>
-                    <Trash2 className="h-5 w-5" />
-                </Button>
+
+                {currentRulePageId === '__redirect__' && (
+                    <div className="space-y-3 mt-1 p-4 rounded-xl border border-primary/10 bg-primary/5 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5">
+                                🔗 Redirect Destination URL
+                            </Label>
+                            <Input 
+                                placeholder="https://example.com/thanks?sub_id={{submission_id}}" 
+                                {...register(`resultRules.${index}.redirectUrl`)} 
+                                className="bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl h-10"
+                            />
+                        </div>
+                        <div className="p-3 rounded-lg border border-dashed border-primary/20 bg-primary/5 text-[9px] text-slate-500/80 leading-relaxed">
+                            <span className="font-bold text-primary">💡 Placeholders:</span>{" "}
+                            <span className="font-mono font-bold select-all cursor-pointer">{"{{submission_id}}"}</span>,{" "}
+                            <span className="font-mono font-bold select-all cursor-pointer">{"{{score}}"}</span>,{" "}
+                            <span className="font-mono font-bold select-all cursor-pointer">{"{{max_score}}"}</span>,{" "}
+                            <span className="font-mono font-bold select-all cursor-pointer">{"{{contact_name}}"}</span>,{" "}
+                            <span className="font-mono font-bold select-all cursor-pointer">{"{{contact_email}}"}</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="pt-4 border-t border-dashed space-y-4">
@@ -298,23 +335,34 @@ export default function ResultRuleManager() {
             </div>
 
             {fields.length > 0 ? (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                    <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                        <div className="space-y-6">
-                            {fields.map((field, index) => (
-                                <SortableRuleItem 
-                                    key={field.id} 
-                                    id={field.id} 
-                                    index={index} 
-                                    pages={resultPages} 
-                                    remove={remove} 
-                                    profiles={profiles || []}
-                                    surveyId={surveyId}
-                                />
-                            ))}
-                        </div>
-                    </SortableContext>
-                </DndContext>
+                <div className="space-y-6">
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                        <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-6">
+                                {fields.map((field, index) => (
+                                    <SortableRuleItem 
+                                        key={field.id} 
+                                        id={field.id} 
+                                        index={index} 
+                                        pages={resultPages} 
+                                        remove={remove} 
+                                        profiles={profiles || []}
+                                        surveyId={surveyId}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+                    <div className="flex justify-end pt-2">
+                        <Button 
+                            onClick={() => append({ id: `rule_${Date.now()}`, label: 'New Outcome', minScore: 0, maxScore: 100, priority: fields.length, pageId: '' })} 
+                            variant="outline" 
+                            className="h-11 rounded-xl font-bold border-2 border-primary/20 hover:bg-primary/5 transition-all shadow-sm"
+                        >
+                            <Plus className="h-4 w-4 mr-2" /> Add Logic Threshold
+                        </Button>
+                    </div>
+                </div>
             ) : (
                 <div className="text-center py-24 border-4 border-dashed rounded-[2.5rem] bg-background border-muted-foreground/10 flex flex-col items-center justify-center gap-4">
                     <div className="p-6 bg-card rounded-full shadow-inner"><ArrowUp className="h-10 w-10 text-muted-foreground/30 animate-bounce" /></div>

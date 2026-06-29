@@ -1,14 +1,16 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import crypto from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 import { logActivity } from './activity-logger';
 import { triggerInternalNotification, triggerExternalNotification } from './notification-engine';
 import { triggerAutomationProtocols } from './automation-processor';
 import { recordConversion } from './analytics-actions';
+import { sendMessage } from './messaging-engine';
 
-import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical } from './types';
+import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, SurveyResultRule, EntityContact } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { canUser } from './workspace-permissions';
@@ -302,8 +304,9 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
     // 3. Transform to Entity/Lead if enabled (Task 12)
     let finalEntityId = responseData.entityId || null;
+    const isFormMode = surveyData?.createEntity && surveyData?.leadCaptureMode === 'form';
 
-    if (surveyData && surveyData.createEntity && surveyData.entityMapping) {
+    if (surveyData && surveyData.createEntity && surveyData.entityMapping && !isFormMode) {
       // FIX 1: Skip entity creation entirely if no workspace is resolved
       if (!workspaceId) {
         console.error(`[survey-actions] Survey ${surveyId} has no workspaceId — entity creation skipped`);
@@ -522,7 +525,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     }
     
     // 6. Handle Notifications (Admin & External)
-    if (surveyData) {
+    if (surveyData && !isFormMode) {
       const notificationVars = {
         ...responseData.answers.reduce((acc: any, ans: any) => ({ ...acc, [ans.questionId]: ans.value }), {}),
         survey_title: surveyData.title,
@@ -585,7 +588,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     }
 
     // 7. Activity Logging — Creates a timeline entry for entity and survey analytics
-    if (surveyData) {
+    if (surveyData && !isFormMode) {
       await logActivity({
         entityId: finalEntityId || undefined,
         organizationId,
@@ -815,4 +818,503 @@ function buildIndustryDefaults(
     default:
       return {};
   }
+}
+
+export interface SubmitPublicSurveyLeadInput {
+  surveyId: string;
+  responseId: string;
+  workspaceId: string;
+  leadData: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+  };
+  outcomeId?: string | null;
+}
+
+export interface FinalizeSurveySubmissionInput {
+  surveyId: string;
+  responseId: string;
+  workspaceId: string;
+  outcomeId?: string | null;
+}
+
+export async function submitPublicSurveyLead(
+  surveyId: string,
+  responseId: string,
+  workspaceId: string,
+  leadData: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+  },
+  outcomeId?: string | null
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const surveyRef = adminDb.collection('surveys').doc(surveyId);
+    const surveySnap = await surveyRef.get();
+    if (!surveySnap.exists) {
+      return { success: false, error: 'Survey not found' };
+    }
+    const surveyData = surveySnap.data() as Survey;
+    const organizationId = surveyData.organizationId || 'default';
+
+    const responseRef = surveyRef.collection('responses').doc(responseId);
+    const responseSnap = await responseRef.get();
+    if (!responseSnap.exists) {
+      return { success: false, error: 'Response not found' };
+    }
+    const responseData = responseSnap.data() as SurveyResponse;
+
+    const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+    const wsData = wsSnap.data();
+    const contactScope = (wsData?.contactScope || 'institution') as EntityType;
+    const contactPolicy: ContactIdentifierPolicy = wsData?.contactPolicy || 'phone_or_email';
+
+    const { industry: workspaceIndustry } = await getWorkspaceIndustry(workspaceId);
+
+    const cEmail = leadData.email?.toLowerCase().trim() || '';
+    const cPhone = leadData.phone?.trim() || '';
+    const resolvedName = leadData.company || leadData.name || '';
+    const finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
+
+    const policyCheck = validateContactIdentifier(cPhone, cEmail, contactPolicy);
+    if (!finalEntityName || !policyCheck.valid) {
+      return { success: false, error: 'Identity validation failed per workspace policy.' };
+    }
+
+    // Deduplication Search
+    const dedupeQuery = adminDb.collection('workspace_entities')
+      .where('workspaceId', '==', workspaceId)
+      .where('displayName', '==', finalEntityName);
+    
+    let weSnap;
+    if (cEmail) {
+      weSnap = await dedupeQuery.where('primaryEmail', '==', cEmail).limit(1).get();
+    } else if (cPhone) {
+      weSnap = await dedupeQuery.where('primaryPhone', '==', cPhone).limit(1).get();
+    } else {
+      weSnap = await dedupeQuery.limit(1).get();
+    }
+
+    const systemDefaults = {
+      currency: 'GHS',
+      subscriptionPackageName: 'Standard',
+      subscriptionRate: 0,
+      contactTypeKey: 'primary',
+    };
+    
+    let orgDefaults: Record<string, string | number> = {};
+    if (organizationId !== 'default') {
+      const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+      if (orgSnap.exists) {
+        orgDefaults = orgSnap.data()?.surveyEntityDefaults || {};
+      }
+    }
+    
+    const wsSurveyDefaults = wsData?.surveyEntityDefaults || {};
+    const wsEntityDefaults = wsData?.entityDefaults?.[contactScope as 'institution' | 'family' | 'person'] || {};
+    const resolvedDefaults = { ...systemDefaults, ...orgDefaults, ...wsSurveyDefaults, ...wsEntityDefaults };
+
+    // Extract survey mappings from answers
+    const answers = responseData.answers || [];
+    const getAnswerValue = (qId?: string) => {
+      if (!qId) return null;
+      const ans = answers.find(a => a.questionId === qId);
+      return ans ? ans.value : null;
+    };
+
+    const mappedInstitutionData: Record<string, string | number | string[]> = {};
+    const mappedPersonData: Record<string, string | number | string[]> = {};
+
+    const mapping = surveyData.entityMapping || {};
+    if (mapping.additionalMappings?.length) {
+      mapping.additionalMappings.forEach((m) => {
+        const val = getAnswerValue(m.questionId);
+        if (val !== null && val !== undefined && val !== '') {
+          if (m.targetField.startsWith('institutionData.')) {
+            const field = m.targetField.replace('institutionData.', '');
+            mappedInstitutionData[field] = (field === 'nominalRoll' || field === 'capacity') ? Number(val) : val;
+          } else if (m.targetField.startsWith('personData.')) {
+            const field = m.targetField.replace('personData.', '');
+            mappedPersonData[field] = val;
+          }
+        }
+      });
+    }
+
+    let industryDataPayload: Record<string, string | number | string[]> | undefined;
+    if (workspaceIndustry) {
+      const industryDefaults = buildIndustryDefaults(workspaceIndustry, contactScope, resolvedDefaults);
+      const surveyMapped = contactScope === 'institution' ? mappedInstitutionData : mappedPersonData;
+
+      industryDataPayload = {
+        industry: workspaceIndustry,
+        ...industryDefaults,
+        ...surveyMapped,
+      };
+    }
+
+    const entityPayload: any = {
+      name: finalEntityName,
+      contacts: [
+        {
+          name: leadData.name || finalEntityName,
+          email: cEmail,
+          phone: cPhone,
+          isPrimary: true,
+          typeKey: resolvedDefaults.contactTypeKey
+        }
+      ],
+      globalTags: surveyData.autoTags || [],
+      workspaceTags: surveyData.autoTags || [],
+    };
+
+    if (industryDataPayload) {
+      entityPayload.industryData = industryDataPayload;
+    }
+    if (contactScope === 'person' && Object.keys(mappedPersonData).length > 0) {
+      entityPayload.personData = mappedPersonData;
+    }
+
+    let finalEntityId: string | null = null;
+    if (!weSnap.empty) {
+      const existingWE = weSnap.docs[0].data();
+      finalEntityId = existingWE.entityId;
+      await updateEntityAction(
+        finalEntityId!,
+        entityPayload,
+        'system-survey',
+        workspaceId,
+        organizationId
+      );
+    } else {
+      const createRes = await createEntityAction(
+        entityPayload,
+        'system-survey',
+        workspaceId,
+        contactScope,
+        organizationId
+      );
+      if (createRes.success) {
+        finalEntityId = createRes.id!;
+      } else if (createRes.isDuplicate && createRes.duplicates && createRes.duplicates.length > 0) {
+        const duplicate = createRes.duplicates[0];
+        const targetEntityId = duplicate.entityId.replace(`${workspaceId}_`, '');
+        
+        const entitySnap = await adminDb.collection('entities').doc(targetEntityId).get();
+        const existingContacts: EntityContact[] = entitySnap.data()?.entityContacts || [];
+        
+        let contactExists = false;
+        const mergedContacts = [...existingContacts];
+        
+        for (let i = 0; i < mergedContacts.length; i++) {
+          const ec = mergedContacts[i];
+          const emailMatch = cEmail && ec.email && ec.email.toLowerCase().trim() === cEmail;
+          const phoneMatch = cPhone && ec.phone && ec.phone.trim() === cPhone;
+          
+          if (emailMatch || phoneMatch) {
+            mergedContacts[i] = {
+              ...ec,
+              name: leadData.name || ec.name || finalEntityName,
+              email: cEmail || ec.email || '',
+              phone: cPhone || ec.phone || '',
+            };
+            contactExists = true;
+            break;
+          }
+        }
+        
+        if (!contactExists) {
+          mergedContacts.push({
+            id: `ec_${crypto.randomUUID().substring(0, 8)}`,
+            name: leadData.name || finalEntityName,
+            email: cEmail,
+            phone: cPhone,
+            isPrimary: false,
+            isSignatory: false,
+            typeKey: resolvedDefaults.contactTypeKey,
+            typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Primary' : 'Other',
+            order: mergedContacts.length,
+            updatedAt: new Date().toISOString()
+          });
+        }
+        
+        entityPayload.entityContacts = mergedContacts;
+        delete entityPayload.contacts;
+        
+        await updateEntityAction(
+          targetEntityId,
+          entityPayload,
+          'system-survey',
+          workspaceId,
+          organizationId
+        );
+        finalEntityId = targetEntityId;
+      } else {
+        return { success: false, error: createRes.error || 'Failed to create lead.' };
+      }
+    }
+
+    // Link the response to the entity
+    if (finalEntityId) {
+      await responseRef.update({ 
+        entityId: finalEntityId,
+        assignedUserId: responseData.assignedUserId || null 
+      });
+
+      // Trigger post-submission automations, notifications, webhooks, and logs
+      after(async () => {
+        await triggerPostSubmissionAutomations(
+          surveyData,
+          responseId,
+          {
+            answers: responseData.answers as Array<{ questionId: string; value: string | string[] }>,
+            score: responseData.score,
+            sourcePageId: responseData.sourcePageId,
+            assignedUserId: responseData.assignedUserId
+          },
+          workspaceId,
+          organizationId,
+          finalEntityId,
+          cEmail || null,
+          cPhone || null,
+          outcomeId
+        );
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("submitPublicSurveyLead Error:", error);
+    return { success: false, error: error.message || "Failed to process lead." };
+  }
+}
+
+export async function finalizeSurveySubmission(
+  surveyId: string,
+  responseId: string,
+  workspaceId: string,
+  outcomeId?: string | null
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const surveyRef = adminDb.collection('surveys').doc(surveyId);
+    const surveySnap = await surveyRef.get();
+    if (!surveySnap.exists) {
+      return { success: false, error: 'Survey not found' };
+    }
+    const surveyData = surveySnap.data() as Survey;
+    const organizationId = surveyData.organizationId || 'default';
+
+    const responseRef = surveyRef.collection('responses').doc(responseId);
+    const responseSnap = await responseRef.get();
+    if (!responseSnap.exists) {
+      return { success: false, error: 'Response not found' };
+    }
+    const responseData = responseSnap.data() as SurveyResponse;
+
+    // Trigger post-submission automations (without entityId, and fallback email/phone if any exist in the response answers)
+    const answers = responseData.answers || [];
+    
+    const emailQuestion = surveyData.elements.filter((el): el is SurveyQuestion => 'isRequired' in el).find(q => 
+        q.type === 'email' || 
+        q.title.toLowerCase().includes('email address') ||
+        q.title.toLowerCase().includes('your email')
+    );
+    const phoneQuestion = surveyData.elements.filter((el): el is SurveyQuestion => 'isRequired' in el).find(q => 
+        q.type === 'phone' || 
+        q.title.toLowerCase().includes('phone number') ||
+        q.title.toLowerCase().includes('mobile number') ||
+        q.title.toLowerCase().includes('contact number')
+    );
+
+    const getAnswerValue = (qId?: string) => {
+      if (!qId) return null;
+      const ans = answers.find(a => a.questionId === qId);
+      return ans ? ans.value : null;
+    };
+
+    const respondentEmail = emailQuestion ? getAnswerValue(emailQuestion.id) : null;
+    const respondentPhone = phoneQuestion ? getAnswerValue(phoneQuestion.id) : null;
+
+    after(async () => {
+      await triggerPostSubmissionAutomations(
+        surveyData,
+        responseId,
+        {
+          answers: responseData.answers as Array<{ questionId: string; value: string | string[] }>,
+          score: responseData.score,
+          sourcePageId: responseData.sourcePageId,
+          assignedUserId: responseData.assignedUserId
+        },
+        workspaceId,
+        organizationId,
+        null,
+        respondentEmail ? String(respondentEmail) : null,
+        respondentPhone ? String(respondentPhone) : null,
+        outcomeId
+      );
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("finalizeSurveySubmission Error:", error);
+    return { success: false, error: error.message || "Failed to finalize submission." };
+  }
+}
+
+async function triggerPostSubmissionAutomations(
+  surveyData: Survey,
+  responseId: string,
+  responseData: {
+    answers: Array<{ questionId: string; value: string | string[] }>;
+    score?: number;
+    sourcePageId?: string | null;
+    assignedUserId?: string | null;
+  },
+  workspaceId: string,
+  organizationId: string,
+  entityId: string | null,
+  respondentEmail: string | null,
+  respondentPhone: string | null,
+  outcomeId?: string | null
+): Promise<void> {
+  const notificationVars: Record<string, string | number> = {
+    ...responseData.answers.reduce((acc, ans) => ({
+      ...acc,
+      [ans.questionId]: Array.isArray(ans.value) ? ans.value.join(', ') : String(ans.value)
+    }), {}),
+    survey_title: surveyData.title,
+    survey_id: surveyData.id,
+    submission_id: responseId,
+    workspaceId: workspaceId,
+    entityId: entityId || ''
+  };
+
+  // 1. Webhook
+  if (surveyData.webhookEnabled && surveyData.webhookId) {
+    const payload = { 
+      ...notificationVars, 
+      answers: responseData.answers, 
+      raw_score: responseData.score || 0,
+      survey_id: surveyData.id,
+      school_id: entityId || ''
+    };
+    await triggerSurveyWebhook(surveyData.webhookId, payload).catch(console.error);
+  }
+
+  // 2. Auto-acknowledgements (outcome-specific)
+  if (outcomeId) {
+    const outcome = surveyData.resultRules?.find(r => r.id === outcomeId);
+    if (outcome) {
+      if (outcome.emailTemplateId && outcome.emailTemplateId !== 'none' && respondentEmail) {
+        await sendMessage({
+          templateId: outcome.emailTemplateId,
+          senderProfileId: outcome.emailSenderProfileId || 'default',
+          recipient: respondentEmail,
+          variables: notificationVars,
+          entityId: entityId || undefined
+        }).catch(console.error);
+      }
+      if (outcome.smsTemplateId && outcome.smsTemplateId !== 'none' && respondentPhone) {
+        await sendMessage({
+          templateId: outcome.smsTemplateId,
+          senderProfileId: outcome.smsSenderProfileId || 'default',
+          recipient: respondentPhone,
+          variables: notificationVars,
+          entityId: entityId || undefined
+        }).catch(console.error);
+      }
+    }
+  }
+
+  // 3. Admin Alerts
+  if (surveyData.adminAlertsEnabled) {
+    await triggerInternalNotification({
+      entityId: entityId || '',
+      notifyManager: surveyData.adminAlertNotifyManager,
+      specificUserIds: surveyData.adminAlertSpecificUserIds,
+      emailTemplateId: surveyData.adminAlertEmailTemplateId,
+      smsTemplateId: surveyData.adminAlertSmsTemplateId,
+      whatsappTemplateId: surveyData.adminAlertWhatsappTemplateId,
+      channel: surveyData.adminAlertChannel,
+      variables: { ...notificationVars, event_type: 'Survey Completion' }
+    }).catch(console.error);
+  }
+
+  // 4. External Alerts
+  if (surveyData.externalAlertsEnabled && entityId) {
+    await triggerExternalNotification({
+      entityId: entityId,
+      contactTypes: surveyData.externalAlertContactTypes || [],
+      emailTemplateId: surveyData.externalAlertEmailTemplateId,
+      smsTemplateId: surveyData.externalAlertSmsTemplateId,
+      whatsappTemplateId: surveyData.externalAlertWhatsappTemplateId,
+      channel: surveyData.externalAlertChannel,
+      variables: notificationVars
+    }).catch(console.error);
+  }
+
+  // 5. Assigned User Alerts
+  if (surveyData.notifyAssignedUsers && responseData.assignedUserId) {
+    const assignedUserId = responseData.assignedUserId;
+    const config = surveyData.notifyAssignedUsers;
+    const hasEmail = config.email && config.emailTemplateId && config.emailTemplateId !== 'none';
+    const hasSms = config.sms && config.smsTemplateId && config.smsTemplateId !== 'none';
+
+    if (hasEmail || hasSms) {
+      await triggerInternalNotification({
+        entityId: entityId || '',
+        specificUserIds: [assignedUserId],
+        emailTemplateId: hasEmail ? config.emailTemplateId : undefined,
+        smsTemplateId: hasSms ? config.smsTemplateId : undefined,
+        variables: { 
+          ...notificationVars, 
+          assigned_userId: assignedUserId,
+          is_assigned_alert: true 
+        },
+        channel: hasEmail && hasSms ? 'both' : (hasEmail ? 'email' : 'sms')
+      }).catch(console.error);
+    }
+  }
+
+  // 6. Automations (SURVEY_SUBMITTED trigger)
+  if (surveyData.autoAutomations?.length && entityId) {
+    const automationPayload = {
+      entityId,
+      entityName: notificationVars.entityName || '',
+      workspaceId,
+      organizationId,
+      surveyId: surveyData.id,
+      surveyTitle: surveyData.title,
+      submissionId: responseId,
+      assignedUserId: responseData.assignedUserId || null,
+      score: responseData.score || null,
+      autoTags: surveyData.autoTags || [],
+      source: 'survey_submission',
+    };
+    await triggerAutomationProtocols('SURVEY_SUBMITTED', automationPayload).catch(console.error);
+  }
+
+  // 7. Activity Log
+  await logActivity({
+    entityId: entityId || undefined,
+    organizationId,
+    workspaceId,
+    userId: responseData.assignedUserId || 'anonymous',
+    type: 'survey_submitted' as any,
+    source: 'public_survey',
+    description: `Survey "${surveyData.title}" submitted${entityId ? ` — entity linked` : ''}`,
+    metadata: {
+      surveyId: surveyData.id,
+      submissionId: responseId,
+      surveyTitle: surveyData.title,
+      score: responseData.score || null,
+      assignedUserId: responseData.assignedUserId || null,
+      entityCreated: !!entityId,
+      sourcePageId: responseData.sourcePageId || null,
+    },
+  }).catch(console.error);
 }

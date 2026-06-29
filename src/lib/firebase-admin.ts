@@ -2,6 +2,7 @@ import { cert, getApps, initializeApp, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
+import path from 'path';
 
 function getAdminApp(): App {
   if (getApps().length > 0) {
@@ -39,8 +40,11 @@ function getAdminApp(): App {
   // Try service account key from file path
   if (serviceAccountPath) {
     try {
+      const resolvedPath = path.isAbsolute(serviceAccountPath)
+        ? serviceAccountPath
+        : path.resolve(process.cwd(), serviceAccountPath);
       return initializeApp({
-        credential: cert(serviceAccountPath),
+        credential: cert(resolvedPath),
         storageBucket,
         projectId,
       });

@@ -439,7 +439,20 @@ export function renderBlocksToHtml(
         } else {
             const defaultImgRadius = options?.style?.borderRadius ? (hasUnit(options.style.borderRadius) ? options.style.borderRadius : `${options.style.borderRadius}px`) : '16px';
             const imgRadius = s.borderRadius ? (hasUnit(s.borderRadius) ? s.borderRadius : `${s.borderRadius}px`) : defaultImgRadius;
-            blockHtml = `<div style="${wrapperStyle}"><img src="${url}" style="max-width: 100%; height: auto; border-radius: ${imgRadius}; display: block; border: ${s.borderWidth ? `${s.borderWidth} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}` : `1px solid ${dividerColor}`}; ${align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin-left: auto;' : ''}" alt="Image" /></div>`;
+            
+            // Image border styles (from block styling s)
+            const imgBorder = s.borderWidth 
+              ? `${s.borderWidth.endsWith('px') ? s.borderWidth : `${s.borderWidth}px`} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}`
+              : `1px solid ${dividerColor}`;
+
+            // Outer wrapper should not inherit the image border or background color
+            const outerStyle = [
+              alignStyle,
+              marginStyles,
+              paddingStyles,
+            ].filter(Boolean).join(' ');
+
+            blockHtml = `<div style="${outerStyle}"><img src="${url}" style="max-width: 100%; height: auto; border-radius: ${imgRadius}; display: block; border: ${imgBorder}; ${align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin-left: auto;' : ''}" alt="Image" /></div>`;
         }
         break;
       }
@@ -462,9 +475,22 @@ export function renderBlocksToHtml(
 
         const shadowColor = options?.style?.primaryColor ? `${options.style.primaryColor}4D` : 'rgba(59, 95, 255, 0.3)';
 
+        // Extract button border styles from block styles s
+        const btnBorder = [
+          s.borderWidth ? `border-width: ${s.borderWidth.endsWith('px') ? s.borderWidth : `${s.borderWidth}px`}` : '',
+          s.borderStyle ? `border-style: ${s.borderStyle}` : '',
+          s.borderColor ? `border-color: ${s.borderColor}` : '',
+        ].filter(Boolean).join('; ');
+
+        // Outer div should not inherit block background color or borders (they belong on the button link)
+        const outerStyle = [
+          alignStyle,
+          marginStyles,
+        ].filter(Boolean).join(' ');
+
         blockHtml = `
-          <div style="${wrapperStyle} margin: 24px 0;">
-            <a href="${link}" style="background-color: ${btnBg}; color: ${btnColor}; padding: ${btnPadding}; text-decoration: none; border-radius: ${btnRadius}; ${fontWeight || 'font-weight: 800;'} ${fontFamily} display: inline-block; font-size: ${btnFontSize}; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 10px 15px -3px ${shadowColor};">
+          <div style="${outerStyle} margin: 24px 0;">
+            <a href="${link}" style="background-color: ${btnBg}; color: ${btnColor}; padding: ${btnPadding}; text-decoration: none; border-radius: ${btnRadius}; ${btnBorder ? `${btnBorder};` : ''} ${fontWeight || 'font-weight: 800;'} ${fontFamily} display: inline-block; font-size: ${btnFontSize}; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 10px 15px -3px ${shadowColor};">
               ${title}
             </a>
           </div>

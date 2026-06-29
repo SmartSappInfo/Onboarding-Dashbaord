@@ -43,8 +43,10 @@ import {
     Users, 
     Webhook,
     Pencil,
-    X
+    X,
+    Code
 } from 'lucide-react';
+import ShareEmbedDialog from '@/components/share-embed-dialog';
 
 import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField, SeoConfig } from '@/lib/types';
 import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
@@ -228,6 +230,7 @@ export default function EditMeetingPage() {
   const [hasInitialized, setHasInitialized] = React.useState(false);
   const [currentStep, setCurrentStep] = React.useState(0);
   const [lastStepChangeTime, setLastStepChangeTime] = React.useState(0);
+  const [isShareOpen, setIsShareOpen] = React.useState(false);
 
   const meetingDocRef = useMemoFirebase(() => {
     if (!firestore || !meetingId) return null;
@@ -1638,6 +1641,15 @@ export default function EditMeetingPage() {
                                                 <Copy className="h-3.5 w-3.5 mr-1" /> Copy
                                             </Button>
                                             <Button
+                                                 type="button"
+                                                 variant="ghost"
+                                                 size="sm"
+                                                 className="shrink-0 h-8 px-3 rounded-lg"
+                                                 onClick={() => setIsShareOpen(true)}
+                                             >
+                                                 <Code className="h-3.5 w-3.5 mr-1" /> Share & Embed
+                                             </Button>
+                                            <Button
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
@@ -1683,6 +1695,16 @@ export default function EditMeetingPage() {
 
             {/* Navigation is in the header */}
 
+          {isShareOpen && publicUrl && (
+            <ShareEmbedDialog
+              isOpen={isShareOpen}
+              onOpenChange={setIsShareOpen}
+              title="Share & Embed Meeting"
+              resourceName="Meeting"
+              publicUrl={typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : publicUrl}
+              embedUrl={typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}?embed=true` : `${publicUrl}?embed=true`}
+            />
+          )}
           </form>
         </FormProvider>
       </div>

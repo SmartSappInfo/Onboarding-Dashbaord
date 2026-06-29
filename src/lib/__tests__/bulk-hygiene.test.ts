@@ -1,6 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BulkVerificationService } from '../bulk-verifier';
 
+// Defensive: inert Firestore so no test in this file can ever reach the real
+// backend (which hangs on gRPC retries in CI). The per-test spies on the service
+// methods are the primary isolation; this is the safety net for future tests.
+vi.mock('../firebase-admin', () => {
+  const docRef = {
+    get: vi.fn().mockResolvedValue({ exists: false, data: () => undefined }),
+    set: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+  };
+  const query: Record<string, unknown> = {};
+  query.where = vi.fn(() => query);
+  query.orderBy = vi.fn(() => query);
+  query.limit = vi.fn(() => query);
+  query.get = vi.fn().mockResolvedValue({ empty: true, docs: [] });
+  query.doc = vi.fn(() => docRef);
+  query.add = vi.fn().mockResolvedValue({ id: 'mock-id' });
+  return {
+    adminDb: {
+      collection: vi.fn(() => query),
+      batch: vi.fn(() => ({
+        set: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+        commit: vi.fn().mockResolvedValue(undefined),
+      })),
+      runTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          get: vi.fn().mockResolvedValue({ exists: false, data: () => undefined }),
+          set: vi.fn(),
+          update: vi.fn(),
+        }),
+      ),
+    },
+  };
+});
+
 describe('BulkVerificationService - Domain Serialization & Batching', () => {
   
   beforeEach(() => {
@@ -13,6 +50,11 @@ describe('BulkVerificationService - Domain Serialization & Batching', () => {
     // Mock the actual verification execution to resolve instantly
     const verifySpy = vi.spyOn(service as any, 'executeSingleVerification')
       .mockResolvedValue({ valid: true, score: 90, status: 'verified', checks: {}, details: {} });
+
+    // Isolate from Firestore: cache read returns a miss, batch commit is a no-op.
+    // Without these, getHygieneFromCache/commitBatchToFirestore hit real Firestore and hang.
+    vi.spyOn(service as any, 'getHygieneFromCache').mockResolvedValue(null);
+    vi.spyOn(service as any, 'commitBatchToFirestore').mockResolvedValue(undefined);
 
     // 2 Gmail addresses, 1 Yahoo address
     const emails = ['test1@gmail.com', 'test2@gmail.com', 'test1@yahoo.com'];
@@ -34,7 +76,10 @@ describe('BulkVerificationService - Domain Serialization & Batching', () => {
     
     vi.spyOn(service as any, 'executeSingleVerification')
       .mockResolvedValue({ valid: true, score: 90, status: 'verified', checks: {}, details: {} });
-    
+
+    // Isolate from Firestore: cache read returns a miss so each email gets verified + queued.
+    vi.spyOn(service as any, 'getHygieneFromCache').mockResolvedValue(null);
+
     const batchUpdateSpy = vi.spyOn(service as any, 'commitBatchToFirestore').mockResolvedValue(undefined);
 
     // Provide 505 uniquely domained emails (so they run fully in parallel without jitter)

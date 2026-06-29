@@ -133,14 +133,20 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
         </Select>
       );
     case 'resource': {
-      // Normalize each resource list to a single { id, label } shape so the
-      // mapped element type is concrete (avoids a union-of-arrays collapse).
-      const list: ReadonlyArray<{ id: string; label: string }> =
-        field.resource === 'form'
-          ? resources.forms.map((f) => ({ id: f.id, label: f.internalName ?? f.title }))
-          : field.resource === 'survey'
-            ? resources.surveys.map((s) => ({ id: s.id, label: s.title }))
-            : resources.agreements.map((a) => ({ id: a.id, label: a.title }));
+      let list: ReadonlyArray<{ id: string; label: string }> = [];
+      if (field.resource === 'form') {
+        list = (resources.forms || []).map((f) => ({ id: f.id, label: f.internalName ?? f.title }));
+      } else if (field.resource === 'survey') {
+        list = (resources.surveys || []).map((s) => ({ id: s.id, label: s.title }));
+      } else if (field.resource === 'agreement') {
+        list = (resources.agreements || []).map((a) => ({ id: a.id, label: a.title }));
+      } else if (field.resource === 'meeting') {
+        list = (resources.meetings || [])
+          .filter((m) => m.status !== 'ended' && m.status !== 'cancelled')
+          .map((m) => ({ id: m.id, label: m.title }));
+      } else if (field.resource === 'qr') {
+        list = (resources.qrCodes || []).map((q) => ({ id: q.id, label: q.title }));
+      }
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
           <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200">

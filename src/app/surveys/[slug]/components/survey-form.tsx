@@ -46,6 +46,7 @@ import { useTheme } from 'next-themes';
 interface SurveyFormProps {
     survey: Survey;
     onSubmitted: () => void;
+    onQuestionsCompleted?: (submissionId: string, score: number, outcomeId: string | null) => void;
     isPreview?: boolean;
     sourcePageId?: string;
     assignedUserId?: string;
@@ -889,6 +890,34 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, element
     );
 }
 
+function sanitizeAndFormatUrl(url: string): string {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (trimmed.startsWith('/') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        return trimmed;
+    }
+    return `https://${trimmed}`;
+}
+
+export function replaceVariablesInUrl(
+    url: string, 
+    variables: Record<string, string | number | boolean | null | undefined>
+): string {
+    if (!url) return '';
+    const formattedUrl = sanitizeAndFormatUrl(url);
+    let result = formattedUrl;
+    const pattern = /\{\{([^}]+)\}\}/g;
+    result = result.replace(pattern, (match, key) => {
+        const trimmedKey = key.trim();
+        const value = variables[trimmedKey];
+        if (value === undefined || value === null) {
+            return '';
+        }
+        return encodeURIComponent(String(value));
+    });
+    return result;
+}
+
 type AutomationStatus = { 
     id: string; 
     label: string; 
@@ -897,7 +926,15 @@ type AutomationStatus = {
     icon: React.ElementType;
 };
 
-export default function SurveyForm({ survey, onSubmitted, isPreview = false, sourcePageId, assignedUserId, resolvedLogoUrl }: SurveyFormProps) {
+export default function SurveyForm({ 
+    survey, 
+    onSubmitted, 
+    onQuestionsCompleted,
+    isPreview = false, 
+    sourcePageId, 
+    assignedUserId, 
+    resolvedLogoUrl 
+}: SurveyFormProps) {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
@@ -1301,6 +1338,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             setLastSubmissionId(submissionId);
             variables.submission_id = submissionId;
             
+            const isFormMode = survey.createEntity && survey.leadCaptureMode === 'form';
+            if (isFormMode && onQuestionsCompleted) {
+                onQuestionsCompleted(submissionId, score ?? 0, outcome?.id || null);
+                return;
+            }
+            
             if (typeof window !== 'undefined') {
                 variables.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${submissionId}`;
             }
@@ -1413,12 +1456,38 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             // Always route directly after submission — no intermediate modal
             // Route to result page if scoring is enabled OR if there are result rules defined
             if (survey.scoringEnabled || (survey.resultRules && survey.resultRules.length > 0)) {
+                if (outcome?.redirectEnabled && outcome.redirectUrl) {
+                    const destination = replaceVariablesInUrl(outcome.redirectUrl, variables);
+                    if (isPreview) {
+                        toast({
+                            title: "[Preview] Redirect Outcome Match",
+                            description: `Redirecting to: ${destination}`,
+                        });
+                        onSubmitted();
+                    } else {
+                        window.location.href = destination;
+                    }
+                    return;
+                }
                 setIsNavigatingToResults(true);
                 router.push(`/surveys/${survey.slug}/result/${submissionId}`);
                 // Don't reset isSubmitting — keep loader visible until navigation completes
                 return;
             } else {
-                onSubmitted();
+                if (survey.thankYouRedirectEnabled && survey.thankYouRedirectUrl) {
+                    const destination = replaceVariablesInUrl(survey.thankYouRedirectUrl, variables);
+                    if (isPreview) {
+                        toast({
+                            title: "[Preview] Redirect Thank You Page",
+                            description: `Redirecting to: ${destination}`,
+                        });
+                        onSubmitted();
+                    } else {
+                        window.location.href = destination;
+                    }
+                } else {
+                    onSubmitted();
+                }
             }
             setIsSubmitting(false);
 
@@ -1642,7 +1711,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                         </div>
                                     )}
                                     <div className="space-y-5 max-w-3xl mx-auto px-4">
-                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{survey.title}</h1>
+                                        <h1 className="text-[25px] sm:text-[34px] font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{survey.title}</h1>
                                         <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap">
                                             {survey.description}
                                         </div>
@@ -1671,7 +1740,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                         </div>
                                     )}
                                     <div className="space-y-5 max-w-3xl mx-auto px-4">
-                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{survey.title}</h1>
+                                        <h1 className="text-[25px] sm:text-[34px] font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{survey.title}</h1>
                                         <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert font-medium whitespace-pre-wrap">
                                             {survey.description}
                                         </div>

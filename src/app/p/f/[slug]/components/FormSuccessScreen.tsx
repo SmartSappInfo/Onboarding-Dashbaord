@@ -7,11 +7,15 @@ import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
+import type { OrgBranding } from '@/lib/types';
+import Footer from '@/components/footer';
+
 interface FormSuccessScreenProps {
   form: Form;
+  orgBranding?: OrgBranding | null;
 }
 
-export default function FormSuccessScreen({ form }: FormSuccessScreenProps) {
+export default function FormSuccessScreen({ form, orgBranding }: FormSuccessScreenProps) {
   const { type, value } = form.successBehavior;
 
   useEffect(() => {
@@ -85,9 +89,9 @@ export default function FormSuccessScreen({ form }: FormSuccessScreenProps) {
              </Button>
         </div>
 
-        <div className="mt-16 text-center text-slate-400 text-xs font-medium uppercase tracking-widest">
-          Powered by <span className="text-slate-600 font-bold">SmartSapp</span>
-        </div>
+        {orgBranding?.landingPageFooterEnabled !== false && (
+          <Footer orgBranding={orgBranding} className="mt-16 bg-transparent text-slate-500 pt-8" />
+        )}
       </div>
     </div>
   );
