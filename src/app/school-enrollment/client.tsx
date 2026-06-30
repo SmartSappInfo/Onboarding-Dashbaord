@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle2, Play } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { usePageAnalytics } from '@/hooks/use-page-analytics';
 import { PageAnalyticsReader } from '@/components/page-analytics-reader';
 import type { PageEventChannel } from '@/lib/types';
@@ -89,6 +90,7 @@ function VideoFacade({ videoId, thumbnailUrl, onPlay, title = 'Video' }: VideoFa
 export default function SchoolEnrollmentClient() {
   const { track, setEntityId, hasFiredVideoStart } = usePageAnalytics(PAGE_SLUG);
   const [isNavScrolled, setIsNavScrolled] = useState(false);
+  const [isSurveyOpen, setIsSurveyOpen] = useState(false);
 
   // Track scroll for sticky nav
   useEffect(() => {
@@ -107,7 +109,7 @@ export default function SchoolEnrollmentClient() {
 
   const handleCtaClick = (location: string) => {
     track('cta_click');
-    window.open(CTA_LINK, '_blank', 'noopener,noreferrer');
+    setIsSurveyOpen(true);
   };
 
   const handleVideoPlay = (location: string) => {
@@ -475,7 +477,7 @@ export default function SchoolEnrollmentClient() {
                   This option lays the foundation for achieving enrollment strategy by providing you with ongoing access by phone, WhatsApp, email, and similar means during the setup period. In this capacity, we will serve as a trusted advisor.
                 </p>
                 
-                <Button className="w-full rounded-full bg-slate-950 text-white hover:bg-slate-800 transition-all active:scale-95 py-6 font-semibold">See Details</Button>
+                <Button onClick={() => handleCtaClick('pricing_standard')} className="w-full rounded-full bg-slate-950 text-white hover:bg-slate-800 transition-all active:scale-95 py-6 font-semibold">See Details</Button>
               </div>
 
               {/* Classic */}
@@ -494,7 +496,7 @@ export default function SchoolEnrollmentClient() {
                   In addition to the responsibilities of the Standard Option, we will work closely with you and the enrollment team to implement the initiatives necessary to achieve specific goals.
                 </p>
                 
-                <Button className="w-full rounded-full bg-slate-950 text-white hover:bg-slate-800 transition-all active:scale-95 py-6 font-semibold">See Details</Button>
+                <Button onClick={() => handleCtaClick('pricing_classic')} className="w-full rounded-full bg-slate-950 text-white hover:bg-slate-800 transition-all active:scale-95 py-6 font-semibold">See Details</Button>
               </div>
 
               {/* Premium */}
@@ -513,7 +515,7 @@ export default function SchoolEnrollmentClient() {
                   In addition to the responsibilities described in both Standard and Classic Options, we will have the responsibility of filling your empty spots. (Ad cost not included).
                 </p>
                 
-                <Button className="w-full rounded-full bg-[#3B5FFF] hover:bg-[#2b4cdd] text-white border-none transition-all active:scale-95 py-6 font-semibold">See Details</Button>
+                <Button onClick={() => handleCtaClick('pricing_premium')} className="w-full rounded-full bg-[#3B5FFF] hover:bg-[#2b4cdd] text-white border-none transition-all active:scale-95 py-6 font-semibold">See Details</Button>
               </div>
             </div>
           </div>
@@ -640,8 +642,10 @@ export default function SchoolEnrollmentClient() {
               </button>
               
               <button
-                onClick={() => handleCtaClick('footer_no')}
-                className="bg-red-500 hover:bg-red-655 text-white font-semibold rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center justify-start pl-2 pr-6 py-2 w-full text-left"
+                onClick={() => {
+                  track('cta_click');
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center justify-start pl-2 pr-6 py-2 w-full text-left"
               >
                 <div className="w-8 h-8 bg-white/20 flex items-center justify-center rounded-lg mr-4">
                   <span className="text-white text-xs">✖</span>
@@ -667,6 +671,18 @@ export default function SchoolEnrollmentClient() {
           </div>
         </div>
       </footer>
+
+      <Dialog open={isSurveyOpen} onOpenChange={setIsSurveyOpen}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-slate-900 border border-slate-800 rounded-3xl h-[85vh] max-h-[720px] w-full">
+          <iframe 
+            src="https://go.smartsapp.com/surveys/collect-your-fees-within-4-weeks-of-reopening-copy-2s0p0?embed=true" 
+            width="100%" 
+            height="100%" 
+            style={{ border: 'none', background: 'transparent', overflow: 'hidden' }}
+            allow="geolocation; microphone; camera"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

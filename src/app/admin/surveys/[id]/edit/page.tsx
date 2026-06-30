@@ -328,7 +328,8 @@ export default function EditSurveyPage() {
             
             const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
             for (const page of resultPages) {
-                await setDoc(doc(pagesCol, page.id), page);
+                const cleanedPage = JSON.parse(JSON.stringify(page));
+                await setDoc(doc(pagesCol, page.id), cleanedPage);
             }
 
             toast({ title: '✓ Changes Committed', description: 'Survey saved. Keep editing or finalize when ready.' });
@@ -348,7 +349,12 @@ export default function EditSurveyPage() {
             }
             // Don't redirect — let the user continue editing. Only the Publish page button closes the editor.
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Save Failed' });
+            console.error('Save Error:', error);
+            toast({ 
+                variant: 'destructive', 
+                title: 'Save Failed', 
+                description: error instanceof Error ? error.message : String(error)
+            });
         } finally {
             setIsSaving(false);
         }
@@ -399,14 +405,19 @@ export default function EditSurveyPage() {
             await updateDoc(docRef, JSON.parse(JSON.stringify({ ...migrateSurveyFormSeo(mainData), updatedAt: new Date().toISOString() })));
             const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
             for (const page of resultPages) {
-                await setDoc(doc(pagesCol, page.id), page);
+                const cleanedPage = JSON.parse(JSON.stringify(page));
+                await setDoc(doc(pagesCol, page.id), cleanedPage);
             }
             toast({ title: '🚀 Survey Published!', description: 'Your survey is live.' });
             syncVariableRegistry().catch(console.error);
             router.push('/admin/surveys');
         } catch (error) {
             console.error('Publish Error:', error);
-            toast({ variant: 'destructive', title: 'Save Failed' });
+            toast({ 
+                variant: 'destructive', 
+                title: 'Save Failed', 
+                description: error instanceof Error ? error.message : String(error)
+            });
         } finally {
             setIsSaving(false);
         }

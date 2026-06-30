@@ -88,6 +88,7 @@ import EntityNotesTab from '../components/EntityNotesTab';
 import LinkedQuickNotesPanel from '@/app/admin/quick-notes/components/LinkedQuickNotesPanel';
 import EntityNotesWidget from '../components/EntityNotesWidget';
 import EntityContactDirectory from '../components/EntityContactDirectory';
+import EntityCustomFieldGroups from './components/EntityCustomFieldGroups';
 import EntityAutomationsTab from '../components/EntityAutomationsTab';
 import { PageContainerFluid } from '@/components/ui/page-container';
 
@@ -431,6 +432,17 @@ export default function EntityDetailPage() {
                                     organizationId={entityData.organizationId} 
                                     workspaceId={activeWorkspaceId} 
                                 />
+                                {entityData && activeWorkspaceId && (
+                                    <>
+                                        <Separator className="bg-border/40" />
+                                        <EntityCustomFieldGroups
+                                            entityId={entityId}
+                                            entityData={entityData}
+                                            organizationId={entityData.organizationId}
+                                            workspaceId={activeWorkspaceId}
+                                        />
+                                    </>
+                                )}
                     </TabsContent>
 
  <TabsContent value="deals" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
