@@ -85,10 +85,10 @@ export default async function PublicSurveyPage({
     searchParams 
 }: { 
     params: Promise<{ slug: string }>,
-    searchParams: Promise<{ sourcePageId?: string, ref?: string, preview?: string, workspaceId?: string, ws?: string }>
+    searchParams: Promise<{ sourcePageId?: string, ref?: string, preview?: string, workspaceId?: string, ws?: string, embed?: string }>
 }) {
     const { slug } = await params;
-    const { sourcePageId, ref, preview, workspaceId, ws } = await searchParams;
+    const { sourcePageId, ref, preview, workspaceId, ws, embed } = await searchParams;
     const survey = await getSurveyBySlug(slug);
 
     if (!survey) {
@@ -197,6 +197,8 @@ export default async function PublicSurveyPage({
     const primaryFgHsl = hexToHslChannels(getContrastColor(primaryColor));
     const secondaryFgHsl = hexToHslChannels(getContrastColor(secondaryColor));
 
+    const isEmbedded = embed === 'true';
+
     const themeStyles = `
         :root {
             --primary: ${primaryHsl};
@@ -204,6 +206,9 @@ export default async function PublicSurveyPage({
             --secondary: ${secondaryHsl};
             --secondary-foreground: ${secondaryFgHsl};
             --radius: 1rem;
+        }
+        html, body {
+            background-color: ${isEmbedded ? 'transparent !important' : 'var(--background)'};
         }
         body {
             font-family: ${brandFont}, sans-serif;

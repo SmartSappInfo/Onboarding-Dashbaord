@@ -57,6 +57,9 @@ const AlertDialogContent = React.forwardRef<
         )}
         {...(!context?.hasDescription && { "aria-describedby": undefined })}
         {...props}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+        }}
       />
     </AlertDialogPortal>
   )

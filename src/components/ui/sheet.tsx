@@ -80,6 +80,12 @@ const SheetContent = React.forwardRef<
         className={cn(sheetVariants({ side }), "font-figtree", className)}
         {...(!context?.hasDescription && { "aria-describedby": undefined })}
         {...props}
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+        }}
       >
         {children}
         <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">

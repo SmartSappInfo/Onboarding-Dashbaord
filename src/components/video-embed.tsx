@@ -29,16 +29,21 @@ interface VideoEmbedProps {
   url?: string;
   thumbnailUrl?: string;
   className?: string;
+  autoPlay?: boolean;
 }
 
-const VideoEmbed = ({ url, thumbnailUrl, className }: VideoEmbedProps) => {
-  const [isPlaying, setIsPlaying] = React.useState(false);
+const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false }: VideoEmbedProps) => {
+  const [isPlaying, setIsPlaying] = React.useState(autoPlay);
   const [thumbUrl, setThumbUrl] = React.useState<string | null>(thumbnailUrl || null);
   
   const videoId = extractYouTubeID(url);
   const vimeoId = extractVimeoID(url);
   const loomId = extractLoomID(url);
-  const isDirectFile = url?.match(/\.(mp4|webm|ogg)$/i);
+  const isDirectFile = url ? /\.(mp4|webm|ogg)(\?|$)/i.test(url) : false;
+
+  React.useEffect(() => {
+    setIsPlaying(autoPlay);
+  }, [autoPlay]);
 
   React.useEffect(() => {
     if (thumbnailUrl) {
@@ -57,21 +62,8 @@ const VideoEmbed = ({ url, thumbnailUrl, className }: VideoEmbedProps) => {
     );
   }
 
-  if (isDirectFile) {
-    return (
-        <div className={cn("aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-black group", className)}>
-            <video 
-                src={url} 
-                className="w-full h-full" 
-                controls 
-                playsInline
-            />
-        </div>
-    );
-  }
-
   // Click-to-play thumbnail logic
-  if (!isPlaying && (videoId || vimeoId || loomId)) {
+  if (!isPlaying && (videoId || vimeoId || loomId || isDirectFile)) {
     return (
       <div 
         className={cn(
@@ -124,6 +116,20 @@ const VideoEmbed = ({ url, thumbnailUrl, className }: VideoEmbedProps) => {
             </div>
         </div>
       </div>
+    );
+  }
+
+  if (isDirectFile) {
+    return (
+        <div className={cn("aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-black", className)}>
+            <video 
+                src={url} 
+                className="w-full h-full" 
+                controls 
+                autoPlay
+                playsInline
+            />
+        </div>
     );
   }
 

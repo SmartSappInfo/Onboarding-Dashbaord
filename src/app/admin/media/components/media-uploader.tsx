@@ -36,7 +36,7 @@ const ALLOWED_DOCUMENT_TYPES = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/csv',
 ];
-const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_MB = 100;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 const mediaAssetTypeEnum = z.enum(['image', 'video', 'audio', 'document']);

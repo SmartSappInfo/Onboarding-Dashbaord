@@ -18,21 +18,21 @@ import AnimatedHeroShapes from '@/components/animated-hero-shapes';
 
 const HERO_THUMBNAIL_URL = 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1782713567250-Thumb_Enrollment_SalesVideo.gif?alt=media&token=7a46ab6b-7079-45d4-ba99-c9783098c6cc';
 const PRICING_THUMBNAIL_URL = 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1782713567250-Thumb_Pricing_Features_Enrollment.gif?alt=media&token=f0f9c166-a8cf-47e3-85cc-ca88f738dac7';
-// Placeholder video until specific IDs are provided
-const YOUTUBE_VIDEO_ID = '8xhxALYfNDc'; 
+const HERO_VIDEO_URL = 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fvideo%2FEnrollment%20Main%20Video.mp4?alt=media&token=a6659184-8044-4229-a0e1-64f8d17d4ae2';
+const PRICING_VIDEO_URL = 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fvideo%2F1782804150466-Pricing%20Options.mp4?alt=media&token=dd9c4116-14fe-4cca-9f79-3618b33b828e';
 const CTA_LINK = 'https://smartsapp.com/request-trial';
 const PAGE_SLUG = 'school-enrollment';
 
 // ─── Video Facade Component (LCP Optimization) ─────────────────────────────────
 
 interface VideoFacadeProps {
-  videoId: string;
+  videoUrlOrId: string;
   thumbnailUrl?: string;
   onPlay: () => void;
   title?: string;
 }
 
-function VideoFacade({ videoId, thumbnailUrl, onPlay, title = 'Video' }: VideoFacadeProps) {
+function VideoFacade({ videoUrlOrId, thumbnailUrl, onPlay, title = 'Video' }: VideoFacadeProps) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handlePlay = useCallback(() => {
@@ -40,16 +40,28 @@ function VideoFacade({ videoId, thumbnailUrl, onPlay, title = 'Video' }: VideoFa
     onPlay();
   }, [onPlay]);
 
+  const isHtml5Video = videoUrlOrId.startsWith('http://') || videoUrlOrId.startsWith('https://');
+
   if (isPlaying) {
     return (
       <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl bg-slate-900 border border-slate-200/20">
-        <iframe
-          src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
-          title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          className="absolute inset-0 w-full h-full border-0"
-        />
+        {isHtml5Video ? (
+          <video
+            src={videoUrlOrId}
+            controls
+            autoPlay
+            playsInline
+            className="absolute inset-0 w-full h-full object-contain"
+          />
+        ) : (
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${videoUrlOrId}?autoplay=1&rel=0&modestbranding=1`}
+            title={title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="absolute inset-0 w-full h-full border-0"
+          />
+        )}
       </div>
     );
   }
@@ -72,8 +84,11 @@ function VideoFacade({ videoId, thumbnailUrl, onPlay, title = 'Video' }: VideoFa
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
-           {/* Fallback to YouTube's default thumbnail */}
-           <img src={`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`} className="object-cover w-full h-full opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Thumbnail" />
+           {isHtml5Video ? (
+             <div className="text-slate-400 text-xs">No preview available</div>
+           ) : (
+             <img src={`https://img.youtube.com/vi/${videoUrlOrId}/maxresdefault.jpg`} className="object-cover w-full h-full opacity-90 group-hover:scale-105 transition-transform duration-700" alt="Thumbnail" />
+           )}
         </div>
       )}
       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors duration-300" />
@@ -211,7 +226,7 @@ export default function SchoolEnrollmentClient() {
  
           <div className="max-w-3xl mx-auto mb-8">
             <VideoFacade 
-              videoId={YOUTUBE_VIDEO_ID} 
+              videoUrlOrId={HERO_VIDEO_URL} 
               thumbnailUrl={HERO_THUMBNAIL_URL}
               onPlay={() => handleVideoPlay('hero_video')} 
               title="Enrollment Strategy Video" 
@@ -447,7 +462,7 @@ export default function SchoolEnrollmentClient() {
               <div className="max-w-3xl mx-auto my-12">
                 <p className="font-semibold text-slate-700 mb-4">Click to watch video 👇🏽It's Super Important👇🏽</p>
                 <VideoFacade 
-                  videoId={YOUTUBE_VIDEO_ID} 
+                  videoUrlOrId={PRICING_VIDEO_URL} 
                   thumbnailUrl={PRICING_THUMBNAIL_URL}
                   onPlay={() => handleVideoPlay('pricing_video')} 
                   title="Pricing Explanation Video" 
@@ -674,7 +689,11 @@ export default function SchoolEnrollmentClient() {
       </footer>
 
       <Dialog open={isSurveyOpen} onOpenChange={setIsSurveyOpen}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-slate-900 border border-slate-800 rounded-3xl h-auto transition-[height] duration-500 ease-out-expo w-full">
+        <DialogContent
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          className="max-w-2xl p-0 overflow-hidden bg-slate-900 border border-slate-800 rounded-3xl h-auto transition-[height] duration-500 ease-out-expo w-full"
+        >
           <DialogTitle className="sr-only">Free Consultation Survey</DialogTitle>
           <DialogDescription className="sr-only">
             Please fill out the survey to request your free consultation roadmap.

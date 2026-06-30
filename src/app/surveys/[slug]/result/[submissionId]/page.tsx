@@ -5,6 +5,8 @@ import ResultRenderer from '../components/ResultRenderer';
 import { Building2 } from 'lucide-react';
 import Image from 'next/image';
 import type { Metadata, ResolvingMetadata } from 'next';
+import { getOrgBranding } from '@/lib/org-branding';
+import { cn } from '@/lib/utils';
 
 // Force dynamic rendering - requires Firebase Admin
 export const dynamic = 'force-dynamic';
@@ -83,13 +85,20 @@ async function getResultData(slug: string, submissionId: string) {
             }
         }
 
-        // 5. Resolve organization logo
-        let organizationLogoUrl: string | null = null;
-        if (survey.organizationId) {
-            const orgSnap = await adminDb.collection('organizations').doc(survey.organizationId).get();
-            if (orgSnap.exists) {
-                organizationLogoUrl = orgSnap.data()?.logoUrl || null;
+        // 5. Resolve organization logo & branding
+        let orgId = survey.organizationId;
+        if (!orgId && survey.workspaceIds?.length) {
+            const wsSnap = await adminDb.collection('workspaces').doc(survey.workspaceIds[0]).get();
+            if (wsSnap.exists) {
+                orgId = wsSnap.data()?.organizationId;
             }
+        }
+
+        let organizationLogoUrl: string | null = null;
+        let orgBranding = null;
+        if (orgId) {
+            orgBranding = await getOrgBranding(orgId);
+            organizationLogoUrl = orgBranding?.logoUrl || null;
         }
 
         // Logo resolution chain: survey logo → org logo → null
@@ -127,10 +136,10 @@ async function getResultData(slug: string, submissionId: string) {
             });
             
             const finalRedirectUrl = replaceVariablesInUrl(redirectUrl, variables);
-            return { survey, response, page: resolvedPage, logoUrl, redirectUrl: finalRedirectUrl };
+            return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: finalRedirectUrl };
         }
 
-        return { survey, response, page: resolvedPage, logoUrl, redirectUrl: null };
+        return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: null };
     } catch (error) {
         console.error("Error fetching result data:", error);
         return null;
@@ -169,8 +178,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
 }
 
-export default async function SurveyResultPage({ params }: { params: Promise<{ slug: string; submissionId: string }> }) {
+export default async function SurveyResultPage({ 
+    params,
+    searchParams 
+}: { 
+    params: Promise<{ slug: string; submissionId: string }>,
+    searchParams: Promise<{ theme?: string, embed?: string }>
+}) {
     const { slug, submissionId } = await params;
+    const { theme, embed } = await searchParams;
     const data = await getResultData(slug, submissionId);
 
     if (!data) notFound();
@@ -179,29 +195,117 @@ export default async function SurveyResultPage({ params }: { params: Promise<{ s
         redirect(data.redirectUrl);
     }
 
+    const primaryColor = data.orgBranding?.brandPrimaryColor || '#3B5FFF';
+    const secondaryColor = data.orgBranding?.brandSecondaryColor || '#8B5CF6';
+    const brandFont = data.orgBranding?.brandFontFamily || 'Inter';
+
+    // Helper to convert hex to space-separated HSL channels (e.g. "221 83% 53%")
+    const hexToHslChannels = (hexColor: string): string => {
+        let cleanHex = hexColor.replace('#', '');
+        if (cleanHex.length === 3) {
+            cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+        }
+        
+        const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+        const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+        const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+        
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let h = 0;
+        let s = 0;
+        const l = (max + min) / 2;
+        
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        
+        const hDeg = Math.round(h * 360);
+        const sPct = Math.round(s * 100);
+        const lPct = Math.round(l * 100);
+        
+        return `${hDeg} ${sPct}% ${lPct}%`;
+    };
+
+    // Helper to calculate text contrast (returns hex)
+    const getContrastColor = (hexColor: string): string => {
+        let cleanHex = hexColor.replace('#', '');
+        if (cleanHex.length === 3) {
+            cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+        }
+        const r = parseInt(cleanHex.substring(0, 2), 16);
+        const g = parseInt(cleanHex.substring(2, 4), 16);
+        const b = parseInt(cleanHex.substring(4, 6), 16);
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return (yiq >= 140) ? '#020617' : '#ffffff';
+    };
+
+    const primaryHsl = hexToHslChannels(primaryColor);
+    const secondaryHsl = hexToHslChannels(secondaryColor);
+    const primaryFgHsl = hexToHslChannels(getContrastColor(primaryColor));
+    const secondaryFgHsl = hexToHslChannels(getContrastColor(secondaryColor));
+
+    const isEmbedded = embed === 'true';
+    const isDark = theme === 'dark';
+
+    const themeStyles = `
+        :root {
+            --primary: ${primaryHsl};
+            --primary-foreground: ${primaryFgHsl};
+            --secondary: ${secondaryHsl};
+            --secondary-foreground: ${secondaryFgHsl};
+            --radius: 1rem;
+        }
+        html, body {
+            background-color: ${isEmbedded ? 'transparent !important' : 'var(--background)'};
+        }
+        body {
+            font-family: ${brandFont}, sans-serif;
+        }
+    `;
+
     return (
-        <div className="light min-h-screen flex flex-col bg-slate-100 selection:bg-primary/20">
-            <main className="flex-grow max-w-3xl w-full mx-auto py-12 px-4 sm:px-6 lg:py-24">
-                <ResultRenderer 
-                    survey={data.survey} 
-                    response={data.response} 
-                    page={data.page}
-                    logoUrl={data.logoUrl}
-                    allowResubmission={data.survey.allowResubmission}
-                />
-            </main>
-            <footer className="py-12 border-t bg-white/50 text-center mt-auto">
-                <div className="flex flex-col items-center gap-4">
-                    {data.logoUrl ? (
-                        <div className="relative h-8 w-32 grayscale opacity-50">
-                            <Image src={data.logoUrl} alt="Logo" fill className="object-contain" />
-                        </div>
-                    ) : (
-                        <Building2 className="h-8 w-8 text-muted-foreground/30" />
-                    )}
-                    <p className="text-xs text-muted-foreground/60">&copy; {new Date().getFullYear()} Powered by SmartSapp</p>
-                </div>
-            </footer>
-        </div>
+        <>
+            <style dangerouslySetInnerHTML={{ __html: themeStyles }} />
+            <div 
+                className={cn(
+                    isDark ? "dark text-slate-100" : "light text-slate-900",
+                    "min-h-screen flex flex-col selection:bg-primary/20 transition-colors duration-300"
+                )}
+                style={{ backgroundColor: isEmbedded ? 'transparent' : (isDark ? '#090d16' : '#F1F5F9') }}
+            >
+                <main className="flex-grow max-w-3xl w-full mx-auto py-12 px-4 sm:px-6 lg:py-24">
+                    <ResultRenderer 
+                        survey={data.survey} 
+                        response={data.response} 
+                        page={data.page}
+                        logoUrl={data.logoUrl}
+                        allowResubmission={data.survey.allowResubmission}
+                    />
+                </main>
+                <footer className={cn(
+                    "py-12 border-t text-center mt-auto",
+                    isDark ? "bg-slate-900/50 border-slate-800" : "bg-white/50 border-slate-200"
+                )}>
+                    <div className="flex flex-col items-center gap-4">
+                        {data.logoUrl ? (
+                            <div className="relative h-8 w-32 grayscale opacity-50">
+                                <Image src={data.logoUrl} alt="Logo" fill className="object-contain" />
+                            </div>
+                        ) : (
+                            <Building2 className="h-8 w-8 text-muted-foreground/30" />
+                        )}
+                        <p className="text-xs text-muted-foreground/60">&copy; {new Date().getFullYear()} Powered by SmartSapp</p>
+                    </div>
+                </footer>
+            </div>
+        </>
     );
 }

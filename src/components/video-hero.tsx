@@ -95,7 +95,7 @@ export default function VideoHero({ videoUrl, thumbnailUrl, title, videoCaption,
                     </DialogHeader>
 
                     <div className="relative aspect-video w-full">
-                        <VideoEmbed url={videoUrl} className="w-full h-full border-none shadow-none" />
+                        <VideoEmbed url={videoUrl} autoPlay={true} className="w-full h-full border-none shadow-none" />
                         <button 
                             onClick={() => setIsOpen(false)}
                             className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white transition-colors"

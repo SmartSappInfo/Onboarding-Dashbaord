@@ -282,7 +282,9 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
 
             if (res.success) {
                 if (survey.scoringEnabled || (survey.resultRules && survey.resultRules.length > 0)) {
-                    router.push(`/surveys/${survey.slug}/result/${submissionId}`);
+                    const searchParams = new URLSearchParams(window.location.search);
+                    const queryStr = searchParams.toString() ? `?${searchParams.toString()}` : '';
+                    router.push(`/surveys/${survey.slug}/result/${submissionId}${queryStr}`);
                 } else {
                     onCompleted();
                 }
@@ -303,7 +305,9 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
             const res = await finalizeSurveySubmission(survey.id, submissionId, workspaceId, outcomeId);
             if (res.success) {
                 if (survey.scoringEnabled || (survey.resultRules && survey.resultRules.length > 0)) {
-                    router.push(`/surveys/${survey.slug}/result/${submissionId}`);
+                    const searchParams = new URLSearchParams(window.location.search);
+                    const queryStr = searchParams.toString() ? `?${searchParams.toString()}` : '';
+                    router.push(`/surveys/${survey.slug}/result/${submissionId}${queryStr}`);
                 } else {
                     onCompleted();
                 }

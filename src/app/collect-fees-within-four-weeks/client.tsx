@@ -10,7 +10,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ResizableIFrame } from '@/components/ui/ResizableIFrame';
 import { Phone, Play } from 'lucide-react';
+import LightRays from '@/components/LightRays';
+import AnimatedHeroShapes from '@/components/animated-hero-shapes';
+import { SmartSappLogo as Logo } from '@/components/icons';
 import assetsJson from './assets.json';
 import { usePageAnalytics } from '@/hooks/use-page-analytics';
 import { PageAnalyticsReader } from '@/components/page-analytics-reader';
@@ -93,10 +103,13 @@ function CtaBlock({ label, light = false, onClick }: { label: string; light?: bo
       <Button
         size="lg"
         onClick={onClick}
-        className="h-14 sm:h-16 px-8 sm:px-12 rounded-full bg-[#ffc629] hover:bg-[#ffb800] text-slate-900 text-base sm:text-lg font-extrabold shadow-[0_12px_28px_-8px_rgba(255,198,41,0.6)] hover:-translate-y-0.5 transition-all"
-        asChild
+        className={`h-14 sm:h-16 px-8 sm:px-12 rounded-full text-base sm:text-lg font-extrabold hover:-translate-y-0.5 transition-all ${
+          light 
+            ? 'bg-[#ffc629] hover:bg-[#ffb800] text-slate-900 shadow-[0_12px_28px_-8px_rgba(255,198,41,0.6)]' 
+            : 'bg-[#5f30e2] hover:bg-[#4c26b5] text-white shadow-[0_12px_28px_-8px_rgba(95,48,226,0.4)]'
+        }`}
       >
-        <Link href={TRIAL_URL}>{label}</Link>
+        {label}
       </Button>
     </div>
   );
@@ -220,9 +233,18 @@ const TESTIMONIALS: { video: AssetKey; poster: AssetKey; name: string; role: str
 
 export default function CollectFeesClient() {
   const { track, setEntityId, hasFiredVideoStart } = usePageAnalytics('collect-fees-within-four-weeks');
+  const [isNavScrolled, setIsNavScrolled] = useState(false);
+  const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsNavScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleCtaClick = () => {
     track('cta_click');
+    setIsSurveyModalOpen(true);
   };
 
   const handleVideoPlay = () => {
@@ -245,26 +267,64 @@ export default function CollectFeesClient() {
         />
       </Suspense>
 
-      {/* ── Top bar + header ──────────────────────────────────────────────── */}
-      <div className="bg-slate-900 text-white text-xs sm:text-sm py-2 px-4 text-center font-semibold tracking-wide">
-        <span className="inline-flex items-center gap-2">
-          <Phone className="h-3.5 w-3.5" />
-          +233 50 160 8001 | +233 50 160 8002
-        </span>
-      </div>
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-100 py-3 px-4 sm:px-8">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={ASSETS.logo} alt="SmartSapp" className="h-9 sm:h-10 w-auto" />
-          <Button onClick={handleCtaClick} className="rounded-full bg-[#5f30e2] hover:bg-[#4c26b5] text-white font-bold px-6" asChild>
-            <Link href={TRIAL_URL}>Request Free Trial</Link>
-          </Button>
+      {/* Floating Navigation */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          isNavScrolled ? 'py-4' : 'py-6'
+        }`}
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div
+            className={`flex items-center justify-between transition-all duration-300 rounded-full ${
+              isNavScrolled
+                ? 'bg-slate-950/60 backdrop-blur-md shadow-lg shadow-slate-950/50 border border-slate-800 px-6 py-3'
+                : 'bg-transparent px-2 py-2'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Logo variant="white" className="h-8 w-auto" />
+            </div>
+            
+            <nav className="hidden md:flex items-center gap-8 font-medium text-sm text-slate-300">
+              <a href="#testimonials" className="hover:text-white transition-colors">Testimonials</a>
+              <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
+            </nav>
+
+            <div className="flex items-center gap-4">
+              <div className="hidden lg:flex flex-col text-sm font-semibold text-right text-slate-300 mr-2">
+                <span>+233 50 160 8002</span>
+              </div>
+              <Button
+                onClick={handleCtaClick}
+                className="bg-[#3B5FFF] hover:bg-[#2b4cdd] text-white rounded-full px-6 transition-transform hover:scale-105 active:scale-95 shadow-md shadow-blue-500/20"
+              >
+                Request Free Trial
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
  
-      {/* ── 1. Hero (purple) ──────────────────────────────────────────────── */}
-      <section className="bg-[#5f30e2] text-white px-4 sm:px-8 py-14 sm:py-20">
-        <div className="max-w-4xl mx-auto text-center space-y-6">
+      {/* ── 1. Hero (dark theme background) ────────────────────────────────── */}
+      <section className="relative w-full overflow-hidden pt-36 pb-24 text-center bg-[#0a0a1a] text-white px-4 sm:px-8">
+        <LightRays
+          raysOrigin="top-center"
+          raysColor="#3B5FFF"
+          raysSpeed={1}
+          lightSpread={0.5}
+          rayLength={3}
+          followMouse={true}
+          mouseInfluence={0.4}
+          noiseAmount={0}
+          distortion={0}
+          pulsating
+          fadeDistance={1}
+          saturation={1}
+          className="!absolute inset-0 z-0"
+        />
+        <AnimatedHeroShapes />
+
+        <div className="max-w-4xl mx-auto text-center space-y-6 relative z-10">
           <h1 className="text-3xl sm:text-5xl font-extrabold leading-tight tracking-tight">
             Collect <span className="text-[#ffc629]">Your Fees in 4 Weeks</span>{' '}
             or use SmartSapp for <span className="text-[#ffc629]">FREE!!!</span>
@@ -272,20 +332,22 @@ export default function CollectFeesClient() {
           <p className="text-base sm:text-xl font-semibold text-white/90">
             👇🏽 Click to watch video, It&apos;s super important! 👇🏽
           </p>
-          <VideoPlayer
-            src={ASSETS.heroVideo}
-            poster={ASSETS.heroThumb}
-            label="Collect Your Fees in 4 Weeks campaign video"
-            className="border-4 border-white/20"
-            onPlay={handleVideoPlay}
-            onEnded={handleVideoEnded}
-          />
+          <div className="max-w-3xl mx-auto mb-8">
+            <VideoPlayer
+              src={ASSETS.heroVideo}
+              poster={ASSETS.heroThumb}
+              label="Collect Your Fees in 4 Weeks campaign video"
+              className="border-4 border-white/20"
+              onPlay={handleVideoPlay}
+              onEnded={handleVideoEnded}
+            />
+          </div>
           <CtaBlock label="Yes, I need A Free Trial Now!" light onClick={handleCtaClick} />
         </div>
       </section>
 
       {/* ── 2. Problem (white) ────────────────────────────────────────────── */}
-      <section className="bg-white px-4 sm:px-8 py-14 sm:py-20">
+      <section id="problem" className="bg-white px-4 sm:px-8 py-14 sm:py-20">
         <div className="max-w-5xl mx-auto space-y-12">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight">
             Is Fee Collection Your School&apos;s <span className="text-[#5f30e2]">Achilles Heel?</span>
@@ -345,7 +407,7 @@ export default function CollectFeesClient() {
       </section>
 
       {/* ── 4. Welcome to SmartSapp (dark, businesswoman bg) ──────────────── */}
-      <section className="relative bg-[#151b20] text-white px-4 sm:px-8 py-14 sm:py-20 overflow-hidden">
+      <section id="solution" className="relative bg-[#151b20] text-white px-4 sm:px-8 py-14 sm:py-20 overflow-hidden">
         <div
           className="absolute inset-0 opacity-20 bg-cover bg-center pointer-events-none"
           style={{ backgroundImage: `url(${ASSETS.businesswomanBg})` }}
@@ -374,7 +436,7 @@ export default function CollectFeesClient() {
       </section>
 
       {/* ── 5. Features (light grey) ──────────────────────────────────────── */}
-      <section className="bg-[#efefef] px-4 sm:px-8 py-14 sm:py-20">
+      <section id="features" className="bg-[#efefef] px-4 sm:px-8 py-14 sm:py-20">
         <div className="max-w-5xl mx-auto space-y-10">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight">
             With SmartSapp, <span className="text-[#5f30e2]">You Can:</span>
@@ -410,7 +472,7 @@ export default function CollectFeesClient() {
       </section>
 
       {/* ── 6. Offer / pricing (white) ────────────────────────────────────── */}
-      <section className="bg-white px-4 sm:px-8 py-14 sm:py-20">
+      <section id="pricing" className="bg-white px-4 sm:px-8 py-14 sm:py-20">
         <div className="max-w-6xl mx-auto space-y-12">
           {/* Header */}
           <h2 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight">
@@ -504,6 +566,7 @@ export default function CollectFeesClient() {
 
       {/* ── 8. Testimonials (pale blue, pattern bg) ───────────────────────── */}
       <section
+        id="testimonials"
         className="bg-[#f3fafe] px-4 sm:px-8 py-14 sm:py-20 bg-cover bg-top"
         style={{ backgroundImage: `url(${ASSETS.sectionBg})` }}
       >
@@ -544,14 +607,17 @@ export default function CollectFeesClient() {
           <Button
             size="lg"
             className="h-14 sm:h-16 px-8 sm:px-12 rounded-full bg-[#5f30e2] hover:bg-[#4c26b5] text-white text-base sm:text-lg font-extrabold shadow-xl hover:-translate-y-0.5 transition-all"
-            asChild
+            onClick={handleCtaClick}
           >
-            <Link href={TRIAL_URL} onClick={handleCtaClick}>Yes, I want to end the delays and frustrations TODAY!</Link>
+            Yes, I want to end the delays and frustrations TODAY!
           </Button>
           <div className="space-y-2">
-            <Link href={TRIAL_URL} onClick={handleCtaClick} className="block text-[#5f30e2] font-semibold underline underline-offset-4">
+            <button
+              onClick={handleCtaClick}
+              className="block mx-auto text-[#5f30e2] font-semibold underline underline-offset-4 bg-transparent border-0 cursor-pointer hover:text-[#4c26b5]"
+            >
               I&apos;m a parent, and want to recommend my child&apos;s school
-            </Link>
+            </button>
             <p className="text-xs text-slate-400 italic">
               No, Thanks. I&apos;ll continue to endure the delays and frustrations
             </p>
@@ -561,6 +627,7 @@ export default function CollectFeesClient() {
 
       {/* ── 10. FAQ (white, illustration bg) ──────────────────────────────── */}
       <section
+        id="faq"
         className="bg-white px-4 sm:px-8 py-14 sm:py-20 bg-contain bg-no-repeat bg-left-bottom"
         style={{ backgroundImage: `url(${ASSETS.faqBg})` }}
       >
@@ -602,6 +669,25 @@ export default function CollectFeesClient() {
           </div>
         </div>
       </footer>
+      <Dialog open={isSurveyModalOpen} onOpenChange={setIsSurveyModalOpen}>
+        <DialogContent
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          className="max-w-4xl md:max-w-5xl w-[95vw] md:w-full p-1 overflow-hidden bg-white border border-slate-200/80 rounded-3xl"
+        >
+          <DialogTitle className="sr-only">Book Free Trial Survey</DialogTitle>
+          <DialogDescription className="sr-only">
+            Please fill out this quick survey to book your free trial.
+          </DialogDescription>
+          {isSurveyModalOpen && (
+            <ResizableIFrame
+              src="/surveys/collect-your-fees-within-4-weeks-of-reopening?embed=true&theme=light"
+              slug="collect-your-fees-within-4-weeks-of-reopening"
+              fallbackHeight={720}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
