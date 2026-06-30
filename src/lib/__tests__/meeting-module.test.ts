@@ -142,14 +142,18 @@ const getMeetingsForContactAction = async (
   workspaceId?: string
 ): Promise<{ success: boolean; meetings?: Meeting[]; error?: string }> => {
   try {
+    if (!entityId) {
+      return { success: false, error: 'Entity ID is required' };
+    }
 
     // This simulates the actual query logic
     // In real implementation, this would query Firestore
     const mockMeetings: Meeting[] = [];
     
     return { success: true, meetings: mockMeetings };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const err = error as Error;
+    return { success: false, error: err.message };
   }
 };
 

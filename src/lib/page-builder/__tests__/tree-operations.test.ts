@@ -13,6 +13,7 @@ import {
   moveBlock,
   reorderBlocks,
   moveBlockToSection,
+  moveBlockToColumn,
   duplicateBlock,
   findBlock,
 } from '../tree-operations';
@@ -141,5 +142,32 @@ describe('block operations', () => {
 
   it('findBlock returns null when absent', () => {
     expect(findBlock(base(), 'nope')).toBeNull();
+  });
+
+  it('moveBlockToColumn moves a block to a different column and index', () => {
+    const struct = base();
+    const next = moveBlockToColumn(struct, 'b1', 's2', 1, 0);
+    expect(next.sections[0].blocks.map((b) => b.id)).toEqual(['b2']);
+    expect(next.sections[1].blocks).toHaveLength(1);
+    expect(next.sections[1].blocks[0].id).toBe('b1');
+    expect(next.sections[1].blocks[0].props.column).toBe(1);
+  });
+
+  it('moveBlockToColumn handles reordering within the same column', () => {
+    const struct: CampaignPageStructure = {
+      sections: [
+        {
+          id: 's1',
+          type: 'section',
+          props: {},
+          blocks: [
+            { id: 'b1', type: 'text', props: { column: 1 } },
+            { id: 'b2', type: 'text', props: { column: 1 } },
+          ],
+        },
+      ],
+    };
+    const next = moveBlockToColumn(struct, 'b1', 's1', 1, 1);
+    expect(next.sections[0].blocks.map((b) => b.id)).toEqual(['b2', 'b1']);
   });
 });

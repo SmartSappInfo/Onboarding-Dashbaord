@@ -74,11 +74,16 @@ export async function loadSettings(
       return { success: true, settings: undefined };
     }
     
-    const settings = snapshot.docs[0].data() as EntitySettings;
+    const data = snapshot.docs[0].data() as EntitySettings;
+    const settings: EntitySettings = {
+      ...data,
+      entityType: data.entityType || 'institution',
+    };
     return { success: true, settings };
-  } catch (error: any) {
-    console.error('[SETTINGS] Load failed:', error);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[SETTINGS] Load failed:', err);
+    return { success: false, error: err.message };
   }
 }
 
@@ -115,9 +120,10 @@ export async function updateSettings(
     await settingsRef.update(updateData);
     
     return { success: true };
-  } catch (error: any) {
-    console.error('[SETTINGS] Update failed:', error);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[SETTINGS] Update failed:', err);
+    return { success: false, error: err.message };
   }
 }
 
@@ -161,8 +167,9 @@ export async function createSettings(
     const docRef = await adminDb.collection('settings').add(settings);
     
     return { success: true, id: docRef.id };
-  } catch (error: any) {
-    console.error('[SETTINGS] Create failed:', error);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[SETTINGS] Create failed:', err);
+    return { success: false, error: err.message };
   }
 }

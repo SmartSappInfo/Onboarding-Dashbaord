@@ -43,7 +43,8 @@ import {
     ArrowDown,
     Copy,
     Trash2,
-    Search
+    Search,
+    Upload
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -87,6 +88,22 @@ import { groupContactVariableDefinitions, generateContactVariableDefinitions, ge
 import { getAllSystemVariables } from '@/lib/system-variable-definitions';
 import { validateTemplateVariables } from '@/lib/template-validator';
 import { Users, UserCheck, ShieldCheck as ShieldCheckIcon, AlertTriangle, AlertCircle } from 'lucide-react';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
+async function uploadArchitectImage(file: File, workspaceId: string): Promise<string> {
+    if (!file.type.startsWith('image/')) {
+        throw new Error('File must be an image');
+    }
+    if (file.size > 4 * 1024 * 1024) {
+        throw new Error('Image size must be less than 4MB');
+    }
+    const storage = getStorage();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storagePath = `media/workspaces/${workspaceId}/templates/architect/${Date.now()}-${sanitizedName}`;
+    const fileRef = ref(storage, storagePath);
+    const snapshot = await uploadBytes(fileRef, file);
+    return getDownloadURL(snapshot.ref);
+}
 
 // Dynamic import for HtmlCodeEditor (bundle-dynamic-imports)
 const HtmlCodeEditor = dynamic(
@@ -1852,7 +1869,7 @@ export function TemplateWorkshop({
     mode = 'org_override'
 }: TemplateWorkshopProps) {
     const { toast } = useToast();
-    const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+    const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces } = useWorkspace();
     const { singular: entityTerminology } = useTerminology();
 
     const variables = React.useMemo(() => {
@@ -2049,6 +2066,14 @@ export function TemplateWorkshop({
             }
         }
     }, [contentMode, initialTemplate, styles]);
+
+    // Email Architect State Hooks
+    const [architectPrompt, setArchitectPrompt] = React.useState('');
+    const [architectImageUrl, setArchitectImageUrl] = React.useState('');
+    const [architectMode, setArchitectMode] = React.useState<'layout_analysis' | 'direct_placement'>('layout_analysis');
+    const [isArchitecting, setIsArchitecting] = React.useState(false);
+    const [lastBlocksBackup, setLastBlocksBackup] = React.useState<MessageBlock[] | null>(null);
+    const [isUploadingImage, setIsUploadingImage] = React.useState(false);
 
     // Undo / Redo History State tracking
     const [historyStack, setHistoryStack] = React.useState<{ body: string; blocks: MessageBlock[] }[]>([]);
@@ -2630,6 +2655,70 @@ export function TemplateWorkshop({
         setContentMode(pendingContentMode);
         setPendingContentMode(null);
     }, [pendingContentMode, contentMode]);
+
+    const handleArchitectSubmit = async () => {
+        if (!architectPrompt.trim() && !architectImageUrl) {
+            toast({ title: 'Input required', description: 'Please enter a description prompt or attach an image.', variant: 'destructive' });
+            return;
+        }
+        setIsArchitecting(true);
+        try {
+            const { generateEmailBlocksAction } = (await import('@/lib/campaign-ai')) as {
+                generateEmailBlocksAction: (params: {
+                    prompt: string;
+                    imageUrl?: string;
+                    mode: 'layout_analysis' | 'direct_placement';
+                    organizationId?: string;
+                    brandColors?: { primary?: string; secondary?: string; background?: string };
+                }) => Promise<{ success: boolean; blocks?: MessageBlock[]; error?: string }>;
+            };
+            const resolvedOrgId = activeOrganizationId || initialTemplate?.organizationId || allowedWorkspaces?.find(w => w.id === activeWorkspaceId)?.organizationId || undefined;
+            const res = await generateEmailBlocksAction({
+                prompt: architectPrompt,
+                imageUrl: architectImageUrl || undefined,
+                mode: architectMode,
+                organizationId: resolvedOrgId,
+            });
+
+            if (res.success && res.blocks) {
+                // Map generated blocks to add unique IDs
+                const formatted: MessageBlock[] = res.blocks.map((b: MessageBlock) => ({
+                    ...b,
+                    id: `${b.type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    columns: b.columns?.map((c) => ({
+                        ...c,
+                        blocks: c.blocks?.map((sb: MessageBlock) => ({
+                            ...sb,
+                            id: `${sb.type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+                        })) || []
+                    }))
+                }));
+
+                // Back up blocks before mutation for Undo capability
+                setLastBlocksBackup([...blocks]);
+                setBlocks((prev) => [...prev, ...formatted]);
+                toast({ title: 'Blocks Appended', description: `Successfully added ${formatted.length} layout blocks.` });
+                setArchitectPrompt('');
+                setArchitectImageUrl('');
+            } else {
+                toast({ title: 'Architect Failed', description: res.error || 'Unable to build blocks.', variant: 'destructive' });
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Action trigger error';
+            toast({ title: 'Error', description: msg, variant: 'destructive' });
+        } finally {
+            setIsArchitecting(false);
+        }
+    };
+
+    const handleUndoArchitect = () => {
+        if (lastBlocksBackup) {
+            setBlocks(lastBlocksBackup);
+            setLastBlocksBackup(null);
+            toast({ title: 'Action Undone', description: 'Appended blocks have been removed.' });
+        }
+    };
+
     const executeCommit = () => {
         const categoryToContextMap: Record<string, string> = {
             meetings: 'meeting',
@@ -3376,6 +3465,106 @@ export function TemplateWorkshop({
                                                     </div>
                                                 ) : (
                                                     <>
+                                                        {/* Email Architect Card */}
+                                                        <div className="bg-card border rounded-xl p-3 mb-4 space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-[10px] font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                                                                    <Sparkles className="h-3.5 w-3.5 text-blue-500 animate-pulse" /> Email Architect (AI)
+                                                                </span>
+                                                                {lastBlocksBackup && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleUndoArchitect}
+                                                                        className="text-[9px] font-black text-red-500 hover:text-red-600 bg-red-55/10 hover:bg-red-55/20 px-2 py-0.5 rounded transition-colors"
+                                                                    >
+                                                                        Undo
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            <textarea
+                                                                value={architectPrompt}
+                                                                onChange={(e) => setArchitectPrompt(e.target.value)}
+                                                                placeholder="Describe the email sections or layout details..."
+                                                                className="w-full text-xs bg-muted/40 border rounded-lg p-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary/20"
+                                                                rows={2}
+                                                            />
+                                                            <div className="space-y-1.5">
+                                                                <input
+                                                                    type="text"
+                                                                    value={architectImageUrl}
+                                                                    onChange={(e) => setArchitectImageUrl(e.target.value)}
+                                                                    placeholder="Paste public image URL..."
+                                                                    className="w-full text-[10px] bg-muted/40 border rounded-lg px-2 py-1.5 focus:outline-none"
+                                                                />
+                                                                <div className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        id="architect-file"
+                                                                        className="hidden"
+                                                                        onChange={async (e) => {
+                                                                            const file = e.target.files?.[0];
+                                                                            if (file && activeWorkspaceId) {
+                                                                                setIsUploadingImage(true);
+                                                                                try {
+                                                                                    const url = await uploadArchitectImage(file, activeWorkspaceId);
+                                                                                    setArchitectImageUrl(url);
+                                                                                    e.target.value = '';
+                                                                                } catch (err: unknown) {
+                                                                                    const msg = err instanceof Error ? err.message : 'Upload error';
+                                                                                    toast({ title: 'Upload Failed', description: msg, variant: 'destructive' });
+                                                                                } finally {
+                                                                                    setIsUploadingImage(false);
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <label
+                                                                        htmlFor="architect-file"
+                                                                        className="flex-1 flex items-center justify-center gap-1 cursor-pointer bg-muted hover:bg-muted-foreground/15 text-[9px] font-semibold py-1.5 px-3 rounded-lg border text-muted-foreground transition-all"
+                                                                    >
+                                                                        <Upload className="h-3 w-3" /> {isUploadingImage ? 'Uploading...' : 'Upload Image'}
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-4 text-[9px] font-semibold text-muted-foreground">
+                                                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="architectMode"
+                                                                        checked={architectMode === 'layout_analysis'}
+                                                                        onChange={() => setArchitectMode('layout_analysis')}
+                                                                    />
+                                                                    Analyze Mockup
+                                                                </label>
+                                                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="architectMode"
+                                                                        checked={architectMode === 'direct_placement'}
+                                                                        onChange={() => setArchitectMode('direct_placement')}
+                                                                    />
+                                                                    Insert Image
+                                                                </label>
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                className="w-full h-8 text-[10px] font-bold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
+                                                                onClick={handleArchitectSubmit}
+                                                                disabled={isArchitecting || isUploadingImage}
+                                                            >
+                                                                {isArchitecting ? (
+                                                                    <>
+                                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Designing...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Sparkles className="h-3 w-3" /> Architect Email
+                                                                    </>
+                                                                )}
+                                                            </Button>
+                                                        </div>
+
                                                         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-2 animate-in fade-in duration-200">Block Types</p>
                                                         <div className="grid grid-cols-2 gap-2.5 animate-in slide-in-from-bottom-2 duration-250">
                                                             {(Object.keys(blockIcons) as Array<keyof typeof blockIcons>)

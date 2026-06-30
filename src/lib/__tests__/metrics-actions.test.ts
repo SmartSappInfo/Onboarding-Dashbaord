@@ -23,7 +23,31 @@ const TEST_ORG_ID = 'test-org-metrics';
 const TEST_WORKSPACE_1 = 'workspace-1';
 const TEST_WORKSPACE_2 = 'workspace-2';
 
-describe('Metrics Actions - Requirement 21', () => {
+import { connect } from 'node:net';
+
+async function isEmulatorRunning(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const socket = connect(port, '127.0.0.1');
+    socket.setTimeout(1000);
+    socket.on('connect', () => {
+      socket.end();
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.on('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
+}
+
+const emulatorRunning = await isEmulatorRunning(8080);
+
+describe.skipIf(!emulatorRunning)('Metrics Actions - Requirement 21', () => {
   beforeEach(async () => {
     // Clean up test data
     await cleanupTestData();
@@ -402,13 +426,11 @@ async function createTestEntity(
     entityType,
     name: `Test ${entityType} ${id}`,
     contacts: [],
-    entityType: 'institution',
     entityContacts: [],
     globalTags: [],
     status,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    entityContacts: [],
   };
 
   await adminDb.collection('entities').doc(id).set(entity);
@@ -434,7 +456,6 @@ async function createWorkspaceEntity(
     pipelineId: 'test-pipeline',
     stageId: stageId || '',
     status: 'active',
-    entityType: 'institution',
     workspaceTags: [],
     addedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

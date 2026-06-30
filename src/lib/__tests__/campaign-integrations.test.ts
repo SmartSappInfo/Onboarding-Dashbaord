@@ -2,34 +2,40 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Setup Mock for firebase-admin adminDb
-const mockUpdate = vi.fn();
-const mockGet = vi.fn();
-const mockSet = vi.fn();
-const mockAdd = vi.fn();
-const mockBatchCommit = vi.fn();
-const mockBatchUpdate = vi.fn();
-
-const mockRunTransaction = vi.fn();
+const {
+  mockUpdate,
+  mockGet,
+  mockSet,
+  mockAdd,
+  mockBatchCommit,
+  mockBatchUpdate,
+  mockRunTransaction,
+} = vi.hoisted(() => ({
+  mockUpdate: vi.fn(),
+  mockGet: vi.fn(),
+  mockSet: vi.fn(),
+  mockAdd: vi.fn(),
+  mockBatchCommit: vi.fn(),
+  mockBatchUpdate: vi.fn(),
+  mockRunTransaction: vi.fn(),
+}));
 
 vi.mock('../firebase-admin', () => {
-  const docRef = (path) => ({
-    get: mockGet,
-    update: mockUpdate,
-    set: mockSet,
-    collection: vi.fn((sub) => ({
-      add: mockAdd,
-    })),
-  });
-
   const queryRef = {
     get: mockGet,
   };
 
   const collectionRef = {
-    doc: vi.fn(docRef),
+    doc: vi.fn((path) => ({
+      get: mockGet,
+      update: mockUpdate,
+      set: mockSet,
+      collection: vi.fn(() => collectionRef),
+    })),
     where: vi.fn(() => collectionRef),
     limit: vi.fn(() => collectionRef),
     get: mockGet,
+    add: mockAdd,
   };
 
   return {
@@ -56,6 +62,18 @@ vi.mock('../firebase-admin', () => {
     },
   };
 });
+
+vi.mock('../contact-adapter', () => ({
+  resolveContact: vi.fn().mockResolvedValue({
+    id: 'ent-456',
+    name: 'Resolved Entity',
+    slug: 'resolved-entity',
+    contacts: [],
+    entityContacts: [],
+    migrationStatus: 'migrated' as const,
+    entityId: 'ent-456',
+  }),
+}));
 
 // Mock automation actions
 const mockHandleCreateDeal = vi.fn().mockResolvedValue({ success: true });
@@ -166,8 +184,8 @@ describe('Messaging Campaign Integrations', () => {
       const firestoreDocMock = vi.fn().mockReturnValue({ set: mockSet });
       const firestoreColMock = vi.fn(() => ({ doc: firestoreDocMock }));
       
-      const { adminDb } = require('../firebase-admin');
-      adminDb.collection.mockImplementation(firestoreColMock);
+      const { adminDb } = await import('../firebase-admin');
+      vi.mocked(adminDb).collection.mockImplementationOnce(firestoreColMock);
 
       await logCampaignEventToTimeline({
         entityId: 'ent-456',
@@ -179,16 +197,19 @@ describe('Messaging Campaign Integrations', () => {
         recipient: 'test@example.com',
       });
 
-      expect(firestoreColMock).toHaveBeenCalledWith('activity_timeline');
+      expect(firestoreColMock).toHaveBeenCalledWith('activities');
       // Deterministic key check: camp_ent-456_camp-123_campaign_opened
       expect(firestoreDocMock).toHaveBeenCalledWith('camp_ent-456_camp-123_campaign_opened');
       expect(mockSet).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'campaign_event',
-          campaignId: 'camp-123',
           entityId: 'ent-456',
           workspaceId: 'ws-789',
-        })
+          metadata: expect.objectContaining({
+            campaignId: 'camp-123',
+          }),
+        }),
+        { merge: true }
       );
     });
   });

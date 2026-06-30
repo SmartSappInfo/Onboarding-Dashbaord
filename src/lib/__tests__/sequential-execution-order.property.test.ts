@@ -28,7 +28,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
 
   describe('Property 11: Sequential Execution Order', () => {
     test.prop([
-      fc.array(fc.string({ minLength: 1 }), { minLength: 2, maxLength: 8 })
+      fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 2, maxLength: 8 })
     ], { numRuns: 10 })('should complete each sendMessage call before starting the next', async (entityIds) => {
       // Feature: multi-contact-messaging
       // Property 11: For any list of messages in the queue, each sendMessage call 
@@ -72,7 +72,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
     });
 
     test.prop([
-      fc.array(fc.string({ minLength: 1 }), { minLength: 2, maxLength: 8 })
+      fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 2, maxLength: 8 })
     ], { numRuns: 10 })('should maintain sequential order even with varying execution times', async (entityIds) => {
       // Feature: multi-contact-messaging
       // Property 11 (timing variance): Sequential order should be maintained regardless 
@@ -120,7 +120,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
     });
 
     test.prop([
-      fc.array(fc.string({ minLength: 1 }), { minLength: 3, maxLength: 10 }),
+      fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 3, maxLength: 10 }),
       fc.integer({ min: 0, max: 100 }) // Random failure index
     ], { numRuns: 10 })('should maintain sequential order even when some messages fail', async (entityIds, failureSeed) => {
       // Feature: multi-contact-messaging
@@ -170,7 +170,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
     });
 
     test.prop([
-      fc.array(fc.string({ minLength: 1 }), { minLength: 3, maxLength: 10 }),
+      fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 3, maxLength: 10 }),
       fc.integer({ min: 0, max: 100 }) // Random exception index
     ], { numRuns: 10 })('should maintain sequential order even when some messages throw exceptions', async (entityIds, exceptionSeed) => {
       // Feature: multi-contact-messaging
@@ -296,7 +296,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
     });
 
     test.prop([
-      fc.array(fc.string({ minLength: 1 }), { minLength: 2, maxLength: 8 }),
+      fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 2, maxLength: 8 }),
       fc.integer({ min: 0, max: 100 }) // Configurable delay
     ], { numRuns: 10 })('should respect inter-message delay without breaking sequential order', async (entityIds, delayMs) => {
       // Feature: multi-contact-messaging

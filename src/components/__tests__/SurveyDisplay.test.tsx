@@ -6,9 +6,10 @@ import SurveyDisplay from '@/app/surveys/[slug]/components/survey-display';
 import type { Survey } from '@/lib/types';
 
 // Mock Next.js navigation
+const mockGetSearchParam = vi.fn();
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({
-    get: vi.fn(),
+    get: mockGetSearchParam,
   }),
   usePathname: () => '/surveys/my-survey-slug',
 }));
@@ -24,14 +25,19 @@ vi.mock('next-themes', () => ({
 
 // Mock next/image
 vi.mock('next/image', () => ({
-  default: ({ src, alt, ...props }: any) => <img src={src} alt={alt} {...props} data-testid="next-image" />,
+  default: ({ src, alt, ...props }: { src: string; alt: string; [key: string]: unknown }) => (
+    <img src={src} alt={alt} {...props} data-testid="next-image" />
+  ),
 }));
 
 // Mock framer-motion to avoid JSDOM layout and animation issues
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+      <div {...props}>{children}</div>
+    ),
   },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 // Mock firebase/firestore doc function
@@ -50,7 +56,7 @@ vi.mock('@/firebase', () => ({
 
 // Mock survey-form
 vi.mock('@/app/surveys/[slug]/components/survey-form', () => ({
-  default: vi.fn(({ survey, onSubmitted, resolvedLogoUrl }: any) => (
+  default: vi.fn(({ survey, onSubmitted, resolvedLogoUrl }: { survey: Survey; onSubmitted: () => void; resolvedLogoUrl?: string }) => (
     <div data-testid="survey-form" data-logo-url={resolvedLogoUrl || 'none'}>
       Survey Form for {survey.title}
       <button onClick={onSubmitted} data-testid="submit-survey-btn">
@@ -88,16 +94,16 @@ describe('SurveyDisplay Component', () => {
     vi.clearAllMocks();
     
     // Mock window.location.href writable
-    delete (window as any).location;
-    (window as any).location = {
+    delete (window as { location?: unknown }).location;
+    (window as { location?: unknown }).location = {
       ...originalLocation,
       href: 'http://test.com/surveys/test-survey?param=value',
       pathname: '/surveys/test-survey',
-    } as any;
+    } as unknown as Location;
   });
 
   afterEach(() => {
-    (window as any).location = originalLocation;
+    (window as { location?: unknown }).location = originalLocation;
   });
 
   it('renders SurveyForm once mounted', async () => {
@@ -184,14 +190,12 @@ describe('SurveyDisplay Component', () => {
     expect(screen.getByTestId('survey-form')).toHaveAttribute('data-logo-url', 'none');
   });
 
-  it('allows toggling theme', async () => {
+  it('initializes theme from search parameters', async () => {
+    mockGetSearchParam.mockReturnValueOnce('dark');
     render(<SurveyDisplay survey={mockSurvey} />);
     await waitFor(() => {
       expect(screen.getByTestId('survey-form')).toBeInTheDocument();
     });
-
-    const themeToggleBtn = screen.getByRole('button', { name: /toggle theme/i });
-    await userEvent.click(themeToggleBtn);
 
     expect(mockSetTheme).toHaveBeenCalledWith('dark');
   });
@@ -211,8 +215,7 @@ describe('SurveyDisplay Component', () => {
     expect(screen.getByText('Thank You Title!')).toBeInTheDocument();
     expect(screen.getByText('Your response has been recorded.')).toBeInTheDocument();
 
-    // Verify display logo on thank you screen
-    const logoImage = screen.getByTestId('next-image');
+    const logoImage = screen.getByAltText('Logo');
     expect(logoImage).toHaveAttribute('src', 'survey-logo.png');
   });
 

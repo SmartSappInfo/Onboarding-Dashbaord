@@ -263,6 +263,10 @@ export function useBuilderState() {
         updateStructure(s => tree.moveBlockToSection(s, blockId, fromSectionId, toSectionId, toIndex));
     }, [updateStructure]);
 
+    const moveBlockToColumn = useCallback((blockId: string, targetSectionId: string, targetColumnIndex: number, targetIndex: number) => {
+        updateStructure(s => tree.moveBlockToColumn(s, blockId, targetSectionId, targetColumnIndex, targetIndex));
+    }, [updateStructure]);
+
     // ─── Block Finder ────────────────────────────────────────────────
     const findBlock = useCallback((blockId: string) => {
         if (!state.version) return null;
@@ -361,6 +365,7 @@ export function useBuilderState() {
         moveBlock,
         reorderBlocks,
         moveBlockToSection,
+        moveBlockToColumn,
         findBlock,
         duplicateBlock,
 

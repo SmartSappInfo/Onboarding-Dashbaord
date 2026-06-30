@@ -1382,6 +1382,8 @@ export function SortableBlockItem({
                 isSelected && "z-10"
             )}
             onClick={(e) => { e.stopPropagation(); onSelect(); }}
+            onFocusCapture={() => onSelect()}
+            onMouseDownCapture={() => onSelect()}
         >
             <div className={cn(
                 "absolute inset-0 border-2 pointer-events-none transition-all duration-300 z-10",

@@ -7,6 +7,100 @@
 
 import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
+import type { MessageBlock } from '@/lib/types';
+
+export interface TextPart {
+  text: string;
+}
+
+export interface MediaPart {
+  media: {
+    url: string;
+    contentType?: string;
+  };
+}
+
+export type GenkitPromptPart = TextPart | MediaPart;
+
+export const ArchitectBlockStyleSchema = z.object({
+  textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
+  backgroundColor: z.string().optional(),
+  backgroundImage: z.string().optional(),
+  backgroundSize: z.string().optional(),
+  color: z.string().optional(),
+  padding: z.string().optional(),
+  paddingTop: z.string().optional(),
+  paddingBottom: z.string().optional(),
+  paddingLeft: z.string().optional(),
+  paddingRight: z.string().optional(),
+  marginTop: z.string().optional(),
+  marginBottom: z.string().optional(),
+  fontSize: z.string().optional(),
+  fontFamily: z.string().optional(),
+  fontWeight: z.string().optional(),
+  lineHeight: z.string().optional(),
+  borderRadius: z.string().optional(),
+  borderWidth: z.string().optional(),
+  borderStyle: z.string().optional(),
+  borderColor: z.string().optional(),
+  width: z.string().optional(),
+  variant: z.string().optional(),
+  animate: z.boolean().optional(),
+});
+
+export const ArchitectBlockSchema = z.object({
+  id: z.string(),
+  type: z.enum([
+    'heading', 'text', 'image', 'video', 'button', 'quote', 'divider',
+    'list', 'logo', 'header', 'footer', 'score-card', 'columns', 'rsvp'
+  ]),
+  title: z.string().optional(),
+  content: z.string().optional(),
+  url: z.string().optional(),
+  link: z.string().optional(),
+  variant: z.enum(['h1', 'h2', 'h3']).optional(),
+  listStyle: z.enum(['ordered', 'unordered', 'roman', 'checkmark', 'arrow']).optional(),
+  items: z.array(z.string()).optional(),
+  goingLabel: z.string().optional(),
+  declinedLabel: z.string().optional(),
+  laterLabel: z.string().optional(),
+  rsvpStyle: z.enum([
+    'standard', 'card_bento', 'card_inline',
+    'event_full_bento', 'event_full_inline',
+    'event_compact_bento', 'event_compact_inline'
+  ]).optional(),
+  rsvpDate: z.string().optional(),
+  rsvpTime: z.string().optional(),
+  rsvpLocation: z.string().optional(),
+  pillText: z.string().optional(),
+  rsvpDateLabel: z.string().optional(),
+  rsvpTimeLabel: z.string().optional(),
+  rsvpLocationLabel: z.string().optional(),
+  style: ArchitectBlockStyleSchema.optional(),
+  visibilityLogic: z.object({
+    rules: z.array(z.object({
+      variableKey: z.string(),
+      operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'isGreaterThan', 'isLessThan', 'isEmpty', 'isNotEmpty']),
+      value: z.string().optional(),
+    })),
+    matchType: z.enum(['all', 'any']),
+  }).optional(),
+});
+
+export const FullBlockSchema: z.ZodType<MessageBlock> = z.lazy(() =>
+  (ArchitectBlockSchema.extend({
+    columns: z.array(
+      z.object({
+        width: z.string(),
+        blocks: z.array(FullBlockSchema),
+      })
+    ).optional(),
+  }) as unknown) as z.ZodType<MessageBlock>
+);
+
+export const ArchitectResultSchema = z.object({
+  blocks: z.array(FullBlockSchema),
+});
 
 interface CopyResult {
   subject: string;
@@ -21,10 +115,10 @@ const CopyResultSchema = z.object({
 });
 
 async function callGenkit(params: {
-  prompt: string;
+  prompt: string | GenkitPromptPart[];
   organizationId?: string;
   jsonMode?: boolean;
-  schema?: any;
+  schema?: unknown;
 }): Promise<string> {
   // Resolve model via unified Genkit getModel utility
   const resolvedModel = await getModel({
@@ -38,7 +132,7 @@ async function callGenkit(params: {
   const { output, text } = await generatorAi.generate({
     model: resolvedModel.modelString,
     prompt: params.prompt,
-    ...(params.jsonMode && params.schema && { output: { schema: params.schema } }),
+    ...(params.jsonMode && params.schema ? { output: { schema: params.schema as z.ZodTypeAny } } : {}),
   });
 
   if (params.jsonMode && params.schema) {
@@ -98,9 +192,10 @@ Available template variables (use double curly braces): entity_name, entity_emai
         subjectVariants: parsed.subjectVariants || [],
       },
     };
-  } catch (error: any) {
-    console.error('[CAMPAIGN-AI] Generate failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[CAMPAIGN-AI] Generate failed:', message);
+    return { success: false, error: message };
   }
 }
 
@@ -134,9 +229,10 @@ Rules:
       jsonMode: false,
     });
     return { success: true, refined: refined.trim() };
-  } catch (error: any) {
-    console.error('[CAMPAIGN-AI] Refine failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[CAMPAIGN-AI] Refine failed:', message);
+    return { success: false, error: message };
   }
 }
 
@@ -184,9 +280,10 @@ Calling Script Rules:
       success: true,
       script: script.trim(),
     };
-  } catch (error: any) {
-    console.error('[CAMPAIGN-AI] Generate script failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[CAMPAIGN-AI] Generate script failed:', message);
+    return { success: false, error: message };
   }
 }
 
@@ -248,8 +345,72 @@ Rules:
       jsonMode: false,
     });
     return { success: true, refined: refined.trim() };
-  } catch (error: any) {
-    console.error('[CAMPAIGN-AI] Refine script failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[CAMPAIGN-AI] Refine script failed:', message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Generate structured email blocks using Genkit.
+ */
+export async function generateEmailBlocksAction(params: {
+  prompt?: string;
+  imageUrl?: string;
+  mode?: 'layout_analysis' | 'direct_placement';
+  brandColors?: { primary?: string; secondary?: string; background?: string };
+  // Backwards compatibility/alternative fields
+  instruction?: string;
+  campaignName?: string;
+  context?: string;
+  organizationId?: string;
+}): Promise<{ success: boolean; blocks?: MessageBlock[]; error?: string }> {
+  try {
+    const activePrompt = params.prompt || params.instruction || '';
+    const activeMode = params.mode || 'layout_analysis';
+    const brandColors = params.brandColors;
+
+    const brandGuidance = brandColors 
+      ? `Brand Guidelines: Primary color is ${brandColors.primary || '#2563eb'}. Secondary color is ${brandColors.secondary || '#475569'}.`
+      : 'Brand Guidelines: Use standard professional enterprise styles (e.g. blue buttons, dark text).';
+
+    const systemPrompt = `You are a visual email designer and layout architect.
+Generate structured email layout blocks based on the user request.
+${brandGuidance}
+
+Mode Guidelines:
+- "layout_analysis": Analyze the provided visual mockup/inspiration image and recreate its core grid, headers, and text structure in blocks.
+- "direct_placement": Include the provided image URL directly in an image block, generating copywriting and paragraphs around it.
+
+Rules:
+1. Output MUST strictly match the structured schema.
+2. For headers, use type 'heading' with 'h1', 'h2', or 'h3'.
+3. For body text, use type 'text'.
+4. For columns, partition sections evenly (e.g. two columns with width '50%').`;
+
+    const promptText = `${systemPrompt}\nUser prompt: "${activePrompt}"`;
+
+    const promptParts: GenkitPromptPart[] = [
+      { text: promptText },
+      ...(params.imageUrl ? [{ media: { url: params.imageUrl, contentType: 'image/jpeg' } }] : [])
+    ];
+
+    const text = await callGenkit({
+      prompt: promptParts,
+      organizationId: params.organizationId,
+      jsonMode: true,
+      schema: ArchitectResultSchema,
+    });
+
+    const parsed = JSON.parse(text) as { blocks: MessageBlock[] };
+    return {
+      success: true,
+      blocks: parsed.blocks || [],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[CAMPAIGN-AI] Generate email blocks failed:', message);
+    return { success: false, error: message };
   }
 }

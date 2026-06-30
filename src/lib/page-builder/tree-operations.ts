@@ -276,3 +276,66 @@ export function findBlock(
   }
   return null;
 }
+
+/** Move a block from one section/column to a specific index in a target section/column. */
+export function moveBlockToColumn(
+  structure: CampaignPageStructure,
+  blockId: string,
+  targetSectionId: string,
+  targetColumnIndex: number,
+  targetIndex: number,
+): CampaignPageStructure {
+  let movedBlock: PageBlock | null = null;
+  for (const section of structure.sections) {
+    const found = section.blocks.find((b) => b.id === blockId);
+    if (found) {
+      movedBlock = found;
+      break;
+    }
+  }
+
+  if (!movedBlock) return structure;
+
+  // 2. Remove the block from its current location in sections/columns
+  const withoutBlock = structure.sections.map((section) => {
+    const hasBlock = section.blocks.some((b) => b.id === blockId);
+    if (!hasBlock) return section;
+
+    return {
+      ...section,
+      blocks: section.blocks.filter((b) => b.id !== blockId),
+    };
+  });
+
+  // 2. Set the column index in block's props
+  const updatedBlock: PageBlock = {
+    ...movedBlock,
+    props: {
+      ...movedBlock.props,
+      column: targetColumnIndex,
+    },
+  };
+
+  // 3. Insert the block at the correct index inside the target section's blocks array
+  return {
+    ...structure,
+    sections: withoutBlock.map((section) => {
+      if (section.id !== targetSectionId) return section;
+
+      const blocks = [...section.blocks];
+      const columnBlocks = blocks.filter((b) => (b.props.column ?? 0) === targetColumnIndex);
+
+      let insertPos = blocks.length;
+      if (targetIndex >= 0 && targetIndex < columnBlocks.length) {
+        const targetBlock = columnBlocks[targetIndex];
+        insertPos = blocks.indexOf(targetBlock);
+      } else if (columnBlocks.length > 0 && targetIndex >= columnBlocks.length) {
+        const lastBlock = columnBlocks[columnBlocks.length - 1];
+        insertPos = blocks.indexOf(lastBlock) + 1;
+      }
+
+      blocks.splice(insertPos, 0, updatedBlock);
+      return { ...section, blocks };
+    }),
+  };
+}

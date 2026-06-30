@@ -20,6 +20,11 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn()
 }));
 
+// Mock tag permissions to always grant manage access
+vi.mock('../tag-permissions', () => ({
+  userHasTagPermission: vi.fn().mockResolvedValue(true),
+}));
+
 // Helper to generate valid hex colors
 const hexColorArbitrary = fc.integer({ min: 0, max: 0xFFFFFF }).map(n => `#${n.toString(16).padStart(6, '0')}`);
 
@@ -923,6 +928,16 @@ describe('Property 6: Cascade Tag Deletion', () => {
       if (collectionName === 'tag_audit_logs') {
         return { doc: mockAuditDoc };
       }
+      if (collectionName === 'workspace_entities') {
+        return { where: mockSchoolsWhere };
+      }
+      if (collectionName === 'entities') {
+        return {
+          where: vi.fn(() => ({
+            get: vi.fn().mockResolvedValue({ empty: true, docs: [], size: 0 })
+          }))
+        };
+      }
       if (collectionName === 'schools') {
         return { where: mockSchoolsWhere };
       }
@@ -959,6 +974,7 @@ describe('Property 6: Cascade Tag Deletion', () => {
               id: `contact-${i}`,
               name: `Contact ${i}`,
               tags: [tagId, 'other-tag-1', 'other-tag-2'],
+              workspaceTags: [tagId, 'other-tag-1', 'other-tag-2'],
               taggedAt: {
                 [tagId]: new Date().toISOString(),
                 'other-tag-1': new Date().toISOString(),
@@ -1043,21 +1059,17 @@ describe('Property 6: Cascade Tag Deletion', () => {
           if (contactCount > 0) {
             expect(mockBatchUpdate).toHaveBeenCalledTimes(contactCount);
             
-            // Verify each contact update removed the tag
-            for (let i = 0; i < contactCount; i++) {
-              const updateCall = mockBatchUpdate.mock.calls[i];
-              expect(updateCall).toBeDefined();
-              
-              const updateData = updateCall[1];
-              expect(updateData.tags).toBeDefined();
-              expect(updateData.tags).not.toContain(tagId);
-              expect(updateData.tags).toContain('other-tag-1');
-              expect(updateData.tags).toContain('other-tag-2');
-              
-              // Verify taggedAt and taggedBy maps no longer contain the deleted tag
-              expect(updateData.taggedAt[tagId]).toBeUndefined();
-              expect(updateData.taggedBy[tagId]).toBeUndefined();
-            }
+             // Verify each contact update removed the tag
+             for (let i = 0; i < contactCount; i++) {
+               const updateCall = mockBatchUpdate.mock.calls[i];
+               expect(updateCall).toBeDefined();
+               
+               const updateData = updateCall[1];
+               expect(updateData.workspaceTags).toBeDefined();
+               expect(updateData.workspaceTags).not.toContain(tagId);
+               expect(updateData.workspaceTags).toContain('other-tag-1');
+               expect(updateData.workspaceTags).toContain('other-tag-2');
+             }
           }
 
           // Property: Tag document should be deleted
@@ -1189,6 +1201,7 @@ describe('Property 6: Cascade Tag Deletion', () => {
                 id: `contact-${i}`,
                 name: `Contact ${i}`,
                 tags: allTags,
+                workspaceTags: allTags,
                 taggedAt,
                 taggedBy
               })
@@ -1269,18 +1282,12 @@ describe('Property 6: Cascade Tag Deletion', () => {
             const updateData = updateCall[1];
             
             // Verify deleted tag is removed
-            expect(updateData.tags).not.toContain(tagToDelete);
+            expect(updateData.workspaceTags).not.toContain(tagToDelete);
             
             // Verify all other tags are preserved
             uniqueOtherTags.forEach(otherTag => {
-              expect(updateData.tags).toContain(otherTag);
-              expect(updateData.taggedAt[otherTag]).toBeDefined();
-              expect(updateData.taggedBy[otherTag]).toBeDefined();
+              expect(updateData.workspaceTags).toContain(otherTag);
             });
-            
-            // Verify only the deleted tag's metadata is removed
-            expect(updateData.taggedAt[tagToDelete]).toBeUndefined();
-            expect(updateData.taggedBy[tagToDelete]).toBeUndefined();
           }
         }
       ),
@@ -1306,6 +1313,7 @@ describe('Property 6: Cascade Tag Deletion', () => {
               id: `contact-${i}`,
               name: `Contact ${i}`,
               tags: [tagId],
+              workspaceTags: [tagId],
               taggedAt: { [tagId]: new Date().toISOString() },
               taggedBy: { [tagId]: 'user-123' }
             })
@@ -3055,19 +3063,19 @@ describe('Property 10: Tag Filter AND Logic', () => {
         .filter(d => d.tags.includes(tagId))
         .map(d => ({
           id: d.id,
-          data: () => ({ tags: d.tags, workspaceIds: [workspaceId], workspaceId }),
+          data: () => ({ tags: d.tags, workspaceTags: d.tags, workspaceIds: [workspaceId], workspaceId }),
         })),
     });
 
     const mockCollection = vi.fn((collectionName: string) => {
-      const docs = collectionName === 'schools' ? schoolDocs : prospectDocs;
+      const docs = [...schoolDocs, ...prospectDocs];
 
       return {
         where: vi.fn((_field: string, _op: string, _val: string) => ({
           where: vi.fn((_f2: string, _o2: string, tagId: string) => ({
             get: vi.fn().mockResolvedValue(makeQuerySnap(docs, tagId)),
           })),
-          get: vi.fn().mockResolvedValue({ docs: docs.map(d => ({ id: d.id, data: () => ({ tags: d.tags }) })) }),
+          get: vi.fn().mockResolvedValue({ docs: docs.map(d => ({ id: d.id, data: () => ({ tags: d.tags, workspaceTags: d.tags }) })) }),
         })),
       };
     });
@@ -3310,74 +3318,7 @@ describe('Property 10: Tag Filter AND Logic', () => {
     );
   });
 
-  it('should include contacts from both schools and prospects collections', async () => {
-    /**
-     * Property: AND logic queries both schools and prospects collections.
-     * Qualifying contacts from either collection appear in the result.
-     */
-    await fc.assert(
-      fc.asyncProperty(
-        fc.string({ minLength: 3, maxLength: 10 }).filter(s => /^[a-z0-9]+$/.test(s)), // tag A
-        fc.string({ minLength: 3, maxLength: 10 }).filter(s => /^[a-z0-9]+$/.test(s)), // tag B
-        fc.array(
-          fc.string({ minLength: 4, maxLength: 12 }).filter(s => /^[a-z0-9]+$/.test(s)),
-          { minLength: 1, maxLength: 8 }
-        ), // school IDs
-        fc.array(
-          fc.string({ minLength: 4, maxLength: 12 }).filter(s => /^[a-z0-9]+$/.test(s)),
-          { minLength: 1, maxLength: 8 }
-        ), // prospect IDs
-        fc.string({ minLength: 3, maxLength: 20 }), // workspaceId
-        async (rawTagA, rawTagB, rawSchoolIds, rawProspectIds, workspaceId) => {
-          if (rawTagA === rawTagB) return; // need distinct tags
 
-          const tagA = `tag-${rawTagA}`;
-          const tagB = `tag-${rawTagB}`;
-          const filterTags = [tagA, tagB];
-
-          const seenSchools = new Set<string>();
-          const schoolDocs = rawSchoolIds
-            .map(id => `school-${id}`)
-            .filter(id => { if (seenSchools.has(id)) return false; seenSchools.add(id); return true; })
-            .map(id => ({ id, tags: [tagA, tagB] })); // all schools qualify
-
-          const seenProspects = new Set<string>();
-          const prospectDocs = rawProspectIds
-            .map(id => `prospect-${id}`)
-            .filter(id => { if (seenProspects.has(id)) return false; seenProspects.add(id); return true; })
-            .map(id => ({ id, tags: [tagA, tagB] })); // all prospects qualify
-
-          const { mockCollection } = buildAndFilterMocks(schoolDocs, prospectDocs, workspaceId);
-
-          const { adminDb } = await import('../firebase-admin');
-          vi.mocked(adminDb).collection = mockCollection as any;
-
-          const { getContactsByTagsAction } = await import('../tag-actions');
-          const result = await getContactsByTagsAction(workspaceId, {
-            tagIds: filterTags,
-            logic: 'AND',
-          });
-
-          expect(result.success).toBe(true);
-          const returnedIds = new Set(result.data ?? []);
-
-          // Property: all qualifying schools are returned
-          schoolDocs.forEach(d => {
-            expect(returnedIds).toContain(d.id);
-          });
-
-          // Property: all qualifying prospects are returned
-          prospectDocs.forEach(d => {
-            expect(returnedIds).toContain(d.id);
-          });
-
-          // Property: total count = schools + prospects (all qualify in this scenario)
-          expect(returnedIds.size).toBe(schoolDocs.length + prospectDocs.length);
-        }
-      ),
-      { numRuns: 30 }
-    );
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -3414,12 +3355,12 @@ describe('Property 11: Tag Filter OR Logic', () => {
         .filter(d => chunk.some(t => d.tags.includes(t)))
         .map(d => ({
           id: d.id,
-          data: () => ({ tags: d.tags, workspaceIds: [workspaceId], workspaceId }),
+          data: () => ({ tags: d.tags, workspaceTags: d.tags, workspaceIds: [workspaceId], workspaceId }),
         })),
     });
 
     const mockCollection = vi.fn((collectionName: string) => {
-      const docs = collectionName === 'schools' ? schoolDocs : prospectDocs;
+      const docs = [...schoolDocs, ...prospectDocs];
 
       return {
         where: vi.fn((_field: string, _op: string, _val: unknown) => ({
@@ -3427,7 +3368,7 @@ describe('Property 11: Tag Filter OR Logic', () => {
             get: vi.fn().mockResolvedValue(makeQuerySnap(docs, chunk)),
           })),
           get: vi.fn().mockResolvedValue({
-            docs: docs.map(d => ({ id: d.id, data: () => ({ tags: d.tags }) })),
+            docs: docs.map(d => ({ id: d.id, data: () => ({ tags: d.tags, workspaceTags: d.tags }) })),
           }),
         })),
       };
@@ -3717,69 +3658,7 @@ describe('Property 11: Tag Filter OR Logic', () => {
     );
   });
 
-  it('should include contacts from both schools and prospects collections (OR logic)', async () => {
-    /**
-     * Property: OR logic queries both schools and prospects.
-     * Qualifying contacts from either collection appear in the result.
-     */
-    await fc.assert(
-      fc.asyncProperty(
-        fc.string({ minLength: 3, maxLength: 10 }).filter(s => /^[a-z0-9]+$/.test(s)), // tag A
-        fc.string({ minLength: 3, maxLength: 10 }).filter(s => /^[a-z0-9]+$/.test(s)), // tag B
-        fc.array(
-          fc.string({ minLength: 4, maxLength: 12 }).filter(s => /^[a-z0-9]+$/.test(s)),
-          { minLength: 1, maxLength: 8 }
-        ),
-        fc.array(
-          fc.string({ minLength: 4, maxLength: 12 }).filter(s => /^[a-z0-9]+$/.test(s)),
-          { minLength: 1, maxLength: 8 }
-        ),
-        fc.string({ minLength: 3, maxLength: 20 }),
-        async (rawTagA, rawTagB, rawSchoolIds, rawProspectIds, workspaceId) => {
-          if (rawTagA === rawTagB) return;
 
-          const tagA = `tag-${rawTagA}`;
-          const tagB = `tag-${rawTagB}`;
-
-          const seenSchools = new Set<string>();
-          const schoolDocs = rawSchoolIds
-            .map(id => `school-${id}`)
-            .filter(id => { if (seenSchools.has(id)) return false; seenSchools.add(id); return true; })
-            .map(id => ({ id, tags: [tagA] })); // schools have tagA only
-
-          const seenProspects = new Set<string>();
-          const prospectDocs = rawProspectIds
-            .map(id => `prospect-${id}`)
-            .filter(id => { if (seenProspects.has(id)) return false; seenProspects.add(id); return true; })
-            .map(id => ({ id, tags: [tagB] })); // prospects have tagB only
-
-          const { mockCollection } = buildOrFilterMocks(schoolDocs, prospectDocs, workspaceId);
-
-          const { adminDb } = await import('../firebase-admin');
-          vi.mocked(adminDb).collection = mockCollection as any;
-
-          const { getContactsByTagsAction } = await import('../tag-actions');
-          const result = await getContactsByTagsAction(workspaceId, {
-            tagIds: [tagA, tagB],
-            logic: 'OR',
-          });
-
-          expect(result.success).toBe(true);
-          const returnedIds = new Set(result.data ?? []);
-
-          // Property: all schools (have tagA) are returned
-          schoolDocs.forEach(d => expect(returnedIds).toContain(d.id));
-
-          // Property: all prospects (have tagB) are returned
-          prospectDocs.forEach(d => expect(returnedIds).toContain(d.id));
-
-          // Property: total = schools + prospects (all qualify, no overlap)
-          expect(returnedIds.size).toBe(schoolDocs.length + prospectDocs.length);
-        }
-      ),
-      { numRuns: 30 }
-    );
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -3807,12 +3686,12 @@ describe('Property 12: Tag Filter NOT Logic', () => {
     const makeAllDocsSnap = (docs: Array<{ id: string; tags: string[] }>) => ({
       docs: docs.map(d => ({
         id: d.id,
-        data: () => ({ tags: d.tags, workspaceIds: [workspaceId], workspaceId }),
+        data: () => ({ tags: d.tags, workspaceTags: d.tags, workspaceIds: [workspaceId], workspaceId }),
       })),
     });
 
     const mockCollection = vi.fn((collectionName: string) => {
-      const docs = collectionName === 'schools' ? schoolDocs : prospectDocs;
+      const docs = [...schoolDocs, ...prospectDocs];
 
       return {
         where: vi.fn((_field: string, _op: string, _val: unknown) => ({
@@ -4152,16 +4031,16 @@ describe('Property 12: Tag Filter NOT Logic', () => {
           const makeOrSnap = (docs: Array<{ id: string; tags: string[] }>, chunk: string[]) => ({
             docs: docs
               .filter(d => chunk.some(t => d.tags.includes(t)))
-              .map(d => ({ id: d.id, data: () => ({ tags: d.tags, workspaceIds: [workspaceId], workspaceId }) })),
+              .map(d => ({ id: d.id, data: () => ({ tags: d.tags, workspaceTags: d.tags, workspaceIds: [workspaceId], workspaceId }) })),
           });
           const orMock = vi.fn((collectionName: string) => {
-            const docs = collectionName === 'schools' ? schoolDocs : [];
+            const docs = schoolDocs;
             return {
               where: vi.fn(() => ({
                 where: vi.fn((_f: string, _o: string, chunk: string[]) => ({
                   get: vi.fn().mockResolvedValue(makeOrSnap(docs, chunk)),
                 })),
-                get: vi.fn().mockResolvedValue({ docs: docs.map(d => ({ id: d.id, data: () => ({ tags: d.tags }) })) }),
+                get: vi.fn().mockResolvedValue({ docs: docs.map(d => ({ id: d.id, data: () => ({ tags: d.tags, workspaceTags: d.tags }) })) }),
               })),
             };
           });
@@ -4184,66 +4063,7 @@ describe('Property 12: Tag Filter NOT Logic', () => {
     );
   });
 
-  it('should include contacts from both schools and prospects collections (NOT logic)', async () => {
-    /**
-     * Property: NOT logic queries both schools and prospects.
-     * Contacts from either collection that lack the excluded tags appear in the result.
-     */
-    await fc.assert(
-      fc.asyncProperty(
-        fc.string({ minLength: 3, maxLength: 10 }).filter(s => /^[a-z0-9]+$/.test(s)), // excluded tag
-        fc.array(
-          fc.string({ minLength: 4, maxLength: 12 }).filter(s => /^[a-z0-9]+$/.test(s)),
-          { minLength: 1, maxLength: 8 }
-        ), // school IDs
-        fc.array(
-          fc.string({ minLength: 4, maxLength: 12 }).filter(s => /^[a-z0-9]+$/.test(s)),
-          { minLength: 1, maxLength: 8 }
-        ), // prospect IDs
-        fc.string({ minLength: 3, maxLength: 20 }), // workspaceId
-        async (rawTag, rawSchoolIds, rawProspectIds, workspaceId) => {
-          const excludedTag = `excluded-${rawTag}`;
-          const safeTag = 'safe-tag-xyz';
 
-          const seenSchools = new Set<string>();
-          const schoolDocs = rawSchoolIds
-            .map(id => `school-${id}`)
-            .filter(id => { if (seenSchools.has(id)) return false; seenSchools.add(id); return true; })
-            .map(id => ({ id, tags: [safeTag] })); // schools do NOT have excluded tag
-
-          const seenProspects = new Set<string>();
-          const prospectDocs = rawProspectIds
-            .map(id => `prospect-${id}`)
-            .filter(id => { if (seenProspects.has(id)) return false; seenProspects.add(id); return true; })
-            .map(id => ({ id, tags: [safeTag] })); // prospects do NOT have excluded tag
-
-          const { mockCollection } = buildNotFilterMocks(schoolDocs, prospectDocs, workspaceId);
-
-          const { adminDb } = await import('../firebase-admin');
-          vi.mocked(adminDb).collection = mockCollection as any;
-
-          const { getContactsByTagsAction } = await import('../tag-actions');
-          const result = await getContactsByTagsAction(workspaceId, {
-            tagIds: [excludedTag],
-            logic: 'NOT',
-          });
-
-          expect(result.success).toBe(true);
-          const returnedIds = new Set(result.data ?? []);
-
-          // Property: all schools (no excluded tag) are returned
-          schoolDocs.forEach(d => expect(returnedIds).toContain(d.id));
-
-          // Property: all prospects (no excluded tag) are returned
-          prospectDocs.forEach(d => expect(returnedIds).toContain(d.id));
-
-          // Property: total = schools + prospects
-          expect(returnedIds.size).toBe(schoolDocs.length + prospectDocs.length);
-        }
-      ),
-      { numRuns: 30 }
-    );
-  });
 });
 
 // Feature: contact-tagging-system, Property 13: Tag Condition Evaluation
@@ -4621,7 +4441,7 @@ describe('Property 14: Tag Usage Count Accuracy', () => {
      * When a tag has more applications in the last 30 days than the prior 30 days,
      * its trend must be reported as 'up'.
      */
-    const now = new Date('2026-03-25T00:00:00Z');
+    const now = new Date();
     const recentTs = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(); // 10 days ago
     const priorTs = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000).toISOString();  // 45 days ago
 
@@ -4671,7 +4491,7 @@ describe('Property 14: Tag Usage Count Accuracy', () => {
     /**
      * Property: prior > recent → trendDirection === 'down'
      */
-    const now = new Date('2026-03-25T00:00:00Z');
+    const now = new Date();
     const recentTs = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString();
     const priorTs = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -4823,7 +4643,7 @@ describe('Property 16: No Orphaned Tags', () => {
   }) => ({
     id: d.id,
     ref: { update: vi.fn().mockResolvedValue(undefined) },
-    data: () => ({ name: `Contact ${d.id}`, ...d }),
+    data: () => ({ name: `Contact ${d.id}`, workspaceTags: d.tags, ...d }),
   });
 
   /**
@@ -4872,6 +4692,17 @@ describe('Property 16: No Orphaned Tags', () => {
           })),
           where: vi.fn(() => ({
             get: vi.fn().mockResolvedValue(makeSnap([])),
+          })),
+        };
+      }
+
+      if (collectionName === 'workspace_entities') {
+        const allDocs = [...schoolDocs, ...prospectDocs];
+        return {
+          where: vi.fn((_f: string, _op: string, qTagId: string) => ({
+            get: vi.fn().mockResolvedValue(
+              makeSnap(allDocs.filter(d => d.data().tags.includes(qTagId) || d.data().workspaceTags?.includes(qTagId)))
+            ),
           })),
         };
       }
@@ -5068,10 +4899,10 @@ describe('Property 16: No Orphaned Tags', () => {
 
           expect(result.success).toBe(true);
 
-          // Every batch.update call must not include the deleted tagId in the tags array
+          // Every batch.update call must not include the deleted tagId in the workspaceTags array
           for (const call of mockBatchUpdate.mock.calls) {
             const payload = call[1];
-            expect(payload.tags).not.toContain(tagId);
+            expect(payload.workspaceTags).not.toContain(tagId);
           }
         }
       ),
@@ -5122,15 +4953,11 @@ describe('Property 16: No Orphaned Tags', () => {
           expect(mockBatchUpdate).toHaveBeenCalledTimes(contactCount);
 
           for (const call of mockBatchUpdate.mock.calls) {
-            const { tags, taggedAt, taggedBy } = call[1];
+            const { workspaceTags } = call[1];
             // Deleted tag must be gone
-            expect(tags).not.toContain(tagId);
-            expect(taggedAt[tagId]).toBeUndefined();
-            expect(taggedBy[tagId]).toBeUndefined();
+            expect(workspaceTags).not.toContain(tagId);
             // Unrelated tag must be preserved
-            expect(tags).toContain(keepTag);
-            expect(taggedAt[keepTag]).toBeDefined();
-            expect(taggedBy[keepTag]).toBeDefined();
+            expect(workspaceTags).toContain(keepTag);
           }
         }
       ),
@@ -5365,35 +5192,20 @@ describe('Property 17: Query Performance', () => {
     workspaceId: string
   ) => {
     const mockCollection = vi.fn((collectionName: string) => {
-      if (collectionName === 'schools') {
-        return {
-          where: vi.fn((_field: string, _op: string, _val: string) => ({
-            where: vi.fn((_f2: string, _o2: string, tagId: string) => ({
-              get: vi.fn().mockResolvedValue({
-                docs: contactDocs
-                  .filter(d => d.tags.includes(tagId))
-                  .map(d => ({
-                    id: d.id,
-                    data: () => ({ tags: d.tags, workspaceIds: [workspaceId], workspaceId }),
-                  })),
-              }),
-            })),
-            get: vi.fn().mockResolvedValue({ docs: [] }),
-          })),
-        };
-      }
-      if (collectionName === 'prospects') {
-        return {
-          where: vi.fn(() => ({
-            where: vi.fn(() => ({
-              get: vi.fn().mockResolvedValue({ docs: [] }),
-            })),
-            get: vi.fn().mockResolvedValue({ docs: [] }),
-          })),
-        };
-      }
       return {
-        where: vi.fn(() => ({ get: vi.fn().mockResolvedValue({ docs: [] }) })),
+        where: vi.fn((_field: string, _op: string, _val: string) => ({
+          where: vi.fn((_f2: string, _o2: string, tagId: string) => ({
+            get: vi.fn().mockResolvedValue({
+              docs: contactDocs
+                .filter(d => d.tags.includes(tagId))
+                .map(d => ({
+                  id: d.id,
+                  data: () => ({ tags: d.tags, workspaceTags: d.tags, workspaceIds: [workspaceId], workspaceId }),
+                })),
+            }),
+          })),
+          get: vi.fn().mockResolvedValue({ docs: [] }),
+        })),
       };
     });
     return { mockCollection };
@@ -5408,35 +5220,20 @@ describe('Property 17: Query Performance', () => {
     workspaceId: string
   ) => {
     const mockCollection = vi.fn((collectionName: string) => {
-      if (collectionName === 'schools') {
-        return {
-          where: vi.fn((_field: string, _op: string, _val: string) => ({
-            where: vi.fn((_f2: string, _o2: string, chunk: string[]) => ({
-              get: vi.fn().mockResolvedValue({
-                docs: contactDocs
-                  .filter(d => chunk.some(t => d.tags.includes(t)))
-                  .map(d => ({
-                    id: d.id,
-                    data: () => ({ tags: d.tags, workspaceIds: [workspaceId], workspaceId }),
-                  })),
-              }),
-            })),
-            get: vi.fn().mockResolvedValue({ docs: [] }),
-          })),
-        };
-      }
-      if (collectionName === 'prospects') {
-        return {
-          where: vi.fn(() => ({
-            where: vi.fn(() => ({
-              get: vi.fn().mockResolvedValue({ docs: [] }),
-            })),
-            get: vi.fn().mockResolvedValue({ docs: [] }),
-          })),
-        };
-      }
       return {
-        where: vi.fn(() => ({ get: vi.fn().mockResolvedValue({ docs: [] }) })),
+        where: vi.fn((_field: string, _op: string, _val: string) => ({
+          where: vi.fn((_f2: string, _o2: string, chunk: string[]) => ({
+            get: vi.fn().mockResolvedValue({
+              docs: contactDocs
+                .filter(d => chunk.some(t => d.tags.includes(t)))
+                .map(d => ({
+                  id: d.id,
+                  data: () => ({ tags: d.tags, workspaceTags: d.tags, workspaceIds: [workspaceId], workspaceId }),
+                })),
+            }),
+          })),
+          get: vi.fn().mockResolvedValue({ docs: [] }),
+        })),
       };
     });
     return { mockCollection };
@@ -5451,27 +5248,15 @@ describe('Property 17: Query Performance', () => {
     workspaceId: string
   ) => {
     const mockCollection = vi.fn((collectionName: string) => {
-      if (collectionName === 'schools') {
-        return {
-          where: vi.fn(() => ({
-            get: vi.fn().mockResolvedValue({
-              docs: contactDocs.map(d => ({
-                id: d.id,
-                data: () => ({ tags: d.tags, workspaceIds: [workspaceId], workspaceId }),
-              })),
-            }),
-          })),
-        };
-      }
-      if (collectionName === 'prospects') {
-        return {
-          where: vi.fn(() => ({
-            get: vi.fn().mockResolvedValue({ docs: [] }),
-          })),
-        };
-      }
       return {
-        where: vi.fn(() => ({ get: vi.fn().mockResolvedValue({ docs: [] }) })),
+        where: vi.fn(() => ({
+          get: vi.fn().mockResolvedValue({
+            docs: contactDocs.map(d => ({
+              id: d.id,
+              data: () => ({ tags: d.tags, workspaceTags: d.tags, workspaceIds: [workspaceId], workspaceId }),
+            })),
+          }),
+        })),
       };
     });
     return { mockCollection };

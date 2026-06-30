@@ -46,7 +46,9 @@ vi.mock('firebase/firestore', () => ({
   Timestamp: {},
   arrayUnion: vi.fn((value) => value),
 }));
-
+vi.mock('../scoring-engine', () => ({
+  recalculateEntityScore: vi.fn().mockResolvedValue(undefined),
+}));
 // Import mocked functions
 import { getDoc, addDoc, updateDoc, getDocs } from 'firebase/firestore';
 
@@ -104,7 +106,6 @@ describe('SaaS Actions - Workspace Industry Validation', () => {
         organizationId: 'org_123',
         
         name: 'Test Entity',
-        entityContacts: [],
         entityType: 'institution',
     entityContacts: [],
     globalTags: [],
@@ -303,7 +304,6 @@ describe('SaaS Actions - Workspace Industry Validation', () => {
         organizationId: 'org_123',
         
         name: 'Test Entity',
-        entityContacts: [],
         entityType: 'institution',
     entityContacts: [],
     globalTags: [],

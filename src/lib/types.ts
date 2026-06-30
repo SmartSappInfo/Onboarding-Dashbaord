@@ -3431,6 +3431,30 @@ export interface PageSection {
   blocks: PageBlock[];
 }
 
+export interface PageSectionProps {
+  heading?: string;
+  background?: string;
+  layout?: '1-col' | '2-col' | '3-col' | '4-col' | 'grid';
+  backgroundType?: 'none' | 'color' | 'image' | 'video';
+  backgroundColor?: string;
+  backgroundImageUrl?: string;
+  backgroundVideoUrl?: string;
+  overlayColor?: string;
+  overlayOpacity?: number;
+  paddingTop?: string;
+  paddingBottom?: string;
+  paddingLeft?: string;
+  paddingRight?: string;
+  marginTop?: string;
+  marginBottom?: string;
+  minHeight?: string;
+  verticalAlign?: 'top' | 'center' | 'bottom';
+  columnGap?: 'small' | 'medium' | 'large';
+  visibilityDevice?: 'all' | 'desktop' | 'mobile';
+  visibilityBehavior?: 'all' | 'has_tag' | 'no_tag';
+  visibilityTag?: string;
+}
+
 export interface CampaignPageStructure {
   sections: PageSection[];
 }

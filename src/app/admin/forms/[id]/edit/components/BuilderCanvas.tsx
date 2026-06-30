@@ -14,13 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -47,6 +41,7 @@ import {
   ToggleLeft,
   MapPin,
   Link as LinkIcon,
+  Layout,
 } from 'lucide-react';
 import type { ViewportSize } from './ViewportToggle';
 
@@ -144,7 +139,8 @@ function SortableFieldItem({
         <div
           {...attributes}
           {...listeners}
-          className="cursor-grab p-1 hover:bg-muted rounded text-muted-foreground/30 hover:text-muted-foreground shrink-0 touch-none"
+          aria-label="Drag to reorder field"
+          className="cursor-grab p-2 hover:bg-muted/60 rounded-xl text-muted-foreground/30 hover:text-muted-foreground shrink-0 touch-none flex items-center justify-center h-11 w-11"
         >
           <GripVertical className="h-4 w-4" />
         </div>
@@ -177,25 +173,25 @@ function SortableFieldItem({
         </div>
 
         {/* Interactive Controls */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Select
             value={instance.width || 'full'}
             onValueChange={onUpdateWidth}
           >
-            <SelectTrigger className="h-7 w-16 rounded-lg text-[9px] border-none bg-muted/40 font-semibold focus:ring-0">
+            <SelectTrigger className="h-9 w-20 rounded-xl text-[10px] border-none bg-muted/40 font-semibold focus:ring-0">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-lg">
+            <SelectContent className="rounded-xl">
               <SelectItem value="full">Full</SelectItem>
               <SelectItem value="half">Half</SelectItem>
             </SelectContent>
           </Select>
 
-          <div className="flex items-center gap-0.5 bg-muted/40 rounded-lg p-0.5">
+          <div className="flex items-center gap-1 bg-muted/40 rounded-xl p-1 h-9">
             <Switch
               checked={instance.required}
               onCheckedChange={onUpdateRequired}
-              className="scale-[0.65]"
+              className="scale-75"
             />
             <span className="text-[8px] font-bold text-muted-foreground pr-1">Req</span>
           </div>
@@ -203,28 +199,31 @@ function SortableFieldItem({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-lg text-muted-foreground/50 hover:text-foreground"
+            className="h-11 w-11 rounded-xl text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 transition-colors active:scale-95"
             onClick={onMoveUp}
             disabled={isFirst}
+            aria-label="Move field up"
           >
-            <ChevronUp className="h-3.5 w-3.5" />
+            <ChevronUp className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-lg text-muted-foreground/50 hover:text-foreground"
+            className="h-11 w-11 rounded-xl text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 transition-colors active:scale-95"
             onClick={onMoveDown}
             disabled={isLast}
+            aria-label="Move field down"
           >
-            <ChevronDown className="h-3.5 w-3.5" />
+            <ChevronDown className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-11 w-11 rounded-xl text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity active:scale-95"
             onClick={onRemove}
+            aria-label="Remove field"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -257,6 +256,50 @@ function SortableFieldItem({
   );
 }
 
+function EmptyCanvasZone({ onAddStandardField }: { onAddStandardField: (type: string) => void }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'canvas-empty-dropzone',
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "flex-1 flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-[2.5rem] border-border/40 transition-all duration-300 p-8 text-center select-none min-h-[300px]",
+        isOver ? "border-primary bg-primary/[0.03] scale-[0.99] shadow-inner" : "border-border/50 bg-background/40 shadow-sm"
+      )}
+    >
+      <div className="p-4 bg-primary/10 rounded-3xl mb-4 transition-transform duration-300 hover:scale-110">
+        <Layout className="h-8 w-8 text-primary" />
+      </div>
+      <h3 className="text-sm font-bold text-foreground">Your Canvas is Waiting</h3>
+      <p className="text-xs text-muted-foreground mt-1 max-w-[260px] leading-relaxed">
+        Drag and drop fields from the sidebar, or use the quick buttons below to seed your form.
+      </p>
+      <div className="flex gap-2 mt-6">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-xl text-[10px] font-semibold gap-1.5 active:scale-[0.97] transition-all"
+          onClick={() => onAddStandardField('email')}
+        >
+          <Mail className="h-3.5 w-3.5" /> + Email
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-xl text-[10px] font-semibold gap-1.5 active:scale-[0.97] transition-all"
+          onClick={() => onAddStandardField('phone')}
+        >
+          <Phone className="h-3.5 w-3.5" /> + Phone
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 interface BuilderCanvasProps {
   form: Partial<Form>;
   fields: FormFieldInstance[];
@@ -268,6 +311,7 @@ interface BuilderCanvasProps {
   onMoveField: (instanceId: string, direction: 'up' | 'down') => void;
   onRemoveField: (instanceId: string) => void;
   onReorderFields: (orderedFields: FormFieldInstance[]) => void;
+  onAddStandardField: (type: string) => void;
 }
 
 export default function BuilderCanvas({
@@ -281,25 +325,8 @@ export default function BuilderCanvas({
   onMoveField,
   onRemoveField,
   onReorderFields,
+  onAddStandardField,
 }: BuilderCanvasProps) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = fields.findIndex(f => f.id === active.id);
-    const newIndex = fields.findIndex(f => f.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    const reordered = arrayMove(fields, oldIndex, newIndex);
-    // Recalculate orders
-    onReorderFields(reordered.map((f, i) => ({ ...f, order: i })));
-  };
-
   const isMobile = viewportSize === 'mobile';
   const isTablet = viewportSize === 'tablet';
 
@@ -337,42 +364,36 @@ export default function BuilderCanvas({
 
         {/* Fields list */}
         {fields.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-2xl border-border/50 bg-background/50">
-            <span className="text-xs font-semibold text-muted-foreground">
-              Canvas Empty. Click fields in the library to populate.
-            </span>
-          </div>
+          <EmptyCanvasZone onAddStandardField={onAddStandardField} />
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-4 flex-1">
-                {fields
-                  .sort((a, b) => a.order - b.order)
-                  .map((instance, idx) => {
-                    const appField = getAppField(instance.appFieldId);
-                    return (
-                      <SortableFieldItem
-                        key={instance.id}
-                        instance={instance}
-                        idx={idx}
-                        appField={appField}
-                        isSelected={selectedFieldId === instance.id}
-                        isFirst={idx === 0}
-                        isLast={idx === fields.length - 1}
-                        themePreset={themePreset}
-                        inputStyle={inputStyle}
-                        onSelect={() => onSelectField(instance)}
-                        onUpdateWidth={w => onUpdateFieldInstance(instance.id, { width: w })}
-                        onUpdateRequired={r => onUpdateFieldInstance(instance.id, { required: r })}
-                        onMoveUp={() => onMoveField(instance.id, 'up')}
-                        onMoveDown={() => onMoveField(instance.id, 'down')}
-                        onRemove={() => onRemoveField(instance.id)}
-                      />
-                    );
-                  })}
-              </div>
-            </SortableContext>
-          </DndContext>
+          <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-4 flex-1">
+              {fields
+                .sort((a, b) => a.order - b.order)
+                .map((instance, idx) => {
+                  const appField = getAppField(instance.appFieldId);
+                  return (
+                    <SortableFieldItem
+                      key={instance.id}
+                      instance={instance}
+                      idx={idx}
+                      appField={appField}
+                      isSelected={selectedFieldId === instance.id}
+                      isFirst={idx === 0}
+                      isLast={idx === fields.length - 1}
+                      themePreset={themePreset}
+                      inputStyle={inputStyle}
+                      onSelect={() => onSelectField(instance)}
+                      onUpdateWidth={w => onUpdateFieldInstance(instance.id, { width: w })}
+                      onUpdateRequired={r => onUpdateFieldInstance(instance.id, { required: r })}
+                      onMoveUp={() => onMoveField(instance.id, 'up')}
+                      onMoveDown={() => onMoveField(instance.id, 'down')}
+                      onRemove={() => onRemoveField(instance.id)}
+                    />
+                  );
+                })}
+            </div>
+          </SortableContext>
         )}
 
         {/* Simulated CTA Submit Button */}

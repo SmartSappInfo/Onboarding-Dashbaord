@@ -19,6 +19,16 @@ import PropertiesSidebar from './components/PropertiesSidebar';
 import BuilderCanvas from './components/BuilderCanvas';
 import ViewportToggle, { type ViewportSize } from './components/ViewportToggle';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -147,6 +157,11 @@ export default function EditFormPage() {
   const [isPendingSave, startSaveTransition] = React.useTransition();
   const [isShareOpen, setIsShareOpen] = React.useState(false);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -273,6 +288,18 @@ export default function EditFormPage() {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [formData, hasInitialized]);
 
+  // Tab exit guard to warn users of unsaved changes
+  React.useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (saveStatus === 'dirty' || saveStatus === 'saving') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [saveStatus]);
+
   // Helpers
   const updateFields = (updates: Partial<Form>) => {
     setFormData(prev => ({ ...prev, ...updates }));
@@ -345,6 +372,69 @@ export default function EditFormPage() {
       width: 'full',
     };
     updateField('fields', [...fields, newInstance]);
+  };
+
+  const addStandardFieldByType = (type: string) => {
+    const found = availableFields?.find(f => f.type === type);
+    if (found) {
+      addFieldFromRegistry(found);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Field Type Not Found',
+        description: `No field of type ${type} is available in your blueprints.`,
+      });
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id.toString();
+    const overId = over.id.toString();
+
+    // 1. Sidebar dragging drop resolution
+    if (activeId.startsWith('sidebar-')) {
+      const fieldId = activeId.replace('sidebar-', '');
+      const appField = availableFields?.find(f => f.id === fieldId);
+      if (!appField) return;
+
+      let insertIndex = fields.length;
+      if (overId !== 'canvas-empty-dropzone') {
+        const targetIndex = fields.findIndex(f => f.id === overId);
+        if (targetIndex >= 0) {
+          insertIndex = targetIndex;
+        }
+      }
+
+      const newInstance: FormFieldInstance = {
+        id: `f_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+        appFieldId: appField.id,
+        required: appField.validationRules?.required || false,
+        hidden: false,
+        order: insertIndex,
+        width: 'full',
+      };
+
+      const newFields = [...fields];
+      newFields.splice(insertIndex, 0, newInstance);
+      
+      const orderedFields = newFields.map((f, i) => ({ ...f, order: i }));
+      updateField('fields', orderedFields);
+      setSelectedFieldId(newInstance.id);
+      return;
+    }
+
+    // 2. Existing canvas field item reordering
+    if (activeId === overId) return;
+
+    const oldIndex = fields.findIndex(f => f.id === activeId);
+    const newIndex = fields.findIndex(f => f.id === overId);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(fields, oldIndex, newIndex);
+    updateField('fields', reordered.map((f, i) => ({ ...f, order: i })));
   };
 
   const removeField = (instanceId: string) => {
@@ -700,43 +790,46 @@ export default function EditFormPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 flex min-h-0 overflow-hidden">
-                  {/* Left Sidebar: Fields Registry */}
-                  <FieldsSidebar
-                    availableFields={availableFields || undefined}
-                    fieldGroups={fieldGroups || undefined}
-                    addedFields={fields}
-                    formType={formData.formType || 'global'}
-                    contactScope={formData.contactScope}
-                    onAddField={addFieldFromRegistry}
-                  />
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <div className="flex-1 flex min-h-0 overflow-hidden">
+                    {/* Left Sidebar: Fields Registry */}
+                    <FieldsSidebar
+                      availableFields={availableFields || undefined}
+                      fieldGroups={fieldGroups || undefined}
+                      addedFields={fields}
+                      formType={formData.formType || 'global'}
+                      contactScope={formData.contactScope}
+                      onAddField={addFieldFromRegistry}
+                    />
 
-                  {/* Center Canvas: Interactive Sandbox Simulator */}
-                  <BuilderCanvas
-                    form={formData}
-                    fields={fields}
-                    selectedFieldId={selectedFieldId}
-                    viewportSize={viewportSize}
-                    getAppField={getAppField}
-                    onSelectField={(instance) => setSelectedFieldId(instance.id)}
-                    onUpdateFieldInstance={updateFieldInstance}
-                    onMoveField={moveField}
-                    onRemoveField={removeField}
-                    onReorderFields={(reordered) => updateField('fields', reordered)}
-                  />
+                    {/* Center Canvas: Interactive Sandbox Simulator */}
+                    <BuilderCanvas
+                      form={formData}
+                      fields={fields}
+                      selectedFieldId={selectedFieldId}
+                      viewportSize={viewportSize}
+                      getAppField={getAppField}
+                      onSelectField={(instance) => setSelectedFieldId(instance.id)}
+                      onUpdateFieldInstance={updateFieldInstance}
+                      onMoveField={moveField}
+                      onRemoveField={removeField}
+                      onReorderFields={(reordered) => updateField('fields', reordered)}
+                      onAddStandardField={addStandardFieldByType}
+                    />
 
-                  {/* Right Sidebar: Selected Field Properties configuration */}
-                  <PropertiesSidebar
-                    selectedInstance={fields.find(f => f.id === selectedFieldId) || null}
-                    appField={fields.find(f => f.id === selectedFieldId) ? getAppField(fields.find(f => f.id === selectedFieldId)!.appFieldId) : undefined}
-                    onUpdate={updateFieldInstance}
-                    onRemove={(id) => {
-                      removeField(id);
-                      setSelectedFieldId(null);
-                    }}
-                    onClose={() => setSelectedFieldId(null)}
-                  />
-                </div>
+                    {/* Right Sidebar: Selected Field Properties configuration */}
+                    <PropertiesSidebar
+                      selectedInstance={fields.find(f => f.id === selectedFieldId) || null}
+                      appField={fields.find(f => f.id === selectedFieldId) ? getAppField(fields.find(f => f.id === selectedFieldId)!.appFieldId) : undefined}
+                      onUpdate={updateFieldInstance}
+                      onRemove={(id) => {
+                        removeField(id);
+                        setSelectedFieldId(null);
+                      }}
+                      onClose={() => setSelectedFieldId(null)}
+                    />
+                  </div>
+                </DndContext>
               </motion.div>
             )}
 

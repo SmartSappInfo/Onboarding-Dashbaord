@@ -9,6 +9,8 @@ import {
     useSensor,
     useSensors,
     type DragEndEvent,
+    useDroppable,
+    type CollisionDetection
 } from '@dnd-kit/core';
 import {
     SortableContext,
@@ -52,10 +54,11 @@ interface CanvasProps {
     onSaveSectionAsTemplate: (section: PageSection) => void;
     onReorderSections: (from: number, to: number) => void;
     onReorderBlocks: (sectionId: string, from: number, to: number) => void;
+    onMoveBlockToColumn: (blockId: string, targetSectionId: string, targetColumnIndex: number, targetIndex: number) => void;
 }
 
 // ─── Sortable Section Wrapper ────────────────────────────────────────────
-function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit }: {
+function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, editMode }: {
     section: PageSection;
     idx: number;
     total: number;
@@ -64,6 +67,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
     onMove: (dir: 'up' | 'down') => void;
     onSave: () => void;
     onEdit: () => void;
+    editMode: 'columns' | 'components';
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
 
@@ -78,12 +82,13 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
             ref={setNodeRef}
             style={style}
             className={cn(
-                "group relative p-8 md:p-12 transition-all border-2 border-transparent hover:border-emerald-500/20 border-dashed rounded-xl",
+                "group relative transition-all border-2 border-transparent border-dashed rounded-xl",
+                editMode === 'columns' ? "hover:border-emerald-500/30" : "hover:border-slate-200/50",
                 isDragging && "z-50 shadow-2xl ring-2 ring-emerald-500/30"
             )}
         >
             {/* Section Controls - Top Left */}
-            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-10">
+            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-20">
                 <div
                     {...attributes}
                     {...listeners}
@@ -100,7 +105,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                     onClick={(e) => { e.stopPropagation(); onEdit(); }}
                     title="Section settings"
                 >
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
                 </Button>
                 <Button
                     variant="secondary" size="icon"
@@ -108,20 +113,20 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                     onClick={(e) => { e.stopPropagation(); onSave(); }}
                     title="Save section as template"
                 >
-                    <FolderHeart className="w-3.5 h-3.5" />
+                    <FolderHeart className="w-3.5 h-3.5 text-slate-400" />
                 </Button>
             </div>
 
             {/* Section Controls - Top Right */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10">
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-20">
                 <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
-                    <ArrowUp className="w-3 h-3" />
+                    <ArrowUp className="w-3 h-3 text-slate-400" />
                 </Button>
                 <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
-                    <ArrowDown className="w-3 h-3" />
+                    <ArrowDown className="w-3 h-3 text-slate-400" />
                 </Button>
                 <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-red-400 transition-all" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3 h-3 text-slate-400 hover:text-red-400" />
                 </Button>
             </div>
 
@@ -162,11 +167,11 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
             )}
         >
             {/* Block Controls */}
-            <div className="absolute -top-3 -right-2 opacity-0 group-hover/block:opacity-100 transition-opacity flex items-center gap-1 z-10 scale-90 origin-right">
+            <div className="absolute -top-3 -right-2 opacity-0 group-hover/block:opacity-100 transition-opacity flex items-center gap-1 z-20 scale-90 origin-right">
                 <div
                     {...attributes}
                     {...listeners}
-                    className="h-5 w-5 rounded-full shadow-md bg-white hover:bg-emerald-50 border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing"
+                    className="h-5 w-5 rounded-full shadow-md bg-white hover:bg-emerald-55 border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing"
                 >
                     <GripVertical className="w-2.5 h-2.5 text-slate-400" />
                 </div>
@@ -189,6 +194,81 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
     );
 }
 
+// ─── Column cell container ───────────────────────────────────────────────
+function ColumnCell({
+    sectionId,
+    colIdx,
+    blocks,
+    selectedBlockId,
+    onSelectBlock,
+    onSetTab,
+    onRemoveBlock,
+    onMoveBlock,
+    onDuplicateBlock,
+    editCtx,
+    editMode,
+}: {
+    sectionId: string;
+    colIdx: number;
+    blocks: PageBlock[];
+    selectedBlockId: string | null;
+    onSelectBlock: (id: string | null) => void;
+    onSetTab: (tab: string) => void;
+    onRemoveBlock: (id: string) => void;
+    onMoveBlock: (id: string, dir: 'up' | 'down') => void;
+    onDuplicateBlock: (id: string) => void;
+    editCtx: (id: string) => BlockRenderContext;
+    editMode: 'columns' | 'components';
+}) {
+    const colId = `${sectionId}-col-${colIdx}`;
+    const { setNodeRef, isOver } = useDroppable({
+        id: colId,
+    });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className={cn(
+                "flex-1 min-h-[120px] rounded-2xl p-4 transition-all flex flex-col gap-4 relative border border-dashed border-transparent",
+                editMode === 'columns' && "border-slate-300/40 bg-slate-50/30",
+                isOver && "bg-emerald-500/5 border-emerald-500/20 scale-[0.99] shadow-inner"
+            )}
+        >
+            {editMode === 'columns' && (
+                <div className="absolute top-1.5 left-3 text-[8px] font-bold text-slate-400/50 uppercase tracking-widest pointer-events-none select-none">
+                    Column {colIdx + 1}
+                </div>
+            )}
+
+            <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                {blocks.map((block, bIdx) => (
+                    <SortableBlock
+                        key={block.id}
+                        block={block}
+                        bIdx={bIdx}
+                        total={blocks.length}
+                        selected={selectedBlockId === block.id}
+                        onSelect={() => { onSelectBlock(block.id); onSetTab('edit'); }}
+                        onRemove={() => onRemoveBlock(block.id)}
+                        onMove={(dir) => onMoveBlock(block.id, dir)}
+                        onDuplicate={() => onDuplicateBlock(block.id)}
+                    >
+                        <BlockRenderer block={block} ctx={editCtx(block.id)} />
+                    </SortableBlock>
+                ))}
+            </SortableContext>
+
+            {blocks.length === 0 && (
+                <div className="flex-1 flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                    <PlusSquare className="w-5 h-5 text-slate-300 mb-1" />
+                    <p className="text-[9px] font-bold text-slate-400">Empty Column {colIdx + 1}</p>
+                    <p className="text-[8px] text-slate-300">Drag components here</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Main Canvas ─────────────────────────────────────────────────────────
 const Canvas = React.memo(function Canvas({
     version,
@@ -207,12 +287,19 @@ const Canvas = React.memo(function Canvas({
     onEditSection,
     onSaveSectionAsTemplate,
     onReorderSections,
-    onReorderBlocks,
+    onMoveBlockToColumn,
 }: CanvasProps) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
+
+    const [editMode, setEditMode] = React.useState<'columns' | 'components'>('components');
+    const [isMounted, setIsMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     // Per-block edit context: inline edits route back to the block's props.
     const editCtx = (blockId: string): BlockRenderContext => ({
@@ -223,24 +310,116 @@ const Canvas = React.memo(function Canvas({
         onPropChange: (patch) => onUpdateBlockProps(blockId, patch),
     });
 
-    const handleSectionDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-
-        const sections = version.structureJson.sections;
-        const fromIndex = sections.findIndex(s => s.id === active.id);
-        const toIndex = sections.findIndex(s => s.id === over.id);
-        if (fromIndex !== -1 && toIndex !== -1) {
-            onReorderSections(fromIndex, toIndex);
+    const customCollisionDetection: CollisionDetection = (args) => {
+        const activeId = args.active.id.toString();
+        if (activeId.startsWith('sec_')) {
+            const sectionDroppables = args.droppableContainers.filter(
+                (c) => c.id.toString().startsWith('sec_')
+            );
+            return closestCenter({
+                ...args,
+                droppableContainers: sectionDroppables,
+            });
         }
+
+        const blockDroppables = args.droppableContainers.filter(
+            (c) => !c.id.toString().startsWith('sec_')
+        );
+        return closestCenter({
+            ...args,
+            droppableContainers: blockDroppables,
+        });
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over) return;
+
+        const activeId = active.id.toString();
+        const overId = over.id.toString();
+
+        // 1. Dragging a Section
+        if (activeId.startsWith('sec_')) {
+            if (activeId === overId) return;
+            const sections = version.structureJson.sections;
+            const fromIndex = sections.findIndex(s => s.id === activeId);
+            const toIndex = sections.findIndex(s => s.id === overId);
+            if (fromIndex !== -1 && toIndex !== -1) {
+                onReorderSections(fromIndex, toIndex);
+            }
+            return;
+        }
+
+        // 2. Dragging a Block (Nestable / Cross-column movement)
+        let targetSectionId = '';
+        let targetColIdx = 0;
+        let targetBlockIndex = 0;
+
+        if (overId.includes('-col-')) {
+            const parts = overId.split('-col-');
+            targetSectionId = parts[0];
+            targetColIdx = parseInt(parts[1], 10);
+
+            const targetSection = version.structureJson.sections.find(s => s.id === targetSectionId);
+            if (targetSection) {
+                const targetColBlocks = targetSection.blocks.filter(b => (b.props.column ?? 0) === targetColIdx);
+                targetBlockIndex = targetColBlocks.length;
+            }
+        } else {
+            let found = false;
+            for (const sec of version.structureJson.sections) {
+                const bIdx = sec.blocks.findIndex(b => b.id === overId);
+                if (bIdx !== -1) {
+                    targetSectionId = sec.id;
+                    const overBlock = sec.blocks[bIdx];
+                    targetColIdx = overBlock.props.column ?? 0;
+
+                    const colBlocks = sec.blocks.filter(b => (b.props.column ?? 0) === targetColIdx);
+                    targetBlockIndex = colBlocks.findIndex(b => b.id === overId);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return;
+        }
+
+        onMoveBlockToColumn(activeId, targetSectionId, targetColIdx, targetBlockIndex);
     };
 
     const sectionIds = version.structureJson.sections.map(s => s.id);
 
     return (
-        <main className="flex-1 overflow-y-auto p-8 flex justify-center custom-scrollbar" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)' }}>
+        <main className="flex-1 overflow-y-auto p-8 flex flex-col items-center justify-start custom-scrollbar gap-6" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)' }}>
             {/* Grid Pattern Overlay */}
             <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #94a3b8 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+
+            {/* Mode Switcher */}
+            <div className="flex bg-slate-900 border border-slate-800 p-1 rounded-xl shadow-lg relative z-10 w-fit">
+                <button
+                    type="button"
+                    onClick={() => setEditMode('components')}
+                    className={cn(
+                        "text-[9px] font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition-all active:scale-[0.97]",
+                        editMode === 'components'
+                            ? "bg-emerald-500 text-slate-950 font-black shadow-sm"
+                            : "text-slate-400 hover:text-slate-200"
+                    )}
+                >
+                    Edit Components
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setEditMode('columns')}
+                    className={cn(
+                        "text-[9px] font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition-all active:scale-[0.97]",
+                        editMode === 'columns'
+                            ? "bg-emerald-500 text-slate-950 font-black shadow-sm"
+                            : "text-slate-400 hover:text-slate-200"
+                    )}
+                >
+                    Edit Columns
+                </button>
+            </div>
 
             <div
                 className={cn(
@@ -250,57 +429,139 @@ const Canvas = React.memo(function Canvas({
                         : "w-[390px] rounded-[2.5rem] border-[8px] border-slate-800 ring-1 ring-slate-700"
                 )}
             >
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
+                <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd}>
                     <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
                         <div className="divide-y divide-slate-100">
                             {version.structureJson.sections.length > 0 ? (
-                                version.structureJson.sections.map((section, idx) => (
-                                    <SortableSection
-                                        key={section.id}
-                                        section={section}
-                                        idx={idx}
-                                        total={version.structureJson.sections.length}
-                                        onRemove={() => onRemoveSection(section.id)}
-                                        onMove={(dir) => onMoveSection(section.id, dir)}
-                                        onSave={() => onSaveSectionAsTemplate(section)}
-                                        onEdit={() => onEditSection(section.id)}
-                                    >
-                                        <div className="max-w-4xl mx-auto space-y-4">
-                                            {section.blocks.length > 0 ? (
-                                                <SortableContext items={section.blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                                                    {section.blocks.map((block, bIdx) => (
-                                                        <SortableBlock
-                                                            key={block.id}
-                                                            block={block}
-                                                            bIdx={bIdx}
-                                                            total={section.blocks.length}
-                                                            selected={selectedBlockId === block.id}
-                                                            onSelect={() => { onSelectBlock(block.id); onSetTab('edit'); }}
-                                                            onRemove={() => onRemoveBlock(block.id)}
-                                                            onMove={(dir) => onMoveBlock(block.id, dir)}
-                                                            onDuplicate={() => onDuplicateBlock(block.id)}
-                                                        >
-                                                            <BlockRenderer block={block} ctx={editCtx(block.id)} />
-                                                        </SortableBlock>
-                                                    ))}
-                                                </SortableContext>
-                                            ) : (
-                                                <div
-                                                    className="py-20 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center gap-4 group/empty hover:border-emerald-500/30 transition-all cursor-pointer"
-                                                    onClick={() => onSetTab('add')}
-                                                >
-                                                    <div className="p-4 bg-slate-50 rounded-full group-hover/empty:scale-110 group-hover/empty:bg-emerald-500/5 transition-all">
-                                                        <PlusSquare className="w-8 h-8 text-slate-300 group-hover/empty:text-emerald-500/40" />
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-xs font-bold text-slate-400 group-hover/empty:text-emerald-500/60">Empty Section</p>
-                                                        <p className="text-[10px] text-slate-300 mt-1">Click to add blocks</p>
-                                                    </div>
+                                version.structureJson.sections.map((section, idx) => {
+                                    const sectionProps = section.props || {};
+                                    const bgType = sectionProps.backgroundType || 'none';
+                                    const overlayCol = sectionProps.overlayColor || '#000000';
+                                    const overlayOp = sectionProps.overlayOpacity !== undefined ? sectionProps.overlayOpacity : 0;
+
+                                    const padTop = sectionProps.paddingTop || '2.5rem';
+                                    const padBottom = sectionProps.paddingBottom || '2.5rem';
+                                    const padLeft = sectionProps.paddingLeft || '1.5rem';
+                                    const padRight = sectionProps.paddingRight || '1.5rem';
+                                    const minHeight = sectionProps.minHeight || 'auto';
+
+                                    const sectionStyle: React.CSSProperties = {
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                        paddingTop: padTop,
+                                        paddingBottom: padBottom,
+                                        paddingLeft: padLeft,
+                                        paddingRight: padRight,
+                                        minHeight: minHeight,
+                                        backgroundColor: bgType === 'color' ? sectionProps.backgroundColor : undefined,
+                                        backgroundImage: bgType === 'image' && sectionProps.backgroundImageUrl ? `url(${sectionProps.backgroundImageUrl})` : undefined,
+                                        backgroundSize: sectionProps.backgroundSize || 'cover',
+                                        backgroundPosition: sectionProps.backgroundPosition || 'center',
+                                        backgroundRepeat: sectionProps.backgroundRepeat || 'no-repeat',
+                                    };
+
+                                    const layout = sectionProps.layout || '1-col';
+                                    const colsCount = layout === '2-col' ? 2 : layout === '3-col' ? 3 : layout === '4-col' ? 4 : layout === 'grid' ? 2 : 1;
+
+                                    // Distribute blocks dynamically across columns
+                                    const columnsBlocks = Array.from({ length: colsCount }, (_, colIdx) => {
+                                        return section.blocks.filter(b => {
+                                            const colVal = b.props.column ?? 0;
+                                            if (colIdx === colsCount - 1) {
+                                                return colVal >= colIdx;
+                                            }
+                                            return colVal === colIdx;
+                                        });
+                                    });
+
+                                    const colGapClass = sectionProps.columnGap === 'small' ? 'gap-4' : sectionProps.columnGap === 'large' ? 'gap-12' : 'gap-8';
+                                    const alignClass = sectionProps.verticalAlign === 'center' ? 'items-center' : sectionProps.verticalAlign === 'bottom' ? 'items-end' : 'items-start';
+
+                                    let gridStyle: React.CSSProperties = {};
+                                    if (layout === '2-col') {
+                                        gridStyle = { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' };
+                                    } else if (layout === '3-col') {
+                                        gridStyle = { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' };
+                                    } else if (layout === '4-col') {
+                                        gridStyle = { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' };
+                                    } else if (layout === 'grid') {
+                                        gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
+                                    }
+
+                                    return (
+                                        <SortableSection
+                                            key={section.id}
+                                            section={section}
+                                            idx={idx}
+                                            total={version.structureJson.sections.length}
+                                            onRemove={() => onRemoveSection(section.id)}
+                                            onMove={(dir) => onMoveSection(section.id, dir)}
+                                            onSave={() => onSaveSectionAsTemplate(section)}
+                                            onEdit={() => onEditSection(section.id)}
+                                            editMode={editMode}
+                                        >
+                                            {/* HTML5 Loop Video Background */}
+                                            {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && (
+                                                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                                                    <video
+                                                        src={sectionProps.backgroundVideoUrl}
+                                                        autoPlay
+                                                        loop
+                                                        muted
+                                                        playsInline
+                                                        className="w-full h-full object-cover"
+                                                    />
                                                 </div>
                                             )}
-                                        </div>
-                                    </SortableSection>
-                                ))
+
+                                            {/* Color Overlay */}
+                                            {overlayOp > 0 && (
+                                                <div
+                                                    className="absolute inset-0 pointer-events-none z-10"
+                                                    style={{
+                                                        backgroundColor: overlayCol,
+                                                        opacity: overlayOp,
+                                                    }}
+                                                />
+                                            )}
+
+                                            <div style={sectionStyle} className="w-full">
+                                                <div className="max-w-4xl mx-auto relative z-20">
+                                                    {sectionProps.heading && (
+                                                        <h2
+                                                            className="text-2xl font-bold tracking-tight mb-8"
+                                                            style={{ color: theme.colors.text, fontFamily: theme.typography.headingFont }}
+                                                        >
+                                                            {sectionProps.heading}
+                                                        </h2>
+                                                    )}
+
+                                                    <div
+                                                        className={cn("w-full grid relative z-20", colGapClass, alignClass)}
+                                                        style={layout !== '1-col' ? gridStyle : undefined}
+                                                    >
+                                                        {columnsBlocks.map((colBlocks, colIdx) => (
+                                                            <ColumnCell
+                                                                key={colIdx}
+                                                                sectionId={section.id}
+                                                                colIdx={colIdx}
+                                                                blocks={colBlocks}
+                                                                selectedBlockId={selectedBlockId}
+                                                                onSelectBlock={onSelectBlock}
+                                                                onSetTab={onSetTab}
+                                                                onRemoveBlock={onRemoveBlock}
+                                                                onMoveBlock={onMoveBlock}
+                                                                onDuplicateBlock={onDuplicateBlock}
+                                                                editCtx={editCtx}
+                                                                editMode={editMode}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </SortableSection>
+                                    );
+                                })
                             ) : (
                                 <div className="p-24 text-center space-y-4">
                                     <div className="w-16 h-16 bg-slate-50 rounded-2xl mx-auto flex items-center justify-center border border-slate-200 border-dashed">

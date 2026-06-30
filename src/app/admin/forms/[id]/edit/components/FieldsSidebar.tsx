@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import type { AppField, FieldGroup, FormFieldInstance } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,87 @@ const FIELD_TYPE_ICONS: Record<string, React.ElementType> = {
   url: LinkIcon,
   hidden: EyeOff,
 };
+
+interface DraggableSidebarItemProps {
+  af: AppField;
+  isAlreadyAdded: boolean;
+  onAddField: (field: AppField) => void;
+}
+
+function DraggableSidebarItem({ af, isAlreadyAdded, onAddField }: DraggableSidebarItemProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `sidebar-${af.id}`,
+    disabled: isAlreadyAdded,
+  });
+
+  const Icon = FIELD_TYPE_ICONS[af.type] || CaseSensitive;
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: 50,
+      }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        "touch-none rounded-xl select-none",
+        isDragging && "pointer-events-none"
+      )}
+    >
+      <button
+        type="button"
+        disabled={isAlreadyAdded}
+        onClick={() => onAddField(af)}
+        className={cn(
+          'w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all border group/item text-xs',
+          isAlreadyAdded
+            ? 'opacity-40 cursor-not-allowed border-border/30 bg-muted/20'
+            : 'hover:bg-primary/5 hover:border-primary/20 border-border/50 cursor-pointer bg-background/30',
+          isDragging && 'opacity-30 border-primary shadow-lg ring-1 ring-primary/20'
+        )}
+      >
+        <div className="p-1.5 bg-primary/10 rounded-lg group-hover/item:scale-105 transition-transform shrink-0">
+          <Icon className="h-3.5 w-3.5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <p className="font-bold truncate text-foreground">{af.label}</p>
+            {af.isNative && (
+              <Badge
+                variant="secondary"
+                className="h-3.5 text-[6px] uppercase px-1 font-extrabold tracking-tighter bg-primary/10 text-primary border-none"
+              >
+                Native
+              </Badge>
+            )}
+            {af.type === 'hidden' && (
+              <Badge
+                variant="outline"
+                className="h-3.5 text-[6px] uppercase px-1 font-extrabold tracking-tighter"
+              >
+                Hidden
+              </Badge>
+            )}
+          </div>
+          <p className="text-[8px] text-muted-foreground font-mono truncate">
+            {'{{' + af.variableName + '}}'}
+          </p>
+        </div>
+        {isAlreadyAdded ? (
+          <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+        ) : (
+          <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+        )}
+      </button>
+    </div>
+  );
+}
 
 interface FieldsSidebarProps {
   availableFields: AppField[] | undefined;
@@ -132,53 +214,13 @@ export default function FieldsSidebar({
                     <div className="space-y-1.5">
                       {sortedFields.map(af => {
                         const isAlreadyAdded = addedFields.some(f => f.appFieldId === af.id);
-                        const Icon = FIELD_TYPE_ICONS[af.type] || CaseSensitive;
                         return (
-                          <button
+                          <DraggableSidebarItem
                             key={af.id}
-                            type="button"
-                            disabled={isAlreadyAdded}
-                            onClick={() => onAddField(af)}
-                            className={cn(
-                              'w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all border group/item text-xs',
-                              isAlreadyAdded
-                                ? 'opacity-40 cursor-not-allowed border-border/30 bg-muted/20'
-                                : 'hover:bg-primary/5 hover:border-primary/20 border-border/50 cursor-pointer bg-background/30'
-                            )}
-                          >
-                            <div className="p-1.5 bg-primary/10 rounded-lg group-hover/item:scale-105 transition-transform shrink-0">
-                              <Icon className="h-3.5 w-3.5 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="font-bold truncate">{af.label}</p>
-                                {af.isNative && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="h-3.5 text-[6px] uppercase px-1 font-extrabold tracking-tighter bg-primary/10 text-primary border-none"
-                                  >
-                                    Native
-                                  </Badge>
-                                )}
-                                {af.type === 'hidden' && (
-                                  <Badge
-                                    variant="outline"
-                                    className="h-3.5 text-[6px] uppercase px-1 font-extrabold tracking-tighter"
-                                  >
-                                    Hidden
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-[8px] text-muted-foreground font-mono truncate">
-                                {'{{' + af.variableName + '}}'}
-                              </p>
-                            </div>
-                            {isAlreadyAdded ? (
-                              <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                            ) : (
-                              <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                            )}
-                          </button>
+                            af={af}
+                            isAlreadyAdded={isAlreadyAdded}
+                            onAddField={onAddField}
+                          />
                         );
                       })}
                     </div>

@@ -546,6 +546,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onSaveSectionAsTemplate={handleSaveSectionAsTemplate}
                     onReorderSections={builder.reorderSections}
                     onReorderBlocks={builder.reorderBlocks}
+                    onMoveBlockToColumn={builder.moveBlockToColumn}
                 />
             </div>
             {isShareOpen && (

@@ -8,6 +8,25 @@ import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
 // localStorage is touched on mount; jsdom provides it, just reset between tests.
 beforeEach(() => localStorage.clear());
 
+vi.mock('next/navigation', () => ({
+  useRouter() {
+    return {
+      push: vi.fn(),
+      replace: vi.fn(),
+      prefetch: vi.fn(),
+      back: vi.fn(),
+    };
+  },
+  usePathname() {
+    return '/admin/messaging/templates';
+  },
+  useSearchParams() {
+    return {
+      get: vi.fn(),
+    };
+  },
+}));
+
 function email(id: string, name: string): MessageTemplate {
   return {
     id,

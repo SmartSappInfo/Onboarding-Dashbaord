@@ -1,6 +1,11 @@
 // @ts-nocheck
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { deletePipelineAction, archivePipelineAction } from '../../../../lib/pipeline-actions';
+import { deletePipelineAction, archivePipelineAction } from '@/lib/pipeline-actions';
+
+// Mock Next.js cache
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+}));
 
 // Mock canUser to always grant permissions
 vi.mock('@/lib/workspace-permissions', () => ({
@@ -17,6 +22,10 @@ let deletedRefs: string[] = [];
 let updatedFields: Record<string, unknown> | null = null;
 const pipelinesCollection: Record<string, unknown> = {
   'pipe-1': {
+    exists: true,
+    data: () => ({ workspaceIds: ['workspace-1'] }),
+  },
+  'pipe-active-deals': {
     exists: true,
     data: () => ({ workspaceIds: ['workspace-1'] }),
   },
@@ -38,6 +47,7 @@ vi.mock('@/lib/firebase-admin', () => {
         if (name === 'pipelines') {
           return {
             doc: vi.fn((id: string) => ({
+              id,
               get: vi.fn().mockImplementation(async () => {
                 const docData = pipelinesCollection[id];
                 if (docData) {
@@ -60,7 +70,6 @@ vi.mock('@/lib/firebase-admin', () => {
                   return {
                     limit: vi.fn((num: number) => ({
                       get: vi.fn().mockImplementation(async () => {
-                        // mock open deals check
                         if (val1 === 'pipe-active-deals' && val2 === 'open') {
                           return { empty: false, docs: [{ id: 'deal-active' }] };
                         }
@@ -68,17 +77,20 @@ vi.mock('@/lib/firebase-admin', () => {
                       }),
                     })),
                     get: vi.fn().mockImplementation(async () => {
-                      if (val1 === 'pipe-1') {
-                        return {
-                          docs: [
-                            { ref: { id: 'deal-closed-1' } },
-                            { ref: { id: 'deal-closed-2' } }
-                          ],
-                        };
-                      }
                       return { docs: [] };
                     }),
                   };
+                }),
+                get: vi.fn().mockImplementation(async () => {
+                  if (val1 === 'pipe-1') {
+                    return {
+                      docs: [
+                        { ref: { id: 'deal-closed-1' } },
+                        { ref: { id: 'deal-closed-2' } }
+                      ],
+                    };
+                  }
+                  return { docs: [] };
                 }),
               };
             }),

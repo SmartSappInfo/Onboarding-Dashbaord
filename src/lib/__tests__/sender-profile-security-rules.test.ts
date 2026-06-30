@@ -19,8 +19,31 @@ import {
 import { doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { connect } from 'node:net';
 
-describe('sender_profiles Security Rules (org isolation)', () => {
+async function isEmulatorRunning(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const socket = connect(port, '127.0.0.1');
+    socket.setTimeout(1000);
+    socket.on('connect', () => {
+      socket.end();
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.on('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
+}
+
+const emulatorRunning = await isEmulatorRunning(8080);
+
+describe.skipIf(!emulatorRunning)('sender_profiles Security Rules (org isolation)', () => {
   let testEnv: RulesTestEnvironment;
   const PROJECT_ID = `test-sender-profiles-${Date.now()}`;
 

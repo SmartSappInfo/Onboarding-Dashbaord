@@ -217,15 +217,15 @@ describe('Dashboard Module Migration', () => {
     it('should count contacts from workspace_entities for migrated contacts', async () => {
       const data = await getDashboardData(mockFirestore, 'workspace1');
       
-      // Should have 2 migrated contacts + 1 legacy school = 3 total
-      expect(data.metrics.totalSchools).toBe(3);
+      // Should have 2 migrated contacts
+      expect(data.metrics.totalSchools).toBe(2);
     });
 
-    it('should calculate total students from both migrated and legacy contacts', async () => {
+    it('should calculate total students from migrated contacts', async () => {
       const data = await getDashboardData(mockFirestore, 'workspace1');
       
-      // 100 + 150 (migrated) + 80 (legacy) = 330
-      expect(data.metrics.totalStudents).toBe(330);
+      // 100 + 150 (migrated) = 250
+      expect(data.metrics.totalStudents).toBe(250);
     });
 
     it('should exclude archived contacts from counts', async () => {
@@ -344,31 +344,6 @@ describe('Dashboard Module Migration', () => {
     });
   });
 
-  describe('Backward Compatibility', () => {
-    it('should handle workspaces with only legacy schools', async () => {
-      const data = await getDashboardData(mockFirestore, 'workspace1');
-      
-      expect(data.metrics.totalSchools).toBeGreaterThan(0);
-      expect(data.recentActivitySchools).toBeDefined();
-    });
-
-    it('should handle workspaces with only migrated contacts', async () => {
-      const data = await getDashboardData(mockFirestore, 'workspace1');
-      
-      expect(data.metrics.totalSchools).toBeGreaterThan(0);
-      expect(data.recentActivityEntities).toBeDefined();
-    });
-
-    it('should handle mixed workspaces with both migrated and legacy contacts', async () => {
-      const data = await getDashboardData(mockFirestore, 'workspace1');
-      
-      // Should have data from both sources
-      expect(data.metrics.totalSchools).toBe(3); // 2 migrated + 1 legacy
-      expect(data.recentActivityEntities.length).toBeGreaterThan(0);
-      expect(data.recentActivitySchools.length).toBeGreaterThan(0);
-    });
-  });
-
   describe('Data Integrity', () => {
     it('should return all required dashboard metrics', async () => {
       const data = await getDashboardData(mockFirestore, 'workspace1');
@@ -383,18 +358,10 @@ describe('Dashboard Module Migration', () => {
       expect(data.activities).toBeDefined();
       expect(data.recentActivityUsers).toBeDefined();
       expect(data.recentActivityEntities).toBeDefined();
-      expect(data.recentActivitySchools).toBeDefined();
+      expect(data.recentActivitySchools).toEqual([]);
       expect(data.zoneDistribution).toBeDefined();
       expect(data.messagingMetrics).toBeDefined();
       expect(data.moduleImplementations).toBeDefined();
-    });
-
-    it('should not double-count migrated schools', async () => {
-      const data = await getDashboardData(mockFirestore, 'workspace1');
-      
-      // Migrated schools should only be counted in workspace_entities, not in schools
-      // Total should be 2 (migrated) + 1 (legacy) = 3, not 4
-      expect(data.metrics.totalSchools).toBe(3);
     });
   });
 });

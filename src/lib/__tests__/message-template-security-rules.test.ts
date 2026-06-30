@@ -30,8 +30,31 @@ import {
 } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { connect } from 'node:net';
 
-describe('Message Template Security Rules', () => {
+async function isEmulatorRunning(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const socket = connect(port, '127.0.0.1');
+    socket.setTimeout(1000);
+    socket.on('connect', () => {
+      socket.end();
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.on('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
+}
+
+const emulatorRunning = await isEmulatorRunning(8080);
+
+describe.skipIf(!emulatorRunning)('Message Template Security Rules', () => {
   let testEnv: RulesTestEnvironment;
   const PROJECT_ID = `test-message-templates-${Date.now()}`;
 

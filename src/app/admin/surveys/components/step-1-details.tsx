@@ -361,7 +361,12 @@ export default function Step1Details(_props: Step1DetailsProps) {
                                 render={({ field }) => (
                                     <div className="space-y-2">
                                         <Label className="text-sm font-semibold">Feature Video URL</Label>
-                                        <Input {...field} value={field.value || ''} placeholder="YouTube, Vimeo, or direct MP4 link..." className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
+                                        <MediaSelect 
+                                            {...field} 
+                                            filterType="video" 
+                                            placeholder="YouTube, Vimeo, or direct MP4 link..." 
+                                            className="rounded-xl" 
+                                        />
                                     </div>
                                 )}
                             />

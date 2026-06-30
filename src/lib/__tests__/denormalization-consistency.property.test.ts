@@ -149,7 +149,7 @@ import { adminDb } from '../firebase-admin';
 import { updateEntityAction } from '../entity-actions';
 
 const testOrgId = 'test-org-denorm-consistency';
-const testUserId = 'test-user-denorm';
+const testUserId = 'system-test-user-denorm';
 
 // Test storage access
 const __testStorage = {
@@ -208,7 +208,6 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
         },
       ],
       entityType: 'institution',
-    entityContacts: [],
     globalTags: [],
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -318,7 +317,6 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
         },
       ],
       entityType: 'institution',
-    entityContacts: [],
     globalTags: [],
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -380,11 +378,11 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
     expect(weData.primaryEmail).toBe(newContacts[0].email);
     expect(weData.primaryPhone).toBe(newContacts[0].phone);
 
-    // Property invariant: WEi.primaryEmail === E.contacts[0].email
+    // Property invariant: WEi.primaryEmail === E.entityContacts[0].email
     const updatedEntitySnap = await adminDb.collection('entities').doc(entityRef.id).get();
     const updatedEntity = updatedEntitySnap.data() as Entity;
-    expect(weData.primaryEmail).toBe(updatedEntity.contacts![0].email);
-    expect(weData.primaryPhone).toBe(updatedEntity.contacts![0].phone);
+    expect(weData.primaryEmail).toBe(updatedEntity.entityContacts![0].email);
+    expect(weData.primaryPhone).toBe(updatedEntity.entityContacts![0].phone);
   });
 
   it('should handle entity with multiple workspace_entities across different workspaces', async () => {
@@ -435,8 +433,6 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
           isSignatory: true,
         },
       ],
-      entityType: 'institution',
-    entityContacts: [],
     globalTags: [],
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -468,7 +464,6 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
           pipelineId: `pipeline-${wsRef.id}`,
           stageId: `stage-${wsRef.id}`,
           status: 'active',
-          entityType: 'institution',
     workspaceTags: [],
           addedAt: timestamp,
           updatedAt: timestamp,
@@ -518,12 +513,12 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       expect(weData.displayName).toBe(updatedEntity.name);
       expect(weData.displayName).toBe(newName);
 
-      // Property invariant: ∀ WEi: WEi.primaryEmail === E.contacts[0].email
-      expect(weData.primaryEmail).toBe(updatedEntity.contacts![0].email);
+      // Property invariant: ∀ WEi: WEi.primaryEmail === E.entityContacts[0].email
+      expect(weData.primaryEmail).toBe(updatedEntity.entityContacts![0].email);
       expect(weData.primaryEmail).toBe(newContacts[0].email);
 
-      // Property invariant: ∀ WEi: WEi.primaryPhone === E.contacts[0].phone
-      expect(weData.primaryPhone).toBe(updatedEntity.contacts![0].phone);
+      // Property invariant: ∀ WEi: WEi.primaryPhone === E.entityContacts[0].phone
+      expect(weData.primaryPhone).toBe(updatedEntity.entityContacts![0].phone);
       expect(weData.primaryPhone).toBe(newContacts[0].phone);
     }
   });
@@ -549,7 +544,6 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       name: 'School Without Contacts',
       contacts: [],
       entityType: 'institution',
-    entityContacts: [],
     globalTags: [],
       createdAt: timestamp,
       updatedAt: timestamp,
