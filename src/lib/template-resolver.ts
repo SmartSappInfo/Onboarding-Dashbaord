@@ -238,6 +238,8 @@ export async function buildVariableMap(
       const survey = snap.data()!;
       vars['survey_title'] = survey.title ?? '';
       vars['survey_link'] = survey.publicUrl ?? '';
+      const baseUrl = getBaseUrl();
+      vars['dashboard_link'] = `${baseUrl}/admin/surveys/${resolutionCtx.surveyId}`;
     }
 
     // Task 13.3: Fetch dynamic survey question variables from template_variables collection

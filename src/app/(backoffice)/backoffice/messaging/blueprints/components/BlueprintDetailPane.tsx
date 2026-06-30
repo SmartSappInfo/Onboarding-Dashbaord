@@ -30,7 +30,8 @@ export function BlueprintDetailPane({ trigger, globalTemplates, adoptionCount, o
     }
   }, [trigger]);
 
-  const activeTemplate = globalTemplates?.find(t => t.templateType === trigger.id && t.channel === activeTab);
+  const activeTemplate = globalTemplates?.find(t => t.templateType === trigger.id && t.channel === activeTab && t.isActive === true) ||
+                         globalTemplates?.find(t => t.templateType === trigger.id && t.channel === activeTab);
   const isConfigured = !!activeTemplate;
 
   const isRichBuilder = activeTemplate?.contentMode === 'rich_builder' || !!activeTemplate?.blocks?.length;

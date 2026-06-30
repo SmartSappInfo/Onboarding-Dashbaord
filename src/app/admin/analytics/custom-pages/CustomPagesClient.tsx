@@ -52,7 +52,7 @@ function StatPill({ label, value }: { label: string; value: number }) {
   return (
     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold tabular-nums">
       {label}
-      <span className="text-slate-900 font-bold">{value.toLocaleString()}</span>
+      <span className="text-slate-900 font-bold">{(value ?? 0).toLocaleString()}</span>
     </span>
   );
 }
@@ -90,7 +90,7 @@ function SummaryBar({ pages }: { pages: CustomPageListItem[] }) {
         >
           <Icon className="h-4 w-4 text-slate-400" />
           <p className="text-2xl font-bold text-slate-900 tabular-nums">
-            {value.toLocaleString()}
+            {(value ?? 0).toLocaleString()}
           </p>
           <p className="text-xs text-slate-500 font-medium">{label}</p>
         </div>

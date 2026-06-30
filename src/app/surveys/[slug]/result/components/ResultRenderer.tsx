@@ -8,7 +8,6 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowRight, Quote, Trophy, Building2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import confetti from 'canvas-confetti';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +32,7 @@ function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: 
         const duration = 2000;
         const frames = duration / 16;
         const increment = targetValue / frames;
+        let active = true;
         
         const timer = setInterval(() => {
             start += increment;
@@ -40,12 +40,15 @@ function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: 
                 setDisplayValue(targetValue);
                 clearInterval(timer);
                 if (!hasCelebrated.current && style?.animate !== false) {
-                    confetti({
-                        particleCount: 150,
-                        spread: 70,
-                        origin: { y: 0.6 },
-                        colors: ['#3B5FFF', '#f72585', '#7209b7']
-                    });
+                    import('canvas-confetti').then(({ default: confetti }) => {
+                        if (!active) return;
+                        confetti({
+                            particleCount: 150,
+                            spread: 70,
+                            origin: { y: 0.6 },
+                            colors: ['#3B5FFF', '#f72585', '#7209b7']
+                        });
+                    }).catch(console.error);
                     hasCelebrated.current = true;
                 }
             } else {
@@ -53,7 +56,10 @@ function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: 
             }
         }, 16);
 
-        return () => clearInterval(timer);
+        return () => {
+            active = false;
+            clearInterval(timer);
+        };
     }, [targetValue, style?.animate]);
 
     return (
@@ -183,20 +189,29 @@ export default function ResultRenderer({ survey, response, page, logoUrl, allowR
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             if (reduceMotion) return;
 
-            const burst = (opts: confetti.Options) =>
-                confetti({
-                    disableForReducedMotion: true,
-                    colors: ['#5f30e2', '#ffc629', '#10b981', '#3B5FFF', '#e63946'],
-                    ...opts,
-                });
+            let active = true;
+            let sidesTimer: NodeJS.Timeout;
 
-            burst({ particleCount: 160, spread: 100, startVelocity: 45, origin: { x: 0.5, y: 0.55 } });
-            const sides = setTimeout(() => {
-                burst({ particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.7 } });
-                burst({ particleCount: 60, angle: 120, spread: 70, origin: { x: 1, y: 0.7 } });
-            }, 350);
+            import('canvas-confetti').then(({ default: confetti }) => {
+                if (!active) return;
+                const burst = (opts: Record<string, unknown>) =>
+                    confetti({
+                        disableForReducedMotion: true,
+                        colors: ['#5f30e2', '#ffc629', '#10b981', '#3B5FFF', '#e63946'],
+                        ...opts,
+                    });
 
-            return () => clearTimeout(sides);
+                burst({ particleCount: 160, spread: 100, startVelocity: 45, origin: { x: 0.5, y: 0.55 } });
+                sidesTimer = setTimeout(() => {
+                    burst({ particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.7 } });
+                    burst({ particleCount: 60, angle: 120, spread: 70, origin: { x: 1, y: 0.7 } });
+                }, 350);
+            }).catch(console.error);
+
+            return () => {
+                active = false;
+                if (sidesTimer) clearTimeout(sidesTimer);
+            };
         }
     }, [page?.id, page?.confettiEnabled]);
 

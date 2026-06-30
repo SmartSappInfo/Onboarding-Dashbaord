@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +12,9 @@ import {
 } from '@/components/ui/accordion';
 import { Phone, Play } from 'lucide-react';
 import assetsJson from './assets.json';
+import { usePageAnalytics } from '@/hooks/use-page-analytics';
+import { PageAnalyticsReader } from '@/components/page-analytics-reader';
+import type { PageEventChannel } from '@/lib/types';
 
 // ─── Assets (uploaded to Firebase Storage from the Kartra page backup) ────────
 
@@ -33,22 +37,31 @@ function VideoPlayer({
   poster,
   label,
   className,
+  onPlay,
+  onEnded,
 }: {
   src: string;
   poster: string;
   label: string;
   className?: string;
+  onPlay?: () => void;
+  onEnded?: () => void;
 }) {
   const [playing, setPlaying] = React.useState(false);
+
+  const handlePlayClick = () => {
+    setPlaying(true);
+    if (onPlay) onPlay();
+  };
 
   return (
     <div className={`relative w-full overflow-hidden rounded-2xl shadow-2xl bg-black ${className ?? ''}`}>
       {playing ? (
-        <video src={src} poster={poster} controls autoPlay playsInline className="w-full h-full object-contain aspect-video" />
+        <video src={src} poster={poster} controls autoPlay playsInline onEnded={onEnded} className="w-full h-full object-contain aspect-video" />
       ) : (
         <button
           type="button"
-          onClick={() => setPlaying(true)}
+          onClick={handlePlayClick}
           className="relative block w-full aspect-video group cursor-pointer"
           aria-label={`Play video: ${label}`}
         >
@@ -71,7 +84,7 @@ function VideoPlayer({
 
 // ─── CTA button + caption (repeated throughout the original page) ─────────────
 
-function CtaBlock({ label, light = false }: { label: string; light?: boolean }) {
+function CtaBlock({ label, light = false, onClick }: { label: string; light?: boolean; onClick?: () => void }) {
   return (
     <div className="flex flex-col items-center gap-3 pt-2">
       <p className={`text-xs italic ${light ? 'text-white/70' : 'text-slate-500'}`}>
@@ -79,6 +92,7 @@ function CtaBlock({ label, light = false }: { label: string; light?: boolean }) 
       </p>
       <Button
         size="lg"
+        onClick={onClick}
         className="h-14 sm:h-16 px-8 sm:px-12 rounded-full bg-[#ffc629] hover:bg-[#ffb800] text-slate-900 text-base sm:text-lg font-extrabold shadow-[0_12px_28px_-8px_rgba(255,198,41,0.6)] hover:-translate-y-0.5 transition-all"
         asChild
       >
@@ -106,7 +120,31 @@ function useCountdown(target: Date) {
 }
 
 function Countdown() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { days, hours, minutes, seconds } = useCountdown(OFFER_END);
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center gap-3 sm:gap-4 opacity-50">
+        {[
+          { v: 0, l: 'Days' },
+          { v: 0, l: 'Hours' },
+          { v: 0, l: 'Minutes' },
+          { v: 0, l: 'Seconds' },
+        ].map(c => (
+          <div key={c.l} className="flex flex-col items-center rounded-xl bg-slate-900 text-white px-4 py-3 min-w-[70px] shadow-lg">
+            <span className="text-2xl sm:text-3xl font-extrabold tabular-nums">00</span>
+            <span className="text-[10px] uppercase tracking-widest text-white/60">{c.l}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const cells = [
     { v: days, l: 'Days' },
     { v: hours, l: 'Hours' },
@@ -117,7 +155,7 @@ function Countdown() {
     <div className="flex items-center justify-center gap-3 sm:gap-4">
       {cells.map(c => (
         <div key={c.l} className="flex flex-col items-center rounded-xl bg-slate-900 text-white px-4 py-3 min-w-[70px] shadow-lg">
-          <span className="text-2xl sm:text-3xl font-extrabold tabular-nums" suppressHydrationWarning>
+          <span className="text-2xl sm:text-3xl font-extrabold tabular-nums">
             {String(c.v).padStart(2, '0')}
           </span>
           <span className="text-[10px] uppercase tracking-widest text-white/60">{c.l}</span>
@@ -181,8 +219,31 @@ const TESTIMONIALS: { video: AssetKey; poster: AssetKey; name: string; role: str
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CollectFeesClient() {
+  const { track, setEntityId, hasFiredVideoStart } = usePageAnalytics('collect-fees-within-four-weeks');
+
+  const handleCtaClick = () => {
+    track('cta_click');
+  };
+
+  const handleVideoPlay = () => {
+    if (!hasFiredVideoStart.current) {
+      hasFiredVideoStart.current = true;
+      track('video_start');
+    }
+  };
+
+  const handleVideoEnded = () => {
+    track('video_complete');
+  };
+
   return (
     <div className="light min-h-screen bg-white font-body text-slate-900 selection:bg-[#5f30e2]/10">
+      <Suspense fallback={null}>
+        <PageAnalyticsReader
+          onEntityDetected={setEntityId}
+          onReady={(channel) => track('page_view', channel)}
+        />
+      </Suspense>
 
       {/* ── Top bar + header ──────────────────────────────────────────────── */}
       <div className="bg-slate-900 text-white text-xs sm:text-sm py-2 px-4 text-center font-semibold tracking-wide">
@@ -195,12 +256,12 @@ export default function CollectFeesClient() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={ASSETS.logo} alt="SmartSapp" className="h-9 sm:h-10 w-auto" />
-          <Button className="rounded-full bg-[#5f30e2] hover:bg-[#4c26b5] text-white font-bold px-6" asChild>
+          <Button onClick={handleCtaClick} className="rounded-full bg-[#5f30e2] hover:bg-[#4c26b5] text-white font-bold px-6" asChild>
             <Link href={TRIAL_URL}>Request Free Trial</Link>
           </Button>
         </div>
       </header>
-
+ 
       {/* ── 1. Hero (purple) ──────────────────────────────────────────────── */}
       <section className="bg-[#5f30e2] text-white px-4 sm:px-8 py-14 sm:py-20">
         <div className="max-w-4xl mx-auto text-center space-y-6">
@@ -216,8 +277,10 @@ export default function CollectFeesClient() {
             poster={ASSETS.heroThumb}
             label="Collect Your Fees in 4 Weeks campaign video"
             className="border-4 border-white/20"
+            onPlay={handleVideoPlay}
+            onEnded={handleVideoEnded}
           />
-          <CtaBlock label="Yes, I need A Free Trial Now!" light />
+          <CtaBlock label="Yes, I need A Free Trial Now!" light onClick={handleCtaClick} />
         </div>
       </section>
 
@@ -303,8 +366,10 @@ export default function CollectFeesClient() {
             poster={ASSETS.salesThumb}
             label="How to collect your fees within 4 weeks"
             className="border-4 border-white/10"
+            onPlay={handleVideoPlay}
+            onEnded={handleVideoEnded}
           />
-          <CtaBlock label="Yes, I need a free trial now" light />
+          <CtaBlock label="Yes, I need a free trial now" light onClick={handleCtaClick} />
         </div>
       </section>
 
@@ -340,7 +405,7 @@ export default function CollectFeesClient() {
               />
             </div>
           </div>
-          <CtaBlock label="Yes, I need a free trial now" />
+          <CtaBlock label="Yes, I need a free trial now" onClick={handleCtaClick} />
         </div>
       </section>
 
@@ -404,7 +469,7 @@ export default function CollectFeesClient() {
             </div>
             
             <Countdown />
-            <CtaBlock label="Yes, I need a free trial now" />
+            <CtaBlock label="Yes, I need a free trial now" onClick={handleCtaClick} />
           </div>
         </div>
       </section>
@@ -433,7 +498,7 @@ export default function CollectFeesClient() {
             <p>We won&rsquo;t ask you why.</p>
             <p>We won&rsquo;t ask you a single question.</p>
           </div>
-          <CtaBlock label="Yes, I need a free trial now" />
+          <CtaBlock label="Yes, I need a free trial now" onClick={handleCtaClick} />
         </div>
       </section>
 
@@ -455,7 +520,13 @@ export default function CollectFeesClient() {
           <div className="grid sm:grid-cols-2 gap-8">
             {TESTIMONIALS.map(t => (
               <div key={t.name} className="space-y-3">
-                <VideoPlayer src={ASSETS[t.video]} poster={ASSETS[t.poster]} label={`${t.name} testimonial`} />
+                <VideoPlayer 
+                  src={ASSETS[t.video]} 
+                  poster={ASSETS[t.poster]} 
+                  label={`${t.name} testimonial`} 
+                  onPlay={handleVideoPlay}
+                  onEnded={handleVideoEnded}
+                />
                 <div className="text-center">
                   <p className="font-extrabold text-lg">{t.name}</p>
                   <p className="text-sm text-slate-600">{t.role}</p>
@@ -475,10 +546,10 @@ export default function CollectFeesClient() {
             className="h-14 sm:h-16 px-8 sm:px-12 rounded-full bg-[#5f30e2] hover:bg-[#4c26b5] text-white text-base sm:text-lg font-extrabold shadow-xl hover:-translate-y-0.5 transition-all"
             asChild
           >
-            <Link href={TRIAL_URL}>Yes, I want to end the delays and frustrations TODAY!</Link>
+            <Link href={TRIAL_URL} onClick={handleCtaClick}>Yes, I want to end the delays and frustrations TODAY!</Link>
           </Button>
           <div className="space-y-2">
-            <Link href={TRIAL_URL} className="block text-[#5f30e2] font-semibold underline underline-offset-4">
+            <Link href={TRIAL_URL} onClick={handleCtaClick} className="block text-[#5f30e2] font-semibold underline underline-offset-4">
               I&apos;m a parent, and want to recommend my child&apos;s school
             </Link>
             <p className="text-xs text-slate-400 italic">

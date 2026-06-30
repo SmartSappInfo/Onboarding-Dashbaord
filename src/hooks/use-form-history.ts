@@ -19,15 +19,19 @@ export function useFormHistory<T>(initialPresent: T) {
     future: [],
   });
 
-  const set = React.useCallback((newPresent: T) => {
+  const set = React.useCallback((newPresent: T | ((prev: T) => T)) => {
     setState(current => {
+      const resolvedPresent = typeof newPresent === 'function'
+        ? (newPresent as (prev: T) => T)(current.present)
+        : newPresent;
+
       // Direct string comparison to prevent pushing duplicate states onto history
-      if (JSON.stringify(current.present) === JSON.stringify(newPresent)) {
+      if (JSON.stringify(current.present) === JSON.stringify(resolvedPresent)) {
         return current;
       }
       return {
         past: [...current.past, current.present].slice(-50), // Cap undo history at 50 records
-        present: newPresent,
+        present: resolvedPresent,
         future: [], // Reset redo stack when a new action is performed
       };
     });

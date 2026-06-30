@@ -38,6 +38,7 @@ import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon } from '@/components/icons';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
+import { pruneUndefined } from '@/lib/firestore-utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { finalizeLearningSignalAction } from '@/lib/learning-loop-actions';
 import { updateWorkspaceVocabularyAction } from '@/lib/vocabulary-map-actions';
@@ -324,12 +325,11 @@ export default function EditSurveyPage() {
         
         try {
             const docRef = doc(firestore!, 'surveys', surveyId);
-            await updateDoc(docRef, JSON.parse(JSON.stringify({ ...migrateSurveyFormSeo(mainData), updatedAt: new Date().toISOString() })));
+            await updateDoc(docRef, pruneUndefined({ ...migrateSurveyFormSeo(mainData), updatedAt: new Date().toISOString() }));
             
             const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
             for (const page of resultPages) {
-                const cleanedPage = JSON.parse(JSON.stringify(page));
-                await setDoc(doc(pagesCol, page.id), cleanedPage);
+                await setDoc(doc(pagesCol, page.id), pruneUndefined(page));
             }
 
             toast({ title: '✓ Changes Committed', description: 'Survey saved. Keep editing or finalize when ready.' });
@@ -402,11 +402,10 @@ export default function EditSurveyPage() {
                 };
             }
 
-            await updateDoc(docRef, JSON.parse(JSON.stringify({ ...migrateSurveyFormSeo(mainData), updatedAt: new Date().toISOString() })));
+            await updateDoc(docRef, pruneUndefined({ ...migrateSurveyFormSeo(mainData), updatedAt: new Date().toISOString() }));
             const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
             for (const page of resultPages) {
-                const cleanedPage = JSON.parse(JSON.stringify(page));
-                await setDoc(doc(pagesCol, page.id), cleanedPage);
+                await setDoc(doc(pagesCol, page.id), pruneUndefined(page));
             }
             toast({ title: '🚀 Survey Published!', description: 'Your survey is live.' });
             syncVariableRegistry().catch(console.error);

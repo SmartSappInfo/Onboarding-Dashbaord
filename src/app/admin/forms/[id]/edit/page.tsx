@@ -274,8 +274,12 @@ export default function EditFormPage() {
   }, [formData, hasInitialized]);
 
   // Helpers
+  const updateFields = (updates: Partial<Form>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+
   const updateField = <K extends keyof Form>(key: K, value: Form[K]) => {
-    setFormData({ ...formData, [key]: value });
+    updateFields({ [key]: value });
   };
 
   const slugify = (text: string) =>
@@ -459,8 +463,11 @@ export default function EditFormPage() {
                           <Input
                             value={formData.internalName || ''}
                             onChange={e => {
-                              updateField('internalName', e.target.value);
-                              updateField('slug', slugify(e.target.value));
+                              const val = e.target.value;
+                              updateFields({
+                                internalName: val,
+                                slug: slugify(val),
+                              });
                             }}
                             placeholder="e.g. Parent Enrollment Form"
                             className="h-11 rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all"

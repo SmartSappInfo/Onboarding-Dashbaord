@@ -6,7 +6,8 @@ import Image from 'next/image';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle2, Play } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ResizableIFrame } from '@/components/ui/ResizableIFrame';
 import { usePageAnalytics } from '@/hooks/use-page-analytics';
 import { PageAnalyticsReader } from '@/components/page-analytics-reader';
 import type { PageEventChannel } from '@/lib/types';
@@ -673,13 +674,15 @@ export default function SchoolEnrollmentClient() {
       </footer>
 
       <Dialog open={isSurveyOpen} onOpenChange={setIsSurveyOpen}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-slate-900 border border-slate-800 rounded-3xl h-[85vh] max-h-[720px] w-full">
-          <iframe 
-            src="https://go.smartsapp.com/surveys/collect-your-fees-within-4-weeks-of-reopening-copy-2s0p0?embed=true" 
-            width="100%" 
-            height="100%" 
-            style={{ border: 'none', background: 'transparent', overflow: 'hidden' }}
-            allow="geolocation; microphone; camera"
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-slate-900 border border-slate-800 rounded-3xl h-auto transition-[height] duration-500 ease-out-expo w-full">
+          <DialogTitle className="sr-only">Free Consultation Survey</DialogTitle>
+          <DialogDescription className="sr-only">
+            Please fill out the survey to request your free consultation roadmap.
+          </DialogDescription>
+          <ResizableIFrame 
+            slug="collect-your-fees-within-4-weeks-of-reopening-copy-2s0p0"
+            src="/surveys/collect-your-fees-within-4-weeks-of-reopening-copy-2s0p0?embed=true&theme=dark"
+            className="w-full border-none bg-transparent"
           />
         </DialogContent>
       </Dialog>

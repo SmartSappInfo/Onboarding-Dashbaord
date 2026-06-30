@@ -23,6 +23,17 @@ describe('useFormHistory', () => {
     expect(result.current.canRedo).toBe(false);
   });
 
+  it('should support functional updates', () => {
+    const { result } = renderHook(() => useFormHistory({ counter: 5 }));
+
+    act(() => {
+      result.current.update(prev => ({ counter: prev.counter + 2 }));
+    });
+
+    expect(result.current.state).toEqual({ counter: 7 });
+    expect(result.current.canUndo).toBe(true);
+  });
+
   it('should prevent duplicate snapshots from being pushed to past stack', () => {
     const { result } = renderHook(() => useFormHistory({ text: 'hello' }));
 

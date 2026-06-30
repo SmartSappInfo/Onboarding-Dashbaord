@@ -535,7 +535,7 @@ export function PageEditor({ pageIndex }: { pageIndex: number }) {
 }
 
 export default function ResultPageBuilder() {
-    const { control, watch, setValue, register } = useFormContext();
+    const { control, watch, setValue, register, getValues } = useFormContext();
     const { fields: pages, append, remove } = useFieldArray({
         control,
         name: 'resultPages',
@@ -543,6 +543,27 @@ export default function ResultPageBuilder() {
     const maxScore = watch('maxScore') || 100;
     const scoreDisplayMode = watch('scoreDisplayMode') || 'points';
     const [previewPageIdx, setPreviewPageIdx] = React.useState<number | null>(null);
+
+    const clonePage = (index: number) => {
+        const pageToClone = getValues(`resultPages.${index}`) as SurveyResultPage;
+        if (!pageToClone) return;
+
+        const clonedPage: SurveyResultPage = {
+            ...JSON.parse(JSON.stringify(pageToClone)),
+            id: `pg_${Date.now()}`,
+            name: `Copy of ${pageToClone.name || 'Outcome Page'}`,
+            isDefault: false
+        };
+
+        if (clonedPage.blocks && Array.isArray(clonedPage.blocks)) {
+            clonedPage.blocks = clonedPage.blocks.map((block: SurveyResultBlock) => ({
+                ...block,
+                id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+            }));
+        }
+
+        append(clonedPage);
+    };
 
     return (
  <div className="space-y-8">
@@ -565,10 +586,10 @@ export default function ResultPageBuilder() {
  <Layout className="h-5 w-5 text-primary" />
                                 </div>
                                 <div>
- <p className="font-semibold text-lg leading-none mb-1">{(page as any).name}</p>
- <p className="text-xs text-muted-foreground font-bold ">{(page as any).blocks?.length || 0} Content Blocks</p>
+ <p className="font-semibold text-lg leading-none mb-1">{(page as SurveyResultPage).name}</p>
+ <p className="text-xs text-muted-foreground font-bold ">{(page as SurveyResultPage).blocks?.length || 0} Content Blocks</p>
                                 </div>
-                                {(page as any).isDefault && <Badge variant="secondary" className="ml-2 bg-green-50 text-green-700 border-green-200">Default Fallback</Badge>}
+                                {(page as SurveyResultPage).isDefault && <Badge variant="secondary" className="ml-2 bg-green-50 text-green-700 border-green-200">Default Fallback</Badge>}
                             </div>
                         </AccordionTrigger>
  <AccordionContent className="pt-4 pb-8 space-y-8 border-t">
@@ -591,6 +612,9 @@ export default function ResultPageBuilder() {
  <div className="flex items-center gap-2">
  <Button type="button" variant="outline" className="h-11 px-4 gap-2 font-bold" onClick={() => setPreviewPageIdx(index)}>
  <Eye className="h-4 w-4" /> Preview
+                                    </Button>
+ <Button type="button" variant="outline" className="h-11 px-4 gap-2 font-bold" onClick={() => clonePage(index)}>
+ <Copy className="h-4 w-4" /> Clone
                                     </Button>
  <Button type="button" variant="ghost" size="icon" className="h-11 w-11 text-destructive" onClick={() => remove(index)}>
  <Trash2 className="h-4 w-4" />

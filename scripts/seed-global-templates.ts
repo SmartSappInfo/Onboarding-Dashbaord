@@ -525,6 +525,40 @@ Thank you for your time.
   },
 
   {
+    name: 'Survey Invitation Alert (Email) for Team',
+    category: 'surveys',
+    templateType: 'survey_invitation_team',
+    channel: 'email',
+    recipientType: 'internal_alert',
+    subject: 'Survey Invitation Sent: {{survey_title}}',
+    body: `Hi {{user_name}},
+
+An invitation for the survey "{{survey_title}}" has been sent to {{respondent_name}}.
+
+Client Details:
+• Name: {{contact_name}}
+• Email: {{contact_email}}
+
+🔗 Dashboard: [View Dashboard]({{dashboard_link}})
+
+Best regards,
+{{org_name}}`,
+    variableContext: 'survey',
+    declaredVariables: ['user_name', 'survey_title', 'respondent_name', 'contact_name', 'contact_email', 'dashboard_link', 'org_name'],
+  },
+
+  {
+    name: 'Survey Invitation Alert (SMS) for Team',
+    category: 'surveys',
+    templateType: 'survey_invitation_team',
+    channel: 'sms',
+    recipientType: 'internal_alert',
+    body: `Hi {{user_name}}, survey invitation for {{survey_title}} has been sent to {{respondent_name}}.`,
+    variableContext: 'survey',
+    declaredVariables: ['user_name', 'survey_title', 'respondent_name'],
+  },
+
+  {
     name: 'Survey Completion (Email)',
     category: 'surveys',
     templateType: 'survey_completion',
@@ -544,6 +578,41 @@ We appreciate your valuable feedback.
 {{org_name}}`,
     variableContext: 'survey',
     declaredVariables: ['respondent_name', 'survey_title', 'completion_date', 'score', 'result_message', 'org_name'],
+  },
+
+  {
+    name: 'Survey Completion Alert (Email) for Team',
+    category: 'surveys',
+    templateType: 'survey_completion_team',
+    channel: 'email',
+    recipientType: 'internal_alert',
+    subject: 'Survey Completed: {{survey_title}}',
+    body: `Hi {{user_name}},
+
+The survey "{{survey_title}}" has been completed by {{respondent_name}}.
+
+Submission Details:
+• Completed on: {{completion_date}}
+• Score: {{score}}
+• Result: {{result_message}}
+
+🔗 Dashboard: [View Dashboard]({{dashboard_link}})
+
+Best regards,
+{{org_name}}`,
+    variableContext: 'survey',
+    declaredVariables: ['user_name', 'survey_title', 'respondent_name', 'completion_date', 'score', 'result_message', 'dashboard_link', 'org_name'],
+  },
+
+  {
+    name: 'Survey Completion Alert (SMS) for Team',
+    category: 'surveys',
+    templateType: 'survey_completion_team',
+    channel: 'sms',
+    recipientType: 'internal_alert',
+    body: `Hi {{user_name}}, survey {{survey_title}} has been completed by {{respondent_name}}. Score: {{score}}.`,
+    variableContext: 'survey',
+    declaredVariables: ['user_name', 'survey_title', 'respondent_name', 'score'],
   },
 
   {

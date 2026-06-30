@@ -148,3 +148,29 @@ export function applySurveyDefaults(surveyData: any) {
     autoAutomations: surveyData.autoAutomations || SURVEY_DEFAULTS.autoAutomations
   };
 }
+
+/**
+ * Recursively removes all undefined values from an object or array.
+ * Converts undefined values to omitted/deleted keys for Firestore compatibility.
+ */
+export function pruneUndefined<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as unknown as T;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(item => pruneUndefined(item)) as unknown as T;
+  }
+  if (typeof obj === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const val = obj[key];
+        if (val !== undefined) {
+          result[key] = pruneUndefined(val);
+        }
+      }
+    }
+    return result as unknown as T;
+  }
+  return obj;
+}

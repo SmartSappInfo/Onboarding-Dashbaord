@@ -176,7 +176,7 @@ export async function getCustomPageAnalytics(slug: string): Promise<CustomPageAn
     ? (pageSnap.data() as CustomPageAnalyticsDoc)
     : null;
 
-  const stats: CustomPageStats = pageData?.stats ?? { ...DEFAULT_STATS };
+  const stats: CustomPageStats = { ...DEFAULT_STATS, ...(pageData?.stats || {}) };
 
   // Collect unique entity IDs from recent events
   const rawEvents = eventsSnap.docs.map((d) => ({
@@ -231,7 +231,7 @@ export async function listTrackedPages(): Promise<
     const data = d.data() as CustomPageAnalyticsDoc;
     return {
       slug: data.slug,
-      stats: data.stats ?? { ...DEFAULT_STATS },
+      stats: { ...DEFAULT_STATS, ...(data.stats || {}) },
       updatedAt: data.updatedAt ?? '',
       pageId: data.pageId ?? null,
       workspaceIds: workspaceMap.get(data.slug) ?? [],

@@ -14,8 +14,8 @@ import Footer from '@/components/footer';
 import { useToast } from '@/hooks/use-toast';
 import { submitPublicSurveyLead, finalizeSurveySubmission } from '@/lib/survey-actions';
 import { cn } from '@/lib/utils';
-import confetti from 'canvas-confetti';
 import { useIframeHeightReporter } from '@/hooks/useIframeHeightReporter';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface SurveyDisplayProps {
     survey: Survey;
@@ -79,20 +79,29 @@ export default function SurveyDisplay({
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             if (reduceMotion) return;
 
-            const burst = (opts: confetti.Options) =>
-                confetti({
-                    disableForReducedMotion: true,
-                    colors: ['#5f30e2', '#ffc629', '#10b981', '#3B5FFF', '#e63946'],
-                    ...opts,
-                });
+            let active = true;
+            let sidesTimer: NodeJS.Timeout;
 
-            burst({ particleCount: 160, spread: 100, startVelocity: 45, origin: { x: 0.5, y: 0.55 } });
-            const sides = setTimeout(() => {
-                burst({ particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.7 } });
-                burst({ particleCount: 60, angle: 120, spread: 70, origin: { x: 1, y: 0.7 } });
-            }, 350);
+            import('canvas-confetti').then(({ default: confetti }) => {
+                if (!active) return;
+                const burst = (opts: Record<string, unknown>) =>
+                    confetti({
+                        disableForReducedMotion: true,
+                        colors: ['#5f30e2', '#ffc629', '#10b981', '#3B5FFF', '#e63946'],
+                        ...opts,
+                    });
 
-            return () => clearTimeout(sides);
+                burst({ particleCount: 160, spread: 100, startVelocity: 45, origin: { x: 0.5, y: 0.55 } });
+                sidesTimer = setTimeout(() => {
+                    burst({ particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.7 } });
+                    burst({ particleCount: 60, angle: 120, spread: 70, origin: { x: 1, y: 0.7 } });
+                }, 350);
+            }).catch(console.error);
+
+            return () => {
+                active = false;
+                if (sidesTimer) clearTimeout(sidesTimer);
+            };
         }
     }, [isSubmitted, survey.thankYouConfettiEnabled]);
 
@@ -176,24 +185,42 @@ export default function SurveyDisplay({
 
                     {/* Title rendering is handled natively inside SurveyForm to support Preview builders */}
 
-                    {showLeadCapture && submissionId ? (
-                        <LeadCaptureFormView
-                            survey={survey}
-                            submissionId={submissionId}
-                            workspaceId={resolvedWorkspaceId}
-                            outcomeId={outcomeId}
-                            onCompleted={() => setIsSubmitted(true)}
-                        />
-                    ) : (
-                        <SurveyForm 
-                            survey={survey} 
-                            onSubmitted={() => setIsSubmitted(true)} 
-                            onQuestionsCompleted={handleQuestionsCompleted}
-                            sourcePageId={resolvedSourcePageId}
-                            assignedUserId={assignedUserId}
-                            resolvedLogoUrl={displayLogoUrl !== 'none' ? displayLogoUrl : undefined}
-                        />
-                    )}
+                    <AnimatePresence mode="wait">
+                        {showLeadCapture && submissionId ? (
+                            <motion.div
+                                key="lead-capture"
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -15 }}
+                                transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                            >
+                                <LeadCaptureFormView
+                                    survey={survey}
+                                    submissionId={submissionId}
+                                    workspaceId={resolvedWorkspaceId}
+                                    outcomeId={outcomeId}
+                                    onCompleted={() => setIsSubmitted(true)}
+                                />
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="survey-form"
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -15 }}
+                                transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                            >
+                                <SurveyForm 
+                                    survey={survey} 
+                                    onSubmitted={() => setIsSubmitted(true)} 
+                                    onQuestionsCompleted={handleQuestionsCompleted}
+                                    sourcePageId={resolvedSourcePageId}
+                                    assignedUserId={assignedUserId}
+                                    resolvedLogoUrl={displayLogoUrl !== 'none' ? displayLogoUrl : undefined}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </main>
              {!isEmbedded && orgBranding?.landingPageFooterEnabled !== false && (

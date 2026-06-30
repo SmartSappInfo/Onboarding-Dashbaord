@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle2, Play } from 'lucide-react';
+import { usePageAnalytics } from '@/hooks/use-page-analytics';
+import { PageAnalyticsReader } from '@/components/page-analytics-reader';
+import type { PageEventChannel } from '@/lib/types';
 
 const CUSTOM_THUMBNAIL_URL =
   'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1773056120187-thumb-parents-convenience-survey.webp?alt=media&token=6a85de53-0fdf-4848-b7d2-9236014df6fd';
@@ -13,9 +16,29 @@ const YOUTUBE_VIDEO_ID = 'X2xkQxxo-DI';
 
 export default function NumberOneChoiceClient() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const { track, setEntityId, hasFiredVideoStart } = usePageAnalytics('number-one-choice');
+
+  const handleCtaClick = () => {
+    track('cta_click');
+  };
+
+  const handlePlayClick = () => {
+    setIsPlaying(true);
+    if (!hasFiredVideoStart.current) {
+      hasFiredVideoStart.current = true;
+      track('video_start');
+    }
+  };
 
   return (
     <div className="light min-h-screen bg-white font-body selection:bg-primary/10 text-slate-900">
+      <Suspense fallback={null}>
+        <PageAnalyticsReader
+          onEntityDetected={setEntityId}
+          onReady={(channel) => track('page_view', channel)}
+        />
+      </Suspense>
+
       {/* Background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
@@ -30,7 +53,7 @@ export default function NumberOneChoiceClient() {
             <Logo className="h-10" />
           </Link>
           <div className="hidden sm:block">
-            <Button variant="outline" className="rounded-full border-primary/20 text-primary hover:bg-primary/5" asChild>
+            <Button variant="outline" className="rounded-full border-primary/20 text-primary hover:bg-primary/5" onClick={handleCtaClick} asChild>
               <Link href="https://smartsapp.com/request-trial">Request Demo</Link>
             </Button>
           </div>
@@ -53,7 +76,7 @@ export default function NumberOneChoiceClient() {
           {!isPlaying ? (
             <div
               className="relative aspect-video w-full cursor-pointer group bg-slate-900"
-              onClick={() => setIsPlaying(true)}
+              onClick={handlePlayClick}
             >
               <Image
                 src={CUSTOM_THUMBNAIL_URL}
@@ -114,6 +137,7 @@ export default function NumberOneChoiceClient() {
             <Button
               size="lg"
               className="w-full sm:w-auto h-16 px-10 rounded-2xl bg-primary text-white text-lg font-bold shadow-[0_12px_24px_-8px_rgba(59,95,255,0.4)] hover:shadow-[0_16px_32px_-8px_rgba(59,95,255,0.5)] hover:translate-y--1 transition-all duration-300 group"
+              onClick={handleCtaClick}
               asChild
             >
               <Link href="https://smartsapp.com/request-trial" className="flex items-center justify-center gap-2">

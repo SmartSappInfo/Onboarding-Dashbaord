@@ -60,6 +60,8 @@ const MATCH_RULES: MatchRule[] = [
   { triggerId: 'submission_reminder',      category: 'forms', nameKeywords: ['reminder', 'due soon', 'overdue'] },
 
   // ── Surveys ─────────────────────────────────────────────────────────────
+  { triggerId: 'survey_invitation_team', category: 'surveys', recipientType: 'internal_alert', nameKeywords: ['invitation', 'invite'] },
+  { triggerId: 'survey_completion_team', category: 'surveys', recipientType: 'internal_alert', nameKeywords: ['completion', 'completed', 'finished'] },
   { triggerId: 'survey_invitation',  category: 'surveys', nameKeywords: ['invitation', 'invite'] },
   { triggerId: 'survey_completion',  category: 'surveys', nameKeywords: ['completion', 'completed', 'finished', 'thank'] },
   { triggerId: 'survey_reminder',    category: 'surveys', nameKeywords: ['reminder', 'waiting'] },

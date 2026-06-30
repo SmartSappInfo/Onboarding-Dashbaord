@@ -26,6 +26,8 @@ import { BlueprintDetailPane } from './BlueprintDetailPane';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input as CustomInput } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Plus } from 'lucide-react';
 
 // Dynamically import the heavy workshop to keep the initial hub lightweight
 const TemplateWorkshop = dynamic(
@@ -57,6 +59,32 @@ export default function BlueprintsHubClient() {
   const [isSeedingBlueprints, setIsSeedingBlueprints] = React.useState(false);
   const [isMigratingTemplates, setIsMigratingTemplates] = React.useState(false);
 
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  const [newTriggerId, setNewTriggerId] = React.useState('');
+  const [newChannel, setNewChannel] = React.useState<'email' | 'sms' | ''>('');
+  const [newName, setNewName] = React.useState('');
+
+  const selectedTriggerForCreate = React.useMemo(() => {
+    return MESSAGING_TRIGGERS.find(t => t.id === newTriggerId) || null;
+  }, [newTriggerId]);
+
+  React.useEffect(() => {
+    if (selectedTriggerForCreate) {
+      const defaultChannel = (selectedTriggerForCreate.supportedChannels[0] as 'email' | 'sms') || 'email';
+      setNewChannel(defaultChannel);
+      setNewName(`Global ${selectedTriggerForCreate.name} (${defaultChannel === 'email' ? 'Email' : 'SMS'})`);
+    } else {
+      setNewChannel('');
+      setNewName('');
+    }
+  }, [selectedTriggerForCreate]);
+
+  React.useEffect(() => {
+    if (selectedTriggerForCreate && newChannel) {
+      setNewName(`Global ${selectedTriggerForCreate.name} (${newChannel === 'email' ? 'Email' : 'SMS'})`);
+    }
+  }, [newChannel, selectedTriggerForCreate]);
+
   const handleSeedBlueprints = async () => {
     setIsSeedingBlueprints(true);
     try {
@@ -78,11 +106,12 @@ export default function BlueprintsHubClient() {
           description: 'Global messaging templates are already up-to-date.',
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         variant: 'destructive',
         title: 'Execution Error',
-        description: error.message || 'An error occurred during template seeding.',
+        description: errorMessage,
       });
     } finally {
       setIsSeedingBlueprints(false);
@@ -118,11 +147,12 @@ export default function BlueprintsHubClient() {
           description: `No legacy templates required migration. (Scanned: ${result.total}, Skipped: ${result.skipped})`,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         variant: 'destructive',
         title: 'Migration Failed',
-        description: error.message || 'An error occurred during template migration.',
+        description: errorMessage,
       });
     } finally {
       setIsMigratingTemplates(false);
@@ -216,7 +246,8 @@ export default function BlueprintsHubClient() {
   };
 
   const getGlobalTemplate = (triggerId: string, channel: MessageChannel) => {
-    return globalTemplates?.find((t) => t.templateType === triggerId && t.channel === channel);
+    return globalTemplates?.find((t) => t.templateType === triggerId && t.channel === channel && t.isActive === true) ||
+           globalTemplates?.find((t) => t.templateType === triggerId && t.channel === channel);
   };
 
   const handleCustomize = (trigger: MessagingTrigger, channel: MessageChannel) => {
@@ -368,20 +399,24 @@ export default function BlueprintsHubClient() {
                 setEditingTemplate(null);
               }}
               isSaving={isSaving}
-              onSave={async (data) => {
+              onSave={async (data: Partial<MessageTemplate>) => {
                 if (!profile) return;
                 setIsSaving(true);
                 try {
                   const payload = {
-                    name: data.name,
-                    category: data.category,
-                    templateType: data.templateType,
-                    channel: data.channel,
+                    name: data.name || '',
+                    category: data.category || 'general',
+                    templateType: data.templateType || '',
+                    channel: data.channel || 'email',
                     subject: data.subject,
-                    body: data.body,
-                    variableContext: data.variableContext,
+                    body: data.body || '',
+                    variableContext: data.variableContext || 'common',
                     declaredVariables: data.declaredVariables,
                     reminderConfig: data.reminderConfig,
+                    target: data.target || editingTemplate?.target,
+                    recipientType: data.recipientType || editingTemplate?.recipientType,
+                    status: data.status || editingTemplate?.status,
+                    isActive: data.isActive !== undefined ? data.isActive : editingTemplate?.isActive,
                   };
 
                   if (editingTemplate && editingTemplate.id) {
@@ -399,8 +434,9 @@ export default function BlueprintsHubClient() {
                     title: 'Blueprint Published',
                     description: 'The global blueprint has been updated successfully.',
                   });
-                } catch (e: any) {
-                  toast({ variant: 'destructive', title: 'Failed to publish blueprint', description: e.message });
+                } catch (e: unknown) {
+                  const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
+                  toast({ variant: 'destructive', title: 'Failed to publish blueprint', description: errorMessage });
                 } finally {
                   setIsSaving(false);
                 }
@@ -428,6 +464,14 @@ export default function BlueprintsHubClient() {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  onClick={() => setIsCreateDialogOpen(true)}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-md border-none gap-2 font-semibold text-xs h-9 px-4 shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Blueprint
+                </Button>
+
                 <Button
                   onClick={handleSeedBlueprints}
                   disabled={isSeedingBlueprints}
@@ -632,6 +676,106 @@ export default function BlueprintsHubClient() {
           </div>
         )}
       </AnimatePresence>
+
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[480px] rounded-3xl border p-6 bg-card text-left">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" /> Create Global Blueprint
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Map a new global template override to an existing system trigger. If an active blueprint already exists for the selected trigger and channel, it will be automatically archived when you activate the new one.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Select Trigger</label>
+              <Select value={newTriggerId} onValueChange={setNewTriggerId}>
+                <SelectTrigger className="w-full rounded-xl bg-background border text-xs h-10">
+                  <SelectValue placeholder="Choose a trigger..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px] rounded-xl">
+                  {MESSAGING_TRIGGERS.map((trigger) => (
+                    <SelectItem key={trigger.id} value={trigger.id} className="text-xs">
+                      {trigger.name} ({trigger.category})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedTriggerForCreate && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Select Channel</label>
+                  <Select 
+                    value={newChannel} 
+                    onValueChange={(val) => setNewChannel(val as 'email' | 'sms')}
+                  >
+                    <SelectTrigger className="w-full rounded-xl bg-background border text-xs h-10">
+                      <SelectValue placeholder="Choose a channel..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {selectedTriggerForCreate.supportedChannels.map((ch) => (
+                        <SelectItem key={ch} value={ch} className="text-xs">
+                          {ch.toUpperCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Blueprint Name</label>
+                  <CustomInput
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Enter blueprint name..."
+                    className="rounded-xl text-xs h-10 bg-background"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateDialogOpen(false)}
+              className="rounded-xl text-xs h-9 px-4"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedTriggerForCreate || !newChannel || !newName.trim()) return;
+                setIsCreateDialogOpen(false);
+                setEditingTemplate({
+                  name: newName,
+                  category: selectedTriggerForCreate.category,
+                  templateType: selectedTriggerForCreate.id,
+                  channel: newChannel,
+                  target: selectedTriggerForCreate.target,
+                  recipientType: selectedTriggerForCreate.recipientType,
+                  body: '',
+                  variableContext: selectedTriggerForCreate.category === 'surveys' ? 'survey' : (selectedTriggerForCreate.category === 'meetings' ? 'meeting' : (selectedTriggerForCreate.category === 'agreements' ? 'agreement' : 'common')),
+                  scope: 'global' as const,
+                  version: 1,
+                  status: 'draft' as const,
+                  isActive: false,
+                  declaredVariables: []
+                } as unknown as MessageTemplate);
+                setIsCustomizing(true);
+              }}
+              disabled={!newTriggerId || !newChannel || !newName.trim()}
+              className="rounded-xl text-xs h-9 px-4"
+            >
+              Create & Edit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -234,6 +234,15 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     supportedChannels: ['email', 'sms', 'push'],
   },
   {
+    id: 'survey_invitation_team',
+    name: 'Survey Invitation (Team)',
+    description: 'Alerts team members when an invitation to participate in a survey is sent to a client.',
+    category: 'surveys',
+    target: 'internal_team',
+    recipientType: 'internal_alert',
+    supportedChannels: ['email', 'sms'],
+  },
+  {
     id: 'survey_completion',
     name: 'Survey Completion',
     description: 'Sent when a user finishes a survey.',
@@ -241,6 +250,15 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     target: 'external_client',
     recipientType: 'respondent',
     supportedChannels: ['email', 'in_app'],
+  },
+  {
+    id: 'survey_completion_team',
+    name: 'Survey Completion Alert (Team)',
+    description: 'Alerts team members when a client successfully completes a survey.',
+    category: 'surveys',
+    target: 'internal_team',
+    recipientType: 'internal_alert',
+    supportedChannels: ['email', 'sms'],
   },
   {
     id: 'survey_reminder',

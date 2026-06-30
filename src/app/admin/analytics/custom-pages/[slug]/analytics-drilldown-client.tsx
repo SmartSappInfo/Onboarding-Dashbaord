@@ -65,7 +65,7 @@ function StatCard({ label, value, icon: Icon, highlight, subLabel }: StatCardPro
           highlight ? 'text-blue-700' : 'text-slate-900'
         }`}
       >
-        {value.toLocaleString()}
+        {(value ?? 0).toLocaleString()}
       </p>
       <p className="text-xs font-medium text-slate-500">{label}</p>
     </div>

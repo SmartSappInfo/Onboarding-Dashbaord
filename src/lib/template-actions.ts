@@ -3,7 +3,8 @@
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
-import type { MessageTemplate, TemplateCategory, TemplateTarget, ContentMode, VariableContext } from './types';
+import type { MessageTemplate, TemplateCategory, TemplateTarget, ContentMode, VariableContext, MessageChannel } from './types';
+import { MESSAGING_TRIGGERS } from './messaging-triggers';
 
 // ---------------------------------------------------------------------------
 // Supporting types
@@ -11,7 +12,7 @@ import type { MessageTemplate, TemplateCategory, TemplateTarget, ContentMode, Va
 
 export interface TemplateFilters {
   category?: TemplateCategory;
-  channel?: 'email' | 'sms';
+  channel?: MessageChannel;
   target?: TemplateTarget;
   status?: MessageTemplate['status'];
   /** @deprecated Use status filter instead. Kept for backward compatibility. */
@@ -25,13 +26,17 @@ export interface CreateTemplateInput {
   name: string;
   category: TemplateCategory;
   templateType: string;
-  channel: 'email' | 'sms';
+  channel: MessageChannel;
   subject?: string;
   body: string;
   variableContext: VariableContext;
   declaredVariables?: string[];
   reminderConfig?: MessageTemplate['reminderConfig'];
   createdBy: string;
+  target?: TemplateTarget;
+  recipientType?: string;
+  status?: MessageTemplate['status'];
+  isActive?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +83,33 @@ async function writeAuditLog(params: {
   });
 }
 
+async function deactivateOtherGlobalTemplates(
+  templateType: string,
+  channel: MessageChannel,
+  activeId: string,
+  batch: FirebaseFirestore.WriteBatch
+): Promise<void> {
+  const otherTemplatesSnap = await adminDb
+    .collection('message_templates')
+    .where('scope', '==', 'global')
+    .where('templateType', '==', templateType)
+    .where('channel', '==', channel)
+    .get();
+
+  for (const doc of otherTemplatesSnap.docs) {
+    if (doc.id !== activeId) {
+      const data = doc.data() as MessageTemplate;
+      if (data.status === 'active' || data.isActive === true) {
+        batch.update(doc.ref, {
+          status: 'archived',
+          isActive: false,
+          updatedAt: nowIso(),
+        });
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Global template management (super admin)
 // ---------------------------------------------------------------------------
@@ -92,12 +124,19 @@ export async function createGlobalTemplate(
   const ref = adminDb.collection('message_templates').doc();
   const now = nowIso();
 
+  const trigger = MESSAGING_TRIGGERS.find(t => t.id === data.templateType);
+  const target = data.target || trigger?.target || 'external_client';
+  const recipientType = data.recipientType || trigger?.recipientType || 'external_alert';
+
+  const status = data.status || 'draft';
+  const isActive = data.isActive !== undefined ? data.isActive : (status === 'active');
+
   const template: MessageTemplate = {
     id: ref.id,
     scope: 'global',
     category: data.category,
     channel: data.channel,
-    target: 'external_client',
+    target,
     name: data.name,
     contentMode: data.channel === 'sms' ? 'plain_text' : 'rich_builder',
     templateType: data.templateType,
@@ -106,15 +145,24 @@ export async function createGlobalTemplate(
     variableContext: data.variableContext,
     declaredVariables: data.declaredVariables ?? [],
     reminderConfig: data.reminderConfig,
-    status: 'draft',
-    isActive: false,
+    status,
+    isActive,
     version: 1,
     createdAt: now,
     updatedAt: now,
     createdBy: data.createdBy,
   };
 
-  await ref.set(template);
+  const isTemplateActive = status === 'active' || isActive === true;
+  if (isTemplateActive) {
+    const batch = adminDb.batch();
+    batch.set(ref, template);
+    await deactivateOtherGlobalTemplates(data.templateType, data.channel, ref.id, batch);
+    await batch.commit();
+  } else {
+    await ref.set(template);
+  }
+
   revalidatePath('/backoffice/messaging/templates');
   return template;
 }
@@ -140,12 +188,30 @@ export async function updateGlobalTemplate(
     throw new Error(`Template "${id}" is not a global template.`);
   }
 
-  await ref.update({
+  const newStatus = data.status || existing.status;
+  const newIsActive = data.isActive !== undefined ? data.isActive : existing.isActive;
+  const isTemplateActive = newStatus === 'active' || newIsActive === true;
+
+  const updatePayload = {
     ...data,
     version: FieldValue.increment(1),
     updatedAt: nowIso(),
     updatedBy,
-  });
+  };
+
+  if (isTemplateActive) {
+    const batch = adminDb.batch();
+    batch.update(ref, updatePayload);
+    await deactivateOtherGlobalTemplates(
+      existing.templateType,
+      existing.channel,
+      id,
+      batch
+    );
+    await batch.commit();
+  } else {
+    await ref.update(updatePayload);
+  }
 
   revalidatePath('/backoffice/messaging/templates');
 }
@@ -342,11 +408,10 @@ export async function listTemplates(
   const orgSnap = await orgQuery.get();
   const orgTemplates = orgSnap.docs.map((d) => ({ id: d.id, ...d.data() } as MessageTemplate));
 
-  // Collect the global template IDs that have been overridden
-  const overriddenGlobalIds = new Set(
+  // Collect the global template keys (templateType__channel) that have been overridden
+  const overriddenGlobalKeys = new Set(
     orgTemplates
-      .map((t) => t.globalTemplateId)
-      .filter((id): id is string => Boolean(id)),
+      .map((t) => `${t.templateType}__${t.channel}`)
   );
 
   // Fetch global templates
@@ -363,7 +428,7 @@ export async function listTemplates(
   const globalSnap = await globalQuery.get();
   const globalTemplates = globalSnap.docs
     .map((d) => ({ id: d.id, ...d.data() } as MessageTemplate))
-    .filter((t) => !overriddenGlobalIds.has(t.id));
+    .filter((t) => !overriddenGlobalKeys.has(`${t.templateType}__${t.channel}`));
 
   return [...orgTemplates, ...globalTemplates];
 }

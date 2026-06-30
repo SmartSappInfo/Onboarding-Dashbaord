@@ -12,7 +12,7 @@ export interface SeedGlobalTemplatesResult {
   errors: Array<{ name: string; error: string }>;
 }
 
-export async function seedGlobalTemplatesAction(): Promise<{ total: number; created: number; skipped: number; failed: number; errors: any[] }> {
+export async function seedGlobalTemplatesAction(): Promise<SeedGlobalTemplatesResult> {
   try {
     const timestamp = new Date().toISOString();
     const batches: FirebaseFirestore.WriteBatch[] = [];
@@ -32,7 +32,7 @@ export async function seedGlobalTemplatesAction(): Promise<{ total: number; crea
               id: `block_head_${docId}`,
               type: 'heading',
               title: tpl.subject || tpl.name,
-              variant: 'h2',
+              variant: 'h2' as const,
               style: { textAlign: 'center', fontWeight: 'bold', marginTop: '16px', marginBottom: '16px' }
           },
           {
@@ -94,14 +94,15 @@ export async function seedGlobalTemplatesAction(): Promise<{ total: number; crea
       failed: 0,
       errors: [],
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[SEED_TEMPLATES] Seeding failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Seeding failed';
     return {
       total: 0,
       created: 0,
       skipped: 0,
       failed: 1,
-      errors: [{ name: 'Global Messaging Blueprints', error: error.message || 'Seeding failed' }],
+      errors: [{ name: 'Global Messaging Blueprints', error: errorMessage }],
     };
   }
 }
