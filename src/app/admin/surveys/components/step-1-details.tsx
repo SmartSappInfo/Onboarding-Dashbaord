@@ -259,31 +259,58 @@ export default function Step1Details(_props: Step1DetailsProps) {
                                 </div>
                             )}
                         />
-                        <Controller
-                            name="startButtonText"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-3">
-                                    <Label className="text-sm font-semibold">Start Button Label</Label>
-                                    <Input
-                                        {...field}
-                                        value={field.value || ''}
-                                        placeholder="e.g. Start the 2-Minute Survey"
-                                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
-                                    />
-                                    <div className="flex items-center gap-2 pt-1">
-                                        <span className="text-[9px] font-bold text-muted-foreground/50 tracking-tighter ml-1">Preview:</span>
-                                        <button
-                                            type="button"
-                                            className="inline-flex items-center gap-2 h-9 px-5 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs shadow-md transition-all whitespace-nowrap"
-                                            style={{ width: 'fit-content' }}
-                                        >
-                                            {field.value?.trim() || "Let's Start"} <ArrowRight className="h-3.5 w-3.5 shrink-0" />
-                                        </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Controller
+                                name="startButtonText"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="space-y-3">
+                                        <Label className="text-sm font-semibold">Start Button Label</Label>
+                                        <Input
+                                            {...field}
+                                            value={field.value || ''}
+                                            placeholder="e.g. Start the 2-Minute Survey"
+                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+                                        />
+                                        <div className="flex items-center gap-2 pt-1">
+                                            <span className="text-[9px] font-bold text-muted-foreground/50 tracking-tighter ml-1">Preview:</span>
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center gap-2 h-9 px-5 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs shadow-md transition-all whitespace-nowrap"
+                                                style={{ width: 'fit-content' }}
+                                            >
+                                                {field.value?.trim() || "Let's Start"} <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                        />
+                                )}
+                            />
+                            <Controller
+                                name="submitButtonText"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="space-y-3">
+                                        <Label className="text-sm font-semibold">Submit Button Label</Label>
+                                        <Input
+                                            {...field}
+                                            value={field.value || ''}
+                                            placeholder="e.g. Submit Survey"
+                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+                                        />
+                                        <div className="flex items-center gap-2 pt-1">
+                                            <span className="text-[9px] font-bold text-muted-foreground/50 tracking-tighter ml-1">Preview:</span>
+                                            <button
+                                                type="button"
+                                                className="inline-flex items-center gap-2 h-9 px-5 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs shadow-md transition-all whitespace-nowrap"
+                                                style={{ width: 'fit-content' }}
+                                            >
+                                                {field.value?.trim() || "Submit"} <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            />
+                        </div>
                     </div>
 
                     <div className="h-px bg-border/50" />

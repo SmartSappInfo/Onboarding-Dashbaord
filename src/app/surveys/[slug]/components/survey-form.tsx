@@ -27,7 +27,7 @@ import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -937,6 +937,7 @@ export default function SurveyForm({
 }: SurveyFormProps) {
     const firestore = useFirestore();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
     
     const surveySchema = React.useMemo(() => generateSchema(survey.elements), [survey.elements]);
@@ -1209,9 +1210,66 @@ export default function SurveyForm({
         setIsStatusModalOpen(false);
         // Only route to result page if a customized result page is configured for this outcome
         if (survey.scoringEnabled && lastSubmissionId && matchedOutcome?.pageId && matchedOutcome.pageId !== 'none') {
-            router.push(`/surveys/${survey.slug}/result/${lastSubmissionId}`);
+            performCompletionNavigation(`/surveys/${survey.slug}/result/${lastSubmissionId}`, lastSubmissionId);
         } else {
             onSubmitted();
+        }
+    };
+
+    const performCompletionNavigation = (destination: string, subId?: string) => {
+        let finalDestination = destination.trim();
+        
+        // Normalize external domains that lack protocol (e.g., localhost:9002/..., google.com)
+        if (!finalDestination.startsWith('/') && !finalDestination.startsWith('http://') && !finalDestination.startsWith('https://')) {
+            const hasDomain = finalDestination.includes('.') || finalDestination.startsWith('localhost');
+            if (hasDomain) {
+                finalDestination = `http://${finalDestination}`;
+            } else {
+                finalDestination = `/${finalDestination}`;
+            }
+        }
+
+        const isInternal = finalDestination.startsWith('/');
+
+        // Resolve absolute URL for parent navigation or external redirection
+        let absoluteDestination = finalDestination;
+        if (isInternal && typeof window !== 'undefined') {
+            absoluteDestination = `${window.location.origin}${finalDestination}`;
+        }
+
+        if (isPreview) {
+            toast({
+                title: "[Preview] Redirect Action Triggered",
+                description: `Navigating to: ${absoluteDestination}`,
+            });
+            onSubmitted();
+            return;
+        }
+
+        // Always notify parent of completion
+        if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                type: 'survey_submitted',
+                surveyId: survey.id,
+                submissionId: subId,
+                redirectUrl: absoluteDestination
+            }, '*');
+        }
+
+        const isEmbedded = searchParams?.get('embed') === 'true';
+        if (isEmbedded && survey.embedRedirectMode === 'parent' && typeof window !== 'undefined' && window.parent && window.parent !== window) {
+            try {
+                window.parent.location.href = absoluteDestination;
+                return;
+            } catch (err: unknown) {
+                console.warn("Parent redirection blocked by sandbox. Falling back to local redirect.", err);
+            }
+        }
+
+        if (isInternal) {
+            router.push(finalDestination);
+        } else {
+            window.location.href = finalDestination;
         }
     };
 
@@ -1454,37 +1512,21 @@ export default function SurveyForm({
             await Promise.allSettled(automationPromises);
             
             // Always route directly after submission — no intermediate modal
-            // Route to result page if scoring is enabled OR if there are result rules defined
-            if (survey.scoringEnabled || (survey.resultRules && survey.resultRules.length > 0)) {
+            // Route to result page if scoring is enabled
+            if (survey.scoringEnabled) {
                 if (outcome?.redirectEnabled && outcome.redirectUrl) {
                     const destination = replaceVariablesInUrl(outcome.redirectUrl, variables);
-                    if (isPreview) {
-                        toast({
-                            title: "[Preview] Redirect Outcome Match",
-                            description: `Redirecting to: ${destination}`,
-                        });
-                        onSubmitted();
-                    } else {
-                        window.location.href = destination;
-                    }
+                    performCompletionNavigation(destination, submissionId);
                     return;
                 }
                 setIsNavigatingToResults(true);
-                router.push(`/surveys/${survey.slug}/result/${submissionId}`);
+                performCompletionNavigation(`/surveys/${survey.slug}/result/${submissionId}`, submissionId);
                 // Don't reset isSubmitting — keep loader visible until navigation completes
                 return;
             } else {
                 if (survey.thankYouRedirectEnabled && survey.thankYouRedirectUrl) {
                     const destination = replaceVariablesInUrl(survey.thankYouRedirectUrl, variables);
-                    if (isPreview) {
-                        toast({
-                            title: "[Preview] Redirect Thank You Page",
-                            description: `Redirecting to: ${destination}`,
-                        });
-                        onSubmitted();
-                    } else {
-                        window.location.href = destination;
-                    }
+                    performCompletionNavigation(destination, submissionId);
                 } else {
                     onSubmitted();
                 }
@@ -1804,7 +1846,7 @@ export default function SurveyForm({
                                         ) : isSubmitDisabled ? (
                                             'Submission Disabled'
                                         ) : (
-                                            'Submit Survey'
+                                            survey.submitButtonText || 'Submit'
                                         )}
                                     </Button>
                                 )}

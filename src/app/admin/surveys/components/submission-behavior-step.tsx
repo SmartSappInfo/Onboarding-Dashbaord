@@ -220,22 +220,37 @@ export default function SubmissionBehaviorStep() {
     // 3. Action Handlers
     const handleCreateTag = async (data: any) => {
         if (!user || !activeWorkspaceId) return;
+
+        const trimmedName = data.name.trim();
+        const existingTag = tags?.find((t: any) => t.name.toLowerCase() === trimmedName.toLowerCase());
+        if (existingTag) {
+            toast({ title: 'Tag Auto-Selected', description: `Tag "${existingTag.name}" already exists and has been selected.` });
+            setIsCreateTagOpen(false);
+            const current = watch('autoTags') || [];
+            if (!current.includes(existingTag.id)) {
+                setValue('autoTags', [...current, existingTag.id], { shouldDirty: true });
+            }
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const res = await createTagAction({
                 workspaceId: activeWorkspaceId,
                 organizationId: activeOrganizationId || '',
-                name: data.name,
+                name: trimmedName,
                 category: data.category || 'custom',
                 color: data.color || '#3B82F6',
                 userId: user?.uid || '',
                 userName: user?.displayName || 'System'
             });
-            if (res.success) {
-                toast({ title: 'Tag Created', description: `Tag "${data.name}" added to registry.` });
+            if (res.success && res.data?.id) {
+                toast({ title: 'Tag Created', description: `Tag "${trimmedName}" added to registry.` });
                 setIsCreateTagOpen(false);
+                const current = watch('autoTags') || [];
+                setValue('autoTags', [...current, res.data.id], { shouldDirty: true });
             } else {
-                toast({ variant: 'destructive', title: 'Action Failed', description: res.error });
+                toast({ variant: 'destructive', title: 'Action Failed', description: res?.error || 'Failed to create tag.' });
             }
         } finally {
             setIsSubmitting(false);

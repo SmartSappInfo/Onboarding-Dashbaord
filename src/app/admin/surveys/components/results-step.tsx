@@ -168,6 +168,45 @@ export default function ResultsStep() {
                                 </div>
                             </div>
                         </div>
+
+                        <div className="border-t border-border/50 pt-6 mt-6 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                                <div className="space-y-1">
+                                    <Label className="text-sm font-semibold">Redirect Target (Embedded Mode)</Label>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        For surveys loaded in modals or iframes: determine whether redirect links and results pages load inside the modal or navigate the top-level parent page.
+                                    </p>
+                                </div>
+                                <Controller
+                                    name="embedRedirectMode"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="grid grid-cols-2 gap-2 bg-muted/20 p-1 rounded-xl border border-border/50">
+                                            <button
+                                                type="button"
+                                                onClick={() => field.onChange('modal')}
+                                                className={cn(
+                                                    "h-9 rounded-lg font-semibold text-xs transition-all duration-200 ease-out flex items-center justify-center gap-2",
+                                                    (field.value || 'modal') === 'modal' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                                )}
+                                            >
+                                                Show in Modal
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => field.onChange('parent')}
+                                                className={cn(
+                                                    "h-9 rounded-lg font-semibold text-xs transition-all duration-200 ease-out flex items-center justify-center gap-2",
+                                                    field.value === 'parent' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                                )}
+                                            >
+                                                Reload Parent Page
+                                            </button>
+                                        </div>
+                                    )}
+                                />
+                            </div>
+                        </div>
                     </CardContent>
                 )}
             </Card>

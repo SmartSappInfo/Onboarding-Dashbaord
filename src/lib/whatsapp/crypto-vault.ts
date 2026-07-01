@@ -117,13 +117,26 @@ export function decrypt(envelope: EncryptedEnvelope): string {
   if (!key) {
     throw new Error(`[crypto-vault] No key found for keyId '${envelope.keyId}'.`);
   }
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(envelope.iv, 'base64'));
-  decipher.setAuthTag(Buffer.from(envelope.tag, 'base64'));
-  const dec = Buffer.concat([
-    decipher.update(Buffer.from(envelope.cipher, 'base64')),
-    decipher.final(),
-  ]);
-  return dec.toString('utf8');
+  try {
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(envelope.iv, 'base64'));
+    decipher.setAuthTag(Buffer.from(envelope.tag, 'base64'));
+    const dec = Buffer.concat([
+      decipher.update(Buffer.from(envelope.cipher, 'base64')),
+      decipher.final(),
+    ]);
+    return dec.toString('utf8');
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : '';
+    if (
+      errMsg.includes('Unsupported state') ||
+      errMsg.includes('unable to authenticate data')
+    ) {
+      throw new Error(
+        'WhatsApp credentials decryption failed (invalid encryption key). This usually happens when the WHATSAPP_ENCRYPTION_KEY environment variable is changed or rotated. Please go to Admin -> Settings -> WhatsApp Setup and re-save your connection credentials to re-encrypt them with the current key.'
+      );
+    }
+    throw err;
+  }
 }
 
 /** Generate a fresh 32-byte key as hex — for provisioning `WHATSAPP_ENCRYPTION_KEY`. */

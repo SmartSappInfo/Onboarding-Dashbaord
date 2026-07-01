@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -240,7 +241,7 @@ export function MinimalRespondentMessage() {
 }
 
 export function MinimalThankYouPage() {
-    const { watch, setValue, register } = useFormContext();
+    const { watch, setValue, register, control } = useFormContext();
     const pages = watch('resultPages') || [];
     const redirectEnabled = watch('thankYouRedirectEnabled');
 
@@ -321,6 +322,40 @@ export function MinimalThankYouPage() {
                                 className="bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-emerald-500/30 rounded-xl h-11"
                             />
                         </div>
+                        <Controller
+                            name="embedRedirectMode"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2 pt-2">
+                                    <Label className="text-xs font-bold text-slate-600">Redirect Target (Embedded Mode)</Label>
+                                    <div className="grid grid-cols-2 gap-2 bg-muted/20 p-1 rounded-xl border border-border/50">
+                                        <button
+                                            type="button"
+                                            onClick={() => field.onChange('modal')}
+                                            className={cn(
+                                                "h-9 rounded-lg font-semibold text-xs transition-all duration-200 ease-out flex items-center justify-center gap-2",
+                                                (field.value || 'modal') === 'modal' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            Show in Modal
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => field.onChange('parent')}
+                                            className={cn(
+                                                "h-9 rounded-lg font-semibold text-xs transition-all duration-200 ease-out flex items-center justify-center gap-2",
+                                                field.value === 'parent' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            Reload Parent Page
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                        Choose whether to load the redirect page inside the modal iframe, or reload/refresh the top-level parent page.
+                                    </p>
+                                </div>
+                            )}
+                        />
                         <div className="p-4 rounded-xl border border-dashed border-emerald-200/50 bg-emerald-50/20 text-xs text-emerald-700/80 leading-relaxed space-y-2">
                             <p className="font-bold text-emerald-800">💡 Personalize the Redirect URL:</p>
                             <p>You can embed respondent inputs and submission details using placeholders:</p>

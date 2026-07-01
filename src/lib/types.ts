@@ -1825,6 +1825,8 @@ export interface Survey {
   thankYouTitle?: string;
   thankYouDescription?: string;
   startButtonText?: string;
+  submitButtonText?: string;
+  embedRedirectMode?: 'modal' | 'parent';
   showCoverPage?: boolean;
   showIntroAsPage?: boolean;
   stepperVariant?: 'full' | 'simple';
@@ -2668,6 +2670,7 @@ export interface MessageTemplate {
   contentMode: ContentMode;
   subject?: string;
   previewText?: string;
+  subjectOptions?: Array<{ subject: string; previewText: string }>;
   body: string;
   blocks?: MessageBlock[];
   bodyBlocks?: MessageBlock[];
@@ -3750,6 +3753,16 @@ export interface Form {
   actions: FormSubmissionActions;
   status: 'draft' | 'published' | 'archived';
   submissionCount: number;
+  workspaceIds?: string[];
+  assignedUsers?: string[];
+  assignmentEnabled?: boolean;
+  allowResubmission?: boolean;
+  allowCrossVisibility?: boolean;
+  showDebugProcessingModal?: boolean;
+  notifyAssignedUsers?: {
+    email: boolean;
+    sms: boolean;
+  };
   createdAt: string;
   updatedAt?: string;
   publishedAt?: string;
@@ -3802,6 +3815,15 @@ export interface FormSubmissionActions {
       enabled: boolean;
       respondentEmailField?: string;
       respondentPhoneField?: string;
+      emailTemplateId?: string;
+      smsTemplateId?: string;
+      whatsappTemplateId?: string;
+      pushTemplateId?: string;
+      inAppTemplateId?: string;
+    };
+    externalAlerts?: {
+      enabled: boolean;
+      emailAddresses: string[];
       emailTemplateId?: string;
       smsTemplateId?: string;
       whatsappTemplateId?: string;

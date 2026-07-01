@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { MessageTemplate } from '@/lib/types';
+import type { UserProfile, MessageTemplate } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
+import { useTenant } from '@/context/TenantContext';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 interface NotificationConfig {
   enabled: boolean;
@@ -26,31 +28,57 @@ interface NotificationConfig {
   whatsappTemplateId?: string;
   inAppTemplateId?: string;
   pushTemplateId?: string;
+  emailAddresses?: string[]; // For external alerts
 }
 
 interface FormNotificationSettingsProps {
   internalAlerts?: NotificationConfig;
   respondentAlerts?: NotificationConfig;
+  externalAlerts?: NotificationConfig;
   onChangeInternal: (val: NotificationConfig) => void;
   onChangeRespondent: (val: NotificationConfig) => void;
+  onChangeExternal: (val: NotificationConfig) => void;
+  availableFields?: { label: string; value: string; type: string }[];
 }
 
 export function FormNotificationSettings({
   internalAlerts = { enabled: false, userIds: [] },
   respondentAlerts = { enabled: false },
+  externalAlerts = { enabled: false, emailAddresses: [] },
   onChangeInternal,
   onChangeRespondent,
+  onChangeExternal,
+  availableFields = [],
 }: FormNotificationSettingsProps) {
-  const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms' | 'in_app' | 'push'; open: boolean; templateId?: string; type: 'internal' | 'respondent' } | null>(null);
+  const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms' | 'in_app' | 'push'; open: boolean; templateId?: string; type: 'internal' | 'respondent' | 'external' } | null>(null);
+
+  const firestore = useFirestore();
+  const { activeOrganizationId } = useTenant();
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !activeOrganizationId) return null;
+    return query(
+      collection(firestore, 'users'), 
+      where('organizationId', '==', activeOrganizationId),
+      where('isAuthorized', '==', true), 
+      orderBy('name', 'asc')
+    );
+  }, [firestore, activeOrganizationId]);
+
+  const { data: users } = useCollection<UserProfile>(usersQuery);
+
+  const userOptions = React.useMemo(() => 
+    users?.map(u => ({ label: u.name, value: u.id })) || [], 
+  [users]);
 
   const renderConfigBlock = (
-    type: 'internal' | 'respondent',
+    type: 'internal' | 'respondent' | 'external',
     config: NotificationConfig,
     onChange: (val: NotificationConfig) => void,
     title: string,
     subtitle: string,
     icon: React.ReactNode,
-    recipientTypeMatch: 'respondent' | 'internal_alert'
+    recipientTypeMatch: 'respondent' | 'internal_alert' | 'external_alert'
   ) => {
     const isEnabled = config.enabled;
 
@@ -81,13 +109,27 @@ export function FormNotificationSettings({
               {type === 'internal' ? (
                 <div className="space-y-4">
                   <Label className="text-[10px] font-semibold text-primary ml-1">Internal Users to Notify</Label>
-                  <TagInput 
+                  <MultiSelect
+                    options={userOptions}
                     value={config.userIds || []}
                     onChange={(val) => onChange({ ...config, userIds: val })}
-                    placeholder="Enter emails or system user roles..."
+                    placeholder="Select team members to notify..."
+                    className="rounded-xl bg-background"
                   />
                   <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight leading-relaxed italic">
-                    Add comma or semicolon-separated custom contacts or workspace roles.
+                    Select team members who will receive notifications for this form submission.
+                  </p>
+                </div>
+              ) : type === 'external' ? (
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-semibold text-primary ml-1">External Alert Emails</Label>
+                  <TagInput 
+                    value={config.emailAddresses || []}
+                    onChange={(val) => onChange({ ...config, emailAddresses: val })}
+                    placeholder="Enter emails to notify..."
+                  />
+                  <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight leading-relaxed italic">
+                    Add comma or semicolon-separated email addresses to notify external stakeholders.
                   </p>
                 </div>
               ) : (
@@ -96,21 +138,71 @@ export function FormNotificationSettings({
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Email Field Variable</Label>
-                      <Input
-                        value={config.respondentEmailField || ''}
-                        onChange={(e) => onChange({ ...config, respondentEmailField: e.target.value })}
-                        placeholder="e.g. contact_email"
-                        className="h-9 rounded-xl text-xs bg-background"
-                      />
+                      {availableFields && availableFields.length > 0 ? (
+                        <Select
+                          value={config.respondentEmailField || ''}
+                          onValueChange={(val) => onChange({ ...config, respondentEmailField: val })}
+                        >
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-background">
+                            <SelectValue placeholder="Select email field..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            {availableFields.filter(f => f.type === 'email').map(f => (
+                              <SelectItem key={f.value} value={f.value}>{f.label} ({`{{${f.value}}}`})</SelectItem>
+                            ))}
+                            {availableFields.filter(f => f.type !== 'email').length > 0 && (
+                              <>
+                                <Separator className="my-1" />
+                                <div className="px-2 py-1 text-[9px] text-muted-foreground font-semibold">Other Fields</div>
+                                {availableFields.filter(f => f.type !== 'email').map(f => (
+                                  <SelectItem key={f.value} value={f.value}>{f.label} ({`{{${f.value}}}`})</SelectItem>
+                                ))}
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={config.respondentEmailField || ''}
+                          onChange={(e) => onChange({ ...config, respondentEmailField: e.target.value })}
+                          placeholder="e.g. contact_email"
+                          className="h-9 rounded-xl text-xs bg-background"
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Phone Field Variable (for SMS)</Label>
-                      <Input
-                        value={config.respondentPhoneField || ''}
-                        onChange={(e) => onChange({ ...config, respondentPhoneField: e.target.value })}
-                        placeholder="e.g. contact_phone"
-                        className="h-9 rounded-xl text-xs bg-background"
-                      />
+                      {availableFields && availableFields.length > 0 ? (
+                        <Select
+                          value={config.respondentPhoneField || ''}
+                          onValueChange={(val) => onChange({ ...config, respondentPhoneField: val })}
+                        >
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-background">
+                            <SelectValue placeholder="Select phone field..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            {availableFields.filter(f => f.type === 'phone').map(f => (
+                              <SelectItem key={f.value} value={f.value}>{f.label} ({`{{${f.value}}}`})</SelectItem>
+                            ))}
+                            {availableFields.filter(f => f.type !== 'phone').length > 0 && (
+                              <>
+                                <Separator className="my-1" />
+                                <div className="px-2 py-1 text-[9px] text-muted-foreground font-semibold">Other Fields</div>
+                                {availableFields.filter(f => f.type !== 'phone').map(f => (
+                                  <SelectItem key={f.value} value={f.value}>{f.label} ({`{{${f.value}}}`})</SelectItem>
+                                ))}
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={config.respondentPhoneField || ''}
+                          onChange={(e) => onChange({ ...config, respondentPhoneField: e.target.value })}
+                          placeholder="e.g. contact_phone"
+                          className="h-9 rounded-xl text-xs bg-background"
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -197,6 +289,7 @@ export function FormNotificationSettings({
     <div className="space-y-6">
       {renderConfigBlock('respondent', respondentAlerts, onChangeRespondent, 'Respondent Alerts', 'Notify the person who submitted the form', <Bell className="h-6 w-6" />, 'respondent')}
       {renderConfigBlock('internal', internalAlerts, onChangeInternal, 'Internal Alerts', 'Notify team members upon submission', <Users className="h-6 w-6" />, 'internal_alert')}
+      {renderConfigBlock('external', externalAlerts, onChangeExternal, 'External Contact Alerts', 'Notify external stakeholders via email', <Mail className="h-6 w-6" />, 'external_alert')}
 
       {quickCreateState && (
         <TemplateWorkshopSheet 
@@ -206,12 +299,15 @@ export function FormNotificationSettings({
           initialContext={{
             channel: quickCreateState.channel,
             category: "forms",
-            recipientType: quickCreateState.type === 'internal' ? 'internal_alert' : 'respondent'
+            recipientType: quickCreateState.type === 'internal' ? 'internal_alert' : quickCreateState.type === 'external' ? 'external_alert' : 'respondent'
           }}
           onCreated={(template) => {
             if (quickCreateState.type === 'internal') {
               if (quickCreateState.channel === 'email') onChangeInternal({ ...internalAlerts, emailTemplateId: template.id });
               else onChangeInternal({ ...internalAlerts, smsTemplateId: template.id });
+            } else if (quickCreateState.type === 'external') {
+              if (quickCreateState.channel === 'email') onChangeExternal({ ...externalAlerts, emailTemplateId: template.id });
+              else onChangeExternal({ ...externalAlerts, smsTemplateId: template.id });
             } else {
               if (quickCreateState.channel === 'email') onChangeRespondent({ ...respondentAlerts, emailTemplateId: template.id });
               else onChangeRespondent({ ...respondentAlerts, smsTemplateId: template.id });

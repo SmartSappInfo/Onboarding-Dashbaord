@@ -32,10 +32,11 @@ import {
     Zap,
     X
 } from 'lucide-react';
-import type { MessageBlock, VariableDefinition, MessageTemplate } from '@/lib/types';
+import type { MessageBlock, VariableDefinition, MessageTemplate, TemplateVariable } from '@/lib/types';
 import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import { cn } from '@/lib/utils';
 import { blockIcons } from './block-icons';
+import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 
 interface BlockInspectorProps {
     block: MessageBlock;
@@ -45,6 +46,20 @@ interface BlockInspectorProps {
 }
 
 export function BlockInspector({ block, variables, onUpdate, templateCategory }: BlockInspectorProps) {
+    const autocompleteVariables = React.useMemo<TemplateVariable[]>(() => {
+        return variables.map(v => ({
+            id: v.id,
+            name: v.key,
+            label: v.label || v.key,
+            context: (v.category || 'general') as any,
+            description: '',
+            dataType: (v.type === 'date' || v.type === 'number' || v.type === 'url' || v.type === 'html' ? v.type : 'string') as any,
+            exampleValue: `{{${v.key}}}`,
+            isDynamic: false,
+            isComputed: false,
+        }));
+    }, [variables]);
+
     const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
         typography: true,
         spacing: false,
@@ -163,10 +178,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         onFieldChange={val => onUpdate({ title: val })} 
                                     />
                                 </div>
-                                <Input 
-                                    ref={titleInputRef}
+                                <SlashInput 
                                     value={block.title || ''} 
-                                    onChange={e => onUpdate({ title: e.target.value })} 
+                                    onChange={val => onUpdate({ title: val })} 
+                                    variables={autocompleteVariables}
                                     className="font-bold rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     placeholder="Enter heading title..."
                                 />
@@ -197,10 +212,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         onFieldChange={val => onUpdate({ pillText: val })} 
                                     />
                                 </div>
-                                <Input 
-                                    ref={headingPillRef}
+                                <SlashInput 
                                     value={block.pillText || ''} 
-                                    onChange={e => onUpdate({ pillText: e.target.value })} 
+                                    onChange={val => onUpdate({ pillText: val })} 
+                                    variables={autocompleteVariables}
                                     className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     placeholder="e.g. High Priority (optional)"
                                 />
@@ -214,10 +229,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         onFieldChange={val => onUpdate({ content: val })} 
                                     />
                                 </div>
-                                <Input 
-                                    ref={headingSubtextRef}
+                                <SlashInput 
                                     value={block.content || ''} 
-                                    onChange={e => onUpdate({ content: e.target.value })} 
+                                    onChange={val => onUpdate({ content: val })} 
+                                    variables={autocompleteVariables}
                                     className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     placeholder="e.g. Invited by Alex Chen (optional)"
                                 />
@@ -269,10 +284,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                 onFieldChange={val => onUpdate({ rsvpDate: val })} 
                                             />
                                         </div>
-                                        <Input 
-                                            ref={headingRsvpDateRef}
+                                        <SlashInput 
                                             value={block.rsvpDate || ''} 
-                                            onChange={e => onUpdate({ rsvpDate: e.target.value })} 
+                                            onChange={val => onUpdate({ rsvpDate: val })} 
+                                            variables={autocompleteVariables}
                                             className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                             placeholder="e.g. Thursday, Oct 26"
                                         />
@@ -286,10 +301,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                 onFieldChange={val => onUpdate({ rsvpTime: val })} 
                                             />
                                         </div>
-                                        <Input 
-                                            ref={headingRsvpTimeRef}
+                                        <SlashInput 
                                             value={block.rsvpTime || ''} 
-                                            onChange={e => onUpdate({ rsvpTime: e.target.value })} 
+                                            onChange={val => onUpdate({ rsvpTime: val })} 
+                                            variables={autocompleteVariables}
                                             className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                             placeholder="e.g. 10:00 AM - 11:30 AM (PST)"
                                         />
@@ -308,12 +323,12 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     targetRef={contentTextareaRef} 
                                     currentValue={block.content || ''} 
                                     onFieldChange={val => onUpdate({ content: val })} 
-                                />
+                                    />
                             </div>
-                            <Textarea 
-                                ref={contentTextareaRef}
+                            <SlashTextarea 
                                 value={block.content || ''} 
-                                onChange={e => onUpdate({ content: e.target.value })}
+                                onChange={val => onUpdate({ content: val })}
+                                variables={autocompleteVariables}
                                 className="min-h-[140px] rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 p-4 leading-relaxed text-sm" 
                             />
                         </div>
@@ -349,10 +364,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         onFieldChange={val => onUpdate({ items: val.split('\n') })} 
                                     />
                                 </div>
-                                <Textarea 
-                                    ref={contentTextareaRef}
+                                <SlashTextarea 
                                     value={block.items?.join('\n') || ''}
-                                    onChange={e => onUpdate({ items: e.target.value.split('\n') })}
+                                    onChange={val => onUpdate({ items: val.split('\n') })}
+                                    variables={autocompleteVariables}
                                     className="min-h-[140px] text-sm rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 p-4 leading-relaxed"
                                     placeholder="Pasting a list works here too..."
                                 />
@@ -372,10 +387,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         onFieldChange={val => onUpdate({ title: val })} 
                                     />
                                 </div>
-                                <Input 
-                                    ref={titleInputRef}
+                                <SlashInput 
                                     value={block.title || ''} 
-                                    onChange={e => onUpdate({ title: e.target.value })} 
+                                    onChange={val => onUpdate({ title: val })} 
+                                    variables={autocompleteVariables}
                                     className="font-bold rounded-xl h-11" 
                                 />
                             </div>
@@ -392,16 +407,16 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         </button>
                                     )}
                                 </div>
-                                <div className="relative group flex items-center">
-                                    <div className="absolute left-3 text-muted-foreground/40"><LinkIcon className="h-3.5 w-3.5" /></div>
-                                    <Input 
-                                        ref={linkInputRef}
+                                <div className="relative group flex items-center w-full">
+                                    <div className="absolute left-3 text-muted-foreground/40 z-10"><LinkIcon className="h-3.5 w-3.5" /></div>
+                                    <SlashInput 
                                         value={block.link || ''} 
-                                        onChange={e => onUpdate({ link: e.target.value })} 
+                                        onChange={val => onUpdate({ link: val })} 
+                                        variables={autocompleteVariables}
                                         placeholder="https://..."
-                                        className="rounded-xl h-11 bg-muted/20 border-none font-mono text-[10px] pl-9 pr-8" 
+                                        className="rounded-xl h-11 bg-muted/20 border-none font-mono text-[10px] pl-9 pr-8 w-full" 
                                     />
-                                    <div className="absolute right-2">
+                                    <div className="absolute right-2 z-10">
                                         <InlineVariablePicker 
                                             targetRef={linkInputRef} 
                                             currentValue={block.link || ''} 
@@ -475,10 +490,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                     onFieldChange={val => onUpdate({ pillText: val })} 
                                                 />
                                             </div>
-                                            <Input 
-                                                ref={pillInputRef}
+                                            <SlashInput 
                                                 value={block.pillText || ''} 
-                                                onChange={e => onUpdate({ pillText: e.target.value })} 
+                                                onChange={val => onUpdate({ pillText: val })} 
+                                                variables={autocompleteVariables}
                                                 placeholder="e.g. Invitation"
                                                 className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                             />
@@ -492,10 +507,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                     onFieldChange={val => onUpdate({ content: val })} 
                                                 />
                                             </div>
-                                            <Textarea 
-                                                ref={descTextareaRef}
+                                            <SlashTextarea 
                                                 value={block.content || ''} 
-                                                onChange={e => onUpdate({ content: e.target.value })} 
+                                                onChange={val => onUpdate({ content: val })} 
+                                                variables={autocompleteVariables}
                                                 placeholder="Describe your event details..."
                                                 className="font-medium text-xs rounded-xl min-h-[60px] bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                             />
@@ -518,10 +533,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                 </div>
                                             )}
                                             {isEvent && (
-                                                <Input 
-                                                    ref={dateLabelInputRef}
+                                                <SlashInput 
                                                     value={block.rsvpDateLabel || ''} 
-                                                    onChange={e => onUpdate({ rsvpDateLabel: e.target.value })} 
+                                                    onChange={val => onUpdate({ rsvpDateLabel: val })} 
+                                                    variables={autocompleteVariables}
                                                     placeholder="DATE (default)"
                                                     className="font-bold text-[10px] h-8 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 mb-1" 
                                                 />
@@ -534,10 +549,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                     onFieldChange={val => onUpdate({ rsvpDate: val })} 
                                                 />
                                             </div>
-                                            <Input 
-                                                ref={dateInputRef}
+                                            <SlashInput 
                                                 value={block.rsvpDate || ''} 
-                                                onChange={e => onUpdate({ rsvpDate: e.target.value })} 
+                                                onChange={val => onUpdate({ rsvpDate: val })} 
+                                                variables={autocompleteVariables}
                                                 placeholder="e.g. Dec 15, 2024"
                                                 className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                             />
@@ -556,10 +571,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                 </div>
                                             )}
                                             {isEvent && (
-                                                <Input 
-                                                    ref={timeLabelInputRef}
+                                                <SlashInput 
                                                     value={block.rsvpTimeLabel || ''} 
-                                                    onChange={e => onUpdate({ rsvpTimeLabel: e.target.value })} 
+                                                    onChange={val => onUpdate({ rsvpTimeLabel: val })} 
+                                                    variables={autocompleteVariables}
                                                     placeholder="TIME (default)"
                                                     className="font-bold text-[10px] h-8 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 mb-1" 
                                                 />
@@ -572,10 +587,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                     onFieldChange={val => onUpdate({ rsvpTime: val })} 
                                                 />
                                             </div>
-                                            <Input 
-                                                ref={timeInputRef}
+                                            <SlashInput 
                                                 value={block.rsvpTime || ''} 
-                                                onChange={e => onUpdate({ rsvpTime: e.target.value })} 
+                                                onChange={val => onUpdate({ rsvpTime: val })} 
+                                                variables={autocompleteVariables}
                                                 placeholder="e.g. 2:00 PM"
                                                 className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                             />
@@ -594,10 +609,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                 </div>
                                             )}
                                             {isEvent && (
-                                                <Input 
-                                                    ref={locationLabelInputRef}
+                                                <SlashInput 
                                                     value={block.rsvpLocationLabel || ''} 
-                                                    onChange={e => onUpdate({ rsvpLocationLabel: e.target.value })} 
+                                                    onChange={val => onUpdate({ rsvpLocationLabel: val })} 
+                                                    variables={autocompleteVariables}
                                                     placeholder="TYPE (default)"
                                                     className="font-bold text-[10px] h-8 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 mb-1" 
                                                 />
@@ -610,10 +625,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                     onFieldChange={val => onUpdate({ rsvpLocation: val })} 
                                                 />
                                             </div>
-                                            <Input 
-                                                ref={locationInputRef}
+                                            <SlashInput 
                                                 value={block.rsvpLocation || ''} 
-                                                onChange={e => onUpdate({ rsvpLocation: e.target.value })} 
+                                                onChange={val => onUpdate({ rsvpLocation: val })} 
+                                                variables={autocompleteVariables}
                                                 placeholder="e.g. Virtual Meeting"
                                                 className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                             />
@@ -631,10 +646,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                 onFieldChange={val => onUpdate({ title: val })} 
                                             />
                                         </div>
-                                        <Input 
-                                            ref={titleInputRef}
+                                        <SlashInput 
                                             value={block.title || ''} 
-                                            onChange={e => onUpdate({ title: e.target.value })} 
+                                            onChange={val => onUpdate({ title: val })} 
+                                            variables={autocompleteVariables}
                                             placeholder="e.g. Design Team Synchronization"
                                             className="font-bold rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                         />
@@ -643,27 +658,30 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
 
                                 <div className="space-y-2 border-t border-slate-100/50 pt-3">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Going" Button Label</Label>
-                                    <Input 
+                                    <SlashInput 
                                         value={block.goingLabel || 'Going'} 
-                                        onChange={e => onUpdate({ goingLabel: e.target.value })} 
+                                        onChange={val => onUpdate({ goingLabel: val })} 
+                                        variables={autocompleteVariables}
                                         placeholder="Going"
                                         className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Later" Button Label</Label>
-                                    <Input 
+                                    <SlashInput 
                                         value={block.laterLabel || 'Later'} 
-                                        onChange={e => onUpdate({ laterLabel: e.target.value })} 
+                                        onChange={val => onUpdate({ laterLabel: val })} 
+                                        variables={autocompleteVariables}
                                         placeholder="Later"
                                         className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Not Going" Button Label</Label>
-                                    <Input 
+                                    <SlashInput 
                                         value={block.declinedLabel || 'Not Going'} 
-                                        onChange={e => onUpdate({ declinedLabel: e.target.value })} 
+                                        onChange={val => onUpdate({ declinedLabel: val })} 
+                                        variables={autocompleteVariables}
                                         placeholder="Not Going"
                                         className="font-semibold rounded-xl h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     />

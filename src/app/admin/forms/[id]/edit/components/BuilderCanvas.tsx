@@ -3,6 +3,7 @@
 import * as React from 'react';
 import type { Form, FormFieldInstance, AppField } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -79,6 +80,7 @@ interface SortableItemProps {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
+  onUpdateFieldInstance: (instanceId: string, updates: Partial<FormFieldInstance>) => void;
 }
 
 // Extracted from render to prevent recreation focus/state loss
@@ -97,6 +99,7 @@ function SortableFieldItem({
   onMoveUp,
   onMoveDown,
   onRemove,
+  onUpdateFieldInstance,
 }: SortableItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: instance.id,
@@ -127,9 +130,9 @@ function SortableFieldItem({
       style={style}
       onClick={handleCardClick}
       className={cn(
-        'group flex flex-col p-4 rounded-xl border transition-all text-left bg-background relative cursor-pointer select-none',
+        'group flex flex-col p-4 rounded-xl border transition-all text-left bg-background/80 dark:bg-background/40 backdrop-blur-sm relative cursor-pointer select-none',
         isSelected
-          ? 'border-primary ring-2 ring-primary/20 bg-primary/[0.02] shadow-md shadow-primary/5'
+          ? 'border-primary ring-2 ring-primary/20 bg-primary/[0.02] dark:bg-primary/[0.05] shadow-md shadow-primary/5'
           : 'border-border/50 hover:border-primary/20 hover:bg-muted/10 hover:shadow-sm',
         isDragging && 'opacity-40 border-primary bg-muted/20'
       )}
@@ -153,9 +156,19 @@ function SortableFieldItem({
         {/* Labels & Tags */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-sm font-bold truncate">
-              {instance.labelOverride || appField?.label || 'Loading Field...'}
-            </span>
+            {isSelected ? (
+              <Input
+                value={instance.labelOverride !== undefined ? instance.labelOverride : (appField?.label || '')}
+                onChange={e => onUpdateFieldInstance(instance.id, { labelOverride: e.target.value })}
+                placeholder="Field Label..."
+                className="h-8 text-xs font-bold bg-background/50 border border-border/60 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-primary/20 w-full"
+                onClick={e => e.stopPropagation()}
+              />
+            ) : (
+              <span className="text-sm font-bold truncate">
+                {instance.labelOverride || appField?.label || 'Loading Field...'}
+              </span>
+            )}
             {appField?.isNative && (
               <Badge variant="secondary" className="h-3.5 text-[7px] uppercase px-1 font-bold bg-primary/15 text-primary border-none">
                 <Lock className="h-2 w-2 mr-0.5" /> Native
@@ -231,22 +244,36 @@ function SortableFieldItem({
       {/* Field Overrides Visual Sandbox Preview */}
       <div className="mt-3 pl-12 pr-4">
         <div className="text-[10px] text-muted-foreground/60 mb-1">Preview Input Styling:</div>
-        {appField?.type === 'long_text' ? (
-          <div className={cn(
-            'h-12 w-full rounded-lg border text-[10px] px-3 py-1 text-muted-foreground bg-background/50 flex items-start select-none',
-            inputStyle === 'filled' && 'bg-muted border-none',
-            inputStyle === 'flushed' && 'border-x-0 border-t-0 rounded-none px-0'
-          )}>
-            {instance.placeholderOverride || appField.placeholder || 'Enter response...'}
-          </div>
+        {isSelected ? (
+          <Input
+            value={instance.placeholderOverride !== undefined ? instance.placeholderOverride : (appField?.placeholder || '')}
+            onChange={e => onUpdateFieldInstance(instance.id, { placeholderOverride: e.target.value })}
+            placeholder="Placeholder text..."
+            className={cn(
+              'h-8 w-full rounded-lg border text-[10px] px-3 text-foreground bg-background/50 flex items-center focus-visible:ring-1 focus-visible:ring-primary/20',
+              inputStyle === 'filled' && 'bg-muted border-none',
+              inputStyle === 'flushed' && 'border-x-0 border-t-0 rounded-none px-0'
+            )}
+            onClick={e => e.stopPropagation()}
+          />
         ) : (
-          <div className={cn(
-            'h-8 w-full rounded-lg border text-[10px] px-3 text-muted-foreground bg-background/50 flex items-center select-none',
-            inputStyle === 'filled' && 'bg-muted border-none',
-            inputStyle === 'flushed' && 'border-x-0 border-t-0 rounded-none px-0'
-          )}>
-            {instance.placeholderOverride || appField?.placeholder || 'Enter value...'}
-          </div>
+          appField?.type === 'long_text' ? (
+            <div className={cn(
+              'h-12 w-full rounded-lg border text-[10px] px-3 py-1 text-muted-foreground bg-background/50 flex items-start select-none',
+              inputStyle === 'filled' && 'bg-muted border-none',
+              inputStyle === 'flushed' && 'border-x-0 border-t-0 rounded-none px-0'
+            )}>
+              {instance.placeholderOverride || appField.placeholder || 'Enter response...'}
+            </div>
+          ) : (
+            <div className={cn(
+              'h-8 w-full rounded-lg border text-[10px] px-3 text-muted-foreground bg-background/50 flex items-center select-none',
+              inputStyle === 'filled' && 'bg-muted border-none',
+              inputStyle === 'flushed' && 'border-x-0 border-t-0 rounded-none px-0'
+            )}>
+              {instance.placeholderOverride || appField?.placeholder || 'Enter value...'}
+            </div>
+          )
         )}
         {instance.helpTextOverride && (
           <p className="text-[9px] text-muted-foreground/60 mt-1 italic">{instance.helpTextOverride}</p>
@@ -331,16 +358,17 @@ export default function BuilderCanvas({
   const isTablet = viewportSize === 'tablet';
 
   const previewFrameWidth = isMobile
-    ? 'max-w-[390px] rounded-[3rem] border-[12px] border-neutral-900 shadow-2xl p-6 bg-card min-h-[640px]'
+    ? 'max-w-[390px] rounded-[3rem] border-[12px] border-neutral-900 shadow-2xl p-6 bg-black/[0.03] dark:bg-white/10 backdrop-blur-xl border border-black/10 dark:border-white/20 min-h-[640px]'
     : isTablet
-    ? 'max-w-[768px] border rounded-2xl p-8 bg-card shadow-md'
-    : 'max-w-4xl w-full border rounded-2xl p-8 bg-card shadow-md';
+    ? 'max-w-[768px] bg-black/[0.03] dark:bg-white/10 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl'
+    : 'max-w-4xl w-full bg-black/[0.03] dark:bg-white/10 backdrop-blur-xl border border-slate-200/50 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl';
 
   const themePreset = form.theme?.preset || 'professional';
   const inputStyle = form.theme?.inputStyle || 'outline';
 
   return (
-    <section className="flex-1 bg-muted/20 overflow-y-auto p-8 flex justify-center items-start min-h-0 select-none">
+    <section className="flex-1 bg-gradient-to-br from-indigo-50/20 via-background to-blue-50/20 dark:from-slate-950 dark:via-background dark:to-indigo-950/10 overflow-y-auto p-8 flex justify-center items-start min-h-0 select-none relative">
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
       <div className={cn('w-full transition-all duration-300 relative flex flex-col', previewFrameWidth)}>
         {/* Smartphone Camera Notch Mockup */}
         {isMobile && (
@@ -389,6 +417,7 @@ export default function BuilderCanvas({
                       onMoveUp={() => onMoveField(instance.id, 'up')}
                       onMoveDown={() => onMoveField(instance.id, 'down')}
                       onRemove={() => onRemoveField(instance.id)}
+                      onUpdateFieldInstance={onUpdateFieldInstance}
                     />
                   );
                 })}

@@ -44,19 +44,24 @@ import {
     Copy,
     Trash2,
     Search,
+    GripVertical,
     Upload
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCollection, useMemoFirebase, useFirestore, useUser } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { createFieldAction, createFieldGroupAction } from '@/lib/fields-actions';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
     AlertDialog,
@@ -68,11 +73,20 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, rectIntersection, pointerWithin } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus } from '@/lib/types';
+import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus, FieldGroup, AppField, RecipientType, TemplateVariable } from '@/lib/types';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { SortableBlockItem } from './visual-block';
 import { blockIcons } from './block-icons';
@@ -80,6 +94,7 @@ import { BlockInspector } from './block-inspector';
 import { PlainTextEditor } from './PlainTextEditor';
 import { SimulationStudio } from './simulation-studio';
 import { useToast } from '@/hooks/use-toast';
+import { SlashInput } from '@/components/messaging/SlashInput';
 import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -103,6 +118,140 @@ async function uploadArchitectImage(file: File, workspaceId: string): Promise<st
     const fileRef = ref(storage, storagePath);
     const snapshot = await uploadBytes(fileRef, file);
     return getDownloadURL(snapshot.ref);
+}
+
+interface SortableLayerItemProps {
+    id: string;
+    block: MessageBlock;
+    isSelected: boolean;
+    isNested: boolean;
+    onSelect: () => void;
+    onSwap: (dir: 'up' | 'down') => void;
+    onDuplicate: () => void;
+    onRemove: () => void;
+    blockIcons: Record<string, React.ComponentType<{ className?: string }>>;
+    renderItem: (block: MessageBlock, isNested: boolean) => React.ReactNode;
+}
+
+function SortableLayerItem({
+    id,
+    block,
+    isSelected,
+    isNested,
+    onSelect,
+    onSwap,
+    onDuplicate,
+    onRemove,
+    blockIcons,
+    renderItem
+}: SortableLayerItemProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+    };
+
+    const BIcon = blockIcons[block.type] || Layout;
+
+    return (
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            className="space-y-1"
+        >
+            <div 
+                className={cn(
+                    "flex items-center justify-between p-2 rounded-xl border text-xs font-semibold cursor-pointer transition-all",
+                    isSelected ? "bg-blue-500/10 border-blue-500 text-blue-600 font-bold" : "bg-card hover:bg-muted/10 border-border text-foreground",
+                    isNested && "ml-4"
+                )}
+                onClick={onSelect}
+            >
+                <div className="flex items-center gap-1.5 truncate max-w-[55%]">
+                    <div 
+                        {...attributes} 
+                        {...listeners} 
+                        className="cursor-grab text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded hover:bg-muted transition-colors shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <GripVertical className="h-3 w-3" />
+                    </div>
+                    <BIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate capitalize">{block.type}</span>
+                </div>
+                <div className="flex items-center gap-0.5 shrink-0">
+                    <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSwap('up');
+                        }}
+                    >
+                        <ArrowUp className="h-3 w-3" />
+                    </Button>
+                    <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSwap('down');
+                        }}
+                    >
+                        <ArrowDown className="h-3 w-3" />
+                    </Button>
+                    <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDuplicate();
+                        }}
+                    >
+                        <Copy className="h-3 w-3" />
+                    </Button>
+                    <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 rounded-md hover:bg-muted text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onRemove();
+                        }}
+                    >
+                        <Trash2 className="h-3 w-3" />
+                    </Button>
+                </div>
+            </div>
+            {block.type === 'columns' && block.columns && (
+                <div className="pl-2 border-l border-dashed border-border/60 ml-3 space-y-2 py-1 animate-in fade-in duration-200">
+                    {block.columns.map((col, idx) => (
+                        <div key={idx} className="space-y-1.5">
+                            <div className="text-[8px] font-bold text-muted-foreground/45 uppercase tracking-widest pl-4">Column {idx + 1}</div>
+                            <SortableContext 
+                                items={col.blocks.map(b => b.id)} 
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {col.blocks.map(b => renderItem(b, true))}
+                            </SortableContext>
+                            {col.blocks.length === 0 && (
+                                <div className="text-[8px] font-semibold text-muted-foreground/30 italic pl-4 py-0.5">Empty dropzone</div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
 
 // Dynamic import for HtmlCodeEditor (bundle-dynamic-imports)
@@ -1872,6 +2021,129 @@ export function TemplateWorkshop({
     const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces } = useWorkspace();
     const { singular: entityTerminology } = useTerminology();
 
+    // Query field groups dynamically to allow adding custom variables to a specific group
+    const firestore = useFirestore();
+    const groupsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'field_groups'), where('workspaceId', '==', activeWorkspaceId), orderBy('order', 'asc'));
+    }, [firestore, activeWorkspaceId]);
+    const { data: fieldGroups } = useCollection<FieldGroup>(groupsQuery);
+
+    const { user } = useUser();
+
+    // Dialog state for dynamic variable creation
+    const [variableSearchQuery, setVariableSearchQuery] = React.useState('');
+    const [isAddVarOpen, setIsAddVarOpen] = React.useState(false);
+    const [isCreatingVar, setIsCreatingVar] = React.useState(false);
+    const [varForm, setVarForm] = React.useState({
+        label: '',
+        variableName: '',
+        scope: 'common' as 'common' | 'person' | 'institution',
+        type: 'short_text' as AppField['type'],
+        groupId: '',
+        defaultValue: '',
+    });
+    const [accordionValue, setAccordionValue] = React.useState<string[]>(['branding', 'primary_contacts', 'entity_fields', 'custom_vars']);
+
+    React.useEffect(() => {
+        if (!variableSearchQuery.trim()) {
+            setAccordionValue(['branding', 'primary_contacts', 'entity_fields', 'custom_vars']);
+            return;
+        }
+        setAccordionValue([
+            'branding',
+            'primary_contacts',
+            'signatory_contacts',
+            'roles_contacts',
+            'entity_fields',
+            'feature_vars',
+            'surveys',
+            'forms',
+            'custom_vars'
+        ]);
+    }, [variableSearchQuery]);
+
+    const handleCreateVariable = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!varForm.label.trim() || !varForm.variableName.trim() || !activeWorkspaceId || !activeOrganizationId || !user) return;
+        
+        setIsCreatingVar(true);
+        try {
+            const varName = varForm.variableName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
+            
+            // Check for duplicate key locally in variables prop first to give fast feedback
+            const isDuplicate = variables.some(v => v.key.toLowerCase() === varName.toLowerCase());
+            if (isDuplicate) {
+                toast({ variant: 'destructive', title: 'Duplicate Variable', description: `A variable with key "${varName}" already exists.` });
+                setIsCreatingVar(false);
+                return;
+            }
+
+            let targetGroupId = varForm.groupId;
+            if (!targetGroupId) {
+                // Find or create group "Custom Variables"
+                const existingGroup = fieldGroups?.find(g => g.slug === 'custom_variables');
+                if (existingGroup) {
+                    targetGroupId = existingGroup.id;
+                } else {
+                    const newGroupRes = await createFieldGroupAction({
+                        workspaceId: activeWorkspaceId,
+                        organizationId: activeOrganizationId,
+                        name: 'Custom Variables',
+                        description: 'Custom messaging and template variables',
+                        icon: 'Database',
+                        color: '#3B5FFF',
+                        entityTypes: ['person', 'institution', 'family'],
+                    }, user.uid);
+                    if (newGroupRes.success && newGroupRes.group) {
+                        targetGroupId = newGroupRes.group.id;
+                    } else {
+                        throw new Error(newGroupRes.error || 'Failed to create variable group');
+                    }
+                }
+            }
+
+            const fieldData = {
+                workspaceId: activeWorkspaceId,
+                organizationId: activeOrganizationId,
+                name: varForm.label.trim(),
+                label: varForm.label.trim(),
+                variableName: varName,
+                type: varForm.type,
+                groupId: targetGroupId,
+                section: varForm.scope,
+                isNative: false,
+                compatibilityScope: [varForm.scope],
+                status: 'active' as const,
+                defaultValue: varForm.defaultValue.trim() || null,
+                placeholder: '',
+                helpText: '',
+            };
+
+            const res = await createFieldAction(fieldData, user.uid);
+            if (res.success) {
+                toast({ title: 'Variable Created', description: `Variable {{${varName}}} is now available.` });
+                setIsAddVarOpen(false);
+                setVarForm({
+                    label: '',
+                    variableName: '',
+                    scope: 'common',
+                    type: 'short_text',
+                    groupId: '',
+                    defaultValue: '',
+                });
+            } else {
+                throw new Error(res.error || 'Failed to create custom field/variable');
+            }
+        } catch (error) {
+            const err = error as Error;
+            console.error('Failed to create custom variable:', err);
+            toast({ variant: 'destructive', title: 'Creation Failed', description: err.message });
+        } finally {
+            setIsCreatingVar(false);
+        }
+    };
+
     const variables = React.useMemo(() => {
         const filtered = (rawVariables || []).filter(v => !v.key.startsWith('school_'));
         
@@ -1984,7 +2256,6 @@ export function TemplateWorkshop({
     const dragStartRef = React.useRef({ mouseX: 0, startWidth: 0 });
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
     const [showValidationErrorDialog, setShowValidationErrorDialog] = React.useState(false);
-    const [variableSearchQuery, setVariableSearchQuery] = React.useState('');
 
     // Active editor insertion reference
     const editorInsertRef = React.useRef<((token: string) => void) | null>(null);
@@ -2039,10 +2310,30 @@ export function TemplateWorkshop({
     );
     const [target, setTarget] = React.useState<TemplateTarget>(initialTemplate?.target || 'external_client');
     const [templateType, setTemplateType] = React.useState<string>(initialTemplate?.templateType || initialContext?.templateType || '');
-    const [recipientType, setRecipientType] = React.useState<string>(initialTemplate?.recipientType || initialContext?.recipientType || 'participant');
+    const [recipientType, setRecipientType] = React.useState<string>(initialTemplate?.recipientType || initialContext?.recipientType || 'external_alert');
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>(initialTemplate?.workspaceIds || [activeWorkspaceId]);
     const [subject, setSubject] = React.useState(initialTemplate?.subject || '');
     const [previewText, setPreviewText] = React.useState(initialTemplate?.previewText || '');
+    const [subjectOptions, setSubjectOptions] = React.useState<Array<{ subject: string; previewText: string }>>(
+        initialTemplate?.subjectOptions || []
+    );
+    const [manualSubject, setManualSubject] = React.useState(initialTemplate?.subject || '');
+    const [manualPreviewText, setManualPreviewText] = React.useState(initialTemplate?.previewText || '');
+    const [activeOptionIndex, setActiveOptionIndex] = React.useState<number | null>(null);
+    const [isAlternativesOpen, setIsAlternativesOpen] = React.useState(false);
+
+    const handleSubjectChange = React.useCallback((val: string) => {
+        setSubject(val);
+        setManualSubject(val);
+        setActiveOptionIndex(null);
+    }, []);
+
+    const handlePreviewTextChange = React.useCallback((val: string) => {
+        setPreviewText(val);
+        setManualPreviewText(val);
+        setActiveOptionIndex(null);
+    }, []);
+
     const [body, setBody] = React.useState(initialTemplate?.body || '');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>(initialTemplate?.blocks || []);
     const [activeBlockSubView, setActiveBlockSubView] = React.useState<string | null>(null);
@@ -2498,105 +2789,127 @@ export function TemplateWorkshop({
         });
     };
 
-    const renderSidebarBlockOutline = () => {
-        const renderItem = (block: MessageBlock, isNested = false) => {
-            const BIcon = blockIcons[block.type] || Layout;
-            const isSelected = selectedBlockId === block.id;
+    const findParentBlocksList = (items: MessageBlock[], id: string): MessageBlock[] | null => {
+        if (items.some(item => item.id === id)) {
+            return items;
+        }
+        for (const item of items) {
+            if (item.type === 'columns' && item.columns) {
+                for (const col of item.columns) {
+                    const list = findParentBlocksList(col.blocks, id);
+                    if (list) return list;
+                }
+            }
+        }
+        return null;
+    };
 
+    const replaceBlocksListRecursively = (
+        items: MessageBlock[], 
+        targetIdInList: string, 
+        newList: MessageBlock[]
+    ): MessageBlock[] => {
+        if (items.some(item => item.id === targetIdInList)) {
+            return newList;
+        }
+        return items.map(item => {
+            if (item.type === 'columns' && item.columns) {
+                return {
+                    ...item,
+                    columns: item.columns.map(col => {
+                        if (col.blocks.some(b => b.id === targetIdInList)) {
+                            return {
+                                ...col,
+                                blocks: newList
+                            };
+                        }
+                        return {
+                            ...col,
+                            blocks: replaceBlocksListRecursively(col.blocks, targetIdInList, newList)
+                        };
+                    })
+                };
+            }
+            return item;
+        });
+    };
+
+    const handleSidebarDragEnd = (event: any) => {
+        const { active, over } = event;
+        if (!over) return;
+        
+        const activeId = active.id;
+        const overId = over.id;
+        
+        if (activeId === overId) return;
+
+        setBlocks(prev => {
+            const parentList = findParentBlocksList(prev, activeId);
+            if (!parentList) return prev;
+            
+            const hasOver = parentList.some(item => item.id === overId);
+            if (!hasOver) return prev;
+
+            const oldIndex = parentList.findIndex(item => item.id === activeId);
+            const newIndex = parentList.findIndex(item => item.id === overId);
+            
+            const reorderedList = arrayMove(parentList, oldIndex, newIndex);
+            return replaceBlocksListRecursively(prev, activeId, reorderedList);
+        });
+    };
+
+    const renderSidebarBlockOutline = () => {
+        const sidebarSensors = useSensors(
+            useSensor(PointerSensor, {
+                activationConstraint: {
+                    distance: 5,
+                },
+            })
+        );
+
+        const renderItem = (block: MessageBlock, isNested = false): React.ReactNode => {
             return (
-                <div key={block.id} className="space-y-1">
-                    <div 
-                        className={cn(
-                            "flex items-center justify-between p-2 rounded-xl border text-xs font-semibold cursor-pointer transition-all",
-                            isSelected ? "bg-blue-500/10 border-blue-500 text-blue-600 font-bold" : "bg-card hover:bg-muted/10 border-border text-foreground",
-                            isNested && "ml-4"
-                        )}
-                        onClick={() => setSelectedBlockId(block.id)}
-                    >
-                        <div className="flex items-center gap-2 truncate max-w-[50%]">
-                            <BIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                            <span className="truncate capitalize">{block.type}</span>
-                        </div>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setBlocks(p => swapBlocksRecursively(p, block.id, 'up'));
-                                }}
-                            >
-                                <ArrowUp className="h-3 w-3" />
-                            </Button>
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setBlocks(p => swapBlocksRecursively(p, block.id, 'down'));
-                                }}
-                            >
-                                <ArrowDown className="h-3 w-3" />
-                            </Button>
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setBlocks(prev => duplicateBlockRecursively(prev, block.id));
-                                }}
-                            >
-                                <Copy className="h-3 w-3" />
-                            </Button>
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 rounded-md hover:bg-muted text-destructive hover:bg-destructive/10"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setBlocks(prev => removeBlockRecursively(prev, block.id));
-                                    if (selectedBlockId === block.id) setSelectedBlockId(null);
-                                }}
-                            >
-                                <Trash2 className="h-3 w-3" />
-                            </Button>
-                        </div>
-                    </div>
-                    {block.type === 'columns' && block.columns && (
-                        <div className="pl-2 border-l border-dashed border-border/60 ml-3 space-y-2 py-1 animate-in fade-in duration-200">
-                            {block.columns.map((col, idx) => (
-                                <div key={idx} className="space-y-1.5">
-                                    <div className="text-[8px] font-bold text-muted-foreground/45 uppercase tracking-widest pl-4">Column {idx + 1}</div>
-                                    {col.blocks.map(b => renderItem(b, true))}
-                                    {col.blocks.length === 0 && (
-                                        <div className="text-[8px] font-semibold text-muted-foreground/30 italic pl-4 py-0.5">Empty dropzone</div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                <SortableLayerItem
+                    key={block.id}
+                    id={block.id}
+                    block={block}
+                    isSelected={selectedBlockId === block.id}
+                    isNested={isNested}
+                    onSelect={() => setSelectedBlockId(block.id)}
+                    onSwap={(dir) => setBlocks(p => swapBlocksRecursively(p, block.id, dir))}
+                    onDuplicate={() => setBlocks(prev => duplicateBlockRecursively(prev, block.id))}
+                    onRemove={() => {
+                        setBlocks(prev => removeBlockRecursively(prev, block.id));
+                        if (selectedBlockId === block.id) setSelectedBlockId(null);
+                    }}
+                    blockIcons={blockIcons}
+                    renderItem={renderItem}
+                />
             );
         };
 
         return (
             <div className="space-y-3 text-left">
                 {blocks.length === 0 ? (
-                    <div className="py-20 text-center opacity-30">
+                    <div className="py-20 text-center opacity-30 animate-in fade-in duration-200">
                         <Layout className="h-8 w-8 mx-auto mb-2" />
                         <p className="text-[10px] font-semibold">No blocks placed yet</p>
                     </div>
                 ) : (
-                    <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
-                        {blocks.map(b => renderItem(b, false))}
-                    </div>
+                    <DndContext 
+                        sensors={sidebarSensors} 
+                        collisionDetection={closestCenter} 
+                        onDragEnd={handleSidebarDragEnd}
+                    >
+                        <SortableContext 
+                            items={blocks.map(b => b.id)} 
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
+                                {blocks.map(b => renderItem(b, false))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
                 )}
             </div>
         );
@@ -2670,7 +2983,14 @@ export function TemplateWorkshop({
                     mode: 'layout_analysis' | 'direct_placement';
                     organizationId?: string;
                     brandColors?: { primary?: string; secondary?: string; background?: string };
-                }) => Promise<{ success: boolean; blocks?: MessageBlock[]; error?: string }>;
+                }) => Promise<{
+                    success: boolean;
+                    blocks?: MessageBlock[];
+                    subject?: string;
+                    previewText?: string;
+                    subjectOptions?: Array<{ subject: string; previewText: string }>;
+                    error?: string;
+                }>;
             };
             const resolvedOrgId = activeOrganizationId || initialTemplate?.organizationId || allowedWorkspaces?.find(w => w.id === activeWorkspaceId)?.organizationId || undefined;
             const res = await generateEmailBlocksAction({
@@ -2697,6 +3017,21 @@ export function TemplateWorkshop({
                 // Back up blocks before mutation for Undo capability
                 setLastBlocksBackup([...blocks]);
                 setBlocks((prev) => [...prev, ...formatted]);
+
+                // Sync subject options and auto-apply if current input is empty
+                if (res.subjectOptions && res.subjectOptions.length > 0) {
+                    setSubjectOptions(res.subjectOptions);
+                    if (!subject.trim() && !previewText.trim()) {
+                        const primSub = res.subject || '';
+                        const primPrev = res.previewText || '';
+                        setSubject(primSub);
+                        setPreviewText(primPrev);
+                        setManualSubject(primSub);
+                        setManualPreviewText(primPrev);
+                        setActiveOptionIndex(null);
+                    }
+                }
+
                 toast({ title: 'Blocks Appended', description: `Successfully added ${formatted.length} layout blocks.` });
                 setArchitectPrompt('');
                 setArchitectImageUrl('');
@@ -2730,10 +3065,10 @@ export function TemplateWorkshop({
         const variableContext = categoryToContextMap[category] || 'common';
 
         // Clear irrelevant data on save (Risk Analysis: Improvement 2)
-        const saveData: any = {
+        const saveData: Partial<MessageTemplate> = {
             name, category, channel, contentMode, target, workspaceIds,
-            subject, previewText, body, blocks, styleId, templateType,
-            recipientType, status, variableContext
+            subject, previewText, subjectOptions, body, blocks, styleId, templateType,
+            recipientType: recipientType as RecipientType, status, variableContext
         };
         if (contentMode === 'rich_builder') {
             // blocks is source of truth — body is auto-generated
@@ -2984,6 +3319,20 @@ export function TemplateWorkshop({
 
         return [...workspaceVars, ...dedupedSysVars];
     }, [filteredVars, category]);
+
+    const autocompleteVariables = React.useMemo<TemplateVariable[]>(() => {
+        return availableVarsForEditor.map(v => ({
+            id: v.id,
+            name: v.key,
+            label: v.label || v.key,
+            context: (v.category || 'general') as any,
+            description: '',
+            dataType: (v.type === 'date' || v.type === 'number' || v.type === 'url' || v.type === 'html' ? v.type : 'string') as any,
+            exampleValue: v.constantValue || `{{${v.key}}}`,
+            isDynamic: false,
+            isComputed: false,
+        }));
+    }, [availableVarsForEditor]);
 
     // Group dynamically harvested survey question variables by individual surveys
     const surveyGroups = React.useMemo(() => {
@@ -3589,41 +3938,50 @@ export function TemplateWorkshop({
                                         )}
 
                                         {sidebarTab === 'variables' && (
-                                            <div className="absolute inset-0 flex flex-col overflow-hidden">
-                                                {/* Variable Search */}
-                                                <div className="px-3 pt-3 pb-2 border-b border-border/60 shrink-0">
+                                            <div className="absolute inset-0 flex flex-col overflow-hidden bg-muted/5">
+                                                {/* Variable Header & Actions */}
+                                                <div className="px-4 py-3 border-b border-border/60 shrink-0 bg-background/50 backdrop-blur-sm space-y-2.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="text-left">
+                                                            <h4 className="text-xs font-bold text-foreground">Variable Registry</h4>
+                                                            <p className="text-[10px] text-muted-foreground mt-0.5">Insert variables into template blocks</p>
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setIsAddVarOpen(true)}
+                                                            className="h-8 rounded-lg font-bold text-[10px] gap-1 px-2 border-primary/20 hover:bg-primary/5 hover:text-primary text-primary"
+                                                        >
+                                                            <PlusCircle className="h-3.5 w-3.5" /> Add Custom
+                                                        </Button>
+                                                    </div>
                                                     <div className="relative">
                                                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                                                         <Input
-                                                            placeholder="Search variables..."
+                                                            placeholder="Search registry..."
                                                             value={variableSearchQuery}
                                                             onChange={(e) => setVariableSearchQuery(e.target.value)}
-                                                            className="h-8 pl-8 text-xs rounded-lg bg-muted/30 border-border/60 placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-primary/20"
+                                                            className="h-8 pl-8 text-xs rounded-lg bg-background/80 border-border/60 placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-primary/20 w-full"
                                                         />
                                                     </div>
                                                 </div>
+
                                                 <ScrollArea className="flex-1">
-                                                    <div className="p-4 space-y-6">
+                                                    <div className="p-3 text-left">
                                                         {(() => {
                                                             const q = variableSearchQuery.toLowerCase().trim();
                                                             const matchVar = (v: VariableDefinition) => !q || v.key.toLowerCase().includes(q) || v.label.toLowerCase().includes(q);
 
-                                                            // Build filtered groups
-                                                            const systemGroups = [
-                                                                { category: 'Primary Contacts', variables: contactVarGroups.primary.filter(matchVar) },
-                                                                { category: 'Signatory Contacts', variables: contactVarGroups.signatory.filter(matchVar) },
-                                                                { category: 'Role-based Contacts', variables: contactVarGroups.roles.filter(matchVar) },
-                                                                { category: 'Branding & Constants', variables: contactVarGroups.other.filter(matchVar) }
-                                                            ].filter(grp => grp.variables.length > 0);
-
-                                                            const filteredFeatureVars = featureSpecificVars.filter(matchVar);
-
-                                                            // Entity field variables
+                                                            // Segregated categories
+                                                            const brandingVars = contactVarGroups.other.filter(matchVar);
+                                                            const primaryContacts = contactVarGroups.primary.filter(matchVar);
+                                                            const signatoryContacts = contactVarGroups.signatory.filter(matchVar);
+                                                            const roleContacts = contactVarGroups.roles.filter(matchVar);
                                                             const entityFieldVars = filteredVars.filter(v => v.source === 'entity_fields').filter(matchVar);
+                                                            const featureVars = featureSpecificVars.filter(matchVar);
+                                                            const customVars = contactVarGroups.custom.filter(matchVar);
 
-                                                            const filteredCustomVars = contactVarGroups.custom.filter(matchVar);
-
-                                                            // Survey/PDF groups filtered
                                                             const filteredSurveyGroups = category === 'surveys' ? surveyGroups.map(grp => ({
                                                                 ...grp,
                                                                 variables: grp.variables.filter(matchVar)
@@ -3634,10 +3992,13 @@ export function TemplateWorkshop({
                                                                 variables: grp.variables.filter(matchVar)
                                                             })).filter(grp => grp.variables.length > 0) : [];
 
-                                                            const totalResults = systemGroups.reduce((s, g) => s + g.variables.length, 0)
-                                                                + filteredFeatureVars.length
+                                                            const totalResults = brandingVars.length
+                                                                + primaryContacts.length
+                                                                + signatoryContacts.length
+                                                                + roleContacts.length
                                                                 + entityFieldVars.length
-                                                                + filteredCustomVars.length
+                                                                + featureVars.length
+                                                                + customVars.length
                                                                 + filteredSurveyGroups.reduce((s, g) => s + g.variables.length, 0)
                                                                 + filteredPdfGroups.reduce((s, g) => s + g.variables.length, 0);
 
@@ -3651,206 +4012,161 @@ export function TemplateWorkshop({
                                                                 );
                                                             }
 
-                                                            return (
-                                                                <>
-                                                        {/* 1. System Variables */}
-                                                        {systemGroups.length > 0 && (
-                                                        <div>
-                                                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-3">System Variables</p>
-                                                            <div className="space-y-3">
-                                                                {systemGroups.map(grp => (
-                                                                    <div key={grp.category} className="space-y-1.5">
-                                                                        <span className="text-[8px] font-bold text-primary uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-md">{grp.category}</span>
-                                                                        <div className="space-y-1">
-                                                                            {grp.variables.map(v => (
-                                                                                <button
-                                                                                    key={v.key}
-                                                                                    type="button"
-                                                                                    onClick={() => handleVariableInsert(v.key)}
-                                                                                    className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
-                                                                                >
-                                                                                    <div className="min-w-0">
-                                                                                        <p className="text-[10px] font-bold truncate">{v.label}</p>
-                                                                                        <p className="text-[8px] text-muted-foreground font-mono truncate leading-none mt-0.5">{`{{${v.key}}}`}</p>
-                                                                                    </div>
-                                                                                    <PlusCircle className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                                                </button>
-                                                                            ))}
-                                                                        </div>
+                                                            const renderVarButton = (v: VariableDefinition, highlightColorClass = 'text-primary') => (
+                                                                <button
+                                                                    key={v.key}
+                                                                    type="button"
+                                                                    onClick={() => handleVariableInsert(v.key)}
+                                                                    className="w-full flex items-center justify-between p-2 rounded-xl border border-border/40 bg-card hover:bg-primary/5 hover:border-primary/20 text-left transition-all group shadow-sm mb-1.5"
+                                                                >
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <p className="text-[10px] font-bold truncate text-foreground/90">{v.label}</p>
+                                                                        <p className={cn("text-[8px] font-mono truncate leading-none mt-0.5 font-semibold", highlightColorClass)}>{`{{${v.key}}}`}</p>
                                                                     </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                        )}
+                                                                    <PlusCircle className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary opacity-0 group-hover:opacity-100 transition-all shrink-0 ml-2" />
+                                                                </button>
+                                                            );
 
-                                                        {/* 2. Entity Fields */}
-                                                        {entityFieldVars.length > 0 && (
-                                                            <div>
-                                                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-3">Entity Fields</p>
-                                                                <div className="space-y-1">
-                                                                    {entityFieldVars.map(v => (
-                                                                        <button
-                                                                            key={v.key}
-                                                                            type="button"
-                                                                            onClick={() => handleVariableInsert(v.key)}
-                                                                            className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
-                                                                        >
-                                                                            <div className="min-w-0">
-                                                                                <p className="text-[10px] font-bold truncate text-sky-600">{v.label}</p>
-                                                                                <p className="text-[8px] text-muted-foreground font-mono truncate leading-none mt-0.5">{`{{${v.key}}}`}</p>
-                                                                            </div>
-                                                                            <PlusCircle className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                            return (
+                                                                <Accordion type="multiple" value={accordionValue} onValueChange={setAccordionValue} className="space-y-2">
+                                                                    
+                                                                    {/* System Branding & Constants */}
+                                                                    {brandingVars.length > 0 && (
+                                                                        <AccordionItem value="branding" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
+                                                                                <span className="flex items-center gap-2">Branding & Constants <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider">{brandingVars.length}</Badge></span>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pt-1 pb-3">
+                                                                                <div className="space-y-1">
+                                                                                    {brandingVars.map(v => renderVarButton(v, 'text-orange-500'))}
+                                                                                </div>
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    )}
 
-                                                        {/* 3. Feature-Specific System Variables */}
-                                                        {filteredFeatureVars.length > 0 && (
-                                                            <div>
-                                                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-3">Feature System Variables</p>
-                                                                <div className="space-y-1">
-                                                                    {filteredFeatureVars.map(v => (
-                                                                        <button
-                                                                            key={v.key}
-                                                                            type="button"
-                                                                            onClick={() => handleVariableInsert(v.key)}
-                                                                            className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
-                                                                        >
-                                                                            <div className="min-w-0">
-                                                                                <p className="text-[10px] font-bold truncate text-indigo-600">{v.label}</p>
-                                                                                <p className="text-[8px] text-muted-foreground font-mono truncate leading-none mt-0.5">{`{{${v.key}}}`}</p>
-                                                                            </div>
-                                                                            <PlusCircle className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                                    {/* Primary Contacts */}
+                                                                    {primaryContacts.length > 0 && (
+                                                                        <AccordionItem value="primary_contacts" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
+                                                                                <span className="flex items-center gap-2">Primary Contacts <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 border-blue-500/20">{primaryContacts.length}</Badge></span>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pt-1 pb-3">
+                                                                                <div className="space-y-1">
+                                                                                    {primaryContacts.map(v => renderVarButton(v, 'text-blue-600'))}
+                                                                                </div>
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    )}
 
-                                                        {/* 4. Collapsible Dynamic Survey Question Groups */}
-                                                        {filteredSurveyGroups.length > 0 && (
-                                                            <div className="space-y-3">
-                                                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left">Surveys Answers</p>
-                                                                {filteredSurveyGroups.map(grp => {
-                                                                    const isExpanded = !!expandedGroups[grp.id];
-                                                                    return (
-                                                                        <div key={grp.id} className="border rounded-xl p-2 bg-muted/5 space-y-2">
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => setExpandedGroups(prev => ({ ...prev, [grp.id]: !isExpanded }))}
-                                                                                className="w-full flex items-center justify-between text-left text-xs font-bold text-indigo-600 px-1 py-0.5"
-                                                                            >
-                                                                                <span className="truncate max-w-[85%]">{grp.title}</span>
-                                                                                <ChevronRight className={cn("h-3.5 w-3.5 transition-transform duration-200 shrink-0", isExpanded && "rotate-90")} />
-                                                                            </button>
-                                                                            <AnimatePresence initial={false}>
-                                                                                {isExpanded && (
-                                                                                    <motion.div
-                                                                                        initial={{ height: 0, opacity: 0 }}
-                                                                                        animate={{ height: "auto", opacity: 1 }}
-                                                                                        exit={{ height: 0, opacity: 0 }}
-                                                                                        transition={{ duration: 0.18 }}
-                                                                                        className="overflow-hidden space-y-1"
-                                                                                    >
-                                                                                        {grp.variables.map(v => (
-                                                                                            <button
-                                                                                                key={v.key}
-                                                                                                type="button"
-                                                                                                onClick={() => handleVariableInsert(v.key)}
-                                                                                                className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
-                                                                                            >
-                                                                                                <div className="min-w-0">
-                                                                                                    <p className="text-[10px] font-bold truncate text-indigo-600">{v.label}</p>
-                                                                                                    <p className="text-[8px] text-muted-foreground font-mono truncate leading-none mt-0.5">{`{{${v.key}}}`}</p>
-                                                                                                </div>
-                                                                                                <PlusCircle className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                                                            </button>
-                                                                                        ))}
-                                                                                    </motion.div>
-                                                                                )}
-                                                                            </AnimatePresence>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
+                                                                    {/* Signatory Contacts */}
+                                                                    {signatoryContacts.length > 0 && (
+                                                                        <AccordionItem value="signatory_contacts" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
+                                                                                <span className="flex items-center gap-2">Signatory Contacts <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-purple-500/10 text-purple-600 border-purple-500/20">{signatoryContacts.length}</Badge></span>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pt-1 pb-3">
+                                                                                <div className="space-y-1">
+                                                                                    {signatoryContacts.map(v => renderVarButton(v, 'text-purple-600'))}
+                                                                                </div>
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    )}
 
-                                                        {/* 5. Collapsible Dynamic PDF Form Groups */}
-                                                        {filteredPdfGroups.length > 0 && (
-                                                            <div className="space-y-3">
-                                                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left">Forms Fields</p>
-                                                                {filteredPdfGroups.map(grp => {
-                                                                    const isExpanded = !!expandedGroups[grp.id];
-                                                                    return (
-                                                                        <div key={grp.id} className="border rounded-xl p-2 bg-muted/5 space-y-2">
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => setExpandedGroups(prev => ({ ...prev, [grp.id]: !isExpanded }))}
-                                                                                className="w-full flex items-center justify-between text-left text-xs font-bold text-indigo-600 px-1 py-0.5"
-                                                                            >
-                                                                                <span className="truncate max-w-[85%]">{grp.title}</span>
-                                                                                <ChevronRight className={cn("h-3.5 w-3.5 transition-transform duration-200 shrink-0", isExpanded && "rotate-90")} />
-                                                                            </button>
-                                                                            <AnimatePresence initial={false}>
-                                                                                {isExpanded && (
-                                                                                    <motion.div
-                                                                                        initial={{ height: 0, opacity: 0 }}
-                                                                                        animate={{ height: "auto", opacity: 1 }}
-                                                                                        exit={{ height: 0, opacity: 0 }}
-                                                                                        transition={{ duration: 0.18 }}
-                                                                                        className="overflow-hidden space-y-1"
-                                                                                    >
-                                                                                        {grp.variables.map(v => (
-                                                                                            <button
-                                                                                                key={v.key}
-                                                                                                type="button"
-                                                                                                onClick={() => handleVariableInsert(v.key)}
-                                                                                                className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
-                                                                                            >
-                                                                                                <div className="min-w-0">
-                                                                                                    <p className="text-[10px] font-bold truncate text-indigo-600">{v.label}</p>
-                                                                                                    <p className="text-[8px] text-muted-foreground font-mono truncate leading-none mt-0.5">{`{{${v.key}}}`}</p>
-                                                                                                </div>
-                                                                                                <PlusCircle className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                                                            </button>
-                                                                                        ))}
-                                                                                    </motion.div>
-                                                                                )}
-                                                                            </AnimatePresence>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
+                                                                    {/* Role-based Contacts */}
+                                                                    {roleContacts.length > 0 && (
+                                                                        <AccordionItem value="roles_contacts" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
+                                                                                <span className="flex items-center gap-2">Role-based Contacts <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-pink-500/10 text-pink-600 border-pink-500/20">{roleContacts.length}</Badge></span>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pt-1 pb-3">
+                                                                                <div className="space-y-1">
+                                                                                    {roleContacts.map(v => renderVarButton(v, 'text-pink-600'))}
+                                                                                </div>
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    )}
 
-                                                        {/* 6. Workspace Custom Fields */}
-                                                        {filteredCustomVars.length > 0 && (
-                                                            <div>
-                                                                <div className="flex items-center gap-2 mb-3">
-                                                                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left">Custom Variables</p>
-                                                                    <Badge variant="secondary" className="text-[7px] h-4 px-1.5 font-bold uppercase bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Custom</Badge>
-                                                                </div>
-                                                                <div className="space-y-1">
-                                                                    {filteredCustomVars.map(v => (
-                                                                        <button
-                                                                            key={v.key}
-                                                                            type="button"
-                                                                            onClick={() => handleVariableInsert(v.key)}
-                                                                            className="w-full flex items-center justify-between p-2 rounded-lg border bg-card hover:bg-muted/10 text-left transition-all group"
-                                                                        >
-                                                                            <div className="min-w-0">
-                                                                                <p className="text-[10px] font-bold truncate text-emerald-600">{v.label}</p>
-                                                                                <p className="text-[8px] text-muted-foreground font-mono truncate leading-none mt-0.5">{`{{${v.key}}}`}</p>
-                                                                            </div>
-                                                                            <PlusCircle className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                                </>);
+                                                                    {/* Entity Fields */}
+                                                                    {entityFieldVars.length > 0 && (
+                                                                        <AccordionItem value="entity_fields" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
+                                                                                <span className="flex items-center gap-2">Entity Fields <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-sky-500/10 text-sky-600 border-sky-500/20">{entityFieldVars.length}</Badge></span>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pt-1 pb-3">
+                                                                                <div className="space-y-1">
+                                                                                    {entityFieldVars.map(v => renderVarButton(v, 'text-sky-600'))}
+                                                                                </div>
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    )}
+
+                                                                    {/* Feature Specific Variables */}
+                                                                    {featureVars.length > 0 && (
+                                                                        <AccordionItem value="feature_vars" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
+                                                                                <span className="flex items-center gap-2">Feature-Specific <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-600 border-indigo-500/20">{featureVars.length}</Badge></span>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pt-1 pb-3">
+                                                                                <div className="space-y-1">
+                                                                                    {featureVars.map(v => renderVarButton(v, 'text-indigo-600'))}
+                                                                                </div>
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    )}
+
+                                                                    {/* Surveys Answers collapsible list */}
+                                                                    {filteredSurveyGroups.length > 0 && (
+                                                                        <AccordionItem value="surveys" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
+                                                                                <span className="flex items-center gap-2">Surveys Answers <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-teal-500/10 text-teal-600 border-teal-500/20">{filteredSurveyGroups.reduce((a, c) => a + c.variables.length, 0)}</Badge></span>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pt-1 pb-3 space-y-3">
+                                                                                {filteredSurveyGroups.map(grp => (
+                                                                                    <div key={grp.id} className="space-y-1.5 p-2.5 bg-muted/40 rounded-xl border border-border/50">
+                                                                                        <p className="text-[9px] font-extrabold text-foreground/80 tracking-wide uppercase px-1">{grp.title}</p>
+                                                                                        <div className="space-y-1">
+                                                                                            {grp.variables.map(v => renderVarButton(v, 'text-teal-600'))}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    )}
+
+                                                                    {/* Forms/PDFs Fields collapsible list */}
+                                                                    {filteredPdfGroups.length > 0 && (
+                                                                        <AccordionItem value="forms" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
+                                                                                <span className="flex items-center gap-2">Forms Fields <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-rose-500/10 text-rose-600 border-rose-500/20">{filteredPdfGroups.reduce((a, c) => a + c.variables.length, 0)}</Badge></span>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pt-1 pb-3 space-y-3">
+                                                                                {filteredPdfGroups.map(grp => (
+                                                                                    <div key={grp.id} className="space-y-1.5 p-2.5 bg-muted/40 rounded-xl border border-border/50">
+                                                                                        <p className="text-[9px] font-extrabold text-foreground/80 tracking-wide uppercase px-1">{grp.title}</p>
+                                                                                        <div className="space-y-1">
+                                                                                            {grp.variables.map(v => renderVarButton(v, 'text-rose-600'))}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    )}
+
+                                                                    {/* Workspace Custom Variables */}
+                                                                    {customVars.length > 0 && (
+                                                                        <AccordionItem value="custom_vars" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
+                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
+                                                                                <span className="flex items-center gap-2">Custom Variables <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border-emerald-500/20">{customVars.length}</Badge></span>
+                                                                            </AccordionTrigger>
+                                                                            <AccordionContent className="pt-1 pb-3">
+                                                                                <div className="space-y-1">
+                                                                                    {customVars.map(v => renderVarButton(v, 'text-emerald-600'))}
+                                                                                </div>
+                                                                            </AccordionContent>
+                                                                        </AccordionItem>
+                                                                    )}
+                                                                </Accordion>
+                                                            );
                                                         })()}
                                                     </div>
                                                 </ScrollArea>
@@ -4057,17 +4373,40 @@ export function TemplateWorkshop({
                                         {/* Subject & Preview Text (Email Only) — with variable insertion support */}
                                         {channel === 'email' && (
                                             <div className="mb-6 space-y-3 rounded-2xl border border-border/60 bg-card/50 p-4 shadow-sm backdrop-blur-sm">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <MailIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Email Header</span>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <MailIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Email Header</span>
+                                                    </div>
+                                                    {subjectOptions && subjectOptions.length > 0 && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setIsAlternativesOpen(true)}
+                                                            className="h-6 rounded-lg text-[10px] font-bold gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20 active:scale-95 transition-all"
+                                                        >
+                                                            <Sparkles className="h-3 w-3 animate-pulse text-blue-500" />
+                                                            View AI Suggestions
+                                                        </Button>
+                                                    )}
                                                 </div>
                                                 {/* Subject Line */}
                                                 <div className="space-y-1.5 text-left">
-                                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-0.5">Subject Line</Label>
+                                                    <div className="flex items-center justify-between">
+                                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-0.5">Subject Line</Label>
+                                                        <span className={cn(
+                                                            "text-[9px] font-semibold transition-colors",
+                                                            subject.length > 50 ? "text-amber-500" : "text-muted-foreground/50"
+                                                        )}>
+                                                            {subject.length} / 50 characters
+                                                        </span>
+                                                    </div>
                                                     <div className="relative group">
-                                                        <Input
+                                                        <SlashInput
                                                             value={subject}
-                                                            onChange={e => setSubject(e.target.value)}
+                                                            onChange={handleSubjectChange}
+                                                            variables={autocompleteVariables}
                                                             placeholder="Enter email subject line — supports {{variables}}"
                                                             className="h-10 pr-9 rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all font-semibold text-sm font-mono"
                                                             autoComplete="off"
@@ -4090,9 +4429,10 @@ export function TemplateWorkshop({
                                                 <div className="space-y-1.5 text-left">
                                                     <Label className="text-[10px] font-semibold text-muted-foreground ml-0.5">Preview Text</Label>
                                                     <div className="relative group">
-                                                        <Input
+                                                        <SlashInput
                                                             value={previewText}
-                                                            onChange={e => setPreviewText(e.target.value)}
+                                                            onChange={handlePreviewTextChange}
+                                                            variables={autocompleteVariables}
                                                             placeholder="Enter email preview text — supports {{variables}}"
                                                             className="h-10 pr-9 rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all text-sm font-mono"
                                                             autoComplete="off"
@@ -4159,6 +4499,7 @@ export function TemplateWorkshop({
                                                                         block={block}
                                                                         isSelected={selectedBlockId === block.id}
                                                                         simulationVars={activeSimVariables}
+                                                                        autocompleteVariables={autocompleteVariables}
                                                                         onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('blocks'); }}
                                                                         onRemove={() => { setBlocks(prev => removeBlockRecursively(prev, block.id)); if (selectedBlockId === block.id) setSelectedBlockId(null); }}
                                                                         onDuplicate={() => { setBlocks(prev => duplicateBlockRecursively(prev, block.id)); }}
@@ -4540,6 +4881,242 @@ export function TemplateWorkshop({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Subject Line & Preview Text AI Alternatives Picker */}
+            <Dialog open={isAlternativesOpen} onOpenChange={setIsAlternativesOpen}>
+                <DialogContent className="max-w-2xl rounded-2xl p-6 bg-card border shadow-xl animate-in fade-in zoom-in-95 duration-200">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                            <Sparkles className="h-5 w-5 text-blue-500 animate-pulse" />
+                            AI Subject Suggestions
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Optimize your email open rates. Compare and apply high-converting AI alternatives or stick to your manual copy.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 my-4 max-h-[450px] overflow-y-auto pr-1">
+                        {/* Option 0: Current Manual Copy */}
+                        <motion.div
+                            whileHover={{ y: -2, scale: 1.005 }}
+                            whileTap={{ scale: 0.995 }}
+                            onClick={() => {
+                                setSubject(manualSubject);
+                                setPreviewText(manualPreviewText);
+                                setActiveOptionIndex(null);
+                                setIsAlternativesOpen(false);
+                                toast({ title: 'Manual Version Applied', description: 'Restored your original manual copy.' });
+                            }}
+                            className={cn(
+                                "p-4 rounded-2xl border cursor-pointer text-left transition-all duration-200 select-none",
+                                activeOptionIndex === null
+                                    ? "border-blue-600 bg-blue-500/[0.02] shadow-md"
+                                    : "border-border hover:border-muted-foreground/30 hover:bg-muted/10"
+                            )}
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Original / Manual Copy</span>
+                                {activeOptionIndex === null ? (
+                                    <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <Check className="h-2.5 w-2.5" /> Active
+                                    </span>
+                                ) : (
+                                    <span className="text-[9px] font-semibold text-muted-foreground/60">Click to apply</span>
+                                )}
+                            </div>
+                            <div className="space-y-1.5">
+                                <div className="text-sm font-bold text-foreground">
+                                    {manualSubject || <span className="text-muted-foreground/40 italic">Empty Subject Line</span>}
+                                </div>
+                                <div className="text-xs text-muted-foreground font-medium">
+                                    {manualPreviewText || <span className="text-muted-foreground/30 italic">Empty Preview Text</span>}
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* AI Option 1 */}
+                        {subjectOptions && subjectOptions[0] && (
+                            <motion.div
+                                whileHover={{ y: -2, scale: 1.005 }}
+                                whileTap={{ scale: 0.995 }}
+                                onClick={() => {
+                                    setSubject(subjectOptions[0].subject);
+                                    setPreviewText(subjectOptions[0].previewText);
+                                    setActiveOptionIndex(0);
+                                    setIsAlternativesOpen(false);
+                                    toast({ title: 'AI Suggestion 1 Applied', description: 'Subject line and preview text updated.' });
+                                }}
+                                className={cn(
+                                    "p-4 rounded-2xl border cursor-pointer text-left transition-all duration-200 select-none",
+                                    activeOptionIndex === 0
+                                        ? "border-blue-600 bg-blue-500/[0.02] shadow-md"
+                                        : "border-border hover:border-muted-foreground/30 hover:bg-muted/10"
+                                )}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">AI Alternative 1</span>
+                                        {subjectOptions[0].subject.length <= 50 && (
+                                            <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded">
+                                                Mobile Ready
+                                            </span>
+                                        )}
+                                    </div>
+                                    {activeOptionIndex === 0 ? (
+                                        <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                                            <Check className="h-2.5 w-2.5" /> Active
+                                        </span>
+                                    ) : (
+                                        <span className="text-[9px] font-semibold text-muted-foreground/60">Click to apply • {subjectOptions[0].subject.length} chars</span>
+                                    )}
+                                </div>
+                                <div className="space-y-1.5">
+                                    <div className="text-sm font-bold text-foreground">{subjectOptions[0].subject}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">{subjectOptions[0].previewText}</div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* AI Option 2 */}
+                        {subjectOptions && subjectOptions[1] && (
+                            <motion.div
+                                whileHover={{ y: -2, scale: 1.005 }}
+                                whileTap={{ scale: 0.995 }}
+                                onClick={() => {
+                                    setSubject(subjectOptions[1].subject);
+                                    setPreviewText(subjectOptions[1].previewText);
+                                    setActiveOptionIndex(1);
+                                    setIsAlternativesOpen(false);
+                                    toast({ title: 'AI Suggestion 2 Applied', description: 'Subject line and preview text updated.' });
+                                }}
+                                className={cn(
+                                    "p-4 rounded-2xl border cursor-pointer text-left transition-all duration-200 select-none",
+                                    activeOptionIndex === 1
+                                        ? "border-blue-600 bg-blue-500/[0.02] shadow-md"
+                                        : "border-border hover:border-muted-foreground/30 hover:bg-muted/10"
+                                )}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">AI Alternative 2</span>
+                                        {subjectOptions[1].subject.length <= 50 && (
+                                            <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded">
+                                                Mobile Ready
+                                            </span>
+                                        )}
+                                    </div>
+                                    {activeOptionIndex === 1 ? (
+                                        <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                                            <Check className="h-2.5 w-2.5" /> Active
+                                        </span>
+                                    ) : (
+                                        <span className="text-[9px] font-semibold text-muted-foreground/60">Click to apply • {subjectOptions[1].subject.length} chars</span>
+                                    )}
+                                </div>
+                                <div className="space-y-1.5">
+                                    <div className="text-sm font-bold text-foreground">{subjectOptions[1].subject}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">{subjectOptions[1].previewText}</div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Create Custom Variable Dialog */}
+            <Dialog open={isAddVarOpen} onOpenChange={setIsAddVarOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-2xl bg-card border shadow-xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-bold text-foreground">Add Custom Variable</DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Create a custom variable to capture and reuse dynamic parameters.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateVariable} className="space-y-4 text-left">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold">Display Label</Label>
+                            <Input
+                                placeholder="e.g., Client Anniversary"
+                                value={varForm.label}
+                                onChange={e => {
+                                    const label = e.target.value;
+                                    const variableName = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
+                                    setVarForm(prev => ({ ...prev, label, variableName }));
+                                }}
+                                required
+                                className="h-10 rounded-xl"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold">Variable Key (Insert Code)</Label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-muted-foreground/60">{"{{"}</span>
+                                <Input
+                                    placeholder="client_anniversary"
+                                    value={varForm.variableName}
+                                    onChange={e => setVarForm(prev => ({ ...prev, variableName: e.target.value }))}
+                                    required
+                                    className="pl-8 pr-8 font-mono text-xs h-10 rounded-xl"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-muted-foreground/60">{"}}"}</span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold">Variable Type</Label>
+                                <Select
+                                    value={varForm.type}
+                                    onValueChange={v => setVarForm(prev => ({ ...prev, type: v as any }))}
+                                >
+                                    <SelectTrigger className="h-10 rounded-xl">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="short_text">Short Text</SelectItem>
+                                        <SelectItem value="long_text">Paragraph</SelectItem>
+                                        <SelectItem value="number">Number</SelectItem>
+                                        <SelectItem value="date">Date</SelectItem>
+                                        <SelectItem value="yes_no">Boolean (Yes/No)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold">Scope</Label>
+                                <Select
+                                    value={varForm.scope}
+                                    onValueChange={v => setVarForm(prev => ({ ...prev, scope: v as any }))}
+                                >
+                                    <SelectTrigger className="h-10 rounded-xl">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="common">Common (All)</SelectItem>
+                                        <SelectItem value="person">Person</SelectItem>
+                                        <SelectItem value="institution">Institution</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold">Default Fallback (Optional)</Label>
+                            <Input
+                                placeholder="e.g., N/A"
+                                value={varForm.defaultValue}
+                                onChange={e => setVarForm(prev => ({ ...prev, defaultValue: e.target.value }))}
+                                className="h-10 rounded-xl"
+                            />
+                        </div>
+                        <DialogFooter className="pt-2">
+                            <Button type="button" variant="outline" onClick={() => setIsAddVarOpen(false)} className="rounded-xl font-semibold h-10">
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isCreatingVar} className="rounded-xl font-bold h-10 gap-2">
+                                {isCreatingVar && <Loader2 className="h-4 w-4 animate-spin" />} Create Variable
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
         </TooltipProvider>
     );

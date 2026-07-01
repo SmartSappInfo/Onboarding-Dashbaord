@@ -105,6 +105,8 @@ export const SURVEY_DEFAULTS = {
   showCoverPage: true,
   showSurveyTitles: true,
   startButtonText: "Let's Start",
+  submitButtonText: "Submit",
+  embedRedirectMode: 'modal' as const,
   scoringEnabled: false,
   maxScore: 0,
   elements: [],

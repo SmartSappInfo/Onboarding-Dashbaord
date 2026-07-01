@@ -33,9 +33,10 @@ function fromBase64(str: string): string {
 /**
  * Clean up editor artifacts (classes, empty tags) from raw HTML content.
  */
-function sanitizeContent(html: string): string {
+function sanitizeContent(html: unknown): string {
   if (!html) return '';
-  return html
+  const str = String(html);
+  return str
     .replace(/class="isSelectedEnd"/g, '')
     .replace(/class='isSelectedEnd'/g, '')
     .replace(/<p><\/p>/g, '<br/>')
@@ -46,9 +47,11 @@ function sanitizeContent(html: string): string {
  * Resolves variables in a text string using {{variable_name}} syntax.
  * Supports tag_list (JSON array) by rendering as a comma-separated string.
  */
-export function resolveVariables(text: string, variables: Record<string, any>): string {
-  if (!text) return '';
-  const sanitized = sanitizeContent(text);
+export function resolveVariables(text: unknown, variables: Record<string, any>): string {
+  if (text === null || text === undefined) return '';
+  const textStr = String(text);
+  if (!textStr) return '';
+  const sanitized = sanitizeContent(textStr);
   return sanitized.replace(/\{\{(.*?)\}\}/g, (match, key) => {
     const cleanKey = key.replace(/^\{+/, '').replace(/\}+$/, '').trim();
     let value = variables[cleanKey];
@@ -84,8 +87,9 @@ export function resolveVariables(text: string, variables: Record<string, any>): 
  * - Proper font styling for email client compatibility
  * - Emoji/Unicode safe rendering
  */
-export function plainTextToHtml(text: string, isDark?: boolean): string {
+export function plainTextToHtml(text: unknown, isDark?: boolean): string {
   if (!text) return '';
+  const textStr = String(text);
 
   const outerBg = isDark ? '#090d16' : '#F1F5F9';
   const cardBg = isDark ? '#111827' : '#FFFFFF';
@@ -93,7 +97,7 @@ export function plainTextToHtml(text: string, isDark?: boolean): string {
   const footerColor = isDark ? '#6b7280' : '#94a3b8';
 
   // Escape HTML entities to prevent XSS in user-authored content
-  const escaped = text
+  const escaped = textStr
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

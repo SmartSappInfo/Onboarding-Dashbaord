@@ -24,16 +24,18 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { MessageBlock } from '@/lib/types';
+import type { MessageBlock, TemplateVariable } from '@/lib/types';
 import { resolveVariables } from '@/lib/messaging-utils';
 import { useDroppable } from '@dnd-kit/core';
 import { blockIcons } from './block-icons';
+import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 
 interface VisualBlockProps {
     block: MessageBlock;
-    simulationVars: Record<string, any>;
+    simulationVars: Record<string, unknown>;
     isEditing?: boolean;
     onContentUpdate?: (props: Partial<MessageBlock>) => void;
+    autocompleteVariables?: TemplateVariable[];
     // Sub-block handlers
     selectedSubBlockId?: string | null;
     onSelectSubBlock?: (subBlockId: string) => void;
@@ -43,11 +45,35 @@ interface VisualBlockProps {
     onUpdateSubBlock?: (subBlockId: string, updates: Partial<MessageBlock>) => void;
 }
 
+function renderTextWithVariablePills(text: string): React.ReactNode {
+    if (!text) return null;
+    const parts = text.split(/(\{\{[\w_]+\}\})/g);
+    return (
+        <span className="whitespace-pre-wrap">
+            {parts.map((part, i) => {
+                if (part.startsWith('{{') && part.endsWith('}}')) {
+                    const varName = part.slice(2, -2);
+                    return (
+                        <span 
+                            key={i} 
+                            className="inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none"
+                        >
+                            {varName}
+                        </span>
+                    );
+                }
+                return part;
+            })}
+        </span>
+    );
+}
+
 export function VisualBlock({ 
     block, 
     simulationVars, 
     isEditing, 
     onContentUpdate,
+    autocompleteVariables,
     selectedSubBlockId,
     onSelectSubBlock,
     onRemoveSubBlock,
@@ -150,67 +176,69 @@ export function VisualBlock({
                     {block.pillText !== undefined && (
                         <div className={cn("mb-2.5 flex", customFlexAlignClass)}>
                             {isDarkSlate ? (
-                                <input
-                                    type="text"
-                                    value={pillTextVal}
-                                    onChange={(e) => onContentUpdate?.({ pillText: e.target.value })}
-                                    className="bg-transparent border-none outline-none font-black tracking-wider text-blue-300 uppercase p-0 m-0 w-auto text-center focus:ring-0 focus:outline-none"
-                                    placeholder="Date / Label"
-                                    style={{ width: `${Math.max(pillTextVal.length || 12, 4)}ch`, fontSize: '11px' }}
-                                    onKeyDown={(e) => e.stopPropagation()}
-                                    onFocus={(e) => e.stopPropagation()}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                />
+                                isEditing ? (
+                                    <SlashInput
+                                        value={pillTextVal}
+                                        onChange={(val) => onContentUpdate?.({ pillText: val })}
+                                        variables={autocompleteVariables}
+                                        className="bg-transparent border-none outline-none font-black tracking-wider text-blue-300 uppercase p-0 m-0 w-auto text-center focus:ring-0 focus:outline-none h-auto"
+                                        placeholder="Date / Label"
+                                        style={{ width: `${Math.max(pillTextVal.length || 12, 4)}ch`, fontSize: '11px' }}
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                    />
+                                ) : (
+                                    <span className="font-black tracking-wider text-blue-300 uppercase text-[11px] select-text">
+                                        {renderTextWithVariablePills(pillTextVal)}
+                                    </span>
+                                )
                             ) : (
                                 <span className="inline-flex items-center bg-blue-50 text-blue-600 rounded-full px-3 py-1 text-xs font-semibold select-text border border-blue-100/50">
                                     {block.url === 'envelope' && (
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 shrink-0 mr-1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                                     )}
-                                    <input
-                                        type="text"
-                                        value={pillTextVal}
-                                        onChange={(e) => onContentUpdate?.({ pillText: e.target.value })}
-                                        className="bg-transparent border-none outline-none font-semibold text-blue-605 p-0 m-0 w-full text-xs text-center focus:ring-0 focus:outline-none"
-                                        placeholder="Badge Text"
-                                        style={{ color: '#2563eb', width: `${Math.max(pillTextVal.length || 8, 4)}ch` }}
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
+                                    {isEditing ? (
+                                        <SlashInput
+                                            value={pillTextVal}
+                                            onChange={(val) => onContentUpdate?.({ pillText: val })}
+                                            variables={autocompleteVariables}
+                                            className="bg-transparent border-none outline-none font-semibold text-blue-600 p-0 m-0 w-full text-xs text-center focus:ring-0 focus:outline-none h-auto"
+                                            placeholder="Badge Text"
+                                            style={{ color: '#2563eb', width: `${Math.max(pillTextVal.length || 8, 4)}ch` }}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <span style={{ color: '#2563eb' }} className="text-xs text-center select-text">
+                                            {renderTextWithVariablePills(pillTextVal)}
+                                        </span>
+                                    )}
                                 </span>
                             )}
                         </div>
                     )}
 
                     {/* Heading Title */}
-                    <textarea
-                        value={block.title || ''}
-                        onChange={(e) => onContentUpdate?.({ title: e.target.value })}
-                        className={cn("tracking-tight leading-tight m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text", sizeClass, customAlignClass)}
-                        style={headingStyle}
-                        placeholder="New Heading"
-                        rows={1}
-                        onInput={(e) => {
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = 'auto';
-                            target.style.height = `${target.scrollHeight}px`;
-                        }}
-                        ref={(el) => {
-                            if (el) {
-                                el.style.height = 'auto';
-                                el.style.height = `${el.scrollHeight}px`;
-                            }
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') e.preventDefault();
-                            e.stopPropagation();
-                        }}
-                        onFocus={(e) => e.stopPropagation()}
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                    />
+                    {isEditing ? (
+                        <SlashTextarea
+                            value={block.title || ''}
+                            onChange={(val) => onContentUpdate?.({ title: val })}
+                            variables={autocompleteVariables}
+                            className={cn("tracking-tight leading-tight m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text", sizeClass, customAlignClass)}
+                            style={headingStyle}
+                            placeholder="New Heading"
+                            rows={1}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') e.preventDefault();
+                                e.stopPropagation();
+                            }}
+                        />
+                    ) : (
+                        <Tag 
+                            className={cn("tracking-tight leading-tight m-0 bg-transparent border-none outline-none p-0 font-extrabold select-text w-full break-words", sizeClass, customAlignClass)}
+                            style={headingStyle}
+                        >
+                            {renderTextWithVariablePills(block.title || '')}
+                        </Tag>
+                    )}
 
                     {/* Subtext Description with optional Icon/Avatar */}
                     {block.content !== undefined && !isSimpleWide && (
@@ -226,28 +254,21 @@ export function VisualBlock({
                             {!isNestedCard && block.url && block.url.startsWith('http') && (
                                 <img src={block.url} alt="avatar" className="w-5 h-5 rounded-full object-cover shrink-0" />
                             )}
-                            <textarea
-                                value={contentVal}
-                                onChange={(e) => onContentUpdate?.({ content: e.target.value })}
-                                className={cn("bg-transparent border-none outline-none p-0 m-0 w-full focus:ring-0 focus:outline-none resize-none select-text", isNestedCard ? "text-slate-650 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}
-                                placeholder="Subtext description..."
-                                rows={isNestedCard ? 2 : 1}
-                                onInput={(e) => {
-                                    const target = e.target as HTMLTextAreaElement;
-                                    target.style.height = 'auto';
-                                    target.style.height = `${target.scrollHeight}px`;
-                                }}
-                                ref={(el) => {
-                                    if (el) {
-                                        el.style.height = 'auto';
-                                        el.style.height = `${el.scrollHeight}px`;
-                                    }
-                                }}
-                                onKeyDown={(e) => e.stopPropagation()}
-                                onFocus={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => e.stopPropagation()}
-                            />
+                            {isEditing ? (
+                                <SlashTextarea
+                                    value={contentVal}
+                                    onChange={(val) => onContentUpdate?.({ content: val })}
+                                    variables={autocompleteVariables}
+                                    className={cn("bg-transparent border-none outline-none p-0 m-0 w-full focus:ring-0 focus:outline-none resize-none select-text", isNestedCard ? "text-slate-650 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}
+                                    placeholder="Subtext description..."
+                                    rows={isNestedCard ? 2 : 1}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                />
+                            ) : (
+                                <div className={cn("w-full break-words select-text", isNestedCard ? "text-slate-600 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}>
+                                    {renderTextWithVariablePills(contentVal)}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -258,29 +279,35 @@ export function VisualBlock({
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             )}
                             <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                                <input
-                                    type="text"
-                                    value={block.rsvpDate || ''}
-                                    onChange={(e) => onContentUpdate?.({ rsvpDate: e.target.value })}
-                                    className="bg-transparent border-none outline-none p-0 m-0 w-full font-extrabold text-slate-800 focus:ring-0 focus:outline-none text-xs"
-                                    placeholder="Date (e.g. Thursday, Oct 26)"
-                                    onKeyDown={(e) => e.stopPropagation()}
-                                    onFocus={(e) => e.stopPropagation()}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                />
-                                {block.rsvpTime !== undefined && (
-                                    <input
-                                        type="text"
-                                        value={block.rsvpTime || ''}
-                                        onChange={(e) => onContentUpdate?.({ rsvpTime: e.target.value })}
-                                        className="bg-transparent border-none outline-none p-0 m-0 w-full font-medium text-slate-500 focus:ring-0 focus:outline-none text-[10px]"
-                                        placeholder="Time (e.g. 10:00 AM - 11:30 AM)"
+                                {isEditing ? (
+                                    <SlashInput
+                                        value={block.rsvpDate || ''}
+                                        onChange={(val) => onContentUpdate?.({ rsvpDate: val })}
+                                        variables={autocompleteVariables}
+                                        className="bg-transparent border-none outline-none p-0 m-0 w-full font-extrabold text-slate-800 focus:ring-0 focus:outline-none text-xs h-auto"
+                                        placeholder="Date (e.g. Thursday, Oct 26)"
                                         onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
                                     />
+                                ) : (
+                                    <span className="font-extrabold text-slate-800 text-xs select-text">
+                                        {renderTextWithVariablePills(block.rsvpDate || '')}
+                                    </span>
+                                )}
+                                {block.rsvpTime !== undefined && (
+                                    isEditing ? (
+                                        <SlashInput
+                                            value={block.rsvpTime || ''}
+                                            onChange={(val) => onContentUpdate?.({ rsvpTime: val })}
+                                            variables={autocompleteVariables}
+                                            className="bg-transparent border-none outline-none p-0 m-0 w-full font-medium text-slate-500 focus:ring-0 focus:outline-none text-[10px] h-auto"
+                                            placeholder="Time (e.g. 10:00 AM - 11:30 AM)"
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <span className="font-medium text-slate-500 text-[10px] select-text">
+                                            {renderTextWithVariablePills(block.rsvpTime || '')}
+                                        </span>
+                                    )
                                 )}
                             </div>
                         </div>
@@ -290,32 +317,26 @@ export function VisualBlock({
         }
         case 'text':
             return (
-                <div className={cn("w-full", alignmentClass)} style={{ backgroundColor: s.backgroundColor }}>
-                    <textarea
-                        value={block.content || ''}
-                        onChange={(e) => onContentUpdate?.({ content: e.target.value })}
-                        className={cn("leading-relaxed m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-medium focus:ring-0 focus:outline-none focus:border-transparent select-text", alignmentClass)}
-                        style={{ ...combinedStyle, fontSize: combinedStyle.fontSize || '16px' }}
-                        placeholder="New paragraph content..."
-                        rows={1}
-                        onInput={(e) => {
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = 'auto';
-                            target.style.height = `${target.scrollHeight}px`;
-                        }}
-                        ref={(el) => {
-                            if (el) {
-                                el.style.height = 'auto';
-                                el.style.height = `${el.scrollHeight}px`;
-                            }
-                        }}
-                        onKeyDown={(e) => {
-                            e.stopPropagation();
-                        }}
-                        onFocus={(e) => e.stopPropagation()}
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                    />
+                <div className={cn("w-full select-text", alignmentClass)} style={{ backgroundColor: s.backgroundColor }}>
+                    {isEditing ? (
+                        <SlashTextarea
+                            value={block.content || ''}
+                            onChange={(val) => onContentUpdate?.({ content: val })}
+                            variables={autocompleteVariables}
+                            className={cn("leading-relaxed m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-medium focus:ring-0 focus:outline-none focus:border-transparent select-text", alignmentClass)}
+                            style={{ ...combinedStyle, fontSize: combinedStyle.fontSize || '16px' }}
+                            placeholder="New paragraph content..."
+                            rows={1}
+                            onKeyDown={(e) => e.stopPropagation()}
+                        />
+                    ) : (
+                        <div 
+                            className={cn("leading-relaxed m-0 p-0 font-medium select-text w-full break-words", alignmentClass)}
+                            style={{ ...combinedStyle, fontSize: combinedStyle.fontSize || '16px' }}
+                        >
+                            {renderTextWithVariablePills(block.content || '')}
+                        </div>
+                    )}
                 </div>
             );
         case 'button': {
@@ -342,21 +363,24 @@ export function VisualBlock({
                             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
                         }}
                     >
-                        <input
-                            type="text"
-                            value={block.title || ''}
-                            onChange={(e) => onContentUpdate?.({ title: e.target.value })}
-                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                            style={{ color: btnColor, font: 'inherit', width: `${Math.max((block.title || '').length || 8, 4)}ch` }}
-                            placeholder="Click Me"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') e.preventDefault();
-                                e.stopPropagation();
-                            }}
-                            onFocus={(e) => e.stopPropagation()}
-                            onClick={(e) => e.stopPropagation()}
-                            onMouseDown={(e) => e.stopPropagation()}
-                        />
+                        {isEditing ? (
+                            <SlashInput
+                                value={block.title || ''}
+                                onChange={(val) => onContentUpdate?.({ title: val })}
+                                variables={autocompleteVariables}
+                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text h-auto"
+                                style={{ color: btnColor, font: 'inherit', width: `${Math.max((block.title || '').length || 8, 4)}ch` }}
+                                placeholder="Click Me"
+                                onKeyDown={(e) => e.stopPropagation()}
+                            />
+                        ) : (
+                            <span 
+                                className="font-bold select-text text-center inline-block"
+                                style={{ color: btnColor, font: 'inherit' }}
+                            >
+                                {renderTextWithVariablePills(block.title || '')}
+                            </span>
+                        )}
                     </div>
                 </div>
             );
@@ -416,7 +440,7 @@ export function VisualBlock({
         case 'quote':
             return (
                 <div 
-                    className={cn("w-full my-4 border-l-4 italic leading-relaxed", alignmentClass)}
+                    className={cn("w-full my-4 border-l-4 italic leading-relaxed select-text", alignmentClass)}
                     style={{
                         borderLeftColor: s.borderColor || '#3b5fff',
                         backgroundColor: s.backgroundColor || 'rgba(241, 245, 249, 0.5)',
@@ -426,31 +450,25 @@ export function VisualBlock({
                         borderRadius: `0 ${s.borderRadius || 16}px ${s.borderRadius || 16}px 0`
                     }}
                 >
-                    <textarea
-                        value={block.content || ''}
-                        onChange={(e) => onContentUpdate?.({ content: e.target.value })}
-                        className={cn("bg-transparent border-none outline-none resize-none w-full font-medium italic focus:ring-0 focus:outline-none focus:border-transparent select-text p-4", alignmentClass)}
-                        style={{ ...typographyStyle, display: 'block', border: 'none' }}
-                        placeholder="Quote content..."
-                        rows={1}
-                        onInput={(e) => {
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = 'auto';
-                            target.style.height = `${target.scrollHeight}px`;
-                        }}
-                        ref={(el) => {
-                            if (el) {
-                                el.style.height = 'auto';
-                                el.style.height = `${el.scrollHeight}px`;
-                            }
-                        }}
-                        onKeyDown={(e) => {
-                            e.stopPropagation();
-                        }}
-                        onFocus={(e) => e.stopPropagation()}
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                    />
+                    {isEditing ? (
+                        <SlashTextarea
+                            value={block.content || ''}
+                            onChange={(val) => onContentUpdate?.({ content: val })}
+                            variables={autocompleteVariables}
+                            className={cn("bg-transparent border-none outline-none resize-none w-full font-medium italic focus:ring-0 focus:outline-none focus:border-transparent select-text p-4", alignmentClass)}
+                            style={{ ...typographyStyle, display: 'block', border: 'none' }}
+                            placeholder="Quote content..."
+                            rows={1}
+                            onKeyDown={(e) => e.stopPropagation()}
+                        />
+                    ) : (
+                        <div 
+                            className={cn("font-medium italic select-text p-4 w-full break-words", alignmentClass)}
+                            style={{ ...typographyStyle, display: 'block', border: 'none' }}
+                        >
+                            {renderTextWithVariablePills(block.content || '')}
+                        </div>
+                    )}
                 </div>
             );
         case 'list': {
@@ -476,34 +494,40 @@ export function VisualBlock({
                                 prefix = <span className="text-muted-foreground/60 shrink-0 flex items-center justify-center w-1.5 h-1.5 rounded-full bg-current mr-2 ml-1 select-none" />;
                             }
 
-                            return (
-                                <li key={i} className="relative group/list-item flex items-center w-full select-text">
+                             return (
+                                <li key={i} className="relative group/list-item flex items-center w-full select-text min-h-6">
                                     {prefix}
-                                    <input
-                                        type="text"
-                                        value={item}
-                                        onChange={(e) => {
-                                            const newItems = [...items];
-                                            newItems[i] = e.target.value;
-                                            onContentUpdate?.({ items: newItems });
-                                        }}
-                                        className="bg-transparent border-none outline-none p-0 m-0 font-medium flex-1 focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                                        style={{ color: combinedStyle.color || 'inherit', font: 'inherit' }}
-                                        placeholder="List item..."
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
+                                    {isEditing ? (
+                                        <SlashInput
+                                            value={item}
+                                            onChange={(val) => {
                                                 const newItems = [...items];
-                                                newItems.splice(i + 1, 0, '');
+                                                newItems[i] = val;
                                                 onContentUpdate?.({ items: newItems });
-                                            }
-                                            e.stopPropagation();
-                                        }}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
-                                    {items.length > 1 && (
+                                            }}
+                                            variables={autocompleteVariables}
+                                            className="bg-transparent border-none outline-none p-0 m-0 font-medium flex-1 focus:ring-0 focus:outline-none focus:border-transparent select-text h-auto"
+                                            style={{ color: combinedStyle.color || 'inherit', font: 'inherit' }}
+                                            placeholder="List item..."
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const newItems = [...items];
+                                                    newItems.splice(i + 1, 0, '');
+                                                    onContentUpdate?.({ items: newItems });
+                                                }
+                                                e.stopPropagation();
+                                            }}
+                                        />
+                                    ) : (
+                                        <span 
+                                            className="flex-1 font-medium select-text break-words"
+                                            style={{ color: combinedStyle.color || 'inherit', font: 'inherit' }}
+                                        >
+                                            {renderTextWithVariablePills(item)}
+                                        </span>
+                                    )}
+                                    {isEditing && items.length > 1 && (
                                         <button
                                             type="button"
                                             onClick={(e) => {
@@ -520,18 +544,20 @@ export function VisualBlock({
                             );
                         })}
                     </ul>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2 h-7 rounded-lg text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 p-1 px-2 pointer-events-auto"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onContentUpdate?.({ items: [...items, ''] });
-                        }}
-                    >
-                        + Add Item
-                    </Button>
+                    {isEditing && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2 h-7 rounded-lg text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50/50 p-1 px-2 pointer-events-auto"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onContentUpdate?.({ items: [...items, ''] });
+                            }}
+                        >
+                            + Add Item
+                        </Button>
+                    )}
                 </div>
             );
         }
@@ -542,7 +568,7 @@ export function VisualBlock({
                 <div className="w-full py-6">
                     <Card className="bg-blue-600 text-white border-none shadow-2xl rounded-[2rem] p-8 flex flex-col items-center text-center">
                         <Badge variant="outline" className="mb-4 bg-card/10 text-white border-white/20 px-3 py-1 text-[8px] font-semibold uppercase ">Assessment Result</Badge>
-                        <span className="text-6xl font-semibold tabular-nums tracking-tighter">{simulationVars.score || 0}</span>
+                        <span className="text-6xl font-semibold tabular-nums tracking-tighter">{(simulationVars.score as string | number) || 0}</span>
                         <span className="text-[10px] font-bold opacity-60 mt-1">Total Points Recorded</span>
                     </Card>
                 </div>
@@ -633,72 +659,61 @@ export function VisualBlock({
                                 {/* Pill Badge */}
                                 <div className="mb-3">
                                     <span className="inline-flex bg-blue-50 text-blue-600 rounded-full px-3 py-1 text-xs font-semibold select-text">
-                                        <input
-                                            type="text"
-                                            value={pillTextVal}
-                                            onChange={(e) => onContentUpdate?.({ pillText: e.target.value })}
-                                            className="bg-transparent border-none outline-none font-semibold text-blue-600 p-0 m-0 w-full text-xs text-center"
-                                            onKeyDown={(e) => e.stopPropagation()}
-                                            onFocus={(e) => e.stopPropagation()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        />
+                                        {isEditing ? (
+                                            <SlashInput
+                                                value={pillTextVal}
+                                                onChange={(val) => onContentUpdate?.({ pillText: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none font-semibold text-blue-600 p-0 m-0 w-full text-xs text-center h-auto"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span style={{ color: '#2563eb' }} className="text-xs text-center select-text">
+                                                {renderTextWithVariablePills(pillTextVal)}
+                                            </span>
+                                        )}
                                     </span>
                                 </div>
                                 
                                 {/* Event Title */}
                                 <div className="mb-2">
-                                    <textarea
-                                        value={title}
-                                        onChange={(e) => onContentUpdate?.({ title: e.target.value })}
-                                        className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-tight break-words"
-                                        placeholder="Event Title"
-                                        rows={1}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') e.preventDefault();
-                                            e.stopPropagation();
-                                        }}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        onInput={(e) => {
-                                            const target = e.target as HTMLTextAreaElement;
-                                            target.style.height = 'auto';
-                                            target.style.height = `${target.scrollHeight}px`;
-                                        }}
-                                        ref={(el) => {
-                                            if (el) {
-                                                el.style.height = 'auto';
-                                                el.style.height = `${el.scrollHeight}px`;
-                                            }
-                                        }}
-                                    />
+                                    {isEditing ? (
+                                        <SlashTextarea
+                                            value={title}
+                                            onChange={(val) => onContentUpdate?.({ title: val })}
+                                            variables={autocompleteVariables}
+                                            className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-tight break-words"
+                                            placeholder="Event Title"
+                                            rows={1}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') e.preventDefault();
+                                                e.stopPropagation();
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight select-text leading-tight break-words">
+                                            {renderTextWithVariablePills(title)}
+                                        </div>
+                                    )}
                                 </div>
                                 
                                 {/* Event Description */}
                                 <div className="mb-5">
-                                    <textarea
-                                        value={eventDescVal}
-                                        onChange={(e) => onContentUpdate?.({ content: e.target.value })}
-                                        className="text-xs sm:text-sm text-slate-500 bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-relaxed break-words"
-                                        placeholder="Event Description"
-                                        rows={2}
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        onInput={(e) => {
-                                            const target = e.target as HTMLTextAreaElement;
-                                            target.style.height = 'auto';
-                                            target.style.height = `${target.scrollHeight}px`;
-                                        }}
-                                        ref={(el) => {
-                                            if (el) {
-                                                el.style.height = 'auto';
-                                                el.style.height = `${el.scrollHeight}px`;
-                                            }
-                                        }}
-                                    />
+                                    {isEditing ? (
+                                        <SlashTextarea
+                                            value={eventDescVal}
+                                            onChange={(val) => onContentUpdate?.({ content: val })}
+                                            variables={autocompleteVariables}
+                                            className="text-xs sm:text-sm text-slate-500 bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-relaxed break-words"
+                                            placeholder="Event Description"
+                                            rows={2}
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <div className="text-xs sm:text-sm text-slate-500 select-text leading-relaxed break-words">
+                                            {renderTextWithVariablePills(eventDescVal)}
+                                        </div>
+                                    )}
                                 </div>
                                 
                                 {/* Horizontal Divider */}
@@ -714,28 +729,35 @@ export function VisualBlock({
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 </div>
                                 <div className="flex-1 min-w-0 leading-tight">
-                                    <input
-                                        type="text"
-                                        value={rsvpDateLabelVal}
-                                        onChange={(e) => onContentUpdate?.({ rsvpDateLabel: e.target.value })}
-                                        className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full"
-                                        placeholder="DATE"
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
-                                    <input
-                                        type="text"
-                                        value={rsvpDate}
-                                        onChange={(e) => onContentUpdate?.({ rsvpDate: e.target.value })}
-                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all"
-                                        placeholder="Dec 15, 2024"
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
+                                    {isEditing ? (
+                                        <>
+                                            <SlashInput
+                                                value={rsvpDateLabelVal}
+                                                onChange={(val) => onContentUpdate?.({ rsvpDateLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full h-auto"
+                                                placeholder="DATE"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                            <SlashInput
+                                                value={rsvpDate}
+                                                onChange={(val) => onContentUpdate?.({ rsvpDate: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all h-auto"
+                                                placeholder="Dec 15, 2024"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest select-text block">
+                                                {renderTextWithVariablePills(rsvpDateLabelVal)}
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-800 mt-0.5 select-text block break-all">
+                                                {renderTextWithVariablePills(rsvpDate)}
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
@@ -748,28 +770,35 @@ export function VisualBlock({
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                 </div>
                                 <div className="flex-1 min-w-0 leading-tight">
-                                    <input
-                                        type="text"
-                                        value={rsvpTimeLabelVal}
-                                        onChange={(e) => onContentUpdate?.({ rsvpTimeLabel: e.target.value })}
-                                        className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full"
-                                        placeholder="TIME"
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
-                                    <input
-                                        type="text"
-                                        value={rsvpTime}
-                                        onChange={(e) => onContentUpdate?.({ rsvpTime: e.target.value })}
-                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all"
-                                        placeholder="2:00 PM"
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
+                                    {isEditing ? (
+                                        <>
+                                            <SlashInput
+                                                value={rsvpTimeLabelVal}
+                                                onChange={(val) => onContentUpdate?.({ rsvpTimeLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full h-auto"
+                                                placeholder="TIME"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                            <SlashInput
+                                                value={rsvpTime}
+                                                onChange={(val) => onContentUpdate?.({ rsvpTime: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all h-auto"
+                                                placeholder="2:00 PM"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest select-text block">
+                                                {renderTextWithVariablePills(rsvpTimeLabelVal)}
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-800 mt-0.5 select-text block break-all">
+                                                {renderTextWithVariablePills(rsvpTime)}
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
@@ -782,28 +811,35 @@ export function VisualBlock({
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
                                 </div>
                                 <div className="flex-1 min-w-0 leading-tight">
-                                    <input
-                                        type="text"
-                                        value={rsvpLocationLabelVal}
-                                        onChange={(e) => onContentUpdate?.({ rsvpLocationLabel: e.target.value })}
-                                        className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full"
-                                        placeholder="TYPE"
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
-                                    <input
-                                        type="text"
-                                        value={rsvpLocation}
-                                        onChange={(e) => onContentUpdate?.({ rsvpLocation: e.target.value })}
-                                        className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all"
-                                        placeholder="Virtual Meeting"
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
+                                    {isEditing ? (
+                                        <>
+                                            <SlashInput
+                                                value={rsvpLocationLabelVal}
+                                                onChange={(val) => onContentUpdate?.({ rsvpLocationLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full h-auto"
+                                                placeholder="TYPE"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                            <SlashInput
+                                                value={rsvpLocation}
+                                                onChange={(val) => onContentUpdate?.({ rsvpLocation: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all h-auto"
+                                                placeholder="Virtual Meeting"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest select-text block">
+                                                {renderTextWithVariablePills(rsvpLocationLabelVal)}
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-800 mt-0.5 select-text block break-all">
+                                                {renderTextWithVariablePills(rsvpLocation)}
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -817,98 +853,116 @@ export function VisualBlock({
                                 <div className="space-y-3">
                                     {/* Going (Full Width) */}
                                     <div className="w-full bg-[#0052cc] text-white rounded-xl py-3 px-4 text-sm font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer hover:bg-[#0047b3] transition-all min-w-0">
-                                        <input
-                                            type="text"
-                                            value={going}
-                                            onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
-                                            style={{ color: '#ffffff', font: 'inherit' }}
-                                            onKeyDown={(e) => e.stopPropagation()}
-                                            onFocus={(e) => e.stopPropagation()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        />
+                                        {isEditing ? (
+                                            <SlashInput
+                                                value={going}
+                                                onChange={(val) => onContentUpdate?.({ goingLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white h-auto"
+                                                style={{ color: '#ffffff', font: 'inherit' }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span className="font-bold select-text text-center text-white flex-1 break-words">
+                                                {renderTextWithVariablePills(going)}
+                                            </span>
+                                        )}
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                                     </div>
                                     {/* Split Secondary Buttons */}
                                     <div className="grid grid-cols-1 min-[370px]:grid-cols-2 gap-3">
                                         {/* Later */}
                                         <div className="bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all min-w-0">
-                                            <input
-                                                type="text"
-                                                value={later}
-                                                onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
-                                                style={{ color: '#334155', font: 'inherit' }}
-                                                onKeyDown={(e) => e.stopPropagation()}
-                                                onFocus={(e) => e.stopPropagation()}
-                                                onClick={(e) => e.stopPropagation()}
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                            />
+                                            {isEditing ? (
+                                                <SlashInput
+                                                    value={later}
+                                                    onChange={(val) => onContentUpdate?.({ laterLabel: val })}
+                                                    variables={autocompleteVariables}
+                                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700 h-auto"
+                                                    style={{ color: '#334155', font: 'inherit' }}
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                />
+                                            ) : (
+                                                <span className="font-bold select-text text-center text-slate-700 flex-1 break-words">
+                                                    {renderTextWithVariablePills(later)}
+                                                </span>
+                                            )}
                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                         </div>
                                         {/* Not Going */}
                                         <div className="bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-all min-w-0">
-                                            <input
-                                                type="text"
-                                                value={declined}
-                                                onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
-                                                style={{ color: '#334155', font: 'inherit' }}
-                                                onKeyDown={(e) => e.stopPropagation()}
-                                                onFocus={(e) => e.stopPropagation()}
-                                                onClick={(e) => e.stopPropagation()}
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                            />
+                                            {isEditing ? (
+                                                <SlashInput
+                                                    value={declined}
+                                                    onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
+                                                    variables={autocompleteVariables}
+                                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700 h-auto"
+                                                    style={{ color: '#334155', font: 'inherit' }}
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                />
+                                            ) : (
+                                                <span className="font-bold select-text text-center text-slate-700 flex-1 break-words">
+                                                    {renderTextWithVariablePills(declined)}
+                                                </span>
+                                            )}
                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                                         </div>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 min-[370px]:grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {/* Going (Full on Mobile < 370, 2-cols bento on 370-640, Inline on Desktop spans 1 of 3) */}
+                                    {/* Going */}
                                     <div className="col-span-full min-[370px]:col-span-2 sm:col-span-1 bg-[#0052cc] text-white rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer hover:bg-[#0047b3] transition-all min-w-0">
-                                        <input
-                                            type="text"
-                                            value={going}
-                                            onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
-                                            style={{ color: '#ffffff', font: 'inherit' }}
-                                            onKeyDown={(e) => e.stopPropagation()}
-                                            onFocus={(e) => e.stopPropagation()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        />
+                                        {isEditing ? (
+                                            <SlashInput
+                                                value={going}
+                                                onChange={(val) => onContentUpdate?.({ goingLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white h-auto"
+                                                style={{ color: '#ffffff', font: 'inherit' }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span className="font-bold select-text text-center text-white flex-1 break-words">
+                                                {renderTextWithVariablePills(going)}
+                                            </span>
+                                        )}
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                                     </div>
                                     {/* Later */}
                                     <div className="col-span-full min-[370px]:col-span-1 bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-all min-w-0">
-                                        <input
-                                            type="text"
-                                            value={later}
-                                            onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
-                                            style={{ color: '#334155', font: 'inherit' }}
-                                            onKeyDown={(e) => e.stopPropagation()}
-                                            onFocus={(e) => e.stopPropagation()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        />
+                                        {isEditing ? (
+                                            <SlashInput
+                                                value={later}
+                                                onChange={(val) => onContentUpdate?.({ laterLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700 h-auto"
+                                                style={{ color: '#334155', font: 'inherit' }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span className="font-bold select-text text-center text-slate-700 flex-1 break-words">
+                                                {renderTextWithVariablePills(later)}
+                                            </span>
+                                        )}
                                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                     </div>
                                     {/* Not Going */}
                                     <div className="col-span-full min-[370px]:col-span-1 bg-white border border-slate-200 text-slate-700 rounded-xl py-3 px-4 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 transition-all min-w-0">
-                                        <input
-                                            type="text"
-                                            value={declined}
-                                            onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700"
-                                            style={{ color: '#334155', font: 'inherit' }}
-                                            onKeyDown={(e) => e.stopPropagation()}
-                                            onFocus={(e) => e.stopPropagation()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        />
+                                        {isEditing ? (
+                                            <SlashInput
+                                                value={declined}
+                                                onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700 h-auto"
+                                                style={{ color: '#334155', font: 'inherit' }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span className="font-bold select-text text-center text-slate-700 flex-1 break-words">
+                                                {renderTextWithVariablePills(declined)}
+                                            </span>
+                                        )}
                                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                                     </div>
                                 </div>
@@ -937,26 +991,33 @@ export function VisualBlock({
                         {/* Optional Title */}
                         {block.title && (
                             <div className="mb-4">
-                                <textarea
-                                    value={title}
-                                    onChange={(e) => onContentUpdate?.({ title: e.target.value })}
-                                    className="tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                                    style={{ 
-                                        font: 'inherit',
-                                        color: s.color || '#0f172a',
-                                        fontSize: '18px',
-                                        fontWeight: 'bold',
-                                    }}
-                                    placeholder="Confirm Attendance"
-                                    rows={1}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') e.preventDefault();
-                                        e.stopPropagation();
-                                    }}
-                                    onFocus={(e) => e.stopPropagation()}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                />
+                                {isEditing ? (
+                                    <SlashTextarea
+                                        value={title}
+                                        onChange={(val) => onContentUpdate?.({ title: val })}
+                                        variables={autocompleteVariables}
+                                        className="tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text"
+                                        style={{ 
+                                            font: 'inherit',
+                                            color: s.color || '#0f172a',
+                                            fontSize: '18px',
+                                            fontWeight: 'bold',
+                                        }}
+                                        placeholder="Confirm Attendance"
+                                        rows={1}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') e.preventDefault();
+                                            e.stopPropagation();
+                                        }}
+                                    />
+                                ) : (
+                                    <div 
+                                        className="font-bold select-text"
+                                        style={{ color: s.color || '#0f172a', fontSize: '18px' }}
+                                    >
+                                        {renderTextWithVariablePills(title)}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -967,30 +1028,37 @@ export function VisualBlock({
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0062cc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                 </div>
                                 <div className="flex-1 min-w-0 space-y-1">
-                                    <input
-                                        type="text"
-                                        value={rsvpDate}
-                                        onChange={(e) => onContentUpdate?.({ rsvpDate: e.target.value })}
-                                        className="bg-transparent border-none outline-none p-0 m-0 font-extrabold text-slate-900 focus:ring-0 focus:outline-none focus:border-transparent select-text w-full text-left"
-                                        style={{ fontSize: '18px', color: '#0f172a', fontWeight: 800 }}
-                                        placeholder="Tuesday, Sep 24"
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
-                                    <input
-                                        type="text"
-                                        value={rsvpTime}
-                                        onChange={(e) => onContentUpdate?.({ rsvpTime: e.target.value })}
-                                        className="bg-transparent border-none outline-none p-0 m-0 font-medium text-slate-500 focus:ring-0 focus:outline-none focus:border-transparent select-text w-full text-left"
-                                        style={{ fontSize: '14px', color: '#64748b' }}
-                                        placeholder="10:00 - 11:00 AM"
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
+                                    {isEditing ? (
+                                        <>
+                                            <SlashInput
+                                                value={rsvpDate}
+                                                onChange={(val) => onContentUpdate?.({ rsvpDate: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none p-0 m-0 font-extrabold text-slate-900 focus:ring-0 focus:outline-none focus:border-transparent select-text w-full text-left h-auto"
+                                                style={{ fontSize: '18px', color: '#0f172a', fontWeight: 800 }}
+                                                placeholder="Tuesday, Sep 24"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                            <SlashInput
+                                                value={rsvpTime}
+                                                onChange={(val) => onContentUpdate?.({ rsvpTime: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none p-0 m-0 font-medium text-slate-500 focus:ring-0 focus:outline-none focus:border-transparent select-text w-full text-left h-auto"
+                                                style={{ fontSize: '14px', color: '#64748b' }}
+                                                placeholder="10:00 - 11:00 AM"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="font-extrabold text-slate-900 select-text block break-all" style={{ fontSize: '18px', color: '#0f172a', fontWeight: 800 }}>
+                                                {renderTextWithVariablePills(rsvpDate)}
+                                            </span>
+                                            <span className="font-medium text-slate-500 select-text block break-all" style={{ fontSize: '14px', color: '#64748b' }}>
+                                                {renderTextWithVariablePills(rsvpTime)}
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
@@ -1000,18 +1068,21 @@ export function VisualBlock({
                                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0062cc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <input
-                                        type="text"
-                                        value={rsvpLocation}
-                                        onChange={(e) => onContentUpdate?.({ rsvpLocation: e.target.value })}
-                                        className="bg-transparent border-none outline-none p-0 m-0 font-bold text-slate-900 focus:ring-0 focus:outline-none focus:border-transparent select-text w-full text-left"
-                                        style={{ fontSize: '16px', color: '#0f172a', fontWeight: 700 }}
-                                        placeholder="Google Meet"
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                        onFocus={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                    />
+                                    {isEditing ? (
+                                        <SlashInput
+                                            value={rsvpLocation}
+                                            onChange={(val) => onContentUpdate?.({ rsvpLocation: val })}
+                                            variables={autocompleteVariables}
+                                            className="bg-transparent border-none outline-none p-0 m-0 font-bold text-slate-900 focus:ring-0 focus:outline-none focus:border-transparent select-text w-full text-left h-auto"
+                                            style={{ fontSize: '16px', color: '#0f172a', fontWeight: 700 }}
+                                            placeholder="Google Meet"
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <span className="font-bold text-slate-900 select-text block break-all" style={{ fontSize: '16px', color: '#0f172a', fontWeight: 700 }}>
+                                            {renderTextWithVariablePills(rsvpLocation)}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1023,98 +1094,116 @@ export function VisualBlock({
                                     {/* Going (full width) */}
                                     <div className="w-full bg-[#0062cc] text-white rounded-full py-3.5 px-4 text-sm font-bold flex items-center justify-center gap-2 shadow-sm cursor-pointer min-w-0">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
-                                        <input
-                                            type="text"
-                                            value={going}
-                                            onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
-                                            style={{ color: '#ffffff', font: 'inherit' }}
-                                            onKeyDown={(e) => e.stopPropagation()}
-                                            onFocus={(e) => e.stopPropagation()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        />
+                                        {isEditing ? (
+                                            <SlashInput
+                                                value={going}
+                                                onChange={(val) => onContentUpdate?.({ goingLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white h-auto"
+                                                style={{ color: '#ffffff', font: 'inherit' }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span className="font-bold select-text text-center text-white flex-1 break-words">
+                                                {renderTextWithVariablePills(going)}
+                                            </span>
+                                        )}
                                     </div>
                                     {/* Secondary split */}
                                     <div className="grid grid-cols-1 min-[370px]:grid-cols-2 gap-3">
                                         {/* Not Going */}
                                         <div className="bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer min-w-0">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                            <input
-                                                type="text"
-                                                value={declined}
-                                                onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc]"
-                                                style={{ color: '#0062cc', font: 'inherit' }}
-                                                onKeyDown={(e) => e.stopPropagation()}
-                                                onFocus={(e) => e.stopPropagation()}
-                                                onClick={(e) => e.stopPropagation()}
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                            />
+                                            {isEditing ? (
+                                                <SlashInput
+                                                    value={declined}
+                                                    onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
+                                                    variables={autocompleteVariables}
+                                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc] h-auto"
+                                                    style={{ color: '#0062cc', font: 'inherit' }}
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                />
+                                            ) : (
+                                                <span className="font-bold select-text text-center text-[#0062cc] flex-1 break-words">
+                                                    {renderTextWithVariablePills(declined)}
+                                                </span>
+                                            )}
                                         </div>
                                         {/* Later */}
                                         <div className="bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-4 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer min-w-0">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>
-                                            <input
-                                                type="text"
-                                                value={later}
-                                                onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc]"
-                                                style={{ color: '#0062cc', font: 'inherit' }}
-                                                onKeyDown={(e) => e.stopPropagation()}
-                                                onFocus={(e) => e.stopPropagation()}
-                                                onClick={(e) => e.stopPropagation()}
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                            />
+                                            {isEditing ? (
+                                                <SlashInput
+                                                    value={later}
+                                                    onChange={(val) => onContentUpdate?.({ laterLabel: val })}
+                                                    variables={autocompleteVariables}
+                                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc] h-auto"
+                                                    style={{ color: '#0062cc', font: 'inherit' }}
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                />
+                                            ) : (
+                                                <span className="font-bold select-text text-center text-[#0062cc] flex-1 break-words">
+                                                    {renderTextWithVariablePills(later)}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 min-[370px]:grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {/* Going (Full on Mobile, Bento on Mid, Inline on Desktop) */}
+                                    {/* Going */}
                                     <div className="col-span-full min-[370px]:col-span-2 sm:col-span-1 bg-[#0062cc] text-white rounded-full py-3 px-2 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer min-w-0">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
-                                        <input
-                                            type="text"
-                                            value={going}
-                                            onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white"
-                                            style={{ color: '#ffffff', font: 'inherit' }}
-                                            onKeyDown={(e) => e.stopPropagation()}
-                                            onFocus={(e) => e.stopPropagation()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        />
+                                        {isEditing ? (
+                                            <SlashInput
+                                                value={going}
+                                                onChange={(val) => onContentUpdate?.({ goingLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white h-auto"
+                                                style={{ color: '#ffffff', font: 'inherit' }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span className="font-bold select-text text-center text-white flex-1 break-words">
+                                                {renderTextWithVariablePills(going)}
+                                            </span>
+                                        )}
                                     </div>
                                     {/* Not Going */}
                                     <div className="col-span-full min-[370px]:col-span-1 bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-2 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer min-w-0">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                        <input
-                                            type="text"
-                                            value={declined}
-                                            onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc]"
-                                            style={{ color: '#0062cc', font: 'inherit' }}
-                                            onKeyDown={(e) => e.stopPropagation()}
-                                            onFocus={(e) => e.stopPropagation()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        />
+                                        {isEditing ? (
+                                            <SlashInput
+                                                value={declined}
+                                                onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc] h-auto"
+                                                style={{ color: '#0062cc', font: 'inherit' }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span className="font-bold select-text text-center text-[#0062cc] flex-1 break-words">
+                                                {renderTextWithVariablePills(declined)}
+                                            </span>
+                                        )}
                                     </div>
                                     {/* Later */}
                                     <div className="col-span-full min-[370px]:col-span-1 bg-white border-2 border-slate-200 text-[#0062cc] rounded-full py-3 px-2 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer min-w-0">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>
-                                        <input
-                                            type="text"
-                                            value={later}
-                                            onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
-                                            className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc]"
-                                            style={{ color: '#0062cc', font: 'inherit' }}
-                                            onKeyDown={(e) => e.stopPropagation()}
-                                            onFocus={(e) => e.stopPropagation()}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        />
+                                        {isEditing ? (
+                                            <SlashInput
+                                                value={later}
+                                                onChange={(val) => onContentUpdate?.({ laterLabel: val })}
+                                                variables={autocompleteVariables}
+                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc] h-auto"
+                                                style={{ color: '#0062cc', font: 'inherit' }}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span className="font-bold select-text text-center text-[#0062cc] flex-1 break-words">
+                                                {renderTextWithVariablePills(later)}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1133,97 +1222,106 @@ export function VisualBlock({
                     }}
                 >
                     <div className="mb-4">
-                        <textarea
-                            value={title}
-                            onChange={(e) => onContentUpdate?.({ title: e.target.value })}
-                            className={cn("tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text", alignmentClass)}
-                            style={{ 
-                                font: 'inherit',
-                                color: s.color || undefined,
-                                fontSize: s.fontSize ? `${s.fontSize}px` : '18px',
-                                fontWeight: s.fontWeight || 'bold',
-                                fontFamily: s.fontFamily || undefined,
-                            }}
-                            placeholder="Will you attend this meeting?"
-                            rows={1}
-                            onInput={(e) => {
-                                const target = e.target as HTMLTextAreaElement;
-                                target.style.height = 'auto';
-                                target.style.height = `${target.scrollHeight}px`;
-                            }}
-                            ref={(el) => {
-                                if (el) {
-                                    el.style.height = 'auto';
-                                    el.style.height = `${el.scrollHeight}px`;
-                                }
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') e.preventDefault();
-                                e.stopPropagation();
-                            }}
-                            onFocus={(e) => e.stopPropagation()}
-                            onClick={(e) => e.stopPropagation()}
-                            onMouseDown={(e) => e.stopPropagation()}
-                        />
+                        {isEditing ? (
+                            <SlashTextarea
+                                value={title}
+                                onChange={(val) => onContentUpdate?.({ title: val })}
+                                variables={autocompleteVariables}
+                                className={cn("tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text", alignmentClass)}
+                                style={{ 
+                                    font: 'inherit',
+                                    color: s.color || undefined,
+                                    fontSize: s.fontSize ? `${s.fontSize}px` : '18px',
+                                    fontWeight: s.fontWeight || 'bold',
+                                    fontFamily: s.fontFamily || undefined,
+                                }}
+                                placeholder="Will you attend this meeting?"
+                                rows={1}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') e.preventDefault();
+                                    e.stopPropagation();
+                                }}
+                            />
+                        ) : (
+                            <div 
+                                className="font-bold select-text"
+                                style={{ 
+                                    color: s.color || undefined,
+                                    fontSize: s.fontSize ? `${s.fontSize}px` : '18px',
+                                    fontWeight: s.fontWeight || 'bold',
+                                    fontFamily: s.fontFamily || undefined,
+                                }}
+                            >
+                                {renderTextWithVariablePills(title)}
+                            </div>
+                        )}
                     </div>
                     
                     <div className={cn("flex flex-wrap gap-3", alignFlexClass)}>
                         {/* Going Button */}
-                        <div className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition-all flex items-center justify-center">
-                            <input
-                                type="text"
-                                value={going}
-                                onChange={(e) => onContentUpdate?.({ goingLabel: e.target.value })}
-                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                                style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(going.length || 5, 3)}ch` }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') e.preventDefault();
-                                    e.stopPropagation();
-                                }}
-                                onFocus={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => e.stopPropagation()}
-                            />
+                        <div className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition-all flex items-center justify-center animate-in fade-in duration-200">
+                            {isEditing ? (
+                                <SlashInput
+                                    value={going}
+                                    onChange={(val) => onContentUpdate?.({ goingLabel: val })}
+                                    variables={autocompleteVariables}
+                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
+                                    style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(going.length || 5, 3)}ch` }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') e.preventDefault();
+                                        e.stopPropagation();
+                                    }}
+                                />
+                            ) : (
+                                <span className="font-bold select-text text-center text-white inline-block">
+                                    {renderTextWithVariablePills(going)}
+                                </span>
+                            )}
                         </div>
                         {/* Later Button */}
-                        <div className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition-all flex items-center justify-center">
-                            <input
-                                type="text"
-                                value={later}
-                                onChange={(e) => onContentUpdate?.({ laterLabel: e.target.value })}
-                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                                style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(later.length || 5, 3)}ch` }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') e.preventDefault();
-                                    e.stopPropagation();
-                                }}
-                                onFocus={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => e.stopPropagation()}
-                            />
+                        <div className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition-all flex items-center justify-center animate-in fade-in duration-200">
+                            {isEditing ? (
+                                <SlashInput
+                                    value={later}
+                                    onChange={(val) => onContentUpdate?.({ laterLabel: val })}
+                                    variables={autocompleteVariables}
+                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
+                                    style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(later.length || 5, 3)}ch` }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') e.preventDefault();
+                                        e.stopPropagation();
+                                    }}
+                                />
+                            ) : (
+                                <span className="font-bold select-text text-center text-white inline-block">
+                                    {renderTextWithVariablePills(later)}
+                                </span>
+                            )}
                         </div>
                         {/* Declined Button */}
-                        <div className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition-all flex items-center justify-center">
-                            <input
-                                type="text"
-                                value={declined}
-                                onChange={(e) => onContentUpdate?.({ declinedLabel: e.target.value })}
-                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
-                                style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(declined.length || 9, 3)}ch` }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') e.preventDefault();
-                                    e.stopPropagation();
-                                }}
-                                onFocus={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => e.stopPropagation()}
-                            />
+                        <div className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-4 py-2 text-sm font-bold shadow-sm transition-all flex items-center justify-center animate-in fade-in duration-200">
+                            {isEditing ? (
+                                <SlashInput
+                                    value={declined}
+                                    onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
+                                    variables={autocompleteVariables}
+                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
+                                    style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(declined.length || 9, 3)}ch` }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') e.preventDefault();
+                                        e.stopPropagation();
+                                    }}
+                                />
+                            ) : (
+                                <span className="font-bold select-text text-center text-white inline-block">
+                                    {renderTextWithVariablePills(declined)}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
             );
-        }
-        case 'columns': {
+        }         case 'columns': {
             const cols = block.columns || [];
             const colWidths = cols.map(c => c.width || `${Math.floor(100 / cols.length)}%`);
             return (
@@ -1247,6 +1345,7 @@ export function VisualBlock({
                                 col={col}
                                 colWidth={colWidths[colIdx]}
                                 simulationVars={simulationVars}
+                                autocompleteVariables={autocompleteVariables}
                                 selectedSubBlockId={selectedSubBlockId}
                                 onSelectSubBlock={onSelectSubBlock}
                                 onRemoveSubBlock={onRemoveSubBlock}
@@ -1270,6 +1369,7 @@ function ColumnCell({
     col,
     colWidth,
     simulationVars,
+    autocompleteVariables,
     selectedSubBlockId,
     onSelectSubBlock,
     onRemoveSubBlock,
@@ -1282,6 +1382,7 @@ function ColumnCell({
     col: any;
     colWidth: string;
     simulationVars: Record<string, any>;
+    autocompleteVariables?: TemplateVariable[];
     selectedSubBlockId?: string | null;
     onSelectSubBlock?: (subBlockId: string) => void;
     onRemoveSubBlock?: (parentBlockId: string, colIdx: number, subBlockId: string) => void;
@@ -1295,7 +1396,7 @@ function ColumnCell({
 
     return (
         <div 
-            ref={setNodeRef}
+            ref={setNodeRef} 
             className={cn(
                 "relative flex flex-col gap-3 rounded-2xl p-3 min-h-[120px] transition-all border border-dashed",
                 isOver ? "bg-blue-500/10 border-blue-500/50 shadow-inner" : "bg-muted/5 border-muted-foreground/10 hover:border-blue-500/20"
@@ -1317,6 +1418,7 @@ function ColumnCell({
                     block={subBlock}
                     isSelected={selectedSubBlockId === subBlock.id}
                     simulationVars={simulationVars}
+                    autocompleteVariables={autocompleteVariables}
                     onSelect={() => onSelectSubBlock?.(subBlock.id)}
                     onRemove={() => onRemoveSubBlock?.(block.id, colIdx, subBlock.id)}
                     onDuplicate={() => onDuplicateSubBlock?.(block.id, colIdx, subBlock.id)}
@@ -1347,6 +1449,7 @@ interface SortableBlockItemProps {
     block: MessageBlock;
     isSelected: boolean;
     simulationVars: Record<string, any>;
+    autocompleteVariables?: TemplateVariable[];
     onSelect: () => void;
     onRemove: () => void;
     onDuplicate: () => void;
@@ -1363,7 +1466,7 @@ interface SortableBlockItemProps {
 }
 
 export function SortableBlockItem({ 
-    id, index, block, isSelected, simulationVars, onSelect, onRemove, onDuplicate, onSwap, totalCount, onUpdate,
+    id, index, block, isSelected, simulationVars, autocompleteVariables, onSelect, onRemove, onDuplicate, onSwap, totalCount, onUpdate,
     selectedSubBlockId, onSelectSubBlock, onRemoveSubBlock, onDuplicateSubBlock, onSwapSubBlocks, onUpdateSubBlock
 }: SortableBlockItemProps) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -1445,6 +1548,7 @@ export function SortableBlockItem({
                     simulationVars={simulationVars} 
                     isEditing={isSelected}
                     onContentUpdate={onUpdate}
+                    autocompleteVariables={autocompleteVariables}
                     selectedSubBlockId={selectedSubBlockId}
                     onSelectSubBlock={onSelectSubBlock}
                     onRemoveSubBlock={onRemoveSubBlock}

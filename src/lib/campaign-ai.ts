@@ -100,6 +100,14 @@ const FullBlockSchema: z.ZodType<MessageBlock> = z.lazy(() =>
 
 const ArchitectResultSchema = z.object({
   blocks: z.array(FullBlockSchema),
+  subject: z.string().optional().describe('Recommended primary email subject line (under 50 characters, includes hook, benefit, personalization)'),
+  previewText: z.string().optional().describe('Recommended primary pre-header preview text'),
+  subjectOptions: z.array(
+    z.object({
+      subject: z.string().describe('Alternative subject line Option'),
+      previewText: z.string().describe('Alternative pre-header preview text Option')
+    })
+  ).optional().describe('Exactly two alternative subject line and preview text pairs')
 });
 
 interface CopyResult {
@@ -114,13 +122,50 @@ const CopyResultSchema = z.object({
   subjectVariants: z.array(z.string()).describe('Alternative subject lines'),
 });
 
+function zodToSchemaDescription(schema: unknown): unknown {
+  if (!schema || typeof schema !== 'object') return 'any';
+  
+  if ('shape' in schema && typeof (schema as { shape: unknown }).shape === 'object') {
+    const shape = (schema as { shape: Record<string, unknown> }).shape;
+    const obj: Record<string, unknown> = {};
+    if (shape) {
+      for (const [key, val] of Object.entries(shape)) {
+        obj[key] = zodToSchemaDescription(val);
+      }
+    }
+    return obj;
+  }
+  
+  const def = (schema as { _def?: { typeName?: string; type?: unknown; values?: unknown[]; innerType?: unknown } })._def;
+  if (def && def.typeName === 'ZodArray') {
+    return [zodToSchemaDescription(def.type)];
+  }
+
+  if (def && def.typeName === 'ZodEnum' && Array.isArray(def.values)) {
+    return `enum (${def.values.join(' | ')})`;
+  }
+
+  if (def && (def.typeName === 'ZodOptional' || def.typeName === 'ZodNullable')) {
+    return zodToSchemaDescription(def.innerType);
+  }
+
+  if (def && def.typeName === 'ZodBoolean') {
+    return 'boolean';
+  }
+
+  if (def && def.typeName === 'ZodNumber') {
+    return 'number';
+  }
+
+  return 'string';
+}
+
 async function callGenkit(params: {
   prompt: string | GenkitPromptPart[];
   organizationId?: string;
   jsonMode?: boolean;
   schema?: unknown;
 }): Promise<string> {
-  // Resolve model via unified Genkit getModel utility
   const resolvedModel = await getModel({
     organizationId: params.organizationId,
     provider: 'anthropic',
@@ -128,16 +173,58 @@ async function callGenkit(params: {
   });
 
   const generatorAi = resolvedModel.customAi || ai;
+  const isAnthropic = resolvedModel.modelString.startsWith('anthropic/');
+
+  let activePrompt = params.prompt;
+  const activeSchema = params.schema;
+
+  if (isAnthropic && params.jsonMode && activeSchema) {
+    const schemaDesc = JSON.stringify(zodToSchemaDescription(activeSchema), null, 2);
+    const schemaInstructions = `\n\nCRITICAL: You MUST output your response strictly as a JSON object matching this schema structure:
+${schemaDesc}
+
+Rules:
+1. Return ONLY the raw JSON object conforming to this schema.
+2. Do NOT wrap it in markdown code blocks (e.g. do not write \`\`\`json ... \`\`\`).
+3. Do NOT include any intro text, conversational words, or trailing markdown comments.
+4. Output valid, parseable JSON text only.`;
+
+    if (typeof activePrompt === 'string') {
+      activePrompt = activePrompt + schemaInstructions;
+    } else if (Array.isArray(activePrompt)) {
+      const textPartIndex = activePrompt.findIndex(part => 'text' in part);
+      if (textPartIndex !== -1) {
+        const originalText = (activePrompt[textPartIndex] as TextPart).text;
+        activePrompt[textPartIndex] = { text: originalText + schemaInstructions };
+      } else {
+        activePrompt.push({ text: schemaInstructions });
+      }
+    }
+  }
 
   const { output, text } = await generatorAi.generate({
     model: resolvedModel.modelString,
-    prompt: params.prompt,
-    ...(params.jsonMode && params.schema ? { output: { schema: params.schema as z.ZodTypeAny } } : {}),
+    prompt: activePrompt,
+    ...(!isAnthropic && params.jsonMode && activeSchema ? { output: { schema: activeSchema as z.ZodTypeAny } } : {}),
   });
 
-  if (params.jsonMode && params.schema) {
-    if (!output) throw new Error('AI model failed to generate structured copy');
-    return JSON.stringify(output);
+  if (params.jsonMode && activeSchema) {
+    if (isAnthropic) {
+      if (!text) throw new Error('AI model returned an empty payload');
+      let rawText = text.trim();
+      if (rawText.startsWith('```')) {
+        rawText = rawText.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '').trim();
+      }
+      const firstBrace = rawText.indexOf('{');
+      const lastBrace = rawText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        rawText = rawText.substring(firstBrace, lastBrace + 1);
+      }
+      return rawText;
+    } else {
+      if (!output) throw new Error('AI model failed to generate structured copy');
+      return JSON.stringify(output);
+    }
   }
 
   if (!text) throw new Error('AI model returned an empty payload');
@@ -365,7 +452,14 @@ export async function generateEmailBlocksAction(params: {
   campaignName?: string;
   context?: string;
   organizationId?: string;
-}): Promise<{ success: boolean; blocks?: MessageBlock[]; error?: string }> {
+}): Promise<{
+  success: boolean;
+  blocks?: MessageBlock[];
+  subject?: string;
+  previewText?: string;
+  subjectOptions?: Array<{ subject: string; previewText: string }>;
+  error?: string;
+}> {
   try {
     const activePrompt = params.prompt || params.instruction || '';
     const activeMode = params.mode || 'layout_analysis';
@@ -375,21 +469,60 @@ export async function generateEmailBlocksAction(params: {
       ? `Brand Guidelines: Primary color is ${brandColors.primary || '#2563eb'}. Secondary color is ${brandColors.secondary || '#475569'}.`
       : 'Brand Guidelines: Use standard professional enterprise styles (e.g. blue buttons, dark text).';
 
-    const systemPrompt = `You are a visual email designer and layout architect.
-Generate structured email layout blocks based on the user request.
+    const systemPrompt = `You are an expert visual email designer, content copywriter, and layout architect.
+Your task is to take the user's raw text/copy or prompt and convert it into a highly professional, beautifully structured, and high-converting visual email template composed of layout blocks.
+
 ${brandGuidance}
 
 Mode Guidelines:
 - "layout_analysis": Analyze the provided visual mockup/inspiration image and recreate its core grid, headers, and text structure in blocks.
 - "direct_placement": Include the provided image URL directly in an image block, generating copywriting and paragraphs around it.
 
-Rules:
-1. Output MUST strictly match the structured schema.
-2. For headers, use type 'heading' with 'h1', 'h2', or 'h3'.
-3. For body text, use type 'text'.
-4. For columns, partition sections evenly (e.g. two columns with width '50%').`;
+BLOCK COMPOSITION RULES:
+1. DO NOT merge the entire text into a single block. Segment the content logically.
+2. Top-Branding: Place a 'logo' or 'header' block at the very top (utilizing '{{org_logo_url}}' for logo url).
+3. Headers: Use 'heading' blocks with variant 'h1' for the main subject/title, and 'h2' or 'h3' for sub-sections. Keep headings short and punchy.
+4. Body Text: Use 'text' blocks for paragraph content. Split long paragraphs into separate, readable 'text' blocks.
+5. Lists: If the source text contains bullet points, numbered items, or checklists (e.g., benefits, features, rewards, rewards checklist), convert them to a single 'list' block. Set 'listStyle' to 'checkmark' (preferred for benefits), 'arrow', 'unordered', or 'ordered', and put the list items in the 'items' array.
+6. Buttons (Call to Action): Scan for links, placeholders like "[Reserve My Place]", or instructions like "Click the link below to reserve today". Convert these into a 'button' block. Set the button label in 'content', and the link in 'link' (defaulting to '{{rsvp_going_url}}' or a custom link if provided).
+7. Dividers: Insert 'divider' blocks to partition large sections (e.g. separating the body text from the monthly rewards checklist, or separating the body from the signature).
+8. Sign-off / Signature: Use a 'text' block for the sign-off ("Warm regards,", name, title) and style it nicely.
+9. Footer: Always append a 'footer' block at the end with standard compliance links (Unsubscribe, contact information) and copyrights using '{{org_name}}'.
 
-    const promptText = `${systemPrompt}\nUser prompt: "${activePrompt}"`;
+BLOCK PROPERTY MAPPING RULES:
+- Heading Blocks ('heading'):
+  1. Main Title Text: MUST always be placed in the 'title' property. Do NOT leave 'title' empty or undefined.
+  2. Sub-heading/Description Text: If there is a supporting sub-heading or tagline underneath the main heading, place it in the 'content' property. If there is NO sub-heading/tagline, leave the 'content' property empty or undefined.
+  3. Badge/Pill Text: If there is a small category tag or label above the heading, place it in the 'pillText' property.
+- Text Blocks ('text'):
+  1. Paragraph Body: Place the text content in the 'content' property. Do NOT place paragraph body text in the 'title' property.
+- Button Blocks ('button'):
+  1. Button Label: Place the short call-to-action text in the 'content' property.
+  2. Button Link: Place the destination URL in the 'link' property.
+- List Blocks ('list'):
+  1. List Items: Provide the list entries inside the 'items' array of strings.
+- Divider Blocks ('divider'):
+  1. Properties: Keep 'title', 'content', and 'url' empty or undefined.
+
+DYNAMIC VARIABLE REPLACEMENT RULES (TRUE INTELLIGENCE):
+Scan the input copy and replace specific personal or organizational placeholders with dynamic double-bracket system tags:
+1. Recipient Greetings: Replace greetings like "Dear (Name)", "Dear [Name]", "Dear Parent", "Hi [Client]" with "Dear {{contact_name}}" or "Hi {{contact_name}}".
+2. School/Organization Name: Replace occurrences of the sending school or company name (e.g. "SmartSapp", "our school", "the school name") with "{{org_name}}".
+3. Contact Details:
+   - Replace phone numbers of the sender/school with "{{org_phone}}".
+   - Replace email addresses of the sender/school with "{{org_email}}".
+   - Replace physical addresses of the sender/school with "{{org_address}}".
+4. Personal Details:
+   - Recipient Email -> "{{contact_email}}"
+   - Recipient Phone -> "{{contact_phone}}"
+   - Recipient Name -> "{{contact_name}}"
+
+AESTHETIC RULES:
+- Set alignment inside block.style.textAlign (e.g., 'center' for main headings and buttons, 'left' for body paragraphs).
+- Apply colors from Brand Guidelines if provided (e.g., matching the primary color for the button style, header text, list checkmarks, or borders).
+- Ensure 100% of the user's provided copywriting is preserved, refined, and distributed logically across the blocks. Do not use dummy placeholder text or 'Lorem Ipsum'.`;
+
+    const promptText = `${systemPrompt}\nUser prompt/copy to parse:\n"""\n${activePrompt}\n"""`;
 
     const promptParts: GenkitPromptPart[] = [
       { text: promptText },
@@ -403,10 +536,18 @@ Rules:
       schema: ArchitectResultSchema,
     });
 
-    const parsed = JSON.parse(text) as { blocks: MessageBlock[] };
+    const parsed = JSON.parse(text) as {
+      blocks: MessageBlock[];
+      subject?: string;
+      previewText?: string;
+      subjectOptions?: Array<{ subject: string; previewText: string }>;
+    };
     return {
       success: true,
       blocks: parsed.blocks || [],
+      subject: parsed.subject,
+      previewText: parsed.previewText,
+      subjectOptions: parsed.subjectOptions,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

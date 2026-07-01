@@ -208,6 +208,8 @@ function AiChatPanel() {
                     thankYouTitle: currentData.thankYouTitle,
                     thankYouDescription: currentData.thankYouDescription,
                     startButtonText: currentData.startButtonText,
+                    submitButtonText: currentData.submitButtonText,
+                    embedRedirectMode: currentData.embedRedirectMode,
                     showCoverPage: currentData.showCoverPage,
                     showSurveyTitles: currentData.showSurveyTitles,
                 }

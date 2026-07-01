@@ -24,6 +24,14 @@ describe('resolveVariables', () => {
   it('handles empty text gracefully', () => {
     expect(resolveVariables('', { name: 'test' })).toBe('');
   });
+
+  it('handles non-string inputs gracefully by coecrementing them to strings', () => {
+    expect(resolveVariables(12345, {})).toBe('12345');
+    expect(resolveVariables(true, {})).toBe('true');
+    expect(resolveVariables(null, {})).toBe('');
+    expect(resolveVariables(undefined, {})).toBe('');
+    expect(resolveVariables({ foo: 'bar' }, {})).toBe('[object Object]');
+  });
 });
 
 describe('shouldShowBlock', () => {

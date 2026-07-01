@@ -75,6 +75,18 @@ export default function SurveyDisplay({
     }, []);
 
     React.useEffect(() => {
+        if (isSubmitted) {
+            if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'survey_submitted',
+                    surveyId: survey.id,
+                    submissionId: submissionId || undefined
+                }, '*');
+            }
+        }
+    }, [isSubmitted, survey.id, submissionId]);
+
+    React.useEffect(() => {
         if (isSubmitted && survey.thankYouConfettiEnabled) {
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             if (reduceMotion) return;
@@ -240,7 +252,57 @@ interface LeadCaptureFormViewProps {
 
 function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onCompleted }: LeadCaptureFormViewProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
+
+    const performLeadCaptureNavigation = (destination: string) => {
+        let finalDestination = destination.trim();
+        
+        // Normalize external domains that lack protocol (e.g., localhost:9002/..., google.com)
+        if (!finalDestination.startsWith('/') && !finalDestination.startsWith('http://') && !finalDestination.startsWith('https://')) {
+            const hasDomain = finalDestination.includes('.') || finalDestination.startsWith('localhost');
+            if (hasDomain) {
+                finalDestination = `http://${finalDestination}`;
+            } else {
+                finalDestination = `/${finalDestination}`;
+            }
+        }
+
+        const isInternal = finalDestination.startsWith('/');
+
+        // Resolve absolute URL for parent navigation or external redirection
+        let absoluteDestination = finalDestination;
+        if (isInternal && typeof window !== 'undefined') {
+            absoluteDestination = `${window.location.origin}${finalDestination}`;
+        }
+
+        // Always notify parent of completion
+        if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                type: 'survey_submitted',
+                surveyId: survey.id,
+                submissionId: submissionId,
+                redirectUrl: absoluteDestination
+            }, '*');
+        }
+
+        const isEmbedded = searchParams?.get('embed') === 'true';
+        if (isEmbedded && survey.embedRedirectMode === 'parent' && typeof window !== 'undefined' && window.parent && window.parent !== window) {
+            try {
+                window.parent.location.href = absoluteDestination;
+                return;
+            } catch (err: unknown) {
+                console.warn("Parent redirection blocked by sandbox. Falling back to local redirect.", err);
+            }
+        }
+
+        if (isInternal) {
+            router.push(finalDestination);
+        } else {
+            window.location.href = finalDestination;
+        }
+    };
+
     const [name, setName] = React.useState<string>('');
     const [email, setEmail] = React.useState<string>('');
     const [phone, setPhone] = React.useState<string>('');
@@ -281,10 +343,10 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
             }, outcomeId);
 
             if (res.success) {
-                if (survey.scoringEnabled || (survey.resultRules && survey.resultRules.length > 0)) {
+                if (survey.scoringEnabled) {
                     const searchParams = new URLSearchParams(window.location.search);
                     const queryStr = searchParams.toString() ? `?${searchParams.toString()}` : '';
-                    router.push(`/surveys/${survey.slug}/result/${submissionId}${queryStr}`);
+                    performLeadCaptureNavigation(`/surveys/${survey.slug}/result/${submissionId}${queryStr}`);
                 } else {
                     onCompleted();
                 }
@@ -304,10 +366,10 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
         try {
             const res = await finalizeSurveySubmission(survey.id, submissionId, workspaceId, outcomeId);
             if (res.success) {
-                if (survey.scoringEnabled || (survey.resultRules && survey.resultRules.length > 0)) {
+                if (survey.scoringEnabled) {
                     const searchParams = new URLSearchParams(window.location.search);
                     const queryStr = searchParams.toString() ? `?${searchParams.toString()}` : '';
-                    router.push(`/surveys/${survey.slug}/result/${submissionId}${queryStr}`);
+                    performLeadCaptureNavigation(`/surveys/${survey.slug}/result/${submissionId}${queryStr}`);
                 } else {
                     onCompleted();
                 }

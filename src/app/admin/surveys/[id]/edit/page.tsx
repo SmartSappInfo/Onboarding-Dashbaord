@@ -84,6 +84,8 @@ const formSchema = z.object({
   resultRules: z.array(z.any()).default([]),
   resultPages: z.array(z.any()).default([]),
   startButtonText: z.string().optional(),
+  submitButtonText: z.string().optional(),
+  embedRedirectMode: z.enum(['modal', 'parent']).default('modal'),
   showCoverPage: z.boolean().default(true),
   showIntroAsPage: z.boolean().default(true),
   stepperVariant: z.enum(['full', 'simple']).default('full'),

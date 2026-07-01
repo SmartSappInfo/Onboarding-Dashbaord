@@ -10,11 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, Loader2, Send } from 'lucide-react';
+import { Loader2, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import FormSuccessScreen from './FormSuccessScreen';
 import type { OrgBranding } from '@/lib/types';
 import Footer from '@/components/footer';
+import { useIframeHeightReporter } from '@/hooks/useIframeHeightReporter';
 
 interface ResolvedField extends FormFieldInstance {
   fieldDefinition: AppField;
@@ -37,6 +38,9 @@ export default function FormRenderer({
 }: FormRendererProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-report iframe height if embedded
+  useIframeHeightReporter(form.slug);
 
   // 1. Build Dynamic Zod Schema
   const schemaObject: Record<string, any> = {};

@@ -154,6 +154,30 @@ export async function seedKnownCustomPages(params: {
       description: 'Sales Leads landing page for boosting enrollment numbers.',
       workspaceId: 'prospect',
     },
+    {
+      slug: 'collect-fees-within-four-weeks',
+      name: 'Collect Your Fees in 4 Weeks',
+      description: 'Campaign page for automated fee collection within four weeks.',
+      workspaceId: 'onboarding',
+    },
+    {
+      slug: 'number-one-choice',
+      name: 'Number One Choice Video',
+      description: 'Landing page highlighting SmartSapp as every parent\'s number one choice.',
+      workspaceId: 'prospect',
+    },
+    {
+      slug: 'school-visibility-and-enrollment-initiative',
+      name: 'School Visibility & Enrollment Initiative',
+      description: 'Partnership campaign for community brand ambassadorship and visibility rewards.',
+      workspaceId: 'onboarding',
+    },
+    {
+      slug: 'visiblity-thank-you',
+      name: 'School Visibility Initiative Thank You',
+      description: 'Thank you page for completed Visibility and Enrollment Initiative registration submissions.',
+      workspaceId: 'onboarding',
+    },
   ];
 
   const results = await Promise.all(

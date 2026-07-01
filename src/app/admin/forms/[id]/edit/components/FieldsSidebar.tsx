@@ -126,6 +126,29 @@ function DraggableSidebarItem({ af, isAlreadyAdded, onAddField }: DraggableSideb
   );
 }
 
+export const SYSTEM_CONSTANTS_GROUP: FieldGroup = {
+  id: 'system_constants',
+  name: 'App Constants',
+  slug: 'app_constants',
+  order: -1,
+  workspaceId: '',
+  organizationId: '',
+  description: 'System-wide parameters and constant variables',
+  icon: 'ShieldAlert',
+  color: '#F97316',
+  entityTypes: ['institution', 'family', 'person'],
+  isSystem: true,
+  createdAt: new Date().toISOString(),
+};
+
+export const SYSTEM_CONSTANT_FIELDS: AppField[] = [
+  { id: 'sc_entity_name',     label: 'Entity Name',     variableName: 'entity_name',     type: 'short_text', groupId: 'system_constants', workspaceId: '', organizationId: '', isNative: true, status: 'active', section: 'common', name: 'entity_name', compatibilityScope: ['common'], createdAt: new Date().toISOString() },
+  { id: 'sc_contact_name',    label: 'Contact Name',    variableName: 'contact_name',    type: 'short_text', groupId: 'system_constants', workspaceId: '', organizationId: '', isNative: true, status: 'active', section: 'common', name: 'contact_name', compatibilityScope: ['common'], createdAt: new Date().toISOString() },
+  { id: 'sc_contact_email',   label: 'Contact Email',   variableName: 'contact_email',   type: 'email',      groupId: 'system_constants', workspaceId: '', organizationId: '', isNative: true, status: 'active', section: 'common', name: 'contact_email', compatibilityScope: ['common'], createdAt: new Date().toISOString() },
+  { id: 'sc_contact_phone',   label: 'Contact Phone',   variableName: 'contact_phone',   type: 'phone',      groupId: 'system_constants', workspaceId: '', organizationId: '', isNative: true, status: 'active', section: 'common', name: 'contact_phone', compatibilityScope: ['common'], createdAt: new Date().toISOString() },
+  { id: 'sc_contact_role',    label: 'Contact Role',    variableName: 'contact_role',    type: 'short_text', groupId: 'system_constants', workspaceId: '', organizationId: '', isNative: true, status: 'active', section: 'common', name: 'contact_role', compatibilityScope: ['common'], createdAt: new Date().toISOString() },
+];
+
 interface FieldsSidebarProps {
   availableFields: AppField[] | undefined;
   fieldGroups: FieldGroup[] | undefined;
@@ -145,27 +168,25 @@ export default function FieldsSidebar({
 }: FieldsSidebarProps) {
   const [search, setSearch] = React.useState('');
 
+  const allAvailableFields = React.useMemo(() => {
+    return [...(availableFields || []), ...SYSTEM_CONSTANT_FIELDS];
+  }, [availableFields]);
+
+  const allFieldGroups = React.useMemo(() => {
+    return [SYSTEM_CONSTANTS_GROUP, ...(fieldGroups || [])];
+  }, [fieldGroups]);
+
   const filteredFields = React.useMemo(() => {
-    if (!availableFields) return [];
-    
-    return availableFields.filter(af => {
+    return allAvailableFields.filter(af => {
       // 1. Filter by search query
       const matchSearch =
         af.label.toLowerCase().includes(search.toLowerCase()) ||
         af.variableName.toLowerCase().includes(search.toLowerCase());
       if (!matchSearch) return false;
 
-      // 2. Filter by compatibility scope for bound forms
-      if (formType === 'bound' && contactScope) {
-        // If the field lists compatibility, check if it's 'common' or matches the current scope
-        const scope = contactScope === 'person' ? 'person' : contactScope === 'family' ? 'family' : 'institution';
-        const isCompatible = af.compatibilityScope?.some(s => s === 'common' || s === scope);
-        if (!isCompatible) return false;
-      }
-
       return true;
     });
-  }, [availableFields, search, formType, contactScope]);
+  }, [allAvailableFields, search]);
 
   return (
     <aside className="w-[300px] border-r bg-card/40 flex flex-col h-full shrink-0">
@@ -173,7 +194,7 @@ export default function FieldsSidebar({
         <div>
           <h3 className="font-bold text-sm text-foreground">Field Library</h3>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            {formType === 'bound' ? `Filtered for ${contactScope} scope` : 'All fields available'}
+            All fields available
           </p>
         </div>
         <div className="relative">
@@ -189,13 +210,13 @@ export default function FieldsSidebar({
 
       <ScrollArea className="flex-1">
         <CardContent className="p-4 space-y-6">
-          {!fieldGroups || fieldGroups.length === 0 ? (
+          {!allFieldGroups || allFieldGroups.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted-foreground">
               No field groups found.
             </div>
           ) : (
             <div className="space-y-6">
-              {fieldGroups.map(group => {
+              {allFieldGroups.map(group => {
                 const groupFields = filteredFields.filter(f => f.groupId === group.id);
                 if (groupFields.length === 0) return null;
 
