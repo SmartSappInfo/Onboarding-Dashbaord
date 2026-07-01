@@ -33,16 +33,16 @@ import { useTheme } from 'next-themes';
 
 interface SimulationStudioProps {
     template: MessageTemplate;
-    simVariables: Record<string, any>;
+    simVariables: Record<string, unknown>;
     isSimLoading: boolean;
     simEntity: string;
-    setSimEntity: (val: any) => void;
+    setSimEntity: (val: string) => void;
     simRecordId: string;
     setSimRecordId: (val: string) => void;
     meetings?: Meeting[];
     surveys?: Survey[];
     pdfs?: PDFForm[];
-    resolvedPreview: (tmpl: MessageTemplate, vars: Record<string, any>, isDark?: boolean) => string;
+    resolvedPreview: (tmpl: MessageTemplate, vars: Record<string, unknown>, isDark?: boolean) => string;
     onNextStep?: () => void;
 }
 
@@ -159,6 +159,9 @@ export function SimulationStudio({
         return { count, length: len, isMultiSegment: count > 1 };
     }, [template.channel, resolvedText]);
 
+    const isSms = template.channel === 'sms';
+    const activeDevice = isSms ? 'mobile' : previewDevice;
+
     return (
         <div className="absolute inset-0 flex flex-col bg-muted/10 animate-in fade-in duration-500">
             {/* Header bar */}
@@ -175,7 +178,7 @@ export function SimulationStudio({
                     </div>
                     <Separator orientation="vertical" className="h-10 hidden sm:block" />
                     <div className="flex items-center gap-3">
-                        <Select value={simEntity} onValueChange={(v: any) => { setSimEntity(v); setSimRecordId('none'); }}>
+                        <Select value={simEntity} onValueChange={(v: string) => { setSimEntity(v); setSimRecordId('none'); }}>
                             <SelectTrigger className="h-10 w-[160px] rounded-xl bg-muted/20 border-none font-semibold text-[10px] ">
                                 <SelectValue placeholder="Pick Source..." />
                             </SelectTrigger>
@@ -213,14 +216,16 @@ export function SimulationStudio({
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
-                        <Button variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-semibold text-[10px] " onClick={() => setPreviewDevice('desktop')}>
-                            <Monitor className="h-3.5 w-3.5" /> Desktop
-                        </Button>
-                        <Button variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-semibold text-[10px] " onClick={() => setPreviewDevice('mobile')}>
-                            <PhoneIcon className="h-3.5 w-3.5" /> Mobile
-                        </Button>
-                    </div>
+                    {!isSms && (
+                        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
+                            <Button variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-semibold text-[10px] " onClick={() => setPreviewDevice('desktop')}>
+                                <Monitor className="h-3.5 w-3.5" /> Desktop
+                            </Button>
+                            <Button variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-semibold text-[10px] " onClick={() => setPreviewDevice('mobile')}>
+                                <PhoneIcon className="h-3.5 w-3.5" /> Mobile
+                            </Button>
+                        </div>
+                    )}
                     {onNextStep && (
                         <Button 
                             onClick={onNextStep} 
@@ -249,11 +254,12 @@ export function SimulationStudio({
                 </div>
 
                 {/* Right area: Device preview */}
-                <div className="flex-1 overflow-auto p-8 flex justify-center">
+                <div className="flex-1 overflow-auto p-8 flex justify-center items-center">
                     <div className={cn(
-                        "transition-all duration-700 bg-card shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white dark:border-slate-800 relative",
-                        previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl",
-                        template.channel === 'sms' && "p-12 flex flex-col justify-center items-center"
+                        "transition-all duration-700 bg-card shadow-2xl relative flex flex-col overflow-hidden",
+                        activeDevice === 'mobile'
+                            ? "w-[375px] h-[720px] rounded-[3rem] border-[12px] border-slate-900 dark:border-zinc-800 shrink-0"
+                            : "w-full max-w-5xl h-full rounded-[2.5rem] border-8 border-white dark:border-slate-800"
                     )}>
                         {isSimLoading && (
                             <div className="absolute inset-0 z-50 bg-card/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
@@ -262,24 +268,77 @@ export function SimulationStudio({
                             </div>
                         )}
                         
-                        {template.channel === 'sms' ? (
-                            <div className="w-full max-w-sm space-y-10">
-                                <div className="flex items-center justify-between opacity-20">
-                                    <Zap className="text-blue-600 h-6 w-6" />
-                                    <span className="text-[10px] font-semibold text-blue-600 tracking-[0.3em]">SMS Uplink Simulation</span>
+                        {isSms ? (
+                            <div className="flex flex-col h-full bg-[#f4f4f7] dark:bg-zinc-950">
+                                {/* Simulated Status Bar */}
+                                <div className="h-10 bg-slate-100 dark:bg-zinc-900 flex items-center justify-between px-6 text-[10px] font-semibold text-slate-800 dark:text-zinc-300 select-none relative shrink-0">
+                                    <span>9:41</span>
+                                    {/* Notch */}
+                                    <div className="w-32 h-5 bg-slate-900 dark:bg-zinc-950 rounded-b-2xl absolute top-0 left-1/2 -translate-x-1/2" />
+                                    <div className="flex items-center gap-1.5">
+                                        {/* Cellular bars */}
+                                        <div className="flex items-end gap-0.5 h-2.5">
+                                            <div className="w-0.5 h-1 bg-current rounded-xs" />
+                                            <div className="w-0.5 h-1.5 bg-current rounded-xs" />
+                                            <div className="w-0.5 h-2 bg-current rounded-xs" />
+                                            <div className="w-0.5 h-2.5 bg-current rounded-xs" />
+                                        </div>
+                                        {/* Wifi Icon */}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5a13.3 13.3 0 0 1 14 0"/><path d="M8.5 16.5a7.5 7.5 0 0 1 7 0"/><path d="M12 20h.01"/></svg>
+                                        {/* Battery Icon */}
+                                        <div className="w-4 h-2 border border-current rounded-xs p-0.5 flex items-center">
+                                            <div className="w-full h-full bg-current rounded-2xs" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="p-8 bg-card border border-slate-200 dark:border-slate-800 rounded-[2rem] relative shadow-xl">
-                                    <div className="absolute -left-3 top-10 w-6 h-6 bg-card border-l border-b border-slate-200 dark:border-slate-800 rotate-45 rounded-sm" />
-                                    <p className="text-lg text-slate-900 dark:text-slate-100 font-bold whitespace-pre-wrap leading-relaxed">
-                                        {resolvedText}
-                                    </p>
+
+                                {/* Simulated App Header */}
+                                <div className="h-14 bg-slate-100 dark:bg-zinc-900 border-b flex items-center justify-between px-4 text-slate-800 dark:text-zinc-200 shrink-0 select-none">
+                                    <div className="flex items-center gap-1 text-xs font-semibold cursor-pointer text-blue-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                                    </div>
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs text-slate-650 dark:text-zinc-350 shadow-inner">
+                                            SS
+                                        </div>
+                                        <span className="text-[10px] font-bold tracking-tight">SmartSapp</span>
+                                    </div>
+                                    <div className="w-4" /> {/* Spacer */}
                                 </div>
-                                <div className="pt-8 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
+
+                                {/* Chat Body Area */}
+                                <div className="flex-1 p-4 space-y-4 overflow-y-auto scrollbar-none flex flex-col">
+                                    <div className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-wider my-2">iMessage • Today 9:41 AM</div>
+                                    
+                                    {/* Simulated incoming text bubble */}
+                                    <div className="flex items-end gap-1.5 max-w-[85%] self-start select-text relative">
+                                        <div className="bg-slate-200 dark:bg-zinc-800 text-slate-800 dark:text-zinc-150 px-4 py-2.5 rounded-2xl rounded-bl-xs text-xs font-semibold leading-relaxed shadow-sm text-left">
+                                            <p className="whitespace-pre-wrap">{resolvedText || '(No Content)'}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[8px] font-semibold text-slate-400 self-start ml-2">Delivered</span>
+                                </div>
+
+                                {/* Simulated Message Input Bar */}
+                                <div className="h-16 bg-slate-100 dark:bg-zinc-900 border-t flex items-center px-4 gap-3 shrink-0 select-none pb-2">
+                                    {/* App store/Camera icons */}
+                                    <div className="flex items-center gap-3 text-slate-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                    </div>
+                                    {/* Pill Text Input Mock */}
+                                    <div className="flex-1 h-9 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-full px-4 flex items-center text-slate-400 text-xs font-semibold justify-between shadow-inner">
+                                        <span>iMessage</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-20"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                                    </div>
+                                </div>
+
+                                {/* Segment statistics card */}
+                                <div className="p-3 bg-card border-t border-slate-200 dark:border-zinc-800 text-center space-y-1.5 shrink-0">
                                     <span className={cn(
                                         "text-[9px] font-semibold",
                                         smsSegmentInfo?.isMultiSegment
                                             ? "text-amber-600 dark:text-amber-400"
-                                            : "text-slate-300"
+                                            : "text-slate-400"
                                     )}>
                                         ~ {smsSegmentInfo?.count || 1} SMS Segment{(smsSegmentInfo?.count || 1) > 1 ? 's' : ''}
                                         {smsSegmentInfo?.isMultiSegment && ` (${smsSegmentInfo.length} chars)`}
@@ -300,7 +359,7 @@ export function SimulationStudio({
                                         {resolveVariables(template.subject || '', mergedVars) || '(No Subject)'}
                                     </p>
                                 </div>
-                                <iframe srcDoc={resolvedText} className="flex-1 w-full border-none bg-card" title="High Fidelity Preview" />
+                                <iframe srcDoc={resolvedText} className="flex-1 w-full border-none bg-card min-h-0" title="High Fidelity Preview" />
                             </div>
                         )}
                     </div>

@@ -692,7 +692,7 @@ export default function SchoolEnrollmentClient() {
         <DialogContent
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
-          className="max-w-2xl p-0 overflow-hidden bg-slate-900 border border-slate-800 rounded-3xl h-auto transition-[height] duration-500 ease-out-expo w-full"
+          className="max-w-2xl p-0 max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-800 rounded-3xl w-full"
         >
           <DialogTitle className="sr-only">Free Consultation Survey</DialogTitle>
           <DialogDescription className="sr-only">

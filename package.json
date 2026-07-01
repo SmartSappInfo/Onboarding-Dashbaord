@@ -161,6 +161,7 @@
     "eslint-config-next": "16.2.1",
     "eslint-config-prettier": "^10.0.2",
     "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint": "^9.0.0",
     "fast-check": "^4.6.0",
     "genkit-cli": "^1.20.0",
     "jsdom": "^25.0.1",

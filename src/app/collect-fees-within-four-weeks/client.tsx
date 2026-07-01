@@ -673,7 +673,7 @@ export default function CollectFeesClient() {
         <DialogContent
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
-          className="max-w-4xl md:max-w-5xl w-[95vw] md:w-full p-1 overflow-hidden bg-white border border-slate-200/80 rounded-3xl"
+          className="max-w-4xl md:max-w-5xl w-[95vw] md:w-full p-1 max-h-[90vh] overflow-y-auto bg-white border border-slate-200/80 rounded-3xl"
         >
           <DialogTitle className="sr-only">Book Free Trial Survey</DialogTitle>
           <DialogDescription className="sr-only">

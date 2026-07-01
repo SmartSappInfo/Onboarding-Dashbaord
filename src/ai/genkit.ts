@@ -171,5 +171,40 @@ export async function getModel(params: {
   const customAi = getOrCreateGenkitInstance(provider, apiKey);
   const modelString = `${provider}/${modelId}`;
 
-  return { modelString, customAi };
+  // Wrap customAi in a Proxy to intercept and automatically recover from 401 authentication errors
+  const wrappedAi = new Proxy(customAi, {
+    get(target, prop, receiver) {
+      if (prop === 'generate') {
+        const originalGenerate = target.generate.bind(target);
+        return async function(options: Parameters<typeof target.generate>[0]) {
+          try {
+            return await originalGenerate(options);
+          } catch (error: unknown) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const isAuthError = errorMsg.includes('401') || 
+                                errorMsg.includes('UNAUTHENTICATED') || 
+                                errorMsg.includes('x-api-key') || 
+                                errorMsg.includes('authentication_error') ||
+                                errorMsg.includes('permission_denied') ||
+                                errorMsg.includes('403');
+                                
+            if (isAuthError) {
+              console.warn(`[AI] Custom API key generation failed with auth error: "${errorMsg}". Falling back to system default instance.`);
+              const defaultModel = provider === 'googleai' 
+                ? 'googleai/gemini-1.5-flash' 
+                : 'anthropic/claude-sonnet-4-6';
+              return await ai.generate({
+                ...options,
+                model: defaultModel
+              } as Parameters<typeof ai.generate>[0]);
+            }
+            throw error;
+          }
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    }
+  }) as ReturnType<typeof genkit>;
+
+  return { modelString, customAi: wrappedAi };
 }

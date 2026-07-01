@@ -45,6 +45,145 @@ interface VisualBlockProps {
     onUpdateSubBlock?: (subBlockId: string, updates: Partial<MessageBlock>) => void;
 }
 
+interface SafeHtmlProps {
+    html: string;
+}
+
+export function SafeHtml({ html }: SafeHtmlProps) {
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted) {
+        // Strip HTML tags for clean server-rendered preview
+        const stripped = html.replace(/<[^>]*>/g, '');
+        
+        // Render variable text with normal styling during SSR (no HTML tags)
+        const parts = stripped.split(/(\{\{[\w_]+\}\})/g);
+        return (
+            <span className="whitespace-pre-wrap">
+                {parts.map((part, i) => {
+                    if (part.startsWith('{{') && part.endsWith('}}')) {
+                        return (
+                            <span 
+                                key={i} 
+                                className="inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none"
+                            >
+                                {part.slice(2, -2)}
+                            </span>
+                        );
+                    }
+                    return part;
+                })}
+            </span>
+        );
+    }
+
+    return <React.Fragment>{renderHtmlWithVariablePills(html)}</React.Fragment>;
+}
+
+export function renderHtmlWithVariablePills(html: string): React.ReactNode {
+    if (!html) return null;
+    if (typeof window === 'undefined') {
+        return <span className="whitespace-pre-wrap">{html}</span>;
+    }
+    
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+        const root = doc.body.firstChild || doc.body;
+
+        const renderNode = (node: Node, key: string): React.ReactNode => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const textContent = node.textContent || '';
+                const parts = textContent.split(/(\{\{[\w_]+\}\})/g);
+                return (
+                    <React.Fragment key={key}>
+                        {parts.map((part, i) => {
+                            if (part.startsWith('{{') && part.endsWith('}}')) {
+                                const varName = part.slice(2, -2);
+                                return (
+                                    <span 
+                                        key={i} 
+                                        className="inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none"
+                                    >
+                                        {varName}
+                                    </span>
+                                );
+                            }
+                            return part;
+                        })}
+                    </React.Fragment>
+                );
+            }
+
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                const el = node as HTMLElement;
+                const tagName = el.tagName.toLowerCase();
+                
+                const whitelist = ['strong', 'b', 'em', 'i', 'u', 'del', 's', 'strike', 'span', 'font', 'br', 'p', 'div'];
+                if (!whitelist.includes(tagName)) {
+                    return null;
+                }
+
+                const children = Array.from(el.childNodes).map((child, index) => 
+                    renderNode(child, `${key}-${index}`)
+                );
+
+                const styleObj: Record<string, string> = {};
+                const styleAttr = el.getAttribute('style');
+                if (styleAttr) {
+                    styleAttr.split(';').forEach(s => {
+                        const idx = s.indexOf(':');
+                        if (idx !== -1) {
+                            const prop = s.substring(0, idx).trim();
+                            const val = s.substring(idx + 1).trim();
+                            if (prop && val) {
+                                const jsProp = prop.replace(/-([a-z])/g, g => g[1].toUpperCase());
+                                styleObj[jsProp] = val;
+                            }
+                        }
+                    });
+                }
+
+                switch (tagName) {
+                    case 'strong':
+                    case 'b':
+                        return <strong key={key} style={styleObj as React.CSSProperties}>{children}</strong>;
+                    case 'em':
+                    case 'i':
+                        return <em key={key} style={styleObj as React.CSSProperties}>{children}</em>;
+                    case 'u':
+                        return <u key={key} style={styleObj as React.CSSProperties}>{children}</u>;
+                    case 'del':
+                    case 's':
+                    case 'strike':
+                        return <del key={key} style={styleObj as React.CSSProperties}>{children}</del>;
+                    case 'span':
+                        return <span key={key} style={styleObj as React.CSSProperties}>{children}</span>;
+                    case 'font':
+                        // Handle font tag color overrides inline
+                        const fontColor = el.getAttribute('color');
+                        if (fontColor) {
+                            styleObj.color = fontColor;
+                        }
+                        return <span key={key} style={styleObj as React.CSSProperties}>{children}</span>;
+                    default:
+                        return <React.Fragment key={key}>{children}</React.Fragment>;
+                }
+            }
+
+            return null;
+        };
+
+        return Array.from(root.childNodes).map((child, index) => renderNode(child, `r-${index}`));
+    } catch (err) {
+        console.error('Failed to parse text formatting:', err);
+        return <span className="whitespace-pre-wrap">{html}</span>;
+    }
+}
+
 function renderTextWithVariablePills(text: string): React.ReactNode {
     if (!text) return null;
     const parts = text.split(/(\{\{[\w_]+\}\})/g);
@@ -222,6 +361,7 @@ export function VisualBlock({
                             value={block.title || ''}
                             onChange={(val) => onContentUpdate?.({ title: val })}
                             variables={autocompleteVariables}
+                            enableFormatting={true}
                             className={cn("tracking-tight leading-tight m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text", sizeClass, customAlignClass)}
                             style={headingStyle}
                             placeholder="New Heading"
@@ -236,7 +376,7 @@ export function VisualBlock({
                             className={cn("tracking-tight leading-tight m-0 bg-transparent border-none outline-none p-0 font-extrabold select-text w-full break-words", sizeClass, customAlignClass)}
                             style={headingStyle}
                         >
-                            {renderTextWithVariablePills(block.title || '')}
+                            <SafeHtml html={block.title || ''} />
                         </Tag>
                     )}
 
@@ -259,6 +399,7 @@ export function VisualBlock({
                                     value={contentVal}
                                     onChange={(val) => onContentUpdate?.({ content: val })}
                                     variables={autocompleteVariables}
+                                    enableFormatting={true}
                                     className={cn("bg-transparent border-none outline-none p-0 m-0 w-full focus:ring-0 focus:outline-none resize-none select-text", isNestedCard ? "text-slate-650 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}
                                     placeholder="Subtext description..."
                                     rows={isNestedCard ? 2 : 1}
@@ -266,7 +407,7 @@ export function VisualBlock({
                                 />
                             ) : (
                                 <div className={cn("w-full break-words select-text", isNestedCard ? "text-slate-600 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}>
-                                    {renderTextWithVariablePills(contentVal)}
+                                    <SafeHtml html={contentVal} />
                                 </div>
                             )}
                         </div>
@@ -323,6 +464,7 @@ export function VisualBlock({
                             value={block.content || ''}
                             onChange={(val) => onContentUpdate?.({ content: val })}
                             variables={autocompleteVariables}
+                            enableFormatting={true}
                             className={cn("leading-relaxed m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-medium focus:ring-0 focus:outline-none focus:border-transparent select-text", alignmentClass)}
                             style={{ ...combinedStyle, fontSize: combinedStyle.fontSize || '16px' }}
                             placeholder="New paragraph content..."
@@ -334,7 +476,7 @@ export function VisualBlock({
                             className={cn("leading-relaxed m-0 p-0 font-medium select-text w-full break-words", alignmentClass)}
                             style={{ ...combinedStyle, fontSize: combinedStyle.fontSize || '16px' }}
                         >
-                            {renderTextWithVariablePills(block.content || '')}
+                            <SafeHtml html={block.content || ''} />
                         </div>
                     )}
                 </div>
@@ -455,6 +597,7 @@ export function VisualBlock({
                             value={block.content || ''}
                             onChange={(val) => onContentUpdate?.({ content: val })}
                             variables={autocompleteVariables}
+                            enableFormatting={true}
                             className={cn("bg-transparent border-none outline-none resize-none w-full font-medium italic focus:ring-0 focus:outline-none focus:border-transparent select-text p-4", alignmentClass)}
                             style={{ ...typographyStyle, display: 'block', border: 'none' }}
                             placeholder="Quote content..."
@@ -466,7 +609,7 @@ export function VisualBlock({
                             className={cn("font-medium italic select-text p-4 w-full break-words", alignmentClass)}
                             style={{ ...typographyStyle, display: 'block', border: 'none' }}
                         >
-                            {renderTextWithVariablePills(block.content || '')}
+                            <SafeHtml html={block.content || ''} />
                         </div>
                     )}
                 </div>
@@ -506,6 +649,7 @@ export function VisualBlock({
                                                 onContentUpdate?.({ items: newItems });
                                             }}
                                             variables={autocompleteVariables}
+                                            enableFormatting={true}
                                             className="bg-transparent border-none outline-none p-0 m-0 font-medium flex-1 focus:ring-0 focus:outline-none focus:border-transparent select-text h-auto"
                                             style={{ color: combinedStyle.color || 'inherit', font: 'inherit' }}
                                             placeholder="List item..."
@@ -524,7 +668,7 @@ export function VisualBlock({
                                             className="flex-1 font-medium select-text break-words"
                                             style={{ color: combinedStyle.color || 'inherit', font: 'inherit' }}
                                         >
-                                            {renderTextWithVariablePills(item)}
+                                            <SafeHtml html={item} />
                                         </span>
                                     )}
                                     {isEditing && items.length > 1 && (

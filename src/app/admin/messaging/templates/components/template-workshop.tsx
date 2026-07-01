@@ -292,51 +292,48 @@ interface StepperProps {
     name: string;
 }
 
-function Stepper({ currentStep, onStepClick, name }: StepperProps) {
+function Stepper({ currentStep, onStepClick }: StepperProps) {
     const steps = [
-        { n: 1, label: 'Details', icon: Settings2 },
-        { n: 2, label: 'Builder', icon: Layout },
-        { n: 3, label: 'Simulation', icon: MonitorPlay },
-        { n: 4, label: 'Publish', icon: Share2 }
+        { n: 1, label: 'Details' },
+        { n: 2, label: 'Builder' },
+        { n: 3, label: 'Simulation' },
+        { n: 4, label: 'Publish' }
     ];
 
     return (
-        <div className="flex justify-center items-center max-w-2xl mx-auto px-4 w-full">
-            {steps.map((stepItem, index) => {
-                const isActive = currentStep === stepItem.n;
-                const isCompleted = currentStep > stepItem.n;
-                const Icon = stepItem.icon;
+        <div className="flex items-center gap-1 bg-muted/20 p-1 rounded-xl border border-border/50 select-none">
+            {steps.map((s, index) => {
+                const isActive = currentStep === s.n;
+                const isCompleted = currentStep > s.n;
 
                 return (
-                    <React.Fragment key={stepItem.label}>
+                    <React.Fragment key={s.n}>
                         <button
                             type="button"
-                            onClick={() => onStepClick(stepItem.n)}
-                            className="flex flex-col items-center group outline-none"
+                            onClick={() => onStepClick(s.n)}
+                            className={cn(
+                                "px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 outline-none select-none h-7",
+                                isActive 
+                                    ? "bg-primary text-primary-foreground shadow-sm" 
+                                    : isCompleted
+                                        ? "text-primary hover:bg-primary/5"
+                                        : "text-muted-foreground hover:bg-muted/50"
+                            )}
                         >
-                            <div className={cn(
-                                'flex items-center justify-center w-9 h-9 rounded-2xl border-2 transition-all duration-300 shadow-sm',
-                                isCompleted ? 'bg-primary border-primary text-white' :
-                                isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' :
-                                'bg-background border-border text-muted-foreground',
-                            )}>
-                                {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-5 h-5" />}
-                            </div>
                             <span className={cn(
-                                'mt-3 text-[10px] font-semibold uppercase transition-colors tracking-wider',
-                                isActive || isCompleted ? 'text-primary animate-pulse-once' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
+                                "w-4 h-4 rounded-full flex items-center justify-center text-[9px] border font-bold shrink-0",
+                                isActive 
+                                    ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground" 
+                                    : isCompleted
+                                        ? "border-primary/20 bg-primary/5 text-primary"
+                                        : "border-muted-foreground/30 text-muted-foreground"
                             )}>
-                                {stepItem.label}
+                                {isCompleted ? '✓' : s.n}
                             </span>
+                            <span>{s.label}</span>
                         </button>
                         {index < steps.length - 1 && (
-                            <div className="flex-1 mx-4 h-[2px] bg-muted rounded-full overflow-hidden relative min-w-[2rem] -mt-5">
-                                <motion.div
-                                    initial={false}
-                                    animate={{ width: isCompleted ? '100%' : '0%' }}
-                                    className="absolute inset-0 bg-primary"
-                                />
-                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/30 shrink-0"><path d="m9 18 6-6-6-6"/></svg>
                         )}
                     </React.Fragment>
                 );
@@ -2555,6 +2552,13 @@ export function TemplateWorkshop({
     }, [simRecordId, simEntity, activeWorkspaceId]);
 
     const sensors = useSensors(useSensor(PointerSensor));
+    const sidebarSensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        })
+    );
 
     // Sync Designers — only for rich_builder mode (Risk Analysis: Improvement 3)
     React.useEffect(() => {
@@ -2859,14 +2863,6 @@ export function TemplateWorkshop({
     };
 
     const renderSidebarBlockOutline = () => {
-        const sidebarSensors = useSensors(
-            useSensor(PointerSensor, {
-                activationConstraint: {
-                    distance: 5,
-                },
-            })
-        );
-
         const renderItem = (block: MessageBlock, isNested = false): React.ReactNode => {
             return (
                 <SortableLayerItem
@@ -3441,7 +3437,7 @@ export function TemplateWorkshop({
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <div>
-                        <h1 className="font-semibold text-sm tracking-tight leading-none mb-1 truncate max-w-[200px]">
+                        <h1 className="font-semibold text-sm tracking-tight leading-none mb-1 truncate max-w-[140px] xl:max-w-[240px]">
                             {name || 'Untitled Template'}
                         </h1>
                         <div className="flex items-center gap-2">
@@ -3453,6 +3449,11 @@ export function TemplateWorkshop({
                             </Badge>
                         </div>
                     </div>
+                </div>
+
+                {/* Compact centered stepper navigation */}
+                <div className="hidden lg:block">
+                    <Stepper currentStep={step} onStepClick={setStep} name={name} />
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -3476,10 +3477,6 @@ export function TemplateWorkshop({
                     </Button>
                 </div>
             </header>
-
-            <div className="shrink-0 bg-muted/10 border-b py-4 flex justify-center items-center shadow-sm z-40 relative">
-                <Stepper currentStep={step} onStepClick={setStep} name={name} />
-            </div>
 
             {mode === 'superadmin_blueprint' && (
                 <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-3 flex items-center justify-center gap-3 shadow-sm z-10 relative">
@@ -4626,7 +4623,7 @@ export function TemplateWorkshop({
                                 if (effectiveMode === 'plain_text' && channel === 'email') {
                                     resolved = resolved.replace(/\n/g, '<br>\n');
                                 }
-                                if (styleWrapper && styleWrapper.includes('{{content}}')) {
+                                if (channel === 'email' && styleWrapper && styleWrapper.includes('{{content}}')) {
                                     resolved = resolveVariables(styleWrapper, vars).replace('{{content}}', resolved);
                                 } else if (effectiveMode === 'plain_text' && channel === 'email') {
                                     resolved = plainTextToHtml(resolved, isDark);

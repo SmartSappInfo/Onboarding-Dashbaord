@@ -182,6 +182,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     value={block.title || ''} 
                                     onChange={val => onUpdate({ title: val })} 
                                     variables={autocompleteVariables}
+                                    enableFormatting={true}
                                     className="font-bold rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     placeholder="Enter heading title..."
                                 />
@@ -218,6 +219,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     variables={autocompleteVariables}
                                     className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     placeholder="e.g. High Priority (optional)"
+                                    onKeyDown={(e) => e.stopPropagation()}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -233,6 +235,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     value={block.content || ''} 
                                     onChange={val => onUpdate({ content: val })} 
                                     variables={autocompleteVariables}
+                                    enableFormatting={true}
                                     className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     placeholder="e.g. Invited by Alex Chen (optional)"
                                 />
@@ -329,6 +332,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                 value={block.content || ''} 
                                 onChange={val => onUpdate({ content: val })}
                                 variables={autocompleteVariables}
+                                enableFormatting={true}
                                 className="min-h-[140px] rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 p-4 leading-relaxed text-sm" 
                             />
                         </div>
@@ -368,6 +372,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     value={block.items?.join('\n') || ''}
                                     onChange={val => onUpdate({ items: val.split('\n') })}
                                     variables={autocompleteVariables}
+                                    enableFormatting={true}
                                     className="min-h-[140px] text-sm rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 p-4 leading-relaxed"
                                     placeholder="Pasting a list works here too..."
                                 />

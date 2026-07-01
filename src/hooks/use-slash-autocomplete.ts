@@ -3,6 +3,17 @@
 import * as React from 'react';
 import type { TemplateVariable } from '@/lib/types';
 
+export function convertToCleanHtml(element: HTMLElement): string {
+  const clone = element.cloneNode(true) as HTMLElement;
+  const pills = clone.querySelectorAll('[data-variable]');
+  pills.forEach((pill) => {
+    const varName = pill.getAttribute('data-variable');
+    const textNode = clone.ownerDocument.createTextNode(`{{${varName}}}`);
+    pill.parentNode?.replaceChild(textNode, pill);
+  });
+  return clone.innerHTML;
+}
+
 interface UseSlashAutocompleteProps {
   variables: TemplateVariable[];
   value: string;
@@ -22,7 +33,23 @@ export function useSlashAutocomplete({
   const [autocompleteCoords, setAutocompleteCoords] = React.useState({ top: 0, left: 0 });
 
   // Get caret coordinates relative to parent container
-  const getCaretCoordinates = React.useCallback((element: HTMLTextAreaElement | HTMLInputElement, position: number) => {
+  const getCaretCoordinates = React.useCallback((element: HTMLTextAreaElement | HTMLInputElement | HTMLDivElement, position: number) => {
+    if (element instanceof HTMLDivElement) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        const parentRect = element.parentElement?.getBoundingClientRect();
+        if (parentRect) {
+          return {
+            top: rect.bottom - parentRect.top + (element.parentElement?.scrollTop || 0) + 4,
+            left: rect.left - parentRect.left + (element.parentElement?.scrollLeft || 0),
+          };
+        }
+      }
+      return { top: 0, left: 0 };
+    }
+
     const div = document.createElement('div');
     const style = window.getComputedStyle(element);
     
@@ -68,7 +95,44 @@ export function useSlashAutocomplete({
     }
   }, []);
 
-  const checkTrigger = React.useCallback((element: HTMLTextAreaElement | HTMLInputElement) => {
+  const checkTrigger = React.useCallback((element: HTMLTextAreaElement | HTMLInputElement | HTMLDivElement) => {
+    if (element instanceof HTMLDivElement) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        setShowAutocomplete(false);
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      const container = range.startContainer;
+      if (container.nodeType !== Node.TEXT_NODE) {
+        setShowAutocomplete(false);
+        return;
+      }
+      const text = container.textContent || '';
+      const offset = range.startOffset;
+      const lastSlashIdx = text.lastIndexOf('/', offset - 1);
+      if (lastSlashIdx === -1) {
+        setShowAutocomplete(false);
+        return;
+      }
+      const textBetween = text.substring(lastSlashIdx + 1, offset);
+      if (/\s/.test(textBetween) || textBetween.includes('\n')) {
+        setShowAutocomplete(false);
+        return;
+      }
+      if (lastSlashIdx > 0 && !/\s/.test(text.charAt(lastSlashIdx - 1))) {
+        setShowAutocomplete(false);
+        return;
+      }
+      setAutocompleteQuery(textBetween);
+      setAutocompleteIndex(0);
+      setShowAutocomplete(true);
+      
+      const coords = getCaretCoordinates(element, lastSlashIdx);
+      setAutocompleteCoords(coords);
+      return;
+    }
+
     const text = element.value;
     const selectionEnd = element.selectionEnd;
     
@@ -111,7 +175,42 @@ export function useSlashAutocomplete({
     );
   }, [variables, autocompleteQuery]);
 
-  const selectAndInsert = React.useCallback((varName: string, element: HTMLTextAreaElement | HTMLInputElement) => {
+  const selectAndInsert = React.useCallback((varName: string, element: HTMLTextAreaElement | HTMLInputElement | HTMLDivElement) => {
+    if (element instanceof HTMLDivElement) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      const range = selection.getRangeAt(0);
+      const container = range.startContainer;
+      if (container.nodeType !== Node.TEXT_NODE) return;
+      
+      const text = container.textContent || '';
+      const offset = range.startOffset;
+      const lastSlashIdx = text.lastIndexOf('/', offset - 1);
+      if (lastSlashIdx === -1) return;
+      
+      range.setStart(container, lastSlashIdx);
+      range.setEnd(container, offset);
+      range.deleteContents();
+      
+      const pill = document.createElement('span');
+      pill.contentEditable = 'false';
+      pill.className = 'inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none';
+      pill.setAttribute('data-variable', varName);
+      pill.textContent = varName;
+      
+      range.insertNode(pill);
+      
+      const newRange = document.createRange();
+      newRange.setStartAfter(pill);
+      newRange.setEndAfter(pill);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+      
+      setShowAutocomplete(false);
+      onChange(convertToCleanHtml(element));
+      return;
+    }
+
     const text = element.value;
     const selectionEnd = element.selectionEnd;
     if (selectionEnd === null) return;
@@ -134,7 +233,7 @@ export function useSlashAutocomplete({
   }, [onChange]);
 
   // General keyboard listener for intercepting inputs when autocomplete is active
-  const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement | HTMLDivElement>) => {
     if (!showAutocomplete || filteredVars.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -155,11 +254,11 @@ export function useSlashAutocomplete({
     }
   }, [showAutocomplete, filteredVars, autocompleteIndex, selectAndInsert]);
 
-  const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+  const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement | HTMLDivElement>) => {
     checkTrigger(e.target);
   }, [checkTrigger]);
 
-  const handleSelectChange = React.useCallback((e: React.SyntheticEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+  const handleSelectChange = React.useCallback((e: React.SyntheticEvent<HTMLTextAreaElement | HTMLInputElement | HTMLDivElement>) => {
     checkTrigger(e.currentTarget);
   }, [checkTrigger]);
 
