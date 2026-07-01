@@ -8,7 +8,7 @@ import { cache } from 'react';
  * We use `cache` to deduplicate requests across different widgets during the same render pass.
  */
 
-export const getSaasMetrics = cache(async (workspaceId: string) => {
+const fetchSaasMetrics = cache(async (workspaceId: string) => {
   const stats = await getMetricStats(workspaceId);
   
   // Since we don't have a real billing module yet, we will map Entities to Active Users.
@@ -30,18 +30,38 @@ export const getSaasMetrics = cache(async (workspaceId: string) => {
   };
 });
 
-export const getPipelineData = cache(async (workspaceId: string) => {
+export async function getSaasMetrics(workspaceId: string) {
+  return fetchSaasMetrics(workspaceId);
+}
+
+const fetchPipelineData = cache(async (workspaceId: string) => {
   return await getPipelineStats(workspaceId);
 });
 
-export const getUpcomingMeetingsData = cache(async (workspaceId: string) => {
+export async function getPipelineData(workspaceId: string) {
+  return fetchPipelineData(workspaceId);
+}
+
+const fetchUpcomingMeetingsData = cache(async (workspaceId: string) => {
   return await getUpcomingMeetings(workspaceId);
 });
 
-export const getLatestSurveysData = cache(async (workspaceId: string) => {
+export async function getUpcomingMeetingsData(workspaceId: string) {
+  return fetchUpcomingMeetingsData(workspaceId);
+}
+
+const fetchLatestSurveysData = cache(async (workspaceId: string) => {
   return await getLatestSurveys(workspaceId);
 });
 
-export const getRecentActivitiesData = cache(async (workspaceId: string) => {
+export async function getLatestSurveysData(workspaceId: string) {
+  return fetchLatestSurveysData(workspaceId);
+}
+
+const fetchRecentActivitiesData = cache(async (workspaceId: string) => {
   return await getRecentActivities(workspaceId);
 });
+
+export async function getRecentActivitiesData(workspaceId: string) {
+  return fetchRecentActivitiesData(workspaceId);
+}

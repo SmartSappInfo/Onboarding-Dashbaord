@@ -75,9 +75,9 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequestPayload>) => {
             details: `Compressing image ${i + 1} of ${totalImages}...`
           } as WorkerMessageEvent);
 
-          // Only compress JPEGs directly, or standard streams if we can decode them
-          // Skip transparency if configuring maximum compression (avoid background issues)
-          if ((isJpeg || filter === undefined) && (!hasSMask || config.preset !== 'max')) {
+          // Attempt to compress all image streams that can be decoded by browser APIs
+          // Skip transparency if configuring maximum compression to avoid layout issues
+          if (!hasSMask || config.preset !== 'max') {
             try {
               const rawBytes = oldImageStream.contents;
               const width = dict.get(PDFName.of('Width'))?.toString() || '0';
@@ -99,7 +99,11 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequestPayload>) => {
                   const newImage = await pdfDoc.embedJpg(compressedBytes);
                   const newImageStream = pdfDoc.context.lookup(newImage.ref);
                   
-                  if (newImageStream) {
+                  if (newImageStream instanceof PDFRawStream) {
+                    // Copy alpha soft-mask if it was originally transparent
+                    if (hasSMask) {
+                      newImageStream.dict.set(PDFName.of('SMask'), smask);
+                    }
                     // Swap indirect object reference
                     indirectObjects.set(ref, newImageStream);
                     imagesOptimized++;

@@ -22,7 +22,7 @@ export interface MediaPart {
 
 export type GenkitPromptPart = TextPart | MediaPart;
 
-export const ArchitectBlockStyleSchema = z.object({
+const ArchitectBlockStyleSchema = z.object({
   textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
   backgroundColor: z.string().optional(),
   backgroundImage: z.string().optional(),
@@ -48,7 +48,7 @@ export const ArchitectBlockStyleSchema = z.object({
   animate: z.boolean().optional(),
 });
 
-export const ArchitectBlockSchema = z.object({
+const ArchitectBlockSchema = z.object({
   id: z.string(),
   type: z.enum([
     'heading', 'text', 'image', 'video', 'button', 'quote', 'divider',
@@ -87,7 +87,7 @@ export const ArchitectBlockSchema = z.object({
   }).optional(),
 });
 
-export const FullBlockSchema: z.ZodType<MessageBlock> = z.lazy(() =>
+const FullBlockSchema: z.ZodType<MessageBlock> = z.lazy(() =>
   (ArchitectBlockSchema.extend({
     columns: z.array(
       z.object({
@@ -98,7 +98,7 @@ export const FullBlockSchema: z.ZodType<MessageBlock> = z.lazy(() =>
   }) as unknown) as z.ZodType<MessageBlock>
 );
 
-export const ArchitectResultSchema = z.object({
+const ArchitectResultSchema = z.object({
   blocks: z.array(FullBlockSchema),
 });
 
