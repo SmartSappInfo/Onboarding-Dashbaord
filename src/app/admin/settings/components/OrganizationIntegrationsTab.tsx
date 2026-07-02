@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
-import { Key, Loader2, Save, Eye, EyeOff, MessageCircle, ChevronRight, Mail, Smartphone } from 'lucide-react';
+import { Key, Loader2, Save, Eye, EyeOff, MessageCircle, ChevronRight, Mail, Smartphone, Calendar } from 'lucide-react';
 import Link from 'next/link';
 
 interface OrganizationIntegrationsTabProps {
@@ -40,6 +40,15 @@ export default function OrganizationIntegrationsTab({ organization }: Organizati
     const [resendApiKey, setResendApiKey] = React.useState(organization.resendApiKey || '');
     const [resendDomain, setResendDomain] = React.useState(organization.resendDomain || '');
 
+    // Calendar & Conferencing State
+    const [showOauthKeys, setShowOauthKeys] = React.useState(false);
+    const [googleClientId, setGoogleClientId] = React.useState(organization.googleClientId || '');
+    const [googleClientSecret, setGoogleClientSecret] = React.useState(organization.googleClientSecret || '');
+    const [zoomClientId, setZoomClientId] = React.useState(organization.zoomClientId || '');
+    const [zoomClientSecret, setZoomClientSecret] = React.useState(organization.zoomClientSecret || '');
+    const [microsoftClientId, setMicrosoftClientId] = React.useState(organization.microsoftClientId || '');
+    const [microsoftClientSecret, setMicrosoftClientSecret] = React.useState(organization.microsoftClientSecret || '');
+
     const handleSave = async () => {
         if (!user) return;
         setIsSaving(true);
@@ -56,7 +65,13 @@ export default function OrganizationIntegrationsTab({ organization }: Organizati
                     mnotifyApiKey: mnotifyApiKey.trim(),
                     emailKeyMode,
                     resendApiKey: resendApiKey.trim(),
-                    resendDomain: resendDomain.trim()
+                    resendDomain: resendDomain.trim(),
+                    googleClientId: googleClientId.trim(),
+                    googleClientSecret: googleClientSecret.trim(),
+                    zoomClientId: zoomClientId.trim(),
+                    zoomClientSecret: zoomClientSecret.trim(),
+                    microsoftClientId: microsoftClientId.trim(),
+                    microsoftClientSecret: microsoftClientSecret.trim()
                 },
                 user.uid
             );
@@ -293,6 +308,115 @@ export default function OrganizationIntegrationsTab({ organization }: Organizati
                             </div>
                         </div>
                     )}
+                </CardContent>
+            </Card>
+
+            {/* 4. Calendar & Conferencing Credentials Override Card */}
+            <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden">
+                <CardHeader className="p-8 border-b">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="text-xl font-bold flex items-center gap-2">
+                                <Calendar className="h-5 w-5 text-primary" />
+                                Calendar & Conferencing Developer Apps
+                            </CardTitle>
+                            <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
+                                Override the platform-wide OAuth developer credentials with your organization-specific Google, Zoom, and Microsoft API clients.
+                            </CardDescription>
+                        </div>
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setShowOauthKeys(!showOauthKeys)}
+                            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                            {showOauthKeys ? <EyeOff className="w-3.5 h-3.5 mr-1" /> : <Eye className="w-3.5 h-3.5 mr-1" />}
+                            {showOauthKeys ? 'Hide Keys' : 'Show Keys'}
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-8 space-y-8">
+                    {/* Google OAuth Credentials */}
+                    <div className="space-y-4">
+                        <h4 className="text-xs font-bold border-b pb-2">Google OAuth App Configuration</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Google Client ID</Label>
+                                <Input 
+                                    value={googleClientId} 
+                                    onChange={e => setGoogleClientId(e.target.value)} 
+                                    placeholder="Enter Google Client ID..." 
+                                    type="text"
+                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Google Client Secret</Label>
+                                <Input 
+                                    value={googleClientSecret} 
+                                    onChange={e => setGoogleClientSecret(e.target.value)} 
+                                    placeholder="Enter Google Client Secret..." 
+                                    type={showOauthKeys ? "text" : "password"}
+                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Zoom OAuth Credentials */}
+                    <div className="space-y-4 pt-4 border-t">
+                        <h4 className="text-xs font-bold border-b pb-2">Zoom OAuth App Configuration</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Zoom Client ID</Label>
+                                <Input 
+                                    value={zoomClientId} 
+                                    onChange={e => setZoomClientId(e.target.value)} 
+                                    placeholder="Enter Zoom Client ID..." 
+                                    type="text"
+                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Zoom Client Secret</Label>
+                                <Input 
+                                    value={zoomClientSecret} 
+                                    onChange={e => setZoomClientSecret(e.target.value)} 
+                                    placeholder="Enter Zoom Client Secret..." 
+                                    type={showOauthKeys ? "text" : "password"}
+                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Microsoft OAuth Credentials */}
+                    <div className="space-y-4 pt-4 border-t">
+                        <h4 className="text-xs font-bold border-b pb-2">Microsoft (Teams) OAuth Configuration</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Microsoft Client ID</Label>
+                                <Input 
+                                    value={microsoftClientId} 
+                                    onChange={e => setMicrosoftClientId(e.target.value)} 
+                                    placeholder="Enter Microsoft Client ID..." 
+                                    type="text"
+                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Microsoft Client Secret</Label>
+                                <Input 
+                                    value={microsoftClientSecret} 
+                                    onChange={e => setMicrosoftClientSecret(e.target.value)} 
+                                    placeholder="Enter Microsoft Client Secret..." 
+                                    type={showOauthKeys ? "text" : "password"}
+                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 

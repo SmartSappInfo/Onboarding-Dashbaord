@@ -241,6 +241,28 @@ service cloud.firestore {
       }
     }
 
+    // Booking Pages & Calendars Scheduling Engine Rules
+    match /booking_pages/{pageId} {
+      allow read: if true;
+      allow create: if isAuthorized();
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+    }
+    
+    match /bookings/{bookingId} {
+      allow create: if true;
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow update: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+    }
+
+    match /calendar_connections/{connId} {
+      allow read, write: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+    }
+
+    match /user_availabilities/{availId} {
+      allow read: if true;
+      allow write: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+    }
+
     // Collection Group rule for registrants (required for collectionGroup queries)
     match /{path=**}/registrants/{rId} {
       allow create: if true;

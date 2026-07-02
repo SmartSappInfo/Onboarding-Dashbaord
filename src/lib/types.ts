@@ -324,6 +324,13 @@ export interface Organization {
   emailKeyMode?: 'platform' | 'custom';
   resendApiKey?: string;
   resendDomain?: string;
+  // OAuth credentials for custom developer configurations
+  googleClientId?: string;
+  googleClientSecret?: string;
+  zoomClientId?: string;
+  zoomClientSecret?: string;
+  microsoftClientId?: string;
+  microsoftClientSecret?: string;
   /**
    * Organization-level default sender profile id per channel. This is the ONLY
    * permitted fallback when no explicit or workspace-level sender resolves —
@@ -3418,19 +3425,19 @@ export interface WidgetDefinition {
 // Campaign Page Builder Types
 // ─────────────────────────────────────────────────
 
-export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list' | 'image' | 'video' | 'spacer' | 'divider' | 'logo_grid' | 'meeting' | 'qr';
+export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list' | 'image' | 'video' | 'spacer' | 'divider' | 'logo_grid' | 'meeting' | 'qr' | 'video_hero' | 'testimonial_grid' | 'choice_cards' | 'app_download' | 'step_section' | 'countdown';
 
 export interface PageBlock {
   id: string;
   type: PageBlockType;
-  props: Record<string, any>;
+  props: Record<string, unknown>;
   blocks?: PageBlock[]; // for nested layouts
 }
 
 export interface PageSection {
   id: string;
   type: 'section';
-  props: Record<string, any>;
+  props: Record<string, unknown>;
   blocks: PageBlock[];
 }
 
@@ -3438,7 +3445,12 @@ export interface PageSectionProps {
   heading?: string;
   background?: string;
   layout?: '1-col' | '2-col' | '3-col' | '4-col' | 'grid';
-  backgroundType?: 'none' | 'color' | 'image' | 'video';
+  backgroundType?: 'none' | 'color' | 'image' | 'video' | 'gradient' | 'pattern';
+  backgroundAttachment?: 'scroll' | 'fixed';
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientAngle?: number;
+  backgroundPattern?: 'dots' | 'grid' | 'topography' | 'diagonal';
   backgroundColor?: string;
   backgroundImageUrl?: string;
   backgroundVideoUrl?: string;
@@ -3476,7 +3488,7 @@ export interface PageTriggerAction {
 export interface PageTrigger {
   id: string;
   name: string; // Human-readable label e.g. "Welcome popup"
-  event: 'page_load' | 'block_click' | 'form_submitted' | 'on_exit' | 'scroll_to';
+  event: 'page_load' | 'block_click' | 'form_submitted' | 'on_exit' | 'scroll_to' | 'card_selected' | 'countdown_expired';
   targetBlockId?: string; // Which block fires this (for block_click/form_submitted)
   config?: {
     once?: boolean;
@@ -5059,3 +5071,84 @@ export interface TrackedLinkClickResult {
  * Populated server-side before resolveVariables() is called.
  */
 export type PageLinkMap = Map<string, string>;
+
+// ── Scheduling Engine & Calendar Booking Types ────────────────────────────
+
+export type ConferencingProvider = 'GOOGLE_MEET' | 'ZOOM' | 'MICROSOFT_TEAMS' | 'PHONE' | 'IN_PERSON';
+
+export interface CalendarConnection {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  userId: string;
+  provider: 'google_calendar' | 'microsoft_teams' | 'zoom';
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string; // ISO DateTime
+  calendarId: string; // e.g. "primary"
+  syncDirection: 'one_way_to_calendar' | 'one_way_from_calendar' | 'two_way';
+  lastSyncAt?: string;
+  createdAt: string;
+}
+
+export interface WorkingDay {
+  day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  slots: Array<{ start: string; end: string }>; // e.g. [{ start: "09:00", end: "12:00" }]
+}
+
+export interface UserAvailability {
+  id: string; // matches user or workspace
+  organizationId: string;
+  workspaceId: string;
+  userId: string;
+  weeklySchedule: WorkingDay[];
+  timezone: string; // IANA string e.g. "Africa/Accra"
+  bufferBeforeMinutes: number;
+  bufferAfterMinutes: number;
+  maxBookingsPerDay?: number;
+  minimumNoticeHours: number;
+  maximumNoticeDays: number;
+}
+
+export interface BookingQuestion {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'dropdown' | 'checkbox' | 'radio';
+  required: boolean;
+  options?: string[]; // for multi-choice fields
+}
+
+export interface BookingPage {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  slug: string;
+  title: string;
+  description?: string;
+  durationMinutes: number;
+  availabilityId: string;
+  questions: BookingQuestion[];
+  meetingProvider: ConferencingProvider;
+  locationDetails?: string;
+  bufferMinutes: number;
+  publishStatus: 'draft' | 'published';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookingResponse {
+  id: string;
+  bookingPageId: string;
+  organizationId: string;
+  workspaceId: string;
+  visitorName: string;
+  visitorEmail: string;
+  visitorPhone?: string;
+  answers: Record<string, string | string[]>;
+  scheduledTime: string; // ISO DateTime UTC
+  durationMinutes: number;
+  meetingId?: string; // links to created Meeting doc
+  status: 'pending' | 'confirmed' | 'cancelled';
+  createdAt: string;
+}
+
