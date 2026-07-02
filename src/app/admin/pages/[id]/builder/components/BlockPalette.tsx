@@ -8,8 +8,9 @@ import type { PageBlockType } from '@/lib/types';
 import '@/lib/page-builder/blocks'; // register all blocks
 
 interface BlockPaletteProps {
-    onAddBlock: (type: PageBlockType) => void;
-    onAddSection: () => void;
+    readonly onAddBlock: (type: PageBlockType) => void;
+    readonly onRequestBlock: (type: PageBlockType) => void;
+    readonly onAddSection: () => void;
 }
 
 const CATEGORY_ORDER = ['content', 'layout', 'data', 'embed'] as const;
@@ -20,7 +21,7 @@ const CATEGORY_LABEL: Record<(typeof CATEGORY_ORDER)[number], string> = {
     embed: 'Embeds',
 };
 
-const BlockPalette = React.memo(function BlockPalette({ onAddBlock, onAddSection }: BlockPaletteProps) {
+const BlockPalette = React.memo(function BlockPalette({ onAddBlock, onRequestBlock, onAddSection }: BlockPaletteProps) {
     const blocks = allBlocks();
 
     return (
@@ -34,12 +35,25 @@ const BlockPalette = React.memo(function BlockPalette({ onAddBlock, onAddSection
                         <div className="grid grid-cols-2 gap-2">
                             {items.map((def) => {
                                 const Icon = def.icon;
+                                const hasVariants = def.variants && def.variants.length > 0;
+                                const handleClick = () => {
+                                    if (hasVariants) {
+                                        onRequestBlock(def.type);
+                                    } else {
+                                        onAddBlock(def.type);
+                                    }
+                                };
                                 return (
                                     <div
                                         key={def.type}
-                                        onClick={() => onAddBlock(def.type)}
-                                        className="group/item border border-slate-700/50 rounded-xl p-3 bg-slate-800/40 flex items-center justify-center flex-col gap-2 cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all duration-200 active:scale-95"
+                                        onClick={handleClick}
+                                        className="group/item relative border border-slate-700/50 rounded-xl p-3 bg-slate-800/40 flex items-center justify-center flex-col gap-2 cursor-pointer transition-all duration-200 active:scale-95 hover:border-emerald-500/50 hover:bg-emerald-500/5"
                                     >
+                                        {hasVariants ? (
+                                            <span className="absolute top-1.5 right-1.5 text-[8px] font-black uppercase text-emerald-500 tracking-tighter bg-emerald-500/10 px-1 rounded">
+                                                Presets
+                                            </span>
+                                        ) : null}
                                         <Icon className="w-5 h-5 text-slate-400 group-hover/item:text-emerald-400 transition-colors" />
                                         <span className="text-[10px] font-semibold text-slate-400 group-hover/item:text-slate-200 transition-colors">{def.label}</span>
                                     </div>

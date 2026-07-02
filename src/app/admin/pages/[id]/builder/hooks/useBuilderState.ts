@@ -27,21 +27,20 @@ function pushHistory(history: HistoryState, next: CampaignPageStructure): Histor
         present: next,
         future: [],
     };
-}
-
-// ─── Builder State ───────────────────────────────────────────────────────
+}// ─── Builder State ───────────────────────────────────────────────────────
 interface BuilderState {
     page: CampaignPage | null;
     version: CampaignPageVersion | null;
     history: HistoryState | null;
     selectedBlockId: string | null;
     selectedSectionId: string | null;
-    viewport: 'desktop' | 'mobile';
+    viewport: 'desktop' | 'tablet' | 'mobile';
     activeTab: BuilderTab;
     saving: boolean;
     publishing: boolean;
     loading: boolean;
     isRestoring: boolean;
+    variantPickerType: PageBlockType | null;
 }
 
 export type BuilderTab = 'add' | 'edit' | 'settings' | 'triggers' | 'theme' | 'library' | 'history';
@@ -53,7 +52,7 @@ type BuilderAction =
     | { type: 'SET_SAVING'; payload: boolean }
     | { type: 'SET_PUBLISHING'; payload: boolean }
     | { type: 'SET_RESTORING'; payload: boolean }
-    | { type: 'SET_VIEWPORT'; payload: 'desktop' | 'mobile' }
+    | { type: 'SET_VIEWPORT'; payload: 'desktop' | 'tablet' | 'mobile' }
     | { type: 'SET_TAB'; payload: BuilderTab }
     | { type: 'SELECT_BLOCK'; payload: string | null }
     | { type: 'SELECT_SECTION'; payload: string | null }
@@ -62,7 +61,9 @@ type BuilderAction =
     | { type: 'UPDATE_PAGE_SEO'; payload: Partial<CampaignPage['seo']> }
     | { type: 'UNDO' }
     | { type: 'REDO' }
-    | { type: 'RESTORE_VERSION'; payload: CampaignPageVersion };
+    | { type: 'RESTORE_VERSION'; payload: CampaignPageVersion }
+    | { type: 'OPEN_VARIANT_PICKER'; payload: PageBlockType }
+    | { type: 'CLOSE_VARIANT_PICKER' };
 
 function builderReducer(state: BuilderState, action: BuilderAction): BuilderState {
     switch (action.type) {
@@ -161,6 +162,12 @@ function builderReducer(state: BuilderState, action: BuilderAction): BuilderStat
             };
         }
 
+        case 'OPEN_VARIANT_PICKER':
+            return { ...state, variantPickerType: action.payload };
+
+        case 'CLOSE_VARIANT_PICKER':
+            return { ...state, variantPickerType: null };
+
         default:
             return state;
     }
@@ -178,15 +185,21 @@ const initialState: BuilderState = {
     publishing: false,
     loading: true,
     isRestoring: false,
+    variantPickerType: null,
 };
 
 // ─── Hook ────────────────────────────────────────────────────────────────
 export function useBuilderState() {
     const [state, dispatch] = useReducer(builderReducer, initialState);
 
-    // ─── Keyboard Shortcuts (Undo/Redo) ──────────────────────────────
+    // ─── Keyboard Shortcuts (Undo/Redo, Escape, Delete, Duplicate) ───
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
+            const activeTag = document.activeElement?.tagName.toLowerCase();
+            const isEditing = activeTag === 'input' || activeTag === 'textarea' || document.activeElement?.hasAttribute('contenteditable');
+            if (isEditing) return;
+
+            // Undo & Redo
             if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
                 e.preventDefault();
                 if (e.shiftKey) {
@@ -195,10 +208,32 @@ export function useBuilderState() {
                     dispatch({ type: 'UNDO' });
                 }
             }
+            // Delete or Backspace
+            if ((e.key === 'Delete' || e.key === 'Backspace') && state.selectedBlockId) {
+                e.preventDefault();
+                const current = state.version?.structureJson;
+                if (current) {
+                    dispatch({ type: 'UPDATE_STRUCTURE', payload: tree.removeBlock(current, state.selectedBlockId) });
+                    dispatch({ type: 'SELECT_BLOCK', payload: null });
+                }
+            }
+            // Escape (Deselect)
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                dispatch({ type: 'SELECT_BLOCK', payload: null });
+            }
+            // Duplicate (Ctrl+D / Cmd+D)
+            if ((e.metaKey || e.ctrlKey) && e.key === 'd' && state.selectedBlockId) {
+                e.preventDefault();
+                const current = state.version?.structureJson;
+                if (current) {
+                    dispatch({ type: 'UPDATE_STRUCTURE', payload: tree.duplicateBlock(current, state.selectedBlockId) });
+                }
+            }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, []);
+    }, [state.selectedBlockId, state.version?.structureJson]);
 
     // ─── Structure Helpers ───────────────────────────────────────────
     const getStructure = useCallback((): CampaignPageStructure | null => {
@@ -233,11 +268,12 @@ export function useBuilderState() {
     }, [updateStructure]);
 
     // ─── Block Operations (delegate to pure tree-operations) ─────────
-    const addBlock = useCallback((type: PageBlockType, sectionIndex?: number) => {
-        const block = tree.createBlock(type);
+    const addBlock = useCallback((type: PageBlockType, sectionIndex?: number, overrideDefaults?: Record<string, unknown>) => {
+        const block = tree.createBlock(type, overrideDefaults);
         updateStructure(s => tree.insertBlock(s, block, sectionIndex));
         dispatch({ type: 'SELECT_BLOCK', payload: block.id });
         dispatch({ type: 'SET_TAB', payload: 'edit' });
+        dispatch({ type: 'CLOSE_VARIANT_PICKER' });
     }, [updateStructure]);
 
     const removeBlock = useCallback((blockId: string) => {

@@ -13,6 +13,7 @@ import {
     ArrowLeft,
     Loader2,
     MonitorPlay,
+    Tablet,
     Smartphone,
     Globe,
     Save,
@@ -42,7 +43,6 @@ import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { useBuilderState, type BuilderTab } from './hooks/useBuilderState';
 import { useBuilderResources } from './hooks/useBuilderResources';
 import BlockPalette from './components/BlockPalette';
-import { AutoBlockEditor } from '@/components/page-builder/AutoBlockEditor';
 import { SectionSettings } from '@/components/page-builder/SectionSettings';
 import { useAutosave } from '@/components/page-builder/useAutosave';
 import Canvas from './components/Canvas';
@@ -50,6 +50,8 @@ import SettingsPanel from './components/SettingsPanel';
 import TriggerPanel from './components/TriggerPanel';
 import ThemePanel from './components/ThemePanel';
 import HistoryPanel from './components/HistoryPanel';
+import { BlockVariantPicker } from './components/BlockVariantPicker';
+import { PropertiesPanel } from './components/PropertiesPanel';
 
 export default function BuilderClient({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -86,14 +88,13 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             id: q.id, title: q.name ?? 'Untitled QR', slug: q.shortPath, redirectUrl: q.redirectUrl,
         })),
     }), [resources.forms, resources.surveys, resources.meetings, resources.qrCodes]);
-
     const editorTheme = React.useMemo(
         () => resolveTheme({ overrides: builder.page?.settings.themeOverrides }),
         [builder.page?.settings.themeOverrides],
     );
 
     const [versions, setVersions] = useState<CampaignPageVersion[]>([]);
-    const [leads, setLeads] = useState<any[]>([]);
+    const [leads, setLeads] = useState<Record<string, unknown>[]>([]);
     const [isLoadingLeads, setIsLoadingLeads] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
 
@@ -132,8 +133,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 const allVSnap = await getDocs(allVQuery);
                 setVersions(allVSnap.docs.map(d => d.data() as CampaignPageVersion));
 
-            } catch (err: any) {
-                toast({ variant: 'destructive', title: 'Error loading page', description: err.message });
+            } catch (err: unknown) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error loading page',
+                    description: err instanceof Error ? err.message : String(err),
+                });
             } finally {
                 builder.dispatch({ type: 'SET_LOADING', payload: false });
             }
@@ -209,8 +214,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
 
             builder.dispatch({ type: 'SET_PAGE', payload: { ...builder.page, status: 'published', publishedVersionId: newVersionId } });
             toast({ title: 'Page Published!', description: 'The page is now live and public.' });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Publish failed', description: err.message });
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Publish failed',
+                description: err instanceof Error ? err.message : String(err),
+            });
         } finally {
             builder.dispatch({ type: 'SET_PUBLISHING', payload: false });
         }
@@ -263,7 +272,26 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         return () => window.removeEventListener('keydown', handler);
     }, [handleSaveAsDraft]);
 
-    // ─── Loading / Error States ──────────────────────────────────────
+    const getSelectedPathLabel = () => {
+        if (builder.selectedBlockId) {
+            const sections = version.structureJson.sections;
+            for (let sIdx = 0; sIdx < sections.length; sIdx++) {
+                const sec = sections[sIdx];
+                const block = sec.blocks.find(b => b.id === builder.selectedBlockId);
+                if (block) {
+                    return `Section ${sIdx + 1} ➔ ${block.type.toUpperCase().replace('_', ' ')}`;
+                }
+            }
+        } else if (builder.selectedSectionId) {
+            const sections = version.structureJson.sections;
+            const sIdx = sections.findIndex(s => s.id === builder.selectedSectionId);
+            if (sIdx !== -1) {
+                return `Section ${sIdx + 1} Settings`;
+            }
+        }
+        return null;
+    };
+
     if (builder.loading) {
         return (
             <div className="h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
@@ -291,9 +319,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const selectedSection = builder.selectedSectionId
         ? version.structureJson.sections.find(s => s.id === builder.selectedSectionId) ?? null
         : null;
-
     // ─── Tab Definitions ─────────────────────────────────────────────
-    const tabs: { id: BuilderTab; icon: any; label: string }[] = [
+    const tabs: { id: BuilderTab; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
         { id: 'add', icon: PlusSquare, label: 'Add' },
         { id: 'edit', icon: Settings2, label: 'Edit' },
         { id: 'triggers', icon: MousePointerClick, label: 'Triggers' },
@@ -301,7 +328,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         { id: 'settings', icon: Settings2, label: 'Settings' },
         { id: 'history', icon: History, label: 'History' },
     ];
-
     // ─── Render ──────────────────────────────────────────────────────
     return (
         <div className="flex flex-col h-screen text-slate-900 border-t print:hidden overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)' }}>
@@ -328,7 +354,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     <Button
                         variant="ghost" size="sm"
                         onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'desktop' })}
-                        className={cn("h-7 px-3 rounded-lg text-xs font-semibold gap-1.5 transition-all",
+                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
                             builder.viewport === 'desktop' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
                         )}
                     >
@@ -336,8 +362,17 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     </Button>
                     <Button
                         variant="ghost" size="sm"
+                        onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'tablet' })}
+                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
+                            builder.viewport === 'tablet' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
+                        )}
+                    >
+                        <Tablet className="w-3.5 h-3.5" /> Tablet
+                    </Button>
+                    <Button
+                        variant="ghost" size="sm"
                         onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'mobile' })}
-                        className={cn("h-7 px-3 rounded-lg text-xs font-semibold gap-1.5 transition-all",
+                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
                             builder.viewport === 'mobile' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
                         )}
                     >
@@ -448,26 +483,37 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         {builder.activeTab === 'add' && (
                             <BlockPalette
                                 onAddBlock={builder.addBlock}
+                                onRequestBlock={(type) => builder.dispatch({ type: 'OPEN_VARIANT_PICKER', payload: type })}
                                 onAddSection={() => builder.addSection()}
                             />
                         )}
 
                         {builder.activeTab === 'edit' && (
-                            builder.selectedBlockId ? (
-                                <AutoBlockEditor
-                                    block={builder.findBlock(builder.selectedBlockId)?.block ?? null}
-                                    resources={builderResources}
-                                    workspaceId={activeWorkspaceId ?? undefined}
-                                    onUpdateProps={builder.updateBlockProps}
-                                />
-                            ) : selectedSection ? (
-                                <SectionSettings
-                                    section={selectedSection}
-                                    onUpdate={(patch) => builder.updateSectionProps(selectedSection.id, patch)}
-                                />
-                            ) : (
-                                <AutoBlockEditor block={null} resources={builderResources} onUpdateProps={builder.updateBlockProps} />
-                            )
+                            <div className="space-y-4">
+                                {getSelectedPathLabel() && (
+                                    <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-900/50 border border-slate-800 rounded-lg px-2.5 py-1.5 mb-2 select-none text-center">
+                                        {getSelectedPathLabel()}
+                                    </div>
+                                )}
+                                {builder.selectedBlockId && builder.findBlock(builder.selectedBlockId)?.block ? (
+                                    <PropertiesPanel
+                                        block={builder.findBlock(builder.selectedBlockId)!.block}
+                                        resources={builderResources}
+                                        theme={editorTheme}
+                                        workspaceId={activeWorkspaceId ?? undefined}
+                                        onUpdate={(patch) => builder.updateBlockProps(builder.selectedBlockId!, patch)}
+                                    />
+                                ) : selectedSection ? (
+                                    <SectionSettings
+                                        section={selectedSection}
+                                        onUpdate={(patch) => builder.updateSectionProps(selectedSection.id, patch)}
+                                    />
+                                ) : (
+                                    <div className="text-center py-8 text-xs text-slate-500 font-semibold leading-relaxed">
+                                        Select a section or block on the canvas to configure properties.
+                                    </div>
+                                )}
+                            </div>
                         )}
 
                         {builder.activeTab === 'triggers' && (
@@ -549,6 +595,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onMoveBlockToColumn={builder.moveBlockToColumn}
                 />
             </div>
+            <BlockVariantPicker
+                open={builder.variantPickerType !== null}
+                type={builder.variantPickerType}
+                onSelect={(type, overrideDefaults) => builder.addBlock(type, undefined, overrideDefaults)}
+                onClose={() => builder.dispatch({ type: 'CLOSE_VARIANT_PICKER' })}
+            />
             {isShareOpen && (
                 <ShareEmbedDialog
                     isOpen={isShareOpen}

@@ -16,4 +16,7 @@ export type BlockField =
   | { kind: 'boolean'; key: string; label: string }
   | { kind: 'select'; key: string; label: string; options: ReadonlyArray<{ value: string; label: string }> }
   | { kind: 'resource'; key: string; label: string; resource: 'form' | 'survey' | 'agreement' | 'meeting' | 'qr' }
-  | { kind: 'list'; key: string; label: string; itemFields: ReadonlyArray<BlockField> };
+  | { kind: 'list'; key: string; label: string; itemFields: ReadonlyArray<BlockField> }
+  | { kind: 'animation'; key: string; label: string }
+  | { kind: 'font-family'; key: string; label: string }
+  | { kind: 'gradient'; key: string; label: string; fromKey: string; toKey: string };

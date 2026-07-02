@@ -29,7 +29,13 @@ import './agreement';
 import './html';
 import './meeting';
 import './qr';
-
+// Maturation new blocks
+import './video-hero';
+import './testimonial-grid';
+import './choice-cards';
+import './app-download';
+import './step-section';
+import './countdown';
 /** No-op marker to make the side-effect import explicit at call sites. */
 export function registerAllBlocks(): void {
   // Registration happens via the imports above; this exists so callers can

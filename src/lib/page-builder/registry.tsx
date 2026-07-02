@@ -40,6 +40,14 @@ export interface BlockRenderContext {
   renderChildren?: () => ReactNode[];
 }
 
+export interface BlockVariant {
+  readonly id: string;
+  readonly label: string;
+  readonly description?: string;
+  readonly thumbnail: React.ReactElement;
+  readonly defaults: Record<string, unknown>;
+}
+
 export interface BlockDefinition<TProps extends Record<string, unknown>> {
   type: PageBlockType;
   label: string;
@@ -55,6 +63,7 @@ export interface BlockDefinition<TProps extends Record<string, unknown>> {
   schema: ZodType<TProps, ZodTypeDef, unknown>;
   /** Layout blocks that accept nested blocks (columns/container/grid). */
   allowsChildren?: boolean;
+  variants?: ReadonlyArray<BlockVariant>;
   render: (props: TProps, block: PageBlock, ctx: BlockRenderContext) => ReactElement;
 }
 

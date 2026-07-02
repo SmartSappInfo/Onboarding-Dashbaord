@@ -40,15 +40,27 @@ export const DEFAULT_BLOCK_PROPS: Partial<Record<PageBlockType, Record<string, u
   testimonial: { author: '', role: '', quote: '', avatarUrl: '' },
   stats: { items: [] },
   logo_grid: { logos: [] },
+  video_hero: { videoUrl: '', headline: 'Welcome', lightRaysEnabled: true, lightRaysColor: '#3B5FFF', showScrollIndicator: true },
+  testimonial_grid: { heading: 'What People Are Saying', columns: '2', items: [], cardStyle: 'video-quote' },
+  choice_cards: { heading: 'Who are you?', cards: [], columns: '2' },
+  app_download: { heading: 'Want to get Started?', overlayColor: '#0A1427', overlayOpacity: 0.8, parallaxEnabled: true, iosUrl: '', androidUrl: '' },
+  step_section: { stepNumber: 1, heading: 'Step Title', videoUrl: '', mediaPosition: 'bottom' },
+  countdown: { targetDate: '', heading: 'Starts in', showDays: true, showHours: true, showMinutes: true, showSeconds: true, theme: 'dark' },
 };
 
 // ─── Factories ───────────────────────────────────────────────────────────────
 /** Build a fresh block of `type` with its default props and a unique id. */
-export function createBlock(type: PageBlockType): PageBlock {
+export function createBlock(
+  type: PageBlockType,
+  overrideDefaults?: Record<string, unknown>
+): PageBlock {
   return {
     id: genId(type),
     type,
-    props: { ...(DEFAULT_BLOCK_PROPS[type] ?? {}) },
+    props: {
+      ...(DEFAULT_BLOCK_PROPS[type] ?? {}),
+      ...(overrideDefaults ?? {}),
+    },
   };
 }
 

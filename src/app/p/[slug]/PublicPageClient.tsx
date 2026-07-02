@@ -39,6 +39,42 @@ import { EmbeddedSurvey } from '@/components/page-builder/embeds/EmbeddedSurvey'
 import { EmbeddedMeeting } from '@/components/page-builder/embeds/EmbeddedMeeting';
 import { EmbeddedQRCode } from '@/components/page-builder/embeds/EmbeddedQRCode';
 
+interface LooseBlockProps {
+  title?: string;
+  subtitle?: string;
+  content?: string;
+  label?: string;
+  url?: string;
+  src?: string;
+  alt?: string;
+  caption?: string;
+  height?: number;
+  style?: string;
+  color?: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+  methods?: Array<{
+    icon?: string;
+    name?: string;
+    title?: string;
+    details: Array<{ label: string; value: string }>;
+  }>;
+  steps?: string[];
+  items?: Array<{
+    id: string;
+    question?: string;
+    answer?: string;
+    value?: string;
+    label?: string;
+    quote?: string;
+    author?: string;
+    role?: string;
+    avatarUrl?: string;
+  }>;
+  html?: string;
+  css?: string;
+}
+
 // Render published pages through the generic registry-driven `PageRenderer`.
 // Defaults ON now that the legacy migration has landed; set the env var to
 // 'false' to fall back to the legacy body for a fast rollback.
@@ -399,33 +435,36 @@ export default function PublicPageClient({
                 <>
                 {/* Hero Section (Always Outside Card) */}
                 <div className="container max-w-4xl mx-auto px-6 pt-32 mb-12 text-center space-y-3 font-body">
-                    {version.structureJson.sections?.find(s => s.id === 'hero-section')?.blocks.map((block, bIdx) => (
-                        <div key={bIdx}>
-                            {block.type === 'hero' && (
-                                <div className="space-y-4">
-                                    {block.props.title?.includes(' - ') ? (
-                                        <>
-                                            <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-2 animate-in zoom-in duration-500">
-                                                {block.props.title.split(' - ')[0]}
-                                            </div>
+                    {version.structureJson.sections?.find(s => s.id === 'hero-section')?.blocks.map((block, bIdx) => {
+                        const props = (block.props || {}) as LooseBlockProps;
+                        return (
+                            <div key={bIdx}>
+                                {block.type === 'hero' && (
+                                    <div className="space-y-4">
+                                        {props.title?.includes(' - ') ? (
+                                            <>
+                                                <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold mb-2 animate-in zoom-in duration-500">
+                                                    {props.title.split(' - ')[0]}
+                                                </div>
+                                                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight font-headline">
+                                                    {interpolate(props.title.split(' - ')[1])}
+                                                </h1>
+                                            </>
+                                        ) : (
                                             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight font-headline">
-                                                {interpolate(block.props.title.split(' - ')[1])}
+                                                {interpolate(props.title || '')}
                                             </h1>
-                                        </>
-                                    ) : (
-                                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight font-headline">
-                                            {interpolate(block.props.title)}
-                                        </h1>
-                                    )}
-                                    {block.props.subtitle && (
-                                        <p className="text-slate-500 dark:text-slate-400 font-medium text-base max-w-2xl mx-auto leading-relaxed">
-                                            {interpolate(block.props.subtitle)}
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    ))}
+                                        )}
+                                        {props.subtitle && (
+                                            <p className="text-slate-500 dark:text-slate-400 font-medium text-base max-w-2xl mx-auto leading-relaxed">
+                                                {interpolate(props.subtitle)}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
 
                 {/* Main Content Card */}
@@ -451,7 +490,7 @@ export default function PublicPageClient({
                                         </div>
 
                                         <div className="space-y-6">
-                                            {section.blocks.map((block, bIdx) => (
+                                            {(section.blocks as Record<string, any>[]).map((block: any, bIdx: number) => (
                                                 <div key={bIdx} className="animate-in fade-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${bIdx * 100}ms` }}>
                                                     {block.type === 'payment_methods' && (
                                                         <div className="grid grid-cols-1 gap-6">

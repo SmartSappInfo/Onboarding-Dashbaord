@@ -15,7 +15,32 @@ interface SectionSettingsProps {
 }
 
 export function SectionSettings({ section, onUpdate }: SectionSettingsProps) {
-  const props = section.props || {};
+  const props = (section.props || {}) as {
+    backgroundType?: string;
+    backgroundColor?: string;
+    backgroundImageUrl?: string;
+    backgroundVideoUrl?: string;
+    backgroundSize?: string;
+    backgroundPosition?: string;
+    backgroundRepeat?: string;
+    backgroundAttachment?: string;
+    gradientFrom?: string;
+    gradientTo?: string;
+    gradientAngle?: number;
+    overlayColor?: string;
+    overlayOpacity?: number;
+    paddingTop?: string;
+    paddingBottom?: string;
+    paddingLeft?: string;
+    paddingRight?: string;
+    minHeight?: string;
+    layout?: string;
+    columnGap?: string;
+    verticalAlign?: string;
+    visibilityDevice?: string;
+    visibilityBehavior?: string;
+    visibilityTag?: string;
+  };
 
   // Resolve presets for padding/spacing
   const getSpacingPreset = (val: string | undefined): string => {

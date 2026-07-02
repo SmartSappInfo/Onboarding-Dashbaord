@@ -432,14 +432,20 @@ export default function NewPageClient() {
                                 <div key={si} className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 space-y-2">
                                     <p className="text-[9px] font-bold text-emerald-400 uppercase">Section {si + 1}</p>
                                     <div className="space-y-1.5">
-                                        {sec.blocks.map((block, bi) => (
-                                            <div key={bi} className="flex items-center gap-2 p-2 bg-slate-900/50 rounded-lg">
-                                                <Badge className="text-[8px] h-4 bg-slate-700 text-slate-300 border-slate-600">{block.type}</Badge>
-                                                <span className="text-[10px] text-slate-400 truncate">
-                                                    {block.props.title || block.props.label || block.props.content?.substring(0, 50) || '—'}
-                                                </span>
-                                            </div>
-                                        ))}
+                                        {sec.blocks.map((block, bi) => {
+                                            const props = (block.props || {}) as Record<string, unknown>;
+                                            const titleVal = typeof props.title === 'string' ? props.title : '';
+                                            const labelVal = typeof props.label === 'string' ? props.label : '';
+                                            const contentVal = typeof props.content === 'string' ? props.content : '';
+                                            return (
+                                                <div key={bi} className="flex items-center gap-2 p-2 bg-slate-900/50 rounded-lg">
+                                                    <Badge className="text-[8px] h-4 bg-slate-700 text-slate-300 border-slate-600">{block.type}</Badge>
+                                                    <span className="text-[10px] text-slate-400 truncate">
+                                                        {titleVal || labelVal || contentVal.substring(0, 50) || '—'}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             ))}

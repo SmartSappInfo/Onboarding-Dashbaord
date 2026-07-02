@@ -68,7 +68,33 @@ export function PageRenderer({
   return (
     <div style={cssVars}>
       {sections.map((section, idx) => {
-        const sectionProps = section.props || {};
+        const sectionProps = (section.props || {}) as {
+          heading?: string;
+          visibilityDevice?: string;
+          visibilityBehavior?: string;
+          visibilityTag?: string;
+          paddingTop?: string;
+          paddingBottom?: string;
+          paddingLeft?: string;
+          paddingRight?: string;
+          minHeight?: string;
+          backgroundType?: string;
+          backgroundColor?: string;
+          gradientAngle?: number;
+          gradientFrom?: string;
+          gradientTo?: string;
+          backgroundImageUrl?: string;
+          backgroundVideoUrl?: string;
+          backgroundAttachment?: string;
+          backgroundSize?: string;
+          backgroundPosition?: string;
+          backgroundRepeat?: string;
+          layout?: string;
+          columnGap?: string;
+          verticalAlign?: string;
+          overlayColor?: string;
+          overlayOpacity?: number;
+        };
         const heading = typeof sectionProps.heading === 'string' ? sectionProps.heading : '';
 
         // Device Visibility overrides
@@ -101,7 +127,10 @@ export function PageRenderer({
           paddingRight: padRight,
           minHeight: minHeight,
           backgroundColor: bgType === 'color' ? sectionProps.backgroundColor : undefined,
-          backgroundImage: bgType === 'image' && sectionProps.backgroundImageUrl ? `url(${sectionProps.backgroundImageUrl})` : undefined,
+          backgroundImage: bgType === 'gradient'
+            ? `linear-gradient(${sectionProps.gradientAngle ?? 135}deg, ${sectionProps.gradientFrom || '#3B5FFF'}, ${sectionProps.gradientTo || '#7C3AED'})`
+            : bgType === 'image' && sectionProps.backgroundImageUrl ? `url(${sectionProps.backgroundImageUrl})` : undefined,
+          backgroundAttachment: sectionProps.backgroundAttachment || 'scroll',
           backgroundSize: sectionProps.backgroundSize || 'cover',
           backgroundPosition: sectionProps.backgroundPosition || 'center',
           backgroundRepeat: sectionProps.backgroundRepeat || 'no-repeat',
@@ -115,7 +144,7 @@ export function PageRenderer({
         // Partition blocks by column index
         const columnsBlocks = Array.from({ length: colsCount }, (_, colIdx) => {
           return section.blocks.filter(b => {
-            const colVal = b.props.column ?? 0;
+            const colVal = ((b.props || {}) as { column?: number }).column ?? 0;
             if (colIdx === colsCount - 1) {
               return colVal >= colIdx;
             }

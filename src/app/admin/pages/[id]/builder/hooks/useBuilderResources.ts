@@ -12,6 +12,7 @@ export interface BuilderResources {
     automations: Automation[];
     surveys: Survey[];
     forms: Form[];
+    agreements: { id: string; title: string }[];
     themes: CampaignPageTheme[];
     savedSections: PageSectionTemplate[];
     meetings: Meeting[];
@@ -27,6 +28,7 @@ export function useBuilderResources(): BuilderResources {
     const [automations, setAutomations] = useState<Automation[]>([]);
     const [surveys, setSurveys] = useState<Survey[]>([]);
     const [forms, setForms] = useState<Form[]>([]);
+    const [agreements, setAgreements] = useState<{ id: string; title: string }[]>([]);
     const [themes, setThemes] = useState<CampaignPageTheme[]>([]);
     const [savedSections, setSavedSections] = useState<PageSectionTemplate[]>([]);
     const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -40,10 +42,11 @@ export function useBuilderResources(): BuilderResources {
         const load = async () => {
             setLoadingResources(true);
             try {
-                const [aSnap, sSnap, fSnap, tList, sList, mSnap, qrSnap] = await Promise.all([
+                const [aSnap, sSnap, fSnap, pSnap, tList, sList, mSnap, qrSnap] = await Promise.all([
                     getDocs(query(collection(firestore, 'automations'), where('isActive', '==', true))),
                     getDocs(query(collection(firestore, 'surveys'), where('status', '==', 'published'))),
                     getDocs(query(collection(firestore, 'forms'), where('status', '==', 'published'))),
+                    getDocs(query(collection(firestore, 'pdfs'), where('isContractDocument', '==', true))),
                     getThemesAction(organizationId),
                     getSectionTemplatesAction(organizationId),
                     activeWorkspaceId 
@@ -57,6 +60,7 @@ export function useBuilderResources(): BuilderResources {
                 setAutomations(aSnap.docs.map(d => ({ id: d.id, ...d.data() } as Automation)));
                 setSurveys(sSnap.docs.map(d => ({ id: d.id, ...d.data() } as Survey)));
                 setForms(fSnap.docs.map(d => ({ id: d.id, ...d.data() } as Form)));
+                setAgreements(pSnap.docs.map(d => ({ id: d.id, title: (d.data().name || 'Agreement Document') })));
                 setThemes(tList);
                 setSavedSections(sList);
                 setMeetings((mSnap.docs || []).map(d => ({ id: d.id, ...d.data() } as Meeting)));
@@ -81,6 +85,7 @@ export function useBuilderResources(): BuilderResources {
         automations,
         surveys,
         forms,
+        agreements,
         themes,
         savedSections,
         meetings,

@@ -18,11 +18,19 @@ registerBlock({
   schema,
   // Rich text is authored via the side-panel editor; the canvas shows the same
   // rendered output in both modes (no inline input → safe for view, R11).
-  render: (props: TextProps, _block, ctx) => (
-    <div
-      className="prose prose-slate max-w-none"
-      style={{ color: ctx.theme.colors.text, fontFamily: ctx.theme.typography.bodyFont }}
-      dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.interpolate(props.content)) }}
-    />
-  ),
-});
+  render: (props: TextProps, _block, ctx) => {
+    const isEdit = ctx.mode === 'edit';
+    const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+      ctx.onPropChange?.({ content: e.currentTarget.innerHTML });
+    };
+    return (
+      <div
+        className="prose prose-slate max-w-none focus:outline-emerald-500/50 focus:outline focus:outline-2 p-1 rounded transition-all"
+        style={{ color: ctx.theme.colors.text, fontFamily: ctx.theme.typography.bodyFont }}
+        contentEditable={isEdit}
+        suppressContentEditableWarning
+        onBlur={isEdit ? handleBlur : undefined}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.interpolate(props.content)) }}
+      />
+    );
+  },});

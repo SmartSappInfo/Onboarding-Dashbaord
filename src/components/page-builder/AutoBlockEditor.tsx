@@ -164,6 +164,40 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
     }
     case 'list':
       return <ListField field={field} value={Array.isArray(value) ? value : []} resources={resources} workspaceId={workspaceId} onChange={(next) => onChange(next)} />;
+    case 'animation':
+      return (
+        <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
+          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200"><SelectValue placeholder="No animation" /></SelectTrigger>
+          <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+            <SelectItem value="none" className="text-xs">None</SelectItem>
+            <SelectItem value="fade-in" className="text-xs">Fade In</SelectItem>
+            <SelectItem value="slide-up" className="text-xs">Slide Up</SelectItem>
+            <SelectItem value="slide-down" className="text-xs">Slide Down</SelectItem>
+            <SelectItem value="slide-left" className="text-xs">Slide Left</SelectItem>
+            <SelectItem value="slide-right" className="text-xs">Slide Right</SelectItem>
+            <SelectItem value="zoom-in" className="text-xs">Zoom In</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    case 'font-family':
+      return (
+        <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
+          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200"><SelectValue placeholder="Default Font" /></SelectTrigger>
+          <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+            <SelectItem value="heading" className="text-xs">Heading Font</SelectItem>
+            <SelectItem value="body" className="text-xs">Body Font</SelectItem>
+            <SelectItem value="sans" className="text-xs">Sans-Serif</SelectItem>
+            <SelectItem value="serif" className="text-xs">Serif</SelectItem>
+            <SelectItem value="mono" className="text-xs">Monospace</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    case 'gradient':
+      return (
+        <div className="flex gap-2">
+          <Input aria-label={`${field.label} Start`} value={asString(value)} placeholder="from" onChange={(e) => onChange(e.target.value)} className={`${INPUT_CLASS} flex-1`} />
+        </div>
+      );
   }
 }
 
