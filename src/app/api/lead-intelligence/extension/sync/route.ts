@@ -104,40 +104,57 @@ export async function POST(request: NextRequest) {
       updatedAt: now
     };
 
-    // Use a Firestore Batch to execute atomically
-    const batch = adminDb.batch();
-    
-    // Set global CRM Entity
-    const entityRef = adminDb.collection('entities').doc(entityId);
-    batch.set(entityRef, newEntity);
+    // Execute atomically inside a Firestore Transaction
+    const result = await adminDb.runTransaction(async (transaction) => {
+      // 1. Read prospect status
+      const prospectRef = adminDb.collection('prospects').doc(prospect.id);
+      const prospectSnap = await transaction.get(prospectRef);
+      if (prospectSnap.exists) {
+        const pData = prospectSnap.data() as Prospect;
+        if (pData.syncStatus === 'synced') {
+          throw new Error('This lead has already been synced to the CRM.');
+        }
+      }
 
-    // Set Workspace Entity
-    const wsEntityRef = adminDb.collection('workspace_entities').doc(wsEntityId);
-    batch.set(wsEntityRef, newWorkspaceEntity);
+      // 2. Read query check for existing workspace entity duplicates
+      const duplicateQuery = adminDb.collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('displayNameLower', '==', prospect.name.toLowerCase())
+        .limit(1);
 
-    // Update prospect syncStatus
-    const prospectRef = adminDb.collection('prospects').doc(prospect.id);
-    batch.update(prospectRef, {
-      syncStatus: 'synced',
-      syncedEntityId: entityId,
-      updatedAt: now
+      const duplicateSnap = await transaction.get(duplicateQuery);
+      if (!duplicateSnap.empty) {
+        throw new Error('An entity with a matching name already exists in this workspace.');
+      }
+
+      // 3. Perform Writes
+      const entityRef = adminDb.collection('entities').doc(entityId);
+      transaction.set(entityRef, newEntity);
+
+      const wsEntityRef = adminDb.collection('workspace_entities').doc(wsEntityId);
+      transaction.set(wsEntityRef, newWorkspaceEntity);
+
+      transaction.update(prospectRef, {
+        syncStatus: 'synced',
+        syncedEntityId: entityId,
+        updatedAt: now
+      });
+
+      const activityId = `act_${Date.now()}`;
+      const activityRef = prospectRef.collection('activities').doc(activityId);
+      transaction.set(activityRef, {
+        id: activityId,
+        prospectId: prospect.id,
+        workspaceId,
+        type: 'create_deal',
+        userId: 'chrome_extension',
+        userName: 'Chrome Extension',
+        content: `Lead synced to SmartSapp CRM. Created Campus/Entity ${prospect.name}.`,
+        createdAt: now
+      });
+
+      return { entityId };
     });
-
-    // Write a synced activity
-    const activityId = `act_${Date.now()}`;
-    const activityRef = adminDb.collection('prospects').doc(prospect.id).collection('activities').doc(activityId);
-    batch.set(activityRef, {
-      id: activityId,
-      prospectId: prospect.id,
-      workspaceId,
-      type: 'create_deal',
-      userId: 'chrome_extension',
-      userName: 'Chrome Extension',
-      content: `Lead synced to SmartSapp CRM. Created Campus/Entity ${prospect.name}.`,
-      createdAt: now
-    });
-
-    await batch.commit();
 
     // Trigger score history logger via server action (non-blocking)
     try {

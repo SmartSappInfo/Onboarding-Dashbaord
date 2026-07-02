@@ -166,42 +166,59 @@ export async function syncProspectToCRMAction(
       updatedAt: now
     };
 
-    const batch = adminDb.batch();
-    
-    // Set CRM global entity
-    batch.set(adminDb.collection('entities').doc(entityId), newEntity);
+    const result = await adminDb.runTransaction(async (transaction) => {
+      // 1. Read prospect status
+      const prospectRef = adminDb.collection('prospects').doc(prospect.id);
+      const prospectSnap = await transaction.get(prospectRef);
+      if (prospectSnap.exists) {
+        const pData = prospectSnap.data() as Prospect;
+        if (pData.syncStatus === 'synced') {
+          throw new Error('This lead has already been synced to the CRM.');
+        }
+      }
 
-    // Set CRM workspace-specific entity
-    batch.set(adminDb.collection('workspace_entities').doc(wsEntityId), newWorkspaceEntity);
+      // 2. Read query check for existing workspace entity duplicates
+      const duplicateQuery = adminDb.collection('workspace_entities')
+        .where('workspaceId', '==', prospect.workspaceId)
+        .where('displayNameLower', '==', prospect.name.toLowerCase())
+        .limit(1);
 
-    // Update prospect record
-    batch.update(adminDb.collection('prospects').doc(prospect.id), {
-      syncStatus: 'synced',
-      syncedEntityId: entityId,
-      updatedAt: now
+      const duplicateSnap = await transaction.get(duplicateQuery);
+      if (!duplicateSnap.empty) {
+        throw new Error('An entity with a matching name already exists in this workspace.');
+      }
+
+      // 3. Perform Writes
+      transaction.set(adminDb.collection('entities').doc(entityId), newEntity);
+      transaction.set(adminDb.collection('workspace_entities').doc(wsEntityId), newWorkspaceEntity);
+      
+      transaction.update(prospectRef, {
+        syncStatus: 'synced',
+        syncedEntityId: entityId,
+        updatedAt: now
+      });
+
+      const activityId = `act_${Date.now()}`;
+      transaction.set(prospectRef.collection('activities').doc(activityId), {
+        id: activityId,
+        prospectId: prospect.id,
+        workspaceId: prospect.workspaceId,
+        type: 'create_deal',
+        userId: 'system_api',
+        userName: 'SmartSapp CRM',
+        content: `Lead synced to SmartSapp CRM. Created Entity ${prospect.name}.`,
+        createdAt: now
+      });
+
+      return { entityId };
     });
-
-    // Write activity log
-    const activityId = `act_${Date.now()}`;
-    batch.set(adminDb.collection('prospects').doc(prospect.id).collection('activities').doc(activityId), {
-      id: activityId,
-      prospectId: prospect.id,
-      workspaceId: prospect.workspaceId,
-      type: 'create_deal',
-      userId: 'system_api',
-      userName: 'SmartSapp CRM',
-      content: `Lead synced to SmartSapp CRM. Created Entity ${prospect.name}.`,
-      createdAt: now
-    });
-
-    await batch.commit();
 
     // Trigger score history logger (non-blocking)
     try {
       await adjustLeadScoreAction({
         organizationId: prospect.organizationId,
         workspaceId: prospect.workspaceId,
-        entityId,
+        entityId: result.entityId,
         contactEmailOrId: mappedContacts[0]?.id || 'unknown',
         value: prospect.scoring.overallScore,
         operation: 'set',

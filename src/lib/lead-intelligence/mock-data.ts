@@ -15,7 +15,13 @@ export const MOCK_GHANA_PROSPECTS: Omit<Prospect, 'id' | 'organizationId' | 'wor
     industry: 'Education',
     location: { lat: 6.6906, lng: -1.6244 },
     contacts: [
-      { name: 'Kwame Mensah', email: 'kmensah@oseitutuacademy.edu.gh', role: 'Principal' }
+      { 
+        name: 'Kwame Mensah', 
+        email: 'kmensah@oseitutuacademy.edu.gh', 
+        role: 'Principal',
+        confidence: 95,
+        verificationStatus: 'verified'
+      }
     ],
     scoring: {
       overallScore: 82,
@@ -39,7 +45,13 @@ export const MOCK_GHANA_PROSPECTS: Omit<Prospect, 'id' | 'organizationId' | 'wor
     industry: 'Education',
     location: { lat: 5.6037, lng: -0.1870 },
     contacts: [
-      { name: 'Ama Serwaa', email: 'aserwaa@accraroyalschool.edu.gh', role: 'Administrator' }
+      { 
+        name: 'Ama Serwaa', 
+        email: 'aserwaa@accraroyalschool.edu.gh', 
+        role: 'Administrator',
+        confidence: 90,
+        verificationStatus: 'verified'
+      }
     ],
     scoring: {
       overallScore: 74,
@@ -63,7 +75,13 @@ export const MOCK_GHANA_PROSPECTS: Omit<Prospect, 'id' | 'organizationId' | 'wor
     industry: 'Hospitality',
     location: { lat: 6.6850, lng: -1.6190 },
     contacts: [
-      { name: 'Kofi Osei', email: 'k.osei@kumasiridgehotel.com', role: 'General Manager' }
+      { 
+        name: 'Kofi Osei', 
+        email: 'k.osei@kumasiridgehotel.com', 
+        role: 'General Manager',
+        confidence: 85,
+        verificationStatus: 'verified'
+      }
     ],
     scoring: {
       overallScore: 68,
@@ -87,7 +105,13 @@ export const MOCK_GHANA_PROSPECTS: Omit<Prospect, 'id' | 'organizationId' | 'wor
     industry: 'Technology',
     location: { lat: 5.6200, lng: -0.1500 },
     contacts: [
-      { name: 'Elorm Adzo', email: 'elorm@accrahub.io', role: 'Founder' }
+      { 
+        name: 'Elorm Adzo', 
+        email: 'elorm@accrahub.io', 
+        role: 'Founder',
+        confidence: 98,
+        verificationStatus: 'verified'
+      }
     ],
     scoring: {
       overallScore: 90,
