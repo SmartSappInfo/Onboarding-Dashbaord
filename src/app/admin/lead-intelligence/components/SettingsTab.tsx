@@ -30,7 +30,7 @@ export default function SettingsTab({
         <Card className="bg-card/35 backdrop-blur-sm border-border/50">
           <CardHeader>
             <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
-              <Settings className="h-4 w-4 text-emerald-400" />
+              <Settings className="h-4 w-4 text-blue-400" />
               Credentials & Data Integration Keys
             </CardTitle>
             <CardDescription className="text-xs">Add your API credentials to connect Google Maps, BuiltWith technographics and Hunter decision makers.</CardDescription>
@@ -72,7 +72,7 @@ export default function SettingsTab({
             <div className="pt-2">
               <Button 
                 onClick={onSaveSettings} 
-                className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs h-9 px-6 rounded-lg active:scale-[0.97]"
+                className="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs h-9 px-6 rounded-lg active:scale-[0.97]"
               >
                 Save API settings
               </Button>
@@ -84,7 +84,7 @@ export default function SettingsTab({
         <Card className="bg-card/35 backdrop-blur-sm border-border/50">
           <CardHeader>
             <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              <ShieldCheck className="h-4 w-4 text-blue-400" />
               Chrome Extension Sideload Installer
             </CardTitle>
             <CardDescription className="text-xs">Integrate SmartSapp Lead Intelligence directly into your Chrome browser toolbar.</CardDescription>
@@ -117,7 +117,7 @@ export default function SettingsTab({
               <Button 
                 asChild
                 disabled={!settings.chromeExtensionToken}
-                className="h-9 bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs rounded-lg active:scale-[0.97]"
+                className="h-9 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs rounded-lg active:scale-[0.97]"
               >
                 <a href={`/api/lead-intelligence/extension/download?workspaceId=${activeWorkspaceId}&token=${settings.chromeExtensionToken}`} download>
                   <Download className="h-3.5 w-3.5 mr-1.5" />

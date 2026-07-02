@@ -29,7 +29,7 @@ export default function WebsiteScannerTab({
     <Card className="bg-card/35 backdrop-blur-sm border-border/50">
       <CardHeader>
         <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-1.5">
-          <Globe className="h-4 w-4 text-emerald-400" />
+          <Globe className="h-4 w-4 text-blue-400" />
           Direct Website Tech Scanner
         </CardTitle>
         <CardDescription className="text-xs">Enter a domain name to execute an audit of its SSL, technologies, performance, and AI conversion opportunities.</CardDescription>
@@ -45,7 +45,7 @@ export default function WebsiteScannerTab({
           <Button 
             onClick={onUrlScan} 
             disabled={isScanning || !scanUrl} 
-            className="h-10 px-6 bg-emerald-500 hover:bg-emerald-600 text-black font-semibold active:scale-[0.97] transition-all rounded-lg text-xs"
+            className="h-10 px-6 bg-blue-500 hover:bg-blue-600 text-white font-semibold active:scale-[0.97] transition-all rounded-lg text-xs"
           >
             {isScanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Audit Domain'}
           </Button>
@@ -56,7 +56,7 @@ export default function WebsiteScannerTab({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Technology Stack */}
               <Card className="bg-muted/10 border-border/40">
-                <CardHeader className="p-4"><CardTitle className="text-xs font-bold uppercase tracking-wider text-emerald-400">Technology Stack</CardTitle></CardHeader>
+                <CardHeader className="p-4"><CardTitle className="text-xs font-bold uppercase tracking-wider text-blue-400">Technology Stack</CardTitle></CardHeader>
                 <CardContent className="p-4 pt-0">
                   <div className="flex flex-wrap gap-1.5">
                     {scannedProspect.websiteScan?.technologies && scannedProspect.websiteScan.technologies.length > 0 ? (
@@ -72,11 +72,11 @@ export default function WebsiteScannerTab({
 
               {/* SSL & Speed */}
               <Card className="bg-muted/10 border-border/40">
-                <CardHeader className="p-4"><CardTitle className="text-xs font-bold uppercase tracking-wider text-teal-400">Network & Performance</CardTitle></CardHeader>
+                <CardHeader className="p-4"><CardTitle className="text-xs font-bold uppercase tracking-wider text-sky-400">Network & Performance</CardTitle></CardHeader>
                 <CardContent className="p-4 pt-0 space-y-2">
                   <div className="flex justify-between items-center border-b border-border/30 pb-2">
                     <span>SSL Status</span>
-                    <Badge className={scannedProspect.websiteScan?.sslValid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}>
+                    <Badge className={scannedProspect.websiteScan?.sslValid ? 'bg-blue-500/15 text-blue-400' : 'bg-rose-500/15 text-rose-400'}>
                       {scannedProspect.websiteScan?.sslValid ? 'Secure SSL' : 'Invalid SSL'}
                     </Badge>
                   </div>
@@ -93,9 +93,9 @@ export default function WebsiteScannerTab({
 
               {/* Opportunity Score */}
               <Card className="bg-muted/10 border-border/40">
-                <CardHeader className="p-4"><CardTitle className="text-xs font-bold uppercase tracking-wider text-emerald-400">Smart Opportunity Score</CardTitle></CardHeader>
+                <CardHeader className="p-4"><CardTitle className="text-xs font-bold uppercase tracking-wider text-blue-400">Smart Opportunity Score</CardTitle></CardHeader>
                 <CardContent className="p-4 pt-0 flex flex-col items-center justify-center py-4">
-                  <div className="text-3xl font-black text-emerald-400">{scannedProspect.scoring.overallScore}%</div>
+                  <div className="text-3xl font-black text-blue-400">{scannedProspect.scoring.overallScore}%</div>
                   <div className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest mt-1">High conversion potential</div>
                 </CardContent>
               </Card>
@@ -105,7 +105,7 @@ export default function WebsiteScannerTab({
             {scannedProspect.aiInsights && (
               <div className="space-y-4">
                 <div className="p-4 bg-muted/10 border border-border/40 rounded-xl space-y-2">
-                  <h4 className="font-bold text-emerald-400 text-xs uppercase">AI Stethoscope Report</h4>
+                  <h4 className="font-bold text-blue-400 text-xs uppercase">AI Stethoscope Report</h4>
                   <p className="leading-relaxed text-muted-foreground">{scannedProspect.aiInsights.summary}</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -115,25 +115,25 @@ export default function WebsiteScannerTab({
                       {scannedProspect.aiInsights.problemsFound.map((p, i) => <li key={i}>{p}</li>)}
                     </ul>
                   </div>
-                  <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl space-y-2">
-                    <h4 className="font-bold text-emerald-400 text-xs uppercase">Target Solutions</h4>
+                  <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2">
+                    <h4 className="font-bold text-blue-400 text-xs uppercase">Target Solutions</h4>
                     <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
                       {scannedProspect.aiInsights.opportunities.map((o, i) => <li key={i}>{o}</li>)}
                     </ul>
                   </div>
                 </div>
 
-                <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-xl space-y-2">
+                <div className="p-4 bg-blue-500/5 border border-blue-500/15 rounded-xl space-y-2">
                   <div className="flex justify-between items-center border-b border-border/20 pb-2 mb-2">
-                    <h4 className="font-bold text-emerald-400 text-xs uppercase">Tailored Sales Presentation</h4>
-                    <span className="font-bold text-teal-400">Est. Revenue Value: ${scannedProspect.aiInsights.estimatedRevenueOpportunity}/yr</span>
+                    <h4 className="font-bold text-blue-400 text-xs uppercase">Tailored Sales Presentation</h4>
+                    <span className="font-bold text-sky-400">Est. Revenue Value: ${scannedProspect.aiInsights.estimatedRevenueOpportunity}/yr</span>
                   </div>
                   <p className="italic text-muted-foreground leading-relaxed">"{scannedProspect.aiInsights.recommendedPitch}"</p>
                   <div className="pt-3">
                     <Button 
                       onClick={() => onSync(scannedProspect)} 
                       disabled={scannedProspect.syncStatus === 'synced'} 
-                      className="bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs rounded-lg h-9 px-4 active:scale-[0.97]"
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs rounded-lg h-9 px-4 active:scale-[0.97]"
                     >
                       {scannedProspect.syncStatus === 'synced' ? 'Synced ✓' : 'Import to SmartSapp Contacts'}
                     </Button>

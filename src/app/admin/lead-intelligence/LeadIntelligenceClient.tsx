@@ -28,19 +28,19 @@ import type {
 
 // Lazy load components to keep bundle size small and responsive
 const DashboardTab = dynamic(() => import('./components/DashboardTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-emerald-500" /></div>
+  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
 });
 const ProspectFinderTab = dynamic(() => import('./components/ProspectFinderTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-emerald-500" /></div>
+  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
 });
 const WebsiteScannerTab = dynamic(() => import('./components/WebsiteScannerTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-emerald-500" /></div>
+  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
 });
 const SavedSearchesTab = dynamic(() => import('./components/SavedSearchesTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-emerald-500" /></div>
+  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
 });
 const SettingsTab = dynamic(() => import('./components/SettingsTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-emerald-500" /></div>
+  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
 });
 
 // Kowalski Animation Transition Constants
@@ -248,12 +248,12 @@ export default function LeadIntelligenceClient() {
   return (
     <div className="flex-1 flex flex-col p-6 space-y-6 max-w-7xl mx-auto w-full">
       {/* Dynamic Radial Gradient Glow Mesh */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.05),transparent_50%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.05),transparent_50%)] pointer-events-none" />
 
       {/* Page Title & Status Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-500">
+          <h1 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-sky-500">
             Lead Intelligence Platform
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -272,11 +272,11 @@ export default function LeadIntelligenceClient() {
       {/* Main Tabs Segment */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-5 w-full max-w-3xl bg-muted/40 backdrop-blur-md border border-border/50 p-1 rounded-xl">
-          <TabsTrigger value="dashboard" className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 data-[state=active]:border-emerald-500/20">Dashboard</TabsTrigger>
-          <TabsTrigger value="finder" className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 data-[state=active]:border-emerald-500/20">Prospect Finder</TabsTrigger>
-          <TabsTrigger value="scanner" className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 data-[state=active]:border-emerald-500/20">Website Scanner</TabsTrigger>
-          <TabsTrigger value="searches" className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 data-[state=active]:border-emerald-500/20">Saved Searches</TabsTrigger>
-          <TabsTrigger value="settings" className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400 data-[state=active]:border-emerald-500/20">Settings & Chrome</TabsTrigger>
+          <TabsTrigger value="dashboard" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Dashboard</TabsTrigger>
+          <TabsTrigger value="finder" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Prospect Finder</TabsTrigger>
+          <TabsTrigger value="scanner" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Website Scanner</TabsTrigger>
+          <TabsTrigger value="searches" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Saved Searches</TabsTrigger>
+          <TabsTrigger value="settings" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Settings & Chrome</TabsTrigger>
         </TabsList>
 
         <AnimatePresence mode="wait">

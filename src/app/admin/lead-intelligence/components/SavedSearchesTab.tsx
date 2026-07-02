@@ -35,7 +35,7 @@ export default function SavedSearchesTab({
                 </div>
                 <Button 
                   onClick={() => onRunSearch(s)}
-                  className="h-8 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 text-xs rounded-lg active:scale-[0.97]"
+                  className="h-8 bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 text-xs rounded-lg active:scale-[0.97]"
                 >
                   Run Search
                 </Button>

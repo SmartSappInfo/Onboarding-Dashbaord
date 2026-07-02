@@ -62,7 +62,7 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -86,11 +86,11 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
       {/* Lead Score & Re-Enrich block */}
       <div className="flex justify-between items-center border-b border-border/30 pb-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <Sparkles className="h-5 w-5 text-emerald-400" />
+          <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-blue-400" />
           </div>
           <div>
-            <h3 className="font-bold text-sm text-emerald-400">Digital Audit Profile</h3>
+            <h3 className="font-bold text-sm text-blue-400">Digital Audit Profile</h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">Enriched via SmartSapp AI Opportunity Stethoscope</p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
             Refresh Intelligence
           </Button>
           <div className="text-right pl-3 border-l border-border/30">
-            <div className="text-lg font-black text-emerald-400">{prospect.scoring.overallScore}%</div>
+            <div className="text-lg font-black text-blue-400">{prospect.scoring.overallScore}%</div>
             <div className="text-[8px] uppercase tracking-wider text-muted-foreground font-bold">Smart Score</div>
           </div>
         </div>
@@ -115,7 +115,7 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Technographics */}
         <Card className="bg-card/35 border-border/40">
-          <CardHeader className="p-4"><CardTitle className="text-[10px] uppercase font-bold text-emerald-400">Technographics</CardTitle></CardHeader>
+          <CardHeader className="p-4"><CardTitle className="text-[10px] uppercase font-bold text-blue-400">Technographics</CardTitle></CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="flex flex-wrap gap-1.5">
               {prospect.websiteScan?.technologies && prospect.websiteScan.technologies.length > 0 ? (
@@ -131,11 +131,11 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
 
         {/* Website Performance */}
         <Card className="bg-card/35 border-border/40">
-          <CardHeader className="p-4"><CardTitle className="text-[10px] uppercase font-bold text-teal-400">Site Performance</CardTitle></CardHeader>
+          <CardHeader className="p-4"><CardTitle className="text-[10px] uppercase font-bold text-sky-400">Site Performance</CardTitle></CardHeader>
           <CardContent className="p-4 pt-0 space-y-2">
             <div className="flex justify-between items-center border-b border-border/20 pb-2">
               <span>SSL Status</span>
-              <Badge className={prospect.websiteScan?.sslValid ? 'bg-emerald-500/15 text-emerald-400 border-none' : 'bg-rose-500/15 text-rose-400 border-none'}>
+              <Badge className={prospect.websiteScan?.sslValid ? 'bg-blue-500/15 text-blue-400 border-none' : 'bg-rose-500/15 text-rose-400 border-none'}>
                 {prospect.websiteScan?.sslValid ? 'Secure' : 'Insecure'}
               </Badge>
             </div>
@@ -158,7 +158,7 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
 
         {/* Score metrics */}
         <Card className="bg-card/35 border-border/40">
-          <CardHeader className="p-4"><CardTitle className="text-[10px] uppercase font-bold text-emerald-400">Scoring breakdown</CardTitle></CardHeader>
+          <CardHeader className="p-4"><CardTitle className="text-[10px] uppercase font-bold text-blue-400">Scoring breakdown</CardTitle></CardHeader>
           <CardContent className="p-4 pt-0 space-y-1.5">
             <div className="flex justify-between"><span>Need Score</span><span className="font-bold">{prospect.scoring.needScore}/25</span></div>
             <div className="flex justify-between"><span>Digital Maturity</span><span className="font-bold">{prospect.scoring.digitalMaturity}/15</span></div>
@@ -172,7 +172,7 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
       {prospect.aiInsights && (
         <div className="space-y-4">
           <div className="p-4 bg-muted/10 border border-border/40 rounded-xl space-y-2">
-            <h4 className="font-bold text-emerald-400 text-[10px] uppercase tracking-wider">AI Audit Summary</h4>
+            <h4 className="font-bold text-blue-400 text-[10px] uppercase tracking-wider">AI Audit Summary</h4>
             <p className="leading-relaxed text-muted-foreground">{prospect.aiInsights.summary}</p>
           </div>
 
@@ -183,8 +183,8 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
                 {prospect.aiInsights.problemsFound.map((p, i) => <li key={i}>{p}</li>)}
               </ul>
             </div>
-            <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl space-y-2">
-              <h4 className="font-bold text-emerald-400 text-[10px] uppercase tracking-wider">Transformation Solutions</h4>
+            <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2">
+              <h4 className="font-bold text-blue-400 text-[10px] uppercase tracking-wider">Transformation Solutions</h4>
               <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
                 {prospect.aiInsights.opportunities.map((o, i) => <li key={i}>{o}</li>)}
               </ul>
@@ -192,10 +192,10 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
           </div>
 
           {/* Sales pitch & objection handler */}
-          <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-xl space-y-3">
+          <div className="p-4 bg-blue-500/5 border border-blue-500/15 rounded-xl space-y-3">
             <div className="flex justify-between items-center border-b border-border/20 pb-2">
-              <h4 className="font-bold text-emerald-400 text-[10px] uppercase tracking-wider">Elevator Sales Pitch</h4>
-              <span className="font-bold text-teal-400">Estimated Revenue Opportunity: ${prospect.aiInsights.estimatedRevenueOpportunity}/yr</span>
+              <h4 className="font-bold text-blue-400 text-[10px] uppercase tracking-wider">Elevator Sales Pitch</h4>
+              <span className="font-bold text-sky-400">Estimated Revenue Opportunity: ${prospect.aiInsights.estimatedRevenueOpportunity}/yr</span>
             </div>
             <p className="italic text-muted-foreground leading-relaxed">"{prospect.aiInsights.recommendedPitch}"</p>
 

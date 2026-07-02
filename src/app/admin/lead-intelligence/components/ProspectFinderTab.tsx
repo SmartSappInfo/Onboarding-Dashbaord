@@ -69,7 +69,7 @@ export default function ProspectFinderTab({
             <Button 
               onClick={onSearch} 
               disabled={isSearching} 
-              className="w-full h-8 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] transition-all rounded-lg text-black font-semibold text-xs flex items-center justify-center gap-1.5"
+              className="w-full h-8 bg-blue-500 hover:bg-blue-600 active:scale-[0.97] transition-all rounded-lg text-white font-semibold text-xs flex items-center justify-center gap-1.5"
             >
               {isSearching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
               Run Discovery
@@ -94,7 +94,7 @@ export default function ProspectFinderTab({
           <Card className="bg-card/35 backdrop-blur-sm border-border/50 overflow-hidden relative shadow-md">
             <CardHeader className="p-4 border-b border-border/30 bg-muted/10 flex flex-row justify-between items-center">
               <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-emerald-400" />
+                <MapPin className="h-4 w-4 text-blue-400" />
                 Target Area Map Pins (Kumasi / Accra)
               </CardTitle>
             </CardHeader>
@@ -128,7 +128,7 @@ export default function ProspectFinderTab({
                   >
                     <div className={`relative flex items-center justify-center h-5 w-5 rounded-full shadow-lg ${
                       isSelected ? 'bg-primary border-2 border-white scale-125 z-20' : 
-                      isSynced ? 'bg-emerald-500 border border-emerald-600' : 'bg-rose-500 border border-rose-600'
+                      isSynced ? 'bg-blue-500 border border-blue-600' : 'bg-rose-500 border border-rose-600'
                     }`}>
                       <MapPin className="h-3 w-3 text-black" />
                       <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-black/80 text-[8px] font-bold px-1 rounded truncate max-w-[80px]">
@@ -168,7 +168,7 @@ export default function ProspectFinderTab({
                       <TableRow 
                         key={p.id} 
                         id={`prospect-row-${p.id}`}
-                        className={`cursor-pointer transition-colors duration-150 ${isSelected ? 'bg-emerald-500/5' : 'hover:bg-muted/10'}`}
+                        className={`cursor-pointer transition-colors duration-150 ${isSelected ? 'bg-blue-500/5' : 'hover:bg-muted/10'}`}
                         onClick={() => setSelectedProspect(p)}
                       >
                         <TableCell className="p-3">
@@ -177,19 +177,19 @@ export default function ProspectFinderTab({
                         </TableCell>
                         <TableCell className="p-3 text-xs">{p.rating ? `⭐ ${p.rating} (${p.reviewsCount})` : 'N/A'}</TableCell>
                         <TableCell className="p-3">
-                          <Badge variant="outline" className={`text-[8px] uppercase font-bold ${p.claimed ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'}`}>
+                          <Badge variant="outline" className={`text-[8px] uppercase font-bold ${p.claimed ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'}`}>
                             {p.claimed ? 'Claimed' : 'Unclaimed'}
                           </Badge>
                         </TableCell>
                         <TableCell className="p-3">
-                          <Badge className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/10 text-[10px] font-extrabold">{p.scoring.overallScore}%</Badge>
+                          <Badge className="bg-blue-500/10 text-blue-400 hover:bg-blue-500/10 text-[10px] font-extrabold">{p.scoring.overallScore}%</Badge>
                         </TableCell>
                         <TableCell className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1.5">
                             <Button 
                               onClick={() => onEnrich(p)} 
                               variant="ghost" 
-                              className="h-7 px-2 text-[10px] hover:bg-muted/10 hover:text-emerald-400 active:scale-[0.97] transition-all rounded-lg"
+                              className="h-7 px-2 text-[10px] hover:bg-muted/10 hover:text-blue-400 active:scale-[0.97] transition-all rounded-lg"
                             >
                               <RefreshCw className="h-3 w-3 mr-1" />
                               Enrich
@@ -197,7 +197,7 @@ export default function ProspectFinderTab({
                             <Button 
                               onClick={() => onSync(p)} 
                               disabled={p.syncStatus === 'synced'} 
-                              className="h-7 px-2 text-[10px] bg-emerald-500 hover:bg-emerald-600 text-black font-semibold active:scale-[0.97] transition-all rounded-lg"
+                              className="h-7 px-2 text-[10px] bg-blue-500 hover:bg-blue-600 text-white font-semibold active:scale-[0.97] transition-all rounded-lg"
                             >
                               {p.syncStatus === 'synced' ? 'Synced ✓' : 'Sync CRM'}
                             </Button>
@@ -214,7 +214,7 @@ export default function ProspectFinderTab({
 
         {/* Prospect Side Drawer Detail Sheet */}
         {selectedProspect && (
-          <Card className="bg-card/45 border-emerald-500/20 relative shadow-lg">
+          <Card className="bg-card/45 border-blue-500/20 relative shadow-lg">
             <div className="absolute top-3 right-3">
               <Button variant="ghost" className="h-6 w-6 p-0 rounded-full" onClick={() => setSelectedProspect(null)}>
                 <X className="h-4 w-4" />
@@ -223,11 +223,11 @@ export default function ProspectFinderTab({
             <CardHeader className="p-4 border-b border-border/30">
               <div className="flex justify-between items-start pr-6">
                 <div>
-                  <CardTitle className="text-sm font-extrabold text-emerald-400">{selectedProspect.name}</CardTitle>
+                  <CardTitle className="text-sm font-extrabold text-blue-400">{selectedProspect.name}</CardTitle>
                   <CardDescription className="text-xs">{selectedProspect.domain}</CardDescription>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-black text-emerald-400">{selectedProspect.scoring.overallScore}%</div>
+                  <div className="text-lg font-black text-blue-400">{selectedProspect.scoring.overallScore}%</div>
                   <div className="text-[8px] uppercase tracking-wider text-muted-foreground font-bold">Smart Score</div>
                 </div>
               </div>
@@ -244,7 +244,7 @@ export default function ProspectFinderTab({
               {selectedProspect.aiInsights ? (
                 <div className="space-y-3">
                   <div>
-                    <h4 className="font-bold text-emerald-400 text-[10px] uppercase tracking-wider">AI Summary Analysis</h4>
+                    <h4 className="font-bold text-blue-400 text-[10px] uppercase tracking-wider">AI Summary Analysis</h4>
                     <p className="mt-1 leading-relaxed text-muted-foreground">{selectedProspect.aiInsights.summary}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -255,7 +255,7 @@ export default function ProspectFinderTab({
                       </ul>
                     </div>
                     <div>
-                      <h4 className="font-bold text-[10px] uppercase tracking-wider text-emerald-400">Smart Opportunities</h4>
+                      <h4 className="font-bold text-[10px] uppercase tracking-wider text-blue-400">Smart Opportunities</h4>
                       <ul className="list-disc pl-4 mt-1 space-y-1 text-muted-foreground">
                         {selectedProspect.aiInsights.opportunities.map((o, i) => <li key={i}>{o}</li>)}
                       </ul>
@@ -263,7 +263,7 @@ export default function ProspectFinderTab({
                   </div>
 
                   <div className="border-t border-border/30 pt-3">
-                    <h4 className="font-bold text-emerald-400 text-[10px] uppercase tracking-wider">Recommended Pitch</h4>
+                    <h4 className="font-bold text-blue-400 text-[10px] uppercase tracking-wider">Recommended Pitch</h4>
                     <p className="mt-1 text-muted-foreground italic bg-muted/10 p-2 border border-border/40 rounded-lg">"{selectedProspect.aiInsights.recommendedPitch}"</p>
                   </div>
                 </div>
@@ -272,7 +272,7 @@ export default function ProspectFinderTab({
                   <p className="text-muted-foreground mb-2">Detailed AI insights, pitches, and technographic analysis have not been generated.</p>
                   <Button 
                     onClick={() => onEnrich(selectedProspect)} 
-                    className="h-8 bg-emerald-500 text-black font-semibold rounded-lg text-xs"
+                    className="h-8 bg-blue-500 text-white font-semibold rounded-lg text-xs"
                   >
                     Run AI Opportunity Scan
                   </Button>
@@ -281,7 +281,7 @@ export default function ProspectFinderTab({
 
               {selectedProspect.contacts.length > 0 && (
                 <div className="border-t border-border/30 pt-3">
-                  <h4 className="font-bold text-emerald-400 text-[10px] uppercase tracking-wider">Found Decision Makers</h4>
+                  <h4 className="font-bold text-blue-400 text-[10px] uppercase tracking-wider">Found Decision Makers</h4>
                   <div className="mt-2 space-y-1.5">
                     {selectedProspect.contacts.map((c, i) => (
                       <div key={i} className="flex justify-between items-center">
