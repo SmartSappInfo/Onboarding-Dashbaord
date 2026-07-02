@@ -4,6 +4,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { CalendarConnection } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
+import { encryptToken } from '@/lib/crypto';
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get('code');
@@ -47,8 +49,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       workspaceId: workspaceId,
       userId: 'system_integration', // Scoped to workspace level
       provider: 'google_calendar',
-      accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token || '', // Fallback in case offline token wasn't returned on re-auth
+      accessToken: encryptToken(tokenData.access_token),
+      refreshToken: encryptToken(tokenData.refresh_token || ''), // Fallback in case offline token wasn't returned on re-auth
       expiresAt,
       calendarId: 'primary',
       syncDirection: 'two_way',

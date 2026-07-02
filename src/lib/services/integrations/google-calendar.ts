@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { CalendarConnection } from '@/lib/types';
+import { encryptToken, decryptToken } from '@/lib/crypto';
 
 interface GoogleTokenResponse {
   access_token: string;
@@ -37,7 +38,7 @@ interface GoogleErrorResponse {
  * 1. Custom Workspace credentials (if override set)
  * 2. Organization overrides (if override set)
  * 3. System Defaults (loaded from environment variables)
- */
+ *  */
 export async function resolveGoogleCredentials(
   workspaceId: string,
   orgId: string
@@ -132,10 +133,12 @@ export async function refreshGoogleToken(
     connection.organizationId
   );
 
+  const decryptedRefreshToken = decryptToken(connection.refreshToken);
+
   const bodyParams = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
-    refresh_token: connection.refreshToken,
+    refresh_token: decryptedRefreshToken,
     grant_type: 'refresh_token',
   });
 
@@ -170,24 +173,42 @@ export async function getValidGoogleConnection(
   }
 
   const connection = connDoc.data() as CalendarConnection;
-  const expiryTime = new Date(connection.expiresAt).getTime();
+  
+  // Decrypt connection tokens for local processing
+  const decryptedConnection: CalendarConnection = {
+    ...connection,
+    accessToken: decryptToken(connection.accessToken),
+    refreshToken: decryptToken(connection.refreshToken),
+  };
+
+  const expiryTime = new Date(decryptedConnection.expiresAt).getTime();
   const now = Date.now();
 
   if (expiryTime - now < 5 * 60 * 1000) {
-    const newTokens = await refreshGoogleToken(connection);
+    const newTokens = await refreshGoogleToken(decryptedConnection);
+    
+    // Encrypt updated tokens before saving
+    const encryptedAccessToken = encryptToken(newTokens.access_token);
+    const encryptedRefreshToken = encryptToken(newTokens.refresh_token || decryptedConnection.refreshToken);
+
     const updatedConnection: CalendarConnection = {
       ...connection,
-      accessToken: newTokens.access_token,
-      // If server does not return a new refresh token, preserve existing one
-      refreshToken: newTokens.refresh_token || connection.refreshToken,
+      accessToken: encryptedAccessToken,
+      refreshToken: encryptedRefreshToken,
       expiresAt: new Date(now + newTokens.expires_in * 1000).toISOString(),
     };
 
     await adminDb.collection('calendar_connections').doc(connectionId).set(updatedConnection);
-    return updatedConnection;
+    
+    // Return decrypted connection to client callers for immediate API use
+    return {
+      ...updatedConnection,
+      accessToken: newTokens.access_token,
+      refreshToken: newTokens.refresh_token || decryptedConnection.refreshToken,
+    };
   }
 
-  return connection;
+  return decryptedConnection;
 }
 
 /**

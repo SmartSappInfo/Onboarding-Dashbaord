@@ -44,7 +44,8 @@ function getLocalDateInTimezone(date: Date, timezone: string): string {
  */
 export async function calculateFreeSlots(
   availabilityId: string,
-  dateStr: string // Format: YYYY-MM-DD
+  dateStr: string, // Format: YYYY-MM-DD
+  durationMinutes?: number
 ): Promise<TimeSlot[]> {
   const firestore = adminDb;
 
@@ -153,8 +154,8 @@ export async function calculateFreeSlots(
     const localStart = new Date(new Date(slotStartStr).toLocaleString('en-US', { timeZone: timezone }));
     const localEnd = new Date(new Date(slotEndStr).toLocaleString('en-US', { timeZone: timezone }));
 
-    // Generate individual slots (e.g. 30-minute steps)
-    const slotDuration = 30; // 30 minutes increments
+    // Generate individual slots dynamically
+    const slotDuration = Math.max(10, durationMinutes || 30); // Prevent infinite loops
     let currentStart = localStart;
 
     while (isBefore(currentStart, localEnd)) {

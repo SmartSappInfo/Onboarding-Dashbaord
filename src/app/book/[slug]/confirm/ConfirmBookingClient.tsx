@@ -157,7 +157,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                   value={visitorName}
                   onChange={e => setVisitorName(e.target.value)}
                   placeholder="e.g. John Doe"
-                  className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus:border-primary focus:ring-primary text-sm px-4 text-slate-100"
+                  className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
                 />
               </div>
 
@@ -169,7 +169,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                   value={visitorEmail}
                   onChange={e => setVisitorEmail(e.target.value)}
                   placeholder="e.g. john@example.com"
-                  className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus:border-primary focus:ring-primary text-sm px-4 text-slate-100"
+                  className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
                 />
               </div>
 
@@ -179,7 +179,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                   value={visitorPhone}
                   onChange={e => setVisitorPhone(e.target.value)}
                   placeholder="e.g. +233240000000"
-                  className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus:border-primary focus:ring-primary text-sm px-4 text-slate-100"
+                  className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
                 />
               </div>
 
@@ -196,7 +196,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                       value={(answers[q.id] as string) || ''}
                       onChange={e => handleQuestionChange(q.id, e.target.value)}
                       placeholder="Type your response..."
-                      className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus:border-primary focus:ring-primary text-sm px-4 text-slate-100"
+                      className="h-11 rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
                     />
                   )}
 
@@ -207,7 +207,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                       value={(answers[q.id] as string) || ''}
                       onChange={e => handleQuestionChange(q.id, e.target.value)}
                       placeholder="Type details..."
-                      className="rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus:border-primary focus:ring-primary text-sm p-4 text-slate-100"
+                      className="rounded-xl bg-white/[0.03] border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm p-4 text-slate-100"
                     />
                   )}
 
@@ -216,7 +216,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                       required={q.required}
                       value={(answers[q.id] as string) || ''}
                       onChange={e => handleQuestionChange(q.id, e.target.value)}
-                      className="h-11 w-full rounded-xl bg-slate-900 border border-white/10 hover:border-white/20 text-sm px-4 text-slate-100"
+                      className="h-11 w-full rounded-xl bg-slate-900 border border-white/10 hover:border-white/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none text-sm px-4 text-slate-100"
                     >
                       <option value="" disabled>Select an option</option>
                       {q.options?.map(opt => (
@@ -234,7 +234,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                             id={`${q.id}_${opt}`}
                             checked={((answers[q.id] as string[]) || []).includes(opt)}
                             onChange={e => handleCheckboxChange(q.id, opt, e.target.checked)}
-                            className="h-4 w-4 rounded border-white/10 text-primary bg-transparent focus:ring-primary focus:ring-offset-0"
+                            className="h-4 w-4 rounded border-white/10 text-primary bg-transparent focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus:ring-offset-0"
                           />
                           <label htmlFor={`${q.id}_${opt}`} className="text-xs font-semibold text-slate-300">
                             {opt}
@@ -254,7 +254,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                             id={`${q.id}_${opt}`}
                             checked={(answers[q.id] as string) === opt}
                             onChange={() => handleQuestionChange(q.id, opt)}
-                            className="h-4 w-4 border-white/10 text-primary bg-transparent focus:ring-primary focus:ring-offset-0"
+                            className="h-4 w-4 border-white/10 text-primary bg-transparent focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus:ring-offset-0"
                           />
                           <label htmlFor={`${q.id}_${opt}`} className="text-xs font-semibold text-slate-300">
                             {opt}
@@ -271,7 +271,7 @@ export default function ConfirmBookingClient({ bookingPage, timeStr }: ConfirmBo
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="rounded-xl font-bold h-12 px-8 bg-primary hover:bg-primary-hover text-white text-xs active:scale-[0.97] transition-all flex items-center gap-2"
+                  className="rounded-xl font-bold h-12 px-8 bg-primary hover:bg-primary-hover text-white text-xs active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none transition-all flex items-center gap-2"
                 >
                   {isSubmitting ? (
                     <>

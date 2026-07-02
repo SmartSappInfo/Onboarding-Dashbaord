@@ -65,6 +65,18 @@ export default function BookingBuilderClient() {
     }
   }, [activeWorkspaceId, activeOrganizationId, user]);
 
+  // Bind Escape key down to close modal dialogs natively (a11y optimization)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsDialogOpen(false);
+        setEmbedModalPage(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Query Workspace Booking Pages
   const bookingPagesQuery = useMemoFirebase(() => 
     firestore && activeWorkspaceId 

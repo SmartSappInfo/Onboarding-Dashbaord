@@ -109,16 +109,14 @@ export async function getBookingPageBySlugAction(
   }
 }
 
-/**
- * Server Action to calculate free availability slots for a target day
- */
 export async function getAvailableSlotsAction(
   availabilityId: string,
-  dateStr: string
+  dateStr: string,
+  durationMinutes?: number
 ): Promise<ActionResponse<TimeSlot[]>> {
   try {
     const { calculateFreeSlots } = await import('@/lib/services/scheduler/availability');
-    const slots = await calculateFreeSlots(availabilityId, dateStr);
+    const slots = await calculateFreeSlots(availabilityId, dateStr, durationMinutes);
     return { success: true, data: slots };
   } catch (err: unknown) {
     return { 

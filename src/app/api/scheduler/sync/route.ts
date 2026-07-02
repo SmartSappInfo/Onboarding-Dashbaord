@@ -4,6 +4,7 @@ import type { CalendarConnection } from '@/lib/types';
 import { refreshGoogleToken } from '@/lib/services/integrations/google-calendar';
 import { refreshZoomToken } from '@/lib/services/integrations/zoom-meeting';
 import { refreshMicrosoftToken } from '@/lib/services/integrations/microsoft-teams';
+import { encryptToken } from '@/lib/crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
           
           await doc.ref.update({
-            accessToken: tokens.access_token,
+            accessToken: encryptToken(tokens.access_token),
             expiresAt,
           });
           results.refreshed.push({ id: conn.id, provider: conn.provider });
@@ -49,8 +50,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
           
           await doc.ref.update({
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token,
+            accessToken: encryptToken(tokens.access_token),
+            refreshToken: encryptToken(tokens.refresh_token),
             expiresAt,
           });
           results.refreshed.push({ id: conn.id, provider: conn.provider });
@@ -60,8 +61,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
           
           await doc.ref.update({
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token,
+            accessToken: encryptToken(tokens.access_token),
+            refreshToken: encryptToken(tokens.refresh_token),
             expiresAt,
           });
           results.refreshed.push({ id: conn.id, provider: conn.provider });

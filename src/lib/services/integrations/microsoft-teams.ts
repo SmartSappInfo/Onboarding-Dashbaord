@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { CalendarConnection } from '@/lib/types';
+import { encryptToken, decryptToken } from '@/lib/crypto';
 
 interface MicrosoftTokenResponse {
   access_token: string;
@@ -128,10 +129,12 @@ export async function refreshMicrosoftToken(
     connection.organizationId
   );
 
+  const decryptedRefreshToken = decryptToken(connection.refreshToken);
+
   const bodyParams = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
-    refresh_token: connection.refreshToken,
+    refresh_token: decryptedRefreshToken,
     grant_type: 'refresh_token',
   });
 
@@ -166,24 +169,43 @@ export async function getValidConnection(
   }
 
   const connection = connDoc.data() as CalendarConnection;
-  const expiryTime = new Date(connection.expiresAt).getTime();
+  
+  // Decrypt connection tokens for local processing
+  const decryptedConnection: CalendarConnection = {
+    ...connection,
+    accessToken: decryptToken(connection.accessToken),
+    refreshToken: decryptToken(connection.refreshToken),
+  };
+
+  const expiryTime = new Date(decryptedConnection.expiresAt).getTime();
   const now = Date.now();
 
   // If token expires in less than 5 minutes, refresh it
   if (expiryTime - now < 5 * 60 * 1000) {
-    const newTokens = await refreshMicrosoftToken(connection);
+    const newTokens = await refreshMicrosoftToken(decryptedConnection);
+    
+    // Encrypt updated tokens before saving
+    const encryptedAccessToken = encryptToken(newTokens.access_token);
+    const encryptedRefreshToken = encryptToken(newTokens.refresh_token);
+
     const updatedConnection: CalendarConnection = {
       ...connection,
-      accessToken: newTokens.access_token,
-      refreshToken: newTokens.refresh_token,
+      accessToken: encryptedAccessToken,
+      refreshToken: encryptedRefreshToken,
       expiresAt: new Date(now + newTokens.expires_in * 1000).toISOString(),
     };
 
     await adminDb.collection('calendar_connections').doc(connectionId).set(updatedConnection);
-    return updatedConnection;
+    
+    // Return decrypted connection to client callers for immediate API use
+    return {
+      ...updatedConnection,
+      accessToken: newTokens.access_token,
+      refreshToken: newTokens.refresh_token,
+    };
   }
 
-  return connection;
+  return decryptedConnection;
 }
 
 /**

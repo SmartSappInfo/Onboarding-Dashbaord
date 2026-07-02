@@ -48,7 +48,7 @@ export default function BookingSlotsClient({ bookingPage, initialDate, initialSl
       setLoading(true);
       try {
         const { getAvailableSlotsAction } = await import('@/app/actions/scheduler-actions');
-        const res = await getAvailableSlotsAction(bookingPage.availabilityId, selectedDate);
+        const res = await getAvailableSlotsAction(bookingPage.availabilityId, selectedDate, bookingPage.durationMinutes);
         if (res.success && res.data) {
           setSlots(res.data);
         } else {
@@ -181,7 +181,7 @@ export default function BookingSlotsClient({ bookingPage, initialDate, initialSl
                       transition={{ delay: index * 0.05, duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-full text-left p-3.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-primary/30 transition-all flex items-center justify-between group cursor-pointer"
+                      className="w-full text-left p-3.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none transition-all flex items-center justify-between group cursor-pointer"
                     >
                       <div className="flex items-center gap-2 text-slate-200">
                         <Clock className="h-3.5 w-3.5 text-primary opacity-60 group-hover:opacity-100 transition-opacity" />
