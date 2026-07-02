@@ -3158,13 +3158,17 @@ export function TemplateWorkshop({
                                .replace(/<body[^>]*>/i, '')
                                .replace(/<\/body>/i, '');
                                
-        const firstDiv = headerPart.match(/<div[^>]*style=["']/i);
-        if (firstDiv) {
-            headerPart = headerPart.replace(firstDiv[0], '');
+        const firstDivMatch = headerPart.match(/<div[^>]*>/i);
+        if (firstDivMatch) {
+            headerPart = headerPart.replace(firstDivMatch[0], '');
         }
-        const lastDiv = headerPart.match(/<div[^>]*style=["']/i);
-        if (lastDiv) {
-            headerPart = headerPart.replace(lastDiv[0], '');
+        const allDivs = Array.from(headerPart.matchAll(/<div[^>]*>/gi));
+        if (allDivs.length > 0) {
+            const lastDivMatch = allDivs[allDivs.length - 1];
+            const lastDivIndex = headerPart.lastIndexOf(lastDivMatch[0]);
+            if (lastDivIndex !== -1) {
+                headerPart = headerPart.substring(0, lastDivIndex) + headerPart.substring(lastDivIndex + lastDivMatch[0].length);
+            }
         }
         
         return resolveVariables(headerPart, activeSimVariables);
@@ -3185,12 +3189,20 @@ export function TemplateWorkshop({
         footerPart = footerPart.replace(/<html[^>]*>/i, '')
                                .replace(/<\/html>/i, '')
                                .replace(/<body[^>]*>/i, '')
-                               .replace(/<\/body>/i, '')
-                               .replace(/<\/div>\s*<\/body>/i, '')
-                               .replace(/<\/div>\s*<\/div>\s*<\/body>/i, '');
+                               .replace(/<\/body>/i, '');
                                
-        footerPart = footerPart.replace(/<\/div>\s*$/i, '')
-                               .replace(/<\/div>\s*<\/div>\s*$/i, '');
+        const firstDivCloseMatch = footerPart.match(/<\/div>/i);
+        if (firstDivCloseMatch) {
+            footerPart = footerPart.replace(firstDivCloseMatch[0], '');
+        }
+        const allDivCloses = Array.from(footerPart.matchAll(/<\/div>/gi));
+        if (allDivCloses.length > 0) {
+            const lastDivCloseMatch = allDivCloses[allDivCloses.length - 1];
+            const lastDivCloseIndex = footerPart.lastIndexOf(lastDivCloseMatch[0]);
+            if (lastDivCloseIndex !== -1) {
+                footerPart = footerPart.substring(0, lastDivCloseIndex) + footerPart.substring(lastDivCloseIndex + lastDivCloseMatch[0].length);
+            }
+        }
                                
         return resolveVariables(footerPart, activeSimVariables);
     }, [styleId, styles, activeSimVariables, target]);

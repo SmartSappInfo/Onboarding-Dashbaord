@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, or } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, AppField, TemplateStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -208,13 +208,16 @@ export default function MessageTemplatesPage() {
     }, [firestore]);
 
     const stylesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
+        if (!firestore || !activeOrganizationId || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'message_styles'), 
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
-            orderBy('name', 'asc')
+            or(
+                where('scope', '==', 'global'),
+                where('organizationId', '==', activeOrganizationId),
+                where('workspaceIds', 'array-contains', activeWorkspaceId)
+            )
         );
-    }, [firestore, activeWorkspaceId]);
+    }, [firestore, activeOrganizationId, activeWorkspaceId]);
 
 
 

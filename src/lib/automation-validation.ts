@@ -36,7 +36,10 @@ function getNodeStepNumber(nodeId: string, nodes: BlueprintNode[]): number | nul
 /**
  * Save-time validation for automation blueprints (actions, logic nodes, templates).
  */
-export async function validateAutomationBlueprint(automation: Partial<Automation>): Promise<void> {
+export async function validateAutomationBlueprint(
+  automation: Partial<Automation>,
+  options?: { implicitlyExistingTemplateIds?: string[] }
+): Promise<void> {
   if (!automation.nodes?.length) return;
 
   if (automation.isActive && !automation.triggers?.length) {
@@ -50,7 +53,7 @@ export async function validateAutomationBlueprint(automation: Partial<Automation
 
   validateLogicNodes(nodes);
   validateActionNodeConfigs(actionNodes, nodes);
-  await validateAutomationTemplatesBatch(actionNodes, nodes);
+  await validateAutomationTemplatesBatch(actionNodes, nodes, options?.implicitlyExistingTemplateIds);
   await validateExternalReferencesBatch(actionNodes, nodes);
 }
 
@@ -306,7 +309,11 @@ async function validateExternalReferencesBatch(actionNodes: BlueprintNode[], all
   }
 }
 
-async function validateAutomationTemplatesBatch(actionNodes: BlueprintNode[], allNodes: BlueprintNode[]): Promise<void> {
+async function validateAutomationTemplatesBatch(
+  actionNodes: BlueprintNode[],
+  allNodes: BlueprintNode[],
+  implicitlyExistingTemplateIds?: string[]
+): Promise<void> {
   const templateIds: { id: string; label: string }[] = [];
   const categoryPairs: {
     category: string;
@@ -349,24 +356,33 @@ async function validateAutomationTemplatesBatch(actionNodes: BlueprintNode[], al
 
   if (templateIds.length) {
     const ids = templateIds.map((t) => t.id);
-    const existing = await documentsExist('message_templates', ids);
+    const implicitIds = new Set(implicitlyExistingTemplateIds || []);
+    const checkIds = ids.filter((id) => !implicitIds.has(id));
+
+    const existing = checkIds.length
+      ? await documentsExist('message_templates', checkIds)
+      : new Set<string>();
 
     for (const { id, label } of templateIds) {
+      if (implicitIds.has(id)) continue;
       if (!existing.has(id)) {
         throw new AutomationValidationError(`Template ${id} not found in node "${label}"`);
       }
     }
 
-    const refs = ids.map((id) => adminDb.collection('message_templates').doc(id));
-    const snaps = await adminDb.getAll(...refs);
-    const snapById = new Map(snaps.map((s) => [s.id, s]));
+    const checkRefs = checkIds.map((id) => adminDb.collection('message_templates').doc(id));
+    if (checkRefs.length) {
+      const snaps = await adminDb.getAll(...checkRefs);
+      const snapById = new Map(snaps.map((s) => [s.id, s]));
 
-    for (const { id, label } of templateIds) {
-      const template = snapById.get(id)?.data();
-      if (template?.status !== 'active') {
-        throw new AutomationValidationError(
-          `Template "${template?.name || id}" is not active in node "${label}"`
-        );
+      for (const { id, label } of templateIds) {
+        if (implicitIds.has(id)) continue;
+        const template = snapById.get(id)?.data();
+        if (template?.status !== 'active') {
+          throw new AutomationValidationError(
+            `Template "${template?.name || id}" is not active in node "${label}"`
+          );
+        }
       }
     }
   }

@@ -6,7 +6,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Building, Users, User } from 'lucide-react';
+import { Bot, Building, Users, User, Flame, Sparkles } from 'lucide-react';
 import { getActivityIcon } from '@/lib/activity-icons';
 
 interface ActivityItemProps {
@@ -112,6 +112,30 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
             >
                 {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
             </time>
+
+            {/* Effort & Lead Score Points Badges */}
+            {activity.metadata?.effortPoints !== undefined && (
+              <span className="flex items-center gap-1 ml-1.5 animate-bounce-short">
+                <Badge variant="outline" className="text-[9px] font-extrabold uppercase rounded-lg border-indigo-500/20 text-indigo-500 bg-indigo-500/5 px-1.5 py-0 h-4 flex items-center gap-0.5">
+                  <Flame className="h-2.5 w-2.5 fill-current" />
+                  +{activity.metadata.effortPoints} Effort
+                </Badge>
+              </span>
+            )}
+
+            {activity.metadata?.leadScoreChange !== undefined && (
+              <span className="flex items-center gap-1 ml-1.5">
+                <Badge variant="outline" className={`text-[9px] font-extrabold uppercase rounded-lg px-1.5 py-0 h-4 flex items-center gap-0.5
+                  ${Number(activity.metadata.leadScoreChange) >= 0 
+                    ? 'border-emerald-500/20 text-emerald-500 bg-emerald-500/5' 
+                    : 'border-rose-500/20 text-rose-500 bg-rose-500/5'
+                  }
+                `}>
+                  <Sparkles className="h-2.5 w-2.5" />
+                  {Number(activity.metadata.leadScoreChange) >= 0 ? '+' : ''}{activity.metadata.leadScoreChange} Lead Score
+                </Badge>
+              </span>
+            )}
         </div>
 
         {/* Content Card for Notes/Calls etc. */}

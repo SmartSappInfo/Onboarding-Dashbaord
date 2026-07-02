@@ -327,9 +327,9 @@ export class LeadIntelligenceEngine {
     // Map output to interface
     const websiteScan: WebsiteScanResults = {
       scannedAt: now,
-      technologies: detectedTechnologies.length > 0 ? detectedTechnologies : flowResult.websiteScan.technologies,
+      technologies: detectedTechnologies.length > 0 ? detectedTechnologies : [],
       sslValid: flowResult.websiteScan.sslValid,
-      sslExpiresAt: flowResult.websiteScan.sslExpiresAt,
+      sslExpiresAt: undefined,
       loadTimeMs: flowResult.websiteScan.loadTimeMs,
       metaTitle: flowResult.websiteScan.metaTitle,
       metaDescription: flowResult.websiteScan.metaDescription,

@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
 
     // 5. Return zip download
-    return new NextResponse(zipBuffer, {
+    return new NextResponse(new Uint8Array(zipBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',

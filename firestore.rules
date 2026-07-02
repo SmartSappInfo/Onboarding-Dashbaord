@@ -699,6 +699,32 @@ service cloud.firestore {
     match /campaign_sessions/{sId} {
       allow read, list, create, update: if true;
     }
+
+    // --- Scoring & Productivity Performance Engine ---
+    match /userEffortSummary/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSystemAdmin();
+    }
+
+    match /effortRules/{ruleId} {
+      allow read: if isSignedIn();
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /leadScores/{contactId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if false; // Server-side writes only
+    }
+
+    match /leadScoreHistory/{historyId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if false; // Server-side writes only
+    }
+
+    match /effortScoringLedger/{ledgerId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if false; // Server-side writes only
+    }
     match /webhooks/{webhookId} {
       allow get: if isAuthorized() && (
         isSystemAdmin() || 

@@ -178,7 +178,7 @@ async function callGenkit(params: {
   let activePrompt = params.prompt;
   const activeSchema = params.schema;
 
-  if (isAnthropic && params.jsonMode && activeSchema) {
+  if (params.jsonMode && activeSchema) {
     const schemaDesc = JSON.stringify(zodToSchemaDescription(activeSchema), null, 2);
     const schemaInstructions = `\n\nCRITICAL: You MUST output your response strictly as a JSON object matching this schema structure:
 ${schemaDesc}
@@ -204,27 +204,28 @@ Rules:
 
   const { output, text } = await generatorAi.generate({
     model: resolvedModel.modelString,
-    prompt: activePrompt,
-    ...(!isAnthropic && params.jsonMode && activeSchema ? { output: { schema: activeSchema as z.ZodTypeAny } } : {}),
+    ...(typeof activePrompt === 'string'
+      ? { prompt: activePrompt }
+      : { messages: [{ role: 'user', content: activePrompt }] }),
+    ...(!isAnthropic && params.jsonMode ? { output: { format: 'json' } } : {}),
   });
 
   if (params.jsonMode && activeSchema) {
-    if (isAnthropic) {
-      if (!text) throw new Error('AI model returned an empty payload');
-      let rawText = text.trim();
-      if (rawText.startsWith('```')) {
-        rawText = rawText.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '').trim();
-      }
-      const firstBrace = rawText.indexOf('{');
-      const lastBrace = rawText.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        rawText = rawText.substring(firstBrace, lastBrace + 1);
-      }
-      return rawText;
-    } else {
-      if (!output) throw new Error('AI model failed to generate structured copy');
+    if (!isAnthropic && output) {
       return JSON.stringify(output);
     }
+    
+    if (!text) throw new Error('AI model returned an empty payload');
+    let rawText = text.trim();
+    if (rawText.startsWith('```')) {
+      rawText = rawText.replace(/^```(?:json)?\n/, '').replace(/\n```$/, '').trim();
+    }
+    const firstBrace = rawText.indexOf('{');
+    const lastBrace = rawText.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      rawText = rawText.substring(firstBrace, lastBrace + 1);
+    }
+    return rawText;
   }
 
   if (!text) throw new Error('AI model returned an empty payload');

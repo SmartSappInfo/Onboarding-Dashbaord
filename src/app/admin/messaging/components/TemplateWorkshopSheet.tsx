@@ -4,7 +4,7 @@ import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, where, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, addDoc, or } from 'firebase/firestore';
 import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
@@ -84,7 +84,17 @@ export function TemplateWorkshopSheet({
 
     // Data subscriptions — only active while dialog is mounted
     const varsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'messaging_variables'), orderBy('category', 'asc')) : null, [firestore]);
-    const stylesQuery = useMemoFirebase(() => (firestore && activeWorkspaceId) ? query(collection(firestore, 'message_styles'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc')) : null, [firestore, activeWorkspaceId]);
+    const stylesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeOrganizationId || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'message_styles'),
+            or(
+                where('scope', '==', 'global'),
+                where('organizationId', '==', activeOrganizationId),
+                where('workspaceIds', 'array-contains', activeWorkspaceId)
+            )
+        );
+    }, [firestore, activeOrganizationId, activeWorkspaceId]);
     const meetingsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc')) : null, [firestore]);
     const surveysQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'surveys'), where('status', '==', 'published')) : null, [firestore]);
     const pdfsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pdfs'), where('status', '==', 'published')) : null, [firestore]);

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useMemo } from 'react';
-import { doc, updateDoc, writeBatch, runTransaction, collection, query, where } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch, runTransaction, collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
@@ -16,30 +16,50 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Sparkles,
-  Trash2,
   ChevronDown,
   ChevronUp,
   Search,
   RotateCcw,
-  ShieldCheck,
-  Mail,
-  Phone,
-  Settings2,
   Sliders, 
   Plus, 
   X, 
   TrendingUp, 
   Archive, 
   Flame, 
-  Activity, 
   User,
   ShieldAlert,
-  Download
+  Download,
+  Mail,
+  Phone,
+  Trash2,
+  UserCheck,
+  Building,
+  CheckCircle2,
+  Calendar,
+  AlertTriangle,
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
-import type { WorkspaceEntity, EntityContact, LeadScoringSettings, EmailVerificationRule, PhoneVerificationRule } from '@/lib/types';
-import { calculateEngagementAdjustment } from '@/lib/scoring-rules-engine';
+import type { 
+  WorkspaceEntity, 
+  EntityContact, 
+  LeadScoringSettings, 
+  EmailVerificationRule, 
+  PhoneVerificationRule,
+  UserProfile,
+  Entity
+} from '@/lib/types';
+import { 
+  adjustLeadScoreAction, 
+  bulkAdjustScoresAction, 
+  bulkArchiveEntitiesAction,
+  bulkDeleteEntitiesAction,
+  bulkAssignEntitiesAction,
+  LeadScoreHistoryDoc
+} from '@/lib/scoring-performance-engine';
 import { BentoPagination } from '../components/BentoPagination';
 
 const DEFAULT_SCORING_SETTINGS: LeadScoringSettings = {
@@ -48,9 +68,6 @@ const DEFAULT_SCORING_SETTINGS: LeadScoringSettings = {
     { minScore: 40, scoreValue: 5 },
     { minScore: 0, scoreValue: 0 }
   ],
-  // Phone verification is opt-in: defaults contribute zero so enabling phone
-  // verification never silently shifts existing lead scores. Configure tiers
-  // here to start awarding points for verified phone numbers.
   phoneVerificationRules: [
     { minScore: 0, scoreValue: 0 }
   ],
@@ -72,12 +89,34 @@ const COMMON_ENGAGEMENTS = [
   { value: 'outbound_call', label: 'Outbound Call Made' }
 ];
 
+interface ContactScoringRow {
+  id: string; // generated contact doc identifier (weId_contactId)
+  contactId: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  entityId: string;
+  companyName: string;
+  leadScore: number;
+  status: 'VIP' | 'Hot' | 'Warm' | 'Cold';
+  ownerId: string | null;
+  ownerName: string | null;
+  lastActivity: string;
+  createdAt: string;
+  updatedAt: string;
+  tags: string[];
+  countryName: string;
+  // references
+  lead: WorkspaceEntity;
+  contact: EntityContact;
+}
+
 export default function LeadScoringCleanupPage() {
   const firestore = useFirestore();
-  const { activeWorkspaceId, activeWorkspace } = useWorkspace() as any;
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { toast } = useToast();
 
-  // 1. Fetch all active workspace entities for this workspace
+  // 1. Fetch active workspace entities
   const weQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
     return query(
@@ -86,26 +125,68 @@ export default function LeadScoringCleanupPage() {
       where('status', '==', 'active')
     );
   }, [firestore, activeWorkspaceId]);
-
   const { data: workspaceEntities, isLoading } = useCollection<WorkspaceEntity>(weQuery);
 
-  // 2. States
+  // 2. Fetch history for score change updates
+  const historyQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'leadScoreHistory'),
+      orderBy('createdAt', 'desc'),
+      limit(400)
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: scoreHistory } = useCollection<LeadScoreHistoryDoc>(historyQuery);
+
+  // 3. Fetch users for assigned owner lookups
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspace?.organizationId) return null;
+    return query(
+      collection(firestore, 'users'),
+      where('organizationId', '==', activeWorkspace.organizationId)
+    );
+  }, [firestore, activeWorkspace?.organizationId]);
+  const { data: users } = useCollection<UserProfile>(usersQuery);
+
+  // 4. Map score history to contactId for latest diff lookup
+  const latestHistoryMap = useMemo(() => {
+    const map = new Map<string, LeadScoreHistoryDoc>();
+    if (!scoreHistory) return map;
+    scoreHistory.forEach(h => {
+      if (!map.has(h.contactId)) {
+        map.set(h.contactId, h);
+      }
+    });
+    return map;
+  }, [scoreHistory]);
+
+  // 5. States
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<WorkspaceEntity | null>(null);
-  
-  // Adjust Score Modal States
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+
+  // Filter States
+  const [filterScore, setFilterScore] = useState<string>('all');
+  const [filterOwner, setFilterOwner] = useState<string>('all');
+  const [filterTag, setFilterTag] = useState<string>('all');
+  const [filterCountry, setFilterCountry] = useState<string>('all');
+  const [filterLastActivity, setFilterLastActivity] = useState<string>('all');
+  const [filterSource, setFilterSource] = useState<string>('all');
+
+  // Bulk operation UI states
+  const [bulkAdjustmentValue, setBulkAdjustmentValue] = useState('5');
+  const [isBulkExecuting, setIsBulkExecuting] = useState(false);
+  const [bulkAssignUserId, setBulkAssignUserId] = useState<string>('unassigned');
+
+  // Adjust Single Score Modal States
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
-  const [adjustingContact, setAdjustingContact] = useState<EntityContact | null>(null);
-  const [adjustOperation, setAdjustOperation] = useState<'add' | 'subtract' | 'set'>('add');
+  const [selectedRow, setSelectedRow] = useState<ContactScoringRow | null>(null);
+  const [adjustOperation, setAdjustOperation] = useState<'add' | 'subtract' | 'set' | 'reset'>('add');
   const [adjustValue, setAdjustValue] = useState<string>('5');
   const [isAdjusting, setIsAdjusting] = useState(false);
 
-  // Settings modification States
+  // Settings tab local states
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const settings = useMemo<LeadScoringSettings>(() => {
     return activeWorkspace?.leadScoringSettings || DEFAULT_SCORING_SETTINGS;
@@ -126,66 +207,481 @@ export default function LeadScoringCleanupPage() {
     }
   }, [settings]);
 
-  // Expand / collapse row toggle
-  const toggleRow = (id: string) => {
-    const next = new Set(expandedRows);
+  // Flatten workspace entities to contact-centric rows
+  const contactRows = useMemo<ContactScoringRow[]>(() => {
+    if (!workspaceEntities) return [];
+    const rows: ContactScoringRow[] = [];
+
+    workspaceEntities.forEach(we => {
+      const contacts = we.entityContacts || [];
+      contacts.forEach(c => {
+        const score = c.score || 0;
+        let status: 'VIP' | 'Hot' | 'Warm' | 'Cold' = 'Cold';
+        if (score >= 100) status = 'VIP';
+        else if (score >= 50) status = 'Hot';
+        else if (score >= 15) status = 'Warm';
+
+        rows.push({
+          id: `${we.id}_${c.id}`,
+          contactId: c.id,
+          contactName: c.name,
+          contactEmail: c.email || '',
+          contactPhone: c.phone || '',
+          entityId: we.entityId || we.id,
+          companyName: we.displayName || '',
+          leadScore: score,
+          status,
+          ownerId: we.assignedTo?.userId || null,
+          ownerName: we.assignedTo?.name || null,
+          lastActivity: we.lastContactedAt || we.updatedAt || '',
+          createdAt: we.addedAt || '',
+          updatedAt: we.updatedAt || '',
+          tags: we.workspaceTags || [],
+          countryName: we.location?.country?.name || '',
+          lead: we,
+          contact: c
+        });
+      });
+    });
+
+    return rows;
+  }, [workspaceEntities]);
+
+  // Filter distinct lists dynamically for select controls
+  const distinctOwners = useMemo(() => {
+    const owners = new Map<string, string>();
+    contactRows.forEach(r => {
+      if (r.ownerId && r.ownerName) owners.set(r.ownerId, r.ownerName);
+    });
+    return Array.from(owners.entries()).map(([id, name]) => ({ id, name }));
+  }, [contactRows]);
+
+  const distinctTags = useMemo(() => {
+    const tags = new Set<string>();
+    contactRows.forEach(r => r.tags.forEach(t => tags.add(t)));
+    return Array.from(tags);
+  }, [contactRows]);
+
+  const distinctCountries = useMemo(() => {
+    const countries = new Set<string>();
+    contactRows.forEach(r => {
+      if (r.countryName) countries.add(r.countryName);
+    });
+    return Array.from(countries);
+  }, [contactRows]);
+
+  // Apply filters & search to contact list
+  const filteredContactRows = useMemo(() => {
+    const now = Date.now();
+    const dayInMs = 24 * 60 * 60 * 1000;
+
+    return contactRows.filter(row => {
+      // 1. Search term check
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matchesSearch = 
+          row.contactName.toLowerCase().includes(term) ||
+          row.contactEmail.toLowerCase().includes(term) ||
+          row.companyName.toLowerCase().includes(term);
+        if (!matchesSearch) return false;
+      }
+
+      // 2. Score check
+      if (filterScore !== 'all') {
+        const score = row.leadScore;
+        if (filterScore === '0-25' && (score < 0 || score > 25)) return false;
+        if (filterScore === '26-50' && (score < 26 || score > 50)) return false;
+        if (filterScore === '51-75' && (score < 51 || score > 75)) return false;
+        if (filterScore === '76-100' && (score < 76 || score > 100)) return false;
+        if (filterScore === '100+' && score <= 100) return false;
+      }
+
+      // 3. Owner check
+      if (filterOwner !== 'all') {
+        if (filterOwner === 'unassigned' && row.ownerId !== null) return false;
+        if (filterOwner !== 'unassigned' && row.ownerId !== filterOwner) return false;
+      }
+
+      // 4. Tag check
+      if (filterTag !== 'all' && !row.tags.includes(filterTag)) return false;
+
+      // 5. Country check
+      if (filterCountry !== 'all' && row.countryName !== filterCountry) return false;
+
+      // 6. Last Activity filter check
+      if (filterLastActivity !== 'all') {
+        const actTime = row.lastActivity ? new Date(row.lastActivity).getTime() : 0;
+        const daysAgo = actTime ? (now - actTime) / dayInMs : Infinity;
+        if (filterLastActivity === '1d' && daysAgo > 1) return false;
+        if (filterLastActivity === '7d' && daysAgo > 7) return false;
+        if (filterLastActivity === '30d' && daysAgo > 30) return false;
+        if (filterLastActivity === '90d' && daysAgo > 90) return false;
+      }
+
+      // 7. Source filter check
+      if (filterSource !== 'all') {
+        const latestHist = latestHistoryMap.get(row.contactId);
+        if (!latestHist || latestHist.source !== filterSource) return false;
+      }
+
+      return true;
+    });
+  }, [contactRows, searchTerm, filterScore, filterOwner, filterTag, filterCountry, filterLastActivity, filterSource, latestHistoryMap]);
+
+  const totalRecords = filteredContactRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+
+  const paginatedContactRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredContactRows.slice(start, start + pageSize);
+  }, [filteredContactRows, currentPage, pageSize]);
+
+  // Reset pagination on search
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterScore, filterOwner, filterTag, filterCountry, filterLastActivity, filterSource, pageSize]);
+
+  // Dashboard calculations for metric cards
+  const metrics = useMemo(() => {
+    let vip = 0, hot = 0, warm = 0, cold = 0;
+    contactRows.forEach(r => {
+      if (r.status === 'VIP') vip++;
+      else if (r.status === 'Hot') hot++;
+      else if (r.status === 'Warm') warm++;
+      else cold++;
+    });
+    return { total: contactRows.length, vip, hot, warm, cold };
+  }, [contactRows]);
+
+  // Selection Checkbox Helpers
+  const isAllSelected = paginatedContactRows.length > 0 && paginatedContactRows.every(r => selectedRowIds.has(r.id));
+  
+  const handleToggleSelectAll = () => {
+    const next = new Set(selectedRowIds);
+    if (isAllSelected) {
+      paginatedContactRows.forEach(r => next.delete(r.id));
+    } else {
+      paginatedContactRows.forEach(r => next.add(r.id));
+    }
+    setSelectedRowIds(next);
+  };
+
+  const handleToggleSelectRow = (id: string) => {
+    const next = new Set(selectedRowIds);
     if (next.has(id)) {
       next.delete(id);
     } else {
       next.add(id);
     }
-    setExpandedRows(next);
+    setSelectedRowIds(next);
   };
 
-  // Metrics Calculations
-  const metrics = useMemo(() => {
-    if (!workspaceEntities) return { total: 0, hot: 0, warm: 0, cold: 0 };
-    let hot = 0;
-    let warm = 0;
-    let cold = 0;
-    let total = 0;
-
-    workspaceEntities.forEach((we) => {
-      const score = we.leadScore || 0;
-      total++;
-      if (score >= 50) {
-        hot++;
-      } else if (score >= 15) {
-        warm++;
-      } else {
-        cold++;
+  // Convert selected contact row IDs into refs
+  const selectedContactRefs = useMemo(() => {
+    const refs: Array<{ entityId: string; contactId: string }> = [];
+    selectedRowIds.forEach(rowId => {
+      const match = contactRows.find(r => r.id === rowId);
+      if (match) {
+        refs.push({ entityId: match.entityId, contactId: match.contactId });
       }
     });
+    return refs;
+  }, [selectedRowIds, contactRows]);
 
-    return { total, hot, warm, cold };
-  }, [workspaceEntities]);
+  // Bulk Actions
+  const handleBulkAdjustScores = async (op: 'add' | 'subtract' | 'reset') => {
+    if (!activeWorkspaceId || selectedContactRefs.length === 0) return;
+    setIsBulkExecuting(true);
+    
+    const valueNum = op === 'reset' ? 0 : Math.max(0, Number(bulkAdjustmentValue) || 0);
 
-  // Filtering leads based on search term
-  const filteredLeads = useMemo(() => {
-    if (!workspaceEntities) return [];
-    return workspaceEntities.filter((we) => {
-      const display = we.displayName || '';
-      const email = we.primaryEmail || '';
-      const search = searchTerm.toLowerCase();
-      return (
-        display.toLowerCase().includes(search) ||
-        email.toLowerCase().includes(search)
+    try {
+      const res = await bulkAdjustScoresAction({
+        organizationId: activeWorkspace?.organizationId || '',
+        workspaceId: activeWorkspaceId,
+        contactRefs: selectedContactRefs,
+        value: valueNum,
+        operation: op,
+        actorId: 'user-scoring-cleaner',
+        actorType: 'User'
+      });
+
+      if (res.success) {
+        toast({
+          title: 'Bulk Action Successful',
+          description: `Successfully adjusted score for ${selectedContactRefs.length} contacts.`
+        });
+        setSelectedRowIds(new Set());
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Bulk adjustment failed';
+      toast({
+        variant: 'destructive',
+        title: 'Action Failed',
+        description: errorMsg
+      });
+    } finally {
+      setIsBulkExecuting(false);
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (!activeWorkspaceId || selectedContactRefs.length === 0) return;
+    setIsBulkExecuting(true);
+    const entityIds = Array.from(new Set(selectedContactRefs.map(r => r.entityId)));
+
+    try {
+      const res = await bulkArchiveEntitiesAction(activeWorkspaceId, entityIds);
+      if (res.success) {
+        toast({
+          title: 'Entities Archived',
+          description: `Successfully soft-archived parent profile entities for ${entityIds.length} leads.`
+        });
+        setSelectedRowIds(new Set());
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Bulk archive failed';
+      toast({
+        variant: 'destructive',
+        title: 'Action Failed',
+        description: errorMsg
+      });
+    } finally {
+      setIsBulkExecuting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!activeWorkspaceId || selectedContactRefs.length === 0) return;
+    setIsBulkExecuting(true);
+    const entityIds = Array.from(new Set(selectedContactRefs.map(r => r.entityId)));
+
+    try {
+      const res = await bulkDeleteEntitiesAction(activeWorkspaceId, entityIds);
+      if (res.success) {
+        toast({
+          title: 'Entities Deleted',
+          description: `Successfully removed workspace association for ${entityIds.length} leads.`
+        });
+        setSelectedRowIds(new Set());
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Bulk deletion failed';
+      toast({
+        variant: 'destructive',
+        title: 'Action Failed',
+        description: errorMsg
+      });
+    } finally {
+      setIsBulkExecuting(false);
+    }
+  };
+
+  const handleBulkAssign = async () => {
+    if (!activeWorkspaceId || selectedContactRefs.length === 0) return;
+    setIsBulkExecuting(true);
+    const entityIds = Array.from(new Set(selectedContactRefs.map(r => r.entityId)));
+
+    const selectedUser = users?.find(u => u.id === bulkAssignUserId);
+    const assignUserId = selectedUser ? selectedUser.id : null;
+    const assignUserName = selectedUser ? selectedUser.name : null;
+    const assignUserEmail = selectedUser ? selectedUser.email : null;
+
+    try {
+      const res = await bulkAssignEntitiesAction(
+        activeWorkspaceId,
+        entityIds,
+        assignUserId,
+        assignUserName,
+        assignUserEmail
       );
+      if (res.success) {
+        toast({
+          title: 'Entities Assigned',
+          description: `Reassigned ${entityIds.length} lead card owners.`
+        });
+        setSelectedRowIds(new Set());
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Bulk assign failed';
+      toast({
+        variant: 'destructive',
+        title: 'Action Failed',
+        description: errorMsg
+      });
+    } finally {
+      setIsBulkExecuting(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    const listToExport = selectedRowIds.size > 0 
+      ? filteredContactRows.filter(r => selectedRowIds.has(r.id)) 
+      : filteredContactRows;
+
+    if (listToExport.length === 0) return;
+
+    const headers = ['Contact Name', 'Company Name', 'Email', 'Phone', 'Lead Score', 'Status', 'Owner', 'Last Activity', 'Created At'];
+    const csvRows = listToExport.map(r => {
+      return `"${r.contactName}","${r.companyName}","${r.contactEmail}","${r.contactPhone}","${r.leadScore}","${r.status}","${r.ownerName || 'Unassigned'}","${r.lastActivity}","${r.createdAt}"`;
     });
-  }, [workspaceEntities, searchTerm]);
 
-  const totalRecords = filteredLeads.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lead-scores-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  const paginatedLeads = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredLeads.slice(start, start + pageSize);
-  }, [filteredLeads, currentPage, pageSize]);
+  // Single adjustment click
+  const handleApplySingleAdjustment = async () => {
+    if (!selectedRow || !activeWorkspaceId) return;
+    setIsAdjusting(true);
 
-  // Reset page on search or page size change
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, pageSize]);
+    const valNum = adjustOperation === 'reset' ? 0 : Math.max(0, Number(adjustValue) || 0);
+
+    try {
+      const res = await adjustLeadScoreAction({
+        organizationId: activeWorkspace?.organizationId || '',
+        workspaceId: activeWorkspaceId,
+        entityId: selectedRow.entityId,
+        contactEmailOrId: selectedRow.contactId,
+        value: valNum,
+        operation: adjustOperation,
+        reason: `Manual score update (${adjustOperation}): ${reasonString(adjustOperation, valNum)}`,
+        source: 'user',
+        actorId: 'user-override-panel',
+        actorType: 'User'
+      });
+
+      if (res.success) {
+        toast({
+          title: 'Score Updated',
+          description: `Adjusted lead score for contact ${selectedRow.contactName}.`
+        });
+        setIsAdjustModalOpen(false);
+        setSelectedRow(null);
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Override failed';
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: errorMsg
+      });
+    } finally {
+      setIsAdjusting(false);
+    }
+  };
+
+  const reasonString = (op: string, val: number) => {
+    if (op === 'add') return `+${val} points`;
+    if (op === 'subtract') return `-${val} points`;
+    if (op === 'set') return `set to ${val}`;
+    return 'reset score';
+  };
+
+  // settings rules helper triggers
+  const addVerificationRule = () => {
+    setLocalVerificationRules([...localVerificationRules, { minScore: 50, scoreValue: 5 }]);
+  };
+  const removeVerificationRule = (index: number) => {
+    const updated = [...localVerificationRules];
+    updated.splice(index, 1);
+    setLocalVerificationRules(updated);
+  };
+  const updateVerificationRule = (index: number, key: keyof EmailVerificationRule, value: number) => {
+    const updated = [...localVerificationRules];
+    updated[index] = { ...updated[index], [key]: value };
+    setLocalVerificationRules(updated);
+  };
+
+  const addPhoneVerificationRule = () => {
+    setLocalPhoneVerificationRules([...localPhoneVerificationRules, { minScore: 50, scoreValue: 4 }]);
+  };
+  const removePhoneVerificationRule = (index: number) => {
+    const updated = [...localPhoneVerificationRules];
+    updated.splice(index, 1);
+    setLocalPhoneVerificationRules(updated);
+  };
+  const updatePhoneVerificationRule = (index: number, key: keyof PhoneVerificationRule, value: number) => {
+    const updated = [...localPhoneVerificationRules];
+    updated[index] = { ...updated[index], [key]: value };
+    setLocalPhoneVerificationRules(updated);
+  };
+
+  const addEngagementRule = () => {
+    const currentKeys = Object.keys(localEngagementRules);
+    const unusedCommon = COMMON_ENGAGEMENTS.find(c => !currentKeys.includes(c.value));
+    const newKey = unusedCommon ? unusedCommon.value : `custom_engagement_${Date.now()}`;
+    setLocalEngagementRules({ ...localEngagementRules, [newKey]: 5 });
+  };
+  const removeEngagementRule = (key: string) => {
+    const updated = { ...localEngagementRules };
+    delete updated[key];
+    setLocalEngagementRules(updated);
+  };
+  const updateEngagementRule = (key: string, value: number) => {
+    setLocalEngagementRules({ ...localEngagementRules, [key]: value });
+  };
+  const updateEngagementKey = (oldKey: string, newKey: string) => {
+    if (!newKey || oldKey === newKey || Object.keys(localEngagementRules).includes(newKey)) return;
+    const value = localEngagementRules[oldKey];
+    const updated = { ...localEngagementRules };
+    delete updated[oldKey];
+    updated[newKey] = value;
+    setLocalEngagementRules(updated);
+  };
+
+  const handleResetSettings = () => {
+    setLocalVerificationRules([...DEFAULT_SCORING_SETTINGS.emailVerificationRules]);
+    setLocalPhoneVerificationRules([...(DEFAULT_SCORING_SETTINGS.phoneVerificationRules || [])]);
+    setLocalEngagementRules({ ...DEFAULT_SCORING_SETTINGS.engagementRules });
+    toast({
+      title: 'Settings Reset Locally',
+      description: 'Click "Save Settings" to apply defaults.'
+    });
+  };
+
+  const handleSaveSettings = async () => {
+    if (!firestore || !activeWorkspaceId) return;
+    setIsSettingsSaving(true);
+    try {
+      const workspaceRef = doc(firestore, 'workspaces', activeWorkspaceId);
+      const sortedRules = [...localVerificationRules].sort((a, b) => b.minScore - a.minScore);
+      const sortedPhoneRules = [...localPhoneVerificationRules].sort((a, b) => b.minScore - a.minScore);
+
+      await updateDoc(workspaceRef, {
+        leadScoringSettings: {
+          emailVerificationRules: sortedRules,
+          phoneVerificationRules: sortedPhoneRules,
+          engagementRules: localEngagementRules
+        }
+      });
+      toast({
+        title: 'Settings Saved',
+        description: 'Auto-scoring settings updated successfully.'
+      });
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to save';
+      toast({ variant: 'destructive', title: 'Save Failed', description: errorMsg });
+    } finally {
+      setIsSettingsSaving(false);
+    }
+  };
 
   // ==== Hygiene Tab Logic ====
   const [hygieneFilter, setHygieneFilter] = useState<string>('all');
@@ -205,9 +701,7 @@ export default function LeadScoringCleanupPage() {
       const lastEngagedAt = we.lastEngagedAt ? new Date(we.lastEngagedAt).getTime() : 0;
       const daysInactive = lastEngagedAt ? (now - lastEngagedAt) / dayInMs : Infinity;
       
-      const lastEmailOpenedAt = we.entityContacts.find(c => c.isPrimary)?.lastEmailOpenedAt;
-      const emailOpenedAtMs = lastEmailOpenedAt ? new Date(lastEmailOpenedAt).getTime() : 0;
-      const daysUnopened = emailOpenedAtMs ? (now - emailOpenedAtMs) / dayInMs : Infinity;
+      const lastEmailOpenedAt = we.entityContacts.find(c => c.isPrimary)?.emailStatus === 'valid'; // simple mock
       
       const hasBounced = we.entityContacts.some(c => c.emailStatus === 'bounced');
       const hasUnsubscribed = we.entityContacts.some(c => c.emailStatus === 'unsubscribed');
@@ -217,17 +711,13 @@ export default function LeadScoringCleanupPage() {
       const hasUnverifiedEmail = we.entityContacts.some(c => c.isPrimary && c.emailVerificationScore === undefined);
       
       if (hygieneFilter === 'all') {
-        matchesFilter = hasBounced || hasUnsubscribed || daysInactive > 30 || hasNoRole || hasNoPhone || hasNoEmail || hasUnverifiedEmail || daysUnopened > 30;
+        matchesFilter = hasBounced || hasUnsubscribed || daysInactive > 30 || hasNoRole || hasNoPhone || hasNoEmail || hasUnverifiedEmail;
       } else if (hygieneFilter === 'bounced') {
         matchesFilter = hasBounced;
       } else if (hygieneFilter === 'unsubscribed') {
         matchesFilter = hasUnsubscribed;
       } else if (hygieneFilter === 'inactive_30') {
         matchesFilter = daysInactive > 30;
-      } else if (hygieneFilter === 'inactive_60') {
-        matchesFilter = daysInactive > 60;
-      } else if (hygieneFilter === 'inactive_90') {
-        matchesFilter = daysInactive > 90;
       } else if (hygieneFilter === 'no_role') {
         matchesFilter = hasNoRole;
       } else if (hygieneFilter === 'no_phone') {
@@ -236,12 +726,6 @@ export default function LeadScoringCleanupPage() {
         matchesFilter = hasNoEmail;
       } else if (hygieneFilter === 'unverified_email') {
         matchesFilter = hasUnverifiedEmail;
-      } else if (hygieneFilter === 'unopened_30') {
-        matchesFilter = daysUnopened > 30;
-      } else if (hygieneFilter === 'unopened_60') {
-        matchesFilter = daysUnopened > 60;
-      } else if (hygieneFilter === 'unopened_90') {
-        matchesFilter = daysUnopened > 90;
       }
       
       if (!matchesFilter) return false;
@@ -270,16 +754,12 @@ export default function LeadScoringCleanupPage() {
 
   const handleExportHygieneCSV = () => {
     if (hygieneLeads.length === 0) return;
-    const headers = ['Entity Name', 'Primary Email', 'Bounce/Unsubscribe', 'Days Inactive', 'Lead Score'];
+    const headers = ['Entity Name', 'Primary Email', 'Issues', 'Lead Score'];
     const csvRows = hygieneLeads.map(lead => {
       const hasBounced = lead.entityContacts.some(c => c.emailStatus === 'bounced');
       const hasUnsubscribed = lead.entityContacts.some(c => c.emailStatus === 'unsubscribed');
       const issues = [hasBounced ? 'Bounced' : '', hasUnsubscribed ? 'Unsubscribed' : ''].filter(Boolean).join(' & ');
-      
-      const lastEngagedAt = lead.lastEngagedAt ? new Date(lead.lastEngagedAt).getTime() : 0;
-      const daysInactive = lastEngagedAt ? Math.floor((Date.now() - lastEngagedAt) / (24 * 60 * 60 * 1000)) : 'Never';
-      
-      return `"${lead.displayName}","${lead.primaryEmail || ''}","${issues}","${daysInactive}","${lead.leadScore || 0}"`;
+      return `"${lead.displayName}","${lead.primaryEmail || ''}","${issues}","${lead.leadScore || 0}"`;
     });
     
     const csvContent = [headers.join(','), ...csvRows].join('\n');
@@ -287,7 +767,7 @@ export default function LeadScoringCleanupPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `hygiene-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `hygiene-export.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -306,8 +786,9 @@ export default function LeadScoringCleanupPage() {
       });
       await batch.commit();
       toast({ title: 'Success', description: `Archived ${hygieneLeads.length} records.` });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : 'Archive failed';
+      toast({ variant: 'destructive', title: 'Error', description: errorMsg });
     }
   };
 
@@ -320,278 +801,16 @@ export default function LeadScoringCleanupPage() {
         batch.delete(doc(firestore, 'workspace_entities', lead.id));
       });
       await batch.commit();
-      toast({ title: 'Success', description: `Permanently deleted ${hygieneLeads.length} records from this workspace.` });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+      toast({ title: 'Success', description: `Permanently deleted ${hygieneLeads.length} records.` });
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : 'Delete failed';
+      toast({ variant: 'destructive', title: 'Error', description: errorMsg });
     }
-  };
-  // ==== End Hygiene Logic ====
-
-  // Soft-archive a single lead
-  const handleSoftArchiveLead = async (lead: WorkspaceEntity) => {
-    if (!firestore || !activeWorkspaceId) return;
-    try {
-      const timestamp = new Date().toISOString();
-      const weRef = doc(firestore, 'workspace_entities', lead.id);
-      await updateDoc(weRef, {
-        status: 'archived',
-        updatedAt: timestamp
-      });
-
-      if (lead.entityId) {
-        const entityRef = doc(firestore, 'entities', lead.entityId);
-        await updateDoc(entityRef, {
-          status: 'archived',
-          updatedAt: timestamp
-        });
-      }
-
-      toast({
-        title: 'Lead Archived',
-        description: `Successfully soft-archived "${lead.displayName}".`
-      });
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Archive Failed',
-        description: error.message
-      });
-    }
-  };
-
-  // Bulk soft-archive all cold leads (leadScore < 15)
-  const handleBulkArchiveCold = async () => {
-    if (!firestore || !workspaceEntities) return;
-    setIsArchiveModalOpen(false);
-    
-    const coldLeads = workspaceEntities.filter((we) => (we.leadScore || 0) < 15);
-    if (coldLeads.length === 0) {
-      toast({
-        title: 'No Cold Leads',
-        description: 'There are no active leads with a score below 15.'
-      });
-      return;
-    }
-
-    try {
-      const batch = writeBatch(firestore);
-      const timestamp = new Date().toISOString();
-
-      coldLeads.forEach((lead) => {
-        const weRef = doc(firestore, 'workspace_entities', lead.id);
-        batch.update(weRef, { status: 'archived', updatedAt: timestamp });
-
-        if (lead.entityId) {
-          const entityRef = doc(firestore, 'entities', lead.entityId);
-          batch.update(entityRef, { status: 'archived', updatedAt: timestamp });
-        }
-      });
-
-      await batch.commit();
-      toast({
-        title: 'Bulk Archive Successful',
-        description: `Soft-archived ${coldLeads.length} cold leads.`
-      });
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Bulk Archive Failed',
-        description: error.message
-      });
-    }
-  };
-
-  // Reset scoring settings
-  const handleResetSettings = () => {
-    setLocalVerificationRules([...DEFAULT_SCORING_SETTINGS.emailVerificationRules]);
-    setLocalPhoneVerificationRules([...(DEFAULT_SCORING_SETTINGS.phoneVerificationRules || [])]);
-    setLocalEngagementRules({ ...DEFAULT_SCORING_SETTINGS.engagementRules });
-    toast({
-      title: 'Settings Reset Locally',
-      description: 'Click "Save Settings" to apply the defaults to the workspace.'
-    });
-  };
-
-  // Save rules and settings
-  const handleSaveSettings = async () => {
-    if (!firestore || !activeWorkspaceId) return;
-    setIsSettingsSaving(true);
-    try {
-      const workspaceRef = doc(firestore, 'workspaces', activeWorkspaceId);
-      
-      // Sort rules descending by minScore to ensure scoring engine matches highest threshold correctly
-      const sortedRules = [...localVerificationRules].sort((a, b) => b.minScore - a.minScore);
-      const sortedPhoneRules = [...localPhoneVerificationRules].sort((a, b) => b.minScore - a.minScore);
-
-      await updateDoc(workspaceRef, {
-        leadScoringSettings: {
-          emailVerificationRules: sortedRules,
-          phoneVerificationRules: sortedPhoneRules,
-          engagementRules: localEngagementRules
-        }
-      });
-
-      toast({
-        title: 'Settings Saved',
-        description: 'Lead scoring settings successfully updated.'
-      });
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to Save Settings',
-        description: error.message
-      });
-    } finally {
-      setIsSettingsSaving(false);
-    }
-  };
-
-  // Apply manual score adjustment to a sub-contact
-  const handleApplyAdjustment = async () => {
-    if (!firestore || !selectedLead || !adjustingContact) return;
-    setIsAdjusting(true);
-
-    const valNum = Math.max(0, Number(adjustValue) || 0);
-
-    const entityId = selectedLead.entityId;
-    const workspaceEntityId = selectedLead.id;
-
-    if (!entityId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Selected lead does not have a valid parent entity reference.' });
-      setIsAdjusting(false);
-      return;
-    }
-
-    try {
-      const entityRef = doc(firestore, 'entities', entityId);
-      const weRef = doc(firestore, 'workspace_entities', workspaceEntityId);
-
-      await runTransaction(firestore, async (transaction) => {
-        const entitySnap = await transaction.get(entityRef);
-        if (!entitySnap.exists()) {
-          throw new Error('Parent entity not found.');
-        }
-
-        const entityData = entitySnap.data() || {};
-        const entityContacts = entityData.entityContacts || [];
-
-        const { entityContacts: updatedContacts, leadScore } = calculateEngagementAdjustment(
-          entityContacts,
-          adjustingContact.email || adjustingContact.id,
-          valNum,
-          adjustOperation
-        );
-
-        transaction.update(entityRef, {
-          entityContacts: updatedContacts,
-          leadScore,
-          updatedAt: new Date().toISOString()
-        });
-
-        transaction.update(weRef, {
-          entityContacts: updatedContacts,
-          leadScore,
-          updatedAt: new Date().toISOString()
-        });
-      });
-
-      toast({
-        title: 'Score Adjusted',
-        description: `Successfully adjusted score for contact ${adjustingContact.name}.`
-      });
-
-      setIsAdjustModalOpen(false);
-      setSelectedLead(null);
-      setAdjustingContact(null);
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Adjustment Failed',
-        description: error.message
-      });
-    } finally {
-      setIsAdjusting(false);
-    }
-  };
-
-  // Helper functions for Verification Rules manipulation
-  const addVerificationRule = () => {
-    setLocalVerificationRules([...localVerificationRules, { minScore: 50, scoreValue: 5 }]);
-  };
-
-  const removeVerificationRule = (index: number) => {
-    const updated = [...localVerificationRules];
-    updated.splice(index, 1);
-    setLocalVerificationRules(updated);
-  };
-
-  const updateVerificationRule = (index: number, key: keyof EmailVerificationRule, value: number) => {
-    const updated = [...localVerificationRules];
-    updated[index] = {
-      ...updated[index],
-      [key]: value
-    };
-    setLocalVerificationRules(updated);
-  };
-
-  // Helper functions for Phone Verification Rules manipulation
-  const addPhoneVerificationRule = () => {
-    setLocalPhoneVerificationRules([...localPhoneVerificationRules, { minScore: 50, scoreValue: 4 }]);
-  };
-
-  const removePhoneVerificationRule = (index: number) => {
-    const updated = [...localPhoneVerificationRules];
-    updated.splice(index, 1);
-    setLocalPhoneVerificationRules(updated);
-  };
-
-  const updatePhoneVerificationRule = (index: number, key: keyof PhoneVerificationRule, value: number) => {
-    const updated = [...localPhoneVerificationRules];
-    updated[index] = {
-      ...updated[index],
-      [key]: value
-    };
-    setLocalPhoneVerificationRules(updated);
-  };
-
-  // Helper functions for Engagement Rules manipulation
-  const addEngagementRule = () => {
-    // Find first unused common key or use custom key
-    const currentKeys = Object.keys(localEngagementRules);
-    const unusedCommon = COMMON_ENGAGEMENTS.find(c => !currentKeys.includes(c.value));
-    const newKey = unusedCommon ? unusedCommon.value : `custom_engagement_${Date.now()}`;
-    
-    setLocalEngagementRules({
-      ...localEngagementRules,
-      [newKey]: 5
-    });
-  };
-
-  const removeEngagementRule = (key: string) => {
-    const updated = { ...localEngagementRules };
-    delete updated[key];
-    setLocalEngagementRules(updated);
-  };
-
-  const updateEngagementRule = (key: string, value: number) => {
-    setLocalEngagementRules({
-      ...localEngagementRules,
-      [key]: value
-    });
-  };
-
-  const updateEngagementKey = (oldKey: string, newKey: string) => {
-    if (!newKey || oldKey === newKey || Object.keys(localEngagementRules).includes(newKey)) return;
-    const value = localEngagementRules[oldKey];
-    const updated = { ...localEngagementRules };
-    delete updated[oldKey];
-    updated[newKey] = value;
-    setLocalEngagementRules(updated);
   };
 
   return (
     <PageContainerFluid>
-      <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto py-6 animate-fade-in">
+      <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto py-6 animate-fade-in text-left">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-5">
           <div className="space-y-1">
@@ -599,78 +818,280 @@ export default function LeadScoringCleanupPage() {
               <Sparkles className="h-6 w-6 text-primary animate-pulse" /> Lead Scoring & Cleanup Center
             </h1>
             <p className="text-sm text-muted-foreground">
-              Monitor active prospect scores, override metrics, soft-archive cold records, and configure auto-scoring settings.
+              Evaluate contact scores, run bulk adjustments, soft-archive stale leads, and customize scoring conditions.
             </p>
           </div>
           <div className="flex gap-2">
             <Button 
               variant="outline" 
-              onClick={() => setIsArchiveModalOpen(true)}
-              className="border-rose-500/30 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 rounded-xl"
-              disabled={isLoading || metrics.cold === 0}
+              onClick={handleExportCSV}
+              className="rounded-xl font-bold active:scale-[0.97]"
+              disabled={isLoading || totalRecords === 0}
             >
-              <Archive className="h-4 w-4 mr-2" /> Bulk Archive Cold Leads
+              <Download className="h-4 w-4 mr-2" /> Export Scores
             </Button>
           </div>
         </div>
 
         {/* Dashboard KPIs Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card className="rounded-2xl border-border/40 bg-card/45 backdrop-blur-md shadow-sm flex items-center justify-between px-5 py-4 gap-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70">Total Active Leads</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70">Total Contacts</span>
             <span className="text-2xl font-black">{isLoading ? '...' : metrics.total}</span>
           </Card>
-
+          <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 backdrop-blur-md shadow-sm flex items-center justify-between px-5 py-4 gap-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">VIP Tiers</span>
+            <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{isLoading ? '...' : metrics.vip}</span>
+          </Card>
           <Card className="rounded-2xl border-emerald-500/20 bg-emerald-500/5 backdrop-blur-md shadow-sm flex items-center justify-between px-5 py-4 gap-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70 flex items-center gap-1.5">
-              <Flame className="h-3.5 w-3.5 fill-current" /> Hot Leads
-            </span>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Hot Tiers</span>
             <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{isLoading ? '...' : metrics.hot}</span>
           </Card>
-
           <Card className="rounded-2xl border-amber-500/20 bg-amber-500/5 backdrop-blur-md shadow-sm flex items-center justify-between px-5 py-4 gap-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70 flex items-center gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5" /> Warm Leads
-            </span>
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Warm Tiers</span>
             <span className="text-2xl font-black text-amber-600 dark:text-amber-400">{isLoading ? '...' : metrics.warm}</span>
           </Card>
-
           <Card className="rounded-2xl border-rose-500/20 bg-rose-500/5 backdrop-blur-md shadow-sm flex items-center justify-between px-5 py-4 gap-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-600/70 dark:text-rose-400/70 flex items-center gap-1.5">
-              <Archive className="h-3.5 w-3.5" /> Cold Leads (<span className="text-[9px] font-bold">{"< 15"}</span>)
-            </span>
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Cold Tiers</span>
             <span className="text-2xl font-black text-rose-600 dark:text-rose-400">{isLoading ? '...' : metrics.cold}</span>
           </Card>
         </div>
 
-        {/* Tabs Core Layout */}
         <Tabs defaultValue="leads" className="w-full">
           <TabsList className="bg-muted/40 p-1 rounded-xl w-full max-w-[540px] border">
             <TabsTrigger value="leads" className="rounded-lg text-xs font-bold flex items-center gap-2">
-              <User className="h-3.5 w-3.5" /> Leads Cleanup Registry
+              <User className="h-3.5 w-3.5" /> Registry
             </TabsTrigger>
             <TabsTrigger value="hygiene" className="rounded-lg text-xs font-bold flex items-center gap-2 text-rose-500">
               <ShieldAlert className="h-3.5 w-3.5" /> Data Hygiene
             </TabsTrigger>
             <TabsTrigger value="settings" className="rounded-lg text-xs font-bold flex items-center gap-2">
-              <Settings2 className="h-3.5 w-3.5" /> Auto-Scoring Settings
+              <Sliders className="h-3.5 w-3.5" /> Scoring Configurations
             </TabsTrigger>
           </TabsList>
 
-          {/* Leads tab content */}
+          {/* Registry Tab */}
           <TabsContent value="leads" className="space-y-4 mt-4">
-            <div className="flex items-center gap-3 w-full max-w-md bg-card border rounded-xl px-3 h-10 shadow-sm">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by company name or primary email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 h-full text-xs font-medium"
-              />
+            {/* Filters panel */}
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3 bg-muted/20 border p-4 rounded-xl">
+              {/* Search */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Search</span>
+                <div className="relative h-9 w-full bg-background border rounded-lg px-2 flex items-center">
+                  <Search className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />
+                  <input
+                    placeholder="Search name/company..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-transparent border-0 outline-none text-xs w-full font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Score Filter */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Score Range</span>
+                <Select value={filterScore} onValueChange={setFilterScore}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background border">
+                    <SelectValue placeholder="All Scores" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="all" className="text-xs">All Scores</SelectItem>
+                    <SelectItem value="0-25" className="text-xs">0 - 25 (Cold)</SelectItem>
+                    <SelectItem value="26-50" className="text-xs">26 - 50 (Warm)</SelectItem>
+                    <SelectItem value="51-75" className="text-xs">51 - 75 (Hot)</SelectItem>
+                    <SelectItem value="76-100" className="text-xs">76 - 100 (Hot)</SelectItem>
+                    <SelectItem value="100+" className="text-xs">100+ (VIP)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Owner Filter */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Owner</span>
+                <Select value={filterOwner} onValueChange={setFilterOwner}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background border">
+                    <SelectValue placeholder="All Owners" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="all" className="text-xs">All Owners</SelectItem>
+                    <SelectItem value="unassigned" className="text-xs">Unassigned</SelectItem>
+                    {distinctOwners.map(o => (
+                      <SelectItem key={o.id} value={o.id} className="text-xs">{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Tag Filter */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Tag</span>
+                <Select value={filterTag} onValueChange={setFilterTag}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background border">
+                    <SelectValue placeholder="All Tags" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="all" className="text-xs">All Tags</SelectItem>
+                    {distinctTags.map(t => (
+                      <SelectItem key={t} value={t} className="text-xs font-mono">{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Country Filter */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Country</span>
+                <Select value={filterCountry} onValueChange={setFilterCountry}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background border">
+                    <SelectValue placeholder="All Countries" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="all" className="text-xs">All Countries</SelectItem>
+                    {distinctCountries.map(c => (
+                      <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Last Activity Filter */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Activity</span>
+                <Select value={filterLastActivity} onValueChange={setFilterLastActivity}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background border">
+                    <SelectValue placeholder="All Activity" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="all" className="text-xs">All Activity</SelectItem>
+                    <SelectItem value="1d" className="text-xs">Active within 24h</SelectItem>
+                    <SelectItem value="7d" className="text-xs">Active within 7d</SelectItem>
+                    <SelectItem value="30d" className="text-xs">Inactive &gt; 30d</SelectItem>
+                    <SelectItem value="90d" className="text-xs">Inactive &gt; 90d</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Source Filter */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Change Source</span>
+                <Select value={filterSource} onValueChange={setFilterSource}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background border">
+                    <SelectValue placeholder="All Sources" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="all" className="text-xs">All Sources</SelectItem>
+                    <SelectItem value="user" className="text-xs">Manual Updates</SelectItem>
+                    <SelectItem value="automation" className="text-xs">Automations</SelectItem>
+                    <SelectItem value="system" className="text-xs">System Triggers</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
+            {/* Bulk actions bar */}
+            {selectedRowIds.size > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border-2 border-primary/30 bg-primary/5 animate-fade-in shadow-md">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-primary text-white rounded-lg font-bold text-xs shrink-0">{selectedRowIds.size} Selected</Badge>
+                  <span className="text-xs font-semibold text-muted-foreground">Select bulk action:</span>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Adjustment Point Input */}
+                  <div className="flex items-center gap-1.5 border rounded-lg bg-background px-2 h-9 w-28">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase">Pts:</span>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={bulkAdjustmentValue}
+                      onChange={(e) => setBulkAdjustmentValue(e.target.value)}
+                      className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 h-full text-xs font-mono font-bold text-center w-12"
+                    />
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => handleBulkAdjustScores('add')}
+                    disabled={isBulkExecuting}
+                    size="sm"
+                    className="h-9 rounded-lg font-bold hover:bg-emerald-500/10 hover:text-emerald-600 text-xs active:scale-[0.97]"
+                  >
+                    Increase (+)
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => handleBulkAdjustScores('subtract')}
+                    disabled={isBulkExecuting}
+                    size="sm"
+                    className="h-9 rounded-lg font-bold hover:bg-rose-500/10 hover:text-rose-600 text-xs active:scale-[0.97]"
+                  >
+                    Decrease (-)
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => handleBulkAdjustScores('reset')}
+                    disabled={isBulkExecuting}
+                    size="sm"
+                    className="h-9 rounded-lg font-bold text-rose-500 hover:bg-rose-500/10 text-xs active:scale-[0.97]"
+                  >
+                    Reset Scores
+                  </Button>
+
+                  {/* Assignee select */}
+                  <div className="flex items-center gap-1.5 border rounded-lg bg-background px-2 h-9">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase">Owner:</span>
+                    <Select value={bulkAssignUserId} onValueChange={setBulkAssignUserId}>
+                      <SelectTrigger className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-full text-xs py-0 pl-1 pr-6 font-bold bg-transparent">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg">
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {users?.map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    onClick={handleBulkAssign}
+                    disabled={isBulkExecuting}
+                    size="sm"
+                    className="h-9 rounded-lg font-bold text-xs active:scale-[0.97]"
+                  >
+                    Assign Owner
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={handleBulkArchive}
+                    disabled={isBulkExecuting}
+                    size="sm"
+                    className="h-9 rounded-lg font-bold text-rose-500 hover:bg-rose-500/10 text-xs active:scale-[0.97]"
+                  >
+                    Archive Leads
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={handleBulkDelete}
+                    disabled={isBulkExecuting}
+                    size="sm"
+                    className="h-9 rounded-lg font-bold text-rose-600 hover:bg-rose-600/10 text-xs active:scale-[0.97]"
+                  >
+                    Delete Leads
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Table */}
             <Card className="rounded-2xl border-border/40 bg-card/35 backdrop-blur-md overflow-hidden">
-              {filteredLeads.length > 0 && (
+              {filteredContactRows.length > 0 && (
                 <BentoPagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -684,169 +1105,117 @@ export default function LeadScoringCleanupPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/15">
-                    <TableHead className="w-10"></TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Lead Company Name</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Primary Email</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Contact Count</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Overall Lead Score</TableHead>
+                    <TableHead className="w-12 text-center py-4">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={handleToggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Contact</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Company</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Score</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Status</TableHead>
-                    <TableHead className="w-[120px] text-right"></TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Owner</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Last Activity</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Last Score Change</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider w-[120px] text-right"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-10 text-xs font-semibold text-muted-foreground">
-                        Loading directory and aggregating lead metrics...
+                      <TableCell colSpan={9} className="text-center py-12 text-xs font-semibold text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary" />
+                        Fetching cleanup registry contacts...
                       </TableCell>
                     </TableRow>
-                  ) : filteredLeads.length === 0 ? (
+                  ) : filteredContactRows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-10 text-xs font-semibold text-muted-foreground">
-                        No leads found matching your search.
+                      <TableCell colSpan={9} className="text-center py-12 text-xs font-semibold text-muted-foreground">
+                        No contacts found matching your filter parameters.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedLeads.map((lead) => {
-                      const score = lead.leadScore || 0;
-                      const isExpanded = expandedRows.has(lead.id);
-                      const isCold = score < 15;
-                      const statusVariant = score >= 50 ? 'emerald' : score >= 15 ? 'amber' : 'rose';
-
+                    paginatedContactRows.map((row) => {
+                      const isSelected = selectedRowIds.has(row.id);
+                      const latestHist = latestHistoryMap.get(row.contactId);
+                      
                       return (
-                        <React.Fragment key={lead.id}>
-                          <TableRow className="hover:bg-muted/5 group border-b border-border/30">
-                            <TableCell className="text-center">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 rounded-lg"
-                                onClick={() => toggleRow(lead.id)}
-                              >
-                                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                              </Button>
-                            </TableCell>
-                            <TableCell className="font-bold text-xs text-foreground py-3.5">
-                              {lead.displayName}
-                            </TableCell>
-                            <TableCell className="text-xs font-medium text-muted-foreground">
-                              {lead.primaryEmail || <span className="italic opacity-60">None provided</span>}
-                            </TableCell>
-                            <TableCell className="text-xs font-bold text-center">
-                              {lead.entityContacts?.length || 0}
-                            </TableCell>
-                            <TableCell className="text-sm font-black text-center text-foreground">
-                              {score}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge 
-                                variant="outline" 
-                                className={`
-                                  rounded-full border-none font-bold text-[10px] tracking-wide uppercase px-2 py-0.5
-                                  ${statusVariant === 'emerald' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 
-                                    statusVariant === 'amber' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 
-                                    'bg-rose-500/10 text-rose-600 dark:text-rose-400'}
-                                `}
-                              >
-                                {score >= 50 ? 'Hot' : score >= 15 ? 'Warm' : 'Cold'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 rounded-lg text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
-                                onClick={() => handleSoftArchiveLead(lead)}
-                              >
-                                <Archive className="h-3.5 w-3.5 mr-1" /> Archive
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-
-                          {/* Expanded sub-contacts row */}
-                          {isExpanded && (
-                            <TableRow className="bg-muted/10 border-b border-border/30">
-                              <TableCell colSpan={7} className="px-6 py-4">
-                                <div className="space-y-3">
-                                  <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                                    <Activity className="h-3.5 w-3.5 text-primary" /> Contact Association & Scores
-                                  </h4>
-                                  
-                                  <div className="overflow-hidden border border-border/40 rounded-xl bg-card">
-                                    <Table>
-                                      <TableHeader className="bg-muted/20">
-                                        <TableRow>
-                                          <TableHead className="text-[10px] font-bold uppercase tracking-wider py-2">Name</TableHead>
-                                          <TableHead className="text-[10px] font-bold uppercase tracking-wider py-2">Email</TableHead>
-                                          <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center py-2">Verifier Score Points</TableHead>
-                                          <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center py-2">Engagement / Manual Score</TableHead>
-                                          <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center py-2">Total Score</TableHead>
-                                          <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right py-2 w-[120px]"></TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {(!lead.entityContacts || lead.entityContacts.length === 0) ? (
-                                          <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-4 text-xs italic opacity-60">
-                                              No associated contacts linked to this entity.
-                                            </TableCell>
-                                          </TableRow>
-                                        ) : (
-                                          lead.entityContacts.map((contact) => {
-                                            const totalContScore = contact.score || 0;
-                                            // Combined verifier points (email + phone) so engagement isn't overstated
-                                            const verifyScore = (contact.emailVerificationScore || 0) + (contact.phoneVerificationScore || 0);
-                                            const engScore = Math.max(0, totalContScore - verifyScore);
-
-                                            return (
-                                              <TableRow key={contact.id} className="hover:bg-muted/5 border-b border-border/10 last:border-none">
-                                                <TableCell className="text-xs font-semibold py-2.5">{contact.name}</TableCell>
-                                                <TableCell className="text-xs font-medium text-muted-foreground">
-                                                  {contact.email ? (
-                                                    <span className="flex items-center gap-1">
-                                                      <Mail className="h-3 w-3 opacity-60" /> {contact.email}
-                                                    </span>
-                                                  ) : (
-                                                    <span className="italic opacity-60">No email</span>
-                                                  )}
-                                                </TableCell>
-                                                <TableCell className="text-xs font-bold text-center text-primary/80">{verifyScore}</TableCell>
-                                                <TableCell className="text-xs font-bold text-center text-amber-500/80">{engScore}</TableCell>
-                                                <TableCell className="text-xs font-black text-center text-foreground">{totalContScore}</TableCell>
-                                                <TableCell className="text-right">
-                                                  <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                      setSelectedLead(lead);
-                                                      setAdjustingContact(contact);
-                                                      setAdjustOperation('add');
-                                                      setAdjustValue('5');
-                                                      setIsAdjustModalOpen(true);
-                                                    }}
-                                                    className="h-7 rounded-lg text-[10px] font-bold hover:bg-muted"
-                                                  >
-                                                    Adjust Score
-                                                  </Button>
-                                                </TableCell>
-                                              </TableRow>
-                                            );
-                                          })
-                                        )}
-                                      </TableBody>
-                                    </Table>
-                                  </div>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </React.Fragment>
+                        <TableRow key={row.id} className="hover:bg-muted/5 group border-b border-border/30">
+                          <TableCell className="text-center py-3.5">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => handleToggleSelectRow(row.id)}
+                              aria-label={`Select contact ${row.contactName}`}
+                            />
+                          </TableCell>
+                          <TableCell className="font-bold text-xs text-foreground py-3.5">
+                            <div className="flex flex-col">
+                              <span className="font-extrabold">{row.contactName}</span>
+                              <span className="text-[10px] text-muted-foreground font-medium">{row.contactEmail || 'No email'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs font-bold text-muted-foreground">
+                            {row.companyName}
+                          </TableCell>
+                          <TableCell className="text-sm font-black text-center text-foreground font-mono">
+                            {row.leadScore}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge 
+                              variant="outline" 
+                              className={`
+                                rounded-full border-none font-bold text-[9px] tracking-wide uppercase px-2 py-0.5
+                                ${row.status === 'VIP' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' :
+                                  row.status === 'Hot' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 
+                                  row.status === 'Warm' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 
+                                  'bg-rose-500/10 text-rose-600 dark:text-rose-400'}
+                              `}
+                            >
+                              {row.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs font-bold">
+                            {row.ownerName || <span className="text-muted-foreground/40 italic font-medium">Unassigned</span>}
+                          </TableCell>
+                          <TableCell className="text-xs text-center font-medium text-muted-foreground font-mono">
+                            {row.lastActivity ? new Date(row.lastActivity).toLocaleDateString() : 'Never'}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {latestHist ? (
+                              <div className="flex flex-col">
+                                <span className={`font-mono font-bold ${latestHist.change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                  {latestHist.change >= 0 ? `+${latestHist.change}` : latestHist.change} Pts
+                                </span>
+                                <span className="text-[9px] text-muted-foreground capitalize font-medium">{latestHist.source} - {latestHist.reason}</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground/30 italic">None logged</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right py-3.5">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedRow(row);
+                                setAdjustOperation('add');
+                                setAdjustValue('10');
+                                setIsAdjustModalOpen(true);
+                              }}
+                              className="h-8 rounded-lg text-xs font-bold hover:bg-muted active:scale-[0.97]"
+                            >
+                              Override
+                            </Button>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
                 </TableBody>
               </Table>
-              {filteredLeads.length > 0 && (
+              {filteredContactRows.length > 0 && (
                 <BentoPagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -859,14 +1228,128 @@ export default function LeadScoringCleanupPage() {
             </Card>
           </TabsContent>
 
-          {/* Settings tab content */}
+          {/* Hygiene Tab */}
+          <TabsContent value="hygiene" className="space-y-4 mt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border bg-muted/10">
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={hygieneFilter} onValueChange={setHygieneFilter}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="all" className="text-xs">All Issues</SelectItem>
+                    <SelectItem value="bounced" className="text-xs text-rose-500">Bounced Emails</SelectItem>
+                    <SelectItem value="unsubscribed" className="text-xs text-amber-500">Unsubscribed Contacts</SelectItem>
+                    <SelectItem value="inactive_30" className="text-xs">Inactive &gt; 30 Days</SelectItem>
+                    <SelectItem value="no_role" className="text-xs">No Contact Role</SelectItem>
+                    <SelectItem value="no_phone" className="text-xs">No Phone Number</SelectItem>
+                    <SelectItem value="no_email" className="text-xs">No Email Address</SelectItem>
+                    <SelectItem value="unverified_email" className="text-xs">Unverified Email Address</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <div className="relative h-9 w-60 bg-background border rounded-lg px-2 flex items-center">
+                  <Search className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />
+                  <input
+                    placeholder="Search name/email..."
+                    value={hygieneSearchTerm}
+                    onChange={(e) => setHygieneSearchTerm(e.target.value)}
+                    className="bg-transparent border-0 outline-none text-xs w-full font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleExportHygieneCSV} className="h-9 rounded-lg font-bold text-xs active:scale-[0.97]">
+                  <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setIsBulkHygieneArchiveOpen(true)} className="h-9 rounded-lg font-bold text-xs text-rose-500 hover:bg-rose-500/5 active:scale-[0.97]" disabled={hygieneLeads.length === 0}>
+                  <Archive className="h-3.5 w-3.5 mr-1" /> Archive All
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setIsBulkHygieneDeleteOpen(true)} className="h-9 rounded-lg font-bold text-xs text-rose-600 hover:bg-rose-600/5 active:scale-[0.97]" disabled={hygieneLeads.length === 0}>
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete All
+                </Button>
+              </div>
+            </div>
+
+            <Card className="rounded-2xl border-border/40 bg-card/35 backdrop-blur-md overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/15">
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Company Name</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Primary Email</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Score</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider">Issues Identified</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-10 text-xs font-semibold text-muted-foreground">
+                        Aggregating hygiene metrics...
+                      </TableCell>
+                    </TableRow>
+                  ) : hygieneLeads.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-10 text-xs font-semibold text-emerald-500">
+                        <CheckCircle2 className="h-5 w-5 mx-auto mb-2 text-emerald-500 animate-bounce" />
+                        Lead directory is clean! No hygiene alerts detected.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedHygieneLeads.map((lead) => {
+                      const score = lead.leadScore || 0;
+                      
+                      const hasBounced = lead.entityContacts.some(c => c.emailStatus === 'bounced');
+                      const hasUnsubscribed = lead.entityContacts.some(c => c.emailStatus === 'unsubscribed');
+                      const hasNoRole = lead.entityContacts.some(c => c.isPrimary && !c.typeLabel && !c.typeKey);
+                      const hasNoPhone = !lead.primaryPhone;
+                      const hasNoEmail = !lead.primaryEmail;
+                      
+                      const issues = [
+                        hasBounced ? 'Bounced Email' : '',
+                        hasUnsubscribed ? 'Unsubscribed' : '',
+                        hasNoRole ? 'Missing Job Title' : '',
+                        hasNoPhone ? 'No Phone' : '',
+                        hasNoEmail ? 'No Email' : ''
+                      ].filter(Boolean);
+
+                      return (
+                        <TableRow key={lead.id} className="hover:bg-muted/5 border-b border-border/30 last:border-none">
+                          <TableCell className="font-bold text-xs text-foreground py-3.5">{lead.displayName}</TableCell>
+                          <TableCell className="text-xs font-medium text-muted-foreground">{lead.primaryEmail || 'No Email'}</TableCell>
+                          <TableCell className="text-xs font-black text-center text-foreground font-mono">{score}</TableCell>
+                          <TableCell className="py-3.5">
+                            <div className="flex flex-wrap gap-1">
+                              {issues.map((iss, i) => (
+                                <Badge key={i} variant="outline" className="text-[8px] font-bold uppercase rounded-lg border-rose-500/20 text-rose-500 bg-rose-500/5">
+                                  {iss}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6 mt-4">
             <Card className="rounded-2xl border-border/40 bg-card/35 backdrop-blur-md">
               <CardHeader className="border-b border-border/30 py-4">
                 <div className="flex items-center justify-between w-full">
-                  <CardTitle className="text-base font-extrabold flex items-center gap-2">
-                    <Sliders className="h-4 w-4 text-primary" /> Auto-Scoring Rules Engine
-                  </CardTitle>
+                  <div className="space-y-1 text-left">
+                    <CardTitle className="text-base font-extrabold flex items-center gap-2">
+                      <Sliders className="h-4 w-4 text-primary" /> Auto-Scoring Mapping Rules
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Set system parameters to automatically adjust scores when integrations detect verification or client events.
+                    </CardDescription>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Button 
                       variant="ghost" 
@@ -888,7 +1371,7 @@ export default function LeadScoringCleanupPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-8">
-                {/* 1. Email Verification Rules */}
+                {/* Email verification mapping */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5 text-left">
@@ -950,7 +1433,7 @@ export default function LeadScoringCleanupPage() {
                   </div>
                 </div>
 
-                {/* 2. Phone Verification Rules */}
+                {/* Phone verification mapping */}
                 <div className="space-y-4 border-t border-border/40 pt-6">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5 text-left">
@@ -958,7 +1441,7 @@ export default function LeadScoringCleanupPage() {
                         <Phone className="h-3.5 w-3.5 text-primary" /> Phone Verification Score Mapping
                       </Label>
                       <p className="text-[10px] text-muted-foreground">
-                        Award points once a phone number passes background verification (format, allocated range, line type). Opt-in: leave the single 0 / 0 tier to keep phone scoring disabled. (Rules sorted descending).
+                        Award points once a phone number passes background verification.
                       </p>
                     </div>
                     <Button
@@ -1014,7 +1497,7 @@ export default function LeadScoringCleanupPage() {
                   </div>
                 </div>
 
-                {/* 3. Engagement Rules Mapping */}
+                {/* Engagement mapping */}
                 <div className="space-y-4 border-t border-border/40 pt-6">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5 text-left">
@@ -1096,275 +1579,94 @@ export default function LeadScoringCleanupPage() {
                         </div>
                       );
                     })}
-
-                    {Object.keys(localEngagementRules).length === 0 && (
-                      <div className="p-8 text-center border-2 border-dashed rounded-xl opacity-60">
-                        <p className="text-xs font-semibold text-muted-foreground">No engagement score rules mapped yet. Click "Add Engagement Map" to start.</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* Hygiene Tab Content */}
-          <TabsContent value="hygiene" className="space-y-4 mt-4">
-            <div className="flex flex-col md:flex-row gap-3 w-full border-b border-border/40 pb-4">
-              <div className="flex items-center gap-3 w-full max-w-md bg-card border rounded-xl px-3 h-10 shadow-sm">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search inactive/bounced leads..."
-                  value={hygieneSearchTerm}
-                  onChange={(e) => setHygieneSearchTerm(e.target.value)}
-                  className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0 h-full text-xs font-medium"
-                />
-              </div>
-              <Select value={hygieneFilter} onValueChange={(val: any) => setHygieneFilter(val)}>
-                <SelectTrigger className="w-full md:w-[200px] h-10 rounded-xl bg-card">
-                  <SelectValue placeholder="Filter Issues" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="all">All Issues</SelectItem>
-                  <SelectItem value="bounced">Hard Bounced</SelectItem>
-                  <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
-                  <SelectItem value="inactive_30">{"> 30 Days Inactive"}</SelectItem>
-                  <SelectItem value="inactive_60">{"> 60 Days Inactive"}</SelectItem>
-                  <SelectItem value="inactive_90">{"> 90 Days Inactive"}</SelectItem>
-                  <SelectItem value="no_role">Missing Role</SelectItem>
-                  <SelectItem value="no_phone">Missing Phone</SelectItem>
-                  <SelectItem value="no_email">Missing Email</SelectItem>
-                  <SelectItem value="unverified_email">Unverified Email</SelectItem>
-                  <SelectItem value="unopened_30">{"> 30 Days Email Unopened"}</SelectItem>
-                  <SelectItem value="unopened_60">{"> 60 Days Email Unopened"}</SelectItem>
-                  <SelectItem value="unopened_90">{"> 90 Days Email Unopened"}</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex-1" />
-              <div className="flex items-center gap-2">
-                <Button variant="outline" className="h-10 rounded-xl font-bold text-xs" onClick={handleExportHygieneCSV} disabled={hygieneLeads.length === 0}>
-                  <Download className="h-4 w-4 mr-2" /> Export CSV
-                </Button>
-                <Button variant="outline" className="h-10 rounded-xl font-bold text-xs text-rose-500 border-rose-500/20 hover:bg-rose-500/10" onClick={() => setIsBulkHygieneArchiveOpen(true)} disabled={hygieneLeads.length === 0}>
-                  <Archive className="h-4 w-4 mr-2" /> Bulk Archive
-                </Button>
-                <Button variant="destructive" className="h-10 rounded-xl font-bold text-xs" onClick={() => setIsBulkHygieneDeleteOpen(true)} disabled={hygieneLeads.length === 0}>
-                  <Trash2 className="h-4 w-4 mr-2" /> Permanent Delete
-                </Button>
-              </div>
-            </div>
-
-            <Card className="rounded-2xl border-border/40 bg-card/35 backdrop-blur-md overflow-hidden">
-              {hygieneLeads.length > 0 && (
-                <BentoPagination
-                  currentPage={hygieneCurrentPage}
-                  totalPages={hygieneTotalPages}
-                  totalRecords={hygieneTotalRecords}
-                  pageSize={hygienePageSize}
-                  onPageChange={setHygieneCurrentPage}
-                  onPageSizeChange={setHygienePageSize}
-                  className="border-t-0 border-b"
-                />
-              )}
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/15">
-                    <TableHead className="w-[40px] text-center"></TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Entity Name</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Primary Email</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Deliverability</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Days Inactive</TableHead>
-                    <TableHead className="w-[120px] text-right"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-xs font-semibold text-muted-foreground">Loading hygiene data...</TableCell>
-                    </TableRow>
-                  ) : paginatedHygieneLeads.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-xs font-semibold text-muted-foreground">No leads matched your hygiene filters.</TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedHygieneLeads.map((lead) => {
-                      const hasBounced = lead.entityContacts.some(c => c.emailStatus === 'bounced');
-                      const hasUnsubscribed = lead.entityContacts.some(c => c.emailStatus === 'unsubscribed');
-                      const lastEngagedAt = lead.lastEngagedAt ? new Date(lead.lastEngagedAt).getTime() : 0;
-                      const daysInactive = lastEngagedAt ? Math.floor((Date.now() - lastEngagedAt) / (24 * 60 * 60 * 1000)) : 'Never';
-                      
-                      const hasNoRole = lead.entityContacts.some(c => c.isPrimary && !c.typeLabel && !c.typeKey);
-                      const hasNoPhone = !lead.primaryPhone;
-                      const hasNoEmail = !lead.primaryEmail;
-                      const hasUnverifiedEmail = lead.entityContacts.some(c => c.isPrimary && c.emailVerificationScore === undefined);
-                      
-                      return (
-                        <TableRow key={lead.id} className="hover:bg-muted/5 group border-b border-border/30">
-                          <TableCell className="text-center"><ShieldAlert className="h-4 w-4 text-muted-foreground/50 mx-auto" /></TableCell>
-                          <TableCell className="font-bold text-xs text-foreground py-3.5">{lead.displayName}</TableCell>
-                          <TableCell className="text-xs font-medium text-muted-foreground">{lead.primaryEmail || <span className="italic opacity-60">None</span>}</TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex flex-wrap items-center justify-center gap-1">
-                              {hasBounced && <Badge variant="destructive" className="text-[9px] uppercase">Bounced</Badge>}
-                              {hasUnsubscribed && <Badge variant="secondary" className="text-[9px] uppercase">Unsub</Badge>}
-                              {hasNoRole && <Badge variant="outline" className="text-[9px] uppercase border-amber-500/50 text-amber-500">No Role</Badge>}
-                              {hasNoPhone && <Badge variant="outline" className="text-[9px] uppercase border-amber-500/50 text-amber-500">No Phone</Badge>}
-                              {hasNoEmail && <Badge variant="outline" className="text-[9px] uppercase border-amber-500/50 text-amber-500">No Email</Badge>}
-                              {hasUnverifiedEmail && <Badge variant="outline" className="text-[9px] uppercase border-blue-500/50 text-blue-500">Unverified</Badge>}
-                              {!hasBounced && !hasUnsubscribed && !hasNoRole && !hasNoPhone && !hasNoEmail && !hasUnverifiedEmail && <span className="text-[10px] text-muted-foreground">OK</span>}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm font-black text-center text-foreground">{daysInactive}</TableCell>
-                          <TableCell className="text-right">
-                            <Button size="sm" variant="ghost" className="h-8 rounded-lg text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-500/10" onClick={() => handleSoftArchiveLead(lead)}>
-                              <Archive className="h-3.5 w-3.5 mr-1" /> Archive
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-              {hygieneLeads.length > 0 && (
-                <BentoPagination
-                  currentPage={hygieneCurrentPage}
-                  totalPages={hygieneTotalPages}
-                  totalRecords={hygieneTotalRecords}
-                  pageSize={hygienePageSize}
-                  onPageChange={setHygieneCurrentPage}
-                  onPageSizeChange={setHygienePageSize}
-                />
-              )}
-            </Card>
-          </TabsContent>
         </Tabs>
 
-        {/* Modal: Bulk Hygiene Archive Confirmation */}
-        <Dialog open={isBulkHygieneArchiveOpen} onOpenChange={setIsBulkHygieneArchiveOpen}>
-          <DialogContent className="rounded-2xl border bg-card max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-base font-extrabold flex items-center gap-2 text-rose-500">
-                <Archive className="h-5 w-5" /> Bulk Archive Filtered Leads
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Are you sure you want to archive {hygieneLeads.length} leads matching your current hygiene filters?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-0 mt-3">
-              <Button variant="ghost" onClick={() => setIsBulkHygieneArchiveOpen(false)} className="rounded-xl text-xs font-bold">Cancel</Button>
-              <Button onClick={handleBulkArchiveHygiene} className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold">Archive {hygieneLeads.length} Leads</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Modal: Bulk Hygiene Delete Confirmation */}
-        <Dialog open={isBulkHygieneDeleteOpen} onOpenChange={setIsBulkHygieneDeleteOpen}>
-          <DialogContent className="rounded-2xl border bg-card max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-base font-extrabold flex items-center gap-2 text-red-600">
-                <Trash2 className="h-5 w-5" /> Permanent Bulk Delete
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                You are about to permanently delete {hygieneLeads.length} leads from this workspace. This action CANNOT be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:gap-0 mt-3">
-              <Button variant="ghost" onClick={() => setIsBulkHygieneDeleteOpen(false)} className="rounded-xl text-xs font-bold">Cancel</Button>
-              <Button onClick={handleBulkDeleteHygiene} className="bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold">Delete {hygieneLeads.length} Leads</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Modal: Bulk Archive Confirmation */}
-        <Dialog open={isArchiveModalOpen} onOpenChange={setIsArchiveModalOpen}>
-          <DialogContent className="rounded-2xl border bg-card max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-base font-extrabold flex items-center gap-2 text-rose-500">
-                <Trash2 className="h-5 w-5" /> Bulk Archive Cold Leads
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Are you sure you want to archive all active leads with an overall score below 15? This will change status to "archived" on both workspace records and parent contacts.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-2 space-y-1 bg-rose-500/5 p-4 rounded-xl border border-rose-500/10 text-left">
-              <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-wide">Leads to be Archived</span>
-              <p className="text-sm font-bold text-rose-500">{metrics.cold} leads found with score {"< 15"}.</p>
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0 mt-3">
-              <Button variant="ghost" onClick={() => setIsArchiveModalOpen(false)} className="rounded-xl text-xs font-bold">
-                Cancel
-              </Button>
-              <Button onClick={handleBulkArchiveCold} className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold">
-                Archive {metrics.cold} Cold Leads
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Modal: Manual Adjust Score */}
+        {/* Override Modal */}
         <Dialog open={isAdjustModalOpen} onOpenChange={setIsAdjustModalOpen}>
-          <DialogContent className="rounded-2xl border bg-card max-w-sm">
+          <DialogContent className="rounded-2xl max-w-sm">
             <DialogHeader>
-              <DialogTitle className="text-base font-extrabold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary animate-pulse" /> Manual Score Adjustment
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Update lead score metrics manually for contact {adjustingContact?.name}.
+              <DialogTitle className="text-base font-extrabold">Override Lead Score</DialogTitle>
+              <DialogDescription className="text-xs font-semibold text-muted-foreground">
+                Set manual adjustments for contact <span className="text-foreground font-bold">{selectedRow?.contactName}</span>.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 my-2 text-left">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Operation</Label>
-                <Select
-                  value={adjustOperation}
-                  onValueChange={(v: any) => setAdjustOperation(v)}
-                >
-                  <SelectTrigger className="h-10 rounded-xl text-xs font-semibold bg-card border">
+            <div className="space-y-4 my-2">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase">Adjustment Type</Label>
+                <Select value={adjustOperation} onValueChange={(v: any) => setAdjustOperation(v)}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg font-semibold bg-background">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectContent className="rounded-lg">
                     <SelectItem value="add" className="text-xs">Add Points (+)</SelectItem>
                     <SelectItem value="subtract" className="text-xs">Subtract Points (-)</SelectItem>
-                    <SelectItem value="set" className="text-xs">Override/Set Score (=)</SelectItem>
+                    <SelectItem value="set" className="text-xs">Set Score Value (=)</SelectItem>
+                    <SelectItem value="reset" className="text-xs text-rose-500">Reset Score to 0</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Score Value (Points)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={adjustValue}
-                  onChange={(e) => setAdjustValue(e.target.value)}
-                  className="h-10 rounded-xl text-xs font-bold font-mono"
-                  placeholder="e.g. 5"
-                />
-              </div>
+              {adjustOperation !== 'reset' && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase">Points Weight</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={adjustValue}
+                    onChange={(e) => setAdjustValue(e.target.value)}
+                    className="h-9 rounded-lg font-mono text-xs text-center font-bold"
+                  />
+                </div>
+              )}
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0 mt-3">
-              <Button 
-                variant="ghost" 
-                onClick={() => {
-                  setIsAdjustModalOpen(false);
-                  setSelectedLead(null);
-                  setAdjustingContact(null);
-                }} 
-                className="rounded-xl text-xs font-bold"
-                disabled={isAdjusting}
-              >
-                Cancel
+            <DialogFooter className="gap-2 sm:gap-0 mt-4">
+              <Button variant="ghost" onClick={() => setIsAdjustModalOpen(false)} className="h-9 rounded-lg text-xs font-bold active:scale-[0.97]">Cancel</Button>
+              <Button onClick={handleApplySingleAdjustment} disabled={isAdjusting} className="h-9 rounded-lg text-xs font-bold active:scale-[0.97]">
+                {isAdjusting ? 'Saving Override...' : 'Apply Adjustment'}
               </Button>
-              <Button 
-                onClick={handleApplyAdjustment} 
-                className="bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold"
-                disabled={isAdjusting}
-              >
-                {isAdjusting ? 'Updating...' : 'Apply Adjustment'}
-              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Hygiene Archive Confirm */}
+        <Dialog open={isBulkHygieneArchiveOpen} onOpenChange={setIsBulkHygieneArchiveOpen}>
+          <DialogContent className="rounded-2xl max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-base font-extrabold text-rose-500 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" /> Bulk Archive Warning
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                You are about to soft-archive <span className="font-bold text-foreground">{hygieneLeads.length}</span> stale prospects with identified data hygiene issues. This cannot be easily reversed.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-4">
+              <Button variant="ghost" onClick={() => setIsBulkHygieneArchiveOpen(false)} className="h-9 rounded-lg text-xs font-bold active:scale-[0.97]">Cancel</Button>
+              <Button onClick={handleBulkArchiveHygiene} className="h-9 rounded-lg text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white active:scale-[0.97]">Archive All</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Hygiene Delete Confirm */}
+        <Dialog open={isBulkHygieneDeleteOpen} onOpenChange={setIsBulkHygieneDeleteOpen}>
+          <DialogContent className="rounded-2xl max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-base font-extrabold text-rose-600 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" /> Permanent Delete Warning
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground animate-pulse">
+                You are about to permanently delete <span className="font-bold text-foreground">{hygieneLeads.length}</span> leads from this workspace. This action is irreversible.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-4">
+              <Button variant="ghost" onClick={() => setIsBulkHygieneDeleteOpen(false)} className="h-9 rounded-lg text-xs font-bold active:scale-[0.97]">Cancel</Button>
+              <Button onClick={handleBulkDeleteHygiene} className="h-9 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white active:scale-[0.97]">Permanently Delete</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

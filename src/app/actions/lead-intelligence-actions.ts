@@ -8,7 +8,7 @@ import type {
   LeadIntelligenceSettings, 
   SavedSearch 
 } from '@/lib/lead-intelligence/types';
-import type { Entity, WorkspaceEntity } from '@/lib/types';
+import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
 
 /**

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Automation, AutomationRun } from '@/lib/types';
+import type { Automation, AutomationRun, Pipeline, Tag } from '@/lib/types';
 import { 
     Zap, 
     Plus, 
@@ -34,7 +34,7 @@ import {
     ChevronsRight,
     Mail,
     CheckSquare,
-    Tag,
+    Tag as TagIcon,
     Play,
     ArrowRightLeft,
     Globe,
@@ -44,7 +44,9 @@ import {
     Table2,
     Braces,
     Copy,
-    Check
+    Check,
+    Download,
+    Upload
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,7 +56,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, differenceInSeconds, parseISO } from 'date-fns';
-import { deleteAutomationAction, toggleAutomationStatusAction, pulseAutomationEngineAction, saveAutomationAction, archiveAutomationAction, restoreAutomationAction, deleteAllArchivedAutomationsAction } from '@/lib/automation-actions';
+import { deleteAutomationAction, toggleAutomationStatusAction, pulseAutomationEngineAction, saveAutomationAction, archiveAutomationAction, restoreAutomationAction, deleteAllArchivedAutomationsAction, exportAutomationAction, importAutomationAction } from '@/lib/automation-actions';
+import type { AutomationExportEnvelope } from '@/lib/automations/portability';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils';
@@ -142,7 +145,7 @@ const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => 
             if (actionType === 'SEND_MESSAGE') {
                 IconComponent = Mail;
             } else if (actionType === 'ADD_TAG' || actionType === 'REMOVE_TAG') {
-                IconComponent = Tag;
+                IconComponent = TagIcon;
             } else if (actionType === 'CREATE_DEAL' || actionType === 'UPDATE_DEAL_STAGE') {
                 IconComponent = Target;
             } else if (actionType === 'CREATE_TASK' || actionType === 'UPDATE_TASK') {
@@ -232,6 +235,21 @@ export default function AutomationsClient() {
     const [copiedDialogKey, setCopiedDialogKey] = React.useState<string | null>(null);
     const [isPulsing, setIsPulsing] = React.useState(false);
     
+    // Export/Import States
+    const [showImportDialog, setShowImportDialog] = React.useState(false);
+    const [importStep, setImportStep] = React.useState(1);
+    const [importEnvelope, setImportEnvelope] = React.useState<Record<string, unknown> | null>(null);
+    const [importMappings, setImportMappings] = React.useState({
+        templates: {} as Record<string, string>,
+        pipelines: {} as Record<string, string>,
+        stages: {} as Record<string, string>,
+        webhooks: {} as Record<string, string>,
+        tags: {} as Record<string, string>
+    });
+    const [isImporting, setIsImporting] = React.useState(false);
+    const [importError, setImportError] = React.useState<string | null>(null);
+    const [exportLoadingId, setExportLoadingId] = React.useState<string | null>(null);
+    
     // View mode and filtering state (Phase 1)
     const [viewMode, setViewMode] = React.useState<'list' | 'card'>('list');
     const [statusFilter, setStatusFilter] = React.useState<'all' | 'active' | 'paused'>('all');
@@ -270,6 +288,58 @@ export default function AutomationsClient() {
             toast({ variant: 'destructive', title: 'Rename failed', description: e.message });
         } finally {
             setIsSavingName(false);
+        }
+    };
+
+    const handleExport = async (automation: Automation) => {
+        if (!automation.id) return;
+        setExportLoadingId(automation.id);
+        try {
+            const envelope = await exportAutomationAction(automation.id);
+            const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const safeName = automation.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'automation';
+            a.download = `${safeName}-${Date.now()}.aflow`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast({ title: 'Export successful', description: `Automation "${automation.name}" exported as portable file.` });
+        } catch (error: unknown) {
+            const err = error as Error;
+            toast({ variant: 'destructive', title: 'Export failed', description: err.message });
+        } finally {
+            setExportLoadingId(null);
+        }
+    };
+
+    const handleImportSubmit = async () => {
+        if (!importEnvelope || !user?.uid) return;
+        setIsImporting(true);
+        setImportError(null);
+        try {
+            const res = await importAutomationAction(
+                importEnvelope as unknown as AutomationExportEnvelope,
+                importMappings,
+                activeWorkspaceId,
+                user.uid
+            );
+            if (res.success) {
+                toast({ title: 'Import successful', description: 'Automation imported as paused.' });
+                setShowImportDialog(false);
+                setImportEnvelope(null);
+                setImportStep(1);
+            } else {
+                throw new Error(res.error);
+            }
+        } catch (error: unknown) {
+            const err = error as Error;
+            setImportError(err.message);
+            toast({ variant: 'destructive', title: 'Import failed', description: err.message });
+        } finally {
+            setIsImporting(false);
         }
     };
 
@@ -383,6 +453,30 @@ export default function AutomationsClient() {
 
     const { data: automations, isLoading: isLoadingAuth } = useCollection<Automation>(automationsQuery);
     const { data: allRuns, isLoading: isLoadingRuns } = useCollection<AutomationRun>(runsQuery);
+
+    const pipelinesQuery = useMemoFirebase(() => 
+        firestore ? query(
+            collection(firestore, 'pipelines'), 
+            where('workspaceIds', 'array-contains', activeWorkspaceId)
+        ) : null,
+    [firestore, activeWorkspaceId]);
+
+    const webhooksQuery = useMemoFirebase(() => 
+        firestore ? query(
+            collection(firestore, 'webhooks'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId)
+        ) : null,
+    [firestore, activeWorkspaceId]);
+
+    const stagesQuery = useMemoFirebase(() => 
+        firestore ? query(
+            collection(firestore, 'stages')
+        ) : null,
+    [firestore]);
+
+    const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
+    const { data: webhooks } = useCollection<{ id: string; name: string }>(webhooksQuery);
+    const { data: stages } = useCollection<{ id: string; name: string }>(stagesQuery);
 
     // Filter runs by workspace based on trigger data if available
     const filteredRuns = React.useMemo(() => {
@@ -555,7 +649,19 @@ export default function AutomationsClient() {
                             {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                             Pulse Engine
                         </Button>
-                        <Button asChild className="rounded-xl font-semibold h-11 px-6 shadow-xl">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => {
+                                setImportError(null);
+                                setImportEnvelope(null);
+                                setImportStep(1);
+                                setShowImportDialog(true);
+                            }}
+                            className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-95"
+                        >
+                            <Upload className="mr-2 h-4 w-4" /> Import Workflow
+                        </Button>
+                        <Button asChild className="rounded-xl font-semibold h-11 px-6 shadow-xl animate-pulse active:scale-97">
                             <Link href="/admin/automations/new">
                                 <Plus className="mr-2 h-4 w-4" /> New Workflow
                             </Link>
@@ -751,6 +857,16 @@ export default function AutomationsClient() {
                                                     <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/5" asChild>
                                                             <Link href={`/admin/automations/${auth.id}/edit`}><Settings2 className="h-4 w-4 text-primary" /></Link>
+                                                        </Button>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-9 w-9 rounded-xl hover:bg-sky-500/10 text-muted-foreground hover:text-sky-500" 
+                                                            onClick={() => handleExport(auth)}
+                                                            disabled={exportLoadingId === auth.id}
+                                                            title="Export workflow"
+                                                        >
+                                                            {exportLoadingId === auth.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                                                         </Button>
                                                         <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-slate-500/10 text-muted-foreground hover:text-foreground" onClick={() => handleArchive(auth.id)} title="Archive workflow">
                                                             <Archive className="h-4 w-4" />
@@ -967,6 +1083,16 @@ export default function AutomationsClient() {
                                                                     <Link href={`/admin/automations/${auth.id}/edit`} title="Edit workflow">
                                                                         <Settings2 className="h-4 w-4" />
                                                                     </Link>
+                                                                </Button>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-8 w-8 rounded-lg hover:bg-sky-500/10 text-muted-foreground hover:text-sky-500" 
+                                                                    onClick={() => handleExport(auth)}
+                                                                    disabled={exportLoadingId === auth.id}
+                                                                    title="Export workflow"
+                                                                >
+                                                                    {exportLoadingId === auth.id ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <Download className="h-4 w-4" />}
                                                                 </Button>
                                                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-500/10 text-muted-foreground hover:text-foreground" onClick={() => handleArchive(auth.id)} title="Archive workflow">
                                                                     <Archive className="h-4 w-4" />
@@ -1231,6 +1357,254 @@ export default function AutomationsClient() {
                         </div>
                     </TabsContent>
                 </Tabs>
+
+            {/* Import Wizard Modal */}
+            <Dialog open={showImportDialog} onOpenChange={(o) => {
+                if (!o) {
+                    setShowImportDialog(false);
+                    setImportEnvelope(null);
+                    setImportStep(1);
+                    setImportError(null);
+                }
+            }}>
+                <DialogContent className="sm:max-w-2xl rounded-2xl p-0 border border-border shadow-lg overflow-hidden text-left bg-background">
+                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+                        <DialogTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                            <Upload className="h-5 w-5 text-primary" />
+                            Import Automation Workflow
+                        </DialogTitle>
+                        <DialogDescription className="text-xs font-semibold text-muted-foreground">
+                            Upload a `.aflow` file and resolve template, tag, or pipeline dependencies.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-8 max-h-[50vh] overflow-y-auto space-y-6">
+                        {importError && (
+                            <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-semibold rounded-xl flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                {importError}
+                            </div>
+                        )}
+
+                        {importStep === 1 && (
+                            <div className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-2xl p-12 cursor-pointer hover:bg-muted/15 transition-all relative group active:scale-97">
+                                <input
+                                    type="file"
+                                    accept=".aflow"
+                                    onChange={(event) => {
+                                        const file = event.target.files?.[0];
+                                        if (!file) return;
+                                        if (file.size > 1024 * 1024) {
+                                            setImportError('File size exceeds 1MB limit.');
+                                            return;
+                                        }
+                                        const reader = new FileReader();
+                                        reader.onload = (e) => {
+                                            try {
+                                                const data = JSON.parse(e.target?.result as string) as Record<string, unknown>;
+                                                if (data.format !== 'minex360.automation') {
+                                                    throw new Error('Invalid file format. Make sure it is a valid .aflow file.');
+                                                }
+                                                setImportEnvelope(data);
+                                                
+                                                // Pre-populate initial mappings
+                                                const initialMappings = {
+                                                    templates: {} as Record<string, string>,
+                                                    pipelines: {} as Record<string, string>,
+                                                    stages: {} as Record<string, string>,
+                                                    webhooks: {} as Record<string, string>,
+                                                    tags: {} as Record<string, string>
+                                                };
+                                                setImportMappings(initialMappings);
+                                                setImportStep(2);
+                                            } catch (err: unknown) {
+                                                const msg = err as Error;
+                                                setImportError(msg.message || 'Invalid JSON format.');
+                                            }
+                                        };
+                                        reader.readAsText(file);
+                                    }}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                />
+                                <div className="p-4 bg-primary/5 rounded-2xl text-primary group-hover:scale-110 transition-transform mb-4">
+                                    <Upload className="h-8 w-8" />
+                                </div>
+                                <p className="text-sm font-bold text-foreground">Upload portable workflow file</p>
+                                <p className="text-xs text-muted-foreground mt-1.5">Accepts only .aflow files up to 1MB</p>
+                            </div>
+                        )}
+
+                        {importStep === 2 && importEnvelope && (
+                            <div className="space-y-6">
+                                <div className="p-4 bg-muted/30 border rounded-xl space-y-1">
+                                    <h4 className="text-xs font-bold text-foreground">Workflow Information</h4>
+                                    <p className="text-sm font-semibold text-muted-foreground">Name: <span className="text-foreground">{(importEnvelope.automation as Record<string, unknown>).name as string}</span></p>
+                                    {!!((importEnvelope.automation as Record<string, unknown>).description) && (
+                                        <p className="text-xs text-muted-foreground leading-relaxed font-medium">Description: {(importEnvelope.automation as Record<string, unknown>).description as string}</p>
+                                    )}
+                                </div>
+
+                                {/* Pipelines & Stages Mapping */}
+                                {(((importEnvelope.manifest as Record<string, unknown>)?.pipelines as unknown[])?.length ?? 0) > 0 && (
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Map Pipelines & Stages</h4>
+                                        {((importEnvelope.manifest as Record<string, unknown>).pipelines as { id: string; name: string; stages: { id: string; name: string }[] }[]).map((p) => {
+                                            const selectedPipeId = importMappings.pipelines[p.id] || '';
+                                            const matchedPipeline = pipelines?.find(pl => pl.id === selectedPipeId);
+
+                                            return (
+                                                <div key={p.id} className="p-4 border rounded-xl space-y-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-bold text-muted-foreground uppercase">Exported Pipeline: {p.name}</label>
+                                                        <Select 
+                                                            value={selectedPipeId} 
+                                                            onValueChange={(val) => {
+                                                                setImportMappings(prev => ({
+                                                                    ...prev,
+                                                                    pipelines: { ...prev.pipelines, [p.id]: val }
+                                                                }));
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="w-full rounded-xl border-border bg-muted/20 text-xs font-semibold">
+                                                                <SelectValue placeholder="Map to local pipeline..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="bg-background border-border rounded-xl">
+                                                                {(pipelines || []).map(pl => (
+                                                                    <SelectItem key={pl.id} value={pl.id} className="text-xs font-semibold">{pl.name}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {/* Stage dropdowns for this pipeline */}
+                                                    {selectedPipeId && p.stages.map((stage) => {
+                                                        const selectedStageId = importMappings.stages[stage.id] || '';
+                                                        const availableStages = stages?.filter(s => matchedPipeline?.stageIds?.includes(s.id)) || [];
+
+                                                        return (
+                                                            <div key={stage.id} className="space-y-2 pl-4 border-l-2 border-primary/20">
+                                                                <label className="text-[10px] font-bold text-muted-foreground uppercase">Exported Stage: {stage.name}</label>
+                                                                <Select
+                                                                    value={selectedStageId}
+                                                                    onValueChange={(val) => {
+                                                                        setImportMappings(prev => ({
+                                                                            ...prev,
+                                                                            stages: { ...prev.stages, [stage.id]: val }
+                                                                        }));
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger className="w-full rounded-xl border-border bg-muted/20 text-xs font-semibold">
+                                                                        <SelectValue placeholder="Map to local stage..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="bg-background border-border rounded-xl">
+                                                                        {availableStages.map(s => (
+                                                                            <SelectItem key={s.id} value={s.id} className="text-xs font-semibold">{s.name}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Webhooks Mapping */}
+                                {(((importEnvelope.manifest as Record<string, unknown>)?.webhooks as unknown[])?.length ?? 0) > 0 && (
+                                    <div className="space-y-3">
+                                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Map Outbound Webhooks</h4>
+                                        {((importEnvelope.manifest as Record<string, unknown>).webhooks as { id: string; name: string }[]).map((w) => (
+                                            <div key={w.id} className="space-y-2">
+                                                <label className="text-[10px] font-bold text-muted-foreground uppercase">Exported Webhook: {w.name}</label>
+                                                <Select
+                                                    value={importMappings.webhooks[w.id] || ''}
+                                                    onValueChange={(val) => {
+                                                        setImportMappings(prev => ({
+                                                            ...prev,
+                                                            webhooks: { ...prev.webhooks, [w.id]: val }
+                                                        }));
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="w-full rounded-xl border-border bg-muted/20 text-xs font-semibold">
+                                                        <SelectValue placeholder="Select webhook..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-background border-border rounded-xl">
+                                                        {(webhooks || []).map(wh => (
+                                                            <SelectItem key={wh.id} value={wh.id} className="text-xs font-semibold">{wh.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Auto-Resolution Summary Info */}
+                                <div className="space-y-2 border-t pt-4">
+                                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Auto-Resolution Strategy</h4>
+                                    <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside font-medium">
+                                        <li>
+                                            Tags (<span className="text-foreground">{((importEnvelope.manifest as Record<string, unknown>).tags as unknown[]).length} found</span>): Will match tags by name or create them in the workspace automatically.
+                                        </li>
+                                        <li>
+                                            Templates (<span className="text-foreground">{((importEnvelope.manifest as Record<string, unknown>).templates as unknown[]).length} found</span>): Will automatically match active matching categories or recreate them scoped to this organization.
+                                        </li>
+                                        <li>
+                                            Assignees & Users: Explicit user IDs are automatically stripped and reset to &quot;auto&quot; to prevent workspace permission issues.
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        {importStep === 3 && importEnvelope && (
+                            <div className="space-y-4 text-center py-6">
+                                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-full w-14 h-14 flex items-center justify-center mx-auto text-xl mb-2">
+                                    <Check />
+                                </div>
+                                <h4 className="text-base font-bold text-foreground">Ready to Import</h4>
+                                <p className="text-xs text-muted-foreground max-w-sm mx-auto font-semibold leading-relaxed">
+                                    All parameters mapped. The imported automation workflow will be saved as <span className="text-rose-500 font-bold uppercase">Paused</span> so you can review its steps before activation.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="p-8 bg-muted/10 border-t flex items-center justify-end gap-2 shrink-0">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => {
+                                setShowImportDialog(false);
+                                setImportEnvelope(null);
+                                setImportStep(1);
+                            }}
+                            className="rounded-xl font-bold h-10 px-5 active:scale-97 text-xs"
+                        >
+                            Cancel
+                        </Button>
+                        {importStep === 2 && (
+                            <Button 
+                                onClick={() => setImportStep(3)} 
+                                className="rounded-xl font-bold h-10 px-5 active:scale-97 text-xs"
+                            >
+                                Continue
+                            </Button>
+                        )}
+                        {importStep === 3 && (
+                            <Button 
+                                onClick={handleImportSubmit} 
+                                disabled={isImporting}
+                                className="rounded-xl font-bold h-10 px-5 active:scale-97 text-xs flex items-center gap-1.5"
+                            >
+                                {isImporting ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <Check className="h-4 w-4" />}
+                                Confirm Import
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Run Diagnostic Modal */}
             <Dialog open={!!selectedRun} onOpenChange={(o) => !o && setSelectedRun(null)}>

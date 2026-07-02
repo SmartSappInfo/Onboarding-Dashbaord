@@ -1,6 +1,7 @@
 'use server';
 
 import type { Automation } from './types';
+import type { AutomationExportEnvelope, ImportMappings } from './automations/portability';
 import {
   removeAutomation,
   saveAutomation,
@@ -128,4 +129,21 @@ export async function resumeRunAction(runId: string, userId: string) {
 export async function getMessageNodeStatsAction(automationId: string, nodeId: string) {
   const { readMessageNodeStats } = await import('./messaging/message-node-stats');
   return readMessageNodeStats(automationId, nodeId);
+}
+
+// ── Portability Export / Import Actions ──────────────────────────────────────────
+
+export async function exportAutomationAction(automationId: string): Promise<AutomationExportEnvelope> {
+  const { buildAutomationExport } = await import('./automations/portability');
+  return buildAutomationExport(automationId);
+}
+
+export async function importAutomationAction(
+  envelope: AutomationExportEnvelope,
+  mappings: ImportMappings,
+  workspaceId: string,
+  userId: string
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  const { importAutomationAction: executeImport } = await import('./automations/portability');
+  return executeImport(envelope, mappings, workspaceId, userId);
 }

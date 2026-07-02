@@ -144,86 +144,47 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                 try {
                     const { recalculateEntityScore } = await import('./scoring-engine');
                     await recalculateEntityScore(finalData.entityId!, finalData.workspaceId!, finalData.organizationId!);
-                } catch (err: any) {
-                    console.error(`>>> [Scoring Engine] Recalculation failed on activity log:`, err.message);
+                } catch (err: unknown) {
+                    const errorMsg = err instanceof Error ? err.message : 'Unknown recalculation error';
+                    console.error(`>>> [Scoring Engine] Recalculation failed on activity log:`, errorMsg);
                 }
 
-                // LEAD SCORING INTEGRATION:
-                // Check if this activity triggers global engagement scoring.
-                // Guard: Skip if this event was itself created by automation to avoid loops.
+                // CENTRAL SCORING & PERFORMANCE ENGINE INTEGRATION:
+                // Offload event evaluation to emitScoringEvent (runs after request matches)
                 if (!activityData.metadata?.isAutomation && !activityData.metadata?.isRetry) {
                     try {
-                        const wsSnap = await adminDb.collection('workspaces').doc(finalData.workspaceId!).get();
-                        const wsData = wsSnap.data();
-                        const rules = wsData?.leadScoringSettings?.engagementRules;
-                        const increment = rules ? rules[activityData.type] : undefined;
+                        const { emitScoringEvent } = await import('./scoring-performance-engine');
+                        
+                        // Resolve target contact email or ID from metadata or fallback
+                        const contactEmailOrId = 
+                            activityData.metadata?.contactId || 
+                            activityData.metadata?.contactEmail || 
+                            activityData.metadata?.email || 
+                            activityData.metadata?.recipientEmail;
+                            
+                        const actorType = activityData.metadata?.isAutomation 
+                            ? 'Automation' 
+                            : activityData.source === 'system' 
+                            ? 'System' 
+                            : 'User';
 
-                        if (increment && increment !== 0) {
-                            const entityRef = adminDb.collection('entities').doc(finalData.entityId!);
-                            await adminDb.runTransaction(async (transaction) => {
-                                const entitySnap = await transaction.get(entityRef);
-                                if (entitySnap.exists) {
-                                    const entityData = entitySnap.data() || {};
-                                    const entityContacts = entityData.entityContacts || [];
-
-                                    // Resolve target contact email or ID from metadata or fallback
-                                    const contactEmailOrId = 
-                                        activityData.metadata?.contactId || 
-                                        activityData.metadata?.contactEmail || 
-                                        activityData.metadata?.email || 
-                                        activityData.metadata?.recipientEmail;
-
-                                    const { calculateEngagementAdjustment } = await import('./scoring-rules-engine');
-                                    const { entityContacts: updatedContacts, leadScore } = calculateEngagementAdjustment(
-                                        entityContacts,
-                                        contactEmailOrId ? String(contactEmailOrId) : undefined,
-                                        Math.abs(increment),
-                                        increment < 0 ? 'subtract' : 'add'
-                                    );
-
-                                    transaction.update(entityRef, {
-                                        entityContacts: updatedContacts,
-                                        leadScore,
-                                        updatedAt: new Date().toISOString()
-                                    });
-
-                                    // Also update workspace entity
-                                    const weSnap = await adminDb.collection('workspace_entities')
-                                        .where('entityId', '==', finalData.entityId)
-                                        .where('workspaceId', '==', finalData.workspaceId)
-                                        .limit(1)
-                                        .get();
-
-                                    if (!weSnap.empty) {
-                                        transaction.update(weSnap.docs[0].ref, {
-                                            entityContacts: updatedContacts,
-                                            leadScore,
-                                            updatedAt: new Date().toISOString()
-                                        });
-                                    }
-                                }
-                            });
-
-                            // Log a system activity event for the score change (marked isAutomation: true to prevent loops)
-                            const opLabel = increment > 0 ? `increased by ${increment}` : `decreased by ${Math.abs(increment)}`;
-                            await logActivity({
-                                type: 'lead_score_updated',
-                                description: `Lead score ${opLabel} for contact due to engagement: "${activityData.type}"`,
-                                source: 'system',
-                                organizationId: finalData.organizationId!,
-                                workspaceId: finalData.workspaceId!,
-                                entityId: finalData.entityId!,
-                                userId: 'system-scoring-engine',
-                                displayName: 'System Core',
-                                metadata: {
-                                    isAutomation: true,
-                                    activityTriggerType: activityData.type,
-                                    incrementValue: increment
-                                }
-                            });
-                        }
-                    } catch (err: any) {
-                        console.error(`>>> [Scoring Engine] Global engagement scoring failed:`, err.message);
+                        await emitScoringEvent({
+                            organizationId: finalData.organizationId!,
+                            workspaceId: finalData.workspaceId!,
+                            eventType: activityData.type,
+                            entityType: finalData.entityType || 'Contact',
+                            entityId: finalData.entityId!,
+                            contactId: contactEmailOrId ? String(contactEmailOrId) : undefined,
+                            actorType,
+                            actorId: activityData.userId || 'system-scoring-engine',
+                            metadata: {
+                                ...(activityData.metadata || {}),
+                                activityId: docRefId
+                            }
+                        });
+                    } catch (err: unknown) {
+                        const errorMsg = err instanceof Error ? err.message : 'Unknown routing failure';
+                        console.error(`>>> [Scoring Engine] Scoring Performance Engine dispatch failed:`, errorMsg);
                     }
                 }
             });

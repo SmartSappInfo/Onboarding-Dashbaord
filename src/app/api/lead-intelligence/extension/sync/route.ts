@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import type { Prospect, LeadIntelligenceSettings } from '@/lib/lead-intelligence/types';
-import type { Entity, WorkspaceEntity } from '@/lib/types';
+import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
 
 const corsHeaders = {
@@ -58,14 +58,16 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
 
     // Map prospect contacts to SmartSapp EntityContact structure
-    const mappedContacts = prospect.contacts.map((c, i) => ({
+    const mappedContacts: EntityContact[] = prospect.contacts.map((c, i) => ({
       id: `contact_${Date.now()}_${i}`,
-      firstName: c.name.split(' ')[0] || 'Focal',
-      lastName: c.name.split(' ').slice(1).join(' ') || 'Person',
-      email: c.email,
+      name: c.name || 'Focal Person',
+      email: c.email || '',
       phone: c.phone || '',
-      role: c.role || 'Contact',
-      isPrimary: i === 0
+      typeKey: c.role ? c.role.toLowerCase().replace(/\s+/g, '_') : 'contact',
+      typeLabel: c.role || 'Contact',
+      isPrimary: i === 0,
+      isSignatory: false,
+      order: i
     }));
 
     // Create the global Entity doc
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
       workspaceTags: ['synced-lead'],
       displayName: prospect.name,
       displayNameLower: prospect.name.toLowerCase(),
-      primaryContactName: mappedContacts[0]?.firstName ? `${mappedContacts[0].firstName} ${mappedContacts[0].lastName}` : undefined,
+      primaryContactName: mappedContacts[0]?.name || undefined,
       primaryEmail: mappedContacts[0]?.email,
       primaryPhone: mappedContacts[0]?.phone,
       entityContacts: mappedContacts,
@@ -140,11 +142,16 @@ export async function POST(request: NextRequest) {
     // Trigger score history logger via server action (non-blocking)
     try {
       await adjustLeadScoreAction({
-        contactId: mappedContacts[0]?.id || 'unknown',
+        organizationId,
         workspaceId,
-        scoreAdjustment: prospect.scoring.overallScore,
+        entityId,
+        contactEmailOrId: mappedContacts[0]?.email || mappedContacts[0]?.id || 'unknown',
+        value: Math.max(0, Number(prospect.scoring.overallScore) || 0),
+        operation: 'set',
         reason: 'Initial Lead Intelligence score lookup from Chrome Extension',
-        updatedBy: 'system_api'
+        source: 'system',
+        actorId: 'chrome-extension-sync',
+        actorType: 'API'
       });
     } catch (scoreErr) {
       console.error('[API:LEAD_INTEL:SYNC] Failed to adjust lead score:', scoreErr);

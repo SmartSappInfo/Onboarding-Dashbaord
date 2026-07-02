@@ -32,7 +32,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Transition } from 'framer-motion';
 import { 
   getLeadSettingsAction, 
   saveLeadSettingsAction, 
@@ -51,9 +51,9 @@ import type {
 } from '@/lib/lead-intelligence/types';
 
 // Kowalski Animation Transition Constants
-const kowalskiTransition = {
+const kowalskiTransition: Transition = {
   duration: 0.25,
-  ease: [0.23, 1, 0.32, 1] as [number, number, number, number]
+  ease: [0.23, 1, 0.32, 1]
 };
 
 export default function LeadIntelligenceClient() {
