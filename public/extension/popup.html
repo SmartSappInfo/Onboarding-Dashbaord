@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --background: #09090b;
+      --card: #18181b;
+      --border: #27272a;
+      --primary: #10b981;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+    }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--background);
+      color: var(--text);
+      margin: 0;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+    h2 {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 0 12px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h2 span {
+      color: var(--primary);
+    }
+    .badge {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: var(--primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .card {
+      background-color: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .field {
+      margin-bottom: 8px;
+    }
+    .field:last-child {
+      margin-bottom: 0;
+    }
+    .label {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .value {
+      font-size: 11px;
+      color: var(--text);
+    }
+    .tech-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .tech-tag {
+      background-color: #27272a;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 9px;
+      color: var(--text);
+    }
+    .btn-container {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    button {
+      flex: 1;
+      background-color: var(--primary);
+      color: #09090b;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #059669;
+    }
+    button.secondary {
+      background-color: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    button.secondary:hover {
+      background-color: #27272a;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #error, #loading, #auth-setup {
+      text-align: center;
+      padding: 20px 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    input {
+      width: 100%;
+      background-color: var(--background);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+      font-size: 11px;
+    }
+    .alert {
+      color: #ef4444;
+      font-size: 10px;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h2><span>💚 SmartSapp</span> Lead Intel</h2>
+
+  <!-- Loading State -->
+  <div id="loading">
+    Scanning tab URL and fetching intelligence...
+  </div>
+
+  <!-- Auth Setup State -->
+  <div id="auth-setup" style="display: none;">
+    <div style="margin-bottom: 10px;">Please enter your Workspace API Credentials to link this extension to SmartSapp:</div>
+    <input type="text" id="workspace-url" placeholder="SmartSapp Workspace URL (e.g. http://localhost:3000)">
+    <input type="password" id="api-token" placeholder="Chrome Extension Auth Token">
+    <button id="save-auth">Connect Workspace</button>
+    <div id="auth-error" class="alert" style="display: none;"></div>
+  </div>
+
+  <!-- Content State -->
+  <div id="main-content" style="display: none;">
+    <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div id="lead-name" style="font-weight: 700; font-size: 13px;">Acme Corp</div>
+        <div id="lead-domain" style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">acme.com</div>
+      </div>
+      <div id="lead-score-badge" class="badge">92% Need</div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <div class="label">AI Summary</div>
+        <div id="lead-summary" class="value">Analyzing company digital presence...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <div class="label">Opportunities Found</div>
+        <div id="lead-opportunities" class="value" style="line-height: 1.4;">None detected yet</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <div class="label">Contacts Discovery</div>
+        <div id="lead-contacts" class="value" style="line-height: 1.4;">No contacts found</div>
+      </div>
+      <div class="field" style="margin-top: 6px;">
+        <div class="label">Technologies Detected</div>
+        <div id="lead-tech" class="tech-list"></div>
+      </div>
+    </div>
+
+    <div class="btn-container">
+      <button id="sync-crm-btn">Sync to CRM</button>
+      <button id="pitch-btn" class="secondary">Show AI Pitch</button>
+    </div>
+    <div id="action-status" style="font-size: 9px; text-align: center; margin-top: 6px; color: var(--primary);"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
