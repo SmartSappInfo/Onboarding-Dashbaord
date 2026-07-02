@@ -78,7 +78,7 @@ export interface ScoringEvent {
 }
 
 // Defaults list
-export const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'organizationId'>[] = [
+const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'organizationId'>[] = [
   // CRM
   { eventType: 'lead_created', entityType: 'Lead', points: 5, enabled: true, description: 'Points awarded when a new lead/prospect is created.' },
   { eventType: 'lead_assigned', entityType: 'Lead', points: 2, enabled: true, description: 'Points awarded when a lead is assigned to a user.' },
