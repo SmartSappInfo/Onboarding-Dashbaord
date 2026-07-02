@@ -343,4 +343,30 @@ We will proceed with the rollout in five modular phases:
   * Loads the thread conversation history.
   * Prompts Gemini with tone criteria from the default `BrandVoiceProfile` to compose a direct response draft.
 
+---
+
+## 9. Phase 4 Specifications: ROI Analytics & Listening
+
+### A. Analytics View Routing & Layout
+* **URL Segment**: `/admin/social/analytics`
+* **Layout**: Standard dashboard metrics panel:
+  * KPI row: Reach, Clicks, CRM Leads (UTM campaign match), Revenue ROI (Tuition invoice aggregation).
+  * Engagement Chart: Area/Line Recharts charting day-by-day metrics.
+  * Funnel Chart: Bar Recharts charting the Clicks -> Leads -> Paid conversions.
+* **Simulated Conversions Action**: `simulateSocialConversionsAction(postId: string, workspaceId: string, orgId: string)`
+  * Generates random click events.
+  * Creates mock contacts (`WorkspaceEntity`) with corresponding `utmParams`.
+  * Creates mock paid invoices linked to these contacts in Firestore.
+
+### B. Listening Rules Routing & Layout
+* **URL Segment**: `/admin/social/listening`
+* **Layout**: Two-tab dashboard:
+  * Tab 1: Rules Settings (keywords/hashtags list + checkboxes for notifyEmail, notifyInApp, notifyFeed).
+  * Tab 2: Alert Logs Feed (scans `/socialListeningAlerts` collection).
+* **Simulated Mention Action**: `simulateListeningMentionAction(workspaceId: string, orgId: string)`
+  * Generates random brand feedback statements.
+  * Runs a Gemini sentiment check.
+  * Checks if active keywords match rules. If yes, writes alert log document to `/socialListeningAlerts` and dispatches selected notifications (toasts, logs, or mock emails).
+
+
 

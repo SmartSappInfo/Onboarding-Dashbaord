@@ -2,7 +2,7 @@
 
 import { getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
-import type { BrandVoiceProfile, SocialPost, SocialInboxItem, SocialInboxItemReply } from '@/lib/types';
+import type { BrandVoiceProfile, SocialPost, SocialInboxItem, SocialInboxItemReply, SocialListeningRule } from '@/lib/types';
 
 interface GenerateOptions {
   basePrompt: string;
@@ -596,6 +596,191 @@ export async function linkInboxToCRMAction(
   } catch (error: unknown) {
     console.error('[ACTIONS:SOCIAL:LINK_CRM] Error:', error);
     const msg = error instanceof Error ? error.message : 'Failed to update CRM link';
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Server Action: Simulates traffic, CRM lead signups, and Stripe tuition invoice payments
+ * attributed to a social post via UTM campaign codes.
+ */
+export async function simulateSocialConversionsAction(
+  workspaceId: string,
+  orgId: string,
+  postId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const postRef = adminDb.collection('socialPosts').doc(postId);
+    const postSnap = await postRef.get();
+
+    if (!postSnap.exists) {
+      return { success: false, error: 'Social post not found' };
+    }
+
+    const post = postSnap.data() as SocialPost;
+
+    const updatedVariations = { ...post.platformVariations };
+    for (const [platform, variation] of Object.entries(post.platformVariations)) {
+      updatedVariations[platform] = {
+        ...variation,
+        hashtags: variation.hashtags || [],
+      };
+    }
+
+    await postRef.update({
+      platformVariations: updatedVariations,
+      aiOptimized: true,
+      updatedAt: new Date().toISOString(),
+    });
+
+    const mockParents = [
+      { firstName: 'James', lastName: 'Wilson', email: 'james.wilson@example.com', phone: '555-0145', campaign: postId, source: 'linkedin', revenue: 1500 },
+      { firstName: 'Alice', lastName: 'Kaufman', email: 'alice.k@example.com', phone: '555-0812', campaign: postId, source: 'facebook', revenue: 2400 },
+      { firstName: 'Bruce', lastName: 'Wayne', email: 'bruce@waynecorp.example.com', phone: '555-1939', campaign: postId, source: 'x', revenue: 0 },
+    ];
+
+    for (const parent of mockParents) {
+      const contactId = `contact_${Math.random().toString(36).substring(2, 11)}`;
+      const displayName = `${parent.firstName} ${parent.lastName}`;
+
+      const newLead = {
+        id: contactId,
+        organizationId: orgId,
+        workspaceId,
+        entityId: contactId,
+        entityType: 'person',
+        displayName,
+        primaryEmail: parent.email,
+        primaryPhone: parent.phone,
+        status: 'active',
+        workspaceTags: ['social-lead', parent.source],
+        entityContacts: [],
+        utmSource: parent.source,
+        utmCampaign: parent.campaign,
+        utmMedium: 'social',
+        addedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await adminDb.collection('workspaceEntities').doc(contactId).set(newLead);
+
+      if (parent.revenue > 0) {
+        const invoiceId = `inv_${Math.random().toString(36).substring(2, 11)}`;
+        const newInvoice = {
+          id: invoiceId,
+          invoiceNumber: `INV-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+          entityId: contactId,
+          entityType: 'person',
+          periodId: 'current',
+          periodName: 'Admissions cycle 2026',
+          nominalRoll: 1,
+          packageId: 'pkg_tuition',
+          packageName: 'Tuition Program',
+          ratePerStudent: parent.revenue,
+          currency: 'USD',
+          subtotal: parent.revenue,
+          discount: 0,
+          levyAmount: 0,
+          vatAmount: 0,
+          arrearsAdded: 0,
+          creditDeducted: 0,
+          totalPayable: parent.revenue,
+          status: 'paid',
+          items: [],
+          paymentInstructions: 'Auto-processed via Social ROI simulation.',
+          signatureName: 'Stripe Auto-Broker',
+          signatureDesignation: 'Broker',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          workspaceIds: [workspaceId],
+          billingProfileId: 'profile_default',
+        };
+
+        await adminDb.collection('invoices').doc(invoiceId).set(newInvoice);
+      }
+    }
+
+    return { success: true };
+  } catch (error: unknown) {
+    console.error('[ACTIONS:SOCIAL:SIMULATE_ROI] Error:', error);
+    const msg = error instanceof Error ? error.message : 'Failed to seed conversion metrics';
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Server Action: Simulates a public social brand mention or competitor feed post.
+ * Checks for rule keyword matches and triggers notifications.
+ */
+export async function simulateListeningMentionAction(
+  workspaceId: string,
+  orgId: string
+): Promise<{ success: boolean; alertId?: string; error?: string }> {
+  try {
+    const mockMentions = [
+      { author: 'CompetitiveSchool Fan', platform: 'x', content: 'Vibe Academy is charging too much for preschool tuition. Switched my son to competitor yesterday.', sentiment: 'negative' as const, matchingKeyword: 'tuition' },
+      { author: 'LocalParent99', platform: 'facebook', content: 'Heard the admissions office at Vibe Academy is hosting a tour this Saturday. Is registration required?', sentiment: 'neutral' as const, matchingKeyword: 'admissions' },
+      { author: 'TeacherReviewer', platform: 'linkedin', content: 'Vibe Academy has standard teacher salaries, but their classroom learning resources are unmatched.', sentiment: 'positive' as const, matchingKeyword: 'learning' },
+    ];
+
+    const idx = Math.floor(Math.random() * mockMentions.length);
+    const mock = mockMentions[idx];
+
+    const rulesSnap = await adminDb
+      .collection('socialListeningRules')
+      .where('workspaceId', '==', workspaceId)
+      .where('active', '==', true)
+      .limit(1)
+      .get();
+
+    if (rulesSnap.empty) {
+      return { success: false, error: 'No active Social Listening rule profiles set up. Please configure rule keywords first.' };
+    }
+
+    const rule = rulesSnap.docs[0].data() as SocialListeningRule;
+
+    const matchesKeyword = rule.trackKeywords.some(
+      (kw) => kw.toLowerCase() === mock.matchingKeyword.toLowerCase()
+    );
+
+    const isExcluded = (rule.excludeKeywords || []).some(
+      (ex) => mock.content.toLowerCase().includes(ex.toLowerCase())
+    );
+
+    if (!matchesKeyword || isExcluded) {
+      return { success: false, error: `Simulated post containing keyword "${mock.matchingKeyword}" does not match active rule filters.` };
+    }
+
+    const alertId = `alert_${Math.random().toString(36).substring(2, 11)}`;
+
+    await adminDb.collection('socialListeningAlerts').doc(alertId).set({
+      id: alertId,
+      orgId,
+      workspaceId,
+      author: mock.author,
+      platform: mock.platform,
+      content: mock.content,
+      sentiment: mock.sentiment,
+      matchingKeyword: mock.matchingKeyword,
+      createdAt: new Date().toISOString(),
+    });
+
+    if (rule.notifyInApp) {
+      const notifId = `notif_${Math.random().toString(36).substring(2, 11)}`;
+      await adminDb.collection('notifications').doc(notifId).set({
+        id: notifId,
+        workspaceId,
+        title: `Social Alert: ${mock.author} (${mock.platform})`,
+        message: `Mentions keyword "${mock.matchingKeyword}" with ${mock.sentiment} sentiment: "${mock.content}"`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    return { success: true, alertId };
+  } catch (error: unknown) {
+    console.error('[ACTIONS:SOCIAL:SIMULATE_LISTENING] Error:', error);
+    const msg = error instanceof Error ? error.message : 'Failed to process listening mention';
     return { success: false, error: msg };
   }
 }

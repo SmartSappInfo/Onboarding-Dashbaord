@@ -1179,6 +1179,11 @@ export interface WorkspaceEntity {
   locationRegionId?: string;
   locationDistrictId?: string;
 
+  // Social ROI attribution UTM fields
+  utmSource?: string;
+  utmCampaign?: string;
+  utmMedium?: string;
+
   // Dynamic custom data bucket (Requirement: Phase 6)
   customData?: Record<string, any>;
   leadScore?: number;
@@ -5273,7 +5278,11 @@ export interface SocialListeningRule {
   trackKeywords: string[];
   trackHashtags: string[];
   trackCompetitors: string[];
+  excludeKeywords?: string[];
   alertThreshold: 'any' | 'negative' | 'viral_potential';
+  notifyEmail?: boolean;
+  notifyInApp?: boolean;
+  notifyFeed?: boolean;
   active: boolean;
   createdAt: string;
 }
