@@ -41,6 +41,7 @@ interface BuilderState {
     loading: boolean;
     isRestoring: boolean;
     variantPickerType: PageBlockType | null;
+    canvasMode: 'edit' | 'preview';
 }
 
 export type BuilderTab = 'add' | 'edit' | 'settings' | 'triggers' | 'theme' | 'library' | 'history';
@@ -63,7 +64,8 @@ type BuilderAction =
     | { type: 'REDO' }
     | { type: 'RESTORE_VERSION'; payload: CampaignPageVersion }
     | { type: 'OPEN_VARIANT_PICKER'; payload: PageBlockType }
-    | { type: 'CLOSE_VARIANT_PICKER' };
+    | { type: 'CLOSE_VARIANT_PICKER' }
+    | { type: 'SET_CANVAS_MODE'; payload: 'edit' | 'preview' };
 
 function builderReducer(state: BuilderState, action: BuilderAction): BuilderState {
     switch (action.type) {
@@ -168,6 +170,9 @@ function builderReducer(state: BuilderState, action: BuilderAction): BuilderStat
         case 'CLOSE_VARIANT_PICKER':
             return { ...state, variantPickerType: null };
 
+        case 'SET_CANVAS_MODE':
+            return { ...state, canvasMode: action.payload };
+
         default:
             return state;
     }
@@ -186,6 +191,7 @@ const initialState: BuilderState = {
     loading: true,
     isRestoring: false,
     variantPickerType: null,
+    canvasMode: 'edit',
 };
 
 // ─── Hook ────────────────────────────────────────────────────────────────
@@ -412,6 +418,9 @@ export function useBuilderState() {
         addActionToTrigger,
         updateAction,
         removeAction,
+
+        // Canvas Mode
+        setCanvasMode: (mode: 'edit' | 'preview') => dispatch({ type: 'SET_CANVAS_MODE', payload: mode }),
 
         // Undo/Redo
         undo: () => dispatch({ type: 'UNDO' }),

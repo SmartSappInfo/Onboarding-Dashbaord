@@ -92,6 +92,12 @@ export default function PropertiesSidebar({
     onUpdate(selectedInstance.id, { defaultValueOverride: parsed });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
   return (
     <aside className="w-[320px] border-l bg-card/40 flex flex-col h-full shrink-0">
       {/* Header */}
@@ -120,6 +126,7 @@ export default function PropertiesSidebar({
               value={label}
               onChange={e => setLabel(e.target.value)}
               onBlur={handleBlurLabel}
+              onKeyDown={handleKeyDown}
               placeholder={appField.label}
               className="h-9 text-xs rounded-lg bg-background/50"
             />
@@ -134,6 +141,7 @@ export default function PropertiesSidebar({
               value={placeholder}
               onChange={e => setPlaceholder(e.target.value)}
               onBlur={handleBlurPlaceholder}
+              onKeyDown={handleKeyDown}
               placeholder={appField.placeholder || 'Enter value...'}
               className="h-9 text-xs rounded-lg bg-background/50"
             />
@@ -148,6 +156,7 @@ export default function PropertiesSidebar({
               value={helpText}
               onChange={e => setHelpText(e.target.value)}
               onBlur={handleBlurHelpText}
+              onKeyDown={handleKeyDown}
               placeholder={appField.helpText || 'Optional field instructions'}
               className="h-9 text-xs rounded-lg bg-background/50"
             />
@@ -162,6 +171,7 @@ export default function PropertiesSidebar({
               value={defaultValue}
               onChange={e => setDefaultValue(e.target.value)}
               onBlur={handleBlurDefaultValue}
+              onKeyDown={handleKeyDown}
               placeholder="Prepopulated value"
               className="h-9 text-xs rounded-lg bg-background/50"
             />

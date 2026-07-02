@@ -156,8 +156,10 @@ export default function EditFormPage() {
   const [isMounted, setIsMounted] = React.useState(false);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
   const [viewportSize, setViewportSize] = React.useState<ViewportSize>('desktop');
+  const [sandboxMode, setSandboxMode] = React.useState<'edit' | 'sandbox'>('edit');
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSavedSnapshotRef = React.useRef<string>(''); // JSON snapshot for dirty detection
+  const revisionRef = React.useRef<number>(0);
+  const lastSavedRevisionRef = React.useRef<number>(0);
   const [isPendingSave, startSaveTransition] = React.useTransition();
   const [isShareOpen, setIsShareOpen] = React.useState(false);
 
@@ -355,7 +357,8 @@ export default function EditFormPage() {
   React.useEffect(() => {
     if (formDoc && !hasInitialized) {
       resetFormHistory(formDoc);
-      lastSavedSnapshotRef.current = JSON.stringify(formDoc);
+      revisionRef.current = 0;
+      lastSavedRevisionRef.current = 0;
       setHasInitialized(true);
     }
   }, [formDoc, hasInitialized, resetFormHistory]);
@@ -381,11 +384,14 @@ export default function EditFormPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo]);
 
-  // Debounced autosave — fires 2 seconds after any formData change
+  // Debounced autosave with revision tracking — fires 2 seconds after any formData change
   React.useEffect(() => {
     if (!hasInitialized) return;
-    const currentSnapshot = JSON.stringify(formData);
-    if (currentSnapshot === lastSavedSnapshotRef.current) return; // Not dirty
+
+    // Increment revision because formData changed
+    revisionRef.current += 1;
+
+    if (revisionRef.current === lastSavedRevisionRef.current) return; // Not dirty
 
     setSaveStatus('dirty');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -395,8 +401,8 @@ export default function EditFormPage() {
         const uid = user?.uid;
         if (!uid || !formId) { setSaveStatus('error'); return; }
         
-        // Pass expectedVersion for conflict detection
         const expectedVersion = formData.version;
+        const currentSavingRevision = revisionRef.current;
         const res = await updateFormAction(formId, formData as Partial<Form>, uid, expectedVersion);
         
         if (res.conflict) {
@@ -407,12 +413,14 @@ export default function EditFormPage() {
             description: 'Another user has edited this form. Please refresh to load the latest changes and avoid overwriting them.',
           });
         } else if (res.success) {
-          // If version was returned, update the state version to match the backend
           const nextVersion = res.version !== undefined ? res.version : (expectedVersion || 0) + 1;
           const updatedFormData = { ...formData, version: nextVersion };
           
+          // Sync revision numbers. The setFormData(updatedFormData) below will trigger this useEffect next.
+          // Setting lastSavedRevisionRef to currentSavingRevision + 1 pre-matches the increment that will happen in that render.
+          lastSavedRevisionRef.current = currentSavingRevision + 1;
+          
           setFormData(updatedFormData);
-          lastSavedSnapshotRef.current = JSON.stringify(updatedFormData);
           setSaveStatus('saved');
           setTimeout(() => setSaveStatus('idle'), 3000);
         } else {
@@ -921,45 +929,80 @@ export default function EditFormPage() {
               >
                 {/* Viewport & Options Toolbar */}
                 <div className="h-12 border-b bg-card/20 px-8 flex items-center justify-between shrink-0 select-none">
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    Device Viewport Simulation:
-                  </span>
-                  <ViewportToggle currentSize={viewportSize} onChange={setViewportSize} />
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      Device Viewport Simulation:
+                    </span>
+                    <ViewportToggle currentSize={viewportSize} onChange={setViewportSize} />
+                  </div>
+
+                  {/* Mode Selector (Edit vs Sandbox) */}
+                  <div className="flex items-center bg-muted/40 p-1 rounded-xl h-9 border border-border/10">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSandboxMode('edit')}
+                      className={cn(
+                        "h-7 rounded-lg px-3 text-[10px] uppercase font-bold tracking-wider transition-all",
+                        sandboxMode === 'edit' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Edit Mode
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSandboxMode('sandbox')}
+                      className={cn(
+                        "h-7 rounded-lg px-3 text-[10px] uppercase font-bold tracking-wider transition-all",
+                        sandboxMode === 'sandbox' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Sandbox Mode
+                    </Button>
+                  </div>
+
                   <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg"
-                      onClick={undo}
-                      disabled={!canUndo}
-                      title="Undo"
-                    >
-                      <Undo2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg"
-                      onClick={redo}
-                      disabled={!canRedo}
-                      title="Redo"
-                    >
-                      <Redo2 className="h-4 w-4" />
-                    </Button>
+                    {sandboxMode === 'edit' && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg"
+                          onClick={undo}
+                          disabled={!canUndo}
+                          title="Undo"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg"
+                          onClick={redo}
+                          disabled={!canRedo}
+                          title="Redo"
+                        >
+                          <Redo2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <div className="flex-1 flex min-h-0 overflow-hidden">
                     {/* Left Sidebar: Fields Registry */}
-                    <FieldsSidebar
-                      availableFields={availableFields || undefined}
-                      fieldGroups={fieldGroups || undefined}
-                      addedFields={fields}
-                      formType={formData.formType || 'global'}
-                      contactScope={formData.contactScope}
-                      onAddField={addFieldFromRegistry}
-                    />
+                    {sandboxMode === 'edit' && (
+                      <FieldsSidebar
+                        availableFields={availableFields || undefined}
+                        fieldGroups={fieldGroups || undefined}
+                        addedFields={fields}
+                        formType={formData.formType || 'global'}
+                        contactScope={formData.contactScope}
+                        onAddField={addFieldFromRegistry}
+                      />
+                    )}
 
                     {/* Center Canvas: Interactive Sandbox Simulator */}
                     <BuilderCanvas
@@ -974,19 +1017,22 @@ export default function EditFormPage() {
                       onRemoveField={removeField}
                       onReorderFields={(reordered) => updateField('fields', reordered)}
                       onAddStandardField={addStandardFieldByType}
+                      sandboxMode={sandboxMode}
                     />
 
                     {/* Right Sidebar: Selected Field Properties configuration */}
-                    <PropertiesSidebar
-                      selectedInstance={fields.find(f => f.id === selectedFieldId) || null}
-                      appField={fields.find(f => f.id === selectedFieldId) ? getAppField(fields.find(f => f.id === selectedFieldId)!.appFieldId) : undefined}
-                      onUpdate={updateFieldInstance}
-                      onRemove={(id) => {
-                        removeField(id);
-                        setSelectedFieldId(null);
-                      }}
-                      onClose={() => setSelectedFieldId(null)}
-                    />
+                    {sandboxMode === 'edit' && (
+                      <PropertiesSidebar
+                        selectedInstance={fields.find(f => f.id === selectedFieldId) || null}
+                        appField={fields.find(f => f.id === selectedFieldId) ? getAppField(fields.find(f => f.id === selectedFieldId)!.appFieldId) : undefined}
+                        onUpdate={updateFieldInstance}
+                        onRemove={(id) => {
+                          removeField(id);
+                          setSelectedFieldId(null);
+                        }}
+                        onClose={() => setSelectedFieldId(null)}
+                      />
+                    )}
                   </div>
                 </DndContext>
               </motion.div>

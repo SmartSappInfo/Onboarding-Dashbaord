@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -339,6 +341,7 @@ interface BuilderCanvasProps {
   onRemoveField: (instanceId: string) => void;
   onReorderFields: (orderedFields: FormFieldInstance[]) => void;
   onAddStandardField: (type: string) => void;
+  sandboxMode?: 'edit' | 'sandbox';
 }
 
 export default function BuilderCanvas({
@@ -353,7 +356,12 @@ export default function BuilderCanvas({
   onRemoveField,
   onReorderFields,
   onAddStandardField,
+  sandboxMode = 'edit',
 }: BuilderCanvasProps) {
+  const { toast } = useToast();
+  const [sandboxValues, setSandboxValues] = React.useState<Record<string, string | boolean | string[]>>({});
+  const [sandboxErrors, setSandboxErrors] = React.useState<Record<string, string>>({});
+
   const isMobile = viewportSize === 'mobile';
   const isTablet = viewportSize === 'tablet';
 
@@ -365,6 +373,173 @@ export default function BuilderCanvas({
 
   const themePreset = form.theme?.preset || 'professional';
   const inputStyle = form.theme?.inputStyle || 'outline';
+
+  const handleSandboxChange = (id: string, value: string | boolean | string[]) => {
+    setSandboxValues(prev => ({ ...prev, [id]: value }));
+    if (sandboxErrors[id]) {
+      setSandboxErrors(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  };
+
+  const getInputClass = (fieldId: string) => {
+    const errorBorder = sandboxErrors[fieldId] ? 'border-destructive focus-visible:ring-destructive' : 'border-border';
+    return cn(
+      'w-full text-xs rounded-lg transition-all h-9 px-3 bg-background/50 border focus-visible:ring-1 focus-visible:ring-primary/20 text-foreground',
+      inputStyle === 'filled' && 'bg-muted border-none',
+      inputStyle === 'flushed' && 'border-x-0 border-t-0 rounded-none px-0 bg-transparent',
+      errorBorder
+    );
+  };
+
+  const renderSandboxInput = (instance: FormFieldInstance, appField: AppField | undefined) => {
+    const fieldId = instance.id;
+    const value = sandboxValues[fieldId] ?? '';
+
+    switch (appField?.type) {
+      case 'long_text':
+        return (
+          <textarea
+            value={value as string}
+            onChange={e => handleSandboxChange(fieldId, e.target.value)}
+            placeholder={instance.placeholderOverride || appField.placeholder || 'Enter response...'}
+            className={cn(
+              getInputClass(fieldId),
+              'h-16 py-1.5 resize-none'
+            )}
+          />
+        );
+
+      case 'select':
+        return (
+          <Select
+            value={value as string}
+            onValueChange={val => handleSandboxChange(fieldId, val)}
+          >
+            <SelectTrigger className={getInputClass(fieldId)}>
+              <SelectValue placeholder={instance.placeholderOverride || appField.placeholder || 'Select...'} />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              {(appField.options || []).map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+
+      case 'checkbox':
+      case 'yes_no':
+        return (
+          <div className="flex items-center gap-2.5 py-1">
+            <input
+              type="checkbox"
+              checked={!!value}
+              onChange={e => handleSandboxChange(fieldId, e.target.checked)}
+              id={`checkbox-${fieldId}`}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <Label htmlFor={`checkbox-${fieldId}`} className="text-xs text-muted-foreground select-none cursor-pointer">
+              {instance.placeholderOverride || appField.placeholder || 'I agree'}
+            </Label>
+          </div>
+        );
+
+      case 'multi_select':
+        const selectedOptions = Array.isArray(value) ? value : [];
+        const toggleOption = (optValue: string) => {
+          const next = selectedOptions.includes(optValue)
+            ? selectedOptions.filter(o => o !== optValue)
+            : [...selectedOptions, optValue];
+          handleSandboxChange(fieldId, next);
+        };
+        return (
+          <div className="flex flex-col gap-1.5 pt-1">
+            {(appField.options || []).map((opt) => (
+              <label key={opt.value} className="flex items-center gap-2 text-xs text-muted-foreground select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedOptions.includes(opt.value)}
+                  onChange={() => toggleOption(opt.value)}
+                  className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        );
+
+      default:
+        const inputType =
+          appField?.type === 'email'
+            ? 'email'
+            : appField?.type === 'phone'
+            ? 'tel'
+            : appField?.type === 'number' || appField?.type === 'currency'
+            ? 'number'
+            : appField?.type === 'date'
+            ? 'date'
+            : appField?.type === 'datetime'
+            ? 'datetime-local'
+            : 'text';
+
+        return (
+          <input
+            type={inputType}
+            value={value as string}
+            onChange={e => handleSandboxChange(fieldId, e.target.value)}
+            placeholder={instance.placeholderOverride || appField?.placeholder || 'Enter value...'}
+            className={getInputClass(fieldId)}
+          />
+        );
+    }
+  };
+
+  const handleSandboxSubmit = () => {
+    const errors: Record<string, string> = {};
+    fields.forEach((instance) => {
+      const appField = getAppField(instance.appFieldId);
+      const val = sandboxValues[instance.id];
+
+      if (instance.required) {
+        if (val === undefined || val === '' || (Array.isArray(val) && val.length === 0) || val === false) {
+          errors[instance.id] = `${instance.labelOverride || appField?.label || 'This field'} is required.`;
+          return;
+        }
+      }
+
+      if (appField?.type === 'email' && val) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(val as string)) {
+          errors[instance.id] = 'Please enter a valid email address.';
+        }
+      }
+
+      if (appField?.type === 'phone' && val) {
+        const phoneRegex = /^\+?[0-9\s\-()]{7,15}$/;
+        if (!phoneRegex.test(val as string)) {
+          errors[instance.id] = 'Please enter a valid phone number.';
+        }
+      }
+    });
+
+    setSandboxErrors(errors);
+
+    if (Object.keys(errors).length === 0) {
+      toast({
+        title: '✓ Sandbox Submission Successful',
+        description: 'All validations passed! The form data is valid.',
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Validation Failed',
+        description: 'Please correct the errors in the form before submitting.',
+      });
+    }
+  };
 
   return (
     <section className="flex-1 bg-gradient-to-br from-indigo-50/20 via-background to-blue-50/20 dark:from-slate-950 dark:via-background dark:to-indigo-950/10 overflow-y-auto p-8 flex justify-center items-start min-h-0 select-none relative">
@@ -393,6 +568,47 @@ export default function BuilderCanvas({
         {/* Fields list */}
         {fields.length === 0 ? (
           <EmptyCanvasZone onAddStandardField={onAddStandardField} />
+        ) : sandboxMode === 'sandbox' ? (
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 flex-1 p-1">
+            {fields
+              .sort((a, b) => a.order - b.order)
+              .map((instance) => {
+                const appField = getAppField(instance.appFieldId);
+                const isHalf = instance.width === 'half';
+                return (
+                  <div
+                    key={instance.id}
+                    className={cn(
+                      "space-y-1.5 text-left",
+                      isHalf ? "col-span-1" : "col-span-2"
+                    )}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs font-semibold text-foreground">
+                        {instance.labelOverride || appField?.label || 'Field'}
+                      </Label>
+                      {instance.required && (
+                        <span className="text-destructive font-bold text-[10px]">*</span>
+                      )}
+                    </div>
+
+                    {renderSandboxInput(instance, appField)}
+
+                    {instance.helpTextOverride && (
+                      <p className="text-[10px] text-muted-foreground/85 italic mt-1 leading-normal">
+                        {instance.helpTextOverride}
+                      </p>
+                    )}
+
+                    {sandboxErrors[instance.id] && (
+                      <p className="text-[10px] text-destructive font-semibold mt-1">
+                        {sandboxErrors[instance.id]}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
         ) : (
           <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-4 flex-1">
@@ -432,6 +648,7 @@ export default function BuilderCanvas({
               backgroundColor: form.theme?.accentColor || '#3b82f6',
               color: '#ffffff',
             }}
+            onClick={sandboxMode === 'sandbox' ? handleSandboxSubmit : undefined}
             className={cn(
               'h-10 rounded-xl text-xs font-bold font-mono tracking-wide shadow-md active:scale-[0.98] transition-all select-none',
               form.theme?.ctaWidth === 'full' ? 'w-full' : 'w-auto px-8'
