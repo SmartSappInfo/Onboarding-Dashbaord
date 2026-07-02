@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { Award } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
+import { RawDebouncedInput, RawDebouncedTextarea } from '@/components/page-builder/DebouncedInputs';
 
 const schema = z.object({
   stepNumber:    z.number().int().min(1).default(1),
@@ -102,11 +103,11 @@ registerBlock({
             {props.stepNumber}
           </span>
           {isEdit ? (
-            <input
+            <RawDebouncedInput
               className="flex-1 text-xl font-bold bg-transparent border-none outline-none focus:ring-0 text-slate-100 p-0"
               style={textStyle}
               value={props.heading}
-              onChange={(e) => ctx.onPropChange?.({ heading: e.target.value })}
+              onChange={(value) => ctx.onPropChange?.({ heading: value })}
             />
           ) : (
             <h3 className="text-xl font-bold leading-tight" style={textStyle}>
@@ -115,11 +116,11 @@ registerBlock({
           )}
         </div>
         {isEdit ? (
-          <textarea
+          <RawDebouncedTextarea
             className="w-full text-xs font-semibold bg-transparent border-none outline-none focus:ring-0 resize-none text-slate-400 p-0"
             value={props.description}
             rows={2}
-            onChange={(e) => ctx.onPropChange?.({ description: e.target.value })}
+            onChange={(value) => ctx.onPropChange?.({ description: value })}
           />
         ) : (
           <p className="text-xs font-semibold text-slate-400 leading-relaxed pl-11">

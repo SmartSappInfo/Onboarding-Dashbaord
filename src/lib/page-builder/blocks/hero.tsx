@@ -6,6 +6,7 @@ import { Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
+import { RawDebouncedInput, RawDebouncedTextarea } from '@/components/page-builder/DebouncedInputs';
 
 // Dynamic import for WebGL LightRays to prevent SSR hydration errors
 const LightRays = dynamic(() => import('@/components/LightRays'), { ssr: false });
@@ -186,20 +187,20 @@ registerBlock({
             </div>
           ) : null}
           <div className="relative z-10 w-full flex flex-col gap-3">
-            <input
+            <RawDebouncedInput
               className={cn('w-full font-black tracking-tight bg-transparent border-none outline-none focus:ring-0 placeholder:opacity-30', FONT_SIZE[props.fontSize])}
               style={textStyle}
               value={props.title}
               placeholder="Hero Title"
-              onChange={(e) => ctx.onPropChange?.({ title: e.target.value })}
+              onChange={(value) => ctx.onPropChange?.({ title: value })}
             />
-            <textarea
+            <RawDebouncedTextarea
               className="w-full text-sm bg-transparent border-none outline-none focus:ring-0 resize-none placeholder:opacity-30"
               style={{ color: textStyle.color, textAlign: props.align, opacity: 0.7 }}
               value={props.subtitle}
               placeholder="Hero subtitle text"
               rows={2}
-              onChange={(e) => ctx.onPropChange?.({ subtitle: e.target.value })}
+              onChange={(value) => ctx.onPropChange?.({ subtitle: value })}
             />
             {ctaSectionMarkup}
           </div>

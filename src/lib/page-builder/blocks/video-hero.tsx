@@ -6,6 +6,7 @@ import { Play } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
+import { RawDebouncedInput, RawDebouncedTextarea } from '@/components/page-builder/DebouncedInputs';
 
 // bundle-dynamic-imports: WebGL light ray canvas is browser-only
 const LightRays = dynamic(() => import('@/components/LightRays'), { ssr: false });
@@ -126,17 +127,17 @@ registerBlock({
         <div className="relative z-20 max-w-4xl mx-auto flex flex-col items-center gap-6">
           {isEdit ? (
             <>
-              <input
+              <RawDebouncedInput
                 className="w-full text-4xl md:text-6xl font-black bg-transparent border-none outline-none focus:ring-0 text-center"
                 style={textStyle}
                 value={props.headline}
-                onChange={(e) => ctx.onPropChange?.({ headline: e.target.value })}
+                onChange={(value) => ctx.onPropChange?.({ headline: value })}
               />
-              <textarea
+              <RawDebouncedTextarea
                 className="w-full text-base bg-transparent border-none outline-none focus:ring-0 resize-none text-center opacity-80 text-white max-w-xl"
                 value={props.subheadline}
                 rows={2}
-                onChange={(e) => ctx.onPropChange?.({ subheadline: e.target.value })}
+                onChange={(value) => ctx.onPropChange?.({ subheadline: value })}
               />
             </>
           ) : (

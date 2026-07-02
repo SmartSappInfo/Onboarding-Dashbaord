@@ -24,6 +24,7 @@ import {
     Palette,
     History,
     Eye,
+    Edit3,
     TrendingUp,
     Target,
     ArrowRight,
@@ -34,6 +35,7 @@ import {
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { saveSectionAction, getSectionTemplatesAction } from '@/lib/section-actions';
 import { cn } from '@/lib/utils';
+import PublishTemplateModal from './components/PublishTemplateModal';
 import type { CampaignPage, CampaignPageVersion, PageSection, BuilderResources } from '@/lib/types';
 import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import Link from 'next/link';
@@ -97,7 +99,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [leads, setLeads] = useState<Record<string, unknown>[]>([]);
     const [isLoadingLeads, setIsLoadingLeads] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
-
+    const [savingSection, setSavingSection] = useState<PageSection | null>(null);
     // ─── Data Loading ────────────────────────────────────────────────
     useEffect(() => {
         if (!firestore) return;
@@ -226,19 +228,26 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     }, [firestore, builder.page, builder.version, user, id, toast, builder.dispatch]);
 
     // ─── Section Save ────────────────────────────────────────────────
-    const handleSaveSectionAsTemplate = useCallback(async (section: PageSection) => {
-        if (!organizationId || !activeWorkspaceId) return;
-        const name = prompt('Enter a name for this section template:');
-        if (!name) return;
-        const res = await saveSectionAction({ name, category: 'Custom', structure: section, organizationId, workspaceId: activeWorkspaceId });
+    const handleSaveSectionAsTemplate = useCallback((section: PageSection) => {
+        setSavingSection(section);
+    }, []);
+
+    const handleConfirmSaveSection = useCallback(async (name: string, category: string, _visibility: string) => {
+        if (!savingSection || !organizationId || !activeWorkspaceId) return;
+        const res = await saveSectionAction({
+            name,
+            category,
+            structure: savingSection,
+            organizationId,
+            workspaceId: activeWorkspaceId,
+        });
         if (res.success) {
             toast({ title: 'Success', description: 'Section saved to your library.' });
             resources.refreshSections();
         } else {
             toast({ variant: 'destructive', title: 'Error', description: res.error });
         }
-    }, [organizationId, activeWorkspaceId, toast, resources]);
-
+    }, [savingSection, organizationId, activeWorkspaceId, toast, resources]);
     // ─── Theme ───────────────────────────────────────────────────────
     const applyTheme = useCallback((themeId: string) => {
         if (!builder.page) return;
@@ -377,6 +386,28 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         )}
                     >
                         <Smartphone className="w-3.5 h-3.5" /> Mobile
+                    </Button>
+                </div>
+
+                {/* Edit / Preview Switcher */}
+                <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 ml-2">
+                    <Button
+                        variant="ghost" size="sm"
+                        onClick={() => builder.setCanvasMode('edit')}
+                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
+                            builder.canvasMode === 'edit' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
+                        )}
+                    >
+                        <Edit3 className="w-3.5 h-3.5" /> Edit
+                    </Button>
+                    <Button
+                        variant="ghost" size="sm"
+                        onClick={() => builder.setCanvasMode('preview')}
+                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
+                            builder.canvasMode === 'preview' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
+                        )}
+                    >
+                        <Eye className="w-3.5 h-3.5" /> Preview
                     </Button>
                 </div>
 
@@ -593,6 +624,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onReorderSections={builder.reorderSections}
                     onReorderBlocks={builder.reorderBlocks}
                     onMoveBlockToColumn={builder.moveBlockToColumn}
+                    canvasMode={builder.canvasMode}
                 />
             </div>
             <BlockVariantPicker
@@ -611,6 +643,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     embedUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/${page.slug}?embed=true` : `/p/${page.slug}?embed=true`}
                 />
             )}
+            <PublishTemplateModal
+                isOpen={savingSection !== null}
+                onOpenChange={(open) => !open && setSavingSection(null)}
+                section={savingSection}
+                onSave={handleConfirmSaveSection}
+            />
         </div>
     );
 }

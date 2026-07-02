@@ -4,7 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { registerBlock } from '../registry';
+import { registerBlock, type BlockRenderContext } from '../registry';
+import type { PageBlock } from '@/lib/types';
+import { RawDebouncedInput, RawDebouncedTextarea } from '@/components/page-builder/DebouncedInputs';
 
 const schema = z.object({
   heading:              z.string().default('Get Started Today'),
@@ -60,116 +62,122 @@ registerBlock({
   ],
   defaults: schema.parse({}),
   schema,
-  variants: [
-    { id: 'appdl-parallax', label: 'Parallax CTA + Badges', thumbnail: ParallaxThumbnail, defaults: { parallaxEnabled: true, stepNumber: 1 } },
-    { id: 'appdl-flat', label: 'Flat Card Layout', thumbnail: FlatCardThumbnail, defaults: { parallaxEnabled: false, stepNumber: 0 } },
-  ],
-  render: (props: AppDownloadProps, _block, ctx) => {
-    const isEdit = ctx.mode === 'edit';
-    const [mounted, setMounted] = useState(false);
+  render: (props: AppDownloadProps, block, ctx) => (
+    <AppDownloadBlock props={props} block={block} ctx={ctx} />
+  ),
+});
 
-    useEffect(() => {
-      setMounted(true);
-    }, []);
+interface AppDownloadBlockProps {
+  props: AppDownloadProps;
+  block: PageBlock;
+  ctx: BlockRenderContext;
+}
 
-    const containerStyle: React.CSSProperties = {
-      position: 'relative',
-      backgroundImage: props.backgroundImageUrl ? `url(${props.backgroundImageUrl})` : undefined,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundAttachment: props.parallaxEnabled && mounted ? 'fixed' : 'scroll',
-    };
+const AppDownloadBlock = ({ props, block, ctx }: AppDownloadBlockProps) => {
+  const isEdit = ctx.mode === 'edit';
+  const [mounted, setMounted] = useState(false);
 
-    return (
-      <section
-        style={props.backgroundImageUrl ? containerStyle : undefined}
-        className={cn(
-          'w-full rounded-3xl overflow-hidden py-16 px-8 relative text-center border border-slate-800 flex flex-col items-center justify-center gap-6 shadow-2xl',
-          !props.backgroundImageUrl && 'bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900'
-        )}
-      >
-        {/* Color Overlay */}
-        {props.backgroundImageUrl ? (
-          <div
-            className="absolute inset-0 z-0 pointer-events-none"
-            style={{ backgroundColor: props.overlayColor, opacity: props.overlayOpacity }}
-          />
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const containerStyle: React.CSSProperties = {
+    position: 'relative',
+    backgroundImage: props.backgroundImageUrl ? `url(${props.backgroundImageUrl})` : undefined,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: props.parallaxEnabled && mounted ? 'fixed' : 'scroll',
+  };
+
+  return (
+    <section
+      style={props.backgroundImageUrl ? containerStyle : undefined}
+      className={cn(
+        'w-full rounded-3xl overflow-hidden py-16 px-8 relative text-center border border-slate-800 flex flex-col items-center justify-center gap-6 shadow-2xl',
+        !props.backgroundImageUrl && 'bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900'
+      )}
+    >
+      {/* Color Overlay */}
+      {props.backgroundImageUrl ? (
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{ backgroundColor: props.overlayColor, opacity: props.overlayOpacity }}
+        />
+      ) : null}
+
+      {/* Content details */}
+      <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center gap-4">
+        
+        {/* Step Badge */}
+        {props.stepNumber > 0 ? (
+          <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] select-none">
+            {props.stepNumber}
+          </div>
         ) : null}
 
-        {/* Content details */}
-        <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center gap-4">
-          
-          {/* Step Badge */}
-          {props.stepNumber > 0 ? (
-            <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] select-none">
-              {props.stepNumber}
-            </div>
-          ) : null}
+        {isEdit ? (
+          <>
+            <RawDebouncedInput
+              className="w-full text-2xl md:text-4xl font-black bg-transparent border-none outline-none focus:ring-0 text-center text-white"
+              value={props.heading}
+              onChange={(value) => ctx.onPropChange?.({ heading: value })}
+            />
+            <RawDebouncedTextarea
+              className="w-full text-xs font-semibold bg-transparent border-none outline-none focus:ring-0 resize-none text-center text-slate-300 opacity-80"
+              value={props.subtext}
+              rows={2}
+              onChange={(value) => ctx.onPropChange?.({ subtext: value })}
+            />
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white leading-tight">
+              {ctx.interpolate(props.heading)}
+            </h2>
+            {props.subtext ? (
+              <p className="text-xs font-semibold text-slate-300 max-w-lg leading-relaxed">
+                {ctx.interpolate(props.subtext)}
+              </p>
+            ) : null}
+          </>
+        )}
 
-          {isEdit ? (
-            <>
-              <input
-                className="w-full text-2xl md:text-4xl font-black bg-transparent border-none outline-none focus:ring-0 text-center text-white"
-                value={props.heading}
-                onChange={(e) => ctx.onPropChange?.({ heading: e.target.value })}
-              />
-              <textarea
-                className="w-full text-xs font-semibold bg-transparent border-none outline-none focus:ring-0 resize-none text-center text-slate-300 opacity-80"
-                value={props.subtext}
-                rows={2}
-                onChange={(e) => ctx.onPropChange?.({ subtext: e.target.value })}
-              />
-            </>
-          ) : (
-            <>
-              <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white leading-tight">
-                {ctx.interpolate(props.heading)}
-              </h2>
-              {props.subtext ? (
-                <p className="text-xs font-semibold text-slate-300 max-w-lg leading-relaxed">
-                  {ctx.interpolate(props.subtext)}
-                </p>
-              ) : null}
-            </>
-          )}
-
-          {/* App download badges row */}
-          {props.showAppStoreBadges ? (
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-              {props.iosUrl ? (
-                <a
-                  href={props.iosUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-10 hover:opacity-90 active:scale-95 transition-all"
-                  aria-label="Download on the App Store"
-                >
-                  <img
-                    src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83"
-                    alt="Download on the App Store"
-                    className="h-full object-contain"
-                  />
-                </a>
-              ) : null}
-              {props.androidUrl ? (
-                <a
-                  href={props.androidUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-10 hover:opacity-90 active:scale-95 transition-all"
-                  aria-label="Get it on Google Play"
-                >
-                  <img
-                    src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
-                    alt="Get it on Google Play"
-                    className="h-full object-contain -my-2.5" // Offset Google play badge margins
-                  />
-                </a>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </section>
-    );
-  },
-});
+        {/* App download badges row */}
+        {props.showAppStoreBadges ? (
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+            {props.iosUrl ? (
+              <a
+                href={props.iosUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-10 hover:opacity-90 active:scale-95 transition-all"
+                aria-label="Download on the App Store"
+              >
+                <img
+                  src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/en-us?size=250x83"
+                  alt="Download on the App Store"
+                  className="h-full object-contain"
+                />
+              </a>
+            ) : null}
+            {props.androidUrl ? (
+              <a
+                href={props.androidUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-10 hover:opacity-90 active:scale-95 transition-all"
+                aria-label="Get it on Google Play"
+              >
+                <img
+                  src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
+                  alt="Get it on Google Play"
+                  className="h-full object-contain -my-2.5"
+                />
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+};

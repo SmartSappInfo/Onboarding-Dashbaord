@@ -35,6 +35,8 @@ import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, Builde
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import '@/lib/page-builder/blocks'; // register all blocks
+import { useToast } from '@/hooks/use-toast';
+
 interface CanvasProps {
     version: CampaignPageVersion;
     viewport: 'desktop' | 'tablet' | 'mobile';
@@ -54,10 +56,11 @@ interface CanvasProps {
     onReorderSections: (from: number, to: number) => void;
     onReorderBlocks: (sectionId: string, from: number, to: number) => void;
     onMoveBlockToColumn: (blockId: string, targetSectionId: string, targetColumnIndex: number, targetIndex: number) => void;
+    canvasMode: 'edit' | 'preview';
 }
 
 // ─── Sortable Section Wrapper ────────────────────────────────────────────
-function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, editMode }: {
+function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, editMode, canvasMode }: {
     section: PageSection;
     idx: number;
     total: number;
@@ -67,8 +70,9 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
     onSave: () => void;
     onEdit: () => void;
     editMode: 'columns' | 'components';
+    canvasMode: 'edit' | 'preview';
 }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id, disabled: canvasMode === 'preview' });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -76,58 +80,64 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
         opacity: isDragging ? 0.5 : 1,
     };
 
+    const isPreview = canvasMode === 'preview';
+
     return (
         <div
             ref={setNodeRef}
             style={style}
             className={cn(
                 "group relative transition-all border-2 border-transparent border-dashed rounded-xl",
-                editMode === 'columns' ? "hover:border-emerald-500/30" : "hover:border-slate-200/50",
+                !isPreview && (editMode === 'columns' ? "hover:border-emerald-500/30" : "hover:border-slate-200/50"),
                 isDragging && "z-50 shadow-2xl ring-2 ring-emerald-500/30"
             )}
         >
             {/* Section Controls - Top Left */}
-            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-20">
-                <div
-                    {...attributes}
-                    {...listeners}
-                    className="h-7 w-7 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all"
-                >
-                    <GripVertical className="w-3.5 h-3.5 text-slate-400" />
+            {!isPreview && (
+                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-20">
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        className="h-7 w-7 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all"
+                    >
+                        <GripVertical className="w-3.5 h-3.5 text-slate-400" />
+                    </div>
+                    <div className="bg-slate-900 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-slate-700 shadow-sm">
+                        Section {idx + 1}
+                    </div>
+                    <Button
+                        variant="secondary" size="icon"
+                        className="h-7 w-7 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
+                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        title="Section settings"
+                    >
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                    </Button>
+                    <Button
+                        variant="secondary" size="icon"
+                        className="h-7 w-7 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
+                        onClick={(e) => { e.stopPropagation(); onSave(); }}
+                        title="Save section as template"
+                    >
+                        <FolderHeart className="w-3.5 h-3.5 text-slate-400" />
+                    </Button>
                 </div>
-                <div className="bg-slate-900 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-slate-700 shadow-sm">
-                    Section {idx + 1}
-                </div>
-                <Button
-                    variant="secondary" size="icon"
-                    className="h-7 w-7 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
-                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                    title="Section settings"
-                >
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-                </Button>
-                <Button
-                    variant="secondary" size="icon"
-                    className="h-7 w-7 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
-                    onClick={(e) => { e.stopPropagation(); onSave(); }}
-                    title="Save section as template"
-                >
-                    <FolderHeart className="w-3.5 h-3.5 text-slate-400" />
-                </Button>
-            </div>
+            )}
 
             {/* Section Controls - Top Right */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-20">
-                <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
-                    <ArrowUp className="w-3 h-3 text-slate-400" />
-                </Button>
-                <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
-                    <ArrowDown className="w-3 h-3 text-slate-400" />
-                </Button>
-                <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-red-400 transition-all" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
-                    <Trash2 className="w-3 h-3 text-slate-400 hover:text-red-400" />
-                </Button>
-            </div>
+            {!isPreview && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-20">
+                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
+                        <ArrowUp className="w-3 h-3 text-slate-400" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
+                        <ArrowDown className="w-3 h-3 text-slate-400" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-red-400 transition-all" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
+                        <Trash2 className="w-3 h-3 text-slate-400 hover:text-red-400" />
+                    </Button>
+                </div>
+            )}
 
             {children}
         </div>
@@ -135,7 +145,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
 }
 
 // ─── Sortable Block Wrapper ──────────────────────────────────────────────
-function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMove, onDuplicate, children }: {
+function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMove, onDuplicate, children, canvasMode }: {
     block: PageBlock;
     bIdx: number;
     total: number;
@@ -145,8 +155,9 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
     onMove: (dir: 'up' | 'down') => void;
     onDuplicate: () => void;
     children: React.ReactNode;
+    canvasMode: 'edit' | 'preview';
 }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id, disabled: canvasMode === 'preview' });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -154,39 +165,48 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
         opacity: isDragging ? 0.5 : 1,
     };
 
+    const isPreview = canvasMode === 'preview';
+
     return (
         <div
             ref={setNodeRef}
             style={style}
-            onClick={(e) => { e.stopPropagation(); onSelect(); }}
+            onClick={(e) => { 
+                if (isPreview) return;
+                e.stopPropagation(); 
+                onSelect(); 
+            }}
             className={cn(
-                "p-4 bg-white ring-1 ring-slate-200 rounded-xl relative hover:ring-2 hover:ring-emerald-500/40 shadow-sm transition-all cursor-pointer group/block",
-                selected && "ring-2 ring-emerald-500 bg-emerald-50/50",
+                "p-4 bg-white ring-1 ring-slate-200 rounded-xl relative hover:ring-2 hover:ring-emerald-500/40 shadow-sm transition-all group/block",
+                !isPreview && "cursor-pointer",
+                selected && !isPreview && "ring-2 ring-emerald-500 bg-emerald-50/50",
                 isDragging && "z-50 shadow-2xl"
             )}
         >
             {/* Block Controls */}
-            <div className="absolute -top-3 -right-2 opacity-0 group-hover/block:opacity-100 transition-opacity flex items-center gap-1 z-20 scale-90 origin-right">
-                <div
-                    {...attributes}
-                    {...listeners}
-                    className="h-5 w-5 rounded-full shadow-md bg-white hover:bg-emerald-55 border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing"
-                >
-                    <GripVertical className="w-2.5 h-2.5 text-slate-400" />
+            {!isPreview && (
+                <div className="absolute -top-3 -right-2 opacity-0 group-hover/block:opacity-100 transition-opacity flex items-center gap-1 z-20 scale-90 origin-right">
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        className="h-5 w-5 rounded-full shadow-md bg-white hover:bg-emerald-55 border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing"
+                    >
+                        <GripVertical className="w-2.5 h-2.5 text-slate-400" />
+                    </div>
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-emerald-600 border border-slate-100 disabled:opacity-30" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
+                        <ArrowUp className="w-2.5 h-2.5" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-emerald-600 border border-slate-100 disabled:opacity-30" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
+                        <ArrowDown className="w-2.5 h-2.5" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-blue-600 border border-slate-100" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicate block">
+                        <Copy className="w-2.5 h-2.5" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-red-600 border border-slate-100" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
+                        <Trash2 className="w-2.5 h-2.5" />
+                    </Button>
                 </div>
-                <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-emerald-600 border border-slate-100 disabled:opacity-30" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
-                    <ArrowUp className="w-2.5 h-2.5" />
-                </Button>
-                <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-emerald-600 border border-slate-100 disabled:opacity-30" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
-                    <ArrowDown className="w-2.5 h-2.5" />
-                </Button>
-                <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-blue-600 border border-slate-100" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicate block">
-                    <Copy className="w-2.5 h-2.5" />
-                </Button>
-                <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-red-600 border border-slate-100" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
-                    <Trash2 className="w-2.5 h-2.5" />
-                </Button>
-            </div>
+            )}
 
             {children}
         </div>
@@ -206,6 +226,7 @@ function ColumnCell({
     onDuplicateBlock,
     editCtx,
     editMode,
+    canvasMode,
 }: {
     sectionId: string;
     colIdx: number;
@@ -218,22 +239,27 @@ function ColumnCell({
     onDuplicateBlock: (id: string) => void;
     editCtx: (id: string) => BlockRenderContext;
     editMode: 'columns' | 'components';
+    canvasMode: 'edit' | 'preview';
 }) {
     const colId = `${sectionId}-col-${colIdx}`;
     const { setNodeRef, isOver } = useDroppable({
         id: colId,
+        disabled: canvasMode === 'preview',
     });
+
+    const isPreview = canvasMode === 'preview';
 
     return (
         <div
             ref={setNodeRef}
             className={cn(
-                "flex-1 min-h-[120px] rounded-2xl p-4 transition-all flex flex-col gap-4 relative border border-dashed border-transparent",
-                editMode === 'columns' && "border-slate-300/40 bg-slate-50/30",
+                "flex-1 transition-all flex flex-col gap-4 relative border border-dashed border-transparent",
+                !isPreview ? "min-h-[120px] p-4" : "p-0",
+                editMode === 'columns' && !isPreview && "border-slate-300/40 bg-slate-50/30",
                 isOver && "bg-emerald-500/5 border-emerald-500/20 scale-[0.99] shadow-inner"
             )}
         >
-            {editMode === 'columns' && (
+            {editMode === 'columns' && !isPreview && (
                 <div className="absolute top-1.5 left-3 text-[8px] font-bold text-slate-400/50 uppercase tracking-widest pointer-events-none select-none">
                     Column {colIdx + 1}
                 </div>
@@ -251,13 +277,14 @@ function ColumnCell({
                         onRemove={() => onRemoveBlock(block.id)}
                         onMove={(dir) => onMoveBlock(block.id, dir)}
                         onDuplicate={() => onDuplicateBlock(block.id)}
+                        canvasMode={canvasMode}
                     >
                         <BlockRenderer block={block} ctx={editCtx(block.id)} />
                     </SortableBlock>
                 ))}
             </SortableContext>
 
-            {blocks.length === 0 && (
+            {blocks.length === 0 && !isPreview && (
                 <div className="flex-1 flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
                     <PlusSquare className="w-5 h-5 text-slate-300 mb-1" />
                     <p className="text-[9px] font-bold text-slate-400">Empty Column {colIdx + 1}</p>
@@ -287,6 +314,7 @@ const Canvas = React.memo(function Canvas({
     onSaveSectionAsTemplate,
     onReorderSections,
     onMoveBlockToColumn,
+    canvasMode,
 }: CanvasProps) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -295,6 +323,7 @@ const Canvas = React.memo(function Canvas({
 
     const [editMode, setEditMode] = React.useState<'columns' | 'components'>('components');
     const [isMounted, setIsMounted] = React.useState(false);
+    const { toast } = useToast();
 
     React.useEffect(() => {
         setIsMounted(true);
@@ -302,7 +331,7 @@ const Canvas = React.memo(function Canvas({
 
     // Per-block edit context: inline edits route back to the block's props.
     const editCtx = (blockId: string): BlockRenderContext => ({
-        mode: 'edit',
+        mode: canvasMode === 'preview' ? 'view' : 'edit',
         theme,
         interpolate: (t) => t,
         resources,
@@ -428,6 +457,19 @@ const Canvas = React.memo(function Canvas({
                         ? "w-[768px] rounded-[1.5rem] border-[8px] border-slate-800 ring-1 ring-slate-700"
                         : "w-[390px] rounded-[2.5rem] border-[8px] border-slate-800 ring-1 ring-slate-700"
                 )}
+                onClickCapture={(e) => {
+                    if (canvasMode === 'preview') {
+                        const target = e.target as HTMLElement;
+                        if (target.closest('a') || target.closest('button')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toast({
+                                title: "Interaction Disabled",
+                                description: "Link navigation and button actions are disabled in preview mode.",
+                            });
+                        }
+                    }
+                }}
             >
                 <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd}>
                     <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
@@ -514,22 +556,23 @@ const Canvas = React.memo(function Canvas({
                                     } else if (layout === '4-col') {
                                         gridStyle = { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' };
                                     } else if (layout === 'grid') {
-                                        gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
-                                    }
+                                         gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
+                                     }
 
-                                    return (
-                                        <SortableSection
-                                            key={section.id}
-                                            section={section}
-                                            idx={idx}
-                                            total={version.structureJson.sections.length}
-                                            onRemove={() => onRemoveSection(section.id)}
-                                            onMove={(dir) => onMoveSection(section.id, dir)}
-                                            onSave={() => onSaveSectionAsTemplate(section)}
-                                            onEdit={() => onEditSection(section.id)}
-                                            editMode={editMode}
-                                        >
-                                            {/* HTML5 Loop Video Background */}
+                                     return (
+                                         <SortableSection
+                                             key={section.id}
+                                             section={section}
+                                             idx={idx}
+                                             total={version.structureJson.sections.length}
+                                             onRemove={() => onRemoveSection(section.id)}
+                                             onMove={(dir) => onMoveSection(section.id, dir)}
+                                             onSave={() => onSaveSectionAsTemplate(section)}
+                                             onEdit={() => onEditSection(section.id)}
+                                             editMode={editMode}
+                                             canvasMode={canvasMode}
+                                         >
+                                             {/* HTML5 Loop Video Background */}
                                             {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && (
                                                 <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                                                     <video
@@ -583,6 +626,7 @@ const Canvas = React.memo(function Canvas({
                                                                 onDuplicateBlock={onDuplicateBlock}
                                                                 editCtx={editCtx}
                                                                 editMode={editMode}
+                                                                canvasMode={canvasMode}
                                                             />
                                                         ))}
                                                     </div>

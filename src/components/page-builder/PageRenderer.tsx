@@ -10,6 +10,7 @@
  * avoid JS motion on first paint.
  */
 import React, { useMemo, useState, useEffect } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { BlockRenderer } from './BlockRenderer';
 import { themeToCssVars } from '@/lib/page-builder/resolve-theme';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
@@ -34,6 +35,58 @@ interface PageRendererProps {
 }
 
 const EMPTY_RESOURCES: BuilderResources = { forms: [], surveys: [], agreements: [], meetings: [], qrCodes: [] };
+
+interface AnimatedBlockProps {
+  block: CampaignPageVersion['structureJson']['sections'][0]['blocks'][0];
+  ctx: BlockRenderContext;
+}
+
+const AnimatedBlock = ({ block, ctx }: AnimatedBlockProps) => {
+  const shouldReduceMotion = useReducedMotion();
+  const animConfig = ((block.props || {}) as { animation?: Record<string, unknown> }).animation || {};
+  const type = (animConfig.type as string) || 'none';
+
+  if (type === 'none' || shouldReduceMotion) {
+    return <BlockRenderer block={block} ctx={ctx} />;
+  }
+
+  const duration = (typeof animConfig.duration === 'number' ? animConfig.duration : 400) / 1000;
+  const delay = (typeof animConfig.delay === 'number' ? animConfig.delay : 0) / 1000;
+  const trigger = (animConfig.trigger as string) || 'on-load';
+
+  const variants = {
+    hidden: {
+      opacity: 0,
+      y: type === 'slide' ? 24 : 0,
+      scale: type === 'scale' || type === 'zoom' ? 0.95 : 1,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration,
+        delay,
+        ease: [0.23, 1, 0.32, 1] as const,
+      },
+    },
+  };
+
+  const isScroll = trigger === 'on-scroll';
+
+  return (
+    <motion.div
+      initial="hidden"
+      whileInView={isScroll ? "visible" : undefined}
+      animate={!isScroll ? "visible" : undefined}
+      viewport={isScroll ? { once: true, margin: "-100px" } : undefined}
+      variants={variants}
+      style={{ willChange: 'transform, opacity' }}
+    >
+      <BlockRenderer block={block} ctx={ctx} />
+    </motion.div>
+  );
+};
 
 export function PageRenderer({
   page,
@@ -219,7 +272,7 @@ export function PageRenderer({
                 {columnsBlocks.map((colBlocks, colIdx) => (
                   <div key={colIdx} className="flex-1 flex flex-col gap-4">
                     {colBlocks.map((block) => (
-                      <BlockRenderer key={block.id} block={block} ctx={ctx} />
+                      <AnimatedBlock key={block.id} block={block} ctx={ctx} />
                     ))}
                   </div>
                 ))}
