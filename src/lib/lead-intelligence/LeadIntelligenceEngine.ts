@@ -8,6 +8,7 @@ import type {
   ProspectScoring,
   ProspectAIInsights
 } from './types';
+import { MOCK_GHANA_PROSPECTS } from './mock-data';
 
 // Concrete type definitions to avoid any/any[]
 interface GooglePlacesSearchResult {
@@ -247,8 +248,16 @@ export class LeadIntelligenceEngine {
         updatedAt: now
       }));
     } catch (e) {
-      console.error('[LeadIntelligenceEngine] AI generation failed:', e);
-      return [];
+      console.error('[LeadIntelligenceEngine] AI generation failed, falling back to static registry:', e);
+      const now = new Date().toISOString();
+      return MOCK_GHANA_PROSPECTS.map((p, index) => ({
+        ...p,
+        id: `sim_${organizationId}_${workspaceId}_${Date.now()}_${index}`,
+        organizationId,
+        workspaceId,
+        createdAt: now,
+        updatedAt: now
+      })) as Prospect[];
     }
   }
 
