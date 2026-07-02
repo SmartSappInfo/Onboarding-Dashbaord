@@ -1514,5 +1514,56 @@ service cloud.firestore {
       );
       allow write: if false; // Only written via Server Actions / Admin SDK
     }
+
+    // --- Lead Intelligence Platform ---
+    match /prospects/{prospectId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+
+      match /activities/{activityId} {
+        allow read: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasWorkspaceAccess(get(/databases/$(database)/documents/prospects/$(prospectId)).data.workspaceId)
+        );
+        allow write: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasWorkspaceAccess(get(/databases/$(database)/documents/prospects/$(prospectId)).data.workspaceId)
+        );
+      }
+    }
+
+    match /saved_searches/{searchId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
   }
 }
